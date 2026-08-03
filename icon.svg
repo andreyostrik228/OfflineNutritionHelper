@@ -1,0 +1,41 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#111827"/>
+      <stop offset="100%" stop-color="#0b1020"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="22%" cy="18%" r="55%">
+      <stop offset="0%" stop-color="#22c55e" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#22c55e" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="barGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#4ade80"/>
+      <stop offset="100%" stop-color="#16a34a"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Fondo -->
+  <rect x="0" y="0" width="512" height="512" rx="100" fill="url(#bgGrad)"/>
+  <rect x="0" y="0" width="512" height="512" rx="100" fill="url(#glow)"/>
+  <rect x="6" y="6" width="500" height="500" rx="96" fill="none" stroke="#334155" stroke-width="4"/>
+
+  <!-- Mancuerna -->
+  <g>
+    <!-- Barra central -->
+    <rect x="186" y="234" width="140" height="44" rx="22" fill="url(#barGrad)"/>
+
+    <!-- Plato izquierdo, exterior -->
+    <rect x="72"  y="146" width="32" height="220" rx="12" fill="#166534"/>
+    <!-- Plato izquierdo, medio -->
+    <rect x="112" y="172" width="30" height="168" rx="12" fill="#16a34a"/>
+    <!-- Plato izquierdo, interior -->
+    <rect x="150" y="196" width="28" height="120" rx="12" fill="#22c55e"/>
+
+    <!-- Plato derecho, interior -->
+    <rect x="334" y="196" width="28" height="120" rx="12" fill="#22c55e"/>
+    <!-- Plato derecho, medio -->
+    <rect x="370" y="172" width="30" height="168" rx="12" fill="#16a34a"/>
+    <!-- Plato derecho, exterior -->
+    <rect x="408" y="146" width="32" height="220" rx="12" fill="#166534"/>
+  </g>
+</svg>

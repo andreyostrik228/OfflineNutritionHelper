@@ -1,0 +1,14 @@
+# Herramientas internas / estado de agentes (no forman parte del sitio)
+.claude/
+.claude-flow/
+.swarm/
+graphify-out/
+ruvector.db
+
+# Secretos y entornos locales
+.env
+.env.*
+
+# Archivos del sistema operativo
+.DS_Store
+Thumbs.db
