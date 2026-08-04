@@ -1,20 +1,30 @@
 /**
  * style.css — Nutrition Planner
  * ─────────────────────────────────────────────────────────────────────────
- * Design direction: "nutrition label as design language." The subject is
- * real food, real supermarket prices and a strength-training macro target —
- * so the visual system borrows its discipline from the actual vernacular of
- * that world: the EU nutrition-facts panel (hairline grid, tabular figures,
- * all-caps micro-labels) and a Mercadona receipt (itemised lines, monospace
- * prices right-aligned). Numbers are set in a monospace face throughout —
- * not decoration, but the same signal a nutrition label or receipt gives:
- * "this is measured data, not copy."
+ * Design direction (rev. 2): "premium fitness nutrition × editorial food ×
+ * modern digital product." Still built on the same underlying discipline —
+ * real food, real supermarket prices, tabular data set in mono, hairline
+ * dividers instead of a card-per-metric — but the expressive budget is spent
+ * where it earns attention (the hero, the primary action) rather than spread
+ * evenly, and the palette is warmer and richer than the original all-neutral
+ * "nutrition label" version.
  *
- * Palette is deliberately restrained: one brand accent (green — doubles as
- * "protein", the hero macro for a training app) and one warm secondary
- * accent (clay — "energy/calories"), everything else is ink/paper/hairline
- * neutrals. Carbs and fat get quiet earth-tone identifiers, not a fourth and
- * fifth saturated hue.
+ * Hierarchy, not a fixed count of colors: ONE dominant brand color (a deep,
+ * confident forest green — hero panel + primary CTA + a few high-impact
+ * accents, never repeated as a background wash on every card), ONE warm
+ * contrast accent (terracotta/clay — energy/calories, and the hero's second
+ * headline color), warm natural neutrals for everything else, and two muted
+ * earth-tone macro identifiers (grain/slate) that exist purely because four
+ * macros need four distinct signals — not decoration for its own sake.
+ *
+ * Explicitly avoided: a card template repeated everywhere (radius + white +
+ * shadow + icon + colored badge) — sections use genuinely different visual
+ * weight (the nutrition strip is a hairline-divided band, not four cards;
+ * the shopping list is a flat receipt-style list, not a bordered grid; meal
+ * cards are the one place that's actually a "card," with a left accent bar).
+ * Mono is reserved for real numeric data (kcal/g/€) — section labels and
+ * marketing copy moved to Inter so the three typographic voices (editorial
+ * display type, functional data, small metadata labels) stay distinct.
  *
  * IMPORTANT — every id/class below is read directly by JS. None were
  * renamed or removed from the previous version; only visual treatment
@@ -42,32 +52,48 @@
 
 /* ══ Tokens ═════════════════════════════════════════════════ */
 :root {
-  /* Color — ink/paper neutrals + exactly two saturated accents */
-  --ink: #14171a;
-  --ink-soft: #52585e;
-  --ink-faint: #656b70;
-  --paper: #f6f5f1;
-  --paper-raised: #ffffff;
-  --line: #dfdcd3;
-  --line-strong: #c9c5b8;
+  /* Color — warm neutrals + one dominant brand color + one contrast accent.
+     Ink/paper/line shifted from cool grey to warm (coffee/parchment) so the
+     canvas reads as a considered material, not default SaaS white/grey. */
+  --ink: #211a14;
+  --ink-soft: #5c5045;
+  --ink-faint: #8a7c6d;
+  --paper: #f7f1e5;
+  --paper-raised: #fffdf8;
+  --line: #e6dcc7;
+  --line-strong: #d2c2a3;
 
-  --green: #1f6f4a;
-  --green-deep: #12442c;
-  --green-wash: #e7f1ea;
+  /* Dominant brand color — deep, confident forest green. Used with
+     intention in a handful of high-impact spots (hero panel, primary CTA),
+     never as a repeated card background. */
+  --green: #1c5c40;
+  --green-deep: #0f3524;
+  --green-wash: #e5ede2;
 
-  --clay: #c1521e;
-  --clay-deep: #8e3c14;
-  --clay-wash: #fbeae0;
+  /* Warm contrast accent — terracotta. Energy/calories, and the hero's
+     secondary headline color. */
+  --clay: #bd4e28;
+  --clay-deep: #87381a;
+  --clay-wash: #f6e3d2;
 
-  --grain: #7a5d26;
-  --grain-wash: #f3ead9;
+  /* Muted earth-tone macro identifiers — exist because 4 macros need 4
+     distinct signals, not for decoration. Warmed to sit with the palette
+     above instead of reading as a cool, unrelated grey. */
+  --grain: #8a6a2c;
+  --grain-wash: #f1e6ce;
 
-  --slate: #55666d;
-  --slate-wash: #e9edee;
+  --slate: #5d6b58;
+  --slate-wash: #e7ebe1;
 
   --danger: #b3261e;
   --danger-wash: #fbeae8;
   --danger-border: #f0c9c4;
+
+  /* Hero panel — the one large expressive color block on the page. */
+  --hero-bg-start: #1e5a3f;
+  --hero-bg-end: #0f2f20;
+  --hero-ink: #f7f1e5;
+  --hero-ink-soft: rgba(247, 241, 229, 0.76);
 
   /* Per-macro identity — restrained: protein reuses the brand accent
      (deliberate — protein is the hero macro of a training planner) */
@@ -138,13 +164,52 @@ body {
   padding: var(--space-8) 0 var(--space-12);
 }
 
+/* ══ Hero — the one big expressive visual block on the page ══════════════
+   Everything below the hero stays calm and functional; the hero is where
+   the "editorial food/fitness brand" character concentrates: a full dark
+   green panel, oversized asymmetric type, and a large decorative shape
+   bleeding off the edge for depth. Pure CSS on the existing 4 children
+   (brand-mark, brand-eyebrow, h1, p) — no HTML changes. */
 .hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   margin: 0 0 var(--space-10);
-  padding: 0;
+  padding: clamp(36px, 6vw, 72px) clamp(24px, 6vw, 64px) clamp(40px, 7vw, 76px);
+  border-radius: var(--radius-xl);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: var(--space-3);
+  background: linear-gradient(150deg, var(--hero-bg-start) 0%, var(--hero-bg-end) 100%);
+  color: var(--hero-ink);
+}
+
+/* Decorative shape — a single large circle bleeding off the top-right
+   corner in the warm contrast accent, low-opacity for depth/layering
+   rather than a literal illustration. */
+.hero::before {
+  content: "";
+  position: absolute;
+  top: -18%;
+  right: -12%;
+  width: min(46vw, 520px);
+  height: min(46vw, 520px);
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 32%, rgba(189, 78, 40, 0.55), rgba(189, 78, 40, 0) 68%);
+  z-index: -1;
+}
+
+/* Faint dot-grid texture across the whole panel — a quiet decorative
+   detail, not noise: barely visible, gives the flat green some material. */
+.hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(247, 241, 229, 0.12) 1px, transparent 1px);
+  background-size: 18px 18px;
+  z-index: -1;
+  opacity: 0.5;
 }
 
 .brand-mark {
@@ -154,8 +219,9 @@ body {
   width: 40px;
   height: 40px;
   border-radius: var(--radius-md);
-  background: var(--ink);
-  color: var(--paper);
+  background: rgba(247, 241, 229, 0.14);
+  border: 1px solid rgba(247, 241, 229, 0.22);
+  color: var(--hero-ink);
   order: -1;
 }
 
@@ -168,43 +234,47 @@ body {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
+  transform: rotate(-1.4deg);
 }
 
 .brand-eyebrow .badge-text {
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.14em;
+  font-weight: 600;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--green);
-  background: var(--green-wash);
-  padding: 4px 10px;
+  color: var(--hero-ink);
+  background: rgba(247, 241, 229, 0.1);
+  border: 1px solid rgba(247, 241, 229, 0.3);
+  padding: 5px 12px;
   border-radius: 999px;
 }
 
 .hero h1 {
-  margin: 0;
+  margin: var(--space-2) 0 0;
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: clamp(32px, 4.4vw, 52px);
-  line-height: 1.04;
-  letter-spacing: -0.01em;
-  color: var(--ink);
-  max-width: 16ch;
+  font-size: clamp(42px, 6.6vw, 84px);
+  line-height: 0.98;
+  letter-spacing: -0.02em;
+  color: var(--hero-ink);
+  max-width: 14ch;
 }
 
 .hero h1 .hero__serif {
   display: block;
-  color: var(--green);
-  font-style: normal;
+  color: var(--clay);
+  font-weight: 600;
 }
 
 .hero p {
-  margin: var(--space-1) 0 0;
-  color: var(--ink-soft);
-  max-width: 620px;
+  margin: var(--space-3) 0 0;
+  color: var(--hero-ink-soft);
+  max-width: 46ch;
   font-size: 15px;
   line-height: 1.65;
+  position: relative;
+  z-index: 1;
 }
 
 .grid {
@@ -256,10 +326,10 @@ body {
   align-items: center;
   gap: var(--space-3);
   margin: var(--space-6) 0 var(--space-5);
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.14em;
+  font-weight: 700;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--ink-faint);
 }
@@ -375,7 +445,10 @@ select:focus-visible {
   align-items: center;
   justify-content: center;
   gap: 3px;
-  padding: 10px var(--space-2);
+  min-width: 0; /* 1fr grid tracks default to minmax(auto,1fr); without this
+                   the widest chip's min-content forces its track to grow,
+                   making the 4 columns visibly unequal despite repeat(4,1fr) */
+  padding: 9px 6px;
   text-align: center;
   /* border-width/style/color por separado (no el shorthand `border`) a
      propósito: así .visually-hidden:checked + .budget-chip solo necesita
@@ -474,14 +547,16 @@ button:focus-visible {
 }
 
 .btn-primary {
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--green);
+  color: var(--hero-ink);
   position: relative;
+  box-shadow: 0 1px 2px rgba(15, 53, 36, 0.15);
 }
 
 @media (hover: hover) {
   .btn-primary:hover {
     background: var(--green-deep);
+    box-shadow: 0 6px 16px rgba(15, 53, 36, 0.28);
   }
 }
 
@@ -719,6 +794,7 @@ button:focus-visible {
 .meal-card {
   background: var(--paper-raised);
   border: 1px solid var(--line);
+  border-left: 3px solid var(--green);
   border-radius: var(--radius-lg);
   overflow: hidden;
   transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.22s ease;
@@ -729,6 +805,7 @@ button:focus-visible {
     transform: translateY(-2px);
     box-shadow: var(--shadow-md);
     border-color: var(--line-strong);
+    border-left-color: var(--clay);
   }
 }
 
@@ -1147,6 +1224,14 @@ button:focus-visible {
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   padding: var(--space-4);
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+@media (hover: hover) {
+  .verified-card:hover {
+    border-color: var(--line-strong);
+    transform: translateY(-1px);
+  }
 }
 
 .verified-card__name {
@@ -1322,6 +1407,13 @@ button:focus-visible {
   border-radius: var(--radius-sm);
   background: var(--paper);
   border: 1px solid var(--line);
+  transition: border-color 0.15s ease;
+}
+
+@media (hover: hover) {
+  .nocook-item:hover {
+    border-color: var(--line-strong);
+  }
 }
 
 .nocook-item__name {
@@ -1445,13 +1537,16 @@ button:focus-visible {
   color: rgba(246, 245, 241, 0.75);
 }
 
+/* Flat receipt-style list, deliberately NOT another bordered card grid —
+   this is the "calm functional" end of the visual-weight range, contrasted
+   against the boxed, accent-bordered meal cards above. */
 .shopping-list {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--space-2) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--line);
 }
 
 .shopping-item {
@@ -1459,10 +1554,18 @@ button:focus-visible {
   grid-template-columns: auto 1fr auto;
   align-items: start;
   gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  background: var(--paper-raised);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-2);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  transition: background 0.15s ease;
+}
+
+@media (hover: hover) {
+  .shopping-item:hover {
+    background: var(--paper);
+  }
 }
 
 .shopping-item__check {
@@ -1472,6 +1575,11 @@ button:focus-visible {
   border-radius: 5px;
   border: 1.5px solid var(--line-strong);
   flex-shrink: 0;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.shopping-item:hover .shopping-item__check {
+  border-color: var(--green);
 }
 
 .shopping-item__main {
@@ -1569,10 +1677,27 @@ button:focus-visible {
   }
 }
 
+/* ── Mobile: a denser recomposition, not a shrunk desktop ──────────────
+   Principle: keep related fields/stats paired side by side wherever their
+   content allows it (form fields, the 4 macros, the 5 meal-footer stats),
+   and only fall back to a single column where content genuinely needs the
+   full width (meal cards — a dish's ingredient list doesn't fit two-up at
+   phone width without becoming unreadable). Vertical rhythm between major
+   sections is tightened too — the biggest single source of "too much
+   scrolling" was empty margin, not content. */
 @media (max-width: 640px) {
   .container {
-    padding: var(--space-5) 0 var(--space-10);
+    padding: var(--space-5) 0 var(--space-8);
     width: 92%;
+  }
+
+  .hero {
+    margin-bottom: var(--space-6);
+    padding: var(--space-6) var(--space-5) var(--space-6);
+  }
+
+  .grid {
+    gap: var(--space-6);
   }
 
   .nutrition-strip {
@@ -1591,8 +1716,13 @@ button:focus-visible {
     font-size: 24px;
   }
 
+  /* Form stays 2-up: pairs of short fields (Edad/Sexo, Peso/Altura,
+     Actividad/Entrenamientos, Objetivo/Tiempo) read fine at ~170px each
+     and this alone removes roughly half the form's scroll height. Only
+     .field.full (budget selector, taste) spans the full width, unchanged. */
   .form-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-3) var(--space-2);
   }
 
   .meta-boxes {
@@ -1601,6 +1731,15 @@ button:focus-visible {
 
   .meals-grid {
     grid-template-columns: 1fr;
+    gap: var(--space-4);
+  }
+
+  .meal-body {
+    padding: var(--space-4);
+  }
+
+  .meal-head {
+    padding: var(--space-3) var(--space-4);
   }
 
   .meal-footer {
@@ -1620,6 +1759,16 @@ button:focus-visible {
   input,
   select {
     font-size: 16px;
+  }
+
+  .shopping-summary {
+    gap: var(--space-4);
+  }
+
+  .nocook-panel,
+  .shopping-panel {
+    margin-top: var(--space-6);
+    padding-top: var(--space-6);
   }
 
   .actions {
@@ -1642,20 +1791,20 @@ button:focus-visible {
   }
 }
 
+/* Below ~400px (most phones in portrait): DON'T collapse the macro strip,
+   meta boxes or meal footer any further — they were the main offender
+   turning this into one long column, and 2-3 short columns still read
+   fine down to ~340px. Only the border treatment needs to keep matching
+   the 2-column macro strip (same rule already used at the 1024px
+   breakpoint), so it's restated here rather than reset to a 1-column
+   pattern. */
 @media (max-width: 400px) {
-  .nutrition-strip,
-  .meta-boxes,
-  .meal-footer {
-    grid-template-columns: 1fr;
+  .summary-card:nth-child(2n+1) {
+    border-left: none;
   }
 
-  .summary-card {
-    border-left: none !important;
+  .summary-card:nth-child(n+3) {
     border-top: 1px solid var(--line);
-  }
-
-  .summary-card:first-child {
-    border-top: none;
   }
 }
 
