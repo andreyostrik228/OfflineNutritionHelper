@@ -358,6 +358,17 @@ body {
   grid-column: 1 / -1;
 }
 
+/* Reflow-only fix (visual order via `order`, DOM/JS untouched): in source
+   order, "goal" (7th field) and "cookTime" (9th field) each land alone in
+   a 2-col grid row because the two `.field.full` fields between/after them
+   force a new row — half of each of those rows goes empty. Pairing goal+
+   cookTime removes one whole wasted row at every width the form uses a
+   2-col grid (i.e. always — this isn't mobile-only). */
+.form-grid .field:nth-child(7)  { order: 1; } /* goal */
+.form-grid .field:nth-child(9)  { order: 2; } /* cookTime — moved up, pairs with goal */
+.form-grid .field:nth-child(8)  { order: 3; } /* budget (full) — moved after cookTime */
+.form-grid .field:nth-child(10) { order: 4; } /* taste (full) */
+
 label {
   font-size: 11px;
   color: var(--ink-faint);
@@ -1687,21 +1698,52 @@ button:focus-visible {
    scrolling" was empty margin, not content. */
 @media (max-width: 640px) {
   .container {
-    padding: var(--space-5) 0 var(--space-8);
+    padding: var(--space-4) 0 var(--space-6);
     width: 92%;
   }
 
   .hero {
-    margin-bottom: var(--space-6);
-    padding: var(--space-6) var(--space-5) var(--space-6);
+    margin-bottom: var(--space-5);
+    padding: 28px var(--space-5) 30px;
+  }
+
+  .hero h1 {
+    font-size: 36px;
+  }
+
+  .hero p {
+    font-size: 14px;
   }
 
   .grid {
-    gap: var(--space-6);
+    gap: var(--space-5);
   }
 
   .nutrition-strip {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Denser summary cards: same 3-line structure (label / big number /
+     sub), just tighter padding and inner margins — the numbers stay
+     full-size and legible, only the surrounding air shrinks. */
+  .summary-card {
+    padding: 12px 10px;
+  }
+
+  .summary-card h3 {
+    margin-bottom: 6px;
+  }
+
+  .summary-card .sub {
+    margin-top: 3px;
+  }
+
+  .output-top {
+    margin-bottom: var(--space-4);
+  }
+
+  .panel--results .eyebrow {
+    margin-bottom: var(--space-3);
   }
 
   .budget-modes {
@@ -1731,29 +1773,45 @@ button:focus-visible {
 
   .meals-grid {
     grid-template-columns: 1fr;
-    gap: var(--space-4);
+    gap: var(--space-3);
   }
 
   .meal-body {
-    padding: var(--space-4);
+    padding: 12px 14px;
   }
 
   .meal-head {
-    padding: var(--space-3) var(--space-4);
+    padding: 10px 14px;
   }
 
+  .meal-items {
+    gap: 6px;
+  }
+
+  /* Food rows: deliberately NO override here anymore. They used to be
+     forced onto two stacked rows on phones (name on its own row, then a
+     separate kcal/price row) — that was the single largest source of
+     scroll height on mobile (~130px per ingredient vs. ~60px), for no
+     real readability gain. The base side-by-side layout (name+meta left,
+     kcal+price right, same as tablet/desktop) now applies at every width;
+     .food-name already truncates long names with an ellipsis. */
+
+  /* 5 stats across in one row instead of 3-across/2-row — the labels
+     (Proteína/Carbs/Grasas/Coste/Prep) and values are short enough to fit
+     at a slightly smaller size, and this alone removes a whole row from
+     every single meal card. */
   .meal-footer {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
+    margin-top: var(--space-3);
+    padding-top: var(--space-2);
+    font-size: 8.5px;
+    letter-spacing: 0.02em;
   }
 
-  .food-row {
-    grid-template-columns: 1fr;
-  }
-
-  .food-right {
-    flex-direction: row;
-    justify-content: space-between;
-    text-align: left;
+  .meal-footer strong {
+    font-size: 12px;
+    margin-top: 2px;
   }
 
   input,
@@ -1761,8 +1819,28 @@ button:focus-visible {
     font-size: 16px;
   }
 
+  .insights {
+    margin-top: var(--space-5);
+    padding: var(--space-4);
+  }
+
+  .shopping-panel__head,
+  .nocook-panel__head {
+    margin-bottom: var(--space-3);
+  }
+
   .shopping-summary {
     gap: var(--space-4);
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .shopping-item {
+    padding: 8px 4px;
+  }
+
+  .shopping-item__meta,
+  .shopping-item__buy {
+    margin-top: 1px;
   }
 
   .nocook-panel,
@@ -1771,23 +1849,56 @@ button:focus-visible {
     padding-top: var(--space-6);
   }
 
-  .actions {
-    flex-direction: column;
+  .nocook-results {
+    gap: var(--space-3);
   }
 
-  .actions button {
-    width: 100%;
-    justify-content: center;
+  .nocook-slot {
+    padding: var(--space-4);
   }
 
+  .nocook-items {
+    gap: 8px;
+  }
+
+  /* Actions: primary CTA full-width on its own row, the two short
+     secondary actions paired on one row, and the example-data button
+     (longest label) on its own full-width row — 3 rows instead of 4
+     stacked buttons. Reordered with `order` only; DOM/JS untouched. */
   .actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
     position: sticky;
     bottom: 0;
     z-index: 10;
     margin-left: -16px;
     margin-right: -16px;
-    padding: var(--space-4) 16px calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+    padding: var(--space-3) 16px calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
     background: linear-gradient(180deg, transparent, var(--paper) 35%);
+  }
+
+  .actions .btn-primary {
+    grid-column: 1 / -1;
+    order: 1;
+  }
+
+  #noCookBtn {
+    order: 2;
+  }
+
+  #resetBtn {
+    order: 3;
+  }
+
+  #fillExampleBtn {
+    grid-column: 1 / -1;
+    order: 4;
+  }
+
+  .actions button {
+    width: 100%;
+    justify-content: center;
   }
 }
 
@@ -1830,8 +1941,8 @@ button:focus-visible {
   .form-grid .field:nth-child(5) { animation-delay: 0.22s; }
   .form-grid .field:nth-child(6) { animation-delay: 0.25s; }
   .form-grid .field:nth-child(7) { animation-delay: 0.28s; }
-  .form-grid .field:nth-child(8) { animation-delay: 0.31s; }
-  .form-grid .field:nth-child(9) { animation-delay: 0.34s; }
+  .form-grid .field:nth-child(9) { animation-delay: 0.31s; } /* cookTime — now visually 2nd of this group */
+  .form-grid .field:nth-child(8) { animation-delay: 0.34s; } /* budget — now visually 3rd */
 }
 
 @keyframes pageIn {
