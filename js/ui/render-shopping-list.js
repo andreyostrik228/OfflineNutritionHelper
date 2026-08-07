@@ -90,9 +90,15 @@ function buildShoppingItems(meals, storeId) {
 
   return aggregateIngredientUsage(meals)
     .map(function (entry) {
-      var purchase = (typeof resolvePurchaseCost === "function")
-        ? resolvePurchaseCost(entry.name, entry.requiredGrams, store)
-        : { usageCost: entry.usageCost, purchaseCost: entry.usageCost, hasFixedPackage: false, packagesToBuy: null, packageSizeG: null, packageLabel: null };
+      // Prioriza la resolución consciente de despensa (pantry.js) cuando
+      // está cargado — descuenta lo que ya tienes antes de calcular qué
+      // comprar. Si pantry.js no está presente, cae exactamente en el
+      // comportamiento de siempre (resolvePurchaseCost sin descuento).
+      var purchase = (typeof resolvePurchaseCostWithPantry === "function")
+        ? resolvePurchaseCostWithPantry(entry.name, entry.requiredGrams, store)
+        : (typeof resolvePurchaseCost === "function")
+          ? resolvePurchaseCost(entry.name, entry.requiredGrams, store)
+          : { usageCost: entry.usageCost, purchaseCost: entry.usageCost, hasFixedPackage: false, packagesToBuy: null, packageSizeG: null, packageLabel: null };
 
       entry.purchase = purchase;
       return entry;
@@ -152,12 +158,23 @@ function renderShoppingRow(entry) {
   var usedText = "Usado: " + round0(entry.requiredGrams) + " g";
 
   var buyText;
-  if (p.hasFixedPackage) {
+  if (typeof p.packagesToBuy === "number" && p.packagesToBuy === 0) {
+    // Cubierto por completo por la despensa (pantry.js) — no hace falta
+    // comprar nada de este ingrediente hoy.
+    buyText = "Ya tienes suficiente en tu despensa";
+  } else if (p.hasFixedPackage) {
     var label = p.packageLabel ? escapeHtml(p.packageLabel) : "envase";
     buyText = "Comprar: " + p.packagesToBuy + " &times; " + label + " (" + round0(p.packageSizeG) + "g)";
   } else {
     buyText = "Se compra al peso &mdash; sin envase fijo";
   }
+
+  // Nota de despensa: solo aparece cuando pantry.js está cargado Y cubre
+  // parte (o todo) de este ingrediente — invisible/sin cambio alguno
+  // cuando no hay despensa activa.
+  var pantryNote = (typeof p.coveredFromPantry === "number" && p.coveredFromPantry > 0)
+    ? '<div class="shopping-item__pantry">Ya en tu despensa: ' + round0(p.coveredFromPantry) + ' g</div>'
+    : '';
 
   return (
     '<li class="shopping-item">' +
@@ -165,6 +182,7 @@ function renderShoppingRow(entry) {
       '<div class="shopping-item__main">' +
         '<div class="shopping-item__name">' + escapeHtml(entry.name) + '</div>' +
         '<div class="shopping-item__meta">' + escapeHtml(usedText) + '</div>' +
+        pantryNote +
         '<div class="shopping-item__buy">' + buyText + '</div>' +
       '</div>' +
       '<div class="shopping-item__price">' +

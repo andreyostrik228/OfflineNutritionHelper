@@ -11,6 +11,35 @@
  *  - Botones "Ejemplo alto en proteína" y "Resetear"
  *  - Mostrar/ocultar el spinner mientras se calcula
  *
+ * ── Arquitectura de arranque a prueba de fallos (2026-08-06) ─────────────
+ * Un bug real (una entrada de localStorage con forma antigua rompía
+ * renderPantryPanel(), que se llamaba SÍNCRONAMENTE dentro de este mismo
+ * DOMContentLoaded ANTES de que se cableara el submit del formulario —
+ * el error abortaba el resto del callback, "Generar plan" nunca quedaba
+ * enganchado, y el <form> cafa a un envío nativo que recargaba la
+ * página) obligó a repensar el orden de arranque, no solo a añadir un
+ * try/catch puntual. Principios aplicados aquí:
+ *
+ *   1. El camino CRÍTICO (cablear submit/reset/ejemplo del formulario) se
+ *      ejecuta INMEDIATAMENTE tras capturar las referencias al DOM, antes
+ *      de inicializar ningún módulo opcional — así ningún fallo posterior
+ *      puede impedir que "Generar plan" funcione.
+ *   2. Cada módulo opcional (despensa, lista de la compra, catálogo,
+ *      sin-cocinar, presets de presupuesto...) se inicializa dentro de
+ *      safeInit(), que aísla su propio fallo: lo registra en consola y
+ *      deja que el resto de módulos (y el flujo crítico) sigan
+ *      funcionando con total normalidad. Un módulo nunca puede tumbar a
+ *      otro, ni al arranque general.
+ *   3. Los datos persistidos (localStorage, vía pantry.js) tienen su
+ *      propia validación/saneamiento en el módulo que los posee
+ *      (isValidHistoryEntry, sanitizePantryState) — esta es la SEGUNDA
+ *      capa de defensa, no la única: aunque esa validación algún día
+ *      tuviera un hueco, safeInit() sigue conteniendo el daño a un solo
+ *      módulo.
+ *   4. render-pantry.js pinta cada fila de una lista de forma aislada
+ *      (safeRenderRows) — una fila individual que falle al pintarse no
+ *      vacía toda la lista, solo se omite ella.
+ *
  * Depende de:
  *   js/core/calculator.js   (readForm, validateInput, calculateProfile)
  *   js/engine/plan-generator.js (generateDietPlan)
@@ -22,6 +51,22 @@
  */
 
 document.addEventListener("DOMContentLoaded", function () {
+
+  /**
+   * Ejecuta fn() aislado: si lanza, se registra en consola con `label` y
+   * la app sigue arrancando con total normalidad — ningún módulo
+   * individual (despensa, catálogo, lista de la compra...) puede impedir
+   * que el resto de la aplicación funcione. Ver cabecera del archivo.
+   * @param {string} label
+   * @param {function} fn
+   */
+  function safeInit(label, fn) {
+    try {
+      fn();
+    } catch (err) {
+      console.error("[init:" + label + "] fallo aislado -- el resto de la app sigue funcionando:", err);
+    }
+  }
 
   // ── Referencias al DOM ───────────────────────────────────────────────
   var form          = document.getElementById("plannerForm");
@@ -50,6 +95,26 @@ document.addEventListener("DOMContentLoaded", function () {
   var shoppingSummaryEl        = document.getElementById("shoppingSummary");
   var shoppingCountEl          = document.getElementById("shoppingCount");
   var shoppingListContainerEl  = document.getElementById("shoppingListContainer");
+  var usePlanTodayBtn          = document.getElementById("usePlanTodayBtn");
+  var planSavedNoticeEl        = document.getElementById("planSavedNotice");
+
+  var pantryPanel              = document.getElementById("pantryPanel");
+  var pantryListContainer      = document.getElementById("pantryListContainer");
+  var pantryEmptyEl            = document.getElementById("pantryEmpty");
+  var pantryAddSelect          = document.getElementById("pantryAddSelect");
+  var pantryAddGrams           = document.getElementById("pantryAddGrams");
+  var pantryAddBtn             = document.getElementById("pantryAddBtn");
+  var pantryHistoryContainer   = document.getElementById("pantryHistoryContainer");
+  var pantryHistoryEmptyEl     = document.getElementById("pantryHistoryEmpty");
+  var pantryCountEl            = document.getElementById("pantryCount");
+
+  // El plan actualmente mostrado — necesario para que "Usar este plan
+  // hoy" sepa sobre qué comidas actuar sin regenerar nada. Una vez
+  // guardado (savePlanForToday), la Etapa 2 (comprar) y la Etapa 3
+  // (cocinar, por comida) ya no dependen de esto: actúan sobre el
+  // historial persistido, resuelto por su propio entryId.
+  var lastGeneratedMeals = null;
+  var lastGeneratedStore = null;
 
   var budgetModeRadios   = document.querySelectorAll('input[name="budgetMode"]');
   var budgetCustomField  = document.getElementById("budgetCustomField");
@@ -65,75 +130,6 @@ document.addEventListener("DOMContentLoaded", function () {
     fats:        document.getElementById("sumFats"),
     fatsSub:     document.getElementById("sumFatsSub")
   };
-
-  // ── Inicializar módulos de render ────────────────────────────────────
-  initRenderRefs({ mealsContainer: mealsContainer, summaryEls: summaryEls });
-  initInsightRefs({ warningBox: warningBox, insightsList: insightsList });
-
-  if (shoppingPanel && typeof initShoppingListRefs === "function") {
-    initShoppingListRefs({
-      shoppingPanel: shoppingPanel,
-      shoppingSummaryEl: shoppingSummaryEl,
-      shoppingCountEl: shoppingCountEl,
-      shoppingListContainer: shoppingListContainerEl
-    });
-  }
-
-  // ── Contador informativo de la base de platos ────────────────────────
-  if (foodCountEl && typeof DISH_DB !== "undefined") {
-    foodCountEl.textContent = DISH_DB.length;
-  }
-
-  // ── Presets de presupuesto (Ajustado/Equilibrado/Amplio) ─────────────
-  // Los importes se rellenan desde js/data/budget-presets.js (una sola
-  // fuente de verdad) en vez de escribirlos en el HTML — igual que
-  // foodCount se rellena desde DISH_DB.length arriba.
-  (function initBudgetModes() {
-    if (typeof BUDGET_PRESETS === "undefined" || typeof DEFAULT_BUDGET_PERIOD === "undefined") return;
-    var presets = BUDGET_PRESETS[DEFAULT_BUDGET_PERIOD];
-    if (!presets) return;
-
-    var smallEl  = document.getElementById("budgetSmallAmount");
-    var mediumEl = document.getElementById("budgetMediumAmount");
-    var highEl   = document.getElementById("budgetHighAmount");
-    if (smallEl  && presets.small)  smallEl.textContent  = "€" + presets.small.amount  + "/día";
-    if (mediumEl && presets.medium) mediumEl.textContent = "€" + presets.medium.amount + "/día";
-    if (highEl   && presets.high)   highEl.textContent   = "€" + presets.high.amount   + "/día";
-  })();
-
-  // Solo el modo "custom" muestra el campo de cantidad exacta — elegir un
-  // preset lo oculta y limpia, para que readForm() nunca lea un valor
-  // numérico obsoleto de un preset anterior.
-  function updateBudgetCustomVisibility() {
-    var checked = document.querySelector('input[name="budgetMode"]:checked');
-    var isCustom = !!checked && checked.value === "custom";
-    if (budgetCustomField) budgetCustomField.hidden = !isCustom;
-  }
-
-  budgetModeRadios.forEach(function (radio) {
-    radio.addEventListener("change", updateBudgetCustomVisibility);
-  });
-
-  // ── Catálogo verificado (productos reales, EAN) ──────────────────────
-  if (verifiedGrid && typeof initRealProductsRefs === "function") {
-    initRealProductsRefs({
-      verifiedGrid: verifiedGrid,
-      verifiedCount: verifiedCount,
-      verifiedSearchInput: verifiedSearchInput,
-      verifiedEmpty: verifiedEmpty,
-      verifiedEmptyQuery: verifiedEmptyQuery
-    });
-    initRealProductsPanel();
-  }
-
-  // ── Plan "sin cocinar" (independiente del sistema de calorías) ───────
-  if (noCookResults && typeof initNoCookRefs === "function") {
-    initNoCookRefs({
-      noCookResults: noCookResults,
-      noCookCount: noCookCount,
-      noCookStatus: noCookStatus
-    });
-  }
 
   // ── Helpers de UI ─────────────────────────────────────────────────────
 
@@ -170,6 +166,16 @@ document.addEventListener("DOMContentLoaded", function () {
     warningBox.textContent = "";
     if (statusText) statusText.textContent = "";
     if (shoppingPanel) shoppingPanel.hidden = true;
+
+    // No hay ya ningún plan mostrado que "Usar este plan hoy" pueda usar
+    // — pero la despensa NO se toca: es stock real que el usuario posee,
+    // "Resetear" solo limpia el formulario/plan en pantalla.
+    lastGeneratedMeals = null;
+    lastGeneratedStore = null;
+    if (planSavedNoticeEl) {
+      planSavedNoticeEl.hidden = true;
+      planSavedNoticeEl.innerHTML = "";
+    }
   }
 
   // ── Generar el plan (flujo principal) ────────────────────────────────
@@ -204,15 +210,28 @@ document.addEventListener("DOMContentLoaded", function () {
         renderInsights(profile, result, data);
         renderWarnings(profile, result, data);
         if (typeof renderShoppingList === "function") {
-          renderShoppingList(result.meals, result.report && result.report.store);
+          safeInit("shopping-list-render", function () {
+            renderShoppingList(result.meals, result.report && result.report.store);
+          });
+        }
+
+        // Guardado para que "Usar este plan hoy" pueda actuar sobre este
+        // plan concreto sin tener que regenerarlo.
+        lastGeneratedMeals = result.meals;
+        lastGeneratedStore = result.report && result.report.store;
+        if (planSavedNoticeEl) {
+          planSavedNoticeEl.hidden = true;
+          planSavedNoticeEl.innerHTML = "";
         }
 
         // Animaciones GSAP — se ejecutan después de que el HTML ya existe
         // en el DOM. Si GSAP no cargó, estas funciones no hacen nada y
         // el resultado final (valores, tarjetas) es idéntico.
-        animateMealCardsIn();
-        animateSummaryNumbers(profile, result.total);
-        if (typeof animateShoppingListIn === "function") animateShoppingListIn();
+        safeInit("animations", function () {
+          animateMealCardsIn();
+          animateSummaryNumbers(profile, result.total);
+          if (typeof animateShoppingListIn === "function") animateShoppingListIn();
+        });
 
         if (statusText) {
           statusText.textContent = "Plan generado correctamente.";
@@ -255,24 +274,174 @@ document.addEventListener("DOMContentLoaded", function () {
     clearOutput();
   }
 
-  // ── Botón: sin cocinar ────────────────────────────────────────────────
-  // Generador independiente — no usa calculateProfile/generateDietPlan,
-  // no valida el formulario, no toca el sistema de calorías/macros.
-
-  function handleNoCook() {
-    if (typeof runNoCookGenerator !== "function") return;
-    if (noCookPanel) noCookPanel.hidden = false;
-    runNoCookGenerator();
-    if (noCookPanel && typeof noCookPanel.scrollIntoView === "function") {
-      noCookPanel.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
+  // Solo el modo "custom" muestra el campo de cantidad exacta — elegir un
+  // preset lo oculta y limpia, para que readForm() nunca lea un valor
+  // numérico obsoleto de un preset anterior.
+  function updateBudgetCustomVisibility() {
+    var checked = document.querySelector('input[name="budgetMode"]:checked');
+    var isCustom = !!checked && checked.value === "custom";
+    if (budgetCustomField) budgetCustomField.hidden = !isCustom;
   }
 
-  // ── Listeners ─────────────────────────────────────────────────────────
+  // ══ CAMINO CRÍTICO: cablear el formulario ANTES de cualquier módulo
+  //    opcional — ver "Arquitectura de arranque a prueba de fallos" en la
+  //    cabecera del archivo. Ningún fallo posterior (despensa, catálogo,
+  //    lista de la compra...) puede ya impedir que esto se ejecute. ══════
+  initRenderRefs({ mealsContainer: mealsContainer, summaryEls: summaryEls });
+  initInsightRefs({ warningBox: warningBox, insightsList: insightsList });
 
   form.addEventListener("submit", handleSubmit);
   if (fillExampleBtn) fillExampleBtn.addEventListener("click", fillExample);
-  if (resetBtn)       resetBtn.addEventListener("click", resetAll);
-  if (noCookBtn)      noCookBtn.addEventListener("click", handleNoCook);
+  if (resetBtn)        resetBtn.addEventListener("click", resetAll);
+
+  budgetModeRadios.forEach(function (radio) {
+    radio.addEventListener("change", updateBudgetCustomVisibility);
+  });
+
+  // ── Contador informativo de la base de platos ────────────────────────
+  safeInit("food-count", function () {
+    if (foodCountEl && typeof DISH_DB !== "undefined") {
+      foodCountEl.textContent = DISH_DB.length;
+    }
+  });
+
+  // ── Presets de presupuesto (Ajustado/Equilibrado/Amplio) ─────────────
+  // Los importes se rellenan desde js/data/budget-presets.js (una sola
+  // fuente de verdad) en vez de escribirlos en el HTML — igual que
+  // foodCount se rellena desde DISH_DB.length arriba.
+  safeInit("budget-presets", function () {
+    if (typeof BUDGET_PRESETS === "undefined" || typeof DEFAULT_BUDGET_PERIOD === "undefined") return;
+    var presets = BUDGET_PRESETS[DEFAULT_BUDGET_PERIOD];
+    if (!presets) return;
+
+    var smallEl  = document.getElementById("budgetSmallAmount");
+    var mediumEl = document.getElementById("budgetMediumAmount");
+    var highEl   = document.getElementById("budgetHighAmount");
+    if (smallEl  && presets.small)  smallEl.textContent  = "€" + presets.small.amount  + "/día";
+    if (mediumEl && presets.medium) mediumEl.textContent = "€" + presets.medium.amount + "/día";
+    if (highEl   && presets.high)   highEl.textContent   = "€" + presets.high.amount   + "/día";
+  });
+
+  // ── Lista de la compra (aún vacía hasta generar un plan) ─────────────
+  safeInit("shopping-list-init", function () {
+    if (shoppingPanel && typeof initShoppingListRefs === "function") {
+      initShoppingListRefs({
+        shoppingPanel: shoppingPanel,
+        shoppingSummaryEl: shoppingSummaryEl,
+        shoppingCountEl: shoppingCountEl,
+        shoppingListContainer: shoppingListContainerEl
+      });
+    }
+  });
+
+  // ── Despensa: sincronización y Etapa 1 (guardar el plan del día) ──────
+
+  // Se llama tras cualquier mutación de la despensa (guardar plan, marcar
+  // compra hecha, marcar/desmarcar cocinado, edición manual) — en todos
+  // los casos, si hay una lista de la compra visible, sus cifras "ya en
+  // tu despensa" habrían quedado obsoletas. Aislada en safeInit porque
+  // renderShoppingList()/renderPantryPanel() son código de terceros
+  // módulos que podrían fallar con datos inesperados.
+  function syncAfterPantryChange() {
+    safeInit("pantry-sync", function () {
+      if (typeof renderPantryPanel === "function") renderPantryPanel();
+      if (lastGeneratedMeals && typeof renderShoppingList === "function") {
+        renderShoppingList(lastGeneratedMeals, lastGeneratedStore);
+      }
+    });
+  }
+
+  // Etapa 1 del ciclo de vida de la despensa: registra el plan mostrado
+  // como "el plan de hoy". NO compra ni cocina nada — eso ocurre después,
+  // de forma independiente, desde el panel de despensa (Etapas 2 y 3).
+  function handleUsePlanToday() {
+    safeInit("use-plan-today", function () {
+      if (!lastGeneratedMeals) return;
+      if (typeof savePlanForToday !== "function") return;
+
+      usePlanTodayBtn.disabled = true; // guarda simple contra doble clic (la llamada es síncrona)
+      try {
+        var result = savePlanForToday(lastGeneratedMeals, lastGeneratedStore);
+        if (typeof renderPantryPanel === "function") renderPantryPanel();
+        if (typeof renderPlanSavedNotice === "function") renderPlanSavedNotice(result.entry, result.historySaved);
+
+        // El plan guardado se gestiona desde ahí en adelante (comprar/
+        // cocinar) -- se abre y se hace scroll para que no haya que buscarlo.
+        if (pantryPanel) {
+          pantryPanel.open = true;
+          if (typeof pantryPanel.scrollIntoView === "function") {
+            pantryPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+        }
+      } finally {
+        usePlanTodayBtn.disabled = false;
+      }
+    });
+  }
+
+  // A diferencia de shoppingPanel/noCookPanel (vacíos hasta generar un
+  // plan), la despensa pinta su estado persistido YA, al cargar la
+  // página — no depende de ningún plan generado en esta sesión. Los datos
+  // en sí ya se validan/sanean dentro de pantry.js (isValidHistoryEntry,
+  // sanitizePantryState) y cada fila se pinta de forma aislada
+  // (safeRenderRows, render-pantry.js) — safeInit aquí es una tercera
+  // capa, no la única defensa.
+  safeInit("pantry-init", function () {
+    if (pantryPanel && typeof initPantryRefs === "function") {
+      initPantryRefs({
+        pantryListContainer: pantryListContainer,
+        pantryEmptyEl: pantryEmptyEl,
+        pantryAddSelect: pantryAddSelect,
+        pantryAddGrams: pantryAddGrams,
+        pantryAddBtn: pantryAddBtn,
+        pantryHistoryContainer: pantryHistoryContainer,
+        pantryHistoryEmptyEl: pantryHistoryEmptyEl,
+        pantryCountEl: pantryCountEl,
+        planSavedNoticeEl: planSavedNoticeEl,
+        onPantryChange: syncAfterPantryChange
+      });
+      if (typeof renderPantryPanel === "function") renderPantryPanel();
+    }
+    if (usePlanTodayBtn) usePlanTodayBtn.addEventListener("click", handleUsePlanToday);
+  });
+
+  // ── Catálogo verificado (productos reales, EAN) ──────────────────────
+  safeInit("catalog-init", function () {
+    if (verifiedGrid && typeof initRealProductsRefs === "function") {
+      initRealProductsRefs({
+        verifiedGrid: verifiedGrid,
+        verifiedCount: verifiedCount,
+        verifiedSearchInput: verifiedSearchInput,
+        verifiedEmpty: verifiedEmpty,
+        verifiedEmptyQuery: verifiedEmptyQuery
+      });
+      initRealProductsPanel();
+    }
+  });
+
+  // ── Plan "sin cocinar" (independiente del sistema de calorías) ───────
+  // Generador independiente — no usa calculateProfile/generateDietPlan,
+  // no valida el formulario, no toca el sistema de calorías/macros.
+  function handleNoCook() {
+    safeInit("no-cook-run", function () {
+      if (typeof runNoCookGenerator !== "function") return;
+      if (noCookPanel) noCookPanel.hidden = false;
+      runNoCookGenerator();
+      if (noCookPanel && typeof noCookPanel.scrollIntoView === "function") {
+        noCookPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
+  }
+
+  safeInit("no-cook-init", function () {
+    if (noCookResults && typeof initNoCookRefs === "function") {
+      initNoCookRefs({
+        noCookResults: noCookResults,
+        noCookCount: noCookCount,
+        noCookStatus: noCookStatus
+      });
+    }
+    if (noCookBtn) noCookBtn.addEventListener("click", handleNoCook);
+  });
 
 });

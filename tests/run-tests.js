@@ -32,5 +32,8 @@ require("./plan-generator.characterization.test").run({ test: test });
 console.log("\ningredient-packaging-coverage.test.js");
 require("./ingredient-packaging-coverage.test").run({ test: test });
 
+console.log("\npantry.test.js");
+require("./pantry.test").run({ test: test });
+
 console.log("\n" + passed + " passed, " + failed + " failed");
 if (failed > 0) process.exit(1);

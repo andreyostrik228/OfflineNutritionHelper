@@ -292,7 +292,46 @@
       </div>
       <div class="shopping-summary" id="shoppingSummary"></div>
       <ul class="shopping-list" id="shoppingListContainer"></ul>
+
+      <div class="shopping-panel__actions" id="shoppingActions">
+        <button type="button" class="btn-primary" id="usePlanTodayBtn">Usar este plan hoy</button>
+        <div class="confirm-receipt" id="planSavedNotice" hidden></div>
+      </div>
     </section>
+
+    <!-- ══ DESPENSA: recuerda cuánto de cada ingrediente ya tienes en casa
+         (sobras de compras/planes anteriores) y lo descuenta de lo que
+         un plan futuro pide comprar. Persiste en localStorage, INDEPEN-
+         DIENTE de cualquier plan generado en esta sesión — nunca se oculta
+         ni se vacía al pulsar "Resetear". Ver js/core/pantry.js /
+         js/ui/render-pantry.js ══ -->
+    <details class="disclosure" id="pantryPanel">
+      <summary>
+        <div class="verified-panel__head">
+          <div>
+            <h2>Tu <em>despensa</em></h2>
+            <span class="eyebrow">Sobras guardadas de compras anteriores &mdash; se descuentan del pr&oacute;ximo plan</span>
+          </div>
+          <div class="badge"><svg class="icon" width="14" height="14"><use href="#icon-cart"/></svg> <span id="pantryCount">0</span> productos guardados</div>
+        </div>
+        <svg class="disclosure__chevron" width="20" height="20"><use href="#icon-chevron"/></svg>
+      </summary>
+
+      <div class="disclosure__body">
+        <div class="pantry-add" id="pantryAddForm">
+          <select id="pantryAddSelect" aria-label="Ingrediente"></select>
+          <input type="number" id="pantryAddGrams" min="0" step="1" placeholder="gramos" aria-label="Gramos">
+          <button type="button" id="pantryAddBtn">A&ntilde;adir</button>
+        </div>
+
+        <ul class="pantry-list" id="pantryListContainer"></ul>
+        <p class="pantry-empty" id="pantryEmpty" hidden>Tu despensa est&aacute; vac&iacute;a &mdash; confirma un plan o a&ntilde;ade algo manualmente.</p>
+
+        <h3 class="pantry-history__title">Historial de planes usados</h3>
+        <ul class="pantry-history" id="pantryHistoryContainer"></ul>
+        <p class="pantry-history__empty" id="pantryHistoryEmpty" hidden>Todav&iacute;a no has confirmado ning&uacute;n plan.</p>
+      </div>
+    </details>
 
     <!-- ══ SIN COCINAR: plan hecho enteramente de productos reales del
          catálogo (comprar → abrir/servir/calentar rápido → comer), sin
@@ -356,6 +395,7 @@
 <script src="js/data/budget-presets.js"></script>
 <script src="js/core/utils.js"></script>
 <script src="js/core/pricing.js"></script>
+<script src="js/core/pantry.js"></script>
 <script src="js/core/calculator.js"></script>
 <script src="js/core/meal-helpers.js"></script>
 <script src="js/engine/dish-selector.js"></script>
@@ -363,6 +403,7 @@
 <script src="js/engine/no-cook-generator.js"></script>
 <script src="js/ui/render.js"></script>
 <script src="js/ui/render-shopping-list.js"></script>
+<script src="js/ui/render-pantry.js"></script>
 <script src="js/ui/render-insights.js"></script>
 <script src="js/ui/render-real-products.js"></script>
 <script src="js/ui/render-no-cook.js"></script>

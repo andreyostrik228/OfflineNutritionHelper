@@ -1655,6 +1655,369 @@ button:focus-visible {
   border-radius: var(--radius-md);
 }
 
+.shopping-item__pantry {
+  margin-top: 3px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--green-deep);
+}
+
+.shopping-panel__actions {
+  margin-top: var(--space-5);
+  padding-top: var(--space-5);
+  border-top: 1px dashed var(--line-strong);
+}
+
+.shopping-panel__actions .btn-primary {
+  width: 100%;
+  justify-content: center;
+}
+
+.confirm-receipt {
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+  background: var(--green-wash);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+}
+
+.confirm-receipt h4 {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--green-deep);
+}
+
+.confirm-receipt__warning {
+  margin: 0 0 var(--space-2);
+  color: var(--danger);
+  font-size: 12px;
+}
+
+.confirm-receipt ul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* ══ Despensa (pantry.js / render-pantry.js) ═══════════════════════════ */
+.pantry-add {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.pantry-add select {
+  flex: 1;
+}
+
+.pantry-add input {
+  width: 100px;
+  flex-shrink: 0;
+}
+
+.pantry-add button {
+  flex-shrink: 0;
+  background: var(--paper-raised);
+  color: var(--ink-soft);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-4);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .pantry-add button:hover {
+    border-color: var(--ink-faint);
+    color: var(--ink);
+  }
+}
+
+.pantry-list {
+  list-style: none;
+  margin: 0 0 var(--space-6);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--line);
+}
+
+.pantry-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-2);
+  border-bottom: 1px solid var(--line);
+}
+
+.pantry-item__name {
+  font-weight: 600;
+  font-size: 13.5px;
+  color: var(--ink);
+}
+
+.pantry-item__grams {
+  margin-top: 2px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.pantry-item__actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.pantry-item__btn {
+  min-width: 30px;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line-strong);
+  background: var(--paper-raised);
+  color: var(--ink-soft);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .pantry-item__btn:hover {
+    border-color: var(--ink-faint);
+    color: var(--ink);
+  }
+}
+
+.pantry-item__btn--clear {
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--danger);
+  border-color: var(--danger-border);
+  background: var(--danger-wash);
+}
+
+.pantry-empty {
+  color: var(--ink-faint);
+  font-size: 13px;
+  padding: var(--space-5);
+  text-align: center;
+  border: 1.5px dashed var(--line-strong);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-6);
+}
+
+.pantry-history__title {
+  margin: 0 0 var(--space-3);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.pantry-history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* Cada entrada del historial es ahora 3 bloques apilados (cabecera +
+   checklist de compra + lista de comidas), no una fila plana de una
+   línea -- ver render-pantry.js renderHistoryRow(). */
+.pantry-history-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.pantry-history-item--cooked {
+  border-color: var(--green);
+  background: var(--green-wash);
+}
+
+.pantry-history-item__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.pantry-history-item__date {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.pantry-history-item__summary {
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+/* ── Bloque de compra (Etapa 2) ─────────────────────────────────────── */
+.pantry-purchase-block {
+  padding-top: var(--space-3);
+  border-top: 1px dashed var(--line-strong);
+}
+
+.pantry-purchase-checklist {
+  list-style: none;
+  margin: 0 0 var(--space-2);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pantry-purchase-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 3px 0;
+}
+
+.pantry-purchase-row--excluded .pantry-purchase-row__name,
+.pantry-purchase-row--excluded .pantry-purchase-row__grams {
+  color: var(--ink-faint);
+  text-decoration: line-through;
+}
+
+.pantry-purchase-row__check {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border-radius: 5px;
+  border: 1.5px solid var(--line-strong);
+  background: var(--paper-raised);
+  cursor: pointer;
+  padding: 0;
+  position: relative;
+}
+
+.pantry-purchase-row__check[aria-checked="true"] {
+  background: var(--green);
+  border-color: var(--green);
+}
+
+.pantry-purchase-row__check[aria-checked="true"]::after {
+  content: "\2713";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.pantry-purchase-row__name {
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.pantry-purchase-row__grams {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.pantry-purchase-block__note {
+  margin: 0 0 var(--space-2);
+  font-size: 11.5px;
+  color: var(--ink-faint);
+}
+
+.pantry-purchase-block__btn {
+  width: 100%;
+  padding: 8px var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+  color: var(--ink-soft);
+  font-weight: 600;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .pantry-purchase-block__btn:hover {
+    border-color: var(--green);
+    color: var(--green-deep);
+  }
+}
+
+/* ── Lista de comidas (Etapa 3) ─────────────────────────────────────── */
+.pantry-history-item__meals {
+  list-style: none;
+  margin: 0;
+  padding-top: var(--space-3);
+  border-top: 1px dashed var(--line-strong);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pantry-history-item__meal-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.pantry-history-item__meal-label {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
+
+.pantry-history-item__meal-row--cooked .pantry-history-item__meal-label {
+  color: var(--green-deep);
+}
+
+.pantry-history-item__meal-btn {
+  flex-shrink: 0;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+  color: var(--ink-soft);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.pantry-history-item__meal-row--cooked .pantry-history-item__meal-btn {
+  border-color: var(--green);
+  color: var(--green-deep);
+  background: #fff;
+}
+
+.pantry-history__empty {
+  color: var(--ink-faint);
+  font-size: 13px;
+  padding: var(--space-5);
+  text-align: center;
+}
+
 /* ══ Media Queries ══════════════════════════════════════════ */
 @media (max-width: 1024px) {
   .grid {
@@ -1859,6 +2222,33 @@ button:focus-visible {
 
   .nocook-items {
     gap: 8px;
+  }
+
+  .pantry-add {
+    flex-wrap: wrap;
+  }
+
+  .pantry-add input {
+    width: 90px;
+  }
+
+  .pantry-item {
+    padding: 8px 4px;
+  }
+
+  .pantry-history-item {
+    padding: var(--space-2) var(--space-3);
+    gap: var(--space-2);
+  }
+
+  .pantry-purchase-block,
+  .pantry-history-item__meals {
+    padding-top: var(--space-2);
+  }
+
+  .shopping-panel__actions {
+    margin-top: var(--space-4);
+    padding-top: var(--space-4);
   }
 
   /* Actions: primary CTA full-width on its own row, the two short
