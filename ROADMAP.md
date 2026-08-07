@@ -2,14 +2,17 @@
 
 ## Current status
 
-**Stage:** working prototype, updated 2026-08-04. Core architecture
-decision made this date: progressive migration from `dishes.js` (fabricated
+**Stage:** working prototype, updated 2026-08-07. Core architecture
+decision (2026-08-04): progressive migration from `dishes.js` (fabricated
 macros) to real Mercadona products (see "Decisión de arquitectura" below).
-Phase 0 of that migration (test safety net) is complete. Visual design was
-reworked twice this week; the current production CSS is the second
-revision ("premium fitness nutrition" direction, see `STATE.md`). Dataset
-is 334 dishes / 81 ingredient roles (grew from 204/65 on 2026-08-03; the
-2026-07-18 audit numbers were never re-run on the current set).
+Phase 0 of that migration (test safety net) is complete; Fase 1 (widen
+real-product coverage) is still the recommended next step and has **not**
+progressed since 2026-08-04 — the 2026-08-06/07 session went a different
+direction (a full Despensa/pantry feature + an architecture hardening pass
+on app startup, both orthogonal to the migration). Visual design was
+reworked twice in the 2026-08-03/04 window; current production CSS is
+still that second revision ("premium fitness nutrition", see `STATE.md`).
+Dataset is 334 dishes / 81 ingredient roles (unchanged since 2026-08-03).
 
 ## Completed
 
@@ -40,6 +43,22 @@ is 334 dishes / 81 ingredient roles (grew from 204/65 on 2026-08-03; the
   `assets/css/style.css` (no HTML/JS changes). Plus a mobile layout
   recomposition (not just compression) and a real CSS Grid bug fix
   (unequal budget-preset chip widths). Full detail in `STATE.md`.
+- **Despensa / pantry inventory (2026-08-06/07)**: `js/core/pantry.js` +
+  `js/ui/render-pantry.js`, localStorage-backed, 3-stage lifecycle (save
+  plan → mark purchase → mark each meal cooked) after a v1 single-action
+  design produced wrong data in a real-world "bought but never cooked"
+  scenario. Deliberately not connected to `dish-selector.js` (budget
+  selection stays pantry-unaware) or no-cook mode. 33 new tests. Full
+  design record, including why v1 was rejected, in `STATE.md`.
+- **App-startup architecture hardening (2026-08-07)**: the same real-world
+  test that motivated the despensa redesign also surfaced a real
+  architectural bug — one malformed `localStorage` entry could abort the
+  whole `DOMContentLoaded` handler before the form's submit listener
+  attached, so "Generar plan" silently fell back to a native form submit
+  (full page reload). Fixed with 4 isolated defense layers (data
+  validation at the source, per-row render isolation, per-module
+  `safeInit()`, and critical-path listeners wired before any optional
+  module) rather than a single added try/catch. Full detail in `STATE.md`.
 
 ## Decisión de arquitectura: migración a productos reales (2026-08-04)
 
@@ -133,7 +152,14 @@ decisión de arquitectura de datos.
 
 ## Future ideas
 
-- Barcode/import flows, pantry inventory, meal-prep batching, calendar integration, coach mode, multilingual content, and analytics.
+- ~~Pantry inventory~~ **Shipped 2026-08-06/07** — `js/core/pantry.js` +
+  `js/ui/render-pantry.js`, "Despensa" panel. 3-stage lifecycle (use plan
+  today → mark purchase done → mark each meal cooked), localStorage-only,
+  deliberately NOT connected to `dish-selector.js` or no-cook mode yet —
+  see `STATE.md`, section "Despensa (pantry/inventory)" for the full
+  design and the real-world bug that drove the v1→v2 redesign.
+- Remaining: barcode/import flows, meal-prep batching, calendar
+  integration, coach mode, multilingual content, and analytics.
 - Add only after the core plan is trustworthy, explainable, and testable.
 
 ## Update rule

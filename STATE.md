@@ -1,11 +1,35 @@
 # Nutrition Planner — Engineering State
 
-Actualizado 2026-08-04. Lee esto junto con `PROJECT.md` y `ROADMAP.md` antes
+Actualizado 2026-08-07. Lee esto junto con `PROJECT.md` y `ROADMAP.md` antes
 de empezar una sesión nueva (ver "Session handoff" al final — reemplaza al
 antiguo "Continuation checklist"). Para el sistema completo (este repo + el
 pipeline Python en `PythonProject`), ver `PythonProject/docs/architecture.md`
-y `PythonProject/docs/data_flow.md` (actualizados 2026-08-03; el trabajo de
-la sesión 2026-08-04 fue exclusivamente en este repo, no tocó Python).
+y `PythonProject/docs/data_flow.md` (Python no se ha tocado desde
+2026-08-03; todo el trabajo desde entonces, incluida esta sesión, es
+exclusivamente en este repo).
+
+**Para orientarse rápido sin leer todo este archivo**: hay un grafo de
+código real (Graphify) regenerado el 2026-08-07 — `graphify explain
+"<símbolo>"`, `graphify query "<pregunta>"`, `graphify god-nodes --top 8`
+desde esta carpeta. Ver `PythonProject/docs/graphify.md` para el manual
+completo (comandos, qué es un node/edge/community, cómo regenerarlo tras
+tocar código). Complementa, no sustituye, la lectura de este archivo — el
+grafo da estructura (quién llama a quién), no las decisiones de producto ni
+el "por qué" que solo está aquí y en `ROADMAP.md`.
+
+**Resumen de la sesión 2026-08-06/07** (ver secciones fechadas más abajo
+para el detalle completo): (1) se diseñó e implementó una **Despensa
+(pantry/inventory)** completa — la app recuerda cuánto de cada ingrediente
+ya tienes y lo descuenta de compras futuras; (2) tras una prueba real del
+usuario, se encontró que el diseño inicial (v1, un solo botón
+"comprar+usar") producía datos incorrectos en un escenario real (comprar y
+no llegar a cocinar) — se rediseñó a un ciclo de vida de **3 etapas
+desacopladas** (v2); (3) esa misma prueba real destapó un bug arquitectónico
+más serio: una entrada de datos vieja en `localStorage` rompía el arranque
+de TODA la app, no solo la despensa — se hizo una auditoría completa y un
+rediseño de la inicialización con aislamiento de fallos en 4 capas; (4) se
+regeneró el grafo de Graphify del frontend (desactualizado desde
+2026-08-03). Todo está comiteado y pusheado a `main` (`ef1191ae`).
 
 **Resumen de la sesión 2026-08-04** (ver secciones fechadas más abajo para
 el detalle completo): (1) se decidió la estrategia de arquitectura para
@@ -25,10 +49,12 @@ reescribió el layout mobile; (4) se corrigió un bug real de CSS Grid.
   ahora con dos vías mutuamente excluyentes — un preset (Ajustado €5 /
   Equilibrado €8 / Amplio €12 por día) o una cantidad exacta. Ver
   "Presupuesto: presets" más abajo.
-- Output: 5 tomas/día (desayuno, comida, cena, snack, snack 2 — creció de 4
-  a 5 tomas en una sesión anterior a esta), resumen de macros, notas,
-  advertencias, y desde esta sesión también una **lista de la compra**
-  separada (agregada por ingrediente, con coste de compra por paquete).
+- Output: 5 tomas/día (desayuno, comida, cena, snack, snack 2), resumen de
+  macros, notas, advertencias, **lista de la compra** (agregada por
+  ingrediente, con coste de compra por paquete, y desde 2026-08-06/07
+  consciente de la despensa — descuenta lo que ya tienes), y desde
+  2026-08-06/07 una **Despensa** persistente (`localStorage`) con ciclo de
+  vida de 3 etapas — ver sección dedicada más abajo.
 - Datos: `js/data/dishes.js` tiene **334 platos** (no 204 — cifra
   desactualizada en todo este archivo hasta ahora), cada uno con macros/
   coste agregados y una lista de ingredientes visibles (nombre + gramos).
@@ -154,22 +180,26 @@ producto real verificado de `REAL_PRODUCTS` y calcular KBJU/coste desde ahí.
 - Tests: `poc/tests/` — 23 tests (`ingredient-resolver`,
   `shopping-list-builder` de prueba, `ingredient-coverage`).
 
-## Tests (actualizado 2026-08-04)
+## Tests (actualizado 2026-08-07)
 
 Dos suites, ambas Node + `vm` (cargan los archivos de producción reales,
 sin copiarlos ni envolverlos en `module.exports`), sin ningún framework:
 
-- `tests/` (producción): `node tests/run-tests.js` → **38 passed, 0
+- `tests/` (producción): `node tests/run-tests.js` → **55 passed, 0
   failed** — `shopping-cost.test.js` (14), `budget-mode.test.js` (13),
-  `plan-generator.characterization.test.js` (9, nuevo 2026-08-04, ver Fase
-  0 abajo), `ingredient-packaging-coverage.test.js` (2, nuevo 2026-08-04).
+  `plan-generator.characterization.test.js` (9), `ingredient-packaging-
+  coverage.test.js` (2), `pantry.test.js` (33, nuevo 2026-08-06/07 — ver
+  sección Despensa arriba; cubre almacenamiento con fallback en memoria,
+  localStorage real inyectado, JSON corrupto, entradas individuales
+  corruptas, las 3 etapas del ciclo de vida, el caso exacto reportado por
+  el usuario — comprar sin cocinar deja el stock íntegro, no neteado —, y
+  regresión de compatibilidad con `shopping-cost.test.js` sin `pantry.js`
+  cargado).
 - `poc/tests/`: `node poc/tests/run-tests.js` → **23 passed, 0 failed** —
-  resolver, shopping-list de prueba, cobertura de ingredientes.
-- Total: **61 tests, 0 failed** — re-ejecutado y verificado en la sesión
-  2026-08-04 (no solo heredado de memoria), y estable en 8 corridas
-  seguidas de la suite de `tests/` (los tests nuevos usan `Math.random()`
-  real en su mayoría, así que la estabilidad entre corridas importa más
-  que en un test determinista normal).
+  resolver, shopping-list de prueba, cobertura de ingredientes (sin
+  cambios, `poc/` no se tocó esta sesión).
+- Total: **78 tests, 0 failed** — re-ejecutado y verificado en la sesión
+  2026-08-06/07 (no solo heredado de memoria).
 
 Sigue sin haber linting, formatting, CI, ni package manifest. `dish-
 selector.js`/`plan-generator.js`/`calculator.js` SÍ tienen cobertura desde
@@ -342,6 +372,141 @@ navegador real** — toda la verificación de este cambio fue vía
 sesión). Recomendado probarlo en un teléfono real o emulador antes de
 darlo por definitivo.
 
+## Despensa (pantry/inventory) — v1 → v2, ciclo de vida en 3 etapas (2026-08-06/07)
+
+Nueva funcionalidad, no un fix — pedida explícitamente por el usuario como
+"una de las funciones principales del proyecto": la app deja de olvidar
+todo tras cada `generateDietPlan()` y recuerda cuánto de cada ingrediente
+ya tienes (sobras de compras/planes anteriores), descontándolo de lo que
+un plan futuro pide comprar.
+
+**v1 (primer diseño, ya reemplazado, mantenido aquí solo como registro)**:
+un solo botón "Confirmar y usar este plan hoy" que compraba (sumaba stock)
+Y consumía (restaba stock) en la misma transacción atómica. El usuario lo
+probó en real y encontró el fallo: elige un plan por la mañana, compra
+(la comida SÍ está ya en su cocina — hecho físico), por la noche unos
+amigos le invitan a cenar fuera y no cocina nada — v1 ya había restado el
+consumo asumido en el mismo clic de "confirmar", así que la despensa
+terminaba con un "sobrante" neto arbitrario en vez de la cantidad
+realmente comprada.
+
+**v2 (diseño actual, en producción)**: comprar y cocinar son eventos
+independientes del mundo real, así que se modelan como acciones
+independientes — 3 etapas, cada una opcional y en su propio momento:
+
+1. **"Usar este plan hoy"** (botón en el panel de lista de la compra) —
+   registra el plan del día, desglosado POR COMIDA. Pura contabilidad,
+   **cero mutación de stock**. `savePlanForToday(meals, storeId)`
+   (`js/core/pantry.js`).
+2. **"Marcar compra como hecha"** (dentro de cada entrada del historial,
+   en el panel "Tu despensa") — la ÚNICA acción que SUMA stock. Checklist
+   de qué se compró de verdad (se puede desmarcar lo que no); reutiliza
+   `resolvePurchaseCostWithPantry()` para calcular cuánto falta comprar
+   con el stock actual. Se puede pulsar varias veces (varios viajes a
+   comprar) — cada vez relee el stock real. `markPurchaseDone(entryId,
+   excludedNames, storeId)`.
+3. **"Marcar como cocinado"** por cada una de las 5 comidas (también en el
+   historial) — la ÚNICA acción que RESTA stock, y solo de esa comida
+   concreta. Funciona igual aunque nunca se haya "comprado" ese ingrediente
+   por la app (ej. ya lo tenías en casa). Desmarcar revierte EXACTAMENTE
+   lo que esa comida restó (snapshot guardado en `meal.consumed` en el
+   momento de cocinar, no un recálculo contra el stock actual — importante
+   porque el stock pudo cambiar mientras tanto por otras acciones).
+   `markMealCooked(entryId, mealKey, cooked)`.
+
+El stock refleja la realidad física de forma continua (sube al comprar,
+baja al cocinar) — decisión deliberada, no lo que el usuario pidió
+literalmente (que sugería esperar hasta "marcar como comido" para cambiar
+cualquier cosa); se explicó y se justificó al usuario, que la aceptó.
+
+**Alcance explícitamente fuera de esta implementación** (decisiones de
+arquitectura, no descuidos):
+- `dish-selector.js`/`plan-generator.js` siguen sin saber nada de
+  despensa — la selección de platos sigue asumiendo precio de venta
+  completo para cada ingrediente. Solo la lista de la compra (post-hoc,
+  tras elegir el plato) descuenta stock. Estructuralmente garantizado, no
+  solo una promesa: la selección de plato solo llama a
+  `resolveIngredientPrice`/`priceDishAtStore` (lado usageCost), nunca a
+  `resolvePurchaseCost`/`resolvePurchaseCostWithPantry` (lado
+  purchaseCost). Hacer la selección de plato consciente de despensa (para
+  que el algoritmo prefiera activamente ingredientes ya en casa y estire
+  el presupuesto) es una fase futura distinta y de más riesgo, no
+  construida.
+- El modo "sin cocinar" (`js/engine/no-cook-generator.js`) NO está
+  conectado a la despensa — sus items no tienen un concepto de "cuánto se
+  consumió realmente" (solo `quantity: 1` de producto entero), a
+  diferencia del modo normal. Conectarlo requeriría diseñar primero ese
+  modelo de consumo — trabajo aparte, no un simple cableado.
+
+**Datos**: `localStorage`, dos claves versionadas
+(`nutritionPlanner.pantry.v1` = stock actual por ingrediente,
+`nutritionPlanner.pantryHistory.v1` = historial de planes, tope 30
+entradas, más antiguas se descartan primero). Limitación real y asumida:
+vive solo en ESE navegador, sin sincronización entre dispositivos.
+
+**Archivos nuevos**: `js/core/pantry.js` (lógica pura, sin DOM ni
+`DISH_DB`, mismo principio de separación que ya usa `pricing.js`),
+`js/ui/render-pantry.js` (presentación + eventos del panel "Tu despensa").
+**Modificados**: `js/ui/render-shopping-list.js` (usa
+`resolvePurchaseCostWithPantry` cuando está cargado, con fallback exacto
+al comportamiento anterior si no), `js/app.js`, `index.html`,
+`assets/css/style.css`. **Tests**: `tests/pantry.test.js`, 33 tests.
+
+## Bug arquitectónico real + rediseño de la inicialización (2026-08-07)
+
+La misma sesión de prueba real que motivó el rediseño v1→v2 destapó un
+bug más serio, en el arranque de la app, no solo en la despensa: **una
+entrada de `nutritionPlanner.pantryHistory.v1` con la forma v1 antigua
+(sin `.meals`) hacía que `renderPantryPanel()` lanzara al llamar
+`entry.meals.every(...)` sobre `undefined`.** Como esa llamada ocurría
+SÍNCRONAMENTE dentro del mismo `DOMContentLoaded`, ANTES de que se
+cableara `form.addEventListener("submit", handleSubmit)` (al final del
+archivo), el error abortaba el resto del callback — el listener del
+submit nunca se registraba, y "Generar plan" caía a un envío NATIVO del
+`<form>`, que recargaba la página entera.
+
+Se pidió explícitamente no parchear con un try/catch puntual sino auditar
+la arquitectura completa de inicialización/localStorage y corregirla de
+raíz. Cambios reales (no cosméticos):
+
+1. **Orden de arranque**: en `js/app.js`, cablear
+   `submit`/`resetBtn`/`fillExampleBtn` ahora ocurre INMEDIATAMENTE tras
+   capturar las referencias al DOM — antes de inicializar cualquier
+   módulo opcional (despensa, lista de la compra, catálogo, sin-cocinar,
+   presets de presupuesto). Ningún fallo posterior puede ya impedir que
+   el formulario funcione.
+2. **`safeInit(label, fn)`** (nuevo, en `app.js`): cada módulo opcional se
+   inicializa dentro de esto — aísla su propio fallo (lo registra en
+   consola, no lo relanza). Un módulo nunca puede tumbar a otro ni al
+   arranque general.
+3. **Validación de datos en la fuente** (`js/core/pantry.js`):
+   `isValidHistoryEntry()` ahora valida la forma COMPLETA (cada
+   `meal.key`/`meal.items[]`, no solo el nivel superior) — descarta en
+   silencio cualquier entrada incompatible o corrupta, sin migración (los
+   datos v1 no son reconstruibles a la forma v2). `sanitizePantryState()`
+   (nuevo) hace lo mismo para el stock: una entrada individual corrupta
+   (`null`, forma inesperada) se descarta sin tumbar la lectura de las
+   demás — se encontró y corrigió un SEGUNDO bug de la misma clase antes
+   de que nadie lo reportara (`listPantryEntries()` hacía
+   `entry.displayName` sin comprobar que `entry` no fuera `null`).
+4. **Aislamiento por fila al renderizar** (`js/ui/render-pantry.js`):
+   `safeRenderRows()` — una fila individual que falle al pintarse
+   (aunque haya pasado la validación anterior) se omite sola; el resto de
+   la lista se sigue pintando con normalidad.
+
+4 capas de defensa, no una: si una fallara, las otras siguen conteniendo
+el daño a un solo módulo/fila — nunca a la app entera. Documentado en la
+cabecera de `js/app.js` para que futuros cambios no lo rompan sin darse
+cuenta.
+
+**Verificado manualmente** (no solo por test) con las 4 combinaciones
+realistas de `localStorage`: vacío, con una entrada v1 vieja inyectada a
+mano, con JSON corrupto en ambas claves, y con datos v2 válidos con
+progreso parcial (una comida cocinada, otras no) — las 4 renderizan sin
+error de consola y generan un plan con normalidad. También 3 generaciones
+de plan consecutivas sin acumular estado raro. Ver "Tests" abajo para el
+detalle automatizado equivalente.
+
 ## Exploración descartada: Google AI Studio para el rediseño (2026-08-04)
 
 Antes de implementar el rediseño v2 directamente, se probó pedirle a
@@ -363,7 +528,7 @@ lo contrario) — el origen exacto no se determinó, posiblemente una
 sugerencia de la propia interfaz de AI Studio. No es una vía fiable hoy
 para tocar código de producción de este proyecto.
 
-## Critical known issues (estado a 2026-08-04)
+## Critical known issues (estado a 2026-08-07)
 
 1. **Nutrition data is internally inconsistent.** Auditado sobre el set de
    204 platos (antes de que creciera a 334): solo 54/204 dishes tenían
@@ -411,6 +576,15 @@ para tocar código de producción de este proyecto.
    test (`plan-generator.characterization.test.js`), no corregido — es
    exactamente el tipo de cosa que la Fase 2 del roadmap de migración
    debería resolver al rediseñar el motor, no algo para parchear ahora.
+9. **La Despensa (2026-08-06/07) vive solo en `localStorage` de un
+   navegador, sin sincronización entre dispositivos, y no está conectada
+   a `dish-selector.js` (no influye en qué platos se eligen, solo en
+   cuánto hay que comprar) ni al modo "sin cocinar".** Ambas son
+   decisiones de arquitectura deliberadas, no descuidos — ver sección
+   Despensa arriba para el razonamiento completo. No es un "bug", pero
+   cualquiera que asuma sincronización multi-dispositivo o que el
+   presupuesto del generador ya cuenta con lo que tienes en casa se
+   equivoca.
 
 ## Audit evidence (2026-07-18, histórico — sobre el set de 204 platos)
 
@@ -461,9 +635,12 @@ llamadas con el mismo input pueden aterrizar en tiers distintos por azar.
   rediseño (ver limitación de verificación arriba).
 - El sistema sigue sin presentarse como asesoramiento médico/nutricional
   individualizado — eso no ha cambiado.
-- Grafo de Graphify del frontend **desactualizado** desde esta sesión (no
-  incluye `poc/`, `tests/`, `budget-presets.js`, `render-shopping-list.js`)
-  — ver `PythonProject/docs/graphify.md`.
+- Grafo de Graphify del frontend **regenerado 2026-08-07** (294 nodes/454
+  edges/31 communities, incluye ya `pantry.js`/`render-pantry.js`/`poc/`/
+  `tests/`) — ver `PythonProject/docs/graphify.md`. Se desactualiza de
+  nuevo en cuanto se toque código sin volver a correr `graphify update .`
+  + `graphify cluster-only .` (frontend) + `graphify merge-graphs`
+  (PythonProject) — no se actualiza solo.
 
 ## Required architectural decisions before implementation (sin cambios esta sesión)
 
@@ -496,71 +673,118 @@ llamadas con el mismo input pueden aterrizar en tiers distintos por azar.
 - Arreglar el reporte de `mainProt` (known issue #5) — sigue sin tocar.
 - Corregir el bug de nombre `"Lechuga: Pepino"` en `dishes.js` (separar en
   dos ingredientes) — encontrado en la auditoría de `poc/` (2026-08-03),
-  **sigue sin corregir** a 2026-08-04.
-- Regenerar el grafo de Graphify del frontend — sigue desactualizado,
-  ahora más (no incluye los tests/CSS de esta sesión tampoco).
+  **sigue sin corregir**.
+- Conectar la Despensa al modo "sin cocinar" — requiere diseñar antes un
+  modelo de "cuánto se consumió" para esos items (hoy solo tienen
+  `quantity: 1` de producto entero), ver known issue #9.
+- Considerar (fase futura, más riesgo, no empezada) hacer
+  `dish-selector.js` consciente de despensa, para que el algoritmo
+  prefiera activamente ingredientes ya en casa — ver sección Despensa
+  arriba, "alcance explícitamente fuera".
+- Mostrar al usuario, en algún sitio visible, si `savePantryState`/
+  `savePantryHistory` fallan (cuota de `localStorage` superada, modo
+  privado) — hoy solo se ve en el aviso posterior a "Usar este plan hoy",
+  no en las acciones de comprar/cocinar del historial.
 
-## Session handoff (2026-08-04)
+## Session handoff (2026-08-07)
 
 Escrito para que la siguiente sesión/chat pueda continuar sin haber visto
 esta conversación. No repite lo de arriba en detalle — apunta a la
-sección correspondiente.
+sección correspondiente. **Para orientarse en el código en sí, antes de
+leer archivo por archivo, usa el grafo de Graphify** (regenerado hoy,
+`graphify explain "<símbolo>"` / `graphify query "<pregunta>"` desde esta
+carpeta — ver `PythonProject/docs/graphify.md`).
 
 **Estado del proyecto**: prototipo funcional, motor basado en `dishes.js`
 (datos fabricados por asignación de masa para macros, reales para
-precio/coste de compra), con una red de tests de caracterización nueva
-(Fase 0 completa) y un rediseño visual v2 recién aplicado directamente al
-código de producción.
+precio/coste de compra), con una red de tests (78, ver "Tests" arriba), un
+rediseño visual v2 + layout mobile ya en producción, y desde esta sesión
+una **Despensa completa** (ciclo de vida en 3 etapas: usar plan → marcar
+compra → marcar cocinado por comida) con una arquitectura de arranque
+endurecida en 4 capas de defensa (ver sección dedicada arriba).
 
 **Commit/branch/deploy actuales**: ver `git log -1` y la cabecera de este
-archivo — esta sesión terminó con un commit nuevo sobre `main`, pusheado a
-`origin` (`github.com/andreyostrik228/OfflineNutritionHelper`), publicado
-vía GitHub Pages en `https://andreyostrik228.github.io/
-OfflineNutritionHelper/` (deploy automático de GitHub al servir
-directamente desde `main`, sin GitHub Actions ni Cloudflare — no hay
-ningún proyecto de Cloudflare asociado a este repo, verificado). Si
-`git log -1` muestra un commit distinto al que cerró esta sesión, alguien
-tocó el repo después — revisar antes de asumir que esta foto sigue vigente.
+archivo — el commit `ef1191ae` ("Add pantry (despensa) feature...") sobre
+`main` ya incluye TODO el trabajo de despensa v1→v2 y el hardening de
+inicialización (verificado con `git show --stat`/`git diff` — working
+tree limpio salvo basura preexistente sin relación en la raíz del repo,
+ver más abajo), pusheado a `origin`
+(`github.com/andreyostrik228/OfflineNutritionHelper`), publicado vía
+GitHub Pages en `https://andreyostrik228.github.io/OfflineNutritionHelper/`
+(deploy automático de GitHub al servir directamente desde `main`, sin
+GitHub Actions ni Cloudflare — no hay ningún proyecto de Cloudflare
+asociado a este repo). Si `git log -1` muestra un commit distinto a
+`ef1191ae`, alguien tocó el repo después — revisar antes de asumir que
+esta foto sigue vigente. **Nota**: hay basura suelta sin relación en la
+raíz del repo (archivos con nombres tipo fragmentos de código JS,
+preexistente desde antes de esta sesión, nunca comiteada a propósito) —
+no confundirla con trabajo en curso, no tocarla sin que se pida.
 
 **Qué funciona**: generación de plan completo (5 tomas, presupuesto,
-tiempo, macros), lista de la compra con `purchaseCost` real, modo "sin
-cocinar", catálogo de productos, los 61 tests (`tests/` + `poc/tests/`).
+tiempo, macros), lista de la compra con `purchaseCost` real y ahora
+consciente de despensa, modo "sin cocinar", catálogo de productos, la
+Despensa completa (comprar → cocinar por comida → deshacer, verificado
+con localStorage vacío/viejo/corrupto/válido), los 78 tests.
 
 **Qué NO funciona / sigue pendiente**: macros de ingrediente siguen
-fabricadas (known issue #2, sin resolver — es el problema central que la
-migración de `ROADMAP.md` ataca); `mainProt` mal reportado (issue #5);
-hueco de cobertura en `packaging.js` (issue #7, nuevo); interacción cap25/
-enforceBudgetCap sin corregir (issue #8, nuevo, caracterizada por test).
+fabricadas (known issue #2, el problema central que la migración de
+`ROADMAP.md` ataca); `mainProt` mal reportado (issue #5); hueco de
+cobertura en `packaging.js` (issue #7); interacción cap25/enforceBudgetCap
+sin corregir (issue #8); Despensa sin conectar a "sin cocinar" ni a
+`dish-selector.js` (issue #9, por diseño, no descuido).
 
-**Qué se cambió esta sesión**: ver las 5 secciones fechadas 2026-08-04
-arriba (Fase 0/tests, decisión de arquitectura, rediseño v2, bug de CSS
-Grid, mobile layout). Un solo archivo de código tocado directamente:
-`assets/css/style.css`. Tres archivos de test nuevos + uno editado en
-`tests/`. Ningún cambio en `js/` (lógica), `index.html`, ni en
-`PythonProject`.
+**Qué se cambió esta sesión (2026-08-06/07)**: ver las 2 secciones
+dedicadas arriba (Despensa v1→v2, y el bug arquitectónico + hardening de
+inicialización). Código: `js/core/pantry.js` (nuevo), `js/ui/render-
+pantry.js` (nuevo), `js/app.js` (reescrito — orden de arranque + 
+`safeInit`), `js/ui/render-shopping-list.js` (integración con despensa,
+con fallback), `index.html`, `assets/css/style.css`. Test: `tests/
+pantry.test.js` (nuevo, 33 tests) + `tests/run-tests.js` (registro).
+Documentación: este archivo, `ROADMAP.md`, `PROJECT.md`,
+`PythonProject/docs/graphify.md`. Grafo: regenerado (frontend + combinado).
+Ningún cambio en `PythonProject` más allá de `docs/graphify.md`.
 
-**Qué se verificó y qué no**: los 61 tests se re-ejecutaron y pasan
-(verificado, no heredado). El rediseño v2 y el mobile layout se
-verificaron por DOM/`getComputedStyle`/ausencia de errores de consola —
-**no por captura de pantalla real** (limitación de entorno repetida toda
-la sesión, no del código). Antes de dar el diseño por definitivamente
-bueno, alguien debería abrirlo en un navegador de verdad.
+**Qué se verificó y qué no**: los 78 tests se re-ejecutaron y pasan
+(verificado, no heredado). El ciclo de vida completo de la Despensa
+(comprar sin cocinar → recargar página → cocinar una comida → deshacer)
+y las 4 combinaciones de `localStorage` (vacío/v1 viejo/corrupto/v2
+válido) se verificaron EN VIVO en un navegador real (Chrome vía la
+herramienta de preview), no solo por test — incluyendo lectura directa de
+`localStorage` para confirmar los números exactos. El rediseño visual
+v2/mobile (sesión 2026-08-04) sigue sin verificación por captura de
+pantalla real — limitación de entorno que no ha cambiado, ver sección de
+esa fecha arriba.
 
 **Decisiones de arquitectura que no hay que perder**: la comparación
 completa de Estrategia A/B/C y por qué se eligió B está en `ROADMAP.md`
 — no la repitas de memoria ni la reabras sin releer esa sección primero.
 
-**Prioridad actual**: Fase 1 del roadmap de migración (ampliar cobertura
-de datos reales) — ver `ROADMAP.md`.
+**Prioridad actual**: la Despensa está completa y endurecida — el
+siguiente paso REAL sigue siendo Fase 1 del roadmap de migración (ampliar
+cobertura de datos reales, ver `ROADMAP.md`), que no ha avanzado esta
+sesión. Si en vez de eso se sigue trabajando sobre la Despensa, lo
+siguiente natural es conectarla a "sin cocinar" o mostrar los fallos de
+`localStorage` de forma más visible (ver "Próximos pasos" arriba) — no
+hacer `dish-selector.js` consciente de despensa sin discutirlo primero
+(es la fase de más riesgo, deliberadamente aplazada).
 
 **Qué no romper**: los `id="..."` del HTML (el JS depende de ellos
 literalmente); la separación `usageCost`/`purchaseCost`; el hecho de que
 `data.budget` nunca se relaja (es un tope duro en todos los tiers de
-`RELAXATION_TIERS`); los 61 tests deben seguir pasando después de
-cualquier cambio en `js/core/`, `js/engine/`, o `assets/css/style.css`.
+`RELAXATION_TIERS`); los 78 tests deben seguir pasando después de
+cualquier cambio en `js/core/`, `js/engine/`, `js/ui/`, o `assets/css/
+style.css`. Específico de la Despensa: `applyPlanToPantry()` y
+`markHistoryEntryCooked()` **ya no existen** (eliminadas al pasar de v1 a
+v2) — si algo referencia esos nombres, es código desactualizado, no
+código correcto que haya que restaurar; el orden de arranque en
+`js/app.js` (submit del formulario cableado ANTES de cualquier módulo
+opcional) y el patrón `safeInit()` son intencionales, no accidentales —
+no revertir a un solo bloque `DOMContentLoaded` sin aislamiento.
 
 Lee `PROJECT.md` y `ROADMAP.md` además de este archivo. Para el sistema
 completo (con el pipeline Python), lee también `PythonProject/docs/
-architecture.md` y `PythonProject/docs/data_flow.md`. No asumas que el
-estado descrito aquí sigue siendo exacto sin verificar contra el código
-— esto es una foto fija a 2026-08-04.
+architecture.md` y `PythonProject/docs/data_flow.md`. Para navegar el
+código en sí, el grafo de Graphify (`PythonProject/docs/graphify.md`) es
+más rápido que leer archivo por archivo. No asumas que el estado descrito
+aquí sigue siendo exacto sin verificar contra el código — esto es una
+foto fija a 2026-08-07.
