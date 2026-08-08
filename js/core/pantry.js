@@ -310,6 +310,12 @@ function savePlanForToday(meals, storeId) {
       return {
         key: meal.key,
         label: meal.label,
+        // time: "HH:MM" si el plan se generó con horario (js/core/
+        // meal-schedule.js, después de esta sesión) — null en planes sin
+        // horario calculado. Puro dato de contabilidad aquí: nadie en
+        // pantry.js lee ni calcula con este campo, solo se conserva para
+        // que el historial pueda mostrarlo (ver render-pantry.js).
+        time: typeof meal.time === "string" ? meal.time : null,
         items: (meal.items || []).map(function (item) {
           return { name: item.name, requiredGrams: item.grams };
         }),

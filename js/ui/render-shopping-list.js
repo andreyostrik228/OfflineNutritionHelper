@@ -7,20 +7,28 @@
  * de calcular nada de paquete/precio — así el mismo ingrediente usado en
  * desayuno y cena se compra una sola vez, no dos veces por separado.
  *
- * Coste mostrado: usa SIEMPRE purchaseCost (js/core/pricing.js,
- * resolvePurchaseCost), nunca usageCost — comprar un bote de miel de 250g
- * para usar 23g cuesta el bote entero, no una fracción proporcional. Ver
- * la cabecera de js/core/pricing.js para la distinción completa
- * usageCost/purchaseCost/data.budget.
+ * Coste mostrado: usa SIEMPRE purchaseCost, nunca usageCost — comprar un
+ * bote de miel de 250g para usar 23g cuesta el bote entero, no una
+ * fracción proporcional. Ver la cabecera de js/core/pricing.js para la
+ * distinción completa usageCost/purchaseCost/data.budget.
+ *
+ * El cálculo real (agregación + paquetes + despensa) vive en
+ * js/core/budget.js (computeDayPurchaseCost) — el MISMO que usa
+ * plan-generator.js para decidir si un plan candidato cabe en el
+ * presupuesto de compra del usuario. Nunca dos cálculos independientes:
+ * si aquí y en el generador se calculara cada uno por su cuenta, un
+ * redondeo o una regla distinta podría hacer que la lista de la compra
+ * mostrara un total diferente del que el generador usó para aceptar el
+ * plan — este archivo delega en budget.js precisamente para que eso sea
+ * estructuralmente imposible.
  *
  * Es una vista de PRESENTACIÓN + agregación: no calcula nutrición, no
  * decide qué platos elegir, no toca dish-selector.js/plan-generator.js.
- * Solo llama a resolvePurchaseCost() (pricing.js) por ingrediente
- * agregado, la misma función que usa cualquier otra pieza de la app.
  *
  * Depende de:
  *   js/core/utils.js   (round0, round1, round2, escapeHtml)
- *   js/core/pricing.js (resolvePurchaseCost, DEFAULT_STORE_ID)
+ *   js/core/pricing.js (DEFAULT_STORE_ID)
+ *   js/core/budget.js  (aggregateMealItems, computeDayPurchaseCost)
  *
  * Inicialización obligatoria:
  *   Llamar a initShoppingListRefs(refs) desde js/app.js antes de usar.
@@ -47,60 +55,67 @@ function initShoppingListRefs(refs) {
 /**
  * Agrupa los items de todas las comidas del día por nombre de ingrediente,
  * sumando gramos REQUERIDOS entre tomas (ej. "Miel" usado en desayuno y
- * cena se convierte en UNA cantidad total ANTES de mirar ningún envase).
- * También suma usageCost solo para mostrarlo como dato secundario — nunca
- * para el total de la lista de la compra (ver cabecera del archivo).
+ * cena se convierte en UNA cantidad total ANTES de mirar ningún envase) —
+ * delega la agregación en sí a aggregateMealItems() (js/core/budget.js,
+ * fuente única de verdad, también usada por plan-generator.js) y solo
+ * añade aquí lo que es específico de esta vista: usageCost por ingrediente
+ * (dato secundario, nunca el total de la lista) y en qué comidas aparece.
  *
  * @param {object[]} meals - salida de generateDietPlan().meals
  * @returns {{name:string, requiredGrams:number, usageCost:number, meals:string[]}[]}
  */
 function aggregateIngredientUsage(meals) {
-  var byName = {};
-  var order = [];
+  var base = aggregateMealItems(meals);
 
-  meals.forEach(function (meal) {
-    meal.items.forEach(function (item) {
-      if (!byName[item.name]) {
-        byName[item.name] = { name: item.name, requiredGrams: 0, usageCost: 0, meals: [] };
-        order.push(item.name);
-      }
-      var entry = byName[item.name];
-      entry.requiredGrams += item.grams;
-      entry.usageCost += item.cost;
-      if (entry.meals.indexOf(meal.label) === -1) entry.meals.push(meal.label);
+  var usageCostByName = {};
+  var mealsByName = {};
+  (meals || []).forEach(function (meal) {
+    (meal.items || []).forEach(function (item) {
+      usageCostByName[item.name] = (usageCostByName[item.name] || 0) + item.cost;
+      if (!mealsByName[item.name]) mealsByName[item.name] = [];
+      if (mealsByName[item.name].indexOf(meal.label) === -1) mealsByName[item.name].push(meal.label);
     });
   });
 
-  return order.map(function (name) { return byName[name]; });
+  return base.map(function (entry) {
+    return {
+      name: entry.name,
+      requiredGrams: entry.requiredGrams,
+      usageCost: usageCostByName[entry.name] || 0,
+      meals: mealsByName[entry.name] || []
+    };
+  });
 }
 
 /**
  * Construye la lista de la compra final: para cada ingrediente ya
  * agregado (cantidad total requerida entre todas las tomas), resuelve
- * cuántos paquetes/unidades enteras hay que comprar y su coste real
- * (resolvePurchaseCost, js/core/pricing.js) — nunca al revés (nunca se
- * calcula el paquete por comida y se suman paquetes de comidas distintas).
+ * cuántos paquetes/unidades enteras hay que comprar y su coste real —
+ * vía computeDayPurchaseCost() (js/core/budget.js), la MISMA función que
+ * plan-generator.js usa para decidir si el plan cabe en presupuesto, así
+ * que el total de esta lista y el coste de compra que aceptó el plan son
+ * siempre el mismo número, nunca dos cálculos que puedan divergir.
  *
  * @param {object[]} meals
  * @param {string} [storeId]
  * @returns {{name:string, requiredGrams:number, usageCost:number, meals:string[], purchase:object}[]}
  */
 function buildShoppingItems(meals, storeId) {
-  var store = storeId || (typeof DEFAULT_STORE_ID !== "undefined" ? DEFAULT_STORE_ID : undefined);
+  var usage = aggregateIngredientUsage(meals);
+  var dayPurchase = (typeof computeDayPurchaseCost === "function")
+    ? computeDayPurchaseCost(meals, storeId)
+    : { lines: [] };
 
-  return aggregateIngredientUsage(meals)
+  var lineByName = {};
+  dayPurchase.lines.forEach(function (line) { lineByName[line.name] = line; });
+
+  return usage
     .map(function (entry) {
-      // Prioriza la resolución consciente de despensa (pantry.js) cuando
-      // está cargado — descuenta lo que ya tienes antes de calcular qué
-      // comprar. Si pantry.js no está presente, cae exactamente en el
-      // comportamiento de siempre (resolvePurchaseCost sin descuento).
-      var purchase = (typeof resolvePurchaseCostWithPantry === "function")
-        ? resolvePurchaseCostWithPantry(entry.name, entry.requiredGrams, store)
-        : (typeof resolvePurchaseCost === "function")
-          ? resolvePurchaseCost(entry.name, entry.requiredGrams, store)
-          : { usageCost: entry.usageCost, purchaseCost: entry.usageCost, hasFixedPackage: false, packagesToBuy: null, packageSizeG: null, packageLabel: null };
-
-      entry.purchase = purchase;
+      entry.purchase = lineByName[entry.name] || {
+        requiredGrams: entry.requiredGrams, usageCost: entry.usageCost, purchaseCost: entry.usageCost,
+        hasFixedPackage: false, packagesToBuy: null, packageSizeG: null, packageLabel: null,
+        coveredFromPantry: 0, stillNeeded: entry.requiredGrams
+      };
       return entry;
     })
     .sort(function (a, b) { return b.purchase.purchaseCost - a.purchase.purchaseCost; });

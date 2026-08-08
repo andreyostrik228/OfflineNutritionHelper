@@ -44,12 +44,14 @@ function freshPricingSandbox() {
   ]);
 }
 
-// ── Sandbox B: pricing + render-shopping-list (agregación) ──────────────
+// ── Sandbox B: pricing + budget.js (agregación) + render-shopping-list ──
 function freshShoppingListSandbox() {
   var sandbox = freshPricingSandbox();
   var fs = require("fs");
-  var code = fs.readFileSync(projPath("js/ui/render-shopping-list.js"), "utf8");
-  require("vm").runInContext(code, sandbox, { filename: "render-shopping-list.js" });
+  var vm = require("vm");
+  [projPath("js/core/budget.js"), projPath("js/ui/render-shopping-list.js")].forEach(function (file) {
+    vm.runInContext(fs.readFileSync(file, "utf8"), sandbox, { filename: file });
+  });
   return sandbox;
 }
 
@@ -64,6 +66,7 @@ function freshFullEngineSandbox() {
     projPath("js/data/prices/mercadona.js"),
     projPath("js/core/utils.js"),
     projPath("js/core/pricing.js"),
+    projPath("js/core/budget.js"),
     projPath("js/core/calculator.js"),
     projPath("js/core/meal-helpers.js"),
     projPath("js/engine/dish-selector.js"),

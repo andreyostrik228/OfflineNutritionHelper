@@ -37,6 +37,7 @@ function freshFullEngineSandbox() {
     projPath("js/data/budget-presets.js"),
     projPath("js/core/utils.js"),
     projPath("js/core/pricing.js"),
+    projPath("js/core/budget.js"),
     projPath("js/core/calculator.js"),
     projPath("js/core/meal-helpers.js"),
     projPath("js/engine/dish-selector.js"),
@@ -80,34 +81,34 @@ function run(t) {
   });
 
   // ── 4. Preset "small" ────────────────────────────────────────────────────
-  t.test("budgetMode='small' -> válido sin cantidad exacta, resolveBudget da el importe del preset (5)", function () {
+  t.test("budgetMode='small' -> válido sin cantidad exacta, resolveBudget da el importe del preset (15)", function () {
     var s = freshCalculatorSandbox();
     var data = { age: 27, weight: 78, height: 178, workouts: 4, budgetMode: "small", budgetCustom: NaN };
     assert.strictEqual(s.validateInput(data), "");
-    assert.strictEqual(s.resolveBudget(data), 5);
+    assert.strictEqual(s.resolveBudget(data), 15);
   });
 
   // ── 5. Preset "medium" ───────────────────────────────────────────────────
-  t.test("budgetMode='medium' -> resolveBudget da el importe del preset (8)", function () {
+  t.test("budgetMode='medium' -> resolveBudget da el importe del preset (20)", function () {
     var s = freshCalculatorSandbox();
     var data = { age: 27, weight: 78, height: 178, workouts: 4, budgetMode: "medium", budgetCustom: NaN };
     assert.strictEqual(s.validateInput(data), "");
-    assert.strictEqual(s.resolveBudget(data), 8);
+    assert.strictEqual(s.resolveBudget(data), 20);
   });
 
   // ── 6. Preset "high" ─────────────────────────────────────────────────────
-  t.test("budgetMode='high' -> resolveBudget da el importe del preset (12)", function () {
+  t.test("budgetMode='high' -> resolveBudget da el importe del preset (28)", function () {
     var s = freshCalculatorSandbox();
     var data = { age: 27, weight: 78, height: 178, workouts: 4, budgetMode: "high", budgetCustom: NaN };
     assert.strictEqual(s.validateInput(data), "");
-    assert.strictEqual(s.resolveBudget(data), 12);
+    assert.strictEqual(s.resolveBudget(data), 28);
   });
 
   // ── 7. Preset y cantidad exacta nunca se mezclan ────────────────────────
   t.test("con budgetMode='small', un budgetCustom presente (residual de UI) se IGNORA -- nunca se combinan preset y exacto", function () {
     var s = freshCalculatorSandbox();
     var data = { age: 27, weight: 78, height: 178, workouts: 4, budgetMode: "small", budgetCustom: 99 };
-    assert.strictEqual(s.resolveBudget(data), 5, "el preset manda; 99 (residual) nunca debe usarse");
+    assert.strictEqual(s.resolveBudget(data), 15, "el preset manda; 99 (residual) nunca debe usarse");
   });
 
   // ── 8. Modo desconocido -> no se inventa un presupuesto ─────────────────
@@ -136,7 +137,18 @@ function run(t) {
       var result = s.generateDietPlan(profile, data);
 
       assert.notStrictEqual(result.report.status, "unavailable");
-      assert.ok(result.total.cost <= budget + 0.01, "el coste de uso del plan no debe superar el presupuesto elegido");
+      // El presupuesto es de COMPRA (purchaseCost), no de uso -- ver
+      // js/engine/plan-generator.js. Tolerancia algo mayor que el +0.01
+      // interno porque enforcePurchaseBudgetCap converge por recortes
+      // discretos (75%/eliminar), no aritmética exacta.
+      var overBudget = result.total.purchaseCost > budget + 0.05;
+      var reportsIt = result.report.violations.some(function (v) {
+        return v.type === "budget" || v.type === "budget_infeasible";
+      });
+      assert.ok(
+        !overBudget || reportsIt,
+        mode + ": coste de compra " + result.total.purchaseCost + " supera el presupuesto " + budget + " sin que el informe lo declare"
+      );
     });
   });
 

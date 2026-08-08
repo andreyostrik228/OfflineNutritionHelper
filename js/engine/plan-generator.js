@@ -32,15 +32,58 @@
  *                               estimateMealPrep, mergeDuplicateFoods,
  *                               removeLeastUsefulItem)
  *   js/core/pricing.js         (priceDishAtStore, DEFAULT_STORE_ID,
- *                               PRICE_CATALOGS)
+ *                               PRICE_CATALOGS, normalizeIngredientKey)
+ *   js/core/budget.js          (computeDayPurchaseCost — coste de COMPRA
+ *                               agregado del día, el tope real del
+ *                               presupuesto; ver "Presupuesto: coste de
+ *                               compra, no de uso" más abajo)
+ *   js/core/pantry.js          (getPantryState) — OPCIONAL: si no está
+ *                               cargado, el presupuesto se sigue aplicando
+ *                               sobre el coste de compra real, solo que
+ *                               sin descuento de despensa
  *   js/engine/dish-selector.js (RELAXATION_TIERS, MAX_RELAXATION_TIER,
  *                               MIN_PORTION_SCALE, pickDish,
  *                               buildMealFromDish, buildPlaceholderDish,
  *                               enforce25PercentRule, findCapViolations,
  *                               estimateMinMealCost, estimateAbsoluteMinMealCost)
  *
+ * ── Presupuesto: coste de COMPRA, no de uso (rediseño 2026-08-07) ────────
+ * `data.budget` significa "cuánto estoy dispuesto a pagar HOY en caja para
+ * este día de comidas" — coste de COMPRA (purchaseCost), no la suma de lo
+ * que técnicamente se consume (usageCost). Antes de este rediseño,
+ * `data.budget` limitaba usageCost durante TODO el pipeline (selección de
+ * plato, recorte, verificación) y purchaseCost solo se calculaba después,
+ * ya en la lista de la compra — así un plan podía "caber" en 8€ de
+ * usageCost y costar 19€ reales en caja (un bote entero por cada
+ * ingrediente con envase, aunque solo se usaran unos gramos), sin que el
+ * generador se enterase nunca. Ahora:
+ *
+ *   1. La CASCADA de selección de plato (pickDish, dish-selector.js) sigue
+ *      usando usageCost internamente, SIN CAMBIOS — sigue siendo una
+ *      heurística razonable para ir construyendo un candidato plato a
+ *      plato (usageCost y purchaseCost están correlacionados), y
+ *      reescribirla para que conozca el empaquetado agregado de todo el
+ *      día en cada paso intermedio sería un problema combinatorio mucho
+ *      más caro sin necesidad real.
+ *   2. Una vez el plan candidato del día está construido, se calcula el
+ *      coste de compra AGREGADO real (computeDayPurchaseCost, consciente
+ *      de despensa) y ESE es el número que se hace cumplir de verdad
+ *      (enforcePurchaseBudgetCap), se usa en scorePlan() para comparar
+ *      candidatos entre tiers, y se reporta como violación en
+ *      verifyPlanFeasibility() — total.purchaseCost es la fuente de
+ *      verdad del presupuesto; total.cost (usageCost) se conserva como
+ *      dato informativo aparte ("cuánto se consume realmente"), nunca
+ *      como el tope.
+ *   3. Si ni recortando el plan al máximo razonable el coste de compra
+ *      real entra en el presupuesto, se reporta honestamente como
+ *      inviable (violación "budget") — nunca se falsea el número ni se
+ *      esconde purchaseCost.
+ *
  * Expone (global):
  *   generateDietPlan(profile, data) → { meals, total, report }
+ *     total.cost         = usageCost del día (informativo)
+ *     total.purchaseCost = coste de COMPRA real del día — el que respeta
+ *                           el presupuesto
  *     report.status es siempre uno de: 'perfect' | 'adjusted' | 'minimal'
  *     (o 'unavailable' únicamente ante un error técnico inesperado)
  * ─────────────────────────────────────────────────────────────────────────
@@ -150,7 +193,7 @@ function generateDietPlan(profile, data) {
           spent: 0, prep: 0
         };
       }),
-      total: { kcal: 0, protein: 0, carbs: 0, fat: 0, cost: 0 },
+      total: { kcal: 0, protein: 0, carbs: 0, fat: 0, cost: 0, purchaseCost: 0 },
       report: {
         status: "unavailable",
         headline: "No se pudo generar el plan por un error técnico.",
@@ -159,8 +202,7 @@ function generateDietPlan(profile, data) {
         relaxations: [],
         violations: [{ type: "system_error", detail: String(err && err.message || err) }],
         macroDelta: { kcal: 0, protein: 0, carbs: 0, fat: 0 },
-        budgetDelta: 0,
-        minPossibleDayCost: null
+        budgetDelta: 0
       }
     };
   }
@@ -170,10 +212,11 @@ function generateDietPlan(profile, data) {
 
 /**
  * Intenta generar un plan completo en niveles de relajación crecientes de
- * tiempo/sabor/tope-25%. El presupuesto se aplica igual de estricto en
- * TODOS los niveles — lo único que cambia entre niveles es cuánta
- * flexibilidad de tiempo/sabor tiene la cascada de presupuesto para
- * encontrar un plato que quepa.
+ * tiempo/sabor/tope-25%. El presupuesto (coste de COMPRA real, ver
+ * cabecera del archivo) se aplica igual de estricto en TODOS los niveles
+ * — lo único que cambia entre niveles es cuánta flexibilidad de
+ * tiempo/sabor tiene la cascada de selección para encontrar un plato que
+ * cuadre.
  *
  * @param {object} profile
  * @param {object} data
@@ -184,20 +227,20 @@ function generateDietPlanTiered(profile, data) {
   profile = sanitized.profile;
   data    = sanitized.data;
 
-  // Suelo real de viabilidad: el plato más barato de cada categoría,
-  // reducido al mínimo razonable. Si el presupuesto del usuario está por
-  // debajo de esto, es MATEMÁTICAMENTE imposible con este catálogo — se
-  // sigue intentando igualmente (para dar el mejor plan posible), pero el
-  // informe final podrá citar esta cifra en vez de un aviso vago.
-  var minPossibleDayCost = round2(MEAL_DEFS.reduce(function (sum, def) {
-    return sum + estimateAbsoluteMinMealCost(def.category, data.store);
-  }, 0));
+  // Se lee UNA sola vez por generación (no en cada intento de tier, no en
+  // cada iteración del recorte de presupuesto) — la despensa no cambia a
+  // media generación, así que reutilizar el mismo snapshot evita releer
+  // localStorage decenas de veces y garantiza que todos los tiers se
+  // comparan contra el MISMO estado de despensa. null si pantry.js no
+  // está cargado -- computeDayPurchaseCost() ya sabe degradar con
+  // seguridad a "sin despensa" en ese caso.
+  var pantryState = (typeof getPantryState === "function") ? getPantryState() : null;
 
   var bestAttempt = null;
   var bestScore   = -Infinity;
 
   for (var tier = 0; tier <= MAX_RELAXATION_TIER; tier++) {
-    var attempt = attemptPlanAtTier(profile, data, tier);
+    var attempt = attemptPlanAtTier(profile, data, tier, pantryState);
     var score   = scorePlan(attempt, profile, data);
 
     if (score > bestScore) {
@@ -210,7 +253,7 @@ function generateDietPlanTiered(profile, data) {
     }
   }
 
-  var report = buildCompromiseReport(bestAttempt, profile, data, minPossibleDayCost);
+  var report = buildCompromiseReport(bestAttempt, profile, data);
   return { meals: bestAttempt.meals, total: bestAttempt.total, report: report };
 }
 
@@ -222,9 +265,10 @@ function generateDietPlanTiered(profile, data) {
  * @param {object} profile
  * @param {object} data
  * @param {number} tier
+ * @param {object|null} pantryState - snapshot de getPantryState(), o null
  * @returns {{ meals, total, violations, tier, simplifiedCategories }}
  */
-function attemptPlanAtTier(profile, data, tier) {
+function attemptPlanAtTier(profile, data, tier, pantryState) {
   var usedState = { usedNames: [], usedProts: [], usedTastes: [] };
   var placeholderInfo = [];
   var simplifiedCategories = [];
@@ -290,13 +334,15 @@ function attemptPlanAtTier(profile, data, tier) {
   var total = rebalancePlan(meals, profile);
 
   // El rebalanceo puede reintroducir una violación del tope del 25% Y
-  // puede hacer crecer el coste por encima del presupuesto (aumenta
-  // ítems para cubrir proteína/calorías sin mirar el precio). Las dos
-  // cosas se corrigen AQUÍ, después del rebalanceo, nunca subiendo el
+  // puede hacer crecer el coste (aumenta ítems para cubrir proteína/
+  // calorías sin mirar el precio). El cap25 se corrige AQUÍ, después del
+  // rebalanceo; el presupuesto se hace cumplir sobre el coste de COMPRA
+  // real agregado del día (ver cabecera del archivo), nunca subiendo el
   // presupuesto — solo recortando.
   enforce25PercentRule(meals, total.kcal || profile.calories, tierDef.cap25);
-  var budgetResult = enforceBudgetCap(meals, data.budget);
-  total = budgetResult.total;
+  var purchaseResult = enforcePurchaseBudgetCap(meals, data.budget, store, pantryState);
+  total = purchaseResult.total;
+  total.purchaseCost = purchaseResult.purchase.purchaseCost;
 
   var violations = verifyPlanFeasibility(meals, total, profile, data);
 
@@ -313,38 +359,66 @@ function attemptPlanAtTier(profile, data, tier) {
 
   return {
     meals: meals, total: total, violations: violations, tier: tier,
-    simplifiedCategories: simplifiedCategories, budgetTrims: budgetResult.trims
+    simplifiedCategories: simplifiedCategories, budgetTrims: purchaseResult.trims
   };
 }
 
 /**
- * Si el rebalanceo ha dejado el plan por encima del presupuesto, recorta
- * iterativamente el ítem con PEOR relación proteína/precio de todo el
- * plan (reduce su ración al 75%, o lo elimina si ya es pequeño) hasta
- * volver a estar dentro de presupuesto. Nunca sube el presupuesto: solo
- * reduce el plan. Converge siempre (en el peor caso, el plan queda vacío
- * y cuesta 0).
+ * Recorta el plan hasta que el coste de COMPRA agregado del día (paquetes
+ * reales necesarios, descontando despensa) quepa en el presupuesto —
+ * nunca el coste de uso (ver cabecera del archivo, "Presupuesto: coste de
+ * compra, no de uso"). Reemplaza al antiguo enforceBudgetCap() (que
+ * recortaba mirando solo item.cost, el coste de USO de cada ítem por
+ * separado — eso podía "arreglar" el número mostrado sin comprar ni un
+ * paquete menos de verdad, exactamente el bug que motivó este rediseño).
+ *
+ * Cada recorte se evalúa recalculando el purchaseCost REAL agregado de
+ * TODO el día (computeDayPurchaseCost) desde cero — nunca se asume ni se
+ * estima cuánto "debería" bajar. Esto es deliberado: reducir 10 g de un
+ * ingrediente cuyo envase sigue haciendo falta comprar entero no ahorra
+ * nada de verdad, y este bucle nunca lo contaría como progreso porque
+ * vuelve a medir el número real después de cada cambio, no antes.
+ *
+ * Selección del ítem a recortar: la PEOR relación proteína / coste-de-
+ * COMPRA de su ingrediente (agregado del día) — mismo criterio de
+ * "ineficiencia" que el recorte antiguo, pero medido con el número que de
+ * verdad se está intentando bajar. Un ingrediente ya cubierto del todo
+ * por la despensa (purchaseCost=0 para ese ingrediente) nunca se recorta
+ * por presupuesto: quitarlo no ahorraría nada.
+ *
+ * Converge siempre: en el peor caso el plan queda vacío y el coste de
+ * compra es 0. Tope de 40 iteraciones (más que las 30 del recorte
+ * anterior porque cada paso ahora puede "gastarse" sin cruzar un umbral
+ * de paquete) como red de seguridad, no como mecanismo esperado.
  *
  * @param {object[]} meals
  * @param {number}   budget
- * @returns {{ total: object, trims: number }}
+ * @param {string}   storeId
+ * @param {object|null} pantryState
+ * @returns {{ total: object, purchase: object, trims: number }}
  */
-function enforceBudgetCap(meals, budget) {
-  var total = sumMeals(meals);
+function enforcePurchaseBudgetCap(meals, budget, storeId, pantryState) {
+  var purchase = computeDayPurchaseCost(meals, storeId, pantryState);
   var trims = 0;
 
-  while (total.cost > budget + 0.01 && trims < 30) {
-    var worstItem = null, worstMeal = null, worstRatio = Infinity;
+  while (purchase.purchaseCost > budget + 0.01 && trims < 40) {
+    var costByIngredient = {};
+    purchase.lines.forEach(function (line) {
+      costByIngredient[normalizeIngredientKey(line.name)] = line.purchaseCost;
+    });
 
+    var worstItem = null, worstMeal = null, worstRatio = Infinity;
     meals.forEach(function (meal) {
       meal.items.forEach(function (item) {
-        if (item.grams <= 0 || item.cost <= 0) return;
-        var ratio = item.protein / item.cost; // g de proteína por € — coherente con el criterio de selección
+        if (item.grams <= 0) return;
+        var ingredientPurchaseCost = costByIngredient[normalizeIngredientKey(item.name)] || 0;
+        if (ingredientPurchaseCost <= 0) return; // ya cubierto por despensa (o sin coste) -- recortarlo no ahorra nada
+        var ratio = item.protein / ingredientPurchaseCost;
         if (ratio < worstRatio) { worstRatio = ratio; worstItem = item; worstMeal = meal; }
       });
     });
 
-    if (!worstItem) break; // no queda nada razonable que recortar
+    if (!worstItem) break; // nada cuyo recorte pueda bajar el coste de compra real
 
     if (worstItem.grams > 25) {
       var f = 0.75;
@@ -361,17 +435,20 @@ function enforceBudgetCap(meals, budget) {
     worstMeal.total = getMealTotals(worstMeal);
     worstMeal.spent = round2(spentMeal(worstMeal));
     trims++;
-    total = sumMeals(meals);
+    purchase = computeDayPurchaseCost(meals, storeId, pantryState);
   }
 
-  return { total: total, trims: trims };
+  return { total: sumMeals(meals), purchase: purchase, trims: trims };
 }
 
 /**
  * Compara el plan YA CONSTRUIDO contra las cifras ORIGINALES del usuario.
  * El presupuesto ahora debería cumplirse casi siempre gracias a
- * enforceBudgetCap; esta comprobación queda como red de seguridad, no
- * como mecanismo principal de control.
+ * enforcePurchaseBudgetCap; esta comprobación queda como red de
+ * seguridad, no como mecanismo principal de control. El presupuesto se
+ * compara contra total.purchaseCost (coste de COMPRA real, consciente de
+ * despensa) — nunca total.cost (usageCost, solo informativo). Ver
+ * cabecera del archivo.
  *
  * @param {object[]} meals
  * @param {object}   total
@@ -382,8 +459,13 @@ function enforceBudgetCap(meals, budget) {
 function verifyPlanFeasibility(meals, total, profile, data) {
   var violations = [];
 
-  if (total.cost > data.budget + 0.01) {
-    violations.push({ type: "budget", exceededBy: round2(total.cost - data.budget) });
+  if (total.purchaseCost > data.budget + 0.01) {
+    violations.push({
+      type: "budget",
+      exceededBy: round2(total.purchaseCost - data.budget),
+      purchaseCost: total.purchaseCost,
+      usageCost: total.cost
+    });
   }
 
   meals.forEach(function (meal) {
@@ -423,7 +505,7 @@ function verifyPlanFeasibility(meals, total, profile, data) {
 function scorePlan(attempt, profile, data) {
   var total = attempt.total;
 
-  var budgetOverrun = Math.max(0, (total.cost - data.budget) / Math.max(data.budget, 0.01));
+  var budgetOverrun = Math.max(0, (total.purchaseCost - data.budget) / Math.max(data.budget, 0.01));
   var timePenalty = attempt.meals.reduce(function (sum, m) {
     return sum + Math.max(0, m.prep - data.cookTime);
   }, 0) / 100;
@@ -451,10 +533,9 @@ function scorePlan(attempt, profile, data) {
  * @param {object} attempt
  * @param {object} profile
  * @param {object} data
- * @param {number} minPossibleDayCost - suelo real de viabilidad del día
  * @returns {object}
  */
-function buildCompromiseReport(attempt, profile, data, minPossibleDayCost) {
+function buildCompromiseReport(attempt, profile, data) {
   var tierDef = RELAXATION_TIERS[attempt.tier];
   var relaxations = [];
 
@@ -477,28 +558,44 @@ function buildCompromiseReport(attempt, profile, data, minPossibleDayCost) {
   }
   // El presupuesto NUNCA aparece aquí como "relajación permitida": no se
   // relaja jamás. Lo que sí puede aparecer es la simplificación de ración
-  // (menu_simplified) y la inviabilidad real (budget_infeasible), ambas
-  // ya presentes en attempt.violations.
+  // (menu_simplified) y la inviabilidad real (budget_infeasible / budget),
+  // ambas ya presentes en attempt.violations.
+
+  var storeName = PRICE_CATALOGS[data.store] ? PRICE_CATALOGS[data.store].storeName : data.store;
 
   var status;
-  var hasBudgetInfeasible = attempt.violations.some(function (v) { return v.type === "budget_infeasible"; });
+  // "budget" (coste de COMPRA real por encima del presupuesto incluso
+  // después de recortar al máximo, enforcePurchaseBudgetCap) es, a
+  // efectos de gravedad del status, tan serio como "budget_infeasible"
+  // (la cascada de selección no encontró nada que cupiera ni reduciendo
+  // ración): en ambos casos el usuario pagaría más de lo que pidió si se
+  // aceptara el plan tal cual, así que ninguno de los dos puede quedar
+  // como "adjusted" (que implica "sí respeta tu presupuesto, solo se
+  // ajustó otra cosa").
+  var hasBudgetIssue = attempt.violations.some(function (v) {
+    return v.type === "budget_infeasible" || v.type === "budget";
+  });
   if (attempt.tier === 0 && attempt.violations.length === 0) {
     status = "perfect";
-  } else if (attempt.tier >= MAX_RELAXATION_TIER || hasBudgetInfeasible) {
+  } else if (attempt.tier >= MAX_RELAXATION_TIER || hasBudgetIssue) {
     status = "minimal";
   } else {
     status = "adjusted";
   }
 
   var headline = HEADLINES[status];
-  if (hasBudgetInfeasible) {
-    var shortfall = round2(Math.max(0, minPossibleDayCost - data.budget));
-    headline = shortfall > 0
-      ? "Con " + data.budget + " \u20ac no ha sido posible montar un plan completo ni con las opciones más baratas de " +
-        (PRICE_CATALOGS[data.store] ? PRICE_CATALOGS[data.store].storeName : data.store) +
-        ". El mínimo real con este catálogo es de " + minPossibleDayCost + " \u20ac/día (" + shortfall + " \u20ac más)."
-      : "No ha sido posible completar todas las tomas dentro de " + data.budget + " \u20ac, aunque el mínimo teórico del día (" +
-        minPossibleDayCost + " \u20ac) sí entraría — revisa el tiempo de cocina o la preferencia de sabor.";
+  if (hasBudgetIssue) {
+    var achieved = round2(attempt.total.purchaseCost);
+    var shortfall = round2(Math.max(0, achieved - data.budget));
+    headline = shortfall > 0.005
+      ? "Con " + data.budget + " € de presupuesto de compra no ha sido posible montar un plan que quepa en " +
+        storeName + ", ni siquiera recortando raciones al máximo razonable. El plan más ajustado que se ha " +
+        "podido construir necesita comprar " + achieved + " € (" + shortfall + " € más de lo disponible; " +
+        "el uso real de ingredientes es de " + round2(attempt.total.cost) + " €, pero los paquetes que hay " +
+        "que comprar cuestan más)."
+      : "No ha sido posible completar todas las tomas dentro de " + data.budget + " € de presupuesto de " +
+        "compra, aunque el coste de compra final (" + achieved + " €) prácticamente lo alcanza — revisa el " +
+        "tiempo de cocina o la preferencia de sabor.";
   }
 
   return {
@@ -506,7 +603,7 @@ function buildCompromiseReport(attempt, profile, data, minPossibleDayCost) {
     headline:    headline,
     tierUsed:    attempt.tier,
     store:       data.store,
-    storeName:   PRICE_CATALOGS[data.store] ? PRICE_CATALOGS[data.store].storeName : data.store,
+    storeName:   storeName,
     relaxations: relaxations,
     violations:  attempt.violations,
     macroDelta: {
@@ -515,9 +612,8 @@ function buildCompromiseReport(attempt, profile, data, minPossibleDayCost) {
       carbs:   round1(attempt.total.carbs   - profile.carbs),
       fat:     round1(attempt.total.fat     - profile.fats)
     },
-    budgetDelta:         round2(attempt.total.cost - data.budget),
-    minPossibleDayCost:  minPossibleDayCost,
-    budgetTrims:         attempt.budgetTrims || 0
+    budgetDelta: round2(attempt.total.purchaseCost - data.budget),
+    budgetTrims: attempt.budgetTrims || 0
   };
 }
 

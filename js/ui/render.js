@@ -85,13 +85,22 @@ function renderMeals(meals) {
  * @returns {string}
  */
 function renderMealCard(meal, total) {
+  // data-meal-key habilita el salto desde la franja de horario (ver
+  // js/ui/render-schedule.js, scrollToMealCard) hasta esta tarjeta.
+  var timeBadge = typeof renderMealTimeBadge === "function" ? renderMealTimeBadge(meal) : "";
+  var cookNote  = typeof renderMealCookNote  === "function" ? renderMealCookNote(meal)  : "";
+
   return (
-    '<div class="meal-card">' +
+    '<div class="meal-card" data-meal-key="' + escapeHtml(meal.key || "") + '">' +
       '<div class="meal-head">' +
-        '<h3>' + escapeHtml(meal.label) + '</h3>' +
+        '<div class="meal-head__title">' +
+          timeBadge +
+          '<h3>' + escapeHtml(meal.label) + '</h3>' +
+        '</div>' +
         '<div class="meal-kcal">' + round0(total.kcal) + ' kcal</div>' +
       '</div>' +
       '<div class="meal-body">' +
+        cookNote +
         '<div class="meal-items">' +
           meal.items.map(renderFoodRow).join("") +
         '</div>' +

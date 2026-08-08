@@ -1,6 +1,6 @@
 # Nutrition Planner — Engineering State
 
-Actualizado 2026-08-07. Lee esto junto con `PROJECT.md` y `ROADMAP.md` antes
+Actualizado 2026-08-08. Lee esto junto con `PROJECT.md` y `ROADMAP.md` antes
 de empezar una sesión nueva (ver "Session handoff" al final — reemplaza al
 antiguo "Continuation checklist"). Para el sistema completo (este repo + el
 pipeline Python en `PythonProject`), ver `PythonProject/docs/architecture.md`
@@ -9,13 +9,59 @@ y `PythonProject/docs/data_flow.md` (Python no se ha tocado desde
 exclusivamente en este repo).
 
 **Para orientarse rápido sin leer todo este archivo**: hay un grafo de
-código real (Graphify) regenerado el 2026-08-07 — `graphify explain
-"<símbolo>"`, `graphify query "<pregunta>"`, `graphify god-nodes --top 8`
-desde esta carpeta. Ver `PythonProject/docs/graphify.md` para el manual
-completo (comandos, qué es un node/edge/community, cómo regenerarlo tras
-tocar código). Complementa, no sustituye, la lectura de este archivo — el
-grafo da estructura (quién llama a quién), no las decisiones de producto ni
-el "por qué" que solo está aquí y en `ROADMAP.md`.
+código real (Graphify) regenerado el 2026-08-08 (348 nodes, 554 edges, 34
+communities — incluye ya `js/core/budget.js`, `js/core/meal-schedule.js`,
+`js/ui/render-schedule.js`, `tests/budget-purchase.test.js`,
+`tests/meal-schedule.test.js`) — `graphify explain "<símbolo>"`, `graphify
+query "<pregunta>"`, `graphify god-nodes --top 8` desde esta carpeta. Ver
+`PythonProject/docs/graphify.md` para el manual completo (comandos, qué es
+un node/edge/community, cómo regenerarlo tras tocar código). Complementa,
+no sustituye, la lectura de este archivo — el grafo da estructura (quién
+llama a quién), no las decisiones de producto ni el "por qué" que solo
+está aquí y en `ROADMAP.md`. **Si vuelves a tocar código, el grafo se
+desactualiza de nuevo** — no se actualiza solo (comandos exactos en
+`PythonProject/docs/graphify.md`, sección "Cómo actualizarlo").
+
+**Resumen de la sesión 2026-08-08 (presupuesto = coste de COMPRA, no de
+uso)** (ver sección dedicada más abajo, "Presupuesto de compra (purchase
+budget)", para el detalle completo): bug real reportado por el usuario —
+con `Presupuesto diario = 8€`, la app podía aceptar un plan con
+`usageCost=7.72€` cuya compra real (paquetes enteros necesarios) costaba
+`19€`, porque TODO el pipeline (selección de plato, recorte,
+verificación) solo miraba usageCost; purchaseCost solo se calculaba
+después, ya en la lista de la compra, sin que el generador se enterase.
+Rediseño arquitectónico (no un parche `Math.min`): `data.budget` ahora
+significa dinero de COMPRA. Nuevo módulo compartido `js/core/budget.js`
+(`computeDayPurchaseCost`, consciente de despensa) usado tanto por
+`plan-generator.js` (nuevo `enforcePurchaseBudgetCap`, sustituye al
+antiguo `enforceBudgetCap` basado en usageCost) como por
+`render-shopping-list.js` — mismos números siempre, nunca dos cálculos
+independientes. Presets recalibrados empíricamente contra purchaseCost
+real (Ajustado 5→15, Equilibrado 8→20, Amplio 12→28 — los antiguos se
+habían quedado sin sentido de la noche a la mañana con el cambio de
+semántica). 12 tests nuevos (`tests/budget-purchase.test.js`), 2
+golden-master recapturados, 126 tests totales, 0 fallidos. Verificado en
+vivo reproduciendo el bug original y confirmando que ya no ocurre
+(desktop + mobile). De paso, corregido un bug real de CSS encontrado
+durante la verificación mobile (no relacionado con el presupuesto, de la
+sesión anterior): la barra sticky "próxima comida" sobresalía del
+viewport por un margen negativo mal calculado (-8% en vez de -4%).
+
+**Resumen de la sesión 2026-08-07 (horario de comidas)** (ver sección
+dedicada más abajo, "Horario de comidas (meal schedule)", para el detalle
+completo): se añadió una función nueva completa — el plan generado ahora
+dice A QUÉ HORA se come cada toma, no solo qué. Modelo elegido: reparto
+UNIFORME anclado a dos preferencias nuevas (hora de despertar/hora de
+dormir, con valores por defecto sensatos), sobre las comidas reordenadas
+CRONOLÓGICAMENTE (antes se pintaban en orden de categoría — desayuno/
+comida/cena/snack/snack2 — un bug real de UX que esta función expuso y
+corrigió). Nuevo módulo puro `js/core/meal-schedule.js` (36 tests nuevos,
+114 tests totales, 0 fallidos) + `js/ui/render-schedule.js` (franja de
+horario del día + barra sticky compacta solo-mobile con la próxima
+comida). Integrado en el plan normal, en "sin cocinar", y persistido en el
+historial de la despensa (con fallback seguro para planes antiguos sin
+hora). Verificado en vivo en navegador (desktop y viewport mobile 375px),
+incluyendo localStorage con datos v1 viejos y JSON corrupto.
 
 **Resumen de la sesión 2026-08-06/07** (ver secciones fechadas más abajo
 para el detalle completo): (1) se diseñó e implementó una **Despensa
@@ -180,26 +226,41 @@ producto real verificado de `REAL_PRODUCTS` y calcular KBJU/coste desde ahí.
 - Tests: `poc/tests/` — 23 tests (`ingredient-resolver`,
   `shopping-list-builder` de prueba, `ingredient-coverage`).
 
-## Tests (actualizado 2026-08-07)
+## Tests (actualizado 2026-08-08)
 
 Dos suites, ambas Node + `vm` (cargan los archivos de producción reales,
 sin copiarlos ni envolverlos en `module.exports`), sin ningún framework:
 
-- `tests/` (producción): `node tests/run-tests.js` → **55 passed, 0
+- `tests/` (producción): `node tests/run-tests.js` → **103 passed, 0
   failed** — `shopping-cost.test.js` (14), `budget-mode.test.js` (13),
-  `plan-generator.characterization.test.js` (9), `ingredient-packaging-
-  coverage.test.js` (2), `pantry.test.js` (33, nuevo 2026-08-06/07 — ver
-  sección Despensa arriba; cubre almacenamiento con fallback en memoria,
-  localStorage real inyectado, JSON corrupto, entradas individuales
-  corruptas, las 3 etapas del ciclo de vida, el caso exacto reportado por
-  el usuario — comprar sin cocinar deja el stock íntegro, no neteado —, y
-  regresión de compatibilidad con `shopping-cost.test.js` sin `pantry.js`
-  cargado).
+  `plan-generator.characterization.test.js` (9, golden-master recapturado
+  2026-08-08 tras el rediseño de presupuesto — ver sección dedicada),
+  `ingredient-packaging-coverage.test.js` (2), `pantry.test.js` (33,
+  2026-08-06/07 — ver sección Despensa arriba; cubre almacenamiento con
+  fallback en memoria, localStorage real inyectado, JSON corrupto,
+  entradas individuales corruptas, las 3 etapas del ciclo de vida, el caso
+  exacto reportado por el usuario — comprar sin cocinar deja el stock
+  íntegro, no neteado —, y regresión de compatibilidad con
+  `shopping-cost.test.js` sin `pantry.js` cargado), `meal-schedule.test.js`
+  (36, 2026-08-07 — ver sección "Horario de comidas" más abajo; cubre
+  saneamiento de wake/sleep, envoltura de medianoche/turno de noche,
+  ventana degenerada/muy corta, orden cronológico para 3/4/5 tomas y
+  claves desconocidas, hora de empezar a cocinar, lector del DOM, y
+  persistencia de la hora a través de `savePlanForToday`),
+  `budget-purchase.test.js` (12, nuevo 2026-08-08 — ver sección
+  "Presupuesto de compra" más abajo; cubre usageCost<budget con
+  purchaseCost>budget rechazado, usageCost>budget con purchaseCost<=budget
+  vía despensa aceptado, cobertura total/parcial de despensa, varios
+  ingredientes con envase, presupuesto 8€ nunca acepta una compra real muy
+  por encima, presupuesto irrisorio con `budget`/`budget_infeasible`
+  honesto, lista de la compra trazable al mismo número que el generador,
+  "Confirmar y usar este plan hoy" actualizando despensa correctamente, y
+  localStorage de despensa corrupto/con entradas individuales corruptas).
 - `poc/tests/`: `node poc/tests/run-tests.js` → **23 passed, 0 failed** —
   resolver, shopping-list de prueba, cobertura de ingredientes (sin
-  cambios, `poc/` no se tocó esta sesión).
-- Total: **78 tests, 0 failed** — re-ejecutado y verificado en la sesión
-  2026-08-06/07 (no solo heredado de memoria).
+  cambios, `poc/` no se tocó en ninguna de estas sesiones).
+- Total: **126 tests, 0 failed** — re-ejecutado y verificado en la sesión
+  2026-08-08 (no solo heredado de memoria).
 
 Sigue sin haber linting, formatting, CI, ni package manifest. `dish-
 selector.js`/`plan-generator.js`/`calculator.js` SÍ tienen cobertura desde
@@ -507,6 +568,278 @@ error de consola y generan un plan con normalidad. También 3 generaciones
 de plan consecutivas sin acumular estado raro. Ver "Tests" abajo para el
 detalle automatizado equivalente.
 
+## Horario de comidas (meal schedule) — 2026-08-07
+
+Función nueva completa, pedida explícitamente: el plan generado debe decir
+no solo QUÉ comer sino A QUÉ HORA — sin hardcodear 5 horas fijas.
+
+**Investigación previa (antes de diseñar nada)**: se leyó la arquitectura
+completa relevante — `MEAL_DEFS` en `plan-generator.js` fija SIEMPRE 5
+tomas (breakfast/lunch/dinner/snack/snack2, en ESE orden de categoría, no
+cronológico); `no-cook-generator.js` usa 4 slots distintos (breakfast/
+lunch/snack/dinner); no existía ningún ajuste de despertar/dormir; el
+formulario no persiste nada entre sesiones salvo la despensa
+(`localStorage`, solo pantry). Hallazgo real, no cosmético: **las tarjetas
+de comida se pintaban en orden de CATEGORÍA, no de reloj** (desayuno,
+comida, cena, snack, snack2 — la cena aparecía ANTES que los snacks) — un
+bug de UX preexistente que esta función necesariamente expone y corrige,
+porque un horario con las horas fuera de orden visual no tiene sentido.
+
+**Modelo elegido — "reparto uniforme anclado"**: las tomas se ordenan
+cronológicamente por un tipo semántico (tabla `MEAL_TIME_RANK` en
+`js/core/meal-schedule.js`: desayuno=0, snack/snack1=1 [media mañana],
+comida=2, snack2/merienda=3 [media tarde], cena=4; una clave desconocida
+se reparte proporcionalmente por su posición original, nunca rompe el
+orden de las demás) y luego se distribuyen a INTERVALOS IGUALES dentro de
+la ventana despertar→dormir (con un margen de 30 min tras despertar y 90
+min antes de dormir; si esos márgenes no caben en una ventana corta, se
+usa la ventana cruda sin margen en vez de un resultado imposible). Por
+qué este modelo y no horas fijas por nombre de comida: funciona igual de
+bien con 3, 4, 5 o N tomas sin tener que enumerar casos, y garantiza por
+construcción intervalos regulares (lo que se pidió explícitamente) en vez
+de intentar adivinar "la hora típica de cenar".
+
+**Ajustes de usuario — el mínimo necesario, ninguno más**: dos campos
+nuevos, `Hora de despertar`/`Hora de dormir` (`<input type="time">`,
+valores por defecto 07:00/23:00 en el HTML, igual que el resto del
+formulario) — se descartó deliberadamente añadir "hora preferida de
+desayuno" o similar: derivarla de la hora de despertar + margen ya cubre
+el caso sin una tercera preferencia. `readScheduleSettings()` lee estos
+campos directamente del DOM, INDEPENDIENTE de `readForm()`/
+`validateInput()` (`calculator.js`) — el modo "sin cocinar" nunca pasa por
+el formulario de calorías pero sí quiere respetar el horario, así que
+compartir el lector (no duplicarlo) evita acoplar ambos flujos.
+
+**Punto de integración — cero cambios al generador**: `computeMealSchedule()`
+se llama DESPUÉS de `generateDietPlan()`/`generateNoCookPlan()`, nunca
+dentro — el generador (con su red de tests de caracterización) no cambia
+de comportamiento por esto. Añade `meal.time`/`meal.timeMinutes` a los
+objetos meal EXISTENTES (mutación in-place) y devuelve el array
+reordenado cronológicamente; `js/app.js` usa ese array reordenado para
+`renderMeals()`, la franja de horario, y `lastGeneratedMeals` — así la
+hora fluye automáticamente a la lista de la compra (orden no importa ahí)
+y a la despensa (si importa, y ahora si se registra). Aislado en
+`safeInit()` como cualquier módulo opcional: si el cálculo de horario
+fallara, el plan se sigue mostrando con normalidad, solo sin horario.
+
+**UI — orgánica, no un rediseño**: badge de hora (mono, acento terracota)
+en la cabecera de cada `meal-card`, más una franja "horario del día"
+compacta arriba del todo en el panel de resultados (chips con hora +
+nombre, resalta la próxima toma comparando contra la hora real del
+dispositivo, clic salta a la tarjeta correspondiente). **Problema real
+encontrado en la verificación en navegador, corregido en la misma
+sesión**: en mobile, el formulario ocupa toda la pantalla antes de llegar
+a esa franja (medido: ~1940px de scroll en un viewport de 375×812) — no
+cumplía el propio requisito de "ver la próxima comida sin desplazarse
+kilómetros". Se añadió una barra compacta `position: sticky` (SOLO
+mobile, ≤640px — en desktop la franja ya está cerca de arriba) con
+únicamente la próxima toma y su hora, fija bajo el borde superior del
+viewport sin importar en qué parte de la página esté el usuario.
+Reutiliza el mismo cálculo de "próxima comida" que la franja completa
+(`findNextMealIndex()`, `js/core/meal-schedule.js`) — nunca lógica
+duplicada.
+
+**Preparado para recordatorios de cocina futuros, sin construirlos ahora**:
+`getCookStartMinutes()/getCookStartTime()` restan `meal.prep` (ya
+existente) a la hora de comer — expuesto en UI hoy solo como una nota
+discreta ("Empieza a cocinar sobre las HH:MM") bajo la cabecera de la
+tarjeta, cuando `prep >= 10 min` (evita ruido en platos casi listos). No
+hay ninguna pantalla de recordatorios — deliberadamente fuera de alcance,
+la arquitectura ya lo deja listo para añadir sin rediseñar nada.
+
+**Edge cases verificados** (test + navegador real, ver "Tests" arriba):
+3/4/5 tomas: el algoritmo no asume 5 fijas, funciona igual con el
+generador principal (5) y "sin cocinar" (4); wake/sleep con turno de
+noche (dormir "antes" que despertar en el reloj de 24h) envuelve
+medianoche sin romperse; wake≈sleep o ventana <60 min cae a valores por
+defecto en vez de un horario roto; ventana corta pero válida produce un
+horario comprimido con una nota visible (`isScheduleCompact`), nunca
+bloquea la generación; usuario nuevo sin tocar los campos obtiene 07:00/
+23:00 por los `value` del HTML; **plan viejo del historial de despensa sin
+`meal.time`** (guardado antes de esta función) renderiza sin badge de
+hora, sin "undefined" visible, sin excepción; **`localStorage` con una
+entrada v1 corrupta + JSON directamente inválido en ambas claves**
+inyectados a mano — la app arranca, el formulario sigue funcionando, la
+despensa se pinta vacía en vez de romperse (mismas 4 capas de defensa de
+la sesión anterior, no debilitadas por esta función); regenerar el plan
+varias veces seguidas no acumula estado raro; plan confirmado en la
+despensa (`savePlanForToday`) persiste `meal.time` y se ve en el
+historial.
+
+**Verificación en navegador real**: generación de plan completo en
+viewport desktop (800px) y mobile (375×812, con `resize_window`),
+confirmando 0 errores de consola, orden cronológico correcto de las
+tarjetas, badges de hora coincidiendo con la franja, franja resaltando la
+toma correcta según la hora real del dispositivo, clic-para-saltar
+funcionando, nota de horario comprimido apareciendo con una ventana
+wake/sleep deliberadamente corta, modo "sin cocinar" con sus propios
+badges (mismo cálculo, sin duplicar), y las 4 combinaciones de
+`localStorage` (vacío/v1 viejo/JSON corrupto/v2 sin hora) sin romper el
+arranque. **Limitación de entorno, no nueva**: el panel de navegador de
+esta sesión tampoco compuso frames para `screenshot()` (mismo problema
+documentado en sesiones anteriores, ver "Rediseño visual" arriba) —
+verificación por DOM/`getComputedStyle`/`getBoundingClientRect`, no
+captura de pantalla píxel a píxel.
+
+**Archivos nuevos**: `js/core/meal-schedule.js` (lógica pura, sin DOM
+salvo `readScheduleSettings()` con guarda `typeof document`),
+`js/ui/render-schedule.js` (franja + barra sticky + badges reutilizables).
+**Modificados**: `js/ui/render.js` (badge/nota en `meal-head`, atributo
+`data-meal-key` en la tarjeta — esto también es lo que permite el
+clic-para-saltar), `js/app.js` (wiring + orden de renderizado
+cronológico), `js/ui/render-no-cook.js` (mismo cálculo reutilizado),
+`js/core/pantry.js` (`savePlanForToday` guarda `meal.time`),
+`js/ui/render-pantry.js` (badge de hora en el historial, con guarda),
+`index.html` (2 campos nuevos, contenedor de franja, barra sticky),
+`assets/css/style.css` (franja, badges, nota de cocina, barra sticky
+mobile-only). **Tests**: `tests/meal-schedule.test.js` (nuevo, 36 tests)
++ `tests/run-tests.js` (registro). **No tocado**: `js/engine/dish-
+selector.js`, `js/engine/plan-generator.js` (el generador en sí, cero
+cambios de comportamiento — ver "Punto de integración" arriba).
+
+## Presupuesto de compra (purchase budget) — 2026-08-08
+
+Bug arquitectónico real reportado por el usuario, corregido de raíz (no un
+parche `Math.min(purchaseCost, budget)` — eso habría sido mentir sobre el
+número, no arreglar el problema).
+
+**El bug**: `Presupuesto diario = 8€` podía producir un plan con
+`usageCost=7.72€` (lo que el generador comprobaba) pero cuya compra REAL
+(paquetes enteros de cada ingrediente, sin descontar despensa) costaba
+`19€` — el usuario tenía que pagar más del doble de lo que había pedido,
+y la app nunca se enteraba porque `data.budget` limitaba usageCost en
+TODO el pipeline (selección de plato, recorte, verificación); purchaseCost
+solo se calculaba DESPUÉS, ya en la lista de la compra, demasiado tarde
+para influir en nada.
+
+**Investigación previa**: se leyó `pricing.js` (ya distinguía usageCost/
+purchaseCost por ingrediente, `resolvePurchaseCost`), `pantry.js` (ya
+tenía `resolvePurchaseCostWithPantry`, consciente de despensa),
+`dish-selector.js`/`plan-generator.js` (la cascada de selección de plato Y
+el recorte de presupuesto (`enforceBudgetCap`) solo miraban `item.cost`,
+usageCost puro, en NINGÚN punto agregaban por ingrediente entre comidas ni
+consultaban despensa) y `render-shopping-list.js` (SÍ hacía la agregación
++ paquetes + despensa correctamente, pero solo para pintar la lista, ya
+con el plan cerrado — de ahí la divergencia).
+
+**Modelo elegido**: `data.budget` pasa a significar coste de COMPRA
+(purchaseCost), no de uso. Dos capas, no una reescritura completa del
+generador:
+
+1. **Capa A (sin cambios)** — la cascada de selección de plato por toma
+   (`pickDish`, `dish-selector.js`) sigue usando usageCost como heurística
+   para ir construyendo un candidato plato a plato — usageCost y
+   purchaseCost están correlacionados, y hacer que la cascada conociera el
+   empaquetado agregado de TODO el día en cada paso intermedio sería un
+   problema combinatorio mucho más caro sin necesidad real (no se sabe qué
+   más va a compartir paquete con qué hasta tener el día completo).
+2. **Capa B (nueva, autoritativa)** — una vez el plan candidato del día
+   está construido, se calcula el purchaseCost AGREGADO real
+   (`computeDayPurchaseCost`, nuevo `js/core/budget.js`, consciente de
+   despensa) y ESE es el número que de verdad se hace cumplir
+   (`enforcePurchaseBudgetCap`, sustituye al antiguo `enforceBudgetCap`
+   basado en usageCost), se usa en `scorePlan()` para comparar candidatos
+   entre tiers de relajación, y se reporta como violación `type:'budget'`
+   en `verifyPlanFeasibility()`. Si ni recortando al máximo el purchaseCost
+   real entra en el presupuesto, se reporta honestamente como inviable —
+   nunca se falsea el número.
+
+**`js/core/budget.js` (nuevo)** — capa compartida deliberada, por encima
+de `pricing.js`/`pantry.js` (que siguen siendo agnósticos de "plan"/
+"toma", igual que antes): `aggregateMealItems(meals)` (agregación
+canónica, sustituye a la que antes vivía duplicada en
+`render-shopping-list.js`) y `computeDayPurchaseCost(meals, storeId,
+pantryState)`. **Usado tanto por `plan-generator.js` como por
+`render-shopping-list.js`** — mismo cálculo exacto en los dos sitios,
+nunca dos números que puedan divergir (ver test #8 de
+`budget-purchase.test.js`, que lo comprueba directamente).
+
+**`enforcePurchaseBudgetCap`** (plan-generator.js) — recorta el plan
+hasta que el purchaseCost agregado real quepa en presupuesto. A
+diferencia del recorte antiguo (que miraba `item.cost`, usageCost por
+ítem suelto), cada recorte se evalúa RECALCULANDO `computeDayPurchaseCost`
+desde cero — nunca se asume ni se estima cuánto "debería" bajar. Esto es
+importante porque el coste de compra es no-lineal (quitar 10g a un
+ingrediente cuyo envase sigue haciendo falta comprar entero no ahorra
+nada de verdad); el bucle greedy (peor relación proteína/coste-de-compra
+primero, recalcular, repetir) no es óptimo en el sentido de bin-packing,
+pero es SIEMPRE correcto porque nunca miente sobre el número real —
+documentado como limitación conocida y aceptada en el propio código.
+
+**Pantry ahora afecta la generación del plan** — antes, `dish-selector.js`
+/`plan-generator.js` no sabían nada de despensa (decisión de arquitectura
+deliberada de la sesión de Despensa, ver arriba). Esto seguía siendo
+cierto para la SELECCIÓN de plato (Capa A, sin cambios), pero ahora
+`generateDietPlanTiered()` lee `getPantryState()` UNA vez por generación
+(null si `pantry.js` no está cargado) y la pasa a
+`enforcePurchaseBudgetCap`/`computeDayPurchaseCost` — así un plan que sin
+despensa sería inviable puede volverse asequible gracias a lo que ya
+tienes en casa, exactamente el requisito pedido.
+
+**Presets recalibrados** (`js/data/budget-presets.js`): los antiguos
+(Ajustado 5€/Equilibrado 8€/Amplio 12€) se calibraron en 2026-08-03 contra
+percentiles de usageCost de catálogo sin escalar — con el cambio de
+semántica se quedaron sin sentido de la noche a la mañana (8€ de
+purchaseCost es una cifra muy distinta a 8€ de usageCost). Recalibrados
+generando 120 planes reales (6 perfiles corte/recomp/volumen × 20
+combinaciones tiempo/sabor, despensa vacía, presupuesto deliberadamente
+generoso de 50€ para medir el purchaseCost "natural" sin recorte) y
+tomando percentiles del purchaseCost real resultante: P10=14.65→**15**
+(Ajustado), P50=20.41→**20** (Equilibrado), P85=27.06→**28** (Amplio).
+Verificado generando 48 planes por preset: 0 violaciones de presupuesto
+en los tres, nunca `status:'unavailable'`, distribución de status
+perfect/adjusted/minimal similar en forma a la calibración original.
+
+**UX**: "Notas del plan" y la lista de la compra ahora distinguen
+explícitamente presupuesto (compra) de consumo (uso) —
+`"Presupuesto diario: €8. Compra necesaria: €6.82 (margen: €1.18).
+Consumo real de ingredientes: €4.28."` — nunca se esconde purchaseCost,
+nunca se presenta usageCost como si fuera el presupuesto.
+
+**Verificado en vivo en navegador**: se reprodujo el escenario exacto del
+bug original (budget=8€ personalizado) y se confirmó que ya no ocurre —
+"Compra necesaria" quedó en €6.82, dentro de presupuesto, con "Consumo
+real" (€4.28) mostrado aparte. Se verificó el efecto de la despensa
+EN VIVO: añadir 500g de un ingrediente del plan (Tofu firme, que ya
+necesitaba comprarse en 1 paquete) a la despensa manual bajó "Coste de
+compra" de €6.82 a €5.64 (exactamente el precio de ese paquete) sin
+tocar "Coste de uso" (se mantuvo en €4.28) — la fila de ese ingrediente en
+la lista de la compra pasó a "Ya tienes suficiente en tu despensa, €0". Se
+completó el ciclo real: "Usar este plan hoy" → "Marcar compra como hecha"
+(el run de compra registrado coincidió exactamente con lo mostrado en
+pantalla: purchaseCost=€5.64, usageCost=€4.28, tofu con
+`coveredFromPantry=225, purchasedGrams=0` — no se compró de más) →
+"Marcar como cocinado" en la cena (restó exactamente los gramos
+requeridos de tofu y pasta del stock). Verificado en mobile (375px) y
+desktop, 0 errores de consola reales (solo un aviso inocuo de GSAP
+provocado por la técnica de recarga usada en esta sesión de verificación,
+no un problema de la aplicación).
+
+**Bug de CSS encontrado de paso, corregido** (no relacionado con el
+presupuesto — de la sesión anterior, horario de comidas): la barra sticky
+"próxima comida" (`.next-meal-sticky`, mobile-only) usaba `margin: 0 -8%`
+para compensar el padding lateral de `.container` (`width:92%`), pero el
+margen real a cancelar es 4% por lado (8% total, repartido), no 8% por
+lado — el valor doblado sacaba la barra fuera del viewport por los dos
+lados, un overflow horizontal real de ~13px detectado verificando en
+375px. Corregido a `margin: 0 -4%`.
+
+**Archivos nuevos**: `js/core/budget.js`, `tests/budget-purchase.test.js`.
+**Modificados**: `js/engine/plan-generator.js` (rediseño del presupuesto,
+ver arriba — `dish-selector.js` NO se tocó), `js/ui/render-shopping-list.js`
+(delega en budget.js), `js/ui/render-insights.js` (copy + umbral de aviso
+de presupuesto bajo recalibrado), `js/data/budget-presets.js`
+(recalibrado), `index.html` (script tag de budget.js, placeholder del
+campo de presupuesto exacto), `js/app.js` (valor de ejemplo del botón
+"alto en proteína"), `assets/css/style.css` (fix del margen de la barra
+sticky), `tests/budget-mode.test.js`/`tests/plan-generator.
+characterization.test.js`/`tests/shopping-cost.test.js`/`tests/
+pantry.test.js` (sandboxes con budget.js, aserciones actualizadas a
+purchaseCost, golden-master recapturado). **No tocado**:
+`js/engine/dish-selector.js` (la cascada de selección, Capa A, sigue
+exactamente igual), `js/core/pantry.js` (ya tenía todo lo necesario,
+`resolvePurchaseCostWithPantry`/`getPantryState`, sin cambios).
+
 ## Exploración descartada: Google AI Studio para el rediseño (2026-08-04)
 
 Antes de implementar el rediseño v2 directamente, se probó pedirle a
@@ -564,13 +897,15 @@ para tocar código de producción de este proyecto.
    pena corregirlo a mano: cada ingrediente que se resuelva contra un
    producto real en Fase 1 trae su propio tamaño de envase y hace
    irrelevante su entrada en `packaging.js`.
-8. **Interacción sutil entre `enforce25PercentRule` y `enforceBudgetCap`
-   en `plan-generator.js`.** `enforceBudgetCap` corre DESPUÉS de la
-   última comprobación del cap del 25% y solo recorta ítems — puede bajar
-   el coste total sin tocar un ítem grande, dejando su % sobre el total
-   FINAL por encima del cap del tier sin que se vuelva a recortar. No es
-   un fallo silencioso: `verifyPlanFeasibility()` sí lo detecta de forma
-   consistente (verificado con 500 corridas) y lo añade a
+8. **Interacción sutil entre `enforce25PercentRule` y el recorte de
+   presupuesto en `plan-generator.js`.** El recorte de presupuesto
+   (`enforcePurchaseBudgetCap` desde 2026-08-08 — antes `enforceBudgetCap`,
+   mismo problema, ver sección "Presupuesto de compra" más abajo) corre
+   DESPUÉS de la última comprobación del cap del 25% y solo recorta ítems
+   — puede bajar el coste total sin tocar un ítem grande, dejando su %
+   sobre el total FINAL por encima del cap del tier sin que se vuelva a
+   recortar. No es un fallo silencioso: `verifyPlanFeasibility()` sí lo
+   detecta de forma consistente (verificado con 500 corridas) y lo añade a
    `report.violations` como `{type:'cap25', ...}` — pero el propio
    generador nunca vuelve a intentar corregirlo. Caracterizado con un
    test (`plan-generator.characterization.test.js`), no corregido — es
@@ -686,105 +1021,143 @@ llamadas con el mismo input pueden aterrizar en tiers distintos por azar.
   privado) — hoy solo se ve en el aviso posterior a "Usar este plan hoy",
   no en las acciones de comprar/cocinar del historial.
 
-## Session handoff (2026-08-07)
+## Session handoff (2026-08-08)
 
 Escrito para que la siguiente sesión/chat pueda continuar sin haber visto
 esta conversación. No repite lo de arriba en detalle — apunta a la
 sección correspondiente. **Para orientarse en el código en sí, antes de
-leer archivo por archivo, usa el grafo de Graphify** (regenerado hoy,
+leer archivo por archivo, usa el grafo de Graphify** (regenerado al
+final de esta sesión — 348 nodes/554 edges/34 communities, incluye ya
+`budget.js`/`meal-schedule.js`/`render-schedule.js` y los tests nuevos —
 `graphify explain "<símbolo>"` / `graphify query "<pregunta>"` desde esta
-carpeta — ver `PythonProject/docs/graphify.md`).
+carpeta, ver `PythonProject/docs/graphify.md`). **Si se toca código
+después de esto, el grafo vuelve a desactualizarse** — no se actualiza
+solo; comprobar "Built from commit" en `graphify-out/GRAPH_REPORT.md`
+contra `git log -1` antes de fiarse, y regenerar con `graphify update .
+--no-cluster && graphify cluster-only .` si hace falta.
 
 **Estado del proyecto**: prototipo funcional, motor basado en `dishes.js`
-(datos fabricados por asignación de masa para macros, reales para
-precio/coste de compra), con una red de tests (78, ver "Tests" arriba), un
-rediseño visual v2 + layout mobile ya en producción, y desde esta sesión
-una **Despensa completa** (ciclo de vida en 3 etapas: usar plan → marcar
-compra → marcar cocinado por comida) con una arquitectura de arranque
-endurecida en 4 capas de defensa (ver sección dedicada arriba).
+(datos fabricados por asignación de masa para macros, precio/coste de
+compra reales), con una red de tests (126, ver "Tests" arriba), un
+rediseño visual v2 + layout mobile, una **Despensa completa** (3 etapas),
+un **horario de comidas completo** (hora por toma, orden cronológico), y
+desde esta sesión un **presupuesto que significa dinero de COMPRA, no de
+uso** (ver "Presupuesto de compra (purchase budget)" arriba) — el bug
+real donde un plan de "8€" podía costar 19€ reales en caja ya no puede
+ocurrir; la despensa ahora afecta si un plan es asequible.
 
 **Commit/branch/deploy actuales**: ver `git log -1` y la cabecera de este
 archivo — el commit `ef1191ae` ("Add pantry (despensa) feature...") sobre
-`main` ya incluye TODO el trabajo de despensa v1→v2 y el hardening de
-inicialización (verificado con `git show --stat`/`git diff` — working
-tree limpio salvo basura preexistente sin relación en la raíz del repo,
-ver más abajo), pusheado a `origin`
-(`github.com/andreyostrik228/OfflineNutritionHelper`), publicado vía
-GitHub Pages en `https://andreyostrik228.github.io/OfflineNutritionHelper/`
-(deploy automático de GitHub al servir directamente desde `main`, sin
-GitHub Actions ni Cloudflare — no hay ningún proyecto de Cloudflare
-asociado a este repo). Si `git log -1` muestra un commit distinto a
-`ef1191ae`, alguien tocó el repo después — revisar antes de asumir que
-esta foto sigue vigente. **Nota**: hay basura suelta sin relación en la
-raíz del repo (archivos con nombres tipo fragmentos de código JS,
-preexistente desde antes de esta sesión, nunca comiteada a propósito) —
-no confundirla con trabajo en curso, no tocarla sin que se pida.
+`main` sigue siendo el último publicado en `origin`
+(`github.com/andreyostrik228/OfflineNutritionHelper`, GitHub Pages en
+`https://andreyostrik228.github.io/OfflineNutritionHelper/`). **NINGÚN
+trabajo desde entonces está comiteado** — ni el horario de comidas
+(2026-08-07) ni el presupuesto de compra (2026-08-08): son cambios
+locales acumulados sin commitear (`git status` lista los archivos
+modificados/nuevos exactos). No asumas que algo de esto está en
+`main`/publicado sin comprobar `git log`/`git status` primero. Si
+`git log -1` muestra un commit distinto a `ef1191ae`, alguien comiteó
+desde entonces — revisar antes de asumir que esta foto sigue vigente.
+**Nota**: sigue habiendo basura suelta sin relación en la raíz del repo
+(preexistente, nunca comiteada a propósito) — no tocarla sin que se pida.
 
-**Qué funciona**: generación de plan completo (5 tomas, presupuesto,
-tiempo, macros), lista de la compra con `purchaseCost` real y ahora
-consciente de despensa, modo "sin cocinar", catálogo de productos, la
-Despensa completa (comprar → cocinar por comida → deshacer, verificado
-con localStorage vacío/viejo/corrupto/válido), los 78 tests.
+**Qué funciona**: generación de plan completo (5 tomas, horario, macros)
+con presupuesto de COMPRA real (consciente de despensa, recorta hasta
+caber o reporta inviabilidad honesta), lista de la compra trazable al
+mismo número que usó el generador, modo "sin cocinar" (con horario, sin
+presupuesto — nunca tuvo lógica de coste), catálogo de productos, la
+Despensa completa (comprar → cocinar por comida → deshacer, ahora también
+influye en qué planes son asequibles), los 126 tests.
 
 **Qué NO funciona / sigue pendiente**: macros de ingrediente siguen
 fabricadas (known issue #2, el problema central que la migración de
 `ROADMAP.md` ataca); `mainProt` mal reportado (issue #5); hueco de
-cobertura en `packaging.js` (issue #7); interacción cap25/enforceBudgetCap
-sin corregir (issue #8); Despensa sin conectar a "sin cocinar" ni a
-`dish-selector.js` (issue #9, por diseño, no descuido).
+cobertura en `packaging.js` (issue #7); interacción cap25/recorte de
+presupuesto sin corregir (issue #8, mismo problema de siempre, ahora en
+`enforcePurchaseBudgetCap` en vez de `enforceBudgetCap`); Despensa sigue
+sin influir en la SELECCIÓN de plato (Capa A, `dish-selector.js` —
+decisión deliberada, ver sección "Presupuesto de compra"); no hay
+recordatorios de cocina separados (arquitectura lista desde el horario de
+comidas, UI no construida a propósito); **bug de CSS nuevo encontrado y
+delegado, no corregido en esta sesión**: `.actions` (fila de botones del
+formulario) desborda el viewport ~10px en mobile (375px) — tarea de
+seguimiento creada (`task_089a68aa`), no relacionado con el presupuesto.
 
-**Qué se cambió esta sesión (2026-08-06/07)**: ver las 2 secciones
-dedicadas arriba (Despensa v1→v2, y el bug arquitectónico + hardening de
-inicialización). Código: `js/core/pantry.js` (nuevo), `js/ui/render-
-pantry.js` (nuevo), `js/app.js` (reescrito — orden de arranque + 
-`safeInit`), `js/ui/render-shopping-list.js` (integración con despensa,
-con fallback), `index.html`, `assets/css/style.css`. Test: `tests/
-pantry.test.js` (nuevo, 33 tests) + `tests/run-tests.js` (registro).
-Documentación: este archivo, `ROADMAP.md`, `PROJECT.md`,
-`PythonProject/docs/graphify.md`. Grafo: regenerado (frontend + combinado).
-Ningún cambio en `PythonProject` más allá de `docs/graphify.md`.
+**Qué se cambió esta sesión (2026-08-08, presupuesto de compra)**: ver la
+sección dedicada arriba para el detalle completo (modelo, por qué,
+archivos, recalibración de presets, edge cases). Resumen de archivos:
+nuevo `js/core/budget.js`, `tests/budget-purchase.test.js`; modificados
+`js/engine/plan-generator.js` (rediseño del presupuesto), `js/ui/
+render-shopping-list.js` (delega en budget.js), `js/ui/render-insights.js`
+(copy), `js/data/budget-presets.js` (recalibrado 5/8/12→15/20/28),
+`index.html`, `js/app.js`, `assets/css/style.css` (fix del margen de la
+barra sticky, bug de la sesión anterior), y los 4 archivos de test que ya
+tocaban plan-generator.js/render-shopping-list.js (sandboxes + golden-
+master recapturado). `js/engine/dish-selector.js` y `js/core/pantry.js`
+NO se tocaron. Documentación: este archivo. `PROJECT.md`/`ROADMAP.md`
+actualizados en la misma pasada. Ningún cambio en `PythonProject`, ni en
+`poc/`.
 
-**Qué se verificó y qué no**: los 78 tests se re-ejecutaron y pasan
-(verificado, no heredado). El ciclo de vida completo de la Despensa
-(comprar sin cocinar → recargar página → cocinar una comida → deshacer)
-y las 4 combinaciones de `localStorage` (vacío/v1 viejo/corrupto/v2
-válido) se verificaron EN VIVO en un navegador real (Chrome vía la
-herramienta de preview), no solo por test — incluyendo lectura directa de
-`localStorage` para confirmar los números exactos. El rediseño visual
-v2/mobile (sesión 2026-08-04) sigue sin verificación por captura de
-pantalla real — limitación de entorno que no ha cambiado, ver sección de
-esa fecha arriba.
+**Qué se verificó y qué no**: los 126 tests se re-ejecutaron y pasan
+(verificado, no heredado) — 12 nuevos de `budget-purchase.test.js`, 2
+golden-master recapturados, sin regresión en los 112 restantes. El
+presupuesto de compra se verificó EN VIVO reproduciendo el bug exacto
+reportado (budget=8€ personalizado) y confirmando que "Compra necesaria"
+queda dentro de presupuesto con "Consumo real" mostrado aparte; el efecto
+de la despensa se verificó EN VIVO añadiendo stock manual a un ingrediente
+del plan y viendo "Coste de compra" bajar exactamente el precio del
+paquete sin tocar "Coste de uso"; el ciclo completo "Usar plan hoy" →
+"Marcar compra como hecha" → "Marcar como cocinado" se verificó EN VIVO
+con lectura directa de `localStorage` confirmando que los números
+coinciden exactamente con lo mostrado en pantalla. Verificado en mobile
+(375×812) y desktop, 0 errores de consola reales. **Nota técnica de la
+verificación**: mismo problema de caché HTTP persistente del navegador de
+sesiones anteriores (ver sección de horario de comidas) — se resolvió
+igual, recargando con `fetch(...,{cache:'no-store'})` + reescritura de
+las URLs de script/link con un parámetro único; además, `document.write`
+sobre un documento ya cargado en emulación mobile deja
+`document.documentElement.clientWidth`/`window.innerWidth` inconsistentes
+con el tamaño real del viewport hasta que se reaplica `resize_window` —
+detectado comparando contra `window.visualViewport.width` (que sí era
+correcto todo el tiempo), y resuelto reaplicando `resize_window` después
+de cada recarga antes de medir layout. Ninguno de los dos es un bug de la
+aplicación. El rediseño visual v2/mobile (sesión 2026-08-04) sigue sin
+verificación por captura de píxeles — mismo problema de compositing del
+panel de navegador que todas las sesiones anteriores.
 
 **Decisiones de arquitectura que no hay que perder**: la comparación
 completa de Estrategia A/B/C y por qué se eligió B está en `ROADMAP.md`
 — no la repitas de memoria ni la reabras sin releer esa sección primero.
+La distinción usageCost/purchaseCost/budget (ahora budget=purchaseCost,
+no usageCost) está fijada en las cabeceras de `js/core/pricing.js`,
+`js/core/budget.js` y `js/engine/plan-generator.js` — no la reinventes,
+léela primero si vas a tocar precios/presupuesto.
 
-**Prioridad actual**: la Despensa está completa y endurecida — el
-siguiente paso REAL sigue siendo Fase 1 del roadmap de migración (ampliar
-cobertura de datos reales, ver `ROADMAP.md`), que no ha avanzado esta
-sesión. Si en vez de eso se sigue trabajando sobre la Despensa, lo
-siguiente natural es conectarla a "sin cocinar" o mostrar los fallos de
-`localStorage` de forma más visible (ver "Próximos pasos" arriba) — no
-hacer `dish-selector.js` consciente de despensa sin discutirlo primero
-(es la fase de más riesgo, deliberadamente aplazada).
+**Prioridad actual**: sigue siendo Fase 1 del roadmap de migración
+(ampliar cobertura de datos reales, ver `ROADMAP.md`), que no ha avanzado
+en ninguna de las últimas 3 sesiones (Despensa, horario, presupuesto —
+todas ortogonales a la migración de datos). Si se sigue trabajando sobre
+lo que ya existe: el bug de CSS de `.actions` en mobile queda pendiente
+(`task_089a68aa`); hacer `dish-selector.js` consciente de despensa (para
+que la SELECCIÓN de plato, no solo el recorte final, prefiera activamente
+ingredientes ya en casa) sigue siendo la fase de más riesgo,
+deliberadamente aplazada — no empezarla sin discutirlo primero.
 
-**Qué no romper**: los `id="..."` del HTML (el JS depende de ellos
-literalmente); la separación `usageCost`/`purchaseCost`; el hecho de que
-`data.budget` nunca se relaja (es un tope duro en todos los tiers de
-`RELAXATION_TIERS`); los 78 tests deben seguir pasando después de
-cualquier cambio en `js/core/`, `js/engine/`, `js/ui/`, o `assets/css/
-style.css`. Específico de la Despensa: `applyPlanToPantry()` y
-`markHistoryEntryCooked()` **ya no existen** (eliminadas al pasar de v1 a
-v2) — si algo referencia esos nombres, es código desactualizado, no
-código correcto que haya que restaurar; el orden de arranque en
-`js/app.js` (submit del formulario cableado ANTES de cualquier módulo
-opcional) y el patrón `safeInit()` son intencionales, no accidentales —
-no revertir a un solo bloque `DOMContentLoaded` sin aislamiento.
+**Qué no romper**: los `id="..."` del HTML; `data.budget` ahora es
+purchaseCost, no usageCost — cualquier código nuevo que lea `data.budget`
+esperando usageCost está usando el número equivocado; `enforcePurchaseBudgetCap`
+reemplazó a `enforceBudgetCap` (ya no existe, no restaurarlo);
+`js/core/budget.js` es la ÚNICA fuente de verdad para agregación +
+purchaseCost del día — no reimplementar esa lógica en otro sitio; los 126
+tests deben seguir pasando después de cualquier cambio en `js/core/`,
+`js/engine/`, `js/ui/`, o `assets/css/style.css`. Específico de la
+Despensa: `applyPlanToPantry()` y `markHistoryEntryCooked()` **ya no
+existen** (v1→v2); el orden de arranque en `js/app.js` y `safeInit()` son
+intencionales — no revertir a un solo bloque `DOMContentLoaded` sin
+aislamiento.
 
 Lee `PROJECT.md` y `ROADMAP.md` además de este archivo. Para el sistema
 completo (con el pipeline Python), lee también `PythonProject/docs/
-architecture.md` y `PythonProject/docs/data_flow.md`. Para navegar el
-código en sí, el grafo de Graphify (`PythonProject/docs/graphify.md`) es
-más rápido que leer archivo por archivo. No asumas que el estado descrito
-aquí sigue siendo exacto sin verificar contra el código — esto es una
-foto fija a 2026-08-07.
+architecture.md` y `PythonProject/docs/data_flow.md`. No asumas que el
+estado descrito aquí sigue siendo exacto sin verificar contra el código —
+esto es una foto fija a 2026-08-08.

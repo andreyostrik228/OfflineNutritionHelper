@@ -35,5 +35,11 @@ require("./ingredient-packaging-coverage.test").run({ test: test });
 console.log("\npantry.test.js");
 require("./pantry.test").run({ test: test });
 
+console.log("\nmeal-schedule.test.js");
+require("./meal-schedule.test").run({ test: test });
+
+console.log("\nbudget-purchase.test.js");
+require("./budget-purchase.test").run({ test: test });
+
 console.log("\n" + passed + " passed, " + failed + " failed");
 if (failed > 0) process.exit(1);

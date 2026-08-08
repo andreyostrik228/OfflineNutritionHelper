@@ -2,39 +2,47 @@
  * js/data/budget-presets.js
  * ─────────────────────────────────────────────────────────────────────────
  * Presets de presupuesto diario (Ajustado/Equilibrado/Amplio) para no
- * obligar al usuario a introducir una cifra exacta si no la tiene. NO son
- * tres números elegidos a ojo: se calibraron ejecutando priceDishAtStore()
- * (js/core/pricing.js, la misma función que ya usa dish-selector.js) sobre
- * cada plato real de DISH_DB, a ración nativa sin escalar, y combinando
- * percentiles de coste entre las 5 tomas del día (desayuno+comida+cena+
- * snack+snack2):
+ * obligar al usuario a introducir una cifra exacta si no la tiene.
  *
- *   percentil combinado   coste/día   preset
- *   P10  (barato)          €4.50   -> Ajustado  (redondeado a 5, con margen)
- *   P50  (mediana)         €6.93   -> Equilibrado (redondeado a 8)
- *   P85  (generoso)        €9.85   -> Amplio    (redondeado a 12)
+ * ── Recalibrados 2026-08-07: son importes de COMPRA, no de uso ─────────
+ * `amount` alimenta `data.budget`, que desde el rediseño del presupuesto
+ * (ver js/engine/plan-generator.js, "Presupuesto: coste de compra, no de
+ * uso") significa cuánto está dispuesto a pagar el usuario HOY en caja
+ * (purchaseCost: paquetes reales enteros, descontando despensa) — YA NO
+ * es un tope de coste de ingredientes técnicamente consumidos (usageCost).
+ * Los valores anteriores (5/8/12, calibrados en 2026-08-03 contra
+ * usageCost de catálogo sin escalar) se quedaron pequeños de la noche a
+ * la mañana con el cambio de semántica: un plan que "cabía" en 8€ de
+ * usageCost podía necesitar comprar 19€ reales en paquetes — exactamente
+ * el bug que motivó el rediseño (ver STATE.md). Recalibrados aquí contra
+ * el purchaseCost REAL de planes generados de verdad, no contra un precio
+ * de catálogo sin escalar como antes:
  *
- * El margen añadido sobre cada percentil no es arbitrario: en tiempo de
- * generación los platos se ESCALAN hasta 1.5x para acercarse al objetivo
- * calórico (MAX_PORTION_SCALE, dish-selector.js), así que el coste real de
- * un plan generado casi siempre supera el coste nativo de catálogo.
+ *   Metodología: generateDietPlan() ejecutado 120 veces (6 perfiles
+ *   corte/recomp/volumen × 20 combinaciones de tiempo de cocina/sabor),
+ *   presupuesto deliberadamente generoso (50€, para que el generador NUNCA
+ *   recorte por presupuesto y el purchaseCost medido sea el de un plan
+ *   "natural" sin restricción) y despensa VACÍA (peor caso, usuario nuevo)
+ *   — percentiles del purchaseCost real resultante:
  *
- * Verificado generando planes reales con estos 3 valores sobre perfiles de
- * corte/mantenimiento/volumen (2000/2600/3400 kcal): Ajustado fuerza
- * relajación de restricciones (report.status "adjusted"/"minimal", nunca
- * "unavailable"), Equilibrado es mayormente "adjusted"/"perfect", Amplio
- * salió "perfect" (0 violaciones) en los tres perfiles probados.
+ *   percentil combinado   purchaseCost/día   preset
+ *   P10  (barato)              €14.65     -> Ajustado    (15)
+ *   P50  (mediana)              €20.41    -> Equilibrado (20)
+ *   P85  (generoso)             €27.06    -> Amplio      (28)
  *
- * ── IMPORTANTE: son importes de USO, no de COMPRA ──────────────────────
- * `amount` alimenta `data.budget`, exactamente el mismo campo que ya
- * consumían plan-generator.js/dish-selector.js antes de que existieran
- * estos presets — es decir, sigue siendo un tope de coste de INGREDIENTES
- * REALMENTE CONSUMIDOS (usageCost), no el coste de comprar los envases
- * enteros necesarios (purchaseCost, ver js/core/pricing.js y
- * js/ui/render-shopping-list.js). Elegir "Amplio" no cambia lo que se paga
- * en caja por packaging — solo amplía qué platos puede elegir el
- * generador. Ver la cabecera de js/core/pricing.js para la distinción
- * completa.
+ * A diferencia de la calibración anterior (percentiles de coste de
+ * catálogo SIN escalar, con un margen añadido a mano para compensar el
+ * escalado 1.5x de las raciones), esta mide directamente el purchaseCost
+ * YA con el escalado y la agregación de paquetes aplicados — no hace
+ * falta añadir margen aparte, el número ya es el real.
+ *
+ * Verificado generando planes reales con estos 3 valores (6 perfiles × 8
+ * combinaciones de tiempo de cocina = 48 corridas por preset): Ajustado
+ * 25 perfect / 19 adjusted / 4 minimal (nunca "unavailable", 0 violaciones
+ * de presupuesto), Equilibrado 29/15/4, Amplio 31/16/1 — mismo patrón que
+ * la calibración original (Ajustado fuerza más ajuste, Amplio casi
+ * siempre "perfect"), solo que ahora garantizando que "caber en el
+ * preset" signifique de verdad "esto es lo que se paga en caja".
  *
  * ── Preparado para más periodos, no solo "día" ─────────────────────────
  * BUDGET_PRESETS está indexado por periodo de planificación aunque hoy
@@ -54,18 +62,18 @@ var BUDGET_PRESETS = {
   day: {
     small: {
       label: "Ajustado",
-      amount: 5,
-      hint: "Cubre lo esencial; el generador prioriza proteína por euro."
+      amount: 15,
+      hint: "Cubre lo esencial; el generador prioriza proteína por euro y puede recortar ración para no pasarse en caja."
     },
     medium: {
       label: "Equilibrado",
-      amount: 8,
-      hint: "Variedad razonable la mayoría de los días."
+      amount: 20,
+      hint: "Variedad razonable la mayoría de los días, sin sorpresas al pagar."
     },
     high: {
       label: "Amplio",
-      amount: 12,
-      hint: "Casi cualquier plato del catálogo, sin ajustes."
+      amount: 28,
+      hint: "Casi cualquier plato del catálogo, sin ajustes de presupuesto."
     }
   }
 };

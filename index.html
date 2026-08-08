@@ -58,6 +58,17 @@
   </svg>
 
   <div class="container">
+    <!-- ══ PRÓXIMA COMIDA (mobile): barra compacta sticky con SOLO la
+         próxima toma y su hora — en mobile el formulario ocupa toda la
+         pantalla antes de llegar a la franja de horario completa
+         (#scheduleTimeline, dentro del panel de resultados), así que sin
+         esto el usuario tendría que desplazarse mucho para ver "¿a qué
+         hora como ahora?". Oculta hasta que hay un plan; solo visible en
+         mobile (ver CSS) — en desktop el resumen ya está cerca de arriba.
+         Datos calculados por js/core/meal-schedule.js, pintados por
+         renderScheduleTimeline() (ver js/ui/render-schedule.js), igual
+         que la franja completa — nunca lógica duplicada. ══ -->
+    <div class="next-meal-sticky" id="nextMealSticky" hidden></div>
     <main>
 
     <section class="hero">
@@ -159,7 +170,7 @@
 
               <div class="budget-custom-field" id="budgetCustomField" hidden>
                 <label for="budgetCustom">Presupuesto exacto (€/día)</label>
-                <input id="budgetCustom" type="number" min="2" max="100" step="0.1" placeholder="ej. 9.50">
+                <input id="budgetCustom" type="number" min="2" max="100" step="0.1" placeholder="ej. 20">
               </div>
             </div>
 
@@ -171,6 +182,16 @@
                 <option value="35">Normal (&lt;= 35 min)</option>
                 <option value="60">Amplio (&lt;= 60 min)</option>
               </select>
+            </div>
+
+            <div class="field">
+              <label for="wakeTime">Hora de despertar</label>
+              <input id="wakeTime" type="time" value="07:00">
+            </div>
+
+            <div class="field">
+              <label for="sleepTime">Hora de dormir</label>
+              <input id="sleepTime" type="time" value="23:00">
             </div>
 
             <div class="field full">
@@ -247,6 +268,13 @@
             <div class="sub" id="sumFatsSub">Esperando cálculo</div>
           </div>
         </div>
+
+        <!-- ══ HORARIO DEL DÍA: franja compacta con la hora de cada toma,
+             resalta la próxima — pensada para verse sin desplazarse, sobre
+             todo en mobile. Datos ya calculados en meal.time/timeMinutes
+             (js/core/meal-schedule.js), esto solo los pinta. Vacía/oculta
+             hasta que hay un plan. Ver js/ui/render-schedule.js ══ -->
+        <div class="schedule-timeline" id="scheduleTimeline" hidden></div>
 
         <div class="warning" id="warningBox" aria-live="polite"></div>
 
@@ -396,12 +424,15 @@
 <script src="js/core/utils.js"></script>
 <script src="js/core/pricing.js"></script>
 <script src="js/core/pantry.js"></script>
+<script src="js/core/budget.js"></script>
 <script src="js/core/calculator.js"></script>
 <script src="js/core/meal-helpers.js"></script>
+<script src="js/core/meal-schedule.js"></script>
 <script src="js/engine/dish-selector.js"></script>
 <script src="js/engine/plan-generator.js"></script>
 <script src="js/engine/no-cook-generator.js"></script>
 <script src="js/ui/render.js"></script>
+<script src="js/ui/render-schedule.js"></script>
 <script src="js/ui/render-shopping-list.js"></script>
 <script src="js/ui/render-pantry.js"></script>
 <script src="js/ui/render-insights.js"></script>

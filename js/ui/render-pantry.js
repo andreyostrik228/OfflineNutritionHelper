@@ -272,9 +272,16 @@ function renderPurchaseBlock(entry, aggregated) {
 function renderMealsBlock(entry) {
   var rows = entry.meals.map(function (meal) {
     var cookedLabel = meal.cooked ? "Cocinado &#10003;" : "Marcar como cocinado";
+    // meal.time solo existe en planes guardados después de añadir el
+    // horario (js/core/meal-schedule.js) -- las entradas de historial
+    // anteriores a esta sesión simplemente no lo traen, y el badge se
+    // omite sin más (nunca "undefined" visible).
+    var timeBadge = typeof meal.time === "string"
+      ? '<span class="pantry-history-item__meal-time">' + escapeHtml(meal.time) + '</span>'
+      : '';
     return (
       '<li class="pantry-history-item__meal-row' + (meal.cooked ? ' pantry-history-item__meal-row--cooked' : '') + '">' +
-        '<span class="pantry-history-item__meal-label">' + escapeHtml(meal.label) + '</span>' +
+        '<span class="pantry-history-item__meal-label">' + timeBadge + escapeHtml(meal.label) + '</span>' +
         '<button type="button" class="pantry-history-item__meal-btn" data-action="toggle-meal-cooked" data-id="' + escapeHtml(entry.id) + '" data-meal-key="' + escapeHtml(meal.key) + '">' + cookedLabel + '</button>' +
       '</li>'
     );

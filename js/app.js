@@ -78,6 +78,8 @@ document.addEventListener("DOMContentLoaded", function () {
   var mealsContainer= document.getElementById("mealsContainer");
   var warningBox    = document.getElementById("warningBox");
   var insightsList  = document.getElementById("insightsList");
+  var scheduleTimelineEl = document.getElementById("scheduleTimeline");
+  var nextMealStickyEl   = document.getElementById("nextMealSticky");
 
   var verifiedGrid        = document.getElementById("verifiedGrid");
   var verifiedCount       = document.getElementById("verifiedCount");
@@ -166,6 +168,9 @@ document.addEventListener("DOMContentLoaded", function () {
     warningBox.textContent = "";
     if (statusText) statusText.textContent = "";
     if (shoppingPanel) shoppingPanel.hidden = true;
+    safeInit("schedule-clear", function () {
+      if (typeof clearScheduleUI === "function") clearScheduleUI();
+    });
 
     // No hay ya ningún plan mostrado que "Usar este plan hoy" pueda usar
     // — pero la despensa NO se toca: es stock real que el usuario posee,
@@ -205,8 +210,26 @@ document.addEventListener("DOMContentLoaded", function () {
         var profile = calculateProfile(data);
         var result  = generateDietPlan(profile, data);
 
+        // Horario: se calcula DESPUÉS de generar el plan, nunca dentro de
+        // generateDietPlan() — así el generador (probado a fondo, ver
+        // STATE.md) no cambia de comportamiento por esto. Reordena
+        // result.meals cronológicamente (antes: orden de categoría,
+        // desayuno/comida/cena/snack/snack2 — ver js/core/meal-schedule.js)
+        // y añade meal.time/meal.timeMinutes a cada uno. Aislado en
+        // safeInit: si fallara, el plan se sigue mostrando con normalidad,
+        // solo sin horario (mismo principio que el resto de módulos
+        // opcionales, ver cabecera del archivo).
+        safeInit("meal-schedule", function () {
+          if (typeof computeMealSchedule === "function") {
+            result.meals = computeMealSchedule(result.meals, readScheduleSettings());
+          }
+        });
+
         renderSummary(profile, result.total);
         renderMeals(result.meals);
+        safeInit("schedule-timeline-render", function () {
+          if (typeof renderScheduleTimeline === "function") renderScheduleTimeline(result.meals);
+        });
         renderInsights(profile, result, data);
         renderWarnings(profile, result, data);
         if (typeof renderShoppingList === "function") {
@@ -263,7 +286,7 @@ document.addEventListener("DOMContentLoaded", function () {
       customRadio.checked = true;
       updateBudgetCustomVisibility();
     }
-    if (budgetCustomInput) budgetCustomInput.value = 10;
+    if (budgetCustomInput) budgetCustomInput.value = 24; // entre Equilibrado(20) y Amplio(28) -- ver js/data/budget-presets.js
   }
 
   // ── Botón: resetear ───────────────────────────────────────────────────
@@ -296,6 +319,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
   budgetModeRadios.forEach(function (radio) {
     radio.addEventListener("change", updateBudgetCustomVisibility);
+  });
+
+  // ── Horario del día (franja de la parte superior del panel de resultados) ─
+  safeInit("schedule-init", function () {
+    if (scheduleTimelineEl && typeof initScheduleRefs === "function") {
+      initScheduleRefs({ scheduleTimeline: scheduleTimelineEl, nextMealSticky: nextMealStickyEl });
+    }
   });
 
   // ── Contador informativo de la base de platos ────────────────────────

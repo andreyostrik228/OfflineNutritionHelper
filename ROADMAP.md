@@ -2,7 +2,10 @@
 
 ## Current status
 
-**Stage:** working prototype, updated 2026-08-07. Core architecture
+**Stage:** working prototype, updated 2026-08-08 (budget redesigned to
+mean purchase cost, not usage cost — uncommitted, along with the meal
+schedule feature from the previous session, see `STATE.md` session
+handoff). Core architecture
 decision (2026-08-04): progressive migration from `dishes.js` (fabricated
 macros) to real Mercadona products (see "Decisión de arquitectura" below).
 Phase 0 of that migration (test safety net) is complete; Fase 1 (widen
@@ -47,9 +50,11 @@ Dataset is 334 dishes / 81 ingredient roles (unchanged since 2026-08-03).
   `js/ui/render-pantry.js`, localStorage-backed, 3-stage lifecycle (save
   plan → mark purchase → mark each meal cooked) after a v1 single-action
   design produced wrong data in a real-world "bought but never cooked"
-  scenario. Deliberately not connected to `dish-selector.js` (budget
-  selection stays pantry-unaware) or no-cook mode. 33 new tests. Full
-  design record, including why v1 was rejected, in `STATE.md`.
+  scenario. Deliberately not connected to `dish-selector.js` (dish
+  SELECTION stays pantry-unaware — as of 2026-08-08 the budget check that
+  happens after selection IS pantry-aware, see below) or no-cook mode. 33
+  new tests. Full design record, including why v1 was rejected, in
+  `STATE.md`.
 - **App-startup architecture hardening (2026-08-07)**: the same real-world
   test that motivated the despensa redesign also surfaced a real
   architectural bug — one malformed `localStorage` entry could abort the
@@ -59,6 +64,23 @@ Dataset is 334 dishes / 81 ingredient roles (unchanged since 2026-08-03).
   validation at the source, per-row render isolation, per-module
   `safeInit()`, and critical-path listeners wired before any optional
   module) rather than a single added try/catch. Full detail in `STATE.md`.
+- **Meal schedule (2026-08-07)**: `js/core/meal-schedule.js` +
+  `js/ui/render-schedule.js` — each generated meal gets a real clock time
+  (wake/sleep-anchored, evenly spaced, chronologically ordered), computed
+  after the generator returns so `plan-generator.js`/`dish-selector.js`
+  are untouched. Fixed a pre-existing category-order rendering bug as
+  part of the same change. Mobile-only sticky "next meal" bar; time
+  persisted through pantry history with a safe fallback for older plans.
+  36 new tests (114 total). Full design record in `STATE.md`.
+- **Budget = purchase cost, not usage cost (2026-08-08)**: `js/core/
+  budget.js` (new, shared by the generator and the shopping list) computes
+  the real aggregate purchase cost of a day-plan, pantry-aware.
+  `plan-generator.js`'s budget enforcement/scoring/feasibility-reporting
+  switched from usage cost to this — fixes a real reported bug where an
+  "8€" plan could require 19€ at checkout. Dish selection itself
+  (`dish-selector.js`) is untouched. Presets recalibrated against real
+  measured purchase cost (5/8/12 → 15/20/28). 12 new tests (126 total).
+  Full design record in `STATE.md`.
 
 ## Decisión de arquitectura: migración a productos reales (2026-08-04)
 
@@ -132,7 +154,7 @@ decisión de arquitectura de datos.
 ## Next priorities
 
 1. **P0 — Fase 1 de la migración (ver arriba).** Ampliar cobertura de datos reales es ahora la prioridad más alta y concreta — todo lo demás en el known-issues list depende de o se vuelve irrelevante por esto.
-2. **P0 — Make constraints truthful.** Treat budget, prep time, nutrition tolerance, variety, and per-item calorie cap as hard post-generation checks. Partially characterized (2026-08-04, see `STATE.md` known issue #8 — the cap25%/enforceBudgetCap interaction); fixing it properly belongs in Fase 2 of the migration above, not as an isolated patch.
+2. **P0 — Make constraints truthful.** Treat budget, prep time, nutrition tolerance, variety, and per-item calorie cap as hard post-generation checks. Budget specifically is now truthful in the sense that matters most (it's enforced against real purchase cost, not usage cost — 2026-08-08, see `STATE.md`); the remaining known gap is narrower — cap25%/budget-trim interaction (`STATE.md` known issue #8, still present under the new `enforcePurchaseBudgetCap`), and fixing that properly still belongs in Fase 2 of the migration above, not as an isolated patch.
 3. **P0 — Correct product claims and safety.** ~~Remove the current AI/guarantee claims~~ **done (2026-08-03):** branding no longer says "AI"/"Chef Mode". Still open: clear scope, contraindication guidance, and required dietary/medical constraints before personalization.
 4. **P1 — Establish an engineering foundation.** Fase 0 (2026-08-04) covers unit/characterization tests for the core engine — still missing: TypeScript, ES modules, linting, formatting, CI, package manifest.
 

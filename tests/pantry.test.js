@@ -36,12 +36,14 @@ function freshPantrySandbox() {
   ]);
 }
 
-// ── Sandbox: pricing + pantry + render-shopping-list (integración) ──────
+// ── Sandbox: pricing + pantry + budget + render-shopping-list (integración) ─
 function freshPantryShoppingListSandbox() {
   var sandbox = freshPantrySandbox();
   var fs = require("fs");
-  var code = fs.readFileSync(projPath("js/ui/render-shopping-list.js"), "utf8");
-  require("vm").runInContext(code, sandbox, { filename: "render-shopping-list.js" });
+  var vm = require("vm");
+  [projPath("js/core/budget.js"), projPath("js/ui/render-shopping-list.js")].forEach(function (file) {
+    vm.runInContext(fs.readFileSync(file, "utf8"), sandbox, { filename: file });
+  });
   return sandbox;
 }
 
@@ -55,8 +57,10 @@ function freshShoppingListSandboxNoPantry() {
     projPath("js/core/pricing.js")
   ]);
   var fs = require("fs");
-  var code = fs.readFileSync(projPath("js/ui/render-shopping-list.js"), "utf8");
-  require("vm").runInContext(code, sandbox, { filename: "render-shopping-list.js" });
+  var vm = require("vm");
+  [projPath("js/core/budget.js"), projPath("js/ui/render-shopping-list.js")].forEach(function (file) {
+    vm.runInContext(fs.readFileSync(file, "utf8"), sandbox, { filename: file });
+  });
   return sandbox;
 }
 

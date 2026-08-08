@@ -362,12 +362,18 @@ body {
    order, "goal" (7th field) and "cookTime" (9th field) each land alone in
    a 2-col grid row because the two `.field.full` fields between/after them
    force a new row — half of each of those rows goes empty. Pairing goal+
-   cookTime removes one whole wasted row at every width the form uses a
-   2-col grid (i.e. always — this isn't mobile-only). */
+   cookTime, then wakeTime+sleepTime (added with the meal-schedule feature,
+   also half-width — same reasoning applies to them), removes wasted rows
+   at every width the form uses a 2-col grid (i.e. always — this isn't
+   mobile-only). Positions below are nth-child in DOM/source order:
+   1 age, 2 sex, 3 weight, 4 height, 5 activity, 6 workouts, 7 goal,
+   8 budget (full), 9 cookTime, 10 wakeTime, 11 sleepTime, 12 taste (full). */
 .form-grid .field:nth-child(7)  { order: 1; } /* goal */
 .form-grid .field:nth-child(9)  { order: 2; } /* cookTime — moved up, pairs with goal */
-.form-grid .field:nth-child(8)  { order: 3; } /* budget (full) — moved after cookTime */
-.form-grid .field:nth-child(10) { order: 4; } /* taste (full) */
+.form-grid .field:nth-child(10) { order: 3; } /* wakeTime — pairs with sleepTime */
+.form-grid .field:nth-child(11) { order: 4; } /* sleepTime */
+.form-grid .field:nth-child(8)  { order: 5; } /* budget (full) — moved after the half-width fields */
+.form-grid .field:nth-child(12) { order: 6; } /* taste (full) */
 
 label {
   font-size: 11px;
@@ -1034,6 +1040,156 @@ button:focus-visible {
   letter-spacing: 0;
   font-variant-numeric: tabular-nums;
   margin-top: 3px;
+}
+
+/* Barra compacta sticky de "próxima comida" -- SOLO mobile (ver media
+   query abajo). En desktop el resumen de horario ya está a un scroll
+   corto (formulario y resultados van lado a lado); en mobile el
+   formulario ocupa toda la pantalla antes de llegar a los resultados, así
+   que sin esto ver "¿a qué hora como ahora?" costaría varias pantallas de
+   scroll -- justo lo que se pidió evitar. Oculta hasta que hay un plan
+   (ver render-schedule.js). */
+.next-meal-sticky {
+  display: none;
+}
+
+/* ══ Horario del día ══════════════════════════════════════════
+   Franja compacta arriba del todo (justo debajo de las 4 tarjetas de
+   macros) con la hora de cada toma, más el badge de hora dentro de cada
+   meal-card. Clases generadas por js/ui/render-schedule.js. Los tiempos
+   en sí van en JetBrains Mono, igual que kcal/gramos/precios — coherente
+   con el resto del sistema de tipografía (ver cabecera del archivo). */
+.schedule-timeline {
+  margin-bottom: var(--space-5);
+}
+
+.schedule-timeline__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.schedule-timeline__item {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 8px 12px;
+  border-width: 1px;
+  border-style: solid;
+  border-color: var(--line-strong);
+  border-radius: 999px;
+  background: var(--paper-raised);
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+@media (hover: hover) {
+  .schedule-timeline__item:hover {
+    border-color: var(--ink-faint);
+  }
+}
+
+.schedule-timeline__time {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.schedule-timeline__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.schedule-timeline__next-tag {
+  display: none; /* solo aporta info visual -- el estilo --next ya distingue */
+}
+
+.schedule-timeline__item--next {
+  border-color: var(--green);
+  background: var(--green-wash);
+}
+
+.schedule-timeline__item--next .schedule-timeline__time,
+.schedule-timeline__item--next .schedule-timeline__label {
+  color: var(--green-deep);
+}
+
+.schedule-timeline__item--next .schedule-timeline__next-tag {
+  display: inline;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--green-deep);
+}
+
+.schedule-timeline__note {
+  margin: var(--space-2) 0 0;
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+
+/* Badge de hora dentro de la cabecera de cada meal-card */
+.meal-head__title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.meal-time-badge {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--clay-wash);
+  color: var(--clay-deep);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Nota "empieza a cocinar sobre las HH:MM" -- preparado para una futura
+   pantalla de recordatorios de cocina (ver cabecera de meal-schedule.js),
+   hoy solo una línea discreta bajo la cabecera de la tarjeta. */
+.meal-cook-note {
+  margin-bottom: var(--space-3);
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+
+.meal-cook-note strong {
+  color: var(--ink-soft);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Mismo badge, reutilizado en la cabecera de cada toma de "sin cocinar" */
+.nocook-slot__head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: var(--space-4);
+}
+
+.nocook-slot__head h3 {
+  margin: 0;
+}
+
+/* Mismo badge, reutilizado en el historial de la despensa */
+.pantry-history-item__meal-time {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 11px;
+  color: var(--ink-faint);
+  margin-right: 6px;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ══ Insights / Warning ═════════════════════════════════════ */
@@ -2149,6 +2305,93 @@ button:focus-visible {
 
   .meal-items {
     gap: 6px;
+  }
+
+  /* Horario: chips más compactos y el propio contenedor con menos aire
+     debajo — esta franja vive justo encima de los meal-cards, así que es
+     lo primero visible sin desplazarse en mobile (ver index.html). */
+  .schedule-timeline {
+    margin-bottom: var(--space-4);
+  }
+
+  .schedule-timeline__row {
+    gap: 6px;
+  }
+
+  .schedule-timeline__item {
+    padding: 6px 10px;
+    gap: 4px;
+  }
+
+  .schedule-timeline__time {
+    font-size: 12px;
+  }
+
+  .schedule-timeline__label {
+    font-size: 11px;
+  }
+
+  .meal-time-badge {
+    font-size: 11px;
+    padding: 2px 7px;
+  }
+
+  /* Solo aquí (mobile) se activa la barra sticky -- ver .next-meal-sticky
+     (display:none por defecto) más arriba. position:sticky respecto al
+     contenedor de scroll de la página (el body no tiene overflow propio
+     en este layout), así que se queda fija bajo el borde superior de la
+     ventana mientras el usuario recorre el formulario o los resultados. */
+  .next-meal-sticky:not([hidden]) {
+    display: block;
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    /* .container es width:92% margin:0 auto -> 8% de margen TOTAL, 4% a
+       cada lado -- para cancelarlo exactamente hace falta -4% por lado,
+       no -8% (ese valor doblaba la compensación y sacaba la barra fuera
+       del viewport por los dos lados, un overflow horizontal real
+       detectado verificando en mobile). */
+    margin: 0 -4%;
+  }
+
+  .next-meal-sticky__btn {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 8%;
+    border: none;
+    background: var(--green-deep);
+    color: var(--hero-ink);
+    font-family: var(--font-body);
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .next-meal-sticky__eyebrow {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--hero-ink-soft);
+    flex-shrink: 0;
+  }
+
+  .next-meal-sticky__time {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+  }
+
+  .next-meal-sticky__label {
+    font-size: 12px;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: left;
   }
 
   /* Food rows: deliberately NO override here anymore. They used to be

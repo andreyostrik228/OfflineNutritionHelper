@@ -58,6 +58,7 @@ var ENGINE_FILES = [
   projPath("js/data/budget-presets.js"),
   projPath("js/core/utils.js"),
   projPath("js/core/pricing.js"),
+  projPath("js/core/budget.js"),
   projPath("js/core/calculator.js"),
   projPath("js/core/meal-helpers.js"),
   projPath("js/engine/dish-selector.js"),
@@ -178,16 +179,21 @@ function run(t) {
   });
 
   // ── 3. Presupuesto: nunca se supera sin que el informe lo reconozca ─────
-  t.test("el coste total nunca supera el presupuesto más allá de tolerancia mínima, o el informe lo declara explícitamente", function () {
+  // El presupuesto es de COMPRA (purchaseCost, coste real de los paquetes
+  // que hay que comprar), no de uso -- ver "Presupuesto: coste de compra,
+  // no de uso" en la cabecera de plan-generator.js. Esta suite no carga
+  // pantry.js, así que purchaseCost aquí es siempre sin descuento de
+  // despensa (el caso "peor", más exigente para el generador).
+  t.test("el coste de COMPRA total nunca supera el presupuesto más allá de tolerancia mínima, o el informe lo declara explícitamente", function () {
     runsByProfile.forEach(function (rp) {
       rp.runs.forEach(function (result, i) {
-        var overBudget = result.total.cost > rp.data.budget + 0.05;
+        var overBudget = result.total.purchaseCost > rp.data.budget + 0.05;
         var reportsIt = result.report.violations.some(function (v) {
           return v.type === "budget" || v.type === "budget_infeasible";
         });
         assert.ok(
           !overBudget || reportsIt,
-          rp.def.name + " (run " + i + "): coste " + result.total.cost +
+          rp.def.name + " (run " + i + "): coste de compra " + result.total.purchaseCost +
           " supera presupuesto " + rp.data.budget + " sin que el informe lo declare"
         );
       });
@@ -299,6 +305,17 @@ function run(t) {
   });
 
   // ── 8-9. Golden-master determinista (Math.random sembrado) ───────────────
+  // Recapturados 2026-08-07 tras el rediseño de presupuesto (purchaseCost
+  // agregado real en vez de usageCost, ver plan-generator.js) Y la
+  // recalibración de presets que le siguió (Equilibrado 8->20, Amplio
+  // 12->28 -- ver js/data/budget-presets.js): el algoritmo cambió
+  // (enforcePurchaseBudgetCap recorta distinto que el enforceBudgetCap
+  // anterior) y los presupuestos de entrada cambiaron, así que los
+  // agregados exactos de antes ya no aplican -- esto es exactamente el
+  // caso "si el algoritmo cambia a propósito, hay que actualizar el
+  // golden-master a propósito" que describe la cabecera del archivo, no
+  // una regresión. Valores recapturados ejecutando el código real una vez
+  // (ver informe de la sesión que hizo este cambio).
   t.test("golden-master (seed=42): recomposición/Equilibrado -- agregados exactos del resultado actual", function () {
     var s = freshEngineSandbox();
     seedRandomInContext(s, 42);
@@ -309,14 +326,15 @@ function run(t) {
     // (realm distinto) antes de comparar contra literales del host -- ver
     // comentario del test #1 más arriba para el motivo completo.
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.key; }))), EXPECTED_MEAL_KEYS);
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [2, 3, 3, 2, 3]);
-    assert.strictEqual(result.total.kcal, 2586.7000000000003);
-    assert.strictEqual(result.total.protein, 171.10000000000002);
-    assert.strictEqual(result.total.carbs, 310.40000000000003);
-    assert.strictEqual(result.total.fat, 56.1);
-    assert.strictEqual(result.total.cost, 7.4399999999999995);
-    assert.strictEqual(result.report.status, "perfect");
-    assert.strictEqual(result.report.tierUsed, 0);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 4, 3, 2, 2]);
+    assert.strictEqual(result.total.kcal, 3001.7000000000003);
+    assert.strictEqual(result.total.protein, 181.79999999999998);
+    assert.strictEqual(result.total.carbs, 348.40000000000003);
+    assert.strictEqual(result.total.fat, 74.3);
+    assert.strictEqual(result.total.cost, 9.49);
+    assert.strictEqual(result.total.purchaseCost, 15.21);
+    assert.strictEqual(result.report.status, "adjusted");
+    assert.strictEqual(result.report.tierUsed, 1);
     assert.strictEqual(result.report.violations.length, 0);
   });
 
@@ -327,15 +345,16 @@ function run(t) {
     var result = s.generateDietPlan(built.profile, built.data);
 
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.key; }))), EXPECTED_MEAL_KEYS);
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 3, 3, 3, 3]);
-    assert.strictEqual(result.total.kcal, 3104.5);
-    assert.strictEqual(result.total.protein, 184.29999999999998);
-    assert.strictEqual(result.total.carbs, 403.3);
-    assert.strictEqual(result.total.fat, 73.5);
-    assert.strictEqual(result.total.cost, 10.95);
-    assert.strictEqual(result.report.status, "adjusted");
-    assert.strictEqual(result.report.tierUsed, 3);
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.report.violations)), [{ type: "calories", deltaPct: 19.8 }]);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [2, 4, 3, 2, 1]);
+    assert.strictEqual(result.total.kcal, 3311.6);
+    assert.strictEqual(result.total.protein, 186.7);
+    assert.strictEqual(result.total.carbs, 417.1);
+    assert.strictEqual(result.total.fat, 82.9);
+    assert.strictEqual(result.total.cost, 18.279999999999998);
+    assert.strictEqual(result.total.purchaseCost, 24.83);
+    assert.strictEqual(result.report.status, "minimal");
+    assert.strictEqual(result.report.tierUsed, 4);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.report.violations)), []);
   });
 }
 

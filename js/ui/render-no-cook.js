@@ -50,6 +50,19 @@ function runNoCookGenerator() {
 
   var plan = generateNoCookPlan();
 
+  // Mismo cálculo de horario que el plan normal (js/core/meal-schedule.js)
+  // — reutilizado, no reimplementado. Aislado con su propio try/catch (en
+  // vez de depender solo del safeInit de app.js que envuelve a esta
+  // función entera) para que un fallo aquí solo deje el plan sin horario,
+  // nunca sin platos.
+  if (typeof computeMealSchedule === "function" && typeof readScheduleSettings === "function") {
+    try {
+      plan.slots = computeMealSchedule(plan.slots, readScheduleSettings());
+    } catch (err) {
+      console.error("[render-no-cook:schedule] no se pudo calcular el horario -- se muestra sin horario:", err);
+    }
+  }
+
   if (noCookCount) noCookCount.textContent = plan.poolSize;
   if (noCookStatus) noCookStatus.textContent = "Plan sin cocinar generado.";
 
@@ -62,9 +75,10 @@ function runNoCookGenerator() {
  * @returns {string}
  */
 function renderNoCookSlot(slot) {
+  var timeBadge = typeof renderMealTimeBadge === "function" ? renderMealTimeBadge(slot) : "";
   return (
     '<div class="nocook-slot">' +
-      "<h3>" + escapeHtml(slot.label) + "</h3>" +
+      '<div class="nocook-slot__head">' + timeBadge + "<h3>" + escapeHtml(slot.label) + "</h3></div>" +
       '<div class="nocook-items">' +
         slot.items.map(renderNoCookItem).join("") +
       "</div>" +

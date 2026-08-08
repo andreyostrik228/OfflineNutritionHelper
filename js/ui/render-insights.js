@@ -44,10 +44,17 @@ function initInsightRefs(refs) {
 /**
  * Rellena el bloque "Notas del plan" con 7 líneas de información:
  * TMB/TDEE, objetivo, g/kg de proteína, fuentes proteicas del día,
- * fuentes de carbohidratos del día, verificación del 25% y coste/prep.
+ * fuentes de carbohidratos del día, verificación del 25% y presupuesto/prep.
  *
  * El audit de diversidad usa el campo `mainProt` de cada meal
  * (en lugar de buscar en FOOD_DB, que está vacío en v3).
+ *
+ * Presupuesto: data.budget es SIEMPRE el presupuesto de COMPRA (cuánto se
+ * paga hoy en caja) -- total.purchaseCost es el número que se compara
+ * contra él; total.cost (usageCost, cuánto se consume realmente) se
+ * muestra aparte, como dato informativo, nunca como el presupuesto en sí.
+ * Ver la cabecera de js/engine/plan-generator.js para la distinción
+ * completa.
  *
  * @param {object} profile  – { bmr, tdee, calories, protein, fats, carbs }
  * @param {object} result   – { meals[], total }
@@ -56,7 +63,8 @@ function initInsightRefs(refs) {
 function renderInsights(profile, result, data) {
   var total        = result.total;
   var proteinPerKg = round2(total.protein / data.weight);
-  var budgetGap    = round2(data.budget - total.cost);
+  var purchaseCost = typeof total.purchaseCost === "number" ? total.purchaseCost : total.cost;
+  var budgetGap    = round2(data.budget - purchaseCost);
   var avgPrep      = calcAvgPrep(result.meals);
 
   // Audit de diversidad: leer mainProt de los items del día
@@ -68,12 +76,13 @@ function renderInsights(profile, result, data) {
 
   var notes = [
     "TMB estimada: " + profile.bmr + " kcal. Gasto diario total estimado: " + profile.tdee + " kcal.",
-    "Objetivo: " + goalText(data.goal) + ". Prote\u00edna final: " + proteinPerKg + " g/kg de peso corporal.",
-    "Fuentes de prote\u00edna del d\u00eda (" + proteinSources.length + "): " + (proteinSources.join(", ") || "\u2014") + ".",
-    "Fuentes de carbohidratos del d\u00eda (" + carbSources.length + "): "    + (carbSources.join(", ")    || "\u2014") + ".",
+    "Objetivo: " + goalText(data.goal) + ". Proteína final: " + proteinPerKg + " g/kg de peso corporal.",
+    "Fuentes de proteína del día (" + proteinSources.length + "): " + (proteinSources.join(", ") || "—") + ".",
+    "Fuentes de carbohidratos del día (" + carbSources.length + "): "    + (carbSources.join(", ")    || "—") + ".",
     capStatus,
-    "Coste estimado del plan: \u20ac" + round2(total.cost) + ". Margen presupuestario: \u20ac" + Math.max(0, budgetGap) + ".",
-    "Tiempo medio de preparaci\u00f3n por bloque: " + avgPrep + " min. Motor: platos reales de DISH_DB."
+    "Presupuesto diario: €" + round2(data.budget) + ". Compra necesaria: €" + round2(purchaseCost) +
+      " (margen: €" + Math.max(0, budgetGap) + "). Consumo real de ingredientes: €" + round2(total.cost) + ".",
+    "Tiempo medio de preparación por bloque: " + avgPrep + " min. Motor: platos reales de DISH_DB."
   ];
 
   insightsList.innerHTML = notes.map(function (n) {
@@ -96,8 +105,9 @@ function renderWarnings(profile, result, data) {
   var messages = [];
   var total    = result.total;
 
-  if (total.cost > data.budget) {
-    messages.push("El plan supera ligeramente el presupuesto diario. Prueba a aumentar el tiempo de cocina o el presupuesto.");
+  var purchaseCost = typeof total.purchaseCost === "number" ? total.purchaseCost : total.cost;
+  if (purchaseCost > data.budget + 0.01) {
+    messages.push("El plan supera el presupuesto de compra: hacen falta €" + Math.round(purchaseCost * 100) / 100 + " en paquetes reales (presupuesto: €" + data.budget + "). Prueba a ampliar el presupuesto, marcar más despensa disponible, o aumentar el tiempo de cocina.");
   }
 
   // Umbral subido de 220 a 600 kcal: con objetivos de volumen altos, la
@@ -115,7 +125,11 @@ function renderWarnings(profile, result, data) {
     messages.push("Con muy poco tiempo de cocina el sistema usa platos r\u00e1pidos. Aumentar el tiempo mejora la variedad.");
   }
 
-  if (data.budget <= 5.5) {
+  // Umbral recalibrado junto con los presets 2026-08-07 (15/20/28 de
+  // presupuesto de COMPRA, antes 5/8/12 de usageCost) -- mantiene la misma
+  // relación relativa que antes: "en o justo por encima del preset
+  // Ajustado" (ver js/data/budget-presets.js).
+  if (data.budget <= 15.5) {
     messages.push("Con presupuesto muy bajo la variedad de platos se reduce notablemente.");
   }
 

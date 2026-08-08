@@ -1,6 +1,6 @@
 # Nutrition Planner — Project Context
 
-Updated 2026-08-07. This file is the fast orientation doc — for full
+Updated 2026-08-08. This file is the fast orientation doc — for full
 detail, history, and the "why" behind decisions, read `STATE.md` (engineering
 state, dated sections, session handoffs) and `ROADMAP.md` (architecture
 decision record, migration phases). For code-level navigation, there's a
@@ -41,16 +41,29 @@ at runtime.
    `STATE.md`, "Bug arquitectónico real + rediseño de la inicialización").
 2. `calculator.js` derives BMR, TDEE, calorie target, protein, fat, carbs;
    budget resolves from a preset (Ajustado/Equilibrado/Amplio) or an exact
-   amount, both to the same `data.budget` number.
+   amount, both to the same `data.budget` number — **`data.budget` means
+   purchase cost (money spent at checkout today), not usage cost**, see
+   "Budget = purchase cost" below.
 3. `plan-generator.js` assigns 5 meals (desayuno/comida/cena/snack/snack2),
-   allocating budget dynamically across them.
-4. `dish-selector.js` filters/ranks/scales dishes against a strict budget
-   cascade + a relaxation-tier ladder for time/taste/25%-cap (never budget).
+   allocating budget dynamically across them using usage-cost heuristics
+   during selection, then enforces the REAL aggregate purchase cost
+   (`js/core/budget.js`, pantry-aware) as the authoritative gate.
+4. `dish-selector.js` filters/ranks/scales dishes against a strict
+   usage-cost cascade + a relaxation-tier ladder for time/taste/25%-cap
+   (never budget) — unchanged by the purchase-cost redesign, still the
+   heuristic that picks candidate dishes meal-by-meal.
 5. `meal-helpers.js` totals/rebalances meals.
-6. `render.js`/`render-insights.js` render the plan; `render-shopping-
-   list.js` aggregates ingredients into a shopping list, pantry-aware if
-   `pantry.js` is loaded (falls back to plain purchase-cost math if not).
-7. Optionally: `render-pantry.js` lets the user save today's plan, mark a
+6. `meal-schedule.js` (after the plan is built, never inside the
+   generator) assigns a real clock time to each meal from the user's
+   wake/sleep preferences and reorders the meals chronologically — see
+   "Meal schedule" below.
+7. `render.js`/`render-insights.js` render the plan (now in chronological
+   order, with a time badge per card); `render-schedule.js` renders the
+   day-schedule strip and the mobile-only sticky "next meal" bar;
+   `render-shopping-list.js` aggregates ingredients into a shopping list,
+   pantry-aware if `pantry.js` is loaded (falls back to plain
+   purchase-cost math if not).
+8. Optionally: `render-pantry.js` lets the user save today's plan, mark a
    purchase done (adds to pantry stock), and mark individual meals cooked
    (subtracts from pantry stock) — see "Pantry / Despensa" below.
 
@@ -61,11 +74,13 @@ at runtime.
 | UI entry | `index.html`, `js/app.js` | Form, orchestration, DOM event handling, startup isolation (`safeInit`) |
 | Nutrition core | `js/core/calculator.js`, `js/core/meal-helpers.js` | Target calculation and meal arithmetic |
 | Pricing | `js/core/pricing.js` | Ingredient/dish pricing, package resolution, usageCost vs. purchaseCost |
+| Budget | `js/core/budget.js` | Day-level aggregate purchase cost, pantry-aware — shared by the generator and the shopping list |
 | Pantry | `js/core/pantry.js` | Despensa domain logic — storage, stock CRUD, the 3-stage lifecycle |
+| Schedule | `js/core/meal-schedule.js` | Wake/sleep-anchored meal timing, chronological ordering — pure, called after generation |
 | Planning engine | `js/engine/dish-selector.js`, `js/engine/plan-generator.js` | Selection, scaling, rebalance, budget cascade |
-| No-cook engine | `js/engine/no-cook-generator.js` | Independent ready-to-eat product plan, not pantry-connected |
+| No-cook engine | `js/engine/no-cook-generator.js` | Independent ready-to-eat product plan, not pantry-connected, schedule-aware |
 | Data | `js/data/dishes.js`, `js/data/real-products.js`, `js/data/packaging.js` | Dish records, real Mercadona catalog, package-size lookup |
-| Rendering | `js/ui/render.js`, `js/ui/render-insights.js`, `js/ui/render-shopping-list.js`, `js/ui/render-pantry.js` | Summary, meals, warnings, shopping list, despensa panel |
+| Rendering | `js/ui/render.js`, `js/ui/render-insights.js`, `js/ui/render-schedule.js`, `js/ui/render-shopping-list.js`, `js/ui/render-pantry.js` | Summary, meals, warnings, day-schedule strip, shopping list, despensa panel |
 | Styling | `assets/css/style.css` | Visual system, mobile-first responsive layout |
 | Tests | `tests/*.test.js`, `poc/tests/*.test.js` | Node+vm characterization/regression tests over real production code |
 
@@ -81,6 +96,43 @@ despensa history panel) adds purchased stock; **(3)** "Marcar como
 cocinado" (per meal) subtracts consumed stock, with exact undo. Deliberately
 NOT connected to `dish-selector.js` (budget selection stays pantry-unaware)
 or no-cook mode. Full design record and rejected alternatives in
+`STATE.md`.
+
+## Meal schedule (2026-08-07)
+
+Each generated meal now carries a real clock time (`meal.time`, e.g.
+`"08:00"`), computed once after `generateDietPlan()`/
+`generateNoCookPlan()` returns — the generator itself is untouched.
+Model: meals are ordered chronologically by a semantic type (breakfast →
+morning snack → lunch → afternoon snack → dinner), then spread at equal
+intervals across the user's wake→sleep window (two new optional form
+fields, sensible defaults 07:00/23:00). This also fixed a pre-existing
+bug: meal cards used to render in category order (breakfast, lunch,
+dinner, snack, snack2), not clock order. A mobile-only sticky bar shows
+just the next meal + time, since the full day-schedule strip sits below a
+full-height form on narrow viewports. `meal.time` is persisted through
+pantry history (`savePlanForToday`); older saved plans without it render
+without a badge, no crash. Full design record, edge cases, and browser
+verification in `STATE.md`.
+
+## Budget = purchase cost, not usage cost (2026-08-08)
+
+`data.budget` means "how much I'm willing to pay at checkout today" —
+purchase cost, aggregated across the whole day's ingredients, package
+sizes, and current pantry stock. It used to mean usage cost only (the
+sum of technically-consumed ingredient grams), which let a plan "fit" an
+8€ budget while its real grocery cost was 19€ — the checkout total was
+never checked until the shopping list, too late to affect anything.
+Fixed architecturally, not by clamping the displayed number: dish
+selection still uses usage cost as a per-meal heuristic (`dish-
+selector.js`, unchanged), but once a candidate day-plan exists,
+`js/core/budget.js` computes the real aggregate purchase cost
+(pantry-aware) and `plan-generator.js` enforces THAT as the hard budget,
+scores candidates by it, and reports infeasibility honestly if even a
+maximally-trimmed plan can't fit. The same `computeDayPurchaseCost()` is
+what the shopping list uses, so the two numbers can never diverge.
+Presets recalibrated accordingly (Ajustado/Equilibrado/Amplio: 5/8/12 →
+15/20/28). Full design record, edge cases, and browser verification in
 `STATE.md`.
 
 ## Product direction
@@ -111,6 +163,7 @@ migration — see `ROADMAP.md`, "Decisión de arquitectura" (Strategy B).
 
 See `STATE.md` for the authoritative, dated engineering log and `ROADMAP.md`
 for the phased migration plan and architecture decision record. Last
-updated here 2026-08-07 (pantry/despensa feature + app-startup hardening).
-Not production-ready or suitable for health-critical personalization — see
-"Critical known issues" in `STATE.md`.
+updated here 2026-08-08 (budget redesigned to mean purchase cost, not
+usage cost — see above). Not production-ready or suitable for
+health-critical personalization — see "Critical known issues" in
+`STATE.md`.
