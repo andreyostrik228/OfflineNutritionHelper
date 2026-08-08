@@ -3,9 +3,10 @@
 ## Current status
 
 **Stage:** working prototype, updated 2026-08-08 (budget redesigned to
-mean purchase cost, not usage cost — uncommitted, along with the meal
-schedule feature from the previous session, see `STATE.md` session
-handoff). Core architecture
+mean purchase cost, not usage cost, along with the meal schedule feature
+from the previous session — both committed and pushed to `main` as of
+this update, commit `3bad470`, see `STATE.md` session handoff for
+verification). Core architecture
 decision (2026-08-04): progressive migration from `dishes.js` (fabricated
 macros) to real Mercadona products (see "Decisión de arquitectura" below).
 Phase 0 of that migration (test safety net) is complete; Fase 1 (widen

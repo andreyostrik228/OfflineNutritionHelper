@@ -1046,20 +1046,25 @@ uso** (ver "Presupuesto de compra (purchase budget)" arriba) — el bug
 real donde un plan de "8€" podía costar 19€ reales en caja ya no puede
 ocurrir; la despensa ahora afecta si un plan es asequible.
 
-**Commit/branch/deploy actuales**: ver `git log -1` y la cabecera de este
-archivo — el commit `ef1191ae` ("Add pantry (despensa) feature...") sobre
-`main` sigue siendo el último publicado en `origin`
-(`github.com/andreyostrik228/OfflineNutritionHelper`, GitHub Pages en
-`https://andreyostrik228.github.io/OfflineNutritionHelper/`). **NINGÚN
-trabajo desde entonces está comiteado** — ni el horario de comidas
-(2026-08-07) ni el presupuesto de compra (2026-08-08): son cambios
-locales acumulados sin commitear (`git status` lista los archivos
-modificados/nuevos exactos). No asumas que algo de esto está en
-`main`/publicado sin comprobar `git log`/`git status` primero. Si
-`git log -1` muestra un commit distinto a `ef1191ae`, alguien comiteó
-desde entonces — revisar antes de asumir que esta foto sigue vigente.
-**Nota**: sigue habiendo basura suelta sin relación en la raíz del repo
-(preexistente, nunca comiteada a propósito) — no tocarla sin que se pida.
+**Commit/branch/deploy actuales**: el trabajo de horario de comidas
+(2026-08-07) Y presupuesto de compra (2026-08-08) está TODO comiteado en
+un solo commit, `3bad470` ("Add meal scheduling and budget module
+refactor"), sobre `c1ec671` (que a su vez está sobre `ef1191ae`, el commit
+de despensa) — comiteado y PUSHEADO por el propio usuario directamente
+(fuera de esta sesión de Claude Code; verificado con `git fetch origin
+main` + `git status -sb`, que confirma `main` y `origin/main` ya
+coinciden en `3bad470`, sin working tree sucio salvo esta misma edición
+de `STATE.md`). Publicado en `main` en
+`github.com/andreyostrik228/OfflineNutritionHelper`, lo que dispara el
+deploy automático de GitHub Pages en
+`https://andreyostrik228.github.io/OfflineNutritionHelper/` — no
+verificado en esta sesión si el deploy ya terminó de propagarse (GitHub
+Pages tarda unos segundos/minutos), pero el push en sí está confirmado.
+Si `git log -1` o `git fetch` muestran un commit distinto a `3bad470`,
+alguien comiteó/pusheó desde entonces — revisar antes de asumir que esta
+foto sigue vigente. **Nota**: sigue habiendo basura suelta sin relación en
+la raíz del repo (preexistente, nunca comiteada a propósito) — no tocarla
+sin que se pida.
 
 **Qué funciona**: generación de plan completo (5 tomas, horario, macros)
 con presupuesto de COMPRA real (consciente de despensa, recorta hasta
