@@ -22,6 +22,39 @@ está aquí y en `ROADMAP.md`. **Si vuelves a tocar código, el grafo se
 desactualiza de nuevo** — no se actualiza solo (comandos exactos en
 `PythonProject/docs/graphify.md`, sección "Cómo actualizarlo").
 
+**Resumen de la sesión 2026-08-13f (sistema de cuentas — Supabase Auth +
+Postgres + RLS)** (ver sección dedicada más abajo, "Sistema de cuentas
+(accounts) — Supabase", para el detalle completo): pedido explícito del
+usuario — convertir el sitio de invitado-solo (localStorage) a una app
+multiusuario real con registro/login por email+contraseña, login con
+Google, sesión persistente entre recargas, y TODOS los datos personales
+(despensa, historial de planes, y el perfil/formulario — antes NUNCA
+persistido, ni siquiera en localStorage) sincronizados a una cuenta y
+accesibles desde cualquier dispositivo, sin romper el modo invitado ni
+reescribir el motor de nutrición. Arquitectura elegida: Supabase (Auth +
+Google OAuth + Postgres + Row Level Security, SDK vía CDN sin build
+system, mismo patrón que GSAP) sobre un modelo "local-first/optimista" —
+localStorage sigue siendo la fuente de verdad SÍNCRONA que
+`pantry.js`/`render-pantry.js`/`calculator.js`/`meal-schedule.js` ya
+usaban, sin ningún cambio en esos archivos; una capa nueva y
+completamente separada (`js/core/{supabase-client,settings,auth,
+cloud-sync,migration}.js` + `js/ui/render-auth.js`) hidrata localStorage
+desde la nube al iniciar sesión y empuja cada mutación en segundo plano,
+enganchada en los puntos de extensión que `app.js` ya exponía
+(`onPantryChange`) más un par de puntos nuevos. Migración
+invitado→cuenta idempotente y a salvo de un peligro real que un guardián
+ingenuo no cubre (un ordenador compartido entre dos personas) — ver
+sección dedicada para el algoritmo exacto. 66 tests nuevos (223 tests
+totales en `tests/`, 0 fallidos; 23 sin cambios en `poc/tests/`).
+Verificado en vivo en navegador (desktop y mobile) en modo invitado (el
+único modo posible hasta que el usuario aprovisione un proyecto Supabase
+real — ver checklist de aprovisionamiento en la sección dedicada): 0
+errores de consola, generación de plan/despensa/sin-cocinar sin
+regresión, botón de perfil y diálogo de acceso funcionando
+correctamente, ajustes del formulario ahora persisten entre recargas
+(funcionalidad nueva). **No commiteado/pusheado ni desplegado a
+producción todavía a la hora de escribir esto** — ver "Session handoff".
+
 **Resumen de la sesión 2026-08-13e (auditoría del "recorte a cero" +
 corrección de consistencia Atwater)** (ver sección dedicada más abajo,
 "Auditoría del recorte a cero y corrección de consistencia Atwater", para
@@ -397,12 +430,34 @@ sin copiarlos ni envolverlos en `module.exports`), sin ningún framework:
   varios tipos de plato, escalado lineal de porciones, KBJU del día
   completo sano, lista de la compra/purchaseCost sin regresión, cobertura
   50/31 confirmada contra la auditoría, y consistencia Atwater de kcal
-  para las 334 recetas reales).
+  para las 334 recetas reales), `settings.test.js` (11, nuevo 2026-08-13f
+  — round-trip completo de perfil, saneado POR CAMPO no por objeto,
+  fallback en memoria, JSON corrupto, cuota superada), `migration.test.js`
+  (22, nuevo 2026-08-13f — `classifySyncState`/`merge*` puras + orquestación
+  async con un cliente Supabase simulado; incluye el caso de ordenador
+  compartido (`clear_cross_user`), `already_synced` nunca vuelve a
+  preguntar aunque los datos diverjan, y reconciliar dos veces seguidas es
+  un no-op real la segunda vez — la idempotencia pedida explícitamente),
+  `cloud-sync.test.js` (16, nuevo 2026-08-13f — forma exacta del payload
+  de cada push, modo invitado nunca toca la red, reintento único tras un
+  fallo, se rinde en silencio tras el segundo fallo sin lanzar ni
+  corromper el estado local, un cliente roto que lanza SÍNCRONAMENTE
+  tampoco escapa), `auth.test.js` (17, nuevo 2026-08-13f — delegación en
+  `supabase.auth.*`, fan-out de `onAuthStateChange` a varios listeners con
+  una sola suscripción real al SDK, `authErrorMessage()` nunca expone el
+  mensaje crudo del SDK, `signOut()` nunca toca despensa/settings —
+  responsabilidad de `migration.onAuthSignOut`, verificado como límite
+  explícito).
 - `poc/tests/`: `node poc/tests/run-tests.js` → **23 passed, 0 failed** —
   resolver, shopping-list de prueba, cobertura de ingredientes (sin
   cambios, `poc/` no se tocó en ninguna de estas sesiones).
-- Total: **180 tests, 0 failed** — re-ejecutado y verificado en la sesión
-  2026-08-13d (no solo heredado de memoria).
+- Total: **246 tests, 0 failed** (223 en `tests/` + 23 en `poc/tests/`) —
+  re-ejecutado y verificado en la sesión 2026-08-13f (no solo heredado de
+  memoria). El runner (`tests/run-tests.js`) ahora soporta tests async
+  (una función de test puede devolver una promesa, necesario porque
+  auth.js/cloud-sync.js/migration.js siempre son async contra un cliente
+  Supabase, real o simulado) — 100% retrocompatible, un test síncrono
+  normal nunca devuelve un thenable.
 
 Sigue sin haber linting, formatting, CI, ni package manifest. `dish-
 selector.js`/`plan-generator.js`/`calculator.js` SÍ tienen cobertura desde
@@ -1634,6 +1689,207 @@ regresión (usa `REAL_PRODUCTS` directamente, nunca pasa por
 se tocó `pricing.js`/`budget.js`/`dish-selector.js` en esta sesión, solo
 `js/core/nutrition.js` y los tests).
 
+## Sistema de cuentas (accounts) — Supabase Auth + Postgres + RLS (2026-08-13f)
+
+Pedido explícito del usuario: convertir el sitio de invitado-solo
+(localStorage) en una app multiusuario real — registro/login por email+
+contraseña, login con Google, sesión persistente entre recargas, y TODOS
+los datos personales sincronizados a una cuenta y accesibles desde
+cualquier dispositivo — SIN reescribir el motor de nutrición y SIN
+convertir el sitio (hoy estático en Cloudflare Pages) en un backend
+propio. "No te limites a 'pegarle un login'" — el usuario pidió
+explícitamente una capa de cuentas bien separada del dominio, con
+migración de datos existentes bien pensada (idempotente, sin duplicados,
+con manejo de conflicto), y sin fingir que algo funciona si de verdad
+requiere aprovisionar un servicio externo que no puedo crear yo mismo.
+
+**Por qué Supabase**: Auth (incluido Google OAuth) + Postgres + Row Level
+Security, todo en el plan gratuito, y con un SDK que se sirve por CDN
+como build UMD (`@supabase/supabase-js@2.112.3`, verificado en vivo antes
+de usarlo — versión exacta fijada, no un tag flotante `@2`, mismo
+criterio que ya se usa con GSAP `@3.12.5`) — encaja con "sin build
+system" exactamente igual que la dependencia de GSAP que ya existía.
+Alternativas descartadas: Firebase (Firestore encaja peor que Postgres
+para blobs JSON por-usuario con RLS relacional) y Auth0/Clerk (solo auth,
+necesitarían un SEGUNDO servicio para los datos — la complejidad extra
+que el usuario pidió evitar).
+
+**Modelo de sincronización — local-first / optimista, CERO cambios en el
+dominio**: localStorage sigue siendo la fuente de verdad SÍNCRONA que
+`pantry.js`/`render-pantry.js`/`calculator.js`/`meal-schedule.js`/
+cualquier `js/engine/*` ya leían y escribían — ninguno de esos archivos
+se tocó. Una capa nueva, completamente aparte:
+1. Al iniciar sesión, hidrata localStorage desde la nube llamando a las
+   funciones YA EXISTENTES `savePantryState`/`savePantryHistory`
+   (`pantry.js`) más la nueva `saveSettings` (`settings.js`) — nunca
+   reimplementa su forma de guardar.
+2. Tras cada mutación local, empuja en segundo plano a Supabase (nunca
+   bloquea la UI; un fallo de red no altera nada local, un reintento
+   inmediato y si vuelve a fallar se rinde en silencio con un log).
+
+**Módulos nuevos** (`index.html`, orden de carga: SDK de Supabase por CDN
+justo después de GSAP → `js/data/supabase-config.js` antes que
+`dishes.js` → `js/core/{supabase-client,settings,auth,cloud-sync,
+migration}.js` justo después de `meal-schedule.js` y antes de
+`dish-selector.js` → `js/ui/render-auth.js` justo después de
+`render-no-cook.js` y antes de `animations.js`):
+
+- `js/data/supabase-config.js` — `SUPABASE_URL`/`SUPABASE_ANON_KEY`.
+  PÚBLICOS a propósito (la clave anon está diseñada por Supabase para
+  vivir en el cliente; la seguridad real la da RLS, nunca ocultar esta
+  clave) — placeholders hasta que el usuario aprovisione el proyecto real
+  (ver checklist más abajo); mientras sean placeholders, TODA la app
+  sigue funcionando en modo invitado exactamente igual que antes de esta
+  sesión.
+- `js/core/supabase-client.js` — `getSupabaseClient()`/
+  `isSupabaseConfigured()`, singleton memoizado, nunca lanza, `null` si
+  el SDK no cargó o la config sigue en placeholder (mismo patrón de
+  dependencia opcional que `typeof gsap !== "undefined"`).
+- `js/core/settings.js` — persistencia NUEVA (antes no existía en
+  absoluto) del perfil/formulario (edad, sexo, peso, altura, actividad,
+  entrenamientos, objetivo, presupuesto, tiempo de cocina, sabor,
+  horario) en `nutritionPlanner.settings.v1`, mismo patrón defensivo
+  exacto que `pantry.js` (saneado POR CAMPO, nunca lanza, fallback en
+  memoria). Saneado deliberadamente solo de TIPO, no de rango de negocio
+  — esas reglas siguen siendo solo de `calculator.js`, para que los dos
+  módulos no diverjan con el tiempo sobre qué es "válido".
+- `js/core/auth.js` — envoltorio fino sobre `supabase.auth`
+  (signUp/signIn/signInWithGoogle/signOut/getCurrentUser/
+  onAuthStateChange con fan-out a varios listeners propios pero UNA sola
+  suscripción real al SDK) + `authErrorMessage()` puro (traduce errores a
+  español, nunca expone el mensaje crudo del SDK). Deliberadamente NO
+  decide qué hacer con los datos locales al iniciar/cerrar sesión — eso
+  es 100% responsabilidad de `migration.js`, orquestado desde
+  `render-auth.js` reaccionando a los eventos. Verificado con test
+  explícito: `signOut()` nunca toca despensa/settings.
+- `js/core/cloud-sync.js` — ÚNICO módulo que toca la tabla `user_data`.
+  `pushPantryToCloud()`/`pushSettingsToCloud()`/`pushAllToCloud(opts)`/
+  `pullCloudUserData()`, todas async, nunca lanzan ni rechazan (incluso
+  un cliente roto que lance SÍNCRONAMENTE se atrapa). Un reintento
+  inmediato tras un fallo, luego se rinde en silencio.
+- `js/core/migration.js` — la pieza más delicada. Ver algoritmo exacto
+  abajo.
+- `js/ui/render-auth.js` — botón de perfil (topbar nuevo, antes de
+  `.hero`), diálogo de acceso (`<dialog>` nativo — sin precedente de
+  modal en el proyecto salvo `.disclosure` envolviendo `<details>`,
+  mismo espíritu de preferir comportamiento nativo), diálogo de
+  resolución de conflicto, y la orquestación de CUÁNDO reconciliar
+  (`SIGNED_IN`/`INITIAL_SESSION`, una vez por usuario que aparece, nunca
+  en `TOKEN_REFRESHED`).
+
+**Esquema Postgres** (`supabase/schema.sql`, para pegar en el SQL Editor
+del proyecto Supabase): una fila por usuario en `user_data`, tres
+columnas JSONB que reflejan 1:1 las claves de localStorage
+(`pantry_state`, `pantry_history`, `settings`) + `migrated_at` (solo
+auditoría) — nunca una tabla normalizada por-ingrediente, porque
+`pantry.js` ya trata cada bloque como un blob atómico y duplicar esa
+decisión en dos sitios sería una fuente de divergencia. RLS activado,
+políticas `auth.uid() = user_id` en select/insert/update (sin política
+delete — no hay función de borrar cuenta). Un trigger
+`security definer` aprovisiona la fila vacía en el instante del signup,
+así el cliente JAMÁS necesita comprobar "¿existe ya mi fila?" — todas las
+escrituras son `UPDATE`, nunca upsert.
+
+**Migración/conflicto — el algoritmo, y el peligro real que corrige**:
+la guarda de idempotencia NO es `migrated_at` (eso solo dice "¿esta
+CUENTA alguna vez tuvo datos?", no "¿la caché de ESTE NAVEGADOR
+pertenece a quien está iniciando sesión ahora?"). En un ordenador
+compartido, si el usuario A sincroniza y cierra sesión sin que nadie
+borre localStorage, y el usuario B inicia sesión después en el MISMO
+navegador, un guardián basado solo en `migrated_at` podría tratar la
+caché de A como "datos de invitado de B" y filtrarlos/mezclarlos hacia
+la cuenta de B. Solución: un marcador POR NAVEGADOR,
+`nutritionPlanner.cloudSyncedUserId.v1`, que registra a qué usuario
+pertenece la caché local actual:
+- `classifySyncState(local, cloud, syncedUserId, currentUserId)` (PURA,
+  sin DOM/red) devuelve `'clear_cross_user'` (marcador de OTRO usuario →
+  vaciar todo antes de nada más), `'already_synced'` (marcador del MISMO
+  usuario → tirar de la nube sin preguntar NUNCA, aunque local y nube
+  hayan divergido mientras tanto), `'conflict'` (ambos lados tienen
+  contenido real, navegador nuevo → preguntar al usuario, nunca fusionar
+  en silencio), `'push'` (solo local tiene datos → caso dominante del
+  primer registro) o `'pull'` (solo la nube tiene datos, o ninguno).
+- Conflicto resuelto por el usuario vía `render-auth.js`: mantener la
+  nube / mantener este dispositivo / combinar (despensa: SUMA de gramos
+  por ingrediente, aditiva por naturaleza; historial: concatenar +
+  deduplicar por id + recortar a `PANTRY_HISTORY_MAX_ENTRIES`; settings:
+  gana el lado con `updatedAt` más reciente ENTERO, nunca fusión campo a
+  campo — mezclar un perfil físico de un momento con un objetivo de otro
+  no es algo que el usuario guardara nunca junto).
+- Al cerrar sesión (`onAuthSignOut`), se vacía la caché local del
+  navegador — nada se pierde de verdad (la nube ya tiene la última copia
+  sincronizada) y cierra el riesgo de ordenador compartido por
+  construcción: el siguiente login en ese navegador siempre arranca
+  limpio.
+- Reconciliar dos veces seguidas sin mutar nada entre medias es un no-op
+  REAL la segunda vez (`already_synced`, solo pull, cero pushes
+  duplicados) — verificado con test explícito, es la idempotencia que el
+  usuario pidió literalmente.
+
+**Puntos de enganche en `app.js` (únicos cambios fuera de los módulos
+nuevos)**: `syncAfterPantryChange()` (ya existía, se llama tras CADA
+mutación de despensa) ahora también llama a `pushPantryToCloud()`;
+`handleUsePlanToday()` llamaba a `savePlanForToday()` sin pasar por ese
+hook — se añadió un segundo punto de enganche explícito ahí mismo (hueco
+real encontrado durante el diseño, no algo que "ya funcionaba"); tras
+generar un plan con éxito (`handleSubmit`), se guarda el formulario en
+`settings.js` y se empuja a la nube; al cargar la página, se rellena el
+formulario con lo último guardado (`applySettingsToForm`). `pantry.js`,
+`render-pantry.js`, `calculator.js`, `meal-schedule.js` y todo
+`js/engine/*`: **cero cambios**.
+
+**Checklist de aprovisionamiento externo (requiere las cuentas propias
+del usuario — no lo puedo hacer yo)**:
+1. Supabase → nuevo proyecto (plan Free) → Settings→API: copiar Project
+   URL + clave `anon public` (NUNCA `service_role`) a
+   `js/data/supabase-config.js`.
+2. Supabase → SQL Editor → pegar y ejecutar `supabase/schema.sql` entero.
+3. Supabase → Authentication→URL Configuration → Site URL =
+   `https://offline-nutrition-helper.pages.dev`, añadir esa URL y
+   `http://localhost:8788` a la lista de Redirect URLs.
+4. Supabase → Authentication→Providers→Google → copiar la callback URL
+   que se muestra ahí (`https://<project-ref>.supabase.co/auth/v1/callback`).
+5. Google Cloud Console → OAuth consent screen (External, estado
+   Testing, añadir cada email real como "Test user" — no hace falta
+   verificación de Google a esta escala) → Credentials → OAuth client ID
+   (Web application) → Authorized JavaScript origins = el dominio de
+   Cloudflare Pages + `http://localhost:8788`; Authorized redirect URIs
+   = **SOLO** la callback URL de Supabase del paso 4 (Google redirige al
+   dominio de Supabase, no al de la app — confusión real y común).
+6. Pegar Client ID + Secret de vuelta en Supabase → Providers→Google →
+   Enabled → Save.
+7. Rellenar `js/data/supabase-config.js` con los valores reales del paso
+   1, probar en local (`npx wrangler pages dev .`), desplegar
+   (`npx wrangler pages deploy .`).
+
+**Caching del navegador durante la verificación de ESTA sesión**: mismo
+problema recurrente que ya documentaron sesiones anteriores (ver nota
+técnica en el handoff de 2026-08-13e) pero esta vez más agresivo — hasta
+`index.html` mismo se sirvió cacheado tras un `preview_start` nuevo (no
+solo los `.js`), confirmado comparando `fetch(url)` vs.
+`fetch(url,{cache:'no-store'})` (tamaños/Last-Modified distintos). Se
+resolvió navegando a `index.html?nocache=<n>` para el documento, e
+inyectando CSS/JS frescos vía `fetch(...,{cache:'no-store'})` + `eval()`
+en el contexto ya cargado para los archivos MODIFICADOS (`app.js`,
+`style.css` — los archivos NUEVOS de esta sesión nunca tienen entrada de
+caché previa, así que siempre llegaron frescos). Es un artefacto del
+entorno de desarrollo local, no del código ni de producción (un deploy
+nuevo en Cloudflare Pages no tiene ningún usuario con caché previa de
+estos archivos).
+
+**Tests**: ver sección "Tests" arriba (66 nuevos, 4 archivos). La
+lógica PURA (`classifySyncState`/`merge*`/`authErrorMessage`/
+`hasSnapshotContent`) se testea directamente, sin red. La orquestación
+async (`runReconciliation`/`resolveConflict*`/`push*`/`pull*`/las
+funciones de `auth.js`) se testea con un cliente Supabase SIMULADO
+inyectado tras cargar el código real (mismo patrón de inyección
+post-carga que `createFakeLocalStorage()` ya usaba `pantry.test.js`) —
+el sandbox Node `vm` no tiene red real, así que no hay otra forma
+determinista de testear esta capa sin un proyecto Supabase real. El
+propio `tests/run-tests.js` se extendió para soportar tests async (una
+función de test puede devolver una promesa) manteniendo 100% de
+compatibilidad con los tests síncronos existentes.
+
 ## Exploración descartada: Google AI Studio para el rediseño (2026-08-04)
 
 Antes de implementar el rediseño v2 directamente, se probó pedirle a
@@ -1831,21 +2087,22 @@ llamadas con el mismo input pueden aterrizar en tiers distintos por azar.
   privado) — hoy solo se ve en el aviso posterior a "Usar este plan hoy",
   no en las acciones de comprar/cocinar del historial.
 
-## Session handoff (2026-08-13e)
+## Session handoff (2026-08-13f)
 
 Escrito para que la siguiente sesión/chat pueda continuar sin haber visto
 esta conversación. No repite lo de arriba en detalle — apunta a la
-sección correspondiente. Esta sesión de trabajo tuvo 5 tramos en el mismo
+sección correspondiente. Esta sesión de trabajo tuvo 6 tramos en el mismo
 día: **(a)** presupuesto de compra MARGINAL durante la selección
 (2026-08-13, ver esa sección arriba), **(b)** bug real de precio en
 `renderFoodRow` (2026-08-13b), **(c)** mitigación en la UI del bug de
 macros fabricados (2026-08-13c, ocultar el desglose), **(d)** rediseño
 ARQUITECTÓNICO completo del modelo de nutrición por ingrediente
 (2026-08-13d), **(e)** auditoría del "recorte a cero" + corrección de
-consistencia Atwater (2026-08-13e, esta es la foto final del día — ver
-"Auditoría del recorte a cero y corrección de consistencia Atwater"
-arriba para el detalle completo). Este handoff describe el estado
-ACUMULADO tras los 5, no solo el último.
+consistencia Atwater (2026-08-13e), **(f)** sistema de cuentas completo
+(Supabase Auth + Postgres + RLS) sobre localStorage local-first, esta es
+la foto final del día — ver "Sistema de cuentas (accounts) — Supabase
+Auth + Postgres + RLS" arriba para el detalle completo. Este handoff
+describe el estado ACUMULADO tras los 6, no solo el último.
 
 **Para orientarse en el código en sí, antes de leer archivo por archivo,
 usa el grafo de Graphify** (regenerado al final de esta sesión — 388
@@ -1855,35 +2112,40 @@ docs/graphify.md`). **Si se toca código después de esto, el grafo vuelve
 a desactualizarse** — no se actualiza solo; regenerar con `graphify
 update . --no-cluster && graphify cluster-only .` si hace falta.
 
-**Estado del proyecto**: prototipo funcional, con una red de tests (180,
+**Estado del proyecto**: prototipo funcional, con una red de tests (246,
 ver "Tests" arriba), un rediseño visual v2 + layout mobile, una
 **Despensa completa** (3 etapas), un **horario de comidas completo**, un
 presupuesto que significa dinero de COMPRA (no de uso, desde 2026-08-08),
 la SELECCIÓN de plato consciente de coste de compra MARGINAL (desde
-2026-08-13), y **kcal/protein/carbs/fat por ingrediente REALES para 50 de
+2026-08-13), **kcal/protein/carbs/fat por ingrediente REALES para 50 de
 81 roles** (desde 2026-08-13d; antes: 0 — todo era reparto del total del
 plato por peso), con la consistencia interna de kcal corregida
 (2026-08-13e — kcal ya no puede contradecir el resto de macros de su
-propia fila). El generador ahora se comporta, en la medida de lo que la
-arquitectura actual permite, como pediría un nutricionista real: prefiere
-activamente envases baratos de comprar, reutiliza despensa y paquetes ya
-comprometidos, y muestra la composición nutricional real de cada
-ingrediente cuando existe un dato verificado — nunca una cifra fabricada
-con apariencia de precisión que no tiene, y nunca una fila donde un macro
-contradiga a otro de la misma fila.
+propia fila), y ahora un **sistema de cuentas completo** (2026-08-13f —
+registro/login por email+contraseña, login con Google, sesión persistente,
+despensa/historial/settings sincronizados a la nube por cuenta, modo
+invitado preservado íntegro) aunque **todavía sin un proyecto Supabase
+real aprovisionado** — hasta que eso ocurra (checklist en la sección
+dedicada) el sitio se comporta exactamente igual que antes de este
+tramo, solo en modo invitado. El generador ahora se comporta, en la
+medida de lo que la arquitectura actual permite, como pediría un
+nutricionista real: prefiere activamente envases baratos de comprar,
+reutiliza despensa y paquetes ya comprometidos, y muestra la composición
+nutricional real de cada ingrediente cuando existe un dato verificado —
+nunca una cifra fabricada con apariencia de precisión que no tiene, y
+nunca una fila donde un macro contradiga a otro de la misma fila.
 
 **Commit/branch/deploy actuales**: **sin commitear todavía** — todo el
-trabajo de esta sesión (2026-08-13, los 5 tramos) está en el working
-tree, no comiteado ni pusheado. Antes de esta sesión, `main`/
-`origin/main` coincidían en `3bad470` con un commit docs-only local sin
-pushear (`29790a6`) — verificar `git log -1`/`git status -sb` antes de
-asumir que esto sigue siendo así, y decidir junto con el usuario cómo
-comitear este trabajo (sesión grande con varios cambios claramente
-separables — presupuesto marginal / fix de precio / rediseño de
-nutrición / consistencia Atwater — un commit por tramo sería razonable,
-pero no asumido aquí, pedir confirmación). **Nota**: sigue habiendo
-basura suelta sin relación en la raíz del repo (preexistente, nunca
-comiteada a propósito) — no tocarla sin que se pida.
+trabajo de esta sesión (2026-08-13, los 6 tramos) está en el working
+tree, no comiteado ni pusheado, y por tanto tampoco desplegado a
+`offline-nutrition-helper.pages.dev` (proyecto Cloudflare Pages
+confirmado como direct-upload, `Git Provider: No` — un push a
+`origin/main` NO despliega solo, hace falta `wrangler pages deploy`
+explícito). Antes de esta sesión, `main`/`origin/main` coincidían en
+`c758a01` (ver `git log -1`/`git status -sb` para confirmar que sigue
+siendo así). **Nota**: sigue habiendo basura suelta sin relación en la
+raíz del repo (preexistente, nunca comiteada a propósito) — no tocarla
+sin que se pida.
 
 **Qué funciona**: generación de plan completo (5 tomas, horario, macros)
 con presupuesto de COMPRA real decidido desde la SELECCIÓN de plato,
@@ -1895,7 +2157,10 @@ explícito cuando no (nunca ambos a la vez, nunca un número fabricado);
 modo "sin cocinar" (con horario y macros reales de `REAL_PRODUCTS`, nunca
 tocado por este cambio); catálogo de productos; la Despensa completa
 (comprar → cocinar por comida → deshacer, influye en selección y recorte
-final); los 180 tests.
+final); el formulario ahora recuerda el último perfil guardado entre
+recargas (novedad 2026-08-13f, modo invitado); botón de perfil + diálogo
+de acceso funcionando en modo invitado (registro/login/Google quedan
+pendientes de un proyecto Supabase real, ver checklist); los 246 tests.
 
 **Qué NO funciona / sigue pendiente**: 31/81 ingredient roles siguen sin
 nutrición fiable (Plátano, Salmón, Tempeh, Aguacate, Brócoli, Pepino,
@@ -1945,14 +2210,29 @@ de archivos, ver cada sección dedicada arriba para el detalle:
   4 nuevos en `tests/ingredient-nutrition.test.js`,
   `tests/plan-generator.characterization.test.js` (golden-master
   recapturado de nuevo).
+- **(f) Sistema de cuentas**: `js/data/supabase-config.js`,
+  `js/core/supabase-client.js`, `js/core/settings.js`, `js/core/auth.js`,
+  `js/core/cloud-sync.js`, `js/core/migration.js` (todos nuevos),
+  `js/ui/render-auth.js` (nuevo), `index.html` (SDK de Supabase por CDN +
+  8 scripts nuevos, topbar + 2 `<dialog>` nuevos), `js/app.js` (nuevos
+  refs DOM, `applySettingsToForm`, extensión de `syncAfterPantryChange`,
+  hook nuevo en `handleUsePlanToday`, guardado de settings en
+  `handleSubmit`), `assets/css/style.css` (sección "Cuenta"),
+  `supabase/schema.sql` (nuevo), `tests/settings.test.js`,
+  `tests/migration.test.js`, `tests/cloud-sync.test.js`,
+  `tests/auth.test.js` (todos nuevos), `tests/run-tests.js` (soporte
+  async + los 4 nuevos suites).
 - Todos los sandboxes de test que cargan `dish-selector.js` (5 archivos)
   actualizados para cargar `ingredient-nutrition.js`/`nutrition.js`.
 - **NO tocados en ningún tramo**: `js/core/pricing.js`, `js/core/
-  pantry.js`, `js/core/meal-schedule.js`, `js/data/dishes.js`,
-  `js/data/packaging.js`, `js/data/budget-presets.js`, `js/engine/
-  no-cook-generator.js`, `poc/` (ningún archivo).
+  pantry.js`, `js/core/meal-schedule.js`, `js/core/calculator.js`,
+  `js/data/dishes.js`, `js/data/packaging.js`, `js/data/budget-presets.js`,
+  `js/engine/no-cook-generator.js`, `js/ui/render-pantry.js`, `poc/`
+  (ningún archivo) — confirmado explícitamente para (f): el sistema de
+  cuentas no tocó NINGÚN archivo de dominio/motor.
 - Documentación: este archivo, `PROJECT.md`, `ROADMAP.md`. Grafo de
-  Graphify regenerado (frontend + combinado con PythonProject).
+  Graphify pendiente de regenerar tras (f) (regenerado tras (a)-(e), no
+  después de añadir el sistema de cuentas).
 
 **Qué se verificó y qué no**: los 180 tests se re-ejecutaron y pasan
 (verificado, no heredado) — 13 de `purchase-economics.test.js` + 18 de
@@ -1982,6 +2262,29 @@ dependencia (datos → core → engine → ui). Si una futura sesión ve un
 `ReferenceError` de una función que SÍ existe en el archivo fuente,
 sospechar de esto primero antes de asumir un bug de código real.
 
+**Verificación específica del tramo (f)**: los 246 tests se re-ejecutaron
+y pasan (verificado, no heredado). En navegador (modo invitado, único
+modo posible sin proyecto Supabase real): 0 errores de consola; botón de
+perfil muestra "Invitado" de inmediato (no se queda colgado en "…" — bug
+real encontrado y corregido durante esta misma verificación, ver
+`renderProfileButton` en la cabecera de `render-auth.js`); el diálogo de
+acceso abre/cierra, valida el formulario vacío, alterna login↔registro
+correctamente, y muestra el aviso "cuentas no disponibles todavía" en
+vez de fingir que el login funciona; generación de plan / despensa
+("Usar plan hoy") / "sin cocinar" sin regresión alguna; el formulario
+persiste entre recargas (edad/peso/objetivo/presupuesto/horario, round-
+trip completo verificado leyendo `localStorage` directamente); layout
+mobile (375×812) sin desbordamiento horizontal, diálogo cabe dentro del
+viewport. **Lo que NO se pudo verificar en vivo** (requiere el proyecto
+Supabase + credenciales Google reales del checklist, ninguno existe
+todavía): registro/login/logout reales, Google OAuth de extremo a
+extremo, aislamiento de datos entre dos cuentas reales, y la migración
+invitado→cuenta contra una base de datos real (la lógica de migración SÍ
+está verificada exhaustivamente, pero contra un cliente Supabase
+SIMULADO en `tests/migration.test.js`, no contra Postgres real) — no
+afirmar que esto "funciona en producción" hasta que exista un proyecto
+real y se repita esta verificación contra él.
+
 **Decisiones de arquitectura que no hay que perder**: la comparación
 completa de Estrategia A/B/C (migración de datos) y por qué se eligió B
 está en `ROADMAP.md` — no la repitas de memoria. La distinción
@@ -2002,16 +2305,19 @@ mismo que el remanente de `nutrition.js` (macros) — dos conceptos de
 "lo que sobra" completamente distintos, en dominios distintos, no
 fusionarlos.
 
-**Prioridad actual**: sigue siendo Fase 1 del roadmap de migración
-(ampliar cobertura de datos reales más allá del 50/81 actual, ver
-`ROADMAP.md`) — esta sesión SÍ avanzó esa fase de forma sustancial
-(integró en producción lo que `poc/` ya había auditado), a diferencia de
-las 4 sesiones anteriores que eran ortogonales. Si se sigue trabajando
-sobre lo que ya existe: comitear/pushear el trabajo de esta sesión (ver
-"Commit/branch/deploy actuales"); considerar ampliar la cobertura más
-allá de 50/81 (requiere que el pipeline Python verifique más productos
-en `real-products.js`, ver `PythonProject/docs/data_flow.md` — no es
-tarea de este repo en solitario); investigar el bug de overflow mobile
+**Prioridad actual**: el sistema de cuentas (tramo f) está completo en
+código/esquema/tests pero bloqueado en el ÚNICO paso que requiere las
+cuentas propias del usuario — aprovisionar el proyecto Supabase real y
+el cliente OAuth de Google (checklist completo en la sección dedicada).
+Una vez hecho eso: rellenar `js/data/supabase-config.js` con los valores
+reales, repetir la verificación en navegador pero esta vez con
+login/registro/Google/aislamiento entre cuentas real, comitear/pushear
+(ver "Commit/branch/deploy actuales"), y desplegar con `npx wrangler
+pages deploy .`. Aparte de eso, sigue pendiente Fase 1 del roadmap de
+migración de nutrición (ampliar cobertura de datos reales más allá del
+50/81 actual, ver `ROADMAP.md` — requiere que el pipeline Python
+verifique más productos en `real-products.js`, no es tarea de este repo
+en solitario); investigar el bug de overflow mobile
 `.panel`/`.meal-head`/`.actions`; conectar la Despensa al modo "sin
 cocinar" (issue #9).
 
@@ -2032,12 +2338,29 @@ argumentos 9 y 10; `buildMealFromDish` ya NO calcula macros inline, usa
 por gramos; dentro de esa función, kcal de un ingrediente sin resolver
 NUNCA debe volver a tener su propio remanente anclado a `dish.kcal` — se
 deriva por Atwater de protein/carbs/fat, esa es la regresión que
-2026-08-13e existe para prevenir. Los 180 tests deben seguir pasando
+2026-08-13e existe para prevenir. Los 246 tests deben seguir pasando
 después de cualquier cambio en `js/core/`, `js/engine/`, `js/ui/`, o
 `assets/css/style.css`.
 Específico de la Despensa: `applyPlanToPantry()` y
 `markHistoryEntryCooked()` **ya no existen** (v1→v2); el orden de
 arranque en `js/app.js` y `safeInit()` son intencionales.
+Específico del sistema de cuentas (2026-08-13f): `js/core/pantry.js`,
+`js/ui/render-pantry.js`, `js/core/calculator.js`, `js/core/
+meal-schedule.js` y todo `js/engine/*` deben seguir sin ninguna
+dependencia de auth/Supabase — si algún cambio futuro les hace falta
+"saber" si hay sesión iniciada, es una señal de que la separación de
+capas se está rompiendo, pararse a repensarlo; `js/core/migration.js` es
+la ÚNICA fuente de verdad para la máquina de estados de sincronización
+(`classifySyncState`) — no reimplementar esa lógica en `render-auth.js`
+ni en `app.js`; la guarda de idempotencia/propiedad real es
+`nutritionPlanner.cloudSyncedUserId.v1` (marcador POR NAVEGADOR), NUNCA
+`migrated_at` (columna de solo auditoría) — ver "el peligro real" en la
+sección dedicada antes de tocar esto; `js/core/cloud-sync.js` es el
+ÚNICO módulo que debe llamar a `supabase.from('user_data')...` —
+cualquier otro sitio que empiece a construir queries Postgres es la
+regresión que ese módulo existe para prevenir; `js/data/
+supabase-config.js` nunca debe llevar una `service_role` key, solo la
+`anon public`.
 
 Lee `PROJECT.md` y `ROADMAP.md` además de este archivo. Para el sistema
 completo (con el pipeline Python), lee también `PythonProject/docs/

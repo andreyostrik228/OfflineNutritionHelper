@@ -86,8 +86,10 @@ at runtime.
 | No-cook engine | `js/engine/no-cook-generator.js` | Independent ready-to-eat product plan, not pantry-connected, schedule-aware |
 | Data | `js/data/dishes.js`, `js/data/real-products.js`, `js/data/packaging.js`, `js/data/ingredient-nutrition.js` | Dish records, real Mercadona catalog, package-size lookup, per-ingredient real nutrition registry |
 | Rendering | `js/ui/render.js`, `js/ui/render-insights.js`, `js/ui/render-schedule.js`, `js/ui/render-shopping-list.js`, `js/ui/render-pantry.js` | Summary, meals, warnings, day-schedule strip, shopping list, despensa panel |
+| Accounts | `js/core/{supabase-client,settings,auth,cloud-sync,migration}.js`, `js/ui/render-auth.js` | Auth (email+password, Google OAuth), settings persistence, cloud sync (local-first), idempotent guest→account migration with conflict resolution — fully decoupled from the nutrition engine (2026-08-13f, see "Important note" below) |
 | Styling | `assets/css/style.css` | Visual system, mobile-first responsive layout |
 | Tests | `tests/*.test.js`, `poc/tests/*.test.js` | Node+vm characterization/regression tests over real production code |
+| DB schema | `supabase/schema.sql` | `user_data` table (JSONB blobs mirroring localStorage keys 1:1) + RLS policies + auto-provisioning trigger |
 
 ## Pantry / Despensa (2026-08-06/07)
 
@@ -213,6 +215,34 @@ live in browser (desktop + mobile) against the exact "Mermelada light"
 case; despensa, no-cook, and purchase cost unaffected. Full design
 record in `STATE.md`.
 
+**2026-08-13f — multi-user accounts (Supabase Auth + Postgres + RLS)**:
+the site was purely local/single-user (only the despensa persisted, in
+localStorage) with no build system, deployed as a static Cloudflare
+Pages site. The user asked for real accounts (email+password, Google
+sign-in, persistent session) with every piece of personal data (profile/
+settings — new, never persisted before this — despensa, plan history)
+cloud-backed per account and reachable from any device, without
+rewriting the nutrition engine or discarding guest mode. Chose Supabase
+(free tier; Auth+Google OAuth+Postgres+RLS bundled; ships a CDN UMD SDK
+build, same fit as the existing GSAP dependency) over Firebase/Auth0/
+Clerk. Architecture: local-first/optimistic — localStorage stays the
+synchronous source of truth every existing module already used
+(zero changes to `pantry.js`/`render-pantry.js`/`calculator.js`/
+`meal-schedule.js`/any `js/engine/*` file); a new, separate layer
+hydrates it from the cloud on login and pushes mutations in the
+background via the extension point `app.js` already had
+(`onPantryChange`) plus two new hook points. One Postgres table with
+three JSONB columns mirroring the localStorage blobs 1:1, RLS scoped to
+`auth.uid()`. Guest→account migration is idempotent via a per-browser
+marker, not an account-level timestamp (closes a real shared-device data
+leak found during design); conflicting data on both sides is never
+merged silently — the user picks. 66 new tests (246 total) against a
+simulated Supabase client. Verified live in guest mode (the only mode
+possible pre-provisioning); real login/Google OAuth/cross-account
+isolation still need a live Supabase project + Google OAuth client,
+which only the user can create — full checklist, schema, and design
+record in `STATE.md`.
+
 ## Product direction
 
 Evolve into a real personal nutrition assistant: nutrition + shopping +
@@ -245,8 +275,9 @@ Fase 1.
 
 See `STATE.md` for the authoritative, dated engineering log and `ROADMAP.md`
 for the phased migration plan and architecture decision record. Last
-updated here 2026-08-13e (real per-ingredient nutrition for 50/81 roles,
-plus dish selection made purchase-cost-aware, plus the Atwater-consistency
-fix for unresolved-ingredient kcal — see above). Not production-ready or
-suitable for health-critical personalization — see "Critical known
-issues" in `STATE.md`.
+updated here 2026-08-13f (real per-ingredient nutrition for 50/81 roles,
+dish selection made purchase-cost-aware, the Atwater-consistency fix for
+unresolved-ingredient kcal, and a complete multi-user accounts layer
+pending only external Supabase/Google provisioning — see above). Not
+production-ready or suitable for health-critical personalization — see
+"Critical known issues" in `STATE.md`.

@@ -2591,6 +2591,250 @@ button:focus-visible {
   }
 }
 
+/* ══ Cuenta: barra de perfil + diálogos de acceso ═════════════════════════
+   Ver js/ui/render-auth.js. Reutiliza tokens/componentes existentes
+   (--space-*, --radius-*, .btn-primary/.btn-secondary, input/select,
+   .warning-like error) en vez de un sistema visual aparte — el único
+   elemento nuevo de verdad es <dialog>, sin precedente en el proyecto
+   salvo .disclosure (que envuelve <details> nativo con el mismo espíritu:
+   preferir comportamiento nativo del navegador a un widget hecho a mano). */
+.topbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-3);
+  position: relative;
+}
+
+.topbar__profile-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 7px var(--space-3) 7px 7px;
+  background: var(--paper-raised);
+  color: var(--ink-soft);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  max-width: 220px;
+}
+
+@media (hover: hover) {
+  .topbar__profile-btn:hover {
+    border-color: var(--ink-faint);
+    color: var(--ink);
+  }
+}
+
+.topbar__profile-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--green-wash);
+  color: var(--green);
+  flex-shrink: 0;
+}
+
+.topbar__profile-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topbar__menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  min-width: 200px;
+  background: var(--paper-raised);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-2);
+}
+
+.topbar__menu-email {
+  padding: var(--space-2) var(--space-3);
+  font-size: 12px;
+  color: var(--ink-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: var(--space-2);
+}
+
+.topbar__menu-logout {
+  width: 100%;
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  color: var(--danger);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .topbar__menu-logout:hover {
+    background: var(--danger-wash);
+  }
+}
+
+/* ── Diálogos ─────────────────────────────────────────────────────────── */
+dialog.auth-dialog {
+  width: min(400px, 92vw);
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-lg);
+  background: var(--paper-raised);
+  box-shadow: var(--shadow-md);
+  color: var(--ink);
+}
+
+dialog.auth-dialog::backdrop {
+  background: rgba(33, 26, 20, 0.45);
+}
+
+dialog.auth-dialog[open] {
+  animation: pageIn 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.auth-dialog__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-5) 0;
+}
+
+.auth-dialog__head h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.auth-dialog__close {
+  background: transparent;
+  border: none;
+  color: var(--ink-faint);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  padding: var(--space-1);
+}
+
+.auth-dialog__body {
+  padding: var(--space-4) var(--space-5) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.auth-dialog__body .field {
+  margin-bottom: var(--space-3);
+}
+
+.auth-google-btn {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--ink-faint);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.auth-submit-btn {
+  width: 100%;
+}
+
+.auth-dialog__error {
+  color: var(--danger);
+  background: var(--danger-wash);
+  border: 1px solid var(--danger-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  font-size: 13px;
+}
+
+.auth-dialog__notice {
+  color: var(--green-deep);
+  background: var(--green-wash);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  font-size: 13px;
+}
+
+.auth-dialog__notice-static {
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.auth-dialog__switch {
+  margin: 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.auth-dialog__switch-btn {
+  background: transparent;
+  border: none;
+  color: var(--green);
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0 0 0 4px;
+  font-size: 13px;
+}
+
+.auth-dialog__guest-note {
+  margin: 0;
+  text-align: center;
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+
+.auth-conflict__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+@media (max-width: 640px) {
+  .topbar__menu {
+    min-width: 180px;
+  }
+}
+
 /* ══ Entrada de página ══════════════════════════════════════ */
 @media (prefers-reduced-motion: no-preference) {
   .hero,

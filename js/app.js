@@ -110,6 +110,32 @@ document.addEventListener("DOMContentLoaded", function () {
   var pantryHistoryEmptyEl     = document.getElementById("pantryHistoryEmpty");
   var pantryCountEl            = document.getElementById("pantryCount");
 
+  var authProfileBtn   = document.getElementById("authProfileBtn");
+  var authProfileLabel = document.getElementById("authProfileLabel");
+  var authUserMenu     = document.getElementById("authUserMenu");
+  var authUserEmailEl  = document.getElementById("authUserEmail");
+  var authLogoutBtn    = document.getElementById("authLogoutBtn");
+
+  var authDialogEl        = document.getElementById("authDialog");
+  var authDialogTitle     = document.getElementById("authDialogTitle");
+  var authDialogCloseBtn  = document.getElementById("authDialogCloseBtn");
+  var authUnavailableBox  = document.getElementById("authUnavailableBox");
+  var authAvailableBox    = document.getElementById("authAvailableBox");
+  var authGoogleBtn       = document.getElementById("authGoogleBtn");
+  var authEmailForm       = document.getElementById("authEmailForm");
+  var authEmailInput      = document.getElementById("authEmail");
+  var authPasswordInput   = document.getElementById("authPassword");
+  var authErrorEl         = document.getElementById("authError");
+  var authNoticeEl        = document.getElementById("authNotice");
+  var authSubmitBtn       = document.getElementById("authSubmitBtn");
+  var authSwitchPrompt    = document.getElementById("authSwitchPrompt");
+  var authSwitchModeBtn   = document.getElementById("authSwitchModeBtn");
+
+  var authConflictDialogEl     = document.getElementById("authConflictDialog");
+  var authConflictKeepCloudBtn = document.getElementById("authConflictKeepCloudBtn");
+  var authConflictMergeBtn     = document.getElementById("authConflictMergeBtn");
+  var authConflictKeepLocalBtn = document.getElementById("authConflictKeepLocalBtn");
+
   // El plan actualmente mostrado — necesario para que "Usar este plan
   // hoy" sepa sobre qué comidas actuar sin regenerar nada. Una vez
   // guardado (savePlanForToday), la Etapa 2 (comprar) y la Etapa 3
@@ -242,6 +268,21 @@ document.addEventListener("DOMContentLoaded", function () {
         // plan concreto sin tener que regenerarlo.
         lastGeneratedMeals = result.meals;
         lastGeneratedStore = result.report && result.report.store;
+
+        // Guarda el perfil/formulario para la próxima visita (invitado:
+        // este navegador; con sesión iniciada: también se empuja a la
+        // nube) -- piggyback sobre el camino de éxito ya existente, en
+        // vez de un listener por campo (ver js/core/settings.js).
+        safeInit("settings-save", function () {
+          if (typeof saveSettings !== "function") return;
+          var scheduleSettings = (typeof readScheduleSettings === "function") ? readScheduleSettings() : {};
+          var toSave = {};
+          Object.keys(data).forEach(function (k) { toSave[k] = data[k]; });
+          Object.keys(scheduleSettings).forEach(function (k) { toSave[k] = scheduleSettings[k]; });
+          saveSettings(toSave);
+          if (typeof pushSettingsToCloud === "function") pushSettingsToCloud();
+        });
+
         if (planSavedNoticeEl) {
           planSavedNoticeEl.hidden = true;
           planSavedNoticeEl.innerHTML = "";
@@ -287,6 +328,49 @@ document.addEventListener("DOMContentLoaded", function () {
       updateBudgetCustomVisibility();
     }
     if (budgetCustomInput) budgetCustomInput.value = 24; // entre Equilibrado(20) y Amplio(28) -- ver js/data/budget-presets.js
+  }
+
+  // ── Perfil/ajustes guardados (invitado: localStorage; cuenta: nube vía
+  //    js/core/cloud-sync.js, ver handleSubmit más abajo y render-auth.js) ─
+  // Rellena el formulario con el último perfil guardado -- nunca lanza si
+  // algún campo no existe (setVal es un no-op seguro), y nunca sobrescribe
+  // con `undefined` un valor por defecto del HTML si ese campo nunca se
+  // guardó (usuario nuevo, o campo añadido después de que se guardara por
+  // última vez).
+  function applySettingsToForm(settings) {
+    if (!settings) return;
+
+    function setVal(id, value) {
+      if (value === undefined || value === null || value === "") return;
+      var el = document.getElementById(id);
+      if (el) el.value = value;
+    }
+
+    setVal("age", settings.age);
+    setVal("sex", settings.sex);
+    setVal("weight", settings.weight);
+    setVal("height", settings.height);
+    setVal("activity", settings.activity);
+    setVal("workouts", settings.workouts);
+    setVal("goal", settings.goal);
+    setVal("cookTime", settings.cookTime);
+    setVal("taste", settings.taste);
+    setVal("wakeTime", settings.wakeTime);
+    setVal("sleepTime", settings.sleepTime);
+
+    if (settings.budgetMode) {
+      var radioId = settings.budgetMode === "small"  ? "budgetModeSmall"
+                  : settings.budgetMode === "medium" ? "budgetModeMedium"
+                  : settings.budgetMode === "high"   ? "budgetModeHigh"
+                  : settings.budgetMode === "custom" ? "budgetModeCustom"
+                  : null;
+      var radio = radioId && document.getElementById(radioId);
+      if (radio) {
+        radio.checked = true;
+        updateBudgetCustomVisibility();
+      }
+    }
+    setVal("budgetCustom", settings.budgetCustom);
   }
 
   // ── Botón: resetear ───────────────────────────────────────────────────
@@ -335,6 +419,58 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   });
 
+  // ── Perfil/ajustes guardados: rellena el formulario con lo último
+  //    guardado en ESTE navegador (invitado) -- si hay sesión iniciada, se
+  //    vuelve a aplicar tras la reconciliación con la nube (puede llegar
+  //    un instante más tarde, ver handleAuthDataReconciled/render-auth.js).
+  safeInit("settings-prefill", function () {
+    if (typeof getSettings === "function") applySettingsToForm(getSettings());
+  });
+
+  // ── Cuenta: botón de perfil, diálogo de acceso, reconciliación con la
+  //    nube -- ver js/ui/render-auth.js para la orquestación completa
+  //    (cuándo reconciliar, el diálogo de conflicto, etc.). En modo
+  //    invitado (Supabase sin aprovisionar) esto solo pinta "Invitado" y
+  //    un aviso claro dentro del diálogo -- el resto de la app sigue
+  //    funcionando exactamente igual que hoy.
+  function handleAuthDataReconciled() {
+    safeInit("settings-reapply-after-sync", function () {
+      if (typeof getSettings === "function") applySettingsToForm(getSettings());
+    });
+    syncAfterPantryChange();
+  }
+
+  safeInit("auth-init", function () {
+    if (authProfileBtn && typeof initAuthRefs === "function") {
+      initAuthRefs({
+        authProfileBtn: authProfileBtn,
+        authProfileLabel: authProfileLabel,
+        authUserMenu: authUserMenu,
+        authUserEmailEl: authUserEmailEl,
+        authLogoutBtn: authLogoutBtn,
+        authDialogEl: authDialogEl,
+        authDialogTitle: authDialogTitle,
+        authDialogCloseBtn: authDialogCloseBtn,
+        authUnavailableBox: authUnavailableBox,
+        authAvailableBox: authAvailableBox,
+        authGoogleBtn: authGoogleBtn,
+        authEmailForm: authEmailForm,
+        authEmailInput: authEmailInput,
+        authPasswordInput: authPasswordInput,
+        authErrorEl: authErrorEl,
+        authNoticeEl: authNoticeEl,
+        authSubmitBtn: authSubmitBtn,
+        authSwitchPrompt: authSwitchPrompt,
+        authSwitchModeBtn: authSwitchModeBtn,
+        authConflictDialogEl: authConflictDialogEl,
+        authConflictKeepCloudBtn: authConflictKeepCloudBtn,
+        authConflictMergeBtn: authConflictMergeBtn,
+        authConflictKeepLocalBtn: authConflictKeepLocalBtn,
+        onDataReconciled: handleAuthDataReconciled
+      });
+    }
+  });
+
   // ── Presets de presupuesto (Ajustado/Equilibrado/Amplio) ─────────────
   // Los importes se rellenan desde js/data/budget-presets.js (una sola
   // fuente de verdad) en vez de escribirlos en el HTML — igual que
@@ -379,6 +515,11 @@ document.addEventListener("DOMContentLoaded", function () {
         renderShoppingList(lastGeneratedMeals, lastGeneratedStore);
       }
     });
+    // Empuje en segundo plano a la nube (no-op en modo invitado o sin
+    // conexión -- ver js/core/cloud-sync.js, nunca bloquea ni lanza).
+    safeInit("pantry-cloud-push", function () {
+      if (typeof pushPantryToCloud === "function") pushPantryToCloud();
+    });
   }
 
   // Etapa 1 del ciclo de vida de la despensa: registra el plan mostrado
@@ -394,6 +535,14 @@ document.addEventListener("DOMContentLoaded", function () {
         var result = savePlanForToday(lastGeneratedMeals, lastGeneratedStore);
         if (typeof renderPantryPanel === "function") renderPantryPanel();
         if (typeof renderPlanSavedNotice === "function") renderPlanSavedNotice(result.entry, result.historySaved);
+
+        // savePlanForToday() escribe en pantryHistory pero NO pasa por
+        // syncAfterPantryChange() (no se llama desde render-pantry.js) --
+        // sin este empuje explícito, un plan recién guardado no llegaría a
+        // la nube hasta la siguiente mutación de despensa.
+        safeInit("plan-saved-cloud-push", function () {
+          if (typeof pushPantryToCloud === "function") pushPantryToCloud();
+        });
 
         // El plan guardado se gestiona desde ahí en adelante (comprar/
         // cocinar) -- se abre y se hace scroll para que no haya que buscarlo.

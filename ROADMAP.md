@@ -2,16 +2,26 @@
 
 ## Current status
 
-**Stage:** working prototype, updated 2026-08-13d — **Fase 1 of the data
-migration below is now partially done**: ingredient-level kcal/protein/
-carbs/fat for 50 of 81 roles is real, verified, and live in production
-(`js/data/ingredient-nutrition.js` + `js/core/nutrition.js`), promoted
-from the `poc/` audit that had been sitting unused since 2026-08-04 (see
-`STATE.md`, "Rediseño del modelo de nutrición por ingrediente"). Dish
-SELECTION is also purchase-cost-aware, not just the final budget
-verification (2026-08-13, see `STATE.md`, "Presupuesto de compra
-MARGINAL durante la selección"). **Not yet committed/pushed** — see
-`STATE.md` session handoff for exact repo state before assuming
+**Stage:** working prototype, updated 2026-08-13f — the site now has a
+**complete accounts layer** (Supabase Auth email+password/Google OAuth +
+Postgres + Row Level Security, guest mode preserved as the default,
+local-first sync, idempotent guest→account migration with conflict
+resolution) sitting on top of the existing localStorage-only app,
+architecturally separate from the nutrition engine (see `STATE.md`,
+"Sistema de cuentas (accounts) — Supabase Auth + Postgres + RLS") — code,
+schema (`supabase/schema.sql`), RLS policies, and 66 new tests are all
+complete and passing, but **no real Supabase project is provisioned
+yet**, so the account features are inert (guest mode only) until that
+external step happens (checklist in the same `STATE.md` section). **Fase
+1 of the data migration below is also partially done**: ingredient-level
+kcal/protein/carbs/fat for 50 of 81 roles is real, verified, and live in
+production (`js/data/ingredient-nutrition.js` + `js/core/nutrition.js`),
+promoted from the `poc/` audit that had been sitting unused since
+2026-08-04 (see `STATE.md`, "Rediseño del modelo de nutrición por
+ingrediente"). Dish SELECTION is also purchase-cost-aware, not just the
+final budget verification (2026-08-13, see `STATE.md`, "Presupuesto de
+compra MARGINAL durante la selección"). **Not yet committed/pushed** —
+see `STATE.md` session handoff for exact repo state before assuming
 otherwise. Previous session (2026-08-08) redesigned the final budget
 check to mean purchase cost, not usage cost, along with the meal
 schedule feature from the session before that — both were committed and
@@ -166,6 +176,51 @@ their ingredients' nutrition is computed and displayed.
   "Auditoría del recorte a cero y corrección de consistencia Atwater —
   2026-08-13e". **Not committed/pushed as of this update** — see
   `STATE.md` session handoff.
+- **Multi-user accounts — Supabase Auth + Postgres + RLS (2026-08-13f)**:
+  the user asked to turn the site from a purely local, single-user app
+  into a real multi-user one — email+password and Google sign-in, a
+  persistent session across reloads, and every piece of personal data
+  (profile/settings, despensa, confirmed/cooked plan history) cloud-
+  backed and scoped per account, reachable from any device, without
+  rewriting the nutrition engine and without discarding guest mode.
+  Chose Supabase (Auth incl. Google OAuth + Postgres + Row Level
+  Security, free tier, CDN UMD SDK — same "no build system" fit as the
+  existing GSAP dependency) over Firebase/Auth0/Clerk after evaluating
+  the tradeoffs (see `STATE.md` for the full reasoning). Architecture:
+  local-first/optimistic — localStorage stays the synchronous source of
+  truth `pantry.js`/`render-pantry.js`/`calculator.js`/
+  `meal-schedule.js`/every `js/engine/*` file already used, completely
+  unchanged; a new, separate layer (`js/core/{supabase-client,settings,
+  auth,cloud-sync,migration}.js` + `js/ui/render-auth.js`) hydrates
+  localStorage from the cloud on login and pushes every local mutation
+  in the background, hooked into the `onPantryChange` extension point
+  `app.js` already exposed plus two new hook points. One Postgres table
+  (`user_data`, `supabase/schema.sql`) with three JSONB columns
+  mirroring the three localStorage-shaped blobs 1:1, RLS scoped to
+  `auth.uid() = user_id`, a `security definer` trigger auto-provisioning
+  the row on signup so client writes are always `UPDATE`, never upsert.
+  Guest→account migration is idempotent via a per-BROWSER marker
+  (`nutritionPlanner.cloudSyncedUserId.v1`), not just an account-level
+  `migrated_at` timestamp — the account-only guard has a real shared-
+  device leak (found and fixed during design, see `STATE.md`) where a
+  second person logging into the same browser could have the first
+  person's leftover local cache treated as their own guest data.
+  Conflict (both local and cloud have real data on a fresh browser) is
+  never resolved silently — the user explicitly picks keep-cloud/
+  keep-local/merge. 66 new tests (settings/migration/cloud-sync/auth,
+  246 total, 0 failures across `tests/`+`poc/tests/`), all against a
+  simulated Supabase client (the Node test sandbox has no real network).
+  Verified live in browser (desktop + mobile) in guest mode — the only
+  mode possible until a real Supabase project + Google OAuth client
+  exist, which requires the user's own accounts (full checklist in
+  `STATE.md`) — 0 console errors, plan generation/despensa/no-cook
+  unaffected, the profile button/dialog work correctly, and the
+  form now persists between reloads (new capability). Full design
+  record, external-setup checklist, and known caveats in `STATE.md`,
+  "Sistema de cuentas (accounts) — Supabase Auth + Postgres + RLS —
+  2026-08-13f". **Not committed/pushed, and real login/Google OAuth/
+  cross-account isolation not yet verifiable against a live backend as
+  of this update** — see `STATE.md` session handoff.
 
 ## Decisión de arquitectura: migración a productos reales (2026-08-04)
 
