@@ -35,12 +35,45 @@
  *                       (mismo patrón defensivo `typeof X === "function"`
  *                       que ya usa el resto del proyecto).
  *
+ * ── Coste de compra MARGINAL durante la SELECCIÓN (2026-08-08b) ───────────
+ * Todo lo de arriba calcula el purchaseCost de un día YA CONSTRUIDO — sigue
+ * siendo la verificación final autoritativa (enforcePurchaseBudgetCap en
+ * plan-generator.js). Pero antes de esta sesión, dish-selector.js (la
+ * cascada que de verdad ELIGE cada plato) decidía "¿me lo puedo permitir?"
+ * mirando usageCost (precio × gramos usados), no purchaseCost — así que un
+ * plato con usageCost bajo pero que obliga a comprar un envase entero caro
+ * podía parecer "barato" en el momento de elegir, aunque no lo fuera de
+ * verdad. Rediseño: dish-selector.js ahora pregunta el coste de compra
+ * MARGINAL — "¿cuánto SUMA este plato a lo que ya se va a comprar hoy?",
+ * no el purchaseCost aislado de sus gramos sueltos.
+ *
+ * Ej.: yogur 1kg/3€. Desayuno ya comprometió 100g -> ya toca comprar 1
+ * paquete (3€). Si la cena necesita 100g más del MISMO ingrediente, esos
+ * 100g siguen dentro del paquete ya comprado -> coste marginal de la cena
+ * = 0€, no 0.30€ (usageCost) ni 3€ (purchaseCost aislado, que ignoraría
+ * que el paquete ya se iba a comprar de todas formas).
+ *
+ * `committedGrams` es un acumulador MUTABLE ({ [claveNormalizada]: gramos })
+ * que plan-generator.js mantiene durante la construcción de UN intento de
+ * día completo (attemptPlanAtTier) — se reinicia en cada tier, nunca
+ * persiste entre intentos ni entre generaciones. No es lo mismo que la
+ * despensa (pantryState): la despensa es stock real de sesiones anteriores;
+ * committedGrams es solo "lo que este mismo plan ya decidió comprar hasta
+ * ahora", vive y muere con un solo intento de generación.
+ *
  * Expone (globales):
  *   aggregateMealItems(meals) → [{name, requiredGrams}]
  *   computeDayPurchaseCost(meals, storeId, pantryState) →
  *     { purchaseCost, usageCost, lines: [{name, requiredGrams, usageCost,
  *       purchaseCost, hasFixedPackage, packageSizeG, packageLabel,
  *       packagesToBuy, coveredFromPantry, stillNeeded}] }
+ *   estimateIngredientMarginalPurchaseCost(name, addGrams, committedGrams,
+ *     storeId, pantryState) → number
+ *   estimateItemsMarginalPurchaseCost(items, committedGrams, storeId,
+ *     pantryState) → number
+ *   estimateDishMarginalPurchaseCost(dish, scaleFactor, committedGrams,
+ *     storeId, pantryState) → number
+ *   addItemsToPurchaseState(committedGrams, items) → void (muta committedGrams)
  * ─────────────────────────────────────────────────────────────────────────
  */
 
@@ -138,4 +171,98 @@ function computeDayPurchaseCost(meals, storeId, pantryState) {
   var usageCost = round2(lines.reduce(function (sum, l) { return sum + l.usageCost; }, 0));
 
   return { purchaseCost: purchaseCost, usageCost: usageCost, lines: lines };
+}
+
+// ── Coste de compra MARGINAL (usado por dish-selector.js durante la selección) ─
+
+/**
+ * Coste de compra MARGINAL de añadir `addGrams` más de un ingrediente a lo
+ * que ya se ha comprometido comprar hoy (`committedGrams`) — ver cabecera
+ * del archivo. `before=0` se resuelve directamente como 0€ SIN llamar a
+ * resolveDayLinePurchaseCost(name, 0, ...): si pantry.js no está cargado,
+ * esa llamada cae en resolvePurchaseCost(name, 0, storeId), que devuelve
+ * "1 paquete fantasma" (Math.max(1, ...) — nunca se le llama con 0 gramos
+ * en su uso normal, ver cabecera de pricing.js) en vez de 0€, lo que
+ * infravaloraría sistemáticamente el coste marginal de introducir un
+ * ingrediente nuevo. Evitar esa llamada aquí es más simple que tocar
+ * resolvePurchaseCost/resolvePurchaseCostWithPantry para un caso que ellas
+ * nunca necesitaron manejar hasta ahora.
+ *
+ * @param {string} name
+ * @param {number} addGrams
+ * @param {object} committedGrams - { [claveNormalizada]: gramosYaComprometidos }
+ * @param {string} [storeId]
+ * @param {object|null} [pantryState]
+ * @returns {number}
+ */
+function estimateIngredientMarginalPurchaseCost(name, addGrams, committedGrams, storeId, pantryState) {
+  if (!(addGrams > 0)) return 0;
+  var key = normalizeIngredientKey(name);
+  var before = (committedGrams && committedGrams[key]) || 0;
+  var after = before + addGrams;
+  var beforeCost = before > 0 ? resolveDayLinePurchaseCost(name, before, storeId, pantryState).purchaseCost : 0;
+  var afterCost = resolveDayLinePurchaseCost(name, after, storeId, pantryState).purchaseCost;
+  return round2(Math.max(0, afterCost - beforeCost));
+}
+
+/**
+ * Coste de compra MARGINAL de un conjunto de items ({name, grams}[], la
+ * misma forma que meal.items) dado lo ya comprometido — suma el marginal
+ * de cada ingrediente por separado (NO agrega entre sí dentro de la propia
+ * llamada: si el mismo ingrediente aparece dos veces en `items`, cada
+ * aparición ve el estado ya actualizado por la anterior gracias a que
+ * `committedGrams` es el mismo objeto para toda la función... salvo que
+ * aquí NO se muta — usar addItemsToPurchaseState() aparte para eso. Items
+ * duplicados dentro de un mismo `items[]` son un caso que hoy no ocurre en
+ * la práctica, meal.items ya viene sin duplicados, ver mergeDuplicateFoods).
+ *
+ * @param {{name:string, grams:number}[]} items
+ * @param {object} committedGrams
+ * @param {string} [storeId]
+ * @param {object|null} [pantryState]
+ * @returns {number}
+ */
+function estimateItemsMarginalPurchaseCost(items, committedGrams, storeId, pantryState) {
+  var total = 0;
+  (items || []).forEach(function (item) {
+    total += estimateIngredientMarginalPurchaseCost(item.name, item.grams, committedGrams, storeId, pantryState);
+  });
+  return round2(total);
+}
+
+/**
+ * Igual que estimateItemsMarginalPurchaseCost, pero partiendo de un `dish`
+ * de DISH_DB (items en `{name, g}`, sin escalar) y un `scaleFactor`
+ * hipotético — usado por dish-selector.js para evaluar CANDIDATOS antes de
+ * construir el meal de verdad (buildMealFromDish).
+ *
+ * @param {object} dish
+ * @param {number} scaleFactor
+ * @param {object} committedGrams
+ * @param {string} [storeId]
+ * @param {object|null} [pantryState]
+ * @returns {number}
+ */
+function estimateDishMarginalPurchaseCost(dish, scaleFactor, committedGrams, storeId, pantryState) {
+  var scaledItems = (dish.items || []).map(function (ingredient) {
+    return { name: ingredient.name, grams: ingredient.g * scaleFactor };
+  });
+  return estimateItemsMarginalPurchaseCost(scaledItems, committedGrams, storeId, pantryState);
+}
+
+/**
+ * Registra items ({name, grams}[]) como "ya comprometidos a comprar hoy" en
+ * `committedGrams` — MUTA el objeto in-place (mismo patrón que pantryState
+ * en pantry.js). Llamar DESPUÉS de calcular el coste marginal de esos
+ * items, nunca antes (si no, el propio meal se restaría a sí mismo del
+ * marginal).
+ *
+ * @param {object} committedGrams
+ * @param {{name:string, grams:number}[]} items
+ */
+function addItemsToPurchaseState(committedGrams, items) {
+  (items || []).forEach(function (item) {
+    var key = normalizeIngredientKey(item.name);
+    committedGrams[key] = (committedGrams[key] || 0) + item.grams;
+  });
 }

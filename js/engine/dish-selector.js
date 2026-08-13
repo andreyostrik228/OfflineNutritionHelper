@@ -37,6 +37,31 @@
  * hace que cambiar de supermercado sea automático en cuanto exista su
  * catálogo, sin tocar este archivo.
  *
+ * ── Presupuesto: coste de compra MARGINAL, no usageCost (2026-08-08b) ────
+ * Antes de este rediseño, la cascada decidía "¿cabe en el presupuesto de
+ * esta toma?" mirando usageCost (estimateScaledCost: precio × gramos que
+ * se usarían) — una heurística razonable pero que ignoraba por completo el
+ * empaquetado: un plato con usageCost bajo (23g de un ingrediente) podía
+ * en realidad obligar a comprar un envase entero caro (250g), mientras que
+ * otro con usageCost más alto pero de envase pequeño resultaba más barato
+ * de comprar de verdad. Solo DESPUÉS de construir el día entero se
+ * comprobaba el coste de compra real (plan-generator.js,
+ * enforcePurchaseBudgetCap) — la cascada nunca elegía pensando en eso.
+ *
+ * Ahora la cascada pregunta el coste de compra MARGINAL de cada candidato
+ * (js/core/budget.js, estimateDishMarginalPurchaseCost): cuánto SUMA este
+ * plato a lo que ya se va a comprar hoy, dado (a) lo que ya comprometieron
+ * las tomas anteriores de este mismo día (`committedGrams`, para que un
+ * ingrediente ya "pagado" en el desayuno no vuelva a costar en la cena si
+ * el mismo paquete todavía cubre lo que hace falta) y (b) la despensa real
+ * (`pantryState`, sobras de compras anteriores). usageCost sigue
+ * calculándose y mostrándose (proteinPerEuro, informativo/desempate
+ * secundario) pero YA NO decide qué cabe en el presupuesto — eso es
+ * exclusivamente el coste de compra marginal. enforcePurchaseBudgetCap
+ * (plan-generator.js) sigue existiendo como red de seguridad final sobre
+ * el día completo — este rediseño hace que la cascada intente acertar
+ * DESDE EL PRINCIPIO, no que dependa solo de recortar después.
+ *
  * Depende de:
  *   js/data/dishes.js       (DISH_DB)
  *   js/core/utils.js        (round1, round2)
@@ -44,14 +69,34 @@
  *                            mergeDuplicateFoods, addFood)
  *   js/core/pricing.js      (resolveIngredientPrice, priceDishAtStore,
  *                            proteinPerEuro, DEFAULT_STORE_ID)
+ *   js/core/budget.js       (estimateDishMarginalPurchaseCost,
+ *                            estimateItemsMarginalPurchaseCost) — el coste
+ *                            de compra marginal, ver arriba
+ *   js/core/nutrition.js    (computeDishIngredientNutrition) — kcal/
+ *                            protein/carbs/fat REALES por ingrediente
+ *                            cuando existen, en vez de repartir el total
+ *                            del plato por cuota de gramos (2026-08-13d,
+ *                            ver cabecera de ese archivo)
  *
  * Expone (globales):
  *   RELAXATION_TIERS, MAX_RELAXATION_TIER, resolveTier(tier)
  *   MIN_PORTION_SCALE
- *   estimateScaledCost(dish, target, storeId)
- *   estimateMinMealCost(category, storeId, target)
- *   estimateAbsoluteMinMealCost(category, storeId)
- *   pickDish(category, data, usedState, tier, maxCost, target, storeId, targetSpend)
+ *   estimateScaledCost(dish, target, storeId) — usageCost a escala de
+ *     ración; ya NO decide el presupuesto (ver arriba), queda como utilidad
+ *     informativa/de escala, sin llamadores internos activos
+ *   estimateMinMealCost(category, storeId, target) — usageCost, sin
+ *     llamadores internos activos (ver estimateScaledCost)
+ *   estimateAbsoluteMinMealCost(category, storeId) — usageCost, sin
+ *     llamadores internos activos; sustituida en la reserva de
+ *     plan-generator.js por estimateAbsoluteMinPurchaseCost (ver abajo)
+ *   estimateScaledPurchaseImpact(dish, target, storeId, committedGrams, pantryState)
+ *     → { scaleFactor, marginalCost } — el número que SÍ decide el
+ *     presupuesto ahora
+ *   estimateAbsoluteMinPurchaseCost(category, storeId) — reserva
+ *     conservadora (compra en solitario, sin despensa ni comprometidos) para
+ *     el lookahead de tomas siguientes en plan-generator.js
+ *   pickDish(category, data, usedState, tier, maxCost, target, storeId,
+ *     targetSpend, committedGrams, pantryState)
  *     → { dish, scaleFactor, simplified, reason, minPossibleCost }
  *   buildMealFromDish(dish, mealKey, mealLabel, target, storeId, forcedScaleFactor)
  *   buildPlaceholderDish(category)
@@ -205,6 +250,59 @@ function estimateAbsoluteMinMealCost(category, storeId) {
   return Math.min.apply(null, costs);
 }
 
+// ── Coste de compra MARGINAL a la escala de ración de una toma ────────────
+
+/**
+ * Escala + coste de compra MARGINAL de un plato al objetivo calórico de la
+ * toma — el equivalente a estimateScaledCost() pero con el número que
+ * ahora SÍ decide el presupuesto (ver cabecera del archivo). El factor de
+ * escala sigue viniendo del objetivo calórico (decisión nutricional, ajena
+ * al precio); el coste se evalúa DESPUÉS, a esa escala, vía
+ * js/core/budget.js (estimateDishMarginalPurchaseCost) — nunca se
+ * reimplementa aquí la lógica de paquetes/despensa.
+ *
+ * @param {object} dish
+ * @param {object} target        - { kcal, ... } objetivo de la toma
+ * @param {string} storeId
+ * @param {object} committedGrams - gramos ya comprometidos hoy por tomas anteriores
+ * @param {object|null} pantryState
+ * @returns {{ scaleFactor:number, marginalCost:number }}
+ */
+function estimateScaledPurchaseImpact(dish, target, storeId, committedGrams, pantryState) {
+  var rawScale = target.kcal / Math.max(dish.kcal, 1);
+  var scaleFactor = Math.min(MAX_PORTION_SCALE, Math.max(0.70, rawScale));
+  var marginalCost = estimateDishMarginalPurchaseCost(dish, scaleFactor, committedGrams, storeId, pantryState);
+  return { scaleFactor: scaleFactor, marginalCost: marginalCost };
+}
+
+/**
+ * Reserva conservadora de presupuesto de COMPRA para el lookahead de tomas
+ * siguientes (plan-generator.js) — sustituye a estimateAbsoluteMinMealCost
+ * (usageCost) en ese punto de uso. Deliberadamente IGNORA despensa y
+ * comprometidos (`pantryState: null`, `committedGrams: {}` frescos): cada
+ * categoría se evalúa en solitario, como si nada más del día ya la
+ * cubriera, para nunca prometer más margen del que en realidad existe (si
+ * fuera consciente de despensa/comprometidos, dos categorías podrían
+ * "reclamar" el mismo paquete ya comprado o la misma despensa dos veces,
+ * infra-reservando). El margen real que la despensa/reuso de paquetes
+ * pueda aportar se refleja de todas formas en el coste marginal REAL que
+ * paga cada toma al elegirse (estimateScaledPurchaseImpact) — esta
+ * reserva es solo el techo conservador que evita que una toma temprana se
+ * quede sin presupuesto real para las siguientes.
+ *
+ * @param {string} category
+ * @param {string} storeId
+ * @returns {number}
+ */
+function estimateAbsoluteMinPurchaseCost(category, storeId) {
+  var wholeCategory = DISH_DB.filter(function (d) { return d.category === category; });
+  if (wholeCategory.length === 0) return 0;
+  var costs = wholeCategory.map(function (d) {
+    return estimateDishMarginalPurchaseCost(d, MIN_PORTION_SCALE, {}, storeId, null);
+  });
+  return Math.min.apply(null, costs);
+}
+
 // ── Puntuación de diversidad (sin cambios respecto a la versión anterior) ──
 
 /**
@@ -290,30 +388,41 @@ function allocationScore(estCost, targetSpend, maxCost) {
 /**
  * Puntuación unificada para rankear candidatos DENTRO del techo maxCost.
  *
- * Modo efficiency (presupuesto ajustado): proteína/€ manda, diversidad
- * desempata — comportamiento anterior.
+ * La eficiencia AUTORITATIVA es proteína / coste-de-compra-MARGINAL
+ * (purchasePpeBucket) — cuánta proteína aporta este plato por cada € que
+ * de verdad suma a la compra de hoy, dados los paquetes ya comprometidos y
+ * la despensa. proteína/usageCost (usagePpeBucket, vía proteinPerEuro,
+ * pricing.js) se conserva como desempate SECUNDARIO de peso menor — sigue
+ * siendo información útil (eficiencia de uso del paquete comprado), pero
+ * ya no decide qué plato "cabe" ni cuál gana.
  *
- * Modo allocation (margen disponible): macros + uso de cuota + diversidad;
- * proteína/€ solo como desempate fino. Base para futura asignación por
- * lista de compra (cuota por toma antes de elegir ingredientes).
+ * Modo efficiency (presupuesto ajustado): eficiencia de compra manda,
+ * eficiencia de uso y diversidad desempatan — comportamiento anterior,
+ * ahora con el coste correcto.
+ *
+ * Modo allocation (margen disponible): macros + uso de cuota (medido en
+ * coste de compra marginal) + diversidad; eficiencia de compra/uso solo
+ * como desempate fino.
  *
  * @param {object} dish
  * @param {object} usedState
- * @param {{ target, maxCost, targetSpend, storeId, tight }} ctx
+ * @param {{ target, maxCost, targetSpend, storeId, committedGrams, pantryState, tight }} ctx
  * @returns {number}
  */
 function scoreDishForSelection(dish, usedState, ctx) {
   var div = diversityScore(dish, usedState);
-  var est = estimateScaledCost(dish, ctx.target, ctx.storeId);
-  var ppeBucket = Math.round(proteinPerEuro(dish, ctx.storeId) / 2) * 2;
+  var impact = estimateScaledPurchaseImpact(dish, ctx.target, ctx.storeId, ctx.committedGrams, ctx.pantryState);
+  var purchasePpe = (dish.protein * impact.scaleFactor) / Math.max(impact.marginalCost, 0.01);
+  var purchasePpeBucket = Math.round(purchasePpe / 2) * 2;
+  var usagePpeBucket = Math.round(proteinPerEuro(dish, ctx.storeId) / 2) * 2; // informativo/desempate, ver arriba
 
   if (ctx.tight) {
-    return ppeBucket * 100 + div;
+    return purchasePpeBucket * 100 + usagePpeBucket * 0.5 + div;
   }
 
-  var macroFit   = macroFitScore(dish, ctx.target, est.scaleFactor);
-  var allocation = allocationScore(est.cost, ctx.targetSpend, ctx.maxCost);
-  return macroFit * 100 + allocation * 30 + div * 10 + ppeBucket;
+  var macroFit   = macroFitScore(dish, ctx.target, impact.scaleFactor);
+  var allocation = allocationScore(impact.marginalCost, ctx.targetSpend, ctx.maxCost);
+  return macroFit * 100 + allocation * 30 + div * 10 + purchasePpeBucket + usagePpeBucket * 0.5;
 }
 
 /**
@@ -440,6 +549,12 @@ function pickWeightedFromTop(ranked) {
  * @param {string} storeId
  * @param {number} [targetSpend] - cuota orientativa de la toma (presupuesto
  *                                diario × ratio calórico); por defecto maxCost
+ * @param {object} committedGrams - gramos ya comprometidos hoy por tomas
+ *                                anteriores de este mismo intento (ver
+ *                                cabecera del archivo) — MUTADO por
+ *                                plan-generator.js después de cada elección,
+ *                                nunca aquí dentro
+ * @param {object|null} pantryState - snapshot de getPantryState(), o null
  * @returns {{
  *   dish: object|null,
  *   scaleFactor: number,
@@ -448,27 +563,31 @@ function pickWeightedFromTop(ranked) {
  *   minPossibleCost: number|null
  * }}
  */
-function pickDish(category, data, usedState, tier, maxCost, target, storeId, targetSpend) {
+function pickDish(category, data, usedState, tier, maxCost, target, storeId, targetSpend, committedGrams, pantryState) {
   var relax = resolveTier(tier);
   var pool = filterDishesByTimeTaste(category, data.cookTime, data.taste, relax);
   var spendTarget = (typeof targetSpend === "number" && isFinite(targetSpend) && targetSpend > 0)
     ? targetSpend
     : maxCost;
 
-  // Fase 1: candidatos que ya cumplen tiempo/sabor del tier Y caben en maxCost
+  // Fase 1: candidatos que ya cumplen tiempo/sabor del tier Y caben en
+  // maxCost por coste de compra MARGINAL (ver cabecera del archivo) — NO
+  // usageCost.
   var affordable = pool.filter(function (dish) {
-    return estimateScaledCost(dish, target, storeId).cost <= maxCost + 0.005;
+    return estimateScaledPurchaseImpact(dish, target, storeId, committedGrams, pantryState).marginalCost <= maxCost + 0.005;
   });
 
   if (affordable.length > 0) {
     var minPoolCost = Math.min.apply(null, affordable.map(function (d) {
-      return estimateScaledCost(d, target, storeId).cost;
+      return estimateScaledPurchaseImpact(d, target, storeId, committedGrams, pantryState).marginalCost;
     }));
     var scoreCtx = {
       target: target,
       maxCost: maxCost,
       targetSpend: spendTarget,
       storeId: storeId,
+      committedGrams: committedGrams,
+      pantryState: pantryState,
       tight: isBudgetTight(maxCost, spendTarget, minPoolCost)
     };
     var ranked = rankDishesByBudgetMode(affordable, usedState, scoreCtx);
@@ -483,20 +602,25 @@ function pickDish(category, data, usedState, tier, maxCost, target, storeId, tar
   }
 
   var priced = wholeCategory
-    .map(function (d) { return { dish: d, nativeCost: priceDishAtStore(d, storeId).cost, est: estimateScaledCost(d, target, storeId) }; })
-    .sort(function (a, b) { return a.nativeCost - b.nativeCost; }); // coste nativo — base para fases 3–4
+    .map(function (d) {
+      var impact = estimateScaledPurchaseImpact(d, target, storeId, committedGrams, pantryState);
+      return { dish: d, purchaseImpact: impact.marginalCost, est: impact };
+    })
+    .sort(function (a, b) { return a.purchaseImpact - b.purchaseImpact; }); // coste de compra marginal — base para fases 3–4
 
-  var fitting = priced.filter(function (p) { return p.est.cost <= maxCost + 0.005; });
+  var fitting = priced.filter(function (p) { return p.purchaseImpact <= maxCost + 0.005; });
   if (fitting.length > 0) {
-    var minFitCost = fitting[0].est.cost;
+    var minFitCost = fitting[0].purchaseImpact;
     var fallbackCtx = {
       target: target,
       maxCost: maxCost,
       targetSpend: spendTarget,
       storeId: storeId,
+      committedGrams: committedGrams,
+      pantryState: pantryState,
       tight: isBudgetTight(maxCost, spendTarget, minFitCost)
     };
-    var fittingDishes = fitting.map(function (p) { return p.dish; }); // ya viene ordenado por coste nativo asc.
+    var fittingDishes = fitting.map(function (p) { return p.dish; }); // ya viene ordenado por coste de compra marginal asc.
     var chosenDish = fallbackCtx.tight
       ? pickWeightedFromTop(fittingDishes)
       : pickWeightedByScore(rankDishesByBudgetMode(fittingDishes, usedState, fallbackCtx));
@@ -505,9 +629,10 @@ function pickDish(category, data, usedState, tier, maxCost, target, storeId, tar
 
   var cheapest = priced[0];
 
-  // Fase 3: ni el más barato cabe a ración normal → reducir la ración
-  // (simplificar el menú) hasta MIN_PORTION_SCALE para intentar que quepa
-  var shrunk = shrinkToFitBudget(cheapest.dish, storeId, maxCost);
+  // Fase 3: ni el más barato de compra cabe a ración normal → reducir la
+  // ración (simplificar el menú) hasta MIN_PORTION_SCALE para intentar que
+  // el coste de compra marginal quepa
+  var shrunk = shrinkToFitPurchaseBudget(cheapest.dish, storeId, maxCost, committedGrams, pantryState);
   if (shrunk !== null) {
     return finalizePick(cheapest.dish, target, storeId, usedState, true, shrunk);
   }
@@ -516,28 +641,44 @@ function pickDish(category, data, usedState, tier, maxCost, target, storeId, tar
   return {
     dish: null, scaleFactor: 1, simplified: false,
     reason: "budget_infeasible",
-    minPossibleCost: round2(cheapest.dish ? priceDishAtStore(cheapest.dish, storeId).cost * MIN_PORTION_SCALE : 0)
+    minPossibleCost: cheapest.dish
+      ? round2(estimateDishMarginalPurchaseCost(cheapest.dish, MIN_PORTION_SCALE, committedGrams, storeId, pantryState))
+      : 0
   };
 }
 
 /**
- * Calcula el factor de escala necesario para que un plato quepa en
- * maxCost, sin bajar de MIN_PORTION_SCALE. Nunca sube del máximo habitual
- * (MAX_PORTION_SCALE) — solo se usa para ENCOGER.
+ * Calcula el factor de escala necesario para que el coste de compra
+ * MARGINAL de un plato quepa en maxCost, sin bajar de MIN_PORTION_SCALE.
+ * Nunca sube del máximo habitual (MAX_PORTION_SCALE) — solo se usa para
+ * ENCOGER. A diferencia de la versión anterior (usageCost, lineal con la
+ * escala, solución analítica directa), el coste de compra NO es lineal con
+ * la escala (función escalón por el redondeo a paquetes) — no hay fórmula
+ * cerrada, así que se busca por bisección: el coste de compra marginal es
+ * monótono no-decreciente al subir la escala (más gramos requeridos nunca
+ * necesita MENOS paquetes, con `committedGrams`/`pantryState` fijos), así
+ * que la bisección converge de forma fiable.
  *
  * @param {object} dish
  * @param {string} storeId
  * @param {number} maxCost
+ * @param {object} committedGrams
+ * @param {object|null} pantryState
  * @returns {number|null} - factor de escala, o null si ni al mínimo cabe
  */
-function shrinkToFitBudget(dish, storeId, maxCost) {
-  var priced = priceDishAtStore(dish, storeId);
-  if (priced.cost <= 0.0001) return Math.max(MIN_PORTION_SCALE, 0.70); // prácticamente gratis, no hace falta encoger
-  var neededScale = maxCost / priced.cost;
-  var scaleFactor = Math.min(MAX_PORTION_SCALE, neededScale);
-  if (scaleFactor < MIN_PORTION_SCALE - 1e-6) return null; // solo tolerancia de coma flotante — el redondeo hacia arriba de estimateAbsoluteMinMealCost ya garantiza que esto no debería activarse por un problema de reserva
-  scaleFactor = Math.max(scaleFactor, MIN_PORTION_SCALE);
-  return round2(scaleFactor);
+function shrinkToFitPurchaseBudget(dish, storeId, maxCost, committedGrams, pantryState) {
+  function costAt(scale) {
+    return estimateDishMarginalPurchaseCost(dish, scale, committedGrams, storeId, pantryState);
+  }
+
+  if (costAt(MIN_PORTION_SCALE) > maxCost + 0.005) return null; // ni al mínimo cabe
+
+  var lo = MIN_PORTION_SCALE, hi = MAX_PORTION_SCALE;
+  for (var i = 0; i < 24; i++) { // 24 iteraciones: precisión sobrada para 2 decimales de €
+    var mid = (lo + hi) / 2;
+    if (costAt(mid) <= maxCost + 0.005) lo = mid; else hi = mid;
+  }
+  return round2(lo);
 }
 
 /**
@@ -597,6 +738,13 @@ function buildPlaceholderDish(category) {
  * cuota de masa — así el coste total del meal es una suma real de
  * ingredientes tasados, coherente con cualquier supermercado.
  *
+ * El kcal/protein/carbs/fat de cada ingrediente ya NO viene de repartir el
+ * total del plato por cuota de gramos (bug real corregido 2026-08-13d, ver
+ * cabecera de js/core/nutrition.js) — viene de
+ * `computeDishIngredientNutrition()`: dato REAL verificado por ingrediente
+ * cuando existe (js/data/ingredient-nutrition.js), remanente del plato
+ * repartido SOLO entre los ingredientes sin resolver en caso contrario.
+ *
  * @param {object} dish
  * @param {string} mealKey
  * @param {string} mealLabel
@@ -620,21 +768,25 @@ function buildMealFromDish(dish, mealKey, mealLabel, target, storeId, forcedScal
     items: []
   };
 
-  dish.items.forEach(function (ingredient) {
+  var ingredientNutrition = computeDishIngredientNutrition(dish, scaleFactor);
+
+  dish.items.forEach(function (ingredient, index) {
     var priceInfo = resolveIngredientPrice(ingredient.name, storeId);
     var grams = ingredient.g * scaleFactor;
+    var nutrition = ingredientNutrition[index];
     meal.items.push({
       name:    ingredient.name,
       grams:   Math.round(grams),
-      kcal:    round1(dish.kcal    * scaleFactor * (ingredient.g / totalItemGrams(dish))),
-      protein: round1(dish.protein * scaleFactor * (ingredient.g / totalItemGrams(dish))),
-      carbs:   round1(dish.carbs   * scaleFactor * (ingredient.g / totalItemGrams(dish))),
-      fat:     round1(dish.fat     * scaleFactor * (ingredient.g / totalItemGrams(dish))),
+      kcal:    round1(nutrition.kcal),
+      protein: round1(nutrition.protein),
+      carbs:   round1(nutrition.carbs),
+      fat:     round1(nutrition.fat),
       cost:    round2(priceInfo.pricePer100g * grams / 100),
       prep:    dish.prep,
       ready:   false,
       taste:   dish.taste,
-      priceSource: priceInfo.source // 'catalog' | 'category' | 'default' — trazabilidad de confianza
+      priceSource: priceInfo.source, // 'catalog' | 'category' | 'default' — trazabilidad de confianza del PRECIO
+      nutritionSource: nutrition.nutritionSource // 'real' | 'estimated' — trazabilidad de confianza de los MACROS (ver js/core/nutrition.js)
     });
   });
 
@@ -643,15 +795,6 @@ function buildMealFromDish(dish, mealKey, mealLabel, target, storeId, forcedScal
   meal.prep  = dish.prep;
   meal.store = storeId || DEFAULT_STORE_ID;
   return meal;
-}
-
-/**
- * Suma los gramos totales de los ingredientes de un plato.
- * @param {object} dish
- * @returns {number}
- */
-function totalItemGrams(dish) {
-  return dish.items.reduce(function (sum, ing) { return sum + ing.g; }, 0) || 1;
 }
 
 // ── Regla del 25% ────────────────────────────────────────────────────────

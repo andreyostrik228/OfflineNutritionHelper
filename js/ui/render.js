@@ -5,11 +5,64 @@
  * y las tarjetas de cada toma del día.
  *
  * Depende de:
- *   js/core/utils.js        (round0, round1, round2, escapeHtml)
+ *   js/core/utils.js        (round0, round2, escapeHtml)
  *   js/core/meal-helpers.js (getMealTotals)
- *   js/core/pricing.js      (normalizeIngredientKey)
+ *   js/core/pricing.js      (normalizeIngredientKey, resolvePurchaseCost,
+ *                            DEFAULT_STORE_ID) — resolvePurchaseCost es la
+ *                            ÚNICA fuente de verdad para "cuántos paquetes
+ *                            hacen falta y cuánto cuestan" (misma función
+ *                            que usan budget.js/la lista de la compra/el
+ *                            recorte de presupuesto) — ver "Coste de uso
+ *                            vs. de compra" abajo
  *   js/data/packaging.js    (PACKAGING_INFO) — opcional; si no está
  *                            cargado, se muestra todo en gramos como antes.
+ *
+ * ── Coste de uso vs. de compra, por ingrediente (2026-08-08b, corregido 2026-08-13b) ─
+ * Cada fila de ingrediente en una tarjeta de comida mostraba SOLO su
+ * usageCost (precio × gramos usados) — nunca lo que ese ingrediente suma a
+ * la compra real de hoy (el paquete/unidad entero). Un usuario podía ver
+ * "€0.30" junto a 100g de yogur sin saber que en caja va a pagar €3.00 por
+ * el bote entero. renderFoodRow muestra AMBOS, con etiqueta explícita
+ * ("consumo" / "Ng paquete") — nunca se sustituye uno por otro, ver la
+ * distinción completa en la cabecera de js/core/pricing.js.
+ *
+ * **Bug real corregido 2026-08-13b** (reportado por el usuario con un
+ * ejemplo real: Plátano 144g mostraba "€0.17 consumo" pero "€0.14
+ * paquete" — consumo > paquete, matemáticamente imposible): la primera
+ * versión de esto usaba `resolvePackageInfo().packagePrice`, que es el
+ * precio de UN SOLO envase/unidad, no de los que hacen falta para cubrir
+ * `item.grams`. Un plátano pesa ~120g de media; una toma escalada a 144g
+ * necesita 2 plátanos (`packagesToBuy=2`), pero se mostraba el precio de
+ * 1 solo. Ahora se usa `resolvePurchaseCost(item.name, item.grams,
+ * storeId)` — la MISMA función autoritativa que ya usan
+ * `computeDayPurchaseCost()` (budget.js), la lista de la compra y el
+ * recorte de presupuesto — que ya calcula `packagesToBuy` y
+ * `purchaseCost = packagesToBuy × packagePrice` correctamente. Por
+ * construcción de esa función, `purchaseCost >= usageCost` SIEMPRE (nunca
+ * hace falta comprar menos gramos de los que un paquete entero cubre), así
+ * que esta inconsistencia ya no puede volver a ocurrir — no es una
+ * corrección puntual del caso del plátano, es estructural. De paso, esto
+ * elimina una SEGUNDA fuente del mismo bug: `formatPurchaseLine`/
+ * `formatRealMatchPurchaseLine` recalculaban `packagesNeeded` con un
+ * margen del 15% propio (una heurística de texto que nunca se sincronizó
+ * con el cálculo estricto de `resolvePurchaseCost`) — ahora usan
+ * `purchase.packagesToBuy` directamente, una sola fuente de verdad para
+ * cantidad Y precio, nunca dos cálculos de paquetes que puedan divergir.
+ *
+ * ── Proteína/carbos/grasas por ingrediente (2026-08-13d) ──────────────────
+ * La sesión 2026-08-13c había QUITADO el desglose P/C/G por ingrediente al
+ * descubrir que era un reparto del total del PLATO por cuota de gramos, no
+ * la composición real de cada ingrediente (bug real: "Plátano" mostrando
+ * proteína/grasa del cacahuete de su mismo plato). Esa sesión posterior
+ * (2026-08-13d) resolvió la causa de raíz — js/core/nutrition.js ahora da
+ * kcal/protein/carbs/fat REALES por ingrediente cuando existe un producto
+ * verificado (50/81 roles, js/data/ingredient-nutrition.js) — así que el
+ * desglose vuelve a mostrarse, pero SOLO para los ingredientes con
+ * `item.nutritionSource === 'real'`. Para los que no tienen dato
+ * verificado (31/81 roles), se muestra un aviso explícito en vez de un
+ * número — nunca se vuelve a mostrar un P/C/G fabricado. Ver cabecera de
+ * js/core/nutrition.js para el modelo completo (remanente del plato
+ * repartido solo entre los ingredientes sin resolver).
  *
  * Inicialización obligatoria:
  *   Llamar a initRenderRefs(refs) desde js/app.js antes de cualquier render.
@@ -89,6 +142,7 @@ function renderMealCard(meal, total) {
   // js/ui/render-schedule.js, scrollToMealCard) hasta esta tarjeta.
   var timeBadge = typeof renderMealTimeBadge === "function" ? renderMealTimeBadge(meal) : "";
   var cookNote  = typeof renderMealCookNote  === "function" ? renderMealCookNote(meal)  : "";
+  var storeId = meal.store || (typeof DEFAULT_STORE_ID !== "undefined" ? DEFAULT_STORE_ID : "mercadona");
 
   return (
     '<div class="meal-card" data-meal-key="' + escapeHtml(meal.key || "") + '">' +
@@ -102,7 +156,7 @@ function renderMealCard(meal, total) {
       '<div class="meal-body">' +
         cookNote +
         '<div class="meal-items">' +
-          meal.items.map(renderFoodRow).join("") +
+          meal.items.map(function (item) { return renderFoodRow(item, storeId); }).join("") +
         '</div>' +
         renderMealFooter(total, meal.prep) +
       '</div>' +
@@ -111,13 +165,44 @@ function renderMealCard(meal, total) {
 }
 
 /**
- * Genera el HTML de una fila de ingrediente dentro de una tarjeta.
- * @param {object} item  – { name, grams, protein, carbs, fat, kcal, cost }
+ * Genera el HTML de una fila de ingrediente dentro de una tarjeta. Muestra,
+ * por separado, cuánto se CONSUME (usageCost, item.cost) y cuánto cuesta
+ * REALMENTE comprar lo necesario (purchaseCost, vía resolvePurchaseCost —
+ * ya son los paquetes/unidades enteros que hacen falta para `item.grams`,
+ * nunca el precio de un solo envase suelto) — ver cabecera del archivo.
+ *
+ * **Proteína/carbos/grasas por ingrediente (reintroducido 2026-08-13d,
+ * ahora con datos reales)**: se habían quitado en la sesión anterior
+ * porque eran un reparto del total del PLATO por cuota de gramos, no la
+ * composición real del ingrediente (bug real: "Plátano" mostrando 11.5g
+ * de proteína heredada del cacahuete de su mismo plato). Ahora
+ * `item.nutritionSource` (`computeDishIngredientNutrition`,
+ * js/core/nutrition.js) distingue los dos casos:
+ *   - `'real'` — dato verificado por ingrediente (50/81 roles) — se
+ *     muestra el desglose P/C/G normalmente, con una insignia "real" que
+ *     lo distingue de una estimación.
+ *   - `'estimated'` — sin dato verificado (31/81 roles) — el número
+ *     interno sigue existiendo (es el remanente del plato, usado para que
+ *     el TOTAL de la comida/día siga siendo correcto, ver
+ *     getMealTotals/renderMealFooter) pero NO se muestra como si fuera un
+ *     hecho verificado de ESE ingrediente — se muestra un aviso explícito
+ *     en su lugar ("nutrition unavailable", pedido explícito del
+ *     usuario: mejor eso que un número con apariencia de precisión que no
+ *     tiene). kcal SÍ se muestra siempre (mismo criterio que la sesión
+ *     anterior: es el macro menos propenso a parecer "imposible" a
+ *     simple vista, y summa igual de bien).
+ *
+ * @param {object} item     – { name, grams, protein, carbs, fat, kcal, cost, nutritionSource }
+ * @param {string} [storeId] – tienda activa del plan (meal.store)
  * @returns {string}
  */
-function renderFoodRow(item) {
+function renderFoodRow(item, storeId) {
   var info = lookupPackagingInfo(item.name);
   var realMatch = lookupRealMatch(item.name);
+  var purchase = (typeof resolvePurchaseCost === "function")
+    ? resolvePurchaseCost(item.name, item.grams, storeId || (typeof DEFAULT_STORE_ID !== "undefined" ? DEFAULT_STORE_ID : "mercadona"))
+    : null;
+  var hasRealMacros = item.nutritionSource === "real";
 
   return (
     '<div class="food-row">' +
@@ -125,15 +210,20 @@ function renderFoodRow(item) {
         '<div class="food-name">' + escapeHtml(item.name) + '</div>' +
         '<div class="food-meta">' +
           formatQuantityPhrase(item.grams, info) +
-          ' &mdash; P ' + round1(item.protein) + ' g' +
-          ' / C ' + round1(item.carbs) + ' g' +
-          ' / G ' + round1(item.fat) + ' g' +
+          (hasRealMacros
+            ? ' &mdash; P ' + round1(item.protein) + ' g / C ' + round1(item.carbs) + ' g / G ' + round1(item.fat) + ' g' +
+              ' <span class="food-macro__badge" title="Nutrición verificada por ingrediente">real</span>'
+            : ' <span class="food-macro__unavailable">macros por ingrediente no verificados</span>') +
         '</div>' +
-        formatPurchaseLine(item.grams, info, realMatch) +
+        formatPurchaseLine(info, realMatch, purchase) +
       '</div>' +
       '<div class="food-right">' +
         '<div>' + round0(item.kcal) + ' kcal</div>' +
-        '<div>&euro;' + round2(item.cost) + '</div>' +
+        '<div class="food-cost food-cost--usage">&euro;' + round2(item.cost) + '<span class="food-cost__tag">consumo</span></div>' +
+        (purchase && purchase.hasFixedPackage
+          ? '<div class="food-cost food-cost--package">&euro;' + round2(purchase.purchaseCost) + '<span class="food-cost__tag">' +
+            (purchase.packagesToBuy > 1 ? purchase.packagesToBuy + '&times; ' : '') + round0(purchase.packageSizeG) + 'g paquete</span></div>'
+          : '') +
       '</div>' +
     '</div>'
   );
@@ -267,54 +357,66 @@ function pluralizePackageLabel(label) {
  * Vacía para ingredientes por unidad sin match real, o sin datos de
  * packaging (carne y pescado frescos, que sí se compran al peso real).
  *
- * @param {number} grams
- * @param {object|null} info
+ * El nº de paquetes y el precio vienen SIEMPRE de `purchase`
+ * (resolvePurchaseCost(), pricing.js) — nunca se recalculan aquí con una
+ * heurística de texto propia (ver "Bug real corregido 2026-08-13b" en la
+ * cabecera del archivo: dos cálculos de paquetes independientes es
+ * precisamente lo que causó que el precio mostrado no coincidiera con lo
+ * que de verdad hacía falta comprar).
+ *
+ * @param {object|null} info – entrada de PACKAGING_INFO (solo para el
+ *   tamaño/etiqueta cuando NO hay match real; el nº de paquetes y precio
+ *   vienen de `purchase`, no de aquí)
  * @param {object|null} realMatch – entrada de REAL_INGREDIENT_MATCHES
+ * @param {object|null} purchase – resultado de resolvePurchaseCost()
+ *   (pricing.js) para los gramos de ESTA fila — fuente única de verdad de
+ *   `packagesToBuy`/`purchaseCost`
  * @returns {string}
  */
-function formatPurchaseLine(grams, info, realMatch) {
+function formatPurchaseLine(info, realMatch, purchase) {
   if (realMatch) {
-    return formatRealMatchPurchaseLine(grams, realMatch);
+    return formatRealMatchPurchaseLine(realMatch, purchase);
   }
 
   if (!info || info.type === "perUnit") return "";
-  if (!info.packageG || !info.packageLabel) return "";
+  if (!purchase || !purchase.hasFixedPackage) return "";
 
-  // Margen del 15% antes de redondear hacia arriba a un envase extra —
-  // evita decir "2 botes" cuando en la práctica cabe holgado en 1.
-  var packagesNeeded = Math.ceil((grams / info.packageG) - 0.15);
-  if (packagesNeeded < 1) packagesNeeded = 1;
+  var label = purchase.packagesToBuy > 1
+    ? purchase.packagesToBuy + " " + pluralizePackageLabel(purchase.packageLabel) + " (" + round0(purchase.packageSizeG) + "g cada uno)"
+    : "1 " + purchase.packageLabel + " (" + round0(purchase.packageSizeG) + "g)";
 
-  var label = packagesNeeded > 1
-    ? packagesNeeded + " " + pluralizePackageLabel(info.packageLabel) + " (" + round0(info.packageG) + "g cada uno)"
-    : "1 " + info.packageLabel + " (" + round0(info.packageG) + "g)";
+  var priceNote = ' &middot; &euro;' + round2(purchase.purchaseCost);
 
-  return '<div class="food-purchase">Compra: ' + escapeHtml(label) + '</div>';
+  return '<div class="food-purchase">Compra: ' + escapeHtml(label) + priceNote + '</div>';
 }
 
 /**
  * Línea de compra cuando SÍ hay un producto real verificado por EAN.
- * @param {number} grams
  * @param {object} realMatch – entrada de REAL_INGREDIENT_MATCHES
+ * @param {object|null} purchase – ver formatPurchaseLine()
  * @returns {string}
  */
-function formatRealMatchPurchaseLine(grams, realMatch) {
+function formatRealMatchPurchaseLine(realMatch, purchase) {
   var badge = ' <span class="food-purchase__badge">verificado</span>';
 
   // Casos como "huevos enteros": se compran por unidades (docena/pack),
-  // no tenemos un tamaño en gramos fiable para calcular cuántos packs.
+  // no tenemos un tamaño en gramos fiable para calcular cuántos packs, así
+  // que tampoco se anota un precio de paquete aquí (sería ambiguo a qué
+  // unidad se refiere).
   if (!realMatch.sizeG) {
     var packInfo = realMatch.units ? " (pack de " + realMatch.units + ")" : "";
     return '<div class="food-purchase">Compra: ' + escapeHtml(realMatch.productName) + packInfo + badge + '</div>';
   }
 
-  var packagesNeeded = Math.ceil((grams / realMatch.sizeG) - 0.15);
-  if (packagesNeeded < 1) packagesNeeded = 1;
-  var quantityPrefix = packagesNeeded > 1 ? packagesNeeded + "x " : "";
+  var packagesToBuy = (purchase && purchase.hasFixedPackage) ? purchase.packagesToBuy : 1;
+  var quantityPrefix = packagesToBuy > 1 ? packagesToBuy + "x " : "";
+  var priceNote = (purchase && typeof purchase.purchaseCost === "number")
+    ? ' &middot; &euro;' + round2(purchase.purchaseCost)
+    : '';
 
   return (
     '<div class="food-purchase">Compra: ' + quantityPrefix + escapeHtml(realMatch.productName) +
-    ' (' + round0(realMatch.sizeG) + 'g)' + badge + '</div>'
+    ' (' + round0(realMatch.sizeG) + 'g)' + priceNote + badge + '</div>'
   );
 }
 

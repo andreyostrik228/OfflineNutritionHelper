@@ -202,8 +202,8 @@ function renderShoppingRow(entry) {
       '</div>' +
       '<div class="shopping-item__price">' +
         '&euro;' + round2(p.purchaseCost) +
-        (p.hasFixedPackage && Math.abs(p.purchaseCost - entry.usageCost) > 0.005
-          ? '<span class="shopping-item__usage-price">uso: &euro;' + round2(entry.usageCost) + '</span>'
+        (Math.abs(p.purchaseCost - entry.usageCost) > 0.005
+          ? '<span class="shopping-item__usage-price">Coste de uso: &euro;' + round2(entry.usageCost) + '</span>'
           : '') +
       '</div>' +
     '</li>'

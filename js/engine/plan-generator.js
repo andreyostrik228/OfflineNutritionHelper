@@ -35,8 +35,11 @@
  *                               PRICE_CATALOGS, normalizeIngredientKey)
  *   js/core/budget.js          (computeDayPurchaseCost — coste de COMPRA
  *                               agregado del día, el tope real del
- *                               presupuesto; ver "Presupuesto: coste de
- *                               compra, no de uso" más abajo)
+ *                               presupuesto; estimateItemsMarginalPurchaseCost,
+ *                               addItemsToPurchaseState — coste de compra
+ *                               MARGINAL durante la construcción del día,
+ *                               ver "Presupuesto: coste de compra, no de
+ *                               uso" más abajo)
  *   js/core/pantry.js          (getPantryState) — OPCIONAL: si no está
  *                               cargado, el presupuesto se sigue aplicando
  *                               sobre el coste de compra real, solo que
@@ -45,39 +48,54 @@
  *                               MIN_PORTION_SCALE, pickDish,
  *                               buildMealFromDish, buildPlaceholderDish,
  *                               enforce25PercentRule, findCapViolations,
- *                               estimateMinMealCost, estimateAbsoluteMinMealCost)
+ *                               estimateAbsoluteMinPurchaseCost)
  *
- * ── Presupuesto: coste de COMPRA, no de uso (rediseño 2026-08-07) ────────
+ * ── Presupuesto: coste de COMPRA, no de uso (2026-08-07, profundizado 2026-08-08b) ─
  * `data.budget` significa "cuánto estoy dispuesto a pagar HOY en caja para
  * este día de comidas" — coste de COMPRA (purchaseCost), no la suma de lo
- * que técnicamente se consume (usageCost). Antes de este rediseño,
- * `data.budget` limitaba usageCost durante TODO el pipeline (selección de
- * plato, recorte, verificación) y purchaseCost solo se calculaba después,
- * ya en la lista de la compra — así un plan podía "caber" en 8€ de
- * usageCost y costar 19€ reales en caja (un bote entero por cada
- * ingrediente con envase, aunque solo se usaran unos gramos), sin que el
- * generador se enterase nunca. Ahora:
+ * que técnicamente se consume (usageCost). Rediseño original (2026-08-07):
+ * antes, `data.budget` limitaba usageCost durante TODO el pipeline
+ * (selección de plato, recorte, verificación) y purchaseCost solo se
+ * calculaba después, ya en la lista de la compra — así un plan podía
+ * "caber" en 8€ de usageCost y costar 19€ reales en caja, sin que el
+ * generador se enterase nunca. Ese rediseño arregló la VERIFICACIÓN final
+ * (punto 2 de abajo) pero dejó la CASCADA de selección (dish-selector.js)
+ * decidiendo todavía por usageCost — un plato "barato de usar" podía
+ * seguir obligando a comprar un envase caro entero sin que la cascada lo
+ * supiera al elegir, solo se corregía a posteriori recortando.
  *
- *   1. La CASCADA de selección de plato (pickDish, dish-selector.js) sigue
- *      usando usageCost internamente, SIN CAMBIOS — sigue siendo una
- *      heurística razonable para ir construyendo un candidato plato a
- *      plato (usageCost y purchaseCost están correlacionados), y
- *      reescribirla para que conozca el empaquetado agregado de todo el
- *      día en cada paso intermedio sería un problema combinatorio mucho
- *      más caro sin necesidad real.
+ * Rediseño profundizado (2026-08-08b) — ahora las DOS capas usan coste de
+ * compra, no solo la de verificación:
+ *
+ *   1. La CASCADA de selección de plato (pickDish, dish-selector.js) AHORA
+ *      pregunta el coste de compra MARGINAL de cada candidato
+ *      (estimateScaledPurchaseImpact → js/core/budget.js,
+ *      estimateDishMarginalPurchaseCost) — cuánto SUMA ese plato a lo que
+ *      ya se va a comprar hoy, dado lo que las tomas anteriores de este
+ *      mismo intento ya comprometieron (`committedGrams`, mantenido aquí
+ *      abajo en attemptPlanAtTier) y la despensa real (`pantryState`). Ya
+ *      NO decide por usageCost — ver cabecera de dish-selector.js para el
+ *      detalle completo y el porqué (ejemplo yogur 1kg/3€ vs. 100g/1€).
  *   2. Una vez el plan candidato del día está construido, se calcula el
  *      coste de compra AGREGADO real (computeDayPurchaseCost, consciente
  *      de despensa) y ESE es el número que se hace cumplir de verdad
- *      (enforcePurchaseBudgetCap), se usa en scorePlan() para comparar
- *      candidatos entre tiers, y se reporta como violación en
- *      verifyPlanFeasibility() — total.purchaseCost es la fuente de
- *      verdad del presupuesto; total.cost (usageCost) se conserva como
- *      dato informativo aparte ("cuánto se consume realmente"), nunca
- *      como el tope.
+ *      (enforcePurchaseBudgetCap) — la red de seguridad FINAL, sin
+ *      cambios de diseño en este rediseño (sigue recortando si el
+ *      rebalanceo de macros empuja el coste por encima). Se usa en
+ *      scorePlan() para comparar candidatos entre tiers, y se reporta como
+ *      violación en verifyPlanFeasibility() — total.purchaseCost es la
+ *      fuente de verdad del presupuesto; total.cost (usageCost) se
+ *      conserva como dato informativo aparte ("cuánto se consume
+ *      realmente"), nunca como el tope.
  *   3. Si ni recortando el plan al máximo razonable el coste de compra
  *      real entra en el presupuesto, se reporta honestamente como
  *      inviable (violación "budget") — nunca se falsea el número ni se
  *      esconde purchaseCost.
+ *
+ * En resumen: antes, purchaseCost era solo una VERIFICACIÓN a posteriori;
+ * ahora es también la SEÑAL que decide qué platos se eligen desde el
+ * principio, y la verificación sigue existiendo como red de seguridad —
+ * nunca "confiar y ya está" en que la cascada acertó.
  *
  * Expone (global):
  *   generateDietPlan(profile, data) → { meals, total, report }
@@ -274,9 +292,19 @@ function attemptPlanAtTier(profile, data, tier, pantryState) {
   var simplifiedCategories = [];
   var store = data.store;
 
-  // Coste mínimo ABSOLUTO (ración reducida al mínimo, MIN_PORTION_SCALE)
-  // de cada categoría — usado para reservar presupuesto a las tomas
-  // siguientes mientras se recorre el día.
+  // Gramos ya comprometidos a comprar hoy, por ingrediente normalizado —
+  // acumulador de ESTE intento (un tier), se reinicia en cada llamada a
+  // attemptPlanAtTier (ver cabecera de js/core/budget.js). Es lo que deja
+  // que la toma 2 vea que la toma 1 ya "pagó" el paquete de un ingrediente
+  // compartido, y que su coste de compra MARGINAL sea 0 si el mismo
+  // paquete todavía cubre lo que hace falta.
+  var committedGrams = {};
+
+  // Coste mínimo ABSOLUTO de COMPRA (ración reducida al mínimo,
+  // MIN_PORTION_SCALE, sin despensa ni comprometidos — ver cabecera de
+  // estimateAbsoluteMinPurchaseCost en dish-selector.js) de cada
+  // categoría — usado para reservar presupuesto a las tomas siguientes
+  // mientras se recorre el día.
   //
   // Por qué el mínimo ABSOLUTO y no el "normal": si se reservara con el
   // coste a ración normal, una toma que se procesa antes (desayuno) podría
@@ -289,7 +317,7 @@ function attemptPlanAtTier(profile, data, tier, pantryState) {
   // la cascada nunca se contradicen entre sí.
   var minCostByCategory = {};
   MEAL_DEFS.forEach(function (def) {
-    minCostByCategory[def.category] = estimateAbsoluteMinMealCost(def.category, store);
+    minCostByCategory[def.category] = estimateAbsoluteMinPurchaseCost(def.category, store);
   });
 
   var remainingBudget = data.budget;
@@ -308,7 +336,7 @@ function attemptPlanAtTier(profile, data, tier, pantryState) {
     var mealCap = Math.max(0, round2(remainingBudget - reserveForRest));
     var targetSpend = round2(data.budget * def.ratio);
 
-    var pick = pickDish(def.category, data, usedState, tier, mealCap, target, store, targetSpend);
+    var pick = pickDish(def.category, data, usedState, tier, mealCap, target, store, targetSpend, committedGrams, pantryState);
 
     var dish, scaleFactor;
     if (pick.dish) {
@@ -322,7 +350,15 @@ function attemptPlanAtTier(profile, data, tier, pantryState) {
     }
 
     var meal = buildMealFromDish(dish, def.key, def.label, target, store, scaleFactor);
-    remainingBudget = round2(remainingBudget - meal.spent);
+
+    // Coste de compra MARGINAL real de esta toma, medido con lo ya
+    // comprometido ANTES de sumar esta toma — luego se compromete (para
+    // que la SIGUIENTE toma vea el estado actualizado) y se descuenta del
+    // presupuesto restante. remainingBudget ahora sigue dinero de COMPRA
+    // marginal, no usageCost (meal.spent) como antes de este rediseño.
+    var marginalSpend = estimateItemsMarginalPurchaseCost(meal.items, committedGrams, store, pantryState);
+    addItemsToPurchaseState(committedGrams, meal.items);
+    remainingBudget = round2(remainingBudget - marginalSpend);
     return meal;
   });
 

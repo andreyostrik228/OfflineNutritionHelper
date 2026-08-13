@@ -53,11 +53,13 @@ var ENGINE_FILES = [
   projPath("js/data/real-products.js"),
   projPath("js/data/packaging.js"),
   projPath("js/data/real-ingredient-matches.js"),
+  projPath("js/data/ingredient-nutrition.js"),
   projPath("js/data/no-cook-classifier.js"),
   projPath("js/data/prices/mercadona.js"),
   projPath("js/data/budget-presets.js"),
   projPath("js/core/utils.js"),
   projPath("js/core/pricing.js"),
+  projPath("js/core/nutrition.js"),
   projPath("js/core/budget.js"),
   projPath("js/core/calculator.js"),
   projPath("js/core/meal-helpers.js"),
@@ -305,17 +307,24 @@ function run(t) {
   });
 
   // ── 8-9. Golden-master determinista (Math.random sembrado) ───────────────
-  // Recapturados 2026-08-07 tras el rediseño de presupuesto (purchaseCost
-  // agregado real en vez de usageCost, ver plan-generator.js) Y la
-  // recalibración de presets que le siguió (Equilibrado 8->20, Amplio
-  // 12->28 -- ver js/data/budget-presets.js): el algoritmo cambió
-  // (enforcePurchaseBudgetCap recorta distinto que el enforceBudgetCap
-  // anterior) y los presupuestos de entrada cambiaron, así que los
-  // agregados exactos de antes ya no aplican -- esto es exactamente el
-  // caso "si el algoritmo cambia a propósito, hay que actualizar el
-  // golden-master a propósito" que describe la cabecera del archivo, no
-  // una regresión. Valores recapturados ejecutando el código real una vez
-  // (ver informe de la sesión que hizo este cambio).
+  // Recapturados 2026-08-13e tras corregir la consistencia interna de kcal
+  // en js/core/nutrition.js: los ingredientes SIN resolver ya no tienen un
+  // remanente de kcal anclado a `dish.kcal` (podía dar filas internamente
+  // inconsistentes, ej. "0 kcal pero 11.5g de carbohidratos") -- ahora kcal
+  // se DERIVA por Atwater (protein×4+carbs×4+fat×9) de su propio remanente
+  // de protein/carbs/fat. Esto cambia el kcal total de los planes
+  // (normalmente al alza, más preciso) porque ya no puede quedarse
+  // "atascado" en 0 cuando los ingredientes resueltos de un plato ya
+  // agotaban el `dish.kcal` original -- ver "Auditoría del recorte a cero"
+  // en STATE.md para el análisis completo. Exactamente el caso "si el
+  // modelo de datos cambia a propósito, hay que actualizar el
+  // golden-master a propósito, nunca en silencio" que ya advertía la
+  // cabecera de este archivo. Los 7 tests de invariantes/contrato #1-7 de
+  // este mismo archivo NO se tocaron y siguen pasando sin cambios --
+  // confirma que el contrato observable del generador (presupuesto, tiempo,
+  // cap25%, tolerancia de macros, nunca 'unavailable') se mantiene intacto,
+  // solo cambiaron los agregados exactos. Valores recapturados ejecutando
+  // el código real una vez (ver informe de la sesión que hizo este cambio).
   t.test("golden-master (seed=42): recomposición/Equilibrado -- agregados exactos del resultado actual", function () {
     var s = freshEngineSandbox();
     seedRandomInContext(s, 42);
@@ -326,16 +335,16 @@ function run(t) {
     // (realm distinto) antes de comparar contra literales del host -- ver
     // comentario del test #1 más arriba para el motivo completo.
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.key; }))), EXPECTED_MEAL_KEYS);
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 4, 3, 2, 2]);
-    assert.strictEqual(result.total.kcal, 3001.7000000000003);
-    assert.strictEqual(result.total.protein, 181.79999999999998);
-    assert.strictEqual(result.total.carbs, 348.40000000000003);
-    assert.strictEqual(result.total.fat, 74.3);
-    assert.strictEqual(result.total.cost, 9.49);
-    assert.strictEqual(result.total.purchaseCost, 15.21);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 2, 3, 2, 2]);
+    assert.strictEqual(result.total.kcal, 2877.7);
+    assert.strictEqual(result.total.protein, 185.6);
+    assert.strictEqual(result.total.carbs, 337.9);
+    assert.strictEqual(result.total.fat, 79.6);
+    assert.strictEqual(result.total.cost, 9.259999999999998);
+    assert.strictEqual(result.total.purchaseCost, 18.31);
     assert.strictEqual(result.report.status, "adjusted");
-    assert.strictEqual(result.report.tierUsed, 1);
-    assert.strictEqual(result.report.violations.length, 0);
+    assert.strictEqual(result.report.tierUsed, 0);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.report.violations)), [{ type: "cap25", meal: "lunch", item: "Pan integral" }]);
   });
 
   t.test("golden-master (seed=7): volumen alto/Amplio -- agregados exactos del resultado actual", function () {
@@ -345,16 +354,16 @@ function run(t) {
     var result = s.generateDietPlan(built.profile, built.data);
 
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.key; }))), EXPECTED_MEAL_KEYS);
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [2, 4, 3, 2, 1]);
-    assert.strictEqual(result.total.kcal, 3311.6);
-    assert.strictEqual(result.total.protein, 186.7);
-    assert.strictEqual(result.total.carbs, 417.1);
-    assert.strictEqual(result.total.fat, 82.9);
-    assert.strictEqual(result.total.cost, 18.279999999999998);
-    assert.strictEqual(result.total.purchaseCost, 24.83);
-    assert.strictEqual(result.report.status, "minimal");
-    assert.strictEqual(result.report.tierUsed, 4);
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.report.violations)), []);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 3, 3, 3, 2]);
+    assert.strictEqual(result.total.kcal, 3908.6000000000004);
+    assert.strictEqual(result.total.protein, 201.29999999999998);
+    assert.strictEqual(result.total.carbs, 435.9);
+    assert.strictEqual(result.total.fat, 120.5);
+    assert.strictEqual(result.total.cost, 9.129999999999999);
+    assert.strictEqual(result.total.purchaseCost, 21.4);
+    assert.strictEqual(result.report.status, "adjusted");
+    assert.strictEqual(result.report.tierUsed, 3);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.report.violations)), [{ type: "cap25", meal: "lunch", item: "Arroz blanco cocido" }]);
   });
 }
 

@@ -1,6 +1,6 @@
 # Nutrition Planner — Project Context
 
-Updated 2026-08-08. This file is the fast orientation doc — for full
+Updated 2026-08-13. This file is the fast orientation doc — for full
 detail, history, and the "why" behind decisions, read `STATE.md` (engineering
 state, dated sections, session handoffs) and `ROADMAP.md` (architecture
 decision record, migration phases). For code-level navigation, there's a
@@ -45,13 +45,17 @@ at runtime.
    purchase cost (money spent at checkout today), not usage cost**, see
    "Budget = purchase cost" below.
 3. `plan-generator.js` assigns 5 meals (desayuno/comida/cena/snack/snack2),
-   allocating budget dynamically across them using usage-cost heuristics
-   during selection, then enforces the REAL aggregate purchase cost
-   (`js/core/budget.js`, pantry-aware) as the authoritative gate.
+   allocating budget dynamically across them using MARGINAL purchase-cost
+   heuristics during selection (since 2026-08-13 — how much a candidate
+   adds to today's real purchase, given packages already committed by
+   earlier meals of the same day plus real pantry stock), then enforces
+   the REAL aggregate purchase cost (`js/core/budget.js`, pantry-aware) as
+   the authoritative final gate.
 4. `dish-selector.js` filters/ranks/scales dishes against a strict
-   usage-cost cascade + a relaxation-tier ladder for time/taste/25%-cap
-   (never budget) — unchanged by the purchase-cost redesign, still the
-   heuristic that picks candidate dishes meal-by-meal.
+   marginal-purchase-cost cascade + a relaxation-tier ladder for
+   time/taste/25%-cap (never budget) — usage cost is kept only as a
+   secondary, lower-weight tiebreaker (see "Budget = purchase cost"
+   below), still the heuristic that picks candidate dishes meal-by-meal.
 5. `meal-helpers.js` totals/rebalances meals.
 6. `meal-schedule.js` (after the plan is built, never inside the
    generator) assigns a real clock time to each meal from the user's
@@ -73,13 +77,14 @@ at runtime.
 | --- | --- | --- |
 | UI entry | `index.html`, `js/app.js` | Form, orchestration, DOM event handling, startup isolation (`safeInit`) |
 | Nutrition core | `js/core/calculator.js`, `js/core/meal-helpers.js` | Target calculation and meal arithmetic |
+| Ingredient nutrition | `js/core/nutrition.js` | Real per-ingredient kcal/protein/carbs/fat when verified (50/81 roles), dish-total remainder for the rest — never mass-share allocation (2026-08-13d); unresolved-row kcal derived by Atwater from its own protein/carbs/fat remainder, never independently clamped (2026-08-13e) |
 | Pricing | `js/core/pricing.js` | Ingredient/dish pricing, package resolution, usageCost vs. purchaseCost |
 | Budget | `js/core/budget.js` | Day-level aggregate purchase cost, pantry-aware — shared by the generator and the shopping list |
 | Pantry | `js/core/pantry.js` | Despensa domain logic — storage, stock CRUD, the 3-stage lifecycle |
 | Schedule | `js/core/meal-schedule.js` | Wake/sleep-anchored meal timing, chronological ordering — pure, called after generation |
 | Planning engine | `js/engine/dish-selector.js`, `js/engine/plan-generator.js` | Selection, scaling, rebalance, budget cascade |
 | No-cook engine | `js/engine/no-cook-generator.js` | Independent ready-to-eat product plan, not pantry-connected, schedule-aware |
-| Data | `js/data/dishes.js`, `js/data/real-products.js`, `js/data/packaging.js` | Dish records, real Mercadona catalog, package-size lookup |
+| Data | `js/data/dishes.js`, `js/data/real-products.js`, `js/data/packaging.js`, `js/data/ingredient-nutrition.js` | Dish records, real Mercadona catalog, package-size lookup, per-ingredient real nutrition registry |
 | Rendering | `js/ui/render.js`, `js/ui/render-insights.js`, `js/ui/render-schedule.js`, `js/ui/render-shopping-list.js`, `js/ui/render-pantry.js` | Summary, meals, warnings, day-schedule strip, shopping list, despensa panel |
 | Styling | `assets/css/style.css` | Visual system, mobile-first responsive layout |
 | Tests | `tests/*.test.js`, `poc/tests/*.test.js` | Node+vm characterization/regression tests over real production code |
@@ -115,7 +120,7 @@ pantry history (`savePlanForToday`); older saved plans without it render
 without a badge, no crash. Full design record, edge cases, and browser
 verification in `STATE.md`.
 
-## Budget = purchase cost, not usage cost (2026-08-08)
+## Budget = purchase cost, not usage cost (2026-08-08, deepened 2026-08-13)
 
 `data.budget` means "how much I'm willing to pay at checkout today" —
 purchase cost, aggregated across the whole day's ingredients, package
@@ -123,17 +128,90 @@ sizes, and current pantry stock. It used to mean usage cost only (the
 sum of technically-consumed ingredient grams), which let a plan "fit" an
 8€ budget while its real grocery cost was 19€ — the checkout total was
 never checked until the shopping list, too late to affect anything.
-Fixed architecturally, not by clamping the displayed number: dish
-selection still uses usage cost as a per-meal heuristic (`dish-
-selector.js`, unchanged), but once a candidate day-plan exists,
-`js/core/budget.js` computes the real aggregate purchase cost
-(pantry-aware) and `plan-generator.js` enforces THAT as the hard budget,
-scores candidates by it, and reports infeasibility honestly if even a
-maximally-trimmed plan can't fit. The same `computeDayPurchaseCost()` is
+Fixed architecturally in two layers, not by clamping the displayed
+number: once a candidate day-plan exists, `js/core/budget.js` computes
+the real aggregate purchase cost (pantry-aware) and `plan-generator.js`
+enforces THAT as the hard budget, scores candidates by it, and reports
+infeasibility honestly if even a maximally-trimmed plan can't fit
+(2026-08-08, unchanged since). The same `computeDayPurchaseCost()` is
 what the shopping list uses, so the two numbers can never diverge.
 Presets recalibrated accordingly (Ajustado/Equilibrado/Amplio: 5/8/12 →
-15/20/28). Full design record, edge cases, and browser verification in
-`STATE.md`.
+15/20/28).
+
+**2026-08-13**: dish SELECTION itself (`dish-selector.js`) is no longer
+usage-cost-only. It now asks for the MARGINAL purchase cost of each
+candidate — how much it adds to today's real purchase given packages
+already committed by earlier meals of the same day (`committedGrams`) and
+real pantry stock — and uses that as the authoritative affordability/
+ranking signal; usage cost remains only as a secondary, lower-weight
+tiebreaker. This closes the gap where a "cheap to use" dish (small
+usageCost) could still force buying a whole expensive package, previously
+only caught after the fact by the final trim. Per-ingredient package
+price is now also shown on meal cards (`renderFoodRow`), computed via
+`resolvePurchaseCost()` — the same authoritative function `budget.js` and
+the shopping list already used — so `usageCost <= purchaseCost` holds
+structurally per row (fixed 2026-08-13c after a real reported bug where
+it briefly didn't, see below). Full design record, edge cases, and
+browser verification in `STATE.md`.
+
+**2026-08-13c**: a user-reported bug ("Plátano" showing 11.5g protein/
+13.8g fat, and usageCost above the shown package price) led to a full
+data-chain audit. Two separate root causes, both documented with real
+diagnostic data in `STATE.md`: (1) the meal-card package price briefly
+used a single package's price instead of `resolvePurchaseCost()`'s real
+total — fixed; (2) per-ingredient protein/carbs/fat were never real
+per-ingredient nutrition — they're the dish's total macros split by gram
+share (pre-existing known issue #2), which can assign one ingredient's
+real protein/fat to another in the same dish. Per-ingredient macro
+display was removed from meal cards as an immediate mitigation — the
+underlying fabrication itself was fixed architecturally the same day,
+see next entry.
+
+**2026-08-13d — real per-ingredient nutrition (fixes known issue #2 for
+50/81 roles)**: the user asked for the root cause to be fixed, not just
+hidden. `js/core/nutrition.js` (new) + `js/data/ingredient-nutrition.js`
+(new — a production promotion of the already-audited, human-verified
+`poc/data/ingredient-rules-full.js`, unused since 2026-08-04) give each
+ingredient its OWN real kcal/protein/carbs/fat per 100g when a verified
+Mercadona product exists (50/81 roles), scaled linearly with portion
+size. For the 31/81 roles without a safe match (no fabricated
+substitutes — e.g. "Plátano" stays unresolved rather than being matched
+to plátano macho, a different subspecies), the dish's remaining macro
+budget (its hand-curated total minus what resolved ingredients already
+account for) is split only among them — never diluting a resolved
+ingredient's real value. `buildMealFromDish()` (`dish-selector.js`)
+rewritten to use this instead of mass-share allocation. The UI shows
+real per-ingredient macros (with a "real" badge) when verified, an
+explicit "not verified" note otherwise. Full design record, known
+limitations (remainder can clamp to 0 when resolved ingredients alone
+exceed the dish's old estimate — measured on 13-31% of dishes depending
+on the macro), and browser verification against the exact reported case
+in `STATE.md`.
+
+**2026-08-13e — audited the "clamp to zero" tradeoff, fixed an Atwater
+consistency bug**: before changing anything, investigated the known
+tradeoff above with concrete examples (172/334 dishes affected on at
+least one macro). Conclusion: the remainder model
+(`total = max(realSum, oldEstimate)`) is mathematically sound and
+intentional, not a bug — most cases are rounding noise in the old
+hand-curated totals (present even in 100%-resolved dishes), the rest are
+real corrections of categories `dishes.js` used to undervalue (oily
+canned fish, nuts, turkey breast). Left the clamping mechanism itself
+unchanged. The investigation did surface a separate real bug: an
+unresolved ingredient's kcal had its own remainder anchored to
+`dish.kcal`, independent from its protein/carbs/fat remainder, so a row
+could show real macros with an internally impossible kcal (e.g.
+"Mermelada light" — 11.5g carbs but 0kcal; 99 rows off by >20kcal from
+their own Atwater value). Fixed in `js/core/nutrition.js`: an unresolved
+ingredient's kcal is no longer its own clamped remainder — it's derived
+by Atwater (`protein×4 + carbs×4 + fat×9`) from that same row's already-
+computed protein/carbs/fat, guaranteeing internal consistency; resolved
+ingredients keep using their real kcal unchanged. 180 tests total (18 in
+`tests/ingredient-nutrition.test.js`, 1 corrected + 4 new), golden-
+masters recaptured, 0 failures across `tests/` + `poc/tests/`. Verified
+live in browser (desktop + mobile) against the exact "Mermelada light"
+case; despensa, no-cook, and purchase cost unaffected. Full design
+record in `STATE.md`.
 
 ## Product direction
 
@@ -142,9 +220,13 @@ pantry today, workouts/recovery/progress/dashboard/coach-mode as future
 domains (see `ROADMAP.md`, Milestones). Preserve deterministic domain
 calculations as the source of truth. AI should explain, personalize, and
 orchestrate validated tools; it must not invent nutritional values or
-bypass safety checks. The longer-term data-quality fix (ingredient macros
-are currently fabricated by mass allocation) is a separate, already-decided
-migration — see `ROADMAP.md`, "Decisión de arquitectura" (Strategy B).
+bypass safety checks. The data-quality fix for ingredient macros
+(previously "fabricated by mass allocation", ROADMAP.md Strategy B) is
+now underway, not just decided: 50/81 ingredient roles have real
+per-ingredient nutrition in production as of 2026-08-13d; widening
+coverage further needs more verified products in `real-products.js`
+(Python-side work) — see `ROADMAP.md`, "Decisión de arquitectura" and
+Fase 1.
 
 ## Design principles for the next implementation
 
@@ -163,7 +245,8 @@ migration — see `ROADMAP.md`, "Decisión de arquitectura" (Strategy B).
 
 See `STATE.md` for the authoritative, dated engineering log and `ROADMAP.md`
 for the phased migration plan and architecture decision record. Last
-updated here 2026-08-08 (budget redesigned to mean purchase cost, not
-usage cost — see above). Not production-ready or suitable for
-health-critical personalization — see "Critical known issues" in
-`STATE.md`.
+updated here 2026-08-13e (real per-ingredient nutrition for 50/81 roles,
+plus dish selection made purchase-cost-aware, plus the Atwater-consistency
+fix for unresolved-ingredient kcal — see above). Not production-ready or
+suitable for health-critical personalization — see "Critical known
+issues" in `STATE.md`.

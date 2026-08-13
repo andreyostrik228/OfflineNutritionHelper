@@ -968,6 +968,25 @@ button:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
+.food-macro__badge {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--green);
+  color: #fff;
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+}
+
+.food-macro__unavailable {
+  font-style: italic;
+  opacity: 0.75;
+}
+
 .food-purchase {
   margin-top: 4px;
   display: inline-flex;
@@ -1014,6 +1033,26 @@ button:focus-visible {
 .food-right div:first-child {
   color: var(--ink);
   font-size: 13px;
+}
+
+.food-cost {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.25;
+}
+
+.food-cost__tag {
+  font-family: var(--font-body);
+  font-size: 8.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.75;
+}
+
+.food-cost--package {
+  color: var(--green-deep);
 }
 
 .meal-footer {

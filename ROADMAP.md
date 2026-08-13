@@ -2,21 +2,31 @@
 
 ## Current status
 
-**Stage:** working prototype, updated 2026-08-08 (budget redesigned to
-mean purchase cost, not usage cost, along with the meal schedule feature
-from the previous session — both committed and pushed to `main` as of
-this update, commit `3bad470`, see `STATE.md` session handoff for
-verification). Core architecture
-decision (2026-08-04): progressive migration from `dishes.js` (fabricated
-macros) to real Mercadona products (see "Decisión de arquitectura" below).
-Phase 0 of that migration (test safety net) is complete; Fase 1 (widen
-real-product coverage) is still the recommended next step and has **not**
-progressed since 2026-08-04 — the 2026-08-06/07 session went a different
-direction (a full Despensa/pantry feature + an architecture hardening pass
-on app startup, both orthogonal to the migration). Visual design was
+**Stage:** working prototype, updated 2026-08-13d — **Fase 1 of the data
+migration below is now partially done**: ingredient-level kcal/protein/
+carbs/fat for 50 of 81 roles is real, verified, and live in production
+(`js/data/ingredient-nutrition.js` + `js/core/nutrition.js`), promoted
+from the `poc/` audit that had been sitting unused since 2026-08-04 (see
+`STATE.md`, "Rediseño del modelo de nutrición por ingrediente"). Dish
+SELECTION is also purchase-cost-aware, not just the final budget
+verification (2026-08-13, see `STATE.md`, "Presupuesto de compra
+MARGINAL durante la selección"). **Not yet committed/pushed** — see
+`STATE.md` session handoff for exact repo state before assuming
+otherwise. Previous session (2026-08-08) redesigned the final budget
+check to mean purchase cost, not usage cost, along with the meal
+schedule feature from the session before that — both were committed and
+pushed to `main` as of that update, commit `3bad470`. Core architecture
+decision (2026-08-04): progressive migration from `dishes.js`
+(fabricated macros) to real Mercadona products (see "Decisión de
+arquitectura" below) — Phase 0 (test safety net) complete, Phase 1
+(widen real-product coverage) now IN PROGRESS (50/81, up from 0
+integrated before this session; the remaining 31 have no safe real-data
+source today, see known issue #2 in `STATE.md`). Visual design was
 reworked twice in the 2026-08-03/04 window; current production CSS is
 still that second revision ("premium fitness nutrition", see `STATE.md`).
-Dataset is 334 dishes / 81 ingredient roles (unchanged since 2026-08-03).
+Dataset is still 334 dishes / 81 ingredient roles (unchanged since
+2026-08-03) — this session did not add or remove dishes, only fixed how
+their ingredients' nutrition is computed and displayed.
 
 ## Completed
 
@@ -82,6 +92,80 @@ Dataset is 334 dishes / 81 ingredient roles (unchanged since 2026-08-03).
   (`dish-selector.js`) is untouched. Presets recalibrated against real
   measured purchase cost (5/8/12 → 15/20/28). 12 new tests (126 total).
   Full design record in `STATE.md`.
+- **Marginal purchase-cost-aware dish SELECTION (2026-08-13)**: the
+  2026-08-08 redesign fixed the final verification but dish `SELECTION`
+  itself (`pickDish`, `dish-selector.js`) still decided affordability by
+  usage cost — a "cheap to use" dish could still force buying a whole
+  expensive package, only caught after the fact by trimming. Now the
+  cascade asks for the MARGINAL purchase cost of each candidate
+  (`js/core/budget.js`, new `estimate*MarginalPurchaseCost` family):
+  how much a dish adds to today's real purchase given what earlier meals
+  in the same day already committed to buy (`committedGrams`) and real
+  pantry stock — used as the authoritative signal in affordability,
+  ranking, and portion-shrinking; usage cost is kept only as a secondary,
+  lower-weight tiebreaker. `enforcePurchaseBudgetCap` (2026-08-08) is
+  unchanged and remains the final safety net. Per-ingredient package price
+  now also shown on meal cards, not just the aggregated shopping list. 13
+  new tests (162 total), 2 golden-masters recaptured (selection algorithm
+  changed on purpose), 7 contract/invariant tests unchanged and still
+  passing. Verified live in browser, including an isolated proof that
+  stocking a pantry with exactly a required amount drops that ingredient's
+  purchase cost to €0 and the day total by the exact same amount. Full
+  design record in `STATE.md`. **Not committed/pushed as of this update**
+  — see `STATE.md` session handoff.
+- **Real per-ingredient nutrition — Fase 1 partially done (2026-08-13d)**:
+  a user-reported bug (an ingredient showing macros that biologically
+  belonged to a different ingredient in the same dish — mass-allocation
+  of the dish's hand-curated total by gram share, not real per-ingredient
+  composition) led to promoting the already-audited `poc/data/
+  ingredient-rules-full.js` (50/81 ingredient roles with real, verified
+  kcal/protein/carbs/fat, matched by hand against `real-products.js` back
+  in 2026-08-04 but never integrated into production) into `js/data/
+  ingredient-nutrition.js` + a new `js/core/nutrition.js`
+  (`computeDishIngredientNutrition`). Resolved ingredients now get exact
+  real macros, scaled linearly; the dish's remaining (unresolved)
+  ingredients get the REMAINDER of the dish total (never a value borrowed
+  from a resolved neighbor) — this is what actually fixes the reported
+  bug. `dish-selector.js`'s `buildMealFromDish` rewritten to use this;
+  usage/purchase-cost pipeline untouched. UI shows real per-ingredient
+  macros with a "real" badge when verified, an explicit "not verified"
+  note otherwise — never a fabricated number. 15 new tests including
+  exact regressions for the reported case and a chicken+rice case, 2
+  golden-masters recaptured on purpose (data model changed
+  fundamentally), 177 tests total, 7 contract/invariant tests unchanged
+  and still passing. Verified live in browser against the exact reported
+  case. Full design record in `STATE.md`. **Not committed/pushed as of
+  this update** — see `STATE.md` session handoff.
+- **Real per-ingredient nutrition — auditoría del recorte a cero +
+  consistencia Atwater (2026-08-13e)**: antes de tocar nada más, se
+  investigó a fondo el compromiso conocido de la fase anterior (172/334
+  platos donde la suma real de ingredientes resueltos, en al menos un
+  macro, supera el `dish.total` antiguo y se recorta a 0 en vez de
+  repartir un remanente negativo). Conclusión: el modelo de remanente
+  (`total = max(sumaReal, estimaciónAntigua)`) es matemáticamente sólido
+  y deliberado, no un bug — la mayoría de los casos son ruido de
+  redondeo de la estimación manual antigua (incluso en platos 100%
+  resueltos) y el resto son correcciones reales de categorías que
+  `dishes.js` infravaloraba sistemáticamente (conservas en aceite,
+  frutos secos, pechuga de pavo). No se cambió el mecanismo de recorte.
+  La investigación sí encontró un bug real independiente: el kcal de un
+  ingrediente sin resolver tenía su propio remanente anclado a
+  `dish.kcal`, pudiendo quedar inconsistente con su propio protein/
+  carbs/fat (99 filas con diferencia >20kcal frente a Atwater, ej.
+  "Mermelada light" con 11.5g de carbohidratos pero 0kcal). Corregido en
+  `js/core/nutrition.js`: kcal de ingredientes sin resolver ya no usa
+  `dish.kcal` en absoluto, se deriva por Atwater
+  (`protein×4 + carbs×4 + fat×9`) de su propio remanente — 0 filas
+  inconsistentes tras el fix. Ingredientes resueltos siguen usando su
+  kcal real tal cual (nunca recalculado). 1 test corregido + 4 nuevos en
+  `tests/ingredient-nutrition.test.js` (18 total), golden-masters
+  recapturados de nuevo, **180 tests total**, 0 fallos (157 en `tests/` +
+  23 en `poc/tests/`). Verificado en vivo en el navegador (desktop y
+  mobile) contra el caso exacto de "Mermelada light"; despensa, no-cook
+  y purchase cost sin cambios. Análisis completo en `STATE.md`, sección
+  "Auditoría del recorte a cero y corrección de consistencia Atwater —
+  2026-08-13e". **Not committed/pushed as of this update** — see
+  `STATE.md` session handoff.
 
 ## Decisión de arquitectura: migración a productos reales (2026-08-04)
 
@@ -125,8 +209,14 @@ big-bang).
   fallo que destruye la confianza del usuario al primer vistazo.
 
 **CURRENT STATUS**: decisión tomada, Fase 0 (tests) completada. Fase 1
-(ampliar cobertura de datos reales más allá del 50/81 actual) es el
-siguiente paso recomendado, no iniciado.
+**en progreso desde 2026-08-13d** — el 50/81 que llevaba desde
+2026-08-04 auditado en `poc/` pero sin integrar, ahora SÍ está en
+producción (`js/data/ingredient-nutrition.js`, `js/core/nutrition.js`,
+alimenta macros por ingrediente reales en `dish-selector.js`). Lo que
+queda de Fase 1: ampliar la cobertura más allá de 50/81 (requiere que el
+pipeline Python verifique más productos en `real-products.js` — trabajo
+del lado Python, no de este repo) y reparar el script de exportación
+Python→frontend que hoy no existe.
 
 ### Roadmap de migración por fases
 
@@ -138,8 +228,8 @@ se empiece esa fase, no de antemano en abstracto.
 | Fase | Objetivo | Estado |
 | --- | --- | --- |
 | 0 | Estabilización y tests — red de seguridad antes de tocar el motor | **Completada 2026-08-04** |
-| 1 | Datos reales — ampliar cobertura de resolución ingrediente→producto más allá de 50/81; reparar el script de exportación Python→frontend que hoy no existe | No iniciada — siguiente paso recomendado |
-| 2 | Nuevo motor de planificación — `dish-selector.js`/`plan-generator.js` usan el resolver en vez de macros hardcodeadas; `dishes.js` pasa de "plato con macros fijas" a "plantilla de receta con roles" | No iniciada |
+| 1 | Datos reales — ampliar cobertura de resolución ingrediente→producto más allá de 50/81; reparar el script de exportación Python→frontend que hoy no existe | **En progreso 2026-08-13d** — 50/81 integrados en producción (macros por ingrediente reales, ver `STATE.md`); ampliar más allá de 50/81 sigue pendiente (requiere más productos verificados en `real-products.js`, lado Python) |
+| 2 | Nuevo motor de planificación — `dish-selector.js`/`plan-generator.js` usan el resolver en vez de macros hardcodeadas; `dishes.js` pasa de "plato con macros fijas" a "plantilla de receta con roles" | Parcialmente empezada — `buildMealFromDish` ya usa datos reales por ingrediente cuando existen (2026-08-13d), pero `dishes.js` sigue siendo "plato con macros fijas" (el remanente de los 31/81 sin resolver todavía se ancla al total hand-curated del plato) |
 | 3 | Presupuesto y coste real — unificar `usageCost`/`purchaseCost` para que se calculen siempre desde el producto real resuelto; recalibrar `budget-presets.js` | No iniciada |
 | 4 | Variedad y generación de planes — planes multi-día; decidir el destino del modo "sin cocinar" (¿converge con el motor principal?) | No iniciada |
 | 5 | UX / funcionalidades — exportar lista de la compra, selector de tienda, persistencia local | No iniciada |
@@ -155,7 +245,7 @@ decisión de arquitectura de datos.
 ## Next priorities
 
 1. **P0 — Fase 1 de la migración (ver arriba).** Ampliar cobertura de datos reales es ahora la prioridad más alta y concreta — todo lo demás en el known-issues list depende de o se vuelve irrelevante por esto.
-2. **P0 — Make constraints truthful.** Treat budget, prep time, nutrition tolerance, variety, and per-item calorie cap as hard post-generation checks. Budget specifically is now truthful in the sense that matters most (it's enforced against real purchase cost, not usage cost — 2026-08-08, see `STATE.md`); the remaining known gap is narrower — cap25%/budget-trim interaction (`STATE.md` known issue #8, still present under the new `enforcePurchaseBudgetCap`), and fixing that properly still belongs in Fase 2 of the migration above, not as an isolated patch.
+2. **P0 — Make constraints truthful.** Treat budget, prep time, nutrition tolerance, variety, and per-item calorie cap as hard post-generation checks. Budget specifically is now truthful in the sense that matters most (enforced against real purchase cost, not usage cost — 2026-08-08; and since 2026-08-13, the SELECTION cascade itself also optimizes for real purchase cost, not just the final check, see `STATE.md`); the remaining known gap is narrower — cap25%/budget-trim interaction (`STATE.md` known issue #8, still present under `enforcePurchaseBudgetCap`, unchanged 2026-08-13), and fixing that properly still belongs in Fase 2 of the migration above, not as an isolated patch.
 3. **P0 — Correct product claims and safety.** ~~Remove the current AI/guarantee claims~~ **done (2026-08-03):** branding no longer says "AI"/"Chef Mode". Still open: clear scope, contraindication guidance, and required dietary/medical constraints before personalization.
 4. **P1 — Establish an engineering foundation.** Fase 0 (2026-08-04) covers unit/characterization tests for the core engine — still missing: TypeScript, ES modules, linting, formatting, CI, package manifest.
 
@@ -177,9 +267,12 @@ decisión de arquitectura de datos.
 
 - ~~Pantry inventory~~ **Shipped 2026-08-06/07** — `js/core/pantry.js` +
   `js/ui/render-pantry.js`, "Despensa" panel. 3-stage lifecycle (use plan
-  today → mark purchase done → mark each meal cooked), localStorage-only,
-  deliberately NOT connected to `dish-selector.js` or no-cook mode yet —
-  see `STATE.md`, section "Despensa (pantry/inventory)" for the full
+  today → mark purchase done → mark each meal cooked), localStorage-only.
+  Originally deliberately NOT connected to `dish-selector.js`; **as of
+  2026-08-13 it IS** — dish selection now prefers pantry-covered
+  ingredients via marginal purchase cost (see `STATE.md`, "Presupuesto de
+  compra MARGINAL durante la selección"). Still NOT connected to no-cook
+  mode. See `STATE.md`, section "Despensa (pantry/inventory)" for the full
   design and the real-world bug that drove the v1→v2 redesign.
 - Remaining: barcode/import flows, meal-prep batching, calendar
   integration, coach mode, multilingual content, and analytics.
