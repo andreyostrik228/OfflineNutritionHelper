@@ -1221,8 +1221,8 @@ button:focus-visible {
   margin: 0;
 }
 
-/* Mismo badge, reutilizado en el historial de la despensa */
-.pantry-history-item__meal-time {
+/* Mismo badge, reutilizado dentro de los chips de comida de la despensa */
+.pantry-meal-chip__time {
   font-family: var(--font-mono);
   font-weight: 700;
   font-size: 11px;
@@ -1898,27 +1898,42 @@ button:focus-visible {
   line-height: 1.6;
 }
 
-/* ══ Despensa (pantry.js / render-pantry.js) ═══════════════════════════ */
+/* ══ Despensa (pantry.js / render-pantry.js) ═══════════════════════════
+   Rediseño de UX 2026-08-14b: 3 bloques con roles claros en vez de una
+   lista plana -- ver cabecera de render-pantry.js para el razonamiento
+   completo. (1) stock actual, editable in situ; (2) planes con algo
+   pendiente, acción de compra reducida a un botón por defecto; (3)
+   historial ya completado, colapsado y de solo lectura. */
+
+.pantry-intro {
+  margin: 0 0 var(--space-4);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+
+/* ── Alta: nombre (datalist) + gramos + botón, una sola fila ─────────── */
 .pantry-add {
   display: flex;
   gap: var(--space-2);
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-2);
 }
 
-.pantry-add select {
+.pantry-add input[type="text"] {
   flex: 1;
+  min-width: 0;
 }
 
-.pantry-add input {
-  width: 100px;
+.pantry-add input[type="number"] {
+  width: 92px;
   flex-shrink: 0;
 }
 
 .pantry-add button {
   flex-shrink: 0;
-  background: var(--paper-raised);
-  color: var(--ink-soft);
-  border: 1px solid var(--line-strong);
+  background: var(--green);
+  color: var(--hero-ink);
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
   padding: 0 var(--space-4);
   font-weight: 600;
@@ -1928,14 +1943,20 @@ button:focus-visible {
 
 @media (hover: hover) {
   .pantry-add button:hover {
-    border-color: var(--ink-faint);
-    color: var(--ink);
+    background: var(--green-deep);
   }
 }
 
+.pantry-add__error {
+  margin: 0 0 var(--space-4);
+  font-size: 12.5px;
+  color: var(--danger);
+}
+
+/* ── Stock actual ─────────────────────────────────────────────────────── */
 .pantry-list {
   list-style: none;
-  margin: 0 0 var(--space-6);
+  margin: 0 0 var(--space-5);
   padding: 0;
   display: flex;
   flex-direction: column;
@@ -1943,115 +1964,146 @@ button:focus-visible {
 }
 
 .pantry-item {
-  display: grid;
-  grid-template-columns: 1fr auto;
+  display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-3) var(--space-2);
+  padding: 10px var(--space-1);
   border-bottom: 1px solid var(--line);
 }
 
 .pantry-item__name {
+  flex: 1;
+  min-width: 0;
   font-weight: 600;
   font-size: 13.5px;
   color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.pantry-item__grams {
-  margin-top: 2px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--ink-faint);
-  font-variant-numeric: tabular-nums;
-}
-
-.pantry-item__actions {
-  display: flex;
-  gap: 6px;
+/* Cantidad tocable -- un tap la convierte en un <input> editable con el
+   valor exacto ya seleccionado (beginEditPantryRow, render-pantry.js).
+   Reemplaza los pasos ciegos de ±50g: ahora se corrige a un número
+   concreto en un solo gesto. */
+.pantry-item__amount {
   flex-shrink: 0;
-}
-
-.pantry-item__btn {
-  min-width: 30px;
-  height: 30px;
-  padding: 0 8px;
+  min-width: 64px;
+  padding: 6px 10px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--line-strong);
   background: var(--paper-raised);
-  color: var(--ink-soft);
-  font-weight: 700;
+  color: var(--ink);
+  font-family: var(--font-mono);
   font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
   cursor: pointer;
 }
 
 @media (hover: hover) {
-  .pantry-item__btn:hover {
-    border-color: var(--ink-faint);
-    color: var(--ink);
+  .pantry-item__amount:hover {
+    border-color: var(--green);
+    color: var(--green-deep);
   }
 }
 
-.pantry-item__btn--clear {
+.pantry-item__amount-input {
+  flex-shrink: 0;
+  width: 64px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--green);
+  background: var(--paper-raised);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 13px;
   font-weight: 600;
-  font-size: 11px;
-  color: var(--danger);
-  border-color: var(--danger-border);
-  background: var(--danger-wash);
+  text-align: center;
 }
 
-.pantry-empty {
+.pantry-item__remove {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  background: transparent;
   color: var(--ink-faint);
-  font-size: 13px;
-  padding: var(--space-5);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .pantry-item__remove:hover {
+    border-color: var(--danger-border);
+    background: var(--danger-wash);
+    color: var(--danger);
+  }
+}
+
+/* ── Empty state: explica qué es la despensa, no solo que está vacía ──── */
+.pantry-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
   text-align: center;
+  padding: var(--space-6) var(--space-4);
   border: 1.5px dashed var(--line-strong);
   border-radius: var(--radius-md);
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-5);
+  color: var(--ink-faint);
 }
 
-.pantry-history__title {
-  margin: 0 0 var(--space-3);
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 15px;
+.pantry-empty svg {
+  color: var(--green);
+  opacity: 0.7;
+}
+
+.pantry-empty p {
+  margin: 0;
+  max-width: 42ch;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.pantry-empty strong {
   color: var(--ink);
 }
 
-.pantry-history {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-/* Cada entrada del historial es ahora 3 bloques apilados (cabecera +
-   checklist de compra + lista de comidas), no una fila plana de una
-   línea -- ver render-pantry.js renderHistoryRow(). */
-.pantry-history-item {
+/* ── Planes activos (compra y/o comidas pendientes) ────────────────────── */
+.pantry-active {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  padding: var(--space-3);
+}
+
+.pantry-active:not(:empty) {
+  margin-bottom: var(--space-5);
+}
+
+.pantry-active-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
   background: var(--paper-raised);
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
+  border-left: 3px solid var(--clay);
   border-radius: var(--radius-sm);
 }
 
-.pantry-history-item--cooked {
-  border-color: var(--green);
-  background: var(--green-wash);
-}
-
-.pantry-history-item__head {
+.pantry-active-card__head {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
   gap: var(--space-3);
 }
 
-.pantry-history-item__date {
+.pantry-active-card__date {
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -2059,15 +2111,77 @@ button:focus-visible {
   color: var(--ink-faint);
 }
 
-.pantry-history-item__summary {
+.pantry-active-card__summary {
   font-size: 12px;
   color: var(--ink-soft);
 }
 
-/* ── Bloque de compra (Etapa 2) ─────────────────────────────────────── */
-.pantry-purchase-block {
+.pantry-active-card__purchase {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.pantry-active-card__purchase--done .pantry-active-card__purchase-status {
+  color: var(--green-deep);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.pantry-active-card__buy-btn {
+  padding: 9px var(--space-4);
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.pantry-active-card__buy-btn--secondary {
+  width: 100%;
+  margin-top: var(--space-2);
+  background: var(--paper);
+  color: var(--ink-soft);
+  border-color: var(--line-strong);
+}
+
+@media (hover: hover) {
+  .pantry-active-card__buy-btn--secondary:hover {
+    border-color: var(--green);
+    color: var(--green-deep);
+  }
+}
+
+.pantry-link-btn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: var(--ink-faint);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .pantry-link-btn:hover {
+    color: var(--ink);
+  }
+}
+
+/* Checklist de exclusión -- oculto por defecto (ver toggle-checklist en
+   render-pantry.js), solo para quien de verdad no compró todo. */
+.pantry-purchase-checklist-wrap {
   padding-top: var(--space-3);
   border-top: 1px dashed var(--line-strong);
+}
+
+.pantry-purchase-checklist-hint {
+  margin: 0 0 var(--space-2);
+  font-size: 11.5px;
+  color: var(--ink-faint);
 }
 
 .pantry-purchase-checklist {
@@ -2135,82 +2249,106 @@ button:focus-visible {
   white-space: nowrap;
 }
 
-.pantry-purchase-block__note {
-  margin: 0 0 var(--space-2);
-  font-size: 11.5px;
-  color: var(--ink-faint);
-}
-
-.pantry-purchase-block__btn {
-  width: 100%;
-  padding: 8px var(--space-3);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--line-strong);
-  background: var(--paper);
-  color: var(--ink-soft);
-  font-weight: 600;
-  font-size: 12.5px;
-  cursor: pointer;
-}
-
-@media (hover: hover) {
-  .pantry-purchase-block__btn:hover {
-    border-color: var(--green);
-    color: var(--green-deep);
-  }
-}
-
-/* ── Lista de comidas (Etapa 3) ─────────────────────────────────────── */
-.pantry-history-item__meals {
-  list-style: none;
-  margin: 0;
+/* Chips de comida -- una fila compacta que envuelve, en vez de 5 filas
+   apiladas repitiendo el mismo texto. */
+.pantry-meal-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
   padding-top: var(--space-3);
   border-top: 1px dashed var(--line-strong);
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
 }
 
-.pantry-history-item__meal-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--space-2);
+.pantry-meal-chips__label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-right: 2px;
 }
 
-.pantry-history-item__meal-label {
-  font-size: 12.5px;
-  color: var(--ink-soft);
-}
-
-.pantry-history-item__meal-row--cooked .pantry-history-item__meal-label {
-  color: var(--green-deep);
-}
-
-.pantry-history-item__meal-btn {
-  flex-shrink: 0;
-  padding: 5px 10px;
+.pantry-meal-chip {
+  padding: 6px 12px;
   border-radius: 999px;
   border: 1px solid var(--line-strong);
   background: var(--paper);
   color: var(--ink-soft);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
 }
 
-.pantry-history-item__meal-row--cooked .pantry-history-item__meal-btn {
-  border-color: var(--green);
-  color: var(--green-deep);
-  background: #fff;
+@media (hover: hover) {
+  .pantry-meal-chip:hover {
+    border-color: var(--ink-faint);
+  }
 }
 
-.pantry-history__empty {
+.pantry-meal-chip--cooked {
+  border-color: var(--green);
+  color: var(--green-deep);
+  background: var(--green-wash);
+}
+
+/* ── Historial completado: colapsado, de solo lectura ──────────────────── */
+.pantry-history-disclosure {
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.pantry-history-disclosure > summary {
+  padding: var(--space-2) 0;
+  font-size: 12.5px;
+  font-weight: 600;
   color: var(--ink-faint);
-  font-size: 13px;
-  padding: var(--space-5);
-  text-align: center;
+  cursor: pointer;
+  list-style: none;
+}
+
+.pantry-history-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+@media (hover: hover) {
+  .pantry-history-disclosure > summary:hover {
+    color: var(--ink);
+  }
+}
+
+.pantry-history {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.pantry-history-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+}
+
+.pantry-history-row__date {
+  flex-shrink: 0;
+  font-weight: 600;
+  color: var(--ink-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-size: 10.5px;
+}
+
+.pantry-history-row__summary {
+  color: var(--ink-soft);
+  text-align: right;
 }
 
 /* ══ Media Queries ══════════════════════════════════════════ */
@@ -2506,25 +2644,31 @@ button:focus-visible {
     gap: 8px;
   }
 
+  /* La entrada de texto ocupa toda la fila; gramos + botón comparten la
+     segunda -- evita apretar 3 controles en una sola fila de 375px. */
   .pantry-add {
     flex-wrap: wrap;
   }
 
-  .pantry-add input {
-    width: 90px;
+  .pantry-add input[type="text"] {
+    flex: 1 1 100%;
+  }
+
+  .pantry-add input[type="number"] {
+    flex: 1;
+    width: auto;
   }
 
   .pantry-item {
-    padding: 8px 4px;
+    padding: 9px 2px;
   }
 
-  .pantry-history-item {
-    padding: var(--space-2) var(--space-3);
-    gap: var(--space-2);
+  .pantry-active-card {
+    padding: var(--space-3);
   }
 
-  .pantry-purchase-block,
-  .pantry-history-item__meals {
+  .pantry-purchase-checklist-wrap,
+  .pantry-meal-chips {
     padding-top: var(--space-2);
   }
 

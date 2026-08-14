@@ -410,36 +410,53 @@
     </section>
 
     <!-- ══ DESPENSA: recuerda cuánto de cada ingrediente ya tienes en casa
-         (sobras de compras/planes anteriores) y lo descuenta de lo que
-         un plan futuro pide comprar. Persiste en localStorage, INDEPEN-
-         DIENTE de cualquier plan generado en esta sesión — nunca se oculta
-         ni se vacía al pulsar "Resetear". Ver js/core/pantry.js /
-         js/ui/render-pantry.js ══ -->
+         y lo descuenta de lo que un plan futuro pide comprar. Persiste en
+         localStorage (+ nube si hay sesión), INDEPENDIENTE de cualquier
+         plan generado en esta sesión — nunca se oculta ni se vacía al
+         pulsar "Resetear". Rediseño de UX 2026-08-14b: separa "lo que
+         tienes" de "lo que está en curso" de "lo que ya terminaste", en
+         vez de una única lista plana con los 3 mezclados — ver cabecera
+         de js/ui/render-pantry.js para el razonamiento completo. Misma
+         lógica de negocio de siempre (js/core/pantry.js), solo cambia
+         cómo se presenta. ══ -->
     <details class="disclosure" id="pantryPanel">
       <summary>
         <div class="verified-panel__head">
           <div>
             <h2>Tu <em>despensa</em></h2>
-            <span class="eyebrow">Sobras guardadas de compras anteriores &mdash; se descuentan del pr&oacute;ximo plan</span>
+            <span class="eyebrow">Lo que ya tienes en casa &mdash; se descuenta de tu pr&oacute;xima compra</span>
           </div>
-          <div class="badge"><svg class="icon" width="14" height="14"><use href="#icon-cart"/></svg> <span id="pantryCount">0</span> productos guardados</div>
+          <div class="badge"><svg class="icon" width="14" height="14"><use href="#icon-cart"/></svg> <span id="pantryCount">0</span> productos</div>
         </div>
         <svg class="disclosure__chevron" width="20" height="20"><use href="#icon-chevron"/></svg>
       </summary>
 
       <div class="disclosure__body">
-        <div class="pantry-add" id="pantryAddForm">
-          <select id="pantryAddSelect" aria-label="Ingrediente"></select>
-          <input type="number" id="pantryAddGrams" min="0" step="1" placeholder="gramos" aria-label="Gramos">
-          <button type="button" id="pantryAddBtn">A&ntilde;adir</button>
-        </div>
+        <p class="pantry-intro">Guarda aqu&iacute; lo que ya tienes en la nevera o el armario (sobras, compras anteriores&hellip;). Cuando generes un plan, el sitio lo tendr&aacute; en cuenta y no te lo volver&aacute; a pedir en la lista de la compra.</p>
+
+        <form class="pantry-add" id="pantryAddForm">
+          <input type="text" id="pantryAddName" list="pantryIngredientOptions" placeholder="&iquest;Qu&eacute; tienes? (ej. Arroz blanco cocido)" aria-label="Ingrediente" autocomplete="off">
+          <datalist id="pantryIngredientOptions"></datalist>
+          <input type="number" id="pantryAddGrams" min="0" step="1" placeholder="gramos" aria-label="Gramos" inputmode="numeric">
+          <button type="submit" id="pantryAddBtn">A&ntilde;adir</button>
+        </form>
+        <p class="pantry-add__error" id="pantryAddError" hidden></p>
 
         <ul class="pantry-list" id="pantryListContainer"></ul>
-        <p class="pantry-empty" id="pantryEmpty" hidden>Tu despensa est&aacute; vac&iacute;a &mdash; confirma un plan o a&ntilde;ade algo manualmente.</p>
+        <div class="pantry-empty" id="pantryEmpty" hidden>
+          <svg width="26" height="26"><use href="#icon-cart"/></svg>
+          <p><strong>Tu despensa est&aacute; vac&iacute;a.</strong> Aqu&iacute; guardas lo que ya tienes en casa, para que el sitio no te lo vuelva a pedir comprar. A&ntilde;ade tu primer producto arriba &uarr;</p>
+        </div>
 
-        <h3 class="pantry-history__title">Historial de planes usados</h3>
-        <ul class="pantry-history" id="pantryHistoryContainer"></ul>
-        <p class="pantry-history__empty" id="pantryHistoryEmpty" hidden>Todav&iacute;a no has confirmado ning&uacute;n plan.</p>
+        <!-- Planes con algo pendiente (comprar o cocinar) -- solo aparece
+             si hay alguno; se vac&iacute;a solo en cuanto todo est&aacute;
+             cocinado, ver isEntryFullyCooked() en render-pantry.js. -->
+        <div class="pantry-active" id="pantryActiveContainer"></div>
+
+        <details class="disclosure pantry-history-disclosure" id="pantryHistoryDisclosure" hidden>
+          <summary>Ver planes anteriores</summary>
+          <ul class="pantry-history" id="pantryHistoryContainer"></ul>
+        </details>
       </div>
     </details>
 

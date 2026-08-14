@@ -103,11 +103,14 @@ document.addEventListener("DOMContentLoaded", function () {
   var pantryPanel              = document.getElementById("pantryPanel");
   var pantryListContainer      = document.getElementById("pantryListContainer");
   var pantryEmptyEl            = document.getElementById("pantryEmpty");
-  var pantryAddSelect          = document.getElementById("pantryAddSelect");
+  var pantryAddForm            = document.getElementById("pantryAddForm");
+  var pantryAddNameInput       = document.getElementById("pantryAddName");
   var pantryAddGrams           = document.getElementById("pantryAddGrams");
-  var pantryAddBtn             = document.getElementById("pantryAddBtn");
+  var pantryIngredientOptionsList = document.getElementById("pantryIngredientOptions");
+  var pantryAddError           = document.getElementById("pantryAddError");
+  var pantryActiveContainer    = document.getElementById("pantryActiveContainer");
+  var pantryHistoryDisclosure  = document.getElementById("pantryHistoryDisclosure");
   var pantryHistoryContainer   = document.getElementById("pantryHistoryContainer");
-  var pantryHistoryEmptyEl     = document.getElementById("pantryHistoryEmpty");
   var pantryCountEl            = document.getElementById("pantryCount");
 
   var authProfileBtn   = document.getElementById("authProfileBtn");
@@ -570,11 +573,14 @@ document.addEventListener("DOMContentLoaded", function () {
       initPantryRefs({
         pantryListContainer: pantryListContainer,
         pantryEmptyEl: pantryEmptyEl,
-        pantryAddSelect: pantryAddSelect,
+        pantryAddForm: pantryAddForm,
+        pantryAddNameInput: pantryAddNameInput,
         pantryAddGrams: pantryAddGrams,
-        pantryAddBtn: pantryAddBtn,
+        pantryIngredientOptionsList: pantryIngredientOptionsList,
+        pantryAddError: pantryAddError,
+        pantryActiveContainer: pantryActiveContainer,
+        pantryHistoryDisclosure: pantryHistoryDisclosure,
         pantryHistoryContainer: pantryHistoryContainer,
-        pantryHistoryEmptyEl: pantryHistoryEmptyEl,
         pantryCountEl: pantryCountEl,
         planSavedNoticeEl: planSavedNoticeEl,
         onPantryChange: syncAfterPantryChange

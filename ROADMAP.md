@@ -2,7 +2,11 @@
 
 ## Current status
 
-**Stage:** working prototype, updated 2026-08-14a — the site now has a
+**Stage:** working prototype, updated 2026-08-14b — the despensa panel
+just got a full UX redesign (3 clear blocks instead of one flat list
+mixing stock/history/sub-stages, zero changes to the underlying logic —
+see `STATE.md`, "Rediseño de UX de la Despensa — 2026-08-14b"). Before
+that, the site already has a
 **complete, LIVE accounts layer** (Supabase Auth email+password/Google
 OAuth + Postgres + Row Level Security, guest mode preserved as the
 default, local-first sync, idempotent guest→account migration with
@@ -246,6 +250,21 @@ their ingredients' nutrition is computed and displayed.
   a real Google login end-to-end yet (the technical chain is confirmed,
   but no credentials were ever entered by design) — first real use of
   the button is that final proof.
+- **Despensa UX redesign, zero logic changes (2026-08-14b)**: the user
+  (the app's own author) reported that even they sometimes couldn't
+  follow the despensa panel's interface logic — the underlying 3-stage
+  lifecycle in `js/core/pantry.js` was fine, the problem was purely
+  presentational (a single flat list mixing current stock, the full
+  history of every confirmed plan, and always-expanded buy/cook
+  sub-stages). Rewrote `js/ui/render-pantry.js` around 3 clear blocks —
+  editable-in-place stock, an "active plans" section for anything still
+  pending, and a collapsed read-only history a plan joins automatically
+  once fully cooked — plus a searchable text+datalist ingredient picker
+  replacing an 81-option `<select>`. `pantry.js`, the financial model,
+  and cloud sync are untouched; verified live that purchaseCost/
+  shopping-list/plan confirmation/authenticated sync all behave
+  identically. Full reasoning in `STATE.md`, "Rediseño de UX de la
+  Despensa — 2026-08-14b".
 
 ## Decisión de arquitectura: migración a productos reales (2026-08-04)
 

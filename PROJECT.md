@@ -105,6 +105,24 @@ NOT connected to `dish-selector.js` (budget selection stays pantry-unaware)
 or no-cook mode. Full design record and rejected alternatives in
 `STATE.md`.
 
+**2026-08-14b — UX redesign, zero logic changes**: the panel used to
+render one flat list mixing current stock, the full history of every
+confirmed plan (up to 30), and the buy/cook sub-stages always expanded —
+exposing pantry.js's internal state machine directly instead of "what do
+I have at home." Rewritten (`js/ui/render-pantry.js` only) into 3 blocks:
+editable-in-place stock (tap an amount for an exact-value input, no more
+blind ±50g steps), a "planes activos" section showing only plans with
+something still pending (buy and/or cook), and a collapsed read-only
+history that a plan joins automatically the moment it's fully cooked.
+Manual add is now a searchable text input (`<datalist>`) instead of an
+81-option `<select>`, with the typed name resolved against
+`normalizeIngredientKey()` before saving — never creates an orphan key.
+`js/core/pantry.js` itself, the financial model, and cloud sync are
+byte-for-byte unchanged; verified live that purchaseCost/shopping-list/
+plan confirmation/authenticated sync all behave identically. Full
+before/after reasoning in `STATE.md`, "Rediseño de UX de la Despensa —
+2026-08-14b".
+
 ## Meal schedule (2026-08-07)
 
 Each generated meal now carries a real clock time (`meal.time`, e.g.
@@ -295,9 +313,10 @@ Fase 1.
 
 See `STATE.md` for the authoritative, dated engineering log and `ROADMAP.md`
 for the phased migration plan and architecture decision record. Last
-updated here 2026-08-14a (real per-ingredient nutrition for 50/81 roles,
+updated here 2026-08-14b (real per-ingredient nutrition for 50/81 roles,
 dish selection made purchase-cost-aware, the Atwater-consistency fix for
-unresolved-ingredient kcal, and a complete multi-user accounts layer now
-LIVE against a real Supabase project and verified end-to-end — see
-above). Not production-ready or suitable for health-critical
+unresolved-ingredient kcal, a complete multi-user accounts layer LIVE
+against a real Supabase project and verified end-to-end, and a full UX
+redesign of the Despensa panel with zero changes to its underlying logic
+— see above). Not production-ready or suitable for health-critical
 personalization — see "Critical known issues" in `STATE.md`.

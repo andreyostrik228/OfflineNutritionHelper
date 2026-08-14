@@ -22,6 +22,31 @@ está aquí y en `ROADMAP.md`. **Si vuelves a tocar código, el grafo se
 desactualiza de nuevo** — no se actualiza solo (comandos exactos en
 `PythonProject/docs/graphify.md`, sección "Cómo actualizarlo").
 
+**Resumen de la sesión 2026-08-14b (rediseño de UX de la Despensa — SIN
+tocar `js/core/pantry.js` ni ninguna regla de negocio)**: pedido explícito
+del usuario, incluido él mismo como autor original: "даже я иногда не
+понимаю логику интерфейса". La versión anterior mezclaba en una sola
+lista plana tres ideas distintas — (1) el stock actual, (2) el historial
+COMPLETO de cada plan confirmado (hasta 30), y (3) dentro de cada uno,
+dos sub-etapas técnicas (checklist de compra + un botón "Marcar como
+cocinado" por cada una de las 5 comidas) siempre expandidas — exponiendo
+directamente los 3 estados internos de la máquina de `pantry.js` en vez
+de "lo que tengo en casa". Rediseñado (ver sección dedicada más abajo)
+en 3 bloques con roles claros: stock editable in-situ (tap → número
+exacto, ya no pasos ciegos de ±50g), planes con algo pendiente (acción
+de compra reducida a un botón por defecto, checklist tras "¿Te faltó
+algo?"), e historial completado que se colapsa solo en cuanto se termina
+de cocinar. Alta manual: `<input list>` con datalist en vez de un
+`<select>` de 81 opciones, con resolución/validación del nombre tecleado
+contra `normalizeIngredientKey` (nunca crea una clave huérfana). Cero
+cambios en `js/core/pantry.js`, `js/core/budget.js`,
+`js/ui/render-shopping-list.js`, ni en el modelo financiero —
+confirmado en vivo que purchaseCost/la lista de la compra/"Confirmar y
+usar este plan hoy"/la sincronización con la nube de un usuario
+autenticado siguen exactamente igual. Los 246 tests (ninguno toca
+render-pantry.js, es capa de presentación pura) siguen en verde.
+**Sin commitear a la hora de escribir esto** — ver "Session handoff".
+
 **Resumen de la sesión 2026-08-14a (aprovisionamiento real de Supabase +
 Google OAuth — el sistema de cuentas pasa de "código listo" a "funcionando
 de verdad en producción")**: la sesión 2026-08-13f dejó todo el código,
@@ -2078,6 +2103,123 @@ de datos "limpia" antes de un uso real, se pueden borrar manualmente
 desde Supabase → Authentication → Users. No es necesario para que el
 sistema funcione correctamente para usuarios reales nuevos.
 
+## Rediseño de UX de la Despensa — 2026-08-14b
+
+Pedido explícito del usuario, con una restricción clara: NO tocar la
+arquitectura (`js/core/pantry.js` funciona bien y no se toca), el
+problema es puramente de presentación. Cita literal: "даже я, автор
+приложения, иногда не понимаю логику интерфейса".
+
+**Diagnóstico**: la versión anterior (`js/ui/render-pantry.js` previo a
+esta sesión) mezclaba en una única lista plana `<details>` tres objetos
+mentales distintos:
+1. El stock actual (lo que de verdad es "la despensa").
+2. El historial COMPLETO de cada plan confirmado, hasta 30 entradas,
+   siempre todas expandidas de golpe.
+3. Dentro de cada entrada del historial, dos sub-etapas técnicas de la
+   máquina de 3 etapas de `pantry.js` (ver su cabecera) siempre visibles
+   sin jerarquía: un checklist de compra con casillas, y 5 botones
+   idénticos "Marcar como cocinado" (uno por comida).
+
+El resultado era, para cualquier usuario con más de un par de días de
+uso, una pared vertical de estados internos del modelo de datos, no una
+lista de "lo que tengo en casa". Edición de cantidades: solo pasos
+ciegos de ±50g (botones `+`/`-`), sin forma de corregir a un número
+exacto sin varios clics o vaciar y volver a añadir. Alta manual: un
+`<select>` con las 81 opciones alfabéticas del catálogo de golpe.
+
+**Mental model nuevo** (la frase que el propio usuario propuso como
+objetivo, textual): "Esto son productos que ya tengo en casa. El sitio
+los tiene en cuenta al hacer la lista de la compra. Si uso/compro
+productos a través de un plan, las cantidades se actualizan solas."
+
+**Rediseño implementado** — 3 bloques con roles claros, misma lógica de
+`pantry.js` sin ningún cambio:
+
+1. **Stock** (`pantryListContainer`) — fila = nombre + cantidad tocable
+   + icono de borrar. Tocar la cantidad la convierte en un
+   `<input type=number>` in-situ con el valor exacto actual ya
+   seleccionado (`beginEditPantryRow()`); Enter/perder el foco confirma
+   (`setStock`), Escape cancela sin guardar nada. Reemplaza los pasos
+   ciegos de ±50g.
+2. **Planes activos** (`pantryActiveContainer`, nuevo) — SOLO los planes
+   confirmados con algo pendiente: falta comprar, o falta cocinar
+   alguna comida (`isEntryFullyCooked()`). La acción de compra por
+   defecto es un único botón primario "Ya compré todo esto" (llama a
+   `markPurchaseDone(id, [])`, sin exclusiones) — el checklist de
+   exclusión para quien de verdad no compró todo sigue existiendo
+   (`markPurchaseDone(id, excludedNames)`, sin cambios en la firma ni en
+   `pantry.js`), pero detrás de un enlace secundario "¿Te faltó algo?"
+   (oculto por defecto, `hidden` toggled por JS, ver
+   `handleEntryClick`). Las comidas se marcan con chips compactos en una
+   fila que envuelve (`renderMealChips`, con el horario `meal.time`
+   como badge cuando existe, recuperado del código previo) en vez de 5
+   filas apiladas repitiendo "Marcar como cocinado".
+3. **Historial** (`pantryHistoryContainer`, dentro de un `<details>`
+   anidado `pantryHistoryDisclosure`, oculto por completo si está
+   vacío) — planes YA completados (`isEntryFullyCooked() === true`),
+   como una fila de resumen de solo lectura, una línea por plan. Un plan
+   se muda aquí SOLO, automáticamente, en cuanto se completa — nunca
+   hay que archivarlo a mano. Verificado en vivo: al marcar la última
+   comida cocinada, la tarjeta desaparece de "planes activos" y aparece
+   en el historial colapsado en el mismo re-render.
+
+**Alta manual**: `<input list="pantryIngredientOptions">` (autocompletado
+nativo, filtra mientras se escribe) en vez del `<select>` de 81
+opciones. A diferencia del `<select>`, el navegador NO obliga a que el
+valor final sea una de las opciones del `<datalist>` — se resuelve el
+texto tecleado contra `normalizeIngredientKey()` (`pricing.js`) antes de
+guardar nada (`resolveTypedIngredientName()`); si no coincide con ningún
+ingrediente conocido, se muestra un error inline
+(`#pantryAddError`) y NO se guarda — nunca se crea una clave de
+despensa huérfana que ningún plan futuro llegaría a igualar. Probado en
+vivo: "arroz blanco COCIDO" (mayúsculas/espacios distintos) resuelve
+correctamente al nombre canónico "Arroz blanco cocido"; un nombre
+inventado muestra el error y no toca el stock.
+
+**Empty state**: icono + explicación de qué es la despensa y para qué
+sirve (no solo "está vacía"), apuntando implícitamente al formulario de
+alta que está justo encima.
+
+**Qué NO cambió** (confirmado explícitamente, no solo asumido):
+`js/core/pantry.js` — cero cambios, mismas 8 funciones expuestas, misma
+firma; `js/core/budget.js`/`js/engine/*` — cero cambios; el modelo
+`local-first` de sincronización con la nube (`js/core/cloud-sync.js`,
+`js/core/migration.js`) — cero cambios, sigue enganchado exactamente en
+los mismos puntos de `app.js` (`syncAfterPantryChange`,
+`handleUsePlanToday`); `js/ui/render-shopping-list.js` — cero cambios
+(la nota "Ya en tu despensa: Xg" que ya mostraba ya era clara, no hacía
+falta tocarla).
+
+**Verificado en vivo** (desktop + mobile 375px, navegador real, no solo
+unit tests): añadir con nombre válido/inválido/con mayúsculas y espacios
+distintos; editar a un valor exacto por tap + Enter; cancelar con
+Escape sin guardar; borrar; el efecto en la lista de la compra
+(purchaseCost de "Nueces" bajó a €0 con la nota "Ya en tu despensa: 28
+g" en cuanto se añadió a la despensa); "Usar este plan hoy" → tarjeta
+activa con chips de 5 comidas y horario; "Ya compré todo esto" (stock
+pasó de 1 a 14 entradas, coste real €13.77); marcar las 5 comidas
+cocinadas una a una → la tarjeta se mueve sola al historial colapsado;
+reload (stock y historial sobreviven); sesión iniciada con una cuenta
+real ya existente de la sesión anterior → conflicto detectado
+correctamente (datos de invitado nuevos vs. datos de la cuenta),
+resuelto con "mantener este dispositivo", verificado que la nube quedó
+exactamente igual que lo local vía REST directo; modo "sin cocinar" sin
+regresión; 0 errores de consola en toda la verificación. Los 246 tests
+existentes siguen en verde (ninguno carga `render-pantry.js`, es capa
+de presentación pura sin cobertura de tests, igual que el resto de
+`js/ui/*` en este proyecto).
+
+**Nota de depuración de la propia verificación (no es un bug de la
+app)**: al probar los chips de comida haciendo clic sobre un array de
+referencias DOM capturado ANTES de la primera interacción, solo el
+primer clic surtía efecto — cada `markMealCooked()` dispara un
+`renderPantryPanel()` completo que reemplaza los nodos, dejando el
+resto de referencias del array obsoletas/desconectadas del documento.
+Solucionado volviendo a consultar el DOM fresco antes de cada clic. Un
+usuario real, tocando un chip a la vez en la pantalla, nunca se
+encuentra con esto.
+
 ## Exploración descartada: Google AI Studio para el rediseño (2026-08-04)
 
 Antes de implementar el rediseño v2 directamente, se probó pedirle a
@@ -2275,7 +2417,7 @@ llamadas con el mismo input pueden aterrizar en tiers distintos por azar.
   privado) — hoy solo se ve en el aviso posterior a "Usar este plan hoy",
   no en las acciones de comprar/cocinar del historial.
 
-## Session handoff (2026-08-14a)
+## Session handoff (2026-08-14b)
 
 Escrito para que la siguiente sesión/chat pueda continuar sin haber visto
 esta conversación. No repite lo de arriba en detalle — apunta a la
@@ -2286,14 +2428,17 @@ en la UI del bug de macros fabricados (2026-08-13c), **(d)** rediseño
 ARQUITECTÓNICO completo del modelo de nutrición por ingrediente
 (2026-08-13d), **(e)** auditoría del "recorte a cero" + consistencia
 Atwater (2026-08-13e), **(f)** sistema de cuentas completo en CÓDIGO
-(Supabase Auth + Postgres + RLS, todavía sin proyecto real). La sesión
-**2026-08-14a** (un día después) es la que cierra el círculo: el usuario
-aprovisionó Supabase + Google OAuth de verdad, y todo se verificó en vivo
-contra el backend real (registro, login, reload, sync, logout, migración,
-aislamiento entre usuarios probado atacando la API, y Google OAuth hasta
-el límite de necesitar credenciales humanas) — ver "Aprovisionamiento
-real de Supabase + Google OAuth — 2026-08-14a" arriba para el detalle
-completo. Este handoff describe el estado ACUMULADO tras los 7 tramos.
+(Supabase Auth + Postgres + RLS, todavía sin proyecto real). El día
+siguiente tuvo 2 tramos más: **2026-08-14a** aprovisionó Supabase +
+Google OAuth de verdad y verificó todo en vivo contra el backend real
+(registro, login, reload, sync, logout, migración, aislamiento entre
+usuarios probado atacando la API, y Google OAuth hasta el límite de
+necesitar credenciales humanas — ver "Aprovisionamiento real de Supabase
++ Google OAuth — 2026-08-14a" arriba); **2026-08-14b** (esta sesión, la
+más reciente) rediseñó por completo la UX de la Despensa sin tocar
+`js/core/pantry.js` ni el modelo financiero — ver "Rediseño de UX de la
+Despensa — 2026-08-14b" arriba. Este handoff describe el estado
+ACUMULADO tras los 8 tramos.
 
 **Para orientarse en el código en sí, antes de leer archivo por archivo,
 usa el grafo de Graphify** (regenerado al final de esta sesión — 388
@@ -2305,7 +2450,10 @@ update . --no-cluster && graphify cluster-only .` si hace falta.
 
 **Estado del proyecto**: prototipo funcional, con una red de tests (246,
 ver "Tests" arriba), un rediseño visual v2 + layout mobile, una
-**Despensa completa** (3 etapas), un **horario de comidas completo**, un
+**Despensa completa** (3 etapas, mismas de siempre) con **UX rediseñada
+por completo** (2026-08-14b — stock editable in-situ, planes activos
+separados del historial completado, alta con autocompletado, ver
+sección dedicada), un **horario de comidas completo**, un
 presupuesto que significa dinero de COMPRA (no de uso, desde 2026-08-08),
 la SELECCIÓN de plato consciente de coste de compra MARGINAL (desde
 2026-08-13), **kcal/protein/carbs/fat por ingrediente REALES para 50 de
