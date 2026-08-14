@@ -2477,19 +2477,27 @@ nutricional real de cada ingrediente cuando existe un dato verificado —
 nunca una cifra fabricada con apariencia de precisión que no tiene, y
 nunca una fila donde un macro contradiga a otro de la misma fila.
 
-**Commit/branch/deploy actuales**: `main`/`origin/main` en `f66bfac`
+**Commit/branch/deploy actuales**: `main`/`origin/main` en `f0b70e0`
 (verificar con `git log -1`/`git status -sb` antes de asumir que sigue
-siendo así). Dos commits desde el `c758a01` con el que arrancó la sesión
+siendo así). Commits desde el `c758a01` con el que arrancó la sesión
 2026-08-13: `aa4f20b` (todo el código/esquema/tests del sistema de
-cuentas, sesión 2026-08-13f) y `f66bfac` (solo `js/data/
+cuentas, sesión 2026-08-13f), `f66bfac` (solo `js/data/
 supabase-config.js` con los valores reales del proyecto Supabase
-aprovisionado, sesión 2026-08-14a). **Desplegado a producción** —
+aprovisionado, sesión 2026-08-14a) y `e11308d`+`f0b70e0` (rediseño de UX
+de la Despensa + toda la documentación de esta sesión, 2026-08-14b).
+**Desplegado a producción SOLO hasta `f66bfac`** —
 `offline-nutrition-helper.pages.dev` (Cloudflare Pages, proyecto
 direct-upload, `Git Provider: No` — un push a `origin/main` NUNCA
-despliega solo, hace falta `wrangler pages deploy` explícito cada vez,
-ya ejecutado y verificado para ambos commits). **Nota**: sigue habiendo
-basura suelta sin relación en la raíz del repo (preexistente, nunca
-comiteada a propósito) — no tocarla sin que se pida.
+despliega solo, hace falta `wrangler pages deploy` explícito cada vez).
+**El rediseño de la Despensa (2026-08-14b) está comiteado y pusheado
+pero TODAVÍA NO desplegado a producción** — el usuario no lo pidió en
+esta sesión (a diferencia de 2026-08-13f/2026-08-14a, donde sí); si una
+sesión futura retoma esto, `npx wrangler pages deploy . --project-name=offline-nutrition-helper`
+lo despliega en un solo comando, reutilizando la sesión OAuth de
+`wrangler` ya existente (confirmada funcionando en sesiones anteriores,
+no pedir un token nuevo). **Nota**: sigue habiendo basura suelta sin
+relación en la raíz del repo (preexistente, nunca comiteada a
+propósito) — no tocarla sin que se pida.
 
 **Qué funciona**: generación de plan completo (5 tomas, horario, macros)
 con presupuesto de COMPRA real decidido desde la SELECCIÓN de plato,
@@ -2596,6 +2604,13 @@ de archivos, ver cada sección dedicada arriba para el detalle:
   reemplazados por el Project URL + clave `anon public`/`publishable`
   reales del proyecto Supabase que el usuario aprovisionó. Cero cambios
   de código; todo el resto de (f) se usó tal cual, sin reescribir nada.
+- **(h) Rediseño de UX de la Despensa (2026-08-14b, sesión distinta)**:
+  `js/ui/render-pantry.js` reescrito por completo (capa de presentación
+  únicamente), `index.html` (estructura del panel: intro, formulario de
+  alta con datalist, contenedor de planes activos, historial anidado
+  colapsado), `js/app.js` (nuevas referencias DOM, ids nuevos, sin
+  lógica nueva), `assets/css/style.css` (sección Despensa reescrita
+  completa). `js/core/pantry.js`: cero cambios.
 
 **Qué se verificó y qué no**: los 180 tests se re-ejecutaron y pasan
 (verificado, no heredado) — 13 de `purchase-economics.test.js` + 18 de
@@ -2680,11 +2695,19 @@ mismo que el remanente de `nutrition.js` (macros) — dos conceptos de
 "lo que sobra" completamente distintos, en dominios distintos, no
 fusionarlos.
 
-**Prioridad actual**: el sistema de cuentas está COMPLETO y verificado en
-producción — ya no es la prioridad. Opcional, no bloqueante: que una
-persona real complete un login por Google de principio a fin al menos
-una vez (ver límite honesto arriba); considerar borrar los usuarios de
-prueba `andreyostrik228+claudetest...@gmail.com` desde Supabase →
+**Prioridad actual**: desplegar el rediseño de la Despensa (2026-08-14b)
+a producción — está comiteado/pusheado (`f0b70e0`) pero el usuario no
+pidió el deploy en esa sesión, así que `offline-nutrition-helper.pages.dev`
+sigue sirviendo la versión ANTERIOR del panel de despensa (funcional,
+solo con la UX vieja) hasta que se ejecute
+`npx wrangler pages deploy . --project-name=offline-nutrition-helper`
+— confirmar con el usuario antes de hacerlo si no lo ha pedido
+explícitamente en la sesión actual. El sistema de cuentas sigue
+COMPLETO y verificado en producción, ya no es prioridad. Opcional, no
+bloqueante: que una persona real complete un login por Google de
+principio a fin al menos una vez (ver límite honesto arriba);
+considerar borrar los usuarios de prueba
+`andreyostrik228+claudetest...@gmail.com` desde Supabase →
 Authentication → Users si se quiere una base limpia antes de invitar a
 usuarios reales (no imprescindible, son inofensivos). Aparte de eso,
 sigue pendiente Fase 1 del roadmap de migración de nutrición (ampliar
@@ -2693,7 +2716,7 @@ requiere que el pipeline Python verifique más productos en
 `real-products.js`, no es tarea de este repo en solitario); investigar
 el bug de overflow mobile `.panel`/`.meal-head`/`.actions`; conectar la
 Despensa al modo "sin cocinar" (issue #9); regenerar el grafo de
-Graphify (desactualizado desde antes de (f)/(g)).
+Graphify (desactualizado desde antes de (f)).
 
 **Qué no romper**: los `id="..."` del HTML; `data.budget` sigue siendo
 purchaseCost, no usageCost; `enforcePurchaseBudgetCap` sigue siendo la
