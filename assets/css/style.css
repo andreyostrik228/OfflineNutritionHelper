@@ -1857,6 +1857,31 @@ button:focus-visible {
   color: var(--green-deep);
 }
 
+/* ══ Tu plan — planes activos, reubicados fuera del acordeón de despensa
+   (2026-08-14c). Mismo tratamiento de "panel" que .shopping-panel (borde
+   superior + espaciado), pero con nombre honesto -- ver render-pantry.js
+   para el razonamiento completo. */
+.today-plans-panel {
+  margin-top: var(--space-8);
+  padding-top: var(--space-8);
+  border-top: 1px solid var(--line);
+}
+
+.today-plans-panel__head {
+  margin-bottom: var(--space-5);
+}
+
+/* Nota de cobertura de despensa -- mismo tratamiento visual que
+   .shopping-item__pantry, reutilizado en la tarjeta de plan activo y en
+   su checklist de compra, para que "esto ya lo tienes" se lea igual en
+   los dos sitios donde puede aparecer. */
+.pantry-active-card__pantry-note,
+.pantry-purchase-row__pantry-note {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--green-deep);
+}
+
 .shopping-panel__actions {
   margin-top: var(--space-5);
   padding-top: var(--space-5);
@@ -1899,11 +1924,13 @@ button:focus-visible {
 }
 
 /* ══ Despensa (pantry.js / render-pantry.js) ═══════════════════════════
-   Rediseño de UX 2026-08-14b: 3 bloques con roles claros en vez de una
+   Rediseño de UX 2026-08-14b: bloques con roles claros en vez de una
    lista plana -- ver cabecera de render-pantry.js para el razonamiento
-   completo. (1) stock actual, editable in situ; (2) planes con algo
-   pendiente, acción de compra reducida a un botón por defecto; (3)
-   historial ya completado, colapsado y de solo lectura. */
+   completo. Desde 2026-08-14c este acordeón es SOLO (1) stock actual,
+   editable in situ, y (2) historial ya completado, colapsado y de solo
+   lectura -- los planes con algo pendiente (.pantry-active-card y
+   compañía, estilos más abajo) ya no viven aquí dentro, se pintan en
+   "Tu plan" (.today-plans-panel), fuera de este acordeón. */
 
 .pantry-intro {
   margin: 0 0 var(--space-4);
@@ -2074,7 +2101,10 @@ button:focus-visible {
   color: var(--ink);
 }
 
-/* ── Planes activos (compra y/o comidas pendientes) ────────────────────── */
+/* ── "Tu plan": planes con algo pendiente (compra y/o comidas) ─────────
+   Estilos compartidos con despensa (mismos tokens/tratamiento visual),
+   pero desde 2026-08-14c este bloque vive DENTRO de .today-plans-panel,
+   fuera del acordeón de despensa -- ver esa clase más abajo. */
 .pantry-active {
   display: flex;
   flex-direction: column;
@@ -2100,6 +2130,7 @@ button:focus-visible {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
+  flex-wrap: wrap;
   gap: var(--space-3);
 }
 
@@ -2234,6 +2265,12 @@ button:focus-visible {
   color: #fff;
   font-size: 11px;
   font-weight: 700;
+}
+
+.pantry-purchase-row__main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
 .pantry-purchase-row__name {
@@ -2608,7 +2645,8 @@ button:focus-visible {
   }
 
   .shopping-panel__head,
-  .nocook-panel__head {
+  .nocook-panel__head,
+  .today-plans-panel__head {
     margin-bottom: var(--space-3);
   }
 
@@ -2627,7 +2665,8 @@ button:focus-visible {
   }
 
   .nocook-panel,
-  .shopping-panel {
+  .shopping-panel,
+  .today-plans-panel {
     margin-top: var(--space-6);
     padding-top: var(--space-6);
   }

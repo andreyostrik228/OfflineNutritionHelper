@@ -53,6 +53,8 @@
  *   getStock(name, pantryState?) / setStock(name, grams) /
  *     adjustStock(name, deltaGrams) / clearStock(name)
  *   resolvePurchaseCostWithPantry(name, requiredGrams, storeId, pantryState?)
+ *   formatLocalDateKey(date) → "YYYY-MM-DD" (hora LOCAL, nunca UTC)
+ *   getEntryPlanDate(entry) → "YYYY-MM-DD"
  *   savePlanForToday(meals, storeId) → { entry, historySaved }
  *   aggregatePlanMealItems(meals) → [{name, requiredGrams}]
  *   markPurchaseDone(entryId, excludedNames?, storeId?) → { saved, historySaved, run } | null
@@ -288,6 +290,43 @@ function generateHistoryId() {
 }
 
 /**
+ * "YYYY-MM-DD" en la ZONA HORARIA LOCAL del dispositivo — NUNCA
+ * date.toISOString().slice(0,10), que es UTC y desplazaría la fecha un
+ * día para usuarios en zonas horarias negativas cerca de medianoche (ej.
+ * 23:30 hora local del 14 ago ya es 15 ago en UTC). Es la fecha "de
+ * calendario" que el usuario reconoce, no un instante.
+ * @param {Date} date
+ * @returns {string}
+ */
+function formatLocalDateKey(date) {
+  var y = date.getFullYear();
+  var m = date.getMonth() + 1;
+  var d = date.getDate();
+  return y + "-" + (m < 10 ? "0" : "") + m + "-" + (d < 10 ? "0" : "") + d;
+}
+
+/**
+ * Día de calendario (local) al que pertenece un plan guardado —
+ * `entry.planDate` si existe (entradas creadas desde que este campo se
+ * añadió), o derivado de `entry.createdAt` si no (entradas de sesiones
+ * anteriores a este cambio) — mismo patrón defensivo ya usado para
+ * `meal.time` en entradas antiguas sin horario: un campo opcional nuevo
+ * nunca rompe una entrada vieja que no lo tiene.
+ * @param {object} entry
+ * @returns {string} - "YYYY-MM-DD", o "" si no hay forma de derivarlo
+ *   (createdAt ausente/corrupto en una entrada ya inválida de por sí)
+ */
+function getEntryPlanDate(entry) {
+  if (entry && typeof entry.planDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(entry.planDate)) {
+    return entry.planDate;
+  }
+  var createdAt = entry && entry.createdAt;
+  var parsed = createdAt ? new Date(createdAt) : null;
+  if (!parsed || isNaN(parsed.getTime())) return "";
+  return formatLocalDateKey(parsed);
+}
+
+/**
  * Etapa 1 del ciclo de vida: "Usar este plan hoy". Registra el plan en el
  * historial, desglosado POR COMIDA (no solo el agregado del día), para
  * que las Etapas 2 (comprar) y 3 (cocinar, por comida) puedan actuar
@@ -295,16 +334,29 @@ function generateHistoryId() {
  * setStock/adjustStock — no toca la despensa en absoluto, es pura
  * contabilidad de "esto es lo que voy a hacer hoy".
  *
+ * `planDate` (día de calendario LOCAL) es un campo NUEVO, separado de
+ * `createdAt` (marca de tiempo de auditoría) — igual que `migrated_at` no
+ * es la guarda real de idempotencia en migration.js, `createdAt` no es el
+ * campo que decide "a qué día pertenece este plan". Guardar dos planes el
+ * mismo día está permitido a propósito (decisión explícita del usuario,
+ * no un descuido): esta función NUNCA reemplaza ni fusiona una entrada
+ * existente, siempre crea una nueva — la UI es responsable de mostrar
+ * varias entradas del mismo planDate de forma distinguible (ver
+ * getEntryPlanDate() y el uso de createdAt para desambiguar por hora en
+ * render-pantry.js).
+ *
  * @param {object[]} meals - result.meals de generateDietPlan(), tal cual
  * @param {string} [storeId]
  * @returns {{ entry:object, historySaved:boolean }}
  */
 function savePlanForToday(meals, storeId) {
-  var nowISO = new Date().toISOString();
+  var now = new Date();
+  var nowISO = now.toISOString();
 
   var entry = {
     id: generateHistoryId(),
     createdAt: nowISO,
+    planDate: formatLocalDateKey(now),
     store: storeId || null,
     meals: (meals || []).map(function (meal) {
       return {

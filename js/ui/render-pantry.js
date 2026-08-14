@@ -12,33 +12,55 @@
  * técnicas (checklist de compra + un botón "Marcar como cocinado" por
  * cada una de las 5 comidas) siempre expandidas de golpe. El resultado
  * era una pared vertical de estados internos de la máquina de 3 etapas,
- * no "lo que tengo en casa". Este archivo separa ahora tres bloques con
- * roles claros para el usuario:
+ * no "lo que tengo en casa". Este archivo separó entonces tres bloques
+ * con roles claros para el usuario -- stock, planes activos, historial --
+ * pero los tres seguían viviendo dentro del mismo acordeón colapsado de
+ * despensa, dos secciones de página por debajo de las tarjetas de comida
+ * que esos mismos planes representan.
  *
- *   1. `pantryListContainer` -- el stock en sí. Cada fila es tocable
- *      para editar la cantidad EXACTA (antes solo había pasos ciegos de
- *      ±50g, sin forma de corregir a un número concreto) y tiene un
- *      único icono de borrar, no tres botones.
- *   2. `pantryActiveContainer` -- SOLO los planes confirmados con algo
- *      pendiente (falta comprar o falta cocinar alguna comida). La
- *      acción por defecto asume "compré todo" (un botón primario, sin
- *      checklist visible) -- el checklist de exclusión sigue existiendo
- *      para quien de verdad no compró todo, pero detrás de un enlace
- *      secundario ("¿Te faltó algo?"), no como primera pantalla. Las
- *      comidas se marcan con chips compactos en una sola fila, no con 5
- *      botones repitiendo el mismo texto "Marcar como cocinado".
- *   3. `pantryHistoryContainer` (dentro de un <details> anidado, oculto
- *      por completo si está vacío) -- los planes YA completados (todas
- *      las comidas cocinadas), como una fila de resumen de solo lectura.
- *      Un plan se muda aquí solo, automáticamente, en cuanto se
- *      completa (isEntryFullyCooked) -- nunca hay que "archivarlo" a
- *      mano, y deja de ocupar espacio en la vista principal.
+ * ── Reubicación de "Tu plan" (2026-08-14c) ────────────────────────────
+ * Auditoría de UX posterior (ver conversación de esa sesión) encontró que
+ * "¿qué es esto, dónde está mi plan de hoy?" seguía sin resolverse: las
+ * tarjetas de comida (arriba, render.js), la lista de la compra (justo
+ * debajo) y la tarjeta de "plan activo" con los botones de comprar/
+ * cocinar (enterrada en un <details> colapsado, más abajo todavía) eran
+ * tres secciones de página sin ningún vínculo visual, para lo que el
+ * usuario vive como un solo flujo continuo. Fix (Modelo A del análisis,
+ * puramente de presentación -- pantry.js no cambia): los planes CON algo
+ * pendiente ya no se pintan dentro del acordeón de despensa, se pintan en
+ * `todayPlansContainer` (`#todayPlansPanel`), una sección siempre
+ * expandida justo debajo de la lista de la compra. Despensa vuelve a ser
+ * solo lo que su nombre dice -- stock + historial de planes YA
+ * completados, nada "en curso".
+ *
+ *   1. `pantryListContainer` (dentro de despensa) -- el stock en sí. Cada
+ *      fila es tocable para editar la cantidad EXACTA y tiene un único
+ *      icono de borrar, no tres botones.
+ *   2. `todayPlansContainer` (fuera de despensa, sección "Tu plan") --
+ *      SOLO los planes confirmados con algo pendiente (falta comprar o
+ *      falta cocinar alguna comida). La acción por defecto asume "compré
+ *      todo" (un botón primario, sin checklist visible) -- el checklist
+ *      de exclusión sigue existiendo para quien de verdad no compró
+ *      todo, pero detrás de un enlace secundario ("¿Te faltó algo?"), no
+ *      como primera pantalla. Las comidas se marcan con chips compactos
+ *      en una sola fila. Varios planes el mismo día están permitidos a
+ *      propósito (decisión explícita del usuario, no un descuido, ver
+ *      `savePlanForToday` en pantry.js) -- cada tarjeta se distingue por
+ *      fecha Y HORA de creación (`formatEntryDateTime`), nunca solo la
+ *      fecha, para que dos planes del mismo día no se confundan.
+ *   3. `pantryHistoryContainer` (dentro de despensa, en un <details>
+ *      anidado, oculto por completo si está vacío) -- los planes YA
+ *      completados (todas las comidas cocinadas), como una fila de
+ *      resumen de solo lectura. Un plan se muda aquí solo,
+ *      automáticamente, en cuanto se completa (isEntryFullyCooked) --
+ *      nunca hay que "archivarlo" a mano, y deja de ocupar espacio en
+ *      "Tu plan".
  *
  * Ningún dato ni regla de negocio cambia: sigue siendo
  * savePlanForToday/markPurchaseDone/markMealCooked/setStock/adjustStock/
  * clearStock de pantry.js, tal cual, con las mismas 3 etapas de siempre
- * (ver cabecera de pantry.js) -- solo cambia qué botones existen, cómo
- * se agrupan, y en qué idioma se explican.
+ * (ver cabecera de pantry.js) -- solo cambia qué botones existen, dónde
+ * viven en la página, cómo se agrupan, y en qué idioma se explican.
  *
  * ── Alta manual: texto+datalist en vez de <select> ────────────────────
  * Un <select> con las 81 opciones alfabéticas de golpe era pesado de
@@ -73,7 +95,7 @@
 
 var pantryListContainer, pantryEmptyEl, pantryAddForm, pantryAddNameInput, pantryAddGrams,
     pantryIngredientOptionsList, pantryAddError,
-    pantryActiveContainer, pantryHistoryDisclosure, pantryHistoryContainer,
+    todayPlansPanel, todayPlansContainer, pantryHistoryDisclosure, pantryHistoryContainer,
     pantryCountEl, planSavedNoticeEl;
 var pantryOnChange; // callback de app.js — sincroniza la lista de la compra visible
 var pantryIngredientByKey = {}; // clave normalizada -> nombre canónico, para resolver lo tecleado en el alta
@@ -81,6 +103,11 @@ var pantryIngredientByKey = {}; // clave normalizada -> nombre canónico, para r
 /**
  * Conecta los nodos DOM necesarios para este módulo.
  * @param {object} refs
+ * @param {Element} refs.todayPlansPanel - sección "Tu plan" completa
+ *   (fuera de despensa) -- se oculta/muestra según haya o no algún plan
+ *   con algo pendiente (ver renderPantryHistorySections).
+ * @param {Element} refs.todayPlansContainer - dentro de refs.todayPlansPanel,
+ *   donde se pintan las tarjetas de plan activo en sí.
  * @param {function} [refs.onPantryChange] - se llama tras cualquier mutación
  *   de la despensa (alta manual/edición/borrado, compra, cocinado...), para
  *   que app.js pueda refrescar una lista de la compra visible cuyos
@@ -94,7 +121,8 @@ function initPantryRefs(refs) {
   pantryAddGrams                = refs.pantryAddGrams;
   pantryIngredientOptionsList  = refs.pantryIngredientOptionsList;
   pantryAddError                = refs.pantryAddError;
-  pantryActiveContainer        = refs.pantryActiveContainer;
+  todayPlansPanel               = refs.todayPlansPanel;
+  todayPlansContainer          = refs.todayPlansContainer;
   pantryHistoryDisclosure      = refs.pantryHistoryDisclosure;
   pantryHistoryContainer       = refs.pantryHistoryContainer;
   pantryCountEl                = refs.pantryCountEl;
@@ -107,8 +135,8 @@ function initPantryRefs(refs) {
   // Delegación de eventos: cada bloque se reconstruye entero en cada
   // render, así que los listeners van en los contenedores fijos, no en
   // cada fila/tarjeta individual.
-  if (pantryListContainer)   pantryListContainer.addEventListener("click", handlePantryListClick);
-  if (pantryActiveContainer) pantryActiveContainer.addEventListener("click", handleEntryClick);
+  if (pantryListContainer)  pantryListContainer.addEventListener("click", handlePantryListClick);
+  if (todayPlansContainer)  todayPlansContainer.addEventListener("click", handleEntryClick);
 }
 
 // ── Alta manual ───────────────────────────────────────────────────────────
@@ -337,35 +365,62 @@ function isEntryFullyCooked(entry) {
 }
 
 function renderPantryHistorySections() {
-  if (!pantryActiveContainer) return;
-
   var history = getPantryHistory();
   var active = history.filter(function (e) { return !isEntryFullyCooked(e); });
   var completed = history.filter(isEntryFullyCooked);
 
-  pantryActiveContainer.innerHTML = safeRenderRows(active, renderActiveEntryCard, "active");
+  // "Tu plan" -- fuera de despensa (ver cabecera, reubicación 2026-08-14c).
+  // Toda la sección se oculta cuando no hay ningún plan pendiente, en vez
+  // de quedar vacía y visible.
+  if (todayPlansPanel) todayPlansPanel.hidden = active.length === 0;
+  if (todayPlansContainer) todayPlansContainer.innerHTML = safeRenderRows(active, renderActiveEntryCard, "active");
 
   if (pantryHistoryDisclosure) pantryHistoryDisclosure.hidden = completed.length === 0;
   if (pantryHistoryContainer) pantryHistoryContainer.innerHTML = safeRenderRows(completed, renderCompletedEntryRow, "history");
 }
 
 /**
+ * Gramos ya cubiertos por el stock ACTUAL de despensa, sumados entre
+ * todos los ingredientes agregados de un plan -- puramente informativo
+ * (no descuenta nada, no es un cálculo de compra), para responder aquí
+ * mismo, sin tener que abrir el checklist, a "¿esto ya lo tengo o hace
+ * falta comprarlo?" (mismo dato que ya mostraba la lista de la compra vía
+ * "Ya en tu despensa: Xg" -- aquí faltaba, es la inconsistencia que este
+ * cambio corrige).
+ * @param {{name:string, requiredGrams:number}[]} aggregated
+ * @returns {number}
+ */
+function sumPantryCoverageGrams(aggregated) {
+  if (typeof getStock !== "function") return 0;
+  return (aggregated || []).reduce(function (sum, item) {
+    return sum + Math.min(item.requiredGrams, getStock(item.name));
+  }, 0);
+}
+
+/**
  * Tarjeta de un plan con algo pendiente: compra (si no se ha marcado) y/o
  * comidas por cocinar. Ver cabecera del archivo para el razonamiento de
  * por qué la acción de compra por defecto es un único botón sin
- * checklist visible.
+ * checklist visible. La fecha SIEMPRE incluye la hora (formatEntryDateTime,
+ * no solo el día) porque varios planes el mismo día están permitidos a
+ * propósito -- sin hora, dos tarjetas del mismo día serían indistinguibles
+ * a simple vista.
  * @param {object} entry
  * @returns {string}
  */
 function renderActiveEntryCard(entry) {
-  var dateLabel = formatHistoryDate(entry.createdAt);
+  var dateLabel = formatEntryDateTime(entry.createdAt);
   var aggregated = aggregatePlanMealItems(entry.meals);
+  var coveredGrams = sumPantryCoverageGrams(aggregated);
+  var pantryNote = coveredGrams > 0
+    ? ' <span class="pantry-active-card__pantry-note">&middot; ' + round0(coveredGrams) + ' g ya en tu despensa</span>'
+    : '';
 
   return (
     '<div class="pantry-active-card" data-id="' + escapeHtml(entry.id) + '">' +
       '<div class="pantry-active-card__head">' +
         '<span class="pantry-active-card__date">' + dateLabel + '</span>' +
-        '<span class="pantry-active-card__summary">' + aggregated.length + ' ingredientes' + (entry.store ? ' &mdash; ' + escapeHtml(entry.store) : '') + '</span>' +
+        '<span class="pantry-active-card__summary">' + aggregated.length + ' ingredientes' + (entry.store ? ' &mdash; ' + escapeHtml(entry.store) : '') + pantryNote + '</span>' +
       '</div>' +
       renderPurchaseSection(entry, aggregated) +
       renderMealChips(entry) +
@@ -406,10 +461,17 @@ function renderPurchaseSection(entry, aggregated) {
  */
 function renderPurchaseChecklist(entry, aggregated) {
   var rows = aggregated.map(function (item) {
+    var covered = (typeof getStock === "function") ? Math.min(item.requiredGrams, getStock(item.name)) : 0;
+    var pantryNote = covered > 0
+      ? '<span class="pantry-purchase-row__pantry-note">' + round0(covered) + ' g ya en despensa</span>'
+      : '';
     return (
       '<li class="pantry-purchase-row" data-name="' + escapeHtml(item.name) + '">' +
         '<button type="button" class="pantry-purchase-row__check" role="checkbox" aria-checked="true" data-action="toggle-purchase-check" aria-label="' + escapeHtml(item.name) + '"></button>' +
-        '<span class="pantry-purchase-row__name">' + escapeHtml(item.name) + '</span>' +
+        '<span class="pantry-purchase-row__main">' +
+          '<span class="pantry-purchase-row__name">' + escapeHtml(item.name) + '</span>' +
+          pantryNote +
+        '</span>' +
         '<span class="pantry-purchase-row__grams">' + round0(item.requiredGrams) + ' g</span>' +
       '</li>'
     );
@@ -459,7 +521,7 @@ function renderMealChips(entry) {
  * @returns {string}
  */
 function renderCompletedEntryRow(entry) {
-  var dateLabel = formatHistoryDate(entry.createdAt);
+  var dateLabel = formatEntryDateTime(entry.createdAt);
   var aggregated = aggregatePlanMealItems(entry.meals);
   var boughtNote = entry.purchase.done ? "comprado y cocinado" : "cocinado (sin registrar compra)";
 
@@ -471,10 +533,28 @@ function renderCompletedEntryRow(entry) {
   );
 }
 
-function formatHistoryDate(isoString) {
+/**
+ * Fecha Y HORA de creación de una entrada de historial, en es-ES. SIEMPRE
+ * incluye la hora (no solo el día) -- desde que varios planes el mismo
+ * día están permitidos a propósito (ver savePlanForToday, pantry.js), dos
+ * tarjetas con la misma fecha y sin hora serían indistinguibles a simple
+ * vista. Antes de 2026-08-14c esta función (entonces formatHistoryDate)
+ * solo devolvía el día.
+ * @param {string} isoString
+ * @returns {string}
+ */
+function formatEntryDateTime(isoString) {
   try {
     var d = new Date(isoString);
-    return d.toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
+    var datePart = d.toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
+    // Con segundos, no solo horas:minutos -- probado en vivo (2026-08-14c):
+    // guardar dos planes con un par de clics de diferencia bastaba para
+    // que ambos cayeran en el mismo minuto y las tarjetas volvieran a
+    // verse "iguales" a simple vista, justo lo que esto existe para
+    // evitar. Con segundos, dos entradas solo coinciden si se guardaron
+    // en la misma llamada de red (imposible, es síncrono y secuencial).
+    var timePart = d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    return datePart + ", " + timePart;
   } catch (err) {
     return isoString || "";
   }
@@ -565,5 +645,5 @@ function renderPlanSavedNotice(entry, historySaved) {
   planSavedNoticeEl.innerHTML =
     '<h4>Plan guardado</h4>' +
     warning +
-    '<p>Cuando compres, toca <strong>Ya compr&eacute; todo esto</strong> ah&iacute; abajo, en <strong>Tu despensa</strong> &mdash; as&iacute; no te lo volver&aacute; a pedir la pr&oacute;xima vez.</p>';
+    '<p>Cuando compres, toca <strong>Ya compr&eacute; todo esto</strong> ah&iacute; abajo, en <strong>Tu plan</strong> &mdash; as&iacute; no te lo volver&aacute; a pedir la pr&oacute;xima vez.</p>';
 }

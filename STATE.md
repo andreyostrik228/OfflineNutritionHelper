@@ -22,6 +22,60 @@ está aquí y en `ROADMAP.md`. **Si vuelves a tocar código, el grafo se
 desactualiza de nuevo** — no se actualiza solo (comandos exactos en
 `PythonProject/docs/graphify.md`, sección "Cómo actualizarlo").
 
+**Resumen de la sesión 2026-08-14c (auditoría de arquitectura de Despensa
++ reubicación de "Tu plan" fuera del acordeón — SIN tocar la lógica de
+negocio de `pantry.js` salvo un campo nuevo, `planDate`)**: continuación
+directa de la sesión 2026-08-14b, en la misma conversación. El usuario
+pidió primero una auditoría completa (mental model, código, historial de
+decisiones intencionales vs. compromisos históricos) antes de proponer
+nada — ver conversación para el análisis punto por punto (CURRENT MODEL /
+UX PROBLEMS / POSSIBLE MODELS / RECOMMENDATION / ...). Diagnóstico: la
+arquitectura de DATOS de `pantry.js` es sólida (33+ tests, ya sobrevivió
+un rediseño real por un bug de usuario) — el problema real es que
+tarjetas de comida, lista de la compra, y las acciones de comprar/cocinar
+(enterradas en el acordeón colapsado de despensa) eran tres secciones de
+página sin ningún vínculo visual para lo que el usuario vive como un solo
+flujo continuo ("Modelo A" del análisis: Despensa = inventario puro,
+Today = flujo unificado, History = capa aparte). Implementado tras 4
+preguntas arquitectónicas explícitas respondidas por el usuario: varios
+planes el mismo día SÍ permitidos (no se reemplazan); cobertura de
+despensa mostrada solo CONTEXTUALMENTE junto al plan activo, nunca como
+barra global permanente; comprar/cocinar se mantienen como 2 pasos
+separados (no se fusionan); CSS desktop-first, igual que el resto del
+proyecto (sin pivote mobile-first). Cambios: **(1)** `js/core/pantry.js`
+gana `planDate`/`getEntryPlanDate()`/`formatLocalDateKey()` — campo
+NUEVO en cada entrada, separado de `createdAt` (mismo patrón que
+`migrated_at` vs. `cloudSyncedUserId` en migration.js: uno es auditoría,
+el otro es el campo que decide), con fallback seguro a la fecha derivada
+de `createdAt` para entradas antiguas sin él; `savePlanForToday()` NUNCA
+fusiona ni reemplaza una entrada existente — varios planes el mismo día
+es una decisión explícita del usuario, no un descuido. **(2)** Las
+tarjetas de "plan activo" (comprar/cocinar) se sacaron por completo del
+acordeón de despensa a una sección NUEVA, siempre expandida, "Tu plan"
+(`#todayPlansPanel`/`#todayPlansContainer`), justo debajo de la lista de
+la compra — despensa vuelve a ser solo stock + historial de planes YA
+completados. **(3)** Fecha Y HORA CON SEGUNDOS (no solo minutos) en cada
+tarjeta para distinguir varios planes del mismo día — verificado en vivo
+que con solo minutos, dos planes guardados a pocos clics de diferencia
+SÍ caían en el mismo minuto y volvían a verse "iguales" (justo lo que
+esto debía evitar); con segundos, nunca coinciden. **(4)** Nota de
+cobertura de despensa ("X g ya en tu despensa") añadida a la tarjeta de
+plan activo y a su checklist de compra — antes esa información solo la
+mostraba la lista de la compra, inconsistencia real que la propia
+auditoría encontró comparando ambas vistas. 7 tests nuevos en
+`tests/pantry.test.js` (230 en `tests/`, 253 totales con `poc/tests/`), 0
+fallidos. Verificado en vivo en navegador (desktop + mobile 375px, ver
+sección dedicada más abajo para el detalle punto por punto), incluido un
+A/B real con `git stash` que confirmó que un overflow horizontal de
+`.pantry-meal-chip` encontrado durante la verificación YA EXISTÍA antes
+de este cambio (es el known issue de overflow mobile ya documentado,
+`.actions`/`.panel`/`.meal-head` — no una regresión nueva). `js/core/
+budget.js`, `js/core/pricing.js`, `js/core/meal-schedule.js`, `js/core/
+cloud-sync.js`, `js/core/migration.js`, y todo `js/engine/*` — cero
+cambios. **Sin commitear a la hora de escribir esto** — ver "Session
+handoff". Ver sección dedicada "Reubicación de 'Tu plan' fuera de la
+despensa — 2026-08-14c" más abajo para el detalle completo.
+
 **Resumen de la sesión 2026-08-14b (rediseño de UX de la Despensa — SIN
 tocar `js/core/pantry.js` ni ninguna regla de negocio)**: pedido explícito
 del usuario, incluido él mismo como autor original: "даже я иногда не
@@ -448,23 +502,28 @@ producto real verificado de `REAL_PRODUCTS` y calcular KBJU/coste desde ahí.
 - Tests: `poc/tests/` — 23 tests (`ingredient-resolver`,
   `shopping-list-builder` de prueba, `ingredient-coverage`).
 
-## Tests (actualizado 2026-08-13d)
+## Tests (actualizado 2026-08-14c)
 
 Dos suites, ambas Node + `vm` (cargan los archivos de producción reales,
 sin copiarlos ni envolverlos en `module.exports`), sin ningún framework:
 
-- `tests/` (producción): `node tests/run-tests.js` → **154 passed, 0
-  failed** (verificado en esta sesión; era 139 antes de añadir
-  `ingredient-nutrition.test.js`) — `shopping-cost.test.js` (14), `budget-mode.test.js` (13),
+- `tests/` (producción): `node tests/run-tests.js` → **230 passed, 0
+  failed** (verificado en esta sesión) — `shopping-cost.test.js` (14), `budget-mode.test.js` (13),
   `plan-generator.characterization.test.js` (9, golden-master recapturado
   2026-08-08 tras el rediseño de presupuesto — ver sección dedicada),
-  `ingredient-packaging-coverage.test.js` (2), `pantry.test.js` (33,
-  2026-08-06/07 — ver sección Despensa arriba; cubre almacenamiento con
-  fallback en memoria, localStorage real inyectado, JSON corrupto,
-  entradas individuales corruptas, las 3 etapas del ciclo de vida, el caso
-  exacto reportado por el usuario — comprar sin cocinar deja el stock
-  íntegro, no neteado —, y regresión de compatibilidad con
-  `shopping-cost.test.js` sin `pantry.js` cargado), `meal-schedule.test.js`
+  `ingredient-packaging-coverage.test.js` (2), `pantry.test.js` (40,
+  2026-08-06/07, +7 en 2026-08-14c — ver sección Despensa arriba; cubre
+  almacenamiento con fallback en memoria, localStorage real inyectado,
+  JSON corrupto, entradas individuales corruptas, las 3 etapas del ciclo
+  de vida, el caso exacto reportado por el usuario — comprar sin cocinar
+  deja el stock íntegro, no neteado —, regresión de compatibilidad con
+  `shopping-cost.test.js` sin `pantry.js` cargado, y desde 2026-08-14c
+  `planDate`/`getEntryPlanDate()`/`formatLocalDateKey()`: fecha LOCAL con
+  ceros a la izquierda, `savePlanForToday` fija `planDate` distinto de
+  `createdAt`, dos planes el mismo día NUNCA se fusionan ni se
+  reemplazan, entradas antiguas sin `planDate` lo derivan de `createdAt`
+  en hora local, y un `planDate` corrupto cae al mismo fallback),
+  `meal-schedule.test.js`
   (36, 2026-08-07 — ver sección "Horario de comidas" más abajo; cubre
   saneamiento de wake/sleep, envoltura de medianoche/turno de noche,
   ventana degenerada/muy corta, orden cronológico para 3/4/5 tomas y
@@ -519,8 +578,8 @@ sin copiarlos ni envolverlos en `module.exports`), sin ningún framework:
 - `poc/tests/`: `node poc/tests/run-tests.js` → **23 passed, 0 failed** —
   resolver, shopping-list de prueba, cobertura de ingredientes (sin
   cambios, `poc/` no se tocó en ninguna de estas sesiones).
-- Total: **246 tests, 0 failed** (223 en `tests/` + 23 en `poc/tests/`) —
-  re-ejecutado y verificado en la sesión 2026-08-13f (no solo heredado de
+- Total: **253 tests, 0 failed** (230 en `tests/` + 23 en `poc/tests/`) —
+  re-ejecutado y verificado en la sesión 2026-08-14c (no solo heredado de
   memoria). El runner (`tests/run-tests.js`) ahora soporta tests async
   (una función de test puede devolver una promesa, necesario porque
   auth.js/cloud-sync.js/migration.js siempre son async contra un cliente
@@ -2220,6 +2279,147 @@ Solucionado volviendo a consultar el DOM fresco antes de cada clic. Un
 usuario real, tocando un chip a la vez en la pantalla, nunca se
 encuentra con esto.
 
+## Reubicación de "Tu plan" fuera de la despensa — 2026-08-14c
+
+Continuación directa de la sesión anterior en la misma conversación. El
+usuario, tras aceptar el rediseño de UX 2026-08-14b, dijo explícitamente
+que la despensa seguía sin convencerle a nivel de arquitectura/UX de más
+alto nivel — "даже я, автор приложения, иногда не понимаю логику
+интерфейса" ya se había citado en 2026-08-14b, pero el problema real
+resultó ser mayor que una sola lista mal agrupada. Pidió una auditoría
+completa ANTES de proponer nada (ver la conversación para el documento de
+análisis completo, no repetido aquí en detalle).
+
+**Diagnóstico de la auditoría** (resumen; ver conversación para el
+análisis punto por punto): la arquitectura de datos de `pantry.js` es
+correcta y no necesitaba cambios — 3 etapas desacopladas, un solo total
+corriente por ingrediente, purchaseCost/usageCost bien separados, 33+
+tests. El problema real era de INFORMACIÓN ARQUITECTÓNICA de página:
+tres secciones sin ningún vínculo visual (tarjetas de comida →
+`mealsContainer`; lista de la compra → `shoppingPanel`; acciones de
+comprar/cocinar → enterradas dentro del acordeón COLAPSADO de despensa,
+dos secciones de página más abajo) representaban lo que el usuario vive
+como un solo flujo continuo ("mi plan de hoy"). Problemas concretos
+confirmados leyendo el código, no supuestos: (1) `savePlanForToday()`
+nunca deduplicaba por fecha — guardar dos planes el mismo día producía
+dos tarjetas con la misma etiqueta de fecha, indistinguibles a simple
+vista; (2) las tarjetas de comida (`render.js`) no tenían NINGUNA
+referencia a pantry/cooked — confirmado que `render.js` no menciona
+ninguno de los dos; (3) la tarjeta de "plan activo" en despensa mostraba
+los gramos agregados en crudo, sin la nota "ya en tu despensa" que la
+lista de la compra sí mostraba para el mismo dato — inconsistencia real
+entre dos vistas de la misma información.
+
+**Decisión**: Modelo A (Despensa = inventario puro / "Tu plan" = flujo
+unificado de hoy / Historial = capa aparte de solo lectura) + Modelo C
+(fecha explícita del plan, separada de la marca de auditoría) del
+análisis, NO el Modelo B más agresivo (fusionar tarjetas de comida y
+plan activo en un solo componente) — este último habría dado más
+ganancia de UX pero a costa de reescribir la pantalla más usada de la
+app, sin tests de UI que la protejan; se descartó por riesgo/beneficio,
+no por pereza.
+
+**4 preguntas arquitectónicas resueltas por el usuario antes de
+implementar** (no se asumieron por defecto):
+1. ¿Varios planes activos el mismo día? → **Permitir varios**, no
+   reemplazar el existente. Implica que `savePlanForToday()` sigue sin
+   hacer upsert, y que la UI necesita distinguir tarjetas del mismo día
+   por algo más que la fecha.
+2. ¿Resumen de despensa siempre visible? → **Solo con plan activo** — no
+   se construyó ninguna barra global permanente; la cobertura de
+   despensa se muestra SOLO dentro de la tarjeta de "Tu plan", nunca
+   fuera de ese contexto.
+3. ¿Comprar y cocinar en un solo paso? → **Mantener 2 pasos separados**
+   (comportamiento de `markPurchaseDone`/`markMealCooked` intacto, cero
+   cambios de firma ni de semántica).
+4. ¿Mobile-first para este bloque? → **No** — desktop-first con
+   overrides móviles, igual que el resto de `assets/css/style.css`.
+
+**Implementación**:
+- **`js/core/pantry.js`**: `formatLocalDateKey(date)` (fecha LOCAL
+  "YYYY-MM-DD", nunca `toISOString().slice(0,10)` que es UTC y puede
+  desplazar el día cerca de medianoche) + `getEntryPlanDate(entry)`
+  (usa `entry.planDate` si existe y tiene forma válida, si no lo deriva
+  de `entry.createdAt` — mismo patrón defensivo que ya usa `meal.time`
+  para entradas antiguas). `savePlanForToday()` ahora guarda
+  `entry.planDate` además de `entry.createdAt` — son conceptualmente
+  distintos (uno es "a qué día de calendario pertenece este plan", el
+  otro es "cuándo se creó el registro", igual que `migrated_at` no es la
+  guarda de idempotencia real en `migration.js`) aunque hoy coincidan
+  siempre en la práctica (el botón sigue llamándose "Usar este plan
+  HOY"). Sigue sin haber upsert/reemplazo — decisión explícita (pregunta
+  1 arriba). 7 tests nuevos en `tests/pantry.test.js`.
+- **`index.html`**: nueva `<section class="today-plans-panel"
+  id="todayPlansPanel" hidden>` ("Tu plan"), colocada como hermana de
+  `shoppingPanel`/`pantryPanel`, justo después de la lista de la compra.
+  Se quitó `<div class="pantry-active" id="pantryActiveContainer">` de
+  dentro de `pantryPanel`; el `<details>` de despensa ahora solo
+  contiene el formulario de alta, el stock, y el historial (renombrado
+  de "Ver planes anteriores" a "Historial de planes completados" — ya
+  no ambiguo, dado que lo activo vive en otro sitio).
+- **`js/ui/render-pantry.js`**: `renderPantryHistorySections()` ahora
+  pinta los planes activos en `todayPlansContainer` (mostrando/ocultando
+  `todayPlansPanel` completo según haya o no alguno) en vez de
+  `pantryActiveContainer`; el historial completado sigue exactamente
+  igual, dentro de despensa. `formatHistoryDate()` renombrada a
+  `formatEntryDateTime()` y ampliada para incluir hora CON SEGUNDOS (ver
+  hallazgo de verificación más abajo) — se usa tanto en las tarjetas
+  activas como en las filas de historial, así que dos entradas del mismo
+  día nunca se confunden en ningún sitio. Nueva `sumPantryCoverageGrams()`
+  + nota "X g ya en tu despensa" en el resumen de la tarjeta activa
+  (agregado) y por fila dentro del checklist de compra (`getStock()` por
+  ingrediente) — cierra la inconsistencia encontrada en la auditoría.
+  `initPantryRefs()` recibe ahora `todayPlansPanel`/`todayPlansContainer`
+  en vez de `pantryActiveContainer`. Cabecera del archivo reescrita para
+  documentar la reubicación.
+- **`js/app.js`**: nuevas referencias DOM (`todayPlansPanel`,
+  `todayPlansContainer`); `handleUsePlanToday()` ya no abre el `<details>`
+  de despensa (`pantryPanel.open = true`) — solo hace scroll a
+  `todayPlansPanel`, que ya está visible sin necesidad de expandir nada.
+- **`assets/css/style.css`**: `.today-plans-panel`/`.today-plans-panel__head`
+  (mismo tratamiento de espaciado que `.shopping-panel`, con nombre
+  honesto); `.pantry-active-card__pantry-note`/`.pantry-purchase-row__pantry-note`
+  (mismo tratamiento visual que `.shopping-item__pantry`, reutilizado);
+  `.pantry-purchase-row__main` (envoltorio nuevo para que el nombre del
+  ingrediente y la nota de despensa se apilen dentro de la misma celda
+  del grid); `flex-wrap: wrap` añadido a `.pantry-active-card__head`
+  (la fecha+hora ahora es más larga, con margen de seguridad en mobile);
+  registros nuevos en los `@media` de mobile existentes (mismo patrón
+  que `.shopping-panel`/`.nocook-panel`). Comentarios de cabecera de la
+  sección "Despensa" actualizados para no describir ya un modelo de 3
+  bloques que dejó de ser cierto.
+
+**Verificado en vivo en navegador** (desktop 1280×800 + mobile 375×812,
+servidor real vía `python -m http.server`, no solo unit tests): 0
+errores de consola en toda la sesión; plan generado → "Usar este plan
+hoy" → tarjeta aparece de inmediato en "Tu plan" con fecha+hora, sin
+necesidad de abrir ningún acordeón; generar y guardar un SEGUNDO plan el
+mismo día → dos tarjetas simultáneas, en un primer intento con hora
+SOLO en minutos ambas mostraban la misma etiqueta ("14 ago 2026, 17:39"
+las dos) — **hallazgo real de la propia verificación, corregido en la
+misma sesión** añadiendo segundos al formato (`toLocaleTimeString` con
+`second:"2-digit"`), reverificado con dos tarjetas ya distinguibles
+("17:40:21" vs. "17:40:13"); nota de cobertura de despensa verificada
+añadiendo stock manual de "Nueces" y confirmando que aparece tanto en el
+resumen de la tarjeta como dentro del checklist expandido; "Ya compré
+todo esto" → stock sube correctamente; marcar las 5 comidas cocinadas
+una a una → la tarjeta desaparece SOLA de "Tu plan" y aparece en el
+historial de despensa, la otra tarjeta activa (del segundo plan) queda
+intacta; recarga de página → todo persiste (stock, "Tu plan", historial);
+confirmado con `querySelector` que el `<details>` de despensa ya NO
+contiene ninguna `.pantry-active-card` en su interior. **Hallazgo de
+verificación investigado a fondo, no descartado a la ligera**: se
+detectó `.pantry-meal-chip` desbordando el viewport en mobile (375px →
+hasta 435px) — en vez de asumir que era una regresión de este cambio, se
+hizo un A/B real con `git stash push`/`pop` sobre el propio repo
+(reversible, sin pérdida de trabajo) cargando la versión ANTERIOR a esta
+sesión: el mismo desbordamiento, con los mismos números exactos (435px/
+416px), reproduce IGUAL en el código viejo — confirma que es el known
+issue de overflow mobile ya documentado desde 2026-08-08
+(`.actions`/`.panel`/`.meal-head`, `task_089a68aa`), no algo introducido
+aquí. Sigue fuera de alcance, sin investigar a fondo (mismo estado que
+antes).
+
 ## Exploración descartada: Google AI Studio para el rediseño (2026-08-04)
 
 Antes de implementar el rediseño v2 directamente, se probó pedirle a
@@ -2417,7 +2617,7 @@ llamadas con el mismo input pueden aterrizar en tiers distintos por azar.
   privado) — hoy solo se ve en el aviso posterior a "Usar este plan hoy",
   no en las acciones de comprar/cocinar del historial.
 
-## Session handoff (2026-08-14b)
+## Session handoff (2026-08-14c)
 
 Escrito para que la siguiente sesión/chat pueda continuar sin haber visto
 esta conversación. No repite lo de arriba en detalle — apunta a la
@@ -2429,31 +2629,42 @@ ARQUITECTÓNICO completo del modelo de nutrición por ingrediente
 (2026-08-13d), **(e)** auditoría del "recorte a cero" + consistencia
 Atwater (2026-08-13e), **(f)** sistema de cuentas completo en CÓDIGO
 (Supabase Auth + Postgres + RLS, todavía sin proyecto real). El día
-siguiente tuvo 2 tramos más: **2026-08-14a** aprovisionó Supabase +
+siguiente tuvo 3 tramos más: **2026-08-14a** aprovisionó Supabase +
 Google OAuth de verdad y verificó todo en vivo contra el backend real
 (registro, login, reload, sync, logout, migración, aislamiento entre
 usuarios probado atacando la API, y Google OAuth hasta el límite de
 necesitar credenciales humanas — ver "Aprovisionamiento real de Supabase
-+ Google OAuth — 2026-08-14a" arriba); **2026-08-14b** (esta sesión, la
-más reciente) rediseñó por completo la UX de la Despensa sin tocar
-`js/core/pantry.js` ni el modelo financiero — ver "Rediseño de UX de la
-Despensa — 2026-08-14b" arriba. Este handoff describe el estado
-ACUMULADO tras los 8 tramos.
++ Google OAuth — 2026-08-14a" arriba); **2026-08-14b** rediseñó por
+completo la UX de la Despensa sin tocar `js/core/pantry.js` ni el modelo
+financiero (ver "Rediseño de UX de la Despensa — 2026-08-14b" arriba);
+**2026-08-14c** (esta sesión, la más reciente, misma conversación que
+2026-08-14b) hizo una auditoría completa de arquitectura/UX de la
+despensa a petición del usuario y, tras su aprobación explícita,
+reubicó los planes activos fuera del acordeón de despensa a una sección
+nueva "Tu plan" + añadió `planDate` a `pantry.js` — ver "Reubicación de
+'Tu plan' fuera de la despensa — 2026-08-14c" arriba. Este handoff
+describe el estado ACUMULADO tras los 9 tramos.
 
 **Para orientarse en el código en sí, antes de leer archivo por archivo,
-usa el grafo de Graphify** (regenerado al final de esta sesión — 388
-nodes/620 edges/38 communities — `graphify explain "<símbolo>"` /
-`graphify query "<pregunta>"` desde esta carpeta, ver `PythonProject/
-docs/graphify.md`). **Si se toca código después de esto, el grafo vuelve
-a desactualizarse** — no se actualiza solo; regenerar con `graphify
-update . --no-cluster && graphify cluster-only .` si hace falta.
+usa el grafo de Graphify** (regenerado por última vez en la sesión
+2026-08-13d — 388 nodes/620 edges/38 communities — `graphify explain
+"<símbolo>"` / `graphify query "<pregunta>"` desde esta carpeta, ver
+`PythonProject/docs/graphify.md`). **Desactualizado desde entonces**
+(2026-08-13f/2026-08-14a/2026-08-14b/2026-08-14c tocaron código sin
+regenerarlo) — no se actualiza solo; regenerar con `graphify update .
+--no-cluster && graphify cluster-only .` si hace falta antes de confiar
+en él para navegar el código nuevo (`todayPlansPanel`/`planDate` etc. no
+estarán en el grafo actual).
 
-**Estado del proyecto**: prototipo funcional, con una red de tests (246,
+**Estado del proyecto**: prototipo funcional, con una red de tests (253,
 ver "Tests" arriba), un rediseño visual v2 + layout mobile, una
 **Despensa completa** (3 etapas, mismas de siempre) con **UX rediseñada
-por completo** (2026-08-14b — stock editable in-situ, planes activos
-separados del historial completado, alta con autocompletado, ver
-sección dedicada), un **horario de comidas completo**, un
+por completo** (2026-08-14b — stock editable in-situ, alta con
+autocompletado — y reorganizada de nuevo en 2026-08-14c: los planes con
+algo pendiente ya NO viven dentro del acordeón de despensa, viven en una
+sección nueva "Tu plan" justo debajo de la lista de la compra; despensa
+quedó reducida a stock + historial de planes completados — ver sección
+dedicada), un **horario de comidas completo**, un
 presupuesto que significa dinero de COMPRA (no de uso, desde 2026-08-08),
 la SELECCIÓN de plato consciente de coste de compra MARGINAL (desde
 2026-08-13), **kcal/protein/carbs/fat por ingrediente REALES para 50 de
@@ -2477,27 +2688,39 @@ nutricional real de cada ingrediente cuando existe un dato verificado —
 nunca una cifra fabricada con apariencia de precisión que no tiene, y
 nunca una fila donde un macro contradiga a otro de la misma fila.
 
-**Commit/branch/deploy actuales**: `main`/`origin/main` en `f0b70e0`
+**Commit/branch/deploy actuales**: `main`/`origin/main` en `9612687`
 (verificar con `git log -1`/`git status -sb` antes de asumir que sigue
-siendo así). Commits desde el `c758a01` con el que arrancó la sesión
-2026-08-13: `aa4f20b` (todo el código/esquema/tests del sistema de
-cuentas, sesión 2026-08-13f), `f66bfac` (solo `js/data/
-supabase-config.js` con los valores reales del proyecto Supabase
-aprovisionado, sesión 2026-08-14a) y `e11308d`+`f0b70e0` (rediseño de UX
-de la Despensa + toda la documentación de esta sesión, 2026-08-14b).
-**Desplegado a producción SOLO hasta `f66bfac`** —
-`offline-nutrition-helper.pages.dev` (Cloudflare Pages, proyecto
-direct-upload, `Git Provider: No` — un push a `origin/main` NUNCA
-despliega solo, hace falta `wrangler pages deploy` explícito cada vez).
-**El rediseño de la Despensa (2026-08-14b) está comiteado y pusheado
-pero TODAVÍA NO desplegado a producción** — el usuario no lo pidió en
-esta sesión (a diferencia de 2026-08-13f/2026-08-14a, donde sí); si una
-sesión futura retoma esto, `npx wrangler pages deploy . --project-name=offline-nutrition-helper`
+siendo así — este handoff se escribió con el repo en ese estado exacto).
+Commits desde el `c758a01` con el que arrancó la sesión 2026-08-13:
+`aa4f20b` (todo el código/esquema/tests del sistema de cuentas, sesión
+2026-08-13f), `f66bfac` (solo `js/data/supabase-config.js` con los
+valores reales del proyecto Supabase aprovisionado, sesión 2026-08-14a),
+`e11308d`+`f0b70e0` (rediseño de UX de la Despensa + documentación,
+2026-08-14b), y `9612687` (fixup: corrección de un hash/estado de
+deploy desactualizado en este mismo handoff, sesión 2026-08-14b). **La
+sesión 2026-08-14c (esta) está SIN COMITEAR a la hora de escribir esto**
+— `git status -sb` debe mostrar `assets/css/style.css`, `index.html`,
+`js/app.js`, `js/core/pantry.js`, `js/ui/render-pantry.js`,
+`tests/pantry.test.js` y este mismo `STATE.md` como modificados; el
+usuario no ha pedido commit todavía en esta sesión.
+**Desplegado a producción — último estado CONFIRMADO: solo hasta
+`f66bfac`** (`offline-nutrition-helper.pages.dev`, Cloudflare Pages,
+proyecto direct-upload, `Git Provider: No` — un push a `origin/main`
+NUNCA despliega solo, hace falta `wrangler pages deploy` explícito cada
+vez) — **esto NO se ha reverificado en esta sesión**, así que si el
+rediseño de despensa 2026-08-14b/2026-08-14c se desplegó entretanto por
+fuera de esta conversación, este dato podría estar desactualizado;
+confirmar antes de asumir. Ni el rediseño 2026-08-14b (ya comiteado) ni
+los cambios de 2026-08-14c (todavía sin comitear) se han desplegado
+DESDE ESTA conversación — el usuario no lo ha pedido en esta sesión; si
+una sesión futura retoma esto, `npx wrangler pages deploy . --project-name=offline-nutrition-helper`
 lo despliega en un solo comando, reutilizando la sesión OAuth de
 `wrangler` ya existente (confirmada funcionando en sesiones anteriores,
-no pedir un token nuevo). **Nota**: sigue habiendo basura suelta sin
-relación en la raíz del repo (preexistente, nunca comiteada a
-propósito) — no tocarla sin que se pida.
+no pedir un token nuevo) — pero solo tiene sentido ejecutarlo DESPUÉS de
+comitear 2026-08-14c, si no seguiría desplegando la versión con la
+despensa vieja mezclando activos+historial. **Nota**: sigue habiendo
+basura suelta sin relación en la raíz del repo (preexistente, nunca
+comiteada a propósito) — no tocarla sin que se pida.
 
 **Qué funciona**: generación de plan completo (5 tomas, horario, macros)
 con presupuesto de COMPRA real decidido desde la SELECCIÓN de plato,
@@ -2516,7 +2739,10 @@ credenciales humanas, sesión persistente, sincronización de despensa/
 historial/settings a la nube, migración invitado→cuenta automática e
 idempotente, aislamiento entre usuarios confirmado a nivel de RLS/API —
 todo esto verificado en vivo contra el proyecto Supabase real, en local
-Y en producción (2026-08-14a, ver sección dedicada)**; los 246 tests.
+Y en producción (2026-08-14a, ver sección dedicada)**; los planes con
+algo pendiente ahora viven en una sección propia "Tu plan" (fuera de
+despensa, siempre expandida, con fecha+hora con segundos para distinguir
+varios planes el mismo día — 2026-08-14c); los 253 tests.
 
 **Qué NO funciona / sigue pendiente**: 31/81 ingredient roles siguen sin
 nutrición fiable (Plátano, Salmón, Tempeh, Aguacate, Brócoli, Pepino,
@@ -2529,11 +2755,13 @@ verificable, y la UI lo dice explícitamente en vez de inventarlo;
 (issue #7); interacción cap25/recorte de presupuesto sin corregir (issue
 #8, sin cambios); Despensa sigue sin conectar al modo "sin cocinar"
 (issue #9); no hay recordatorios de cocina separados (a propósito); **el
-bug de CSS de `.actions`/`.panel`/`.meal-head` desbordando el viewport en
-mobile (~375px vs. contenedor ~391-395px, mencionado en handoffs
-anteriores desde 2026-08-08, `task_089a68aa`) sigue sin investigar a
-fondo** — confirmado de nuevo en esta sesión (mismo orden de magnitud,
-NO empeorado por los cambios de hoy), pero sigue fuera de alcance.
+bug de CSS de `.actions`/`.panel`/`.meal-head`/`.pantry-meal-chip`
+desbordando el viewport en mobile (~375px vs. hasta ~435px, mencionado
+en handoffs anteriores desde 2026-08-08, `task_089a68aa`) sigue sin
+investigar a fondo** — reconfirmado en 2026-08-14c con un A/B real
+(`git stash`) contra el código de ANTES de esta sesión, mismos números
+exactos en ambos casos: no es una regresión de "Tu plan", es el mismo
+issue de siempre, sigue fuera de alcance.
 **Fuera de alcance deliberado** (pedido explícito del usuario): NO se
 construyó optimización multi-día de compra (ver sección de presupuesto
 marginal); NO se completó la migración Fase 1-2 completa de
@@ -2611,6 +2839,24 @@ de archivos, ver cada sección dedicada arriba para el detalle:
   colapsado), `js/app.js` (nuevas referencias DOM, ids nuevos, sin
   lógica nueva), `assets/css/style.css` (sección Despensa reescrita
   completa). `js/core/pantry.js`: cero cambios.
+- **(i) Reubicación de "Tu plan" + `planDate` (2026-08-14c, misma
+  conversación que (h), sesión distinta)**: `js/core/pantry.js`
+  (`formatLocalDateKey`/`getEntryPlanDate` nuevas, `savePlanForToday`
+  guarda `planDate`), `index.html` (`<section class="today-plans-panel"
+  id="todayPlansPanel">` nueva, `pantryActiveContainer` eliminado de
+  dentro de `pantryPanel`, "Ver planes anteriores" renombrado a
+  "Historial de planes completados"), `js/ui/render-pantry.js`
+  (`renderPantryHistorySections` pinta en `todayPlansContainer` en vez
+  de `pantryActiveContainer`; `formatHistoryDate`→`formatEntryDateTime`
+  con segundos; `sumPantryCoverageGrams` nueva + nota de despensa en la
+  tarjeta activa y su checklist), `js/app.js` (refs
+  `todayPlansPanel`/`todayPlansContainer`, `handleUsePlanToday` ya no
+  abre `pantryPanel`), `assets/css/style.css`
+  (`.today-plans-panel`/`.today-plans-panel__head`/
+  `.pantry-active-card__pantry-note`/`.pantry-purchase-row__pantry-note`/
+  `.pantry-purchase-row__main` nuevas), `tests/pantry.test.js` (+7). Ver
+  sección dedicada "Reubicación de 'Tu plan' fuera de la despensa —
+  2026-08-14c" arriba para el detalle completo.
 
 **Qué se verificó y qué no**: los 180 tests se re-ejecutaron y pasan
 (verificado, no heredado) — 13 de `purchase-economics.test.js` + 18 de
@@ -2695,14 +2941,16 @@ mismo que el remanente de `nutrition.js` (macros) — dos conceptos de
 "lo que sobra" completamente distintos, en dominios distintos, no
 fusionarlos.
 
-**Prioridad actual**: desplegar el rediseño de la Despensa (2026-08-14b)
-a producción — está comiteado/pusheado (`f0b70e0`) pero el usuario no
-pidió el deploy en esa sesión, así que `offline-nutrition-helper.pages.dev`
-sigue sirviendo la versión ANTERIOR del panel de despensa (funcional,
-solo con la UX vieja) hasta que se ejecute
-`npx wrangler pages deploy . --project-name=offline-nutrition-helper`
+**Prioridad actual**: decidir con el usuario si comitear/pushear la
+sesión 2026-08-14c (reubicación de "Tu plan" + `planDate`) — sigue sin
+comitear a la hora de escribir esto, ver "Commit/branch/deploy
+actuales" arriba. Una vez comiteada, desplegar TODO lo pendiente
+(2026-08-14b + 2026-08-14c juntos, ya que ninguno de los dos llegó a
+producción todavía) con `npx wrangler pages deploy . --project-name=offline-nutrition-helper`
 — confirmar con el usuario antes de hacerlo si no lo ha pedido
-explícitamente en la sesión actual. El sistema de cuentas sigue
+explícitamente en la sesión actual; no tiene sentido desplegar solo
+2026-08-14b sin 2026-08-14c, dejaría producción con la despensa vieja
+mezclando activos+historial otra vez. El sistema de cuentas sigue
 COMPLETO y verificado en producción, ya no es prioridad. Opcional, no
 bloqueante: que una persona real complete un login por Google de
 principio a fin al menos una vez (ver límite honesto arriba);
@@ -2714,9 +2962,17 @@ sigue pendiente Fase 1 del roadmap de migración de nutrición (ampliar
 cobertura de datos reales más allá del 50/81 actual, ver `ROADMAP.md` —
 requiere que el pipeline Python verifique más productos en
 `real-products.js`, no es tarea de este repo en solitario); investigar
-el bug de overflow mobile `.panel`/`.meal-head`/`.actions`; conectar la
-Despensa al modo "sin cocinar" (issue #9); regenerar el grafo de
-Graphify (desactualizado desde antes de (f)).
+el bug de overflow mobile `.panel`/`.meal-head`/`.actions`/
+`.pantry-meal-chip` (reconfirmado, no corregido, en 2026-08-14c);
+conectar la Despensa al modo "sin cocinar" (issue #9); regenerar el
+grafo de Graphify (desactualizado desde 2026-08-13f). **Fuera de
+alcance deliberado de 2026-08-14c, documentado en el propio análisis de
+la sesión, no un olvido**: no se fusionaron las tarjetas de comida
+(`render.js`) con las acciones de comprar/cocinar en un solo componente
+(el "Modelo B" más agresivo del análisis) — se prefirió el Modelo A
+(reubicación, menor riesgo) tras sopesarlo explícitamente con el
+usuario; si en el futuro se quiere ir más lejos, retomar esa
+conversación antes de tocar `render.js`.
 
 **Qué no romper**: los `id="..."` del HTML; `data.budget` sigue siendo
 purchaseCost, no usageCost; `enforcePurchaseBudgetCap` sigue siendo la
@@ -2735,12 +2991,28 @@ argumentos 9 y 10; `buildMealFromDish` ya NO calcula macros inline, usa
 por gramos; dentro de esa función, kcal de un ingrediente sin resolver
 NUNCA debe volver a tener su propio remanente anclado a `dish.kcal` — se
 deriva por Atwater de protein/carbs/fat, esa es la regresión que
-2026-08-13e existe para prevenir. Los 246 tests deben seguir pasando
+2026-08-13e existe para prevenir. Los 253 tests deben seguir pasando
 después de cualquier cambio en `js/core/`, `js/engine/`, `js/ui/`, o
 `assets/css/style.css`.
 Específico de la Despensa: `applyPlanToPantry()` y
 `markHistoryEntryCooked()` **ya no existen** (v1→v2); el orden de
 arranque en `js/app.js` y `safeInit()` son intencionales.
+Específico de 2026-08-14c: `pantryActiveContainer` **ya no existe**
+(ni en `index.html`, ni en `app.js`, ni en `render-pantry.js`) — es
+`todayPlansPanel`/`todayPlansContainer`, FUERA del `<details>` de
+despensa; no volver a meter planes activos dentro de `pantryPanel`, es
+precisamente la confusión de UX que esta sesión existe para resolver
+(ver conversación/sección dedicada). `entry.planDate` es un campo NUEVO
+y distinto de `entry.createdAt` — `getEntryPlanDate()` es la única
+función que debe leerlo (con fallback a `createdAt` para entradas
+viejas); no asumir que `entry.planDate` siempre existe al leer
+`pantryHistory` directamente en otro sitio. `savePlanForToday()` sigue
+sin hacer upsert por fecha — varios planes el mismo día es
+comportamiento correcto, no un bug a "arreglar" fusionándolos.
+`formatEntryDateTime()` DEBE incluir segundos, no solo minutos — se
+quitaron a propósito tras confirmar en vivo que sin segundos dos planes
+guardados con pocos clics de diferencia eran indistinguibles; no
+volver a truncar a "HH:MM".
 Específico del sistema de cuentas (2026-08-13f): `js/core/pantry.js`,
 `js/ui/render-pantry.js`, `js/core/calculator.js`, `js/core/
 meal-schedule.js` y todo `js/engine/*` deben seguir sin ninguna
@@ -2769,4 +3041,5 @@ Lee `PROJECT.md` y `ROADMAP.md` además de este archivo. Para el sistema
 completo (con el pipeline Python), lee también `PythonProject/docs/
 architecture.md` y `PythonProject/docs/data_flow.md`. No asumas que el
 estado descrito aquí sigue siendo exacto sin verificar contra el código —
-esto es una foto fija al final de la sesión 2026-08-14 (tramo a).
+esto es una foto fija al final de la sesión 2026-08-14, tramo (i)
+(2026-08-14c).

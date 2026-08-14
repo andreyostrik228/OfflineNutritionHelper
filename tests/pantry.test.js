@@ -294,6 +294,67 @@ function run(t) {
     assert.strictEqual(history[0].id, result.entry.id);
   });
 
+  // ── planDate (2026-08-14c) ───────────────────────────────────────────
+
+  t.test("formatLocalDateKey: fecha LOCAL con ceros a la izquierda en mes/día de un dígito", function () {
+    var s = freshPantrySandbox();
+    assert.strictEqual(s.formatLocalDateKey(new Date(2026, 0, 5, 23, 59)), "2026-01-05");
+    assert.strictEqual(s.formatLocalDateKey(new Date(2026, 10, 23, 0, 1)), "2026-11-23");
+  });
+
+  t.test("savePlanForToday: guarda planDate como la fecha LOCAL de hoy, distinta de createdAt (marca de auditoría)", function () {
+    var s = freshPantrySandbox();
+    var meals = fakeMeals({ breakfast: [{ name: "Avena", grams: 80 }] });
+    var result = s.savePlanForToday(meals, "mercadona");
+
+    assert.strictEqual(result.entry.planDate, s.formatLocalDateKey(new Date()));
+    assert.strictEqual(typeof result.entry.createdAt, "string");
+  });
+
+  t.test("savePlanForToday: dos planes el mismo día NO se fusionan ni se reemplazan -- dos entradas distintas, mismo planDate", function () {
+    // Comportamiento intencional (decisión explícita del usuario, no un
+    // descuido): esta función nunca hace upsert por fecha. La UI es quien
+    // debe distinguir varias entradas del mismo planDate por hora.
+    var s = freshPantrySandbox();
+    var mealsA = fakeMeals({ breakfast: [{ name: "Avena", grams: 80 }] });
+    var mealsB = fakeMeals({ breakfast: [{ name: "Salmón", grams: 150 }] });
+
+    var resultA = s.savePlanForToday(mealsA, "mercadona");
+    var resultB = s.savePlanForToday(mealsB, "mercadona");
+
+    assert.notStrictEqual(resultA.entry.id, resultB.entry.id);
+    assert.strictEqual(resultA.entry.planDate, resultB.entry.planDate);
+
+    var history = s.getPantryHistory();
+    assert.strictEqual(history.length, 2);
+  });
+
+  t.test("getEntryPlanDate: usa entry.planDate cuando existe, sin mirar createdAt", function () {
+    var s = freshPantrySandbox();
+    var entry = { planDate: "2026-08-14", createdAt: "2020-01-01T00:00:00.000Z", meals: [], purchase: { done: false, runs: [] } };
+    assert.strictEqual(s.getEntryPlanDate(entry), "2026-08-14");
+  });
+
+  t.test("getEntryPlanDate: entrada antigua sin planDate lo deriva de createdAt en hora LOCAL (compatibilidad, mismo patrón que meal.time)", function () {
+    var s = freshPantrySandbox();
+    var localDate = new Date(2026, 7, 14, 23, 45); // 14 ago 2026, 23:45 hora local
+    var entry = { createdAt: localDate.toISOString(), meals: [], purchase: { done: false, runs: [] } };
+    assert.strictEqual(s.getEntryPlanDate(entry), "2026-08-14");
+  });
+
+  t.test("getEntryPlanDate: planDate corrupto (tipo/forma inesperada) cae también al fallback de createdAt", function () {
+    var s = freshPantrySandbox();
+    var localDate = new Date(2026, 2, 3, 10, 0);
+    var entry = { planDate: 20260803, createdAt: localDate.toISOString(), meals: [], purchase: { done: false, runs: [] } };
+    assert.strictEqual(s.getEntryPlanDate(entry), "2026-03-03");
+  });
+
+  t.test("getEntryPlanDate: sin createdAt válido y sin planDate devuelve cadena vacía, nunca lanza", function () {
+    var s = freshPantrySandbox();
+    assert.strictEqual(s.getEntryPlanDate({ meals: [], purchase: { done: false, runs: [] } }), "");
+    assert.strictEqual(s.getEntryPlanDate(null), "");
+  });
+
   // ── aggregatePlanMealItems ────────────────────────────────────────────
 
   t.test("aggregatePlanMealItems: suma un mismo ingrediente aparecido en 2 comidas en una sola fila", function () {

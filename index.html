@@ -409,16 +409,37 @@
       </div>
     </section>
 
+    <!-- ══ TU PLAN: planes guardados con algo pendiente (falta comprar o
+         falta cocinar alguna comida) — reubicado aquí (2026-08-14c),
+         inmediatamente después de la lista de la compra, en vez de vivir
+         enterrado dentro del acordeón colapsado de despensa. Comprar y
+         cocinar (Etapas 2/3 de js/core/pantry.js) se gestionan aquí;
+         despensa (abajo) vuelve a ser solo inventario + historial. Oculto
+         por completo si no hay ningún plan con algo pendiente — ver
+         isEntryFullyCooked()/renderPantryHistorySections() en
+         js/ui/render-pantry.js. Permite varios planes activos el mismo
+         día a propósito (decisión explícita del usuario) — cada tarjeta
+         se distingue por fecha Y hora. ══ -->
+    <section class="today-plans-panel" id="todayPlansPanel" hidden>
+      <div class="today-plans-panel__head verified-panel__head">
+        <div>
+          <h2>Tu <em>plan</em></h2>
+          <span class="eyebrow">Compra y marca cada comida cuando te toque</span>
+        </div>
+      </div>
+      <div class="pantry-active" id="todayPlansContainer"></div>
+    </section>
+
     <!-- ══ DESPENSA: recuerda cuánto de cada ingrediente ya tienes en casa
          y lo descuenta de lo que un plan futuro pide comprar. Persiste en
          localStorage (+ nube si hay sesión), INDEPENDIENTE de cualquier
          plan generado en esta sesión — nunca se oculta ni se vacía al
-         pulsar "Resetear". Rediseño de UX 2026-08-14b: separa "lo que
-         tienes" de "lo que está en curso" de "lo que ya terminaste", en
-         vez de una única lista plana con los 3 mezclados — ver cabecera
-         de js/ui/render-pantry.js para el razonamiento completo. Misma
-         lógica de negocio de siempre (js/core/pantry.js), solo cambia
-         cómo se presenta. ══ -->
+         pulsar "Resetear". Desde 2026-08-14c es SOLO inventario +
+         historial de planes ya completados — los planes con algo
+         pendiente viven en "Tu plan" (arriba), fuera de este acordeón —
+         ver cabecera de js/ui/render-pantry.js para el razonamiento
+         completo. Misma lógica de negocio de siempre (js/core/pantry.js),
+         solo cambia cómo se presenta. ══ -->
     <details class="disclosure" id="pantryPanel">
       <summary>
         <div class="verified-panel__head">
@@ -448,13 +469,8 @@
           <p><strong>Tu despensa est&aacute; vac&iacute;a.</strong> Aqu&iacute; guardas lo que ya tienes en casa, para que el sitio no te lo vuelva a pedir comprar. A&ntilde;ade tu primer producto arriba &uarr;</p>
         </div>
 
-        <!-- Planes con algo pendiente (comprar o cocinar) -- solo aparece
-             si hay alguno; se vac&iacute;a solo en cuanto todo est&aacute;
-             cocinado, ver isEntryFullyCooked() en render-pantry.js. -->
-        <div class="pantry-active" id="pantryActiveContainer"></div>
-
         <details class="disclosure pantry-history-disclosure" id="pantryHistoryDisclosure" hidden>
-          <summary>Ver planes anteriores</summary>
+          <summary>Historial de planes completados</summary>
           <ul class="pantry-history" id="pantryHistoryContainer"></ul>
         </details>
       </div>

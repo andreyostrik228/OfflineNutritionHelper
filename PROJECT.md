@@ -123,6 +123,39 @@ plan confirmation/authenticated sync all behave identically. Full
 before/after reasoning in `STATE.md`, "Rediseño de UX de la Despensa —
 2026-08-14b".
 
+**2026-08-14c — "Tu plan" moved out of the despensa accordion, `planDate`
+added**: same conversation as 2026-08-14b, after the user asked for a
+full architecture/UX audit before deciding anything (see conversation).
+Diagnosis: `pantry.js`'s data model was sound, but the page's information
+architecture wasn't — meal cards, the shopping list, and the buy/cook
+actions (buried inside a collapsed despensa accordion) were three
+unrelated page sections for what the user experiences as one continuous
+flow, and `savePlanForToday()` had no notion of "plan date" distinct from
+`createdAt`, so saving two plans the same day produced two cards with an
+identical-looking date label. Fix (chosen over a more aggressive
+"merge everything into the meal card" option after weighing risk):
+active-plan cards (buy/cook) now render in a new always-expanded section,
+"Tu plan" (`#todayPlansPanel`), right below the shopping list — despensa
+itself is back to being just stock + completed-plan history. Multiple
+plans per day are explicitly allowed (not merged/replaced) per the user's
+decision; cards are disambiguated by creation time INCLUDING SECONDS
+(minutes alone weren't enough — confirmed live that two plans saved a
+few clicks apart landed in the same minute). `entry.planDate` (new field,
+`"YYYY-MM-DD"` local date) is separate from `entry.createdAt` (audit
+timestamp), same split as `migrated_at` vs. `cloudSyncedUserId` in
+`migration.js`; legacy entries without it fall back to a date derived
+from `createdAt`. A pantry-coverage note ("X g already in your pantry")
+was added to the active-plan card and its purchase checklist — it only
+existed on the shopping list before, a real inconsistency the audit
+found. 7 new tests in `tests/pantry.test.js`. Verified live (desktop +
+mobile 375px): two same-day plans now distinguishable by time-with-seconds;
+buy/cook lifecycle unaffected; despensa confirmed to no longer contain any
+active-plan markup. A `.pantry-meal-chip` mobile overflow found during
+verification was confirmed via a `git stash` A/B test to be pre-existing
+(same known mobile-overflow issue tracked since 2026-08-08), not a
+regression. Full detail in `STATE.md`, "Reubicación de 'Tu plan' fuera de
+la despensa — 2026-08-14c".
+
 ## Meal schedule (2026-08-07)
 
 Each generated meal now carries a real clock time (`meal.time`, e.g.

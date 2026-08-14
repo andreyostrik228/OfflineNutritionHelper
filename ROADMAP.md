@@ -2,11 +2,19 @@
 
 ## Current status
 
-**Stage:** working prototype, updated 2026-08-14b — the despensa panel
-just got a full UX redesign (3 clear blocks instead of one flat list
-mixing stock/history/sub-stages, zero changes to the underlying logic —
-see `STATE.md`, "Rediseño de UX de la Despensa — 2026-08-14b"). Before
-that, the site already has a
+**Stage:** working prototype, updated 2026-08-14c — after a full
+architecture/UX audit of despensa requested by the user, active plans
+(buy/cook actions) were moved OUT of the despensa accordion into a new
+always-expanded "Tu plan" section right below the shopping list; despensa
+itself is back to being just stock + completed-plan history; a new
+`planDate` field (distinct from `createdAt`) lets multiple same-day plans
+be tracked and disambiguated by creation time instead of being
+ambiguous — see `STATE.md`, "Reubicación de 'Tu plan' fuera de la
+despensa — 2026-08-14c". This builds directly on 2026-08-14b (3 clear
+blocks instead of one flat list mixing stock/history/sub-stages, zero
+changes to the underlying logic — see `STATE.md`, "Rediseño de UX de la
+Despensa — 2026-08-14b"). **Not yet committed** as of this update — see
+`STATE.md` session handoff. Before that, the site already has a
 **complete, LIVE accounts layer** (Supabase Auth email+password/Google
 OAuth + Postgres + Row Level Security, guest mode preserved as the
 default, local-first sync, idempotent guest→account migration with
@@ -27,9 +35,10 @@ promoted from the `poc/` audit that had been sitting unused since
 2026-08-04 (see `STATE.md`, "Rediseño del modelo de nutrición por
 ingrediente"). Dish SELECTION is also purchase-cost-aware, not just the
 final budget verification (2026-08-13, see `STATE.md`, "Presupuesto de
-compra MARGINAL durante la selección"). **Not yet committed/pushed** —
-see `STATE.md` session handoff for exact repo state before assuming
-otherwise. Previous session (2026-08-08) redesigned the final budget
+compra MARGINAL durante la selección") — committed and pushed long
+since (see `STATE.md` session handoff for the exact current commit
+before assuming otherwise; only the 2026-08-14c work above is still
+uncommitted). Previous session (2026-08-08) redesigned the final budget
 check to mean purchase cost, not usage cost, along with the meal
 schedule feature from the session before that — both were committed and
 pushed to `main` as of that update, commit `3bad470`. Core architecture

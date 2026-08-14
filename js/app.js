@@ -108,10 +108,15 @@ document.addEventListener("DOMContentLoaded", function () {
   var pantryAddGrams           = document.getElementById("pantryAddGrams");
   var pantryIngredientOptionsList = document.getElementById("pantryIngredientOptions");
   var pantryAddError           = document.getElementById("pantryAddError");
-  var pantryActiveContainer    = document.getElementById("pantryActiveContainer");
   var pantryHistoryDisclosure  = document.getElementById("pantryHistoryDisclosure");
   var pantryHistoryContainer   = document.getElementById("pantryHistoryContainer");
   var pantryCountEl            = document.getElementById("pantryCount");
+
+  // "Tu plan" (2026-08-14c) -- fuera del acordeón de despensa, ver
+  // cabecera de js/ui/render-pantry.js. Planes con algo pendiente
+  // (comprar/cocinar) se pintan y gestionan aquí, no dentro de pantryPanel.
+  var todayPlansPanel          = document.getElementById("todayPlansPanel");
+  var todayPlansContainer      = document.getElementById("todayPlansContainer");
 
   var authProfileBtn   = document.getElementById("authProfileBtn");
   var authProfileLabel = document.getElementById("authProfileLabel");
@@ -548,12 +553,11 @@ document.addEventListener("DOMContentLoaded", function () {
         });
 
         // El plan guardado se gestiona desde ahí en adelante (comprar/
-        // cocinar) -- se abre y se hace scroll para que no haya que buscarlo.
-        if (pantryPanel) {
-          pantryPanel.open = true;
-          if (typeof pantryPanel.scrollIntoView === "function") {
-            pantryPanel.scrollIntoView({ behavior: "smooth", block: "start" });
-          }
+        // cocinar) -- "Tu plan" (2026-08-14c, fuera de la despensa) ya
+        // está visible sin necesidad de abrir ningún acordeón, solo hace
+        // falta el scroll para que no haya que buscarlo.
+        if (todayPlansPanel && typeof todayPlansPanel.scrollIntoView === "function") {
+          todayPlansPanel.scrollIntoView({ behavior: "smooth", block: "start" });
         }
       } finally {
         usePlanTodayBtn.disabled = false;
@@ -578,7 +582,8 @@ document.addEventListener("DOMContentLoaded", function () {
         pantryAddGrams: pantryAddGrams,
         pantryIngredientOptionsList: pantryIngredientOptionsList,
         pantryAddError: pantryAddError,
-        pantryActiveContainer: pantryActiveContainer,
+        todayPlansPanel: todayPlansPanel,
+        todayPlansContainer: todayPlansContainer,
         pantryHistoryDisclosure: pantryHistoryDisclosure,
         pantryHistoryContainer: pantryHistoryContainer,
         pantryCountEl: pantryCountEl,
