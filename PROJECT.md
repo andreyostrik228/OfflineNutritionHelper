@@ -86,7 +86,7 @@ at runtime.
 | No-cook engine | `js/engine/no-cook-generator.js` | Independent ready-to-eat product plan, not pantry-connected, schedule-aware |
 | Data | `js/data/dishes.js`, `js/data/real-products.js`, `js/data/packaging.js`, `js/data/ingredient-nutrition.js` | Dish records, real Mercadona catalog, package-size lookup, per-ingredient real nutrition registry |
 | Rendering | `js/ui/render.js`, `js/ui/render-insights.js`, `js/ui/render-schedule.js`, `js/ui/render-shopping-list.js`, `js/ui/render-pantry.js` | Summary, meals, warnings, day-schedule strip, shopping list, despensa panel |
-| Accounts | `js/core/{supabase-client,settings,auth,cloud-sync,migration}.js`, `js/ui/render-auth.js` | Auth (email+password, Google OAuth), settings persistence, cloud sync (local-first), idempotent guest→account migration with conflict resolution — fully decoupled from the nutrition engine (2026-08-13f, see "Important note" below) |
+| Accounts | `js/core/{supabase-client,settings,auth,cloud-sync,migration}.js`, `js/ui/render-auth.js` | Auth (email+password, Google OAuth), settings persistence, cloud sync (local-first), idempotent guest→account migration with conflict resolution — fully decoupled from the nutrition engine; LIVE against a real Supabase project since 2026-08-14a (code written 2026-08-13f) |
 | Styling | `assets/css/style.css` | Visual system, mobile-first responsive layout |
 | Tests | `tests/*.test.js`, `poc/tests/*.test.js` | Node+vm characterization/regression tests over real production code |
 | DB schema | `supabase/schema.sql` | `user_data` table (JSONB blobs mirroring localStorage keys 1:1) + RLS policies + auto-provisioning trigger |
@@ -237,11 +237,31 @@ three JSONB columns mirroring the localStorage blobs 1:1, RLS scoped to
 marker, not an account-level timestamp (closes a real shared-device data
 leak found during design); conflicting data on both sides is never
 merged silently — the user picks. 66 new tests (246 total) against a
-simulated Supabase client. Verified live in guest mode (the only mode
-possible pre-provisioning); real login/Google OAuth/cross-account
-isolation still need a live Supabase project + Google OAuth client,
-which only the user can create — full checklist, schema, and design
-record in `STATE.md`.
+simulated Supabase client. At this point only verified live in guest
+mode, since no real Supabase project existed yet.
+
+**2026-08-14a — provisioned for real, verified end-to-end against the
+live backend, deployed**: the user created the Supabase project and
+Google OAuth client (the only two steps that genuinely needed their own
+accounts) and handed over the public URL/anon key; zero code changes,
+only `js/data/supabase-config.js` went from placeholders to real values.
+Verified against the live project with actual REST calls using real
+session tokens, not just the UI: signup/login with an immediate session,
+a simulated brand-new device (localStorage wiped entirely, including the
+session) correctly pulling settings/despensa back from the cloud on
+login, idempotent re-sync, a real conflict+merge run, logout wiping the
+local cache. **User isolation confirmed by attacking the API directly**
+— User B's real token could not read User A's row even when explicitly
+filtering by its id, and a `PATCH` attempt against User A's row using
+User B's token affected 0 rows (RLS, not app-level filtering, is what
+stopped it). The Google OAuth redirect chain was followed for real
+(app → Supabase → `accounts.google.com`) and Google accepted the
+configured client without error — verification deliberately stopped at
+the point a human would need to enter real credentials. 246 tests still
+green; despensa/no-cook/mobile re-verified unaffected. Committed
+(`f66bfac`) and deployed; production re-checked against the same live
+project. Full write-up in `STATE.md`, "Aprovisionamiento real de
+Supabase + Google OAuth — 2026-08-14a".
 
 ## Product direction
 
@@ -275,9 +295,9 @@ Fase 1.
 
 See `STATE.md` for the authoritative, dated engineering log and `ROADMAP.md`
 for the phased migration plan and architecture decision record. Last
-updated here 2026-08-13f (real per-ingredient nutrition for 50/81 roles,
+updated here 2026-08-14a (real per-ingredient nutrition for 50/81 roles,
 dish selection made purchase-cost-aware, the Atwater-consistency fix for
-unresolved-ingredient kcal, and a complete multi-user accounts layer
-pending only external Supabase/Google provisioning — see above). Not
-production-ready or suitable for health-critical personalization — see
-"Critical known issues" in `STATE.md`.
+unresolved-ingredient kcal, and a complete multi-user accounts layer now
+LIVE against a real Supabase project and verified end-to-end — see
+above). Not production-ready or suitable for health-critical
+personalization — see "Critical known issues" in `STATE.md`.

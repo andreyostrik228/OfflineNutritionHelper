@@ -1,6 +1,6 @@
 # Nutrition Planner — Engineering State
 
-Actualizado 2026-08-13. Lee esto junto con `PROJECT.md` y `ROADMAP.md` antes
+Actualizado 2026-08-14. Lee esto junto con `PROJECT.md` y `ROADMAP.md` antes
 de empezar una sesión nueva (ver "Session handoff" al final — reemplaza al
 antiguo "Continuation checklist"). Para el sistema completo (este repo + el
 pipeline Python en `PythonProject`), ver `PythonProject/docs/architecture.md`
@@ -21,6 +21,49 @@ llama a quién), no las decisiones de producto ni el "por qué" que solo
 está aquí y en `ROADMAP.md`. **Si vuelves a tocar código, el grafo se
 desactualiza de nuevo** — no se actualiza solo (comandos exactos en
 `PythonProject/docs/graphify.md`, sección "Cómo actualizarlo").
+
+**Resumen de la sesión 2026-08-14a (aprovisionamiento real de Supabase +
+Google OAuth — el sistema de cuentas pasa de "código listo" a "funcionando
+de verdad en producción")**: la sesión 2026-08-13f dejó todo el código,
+esquema y tests listos pero inertes (sin proyecto Supabase real, modo
+invitado forzado). En esta sesión el usuario aprovisionó su propio
+proyecto Supabase y cliente OAuth de Google (los dos únicos pasos que
+requerían su cuenta, ninguno automatizable) y me pasó las credenciales
+públicas; yo hice todo lo demás. Verificado en vivo contra el backend
+real (no solo unit tests, no solo UI — llamadas REST directas con tokens
+de sesión reales, exactamente como pidió el usuario): esquema aplicado
+(`user_data` existe, RLS bloquea lectura anónima devolviendo `[]`, no un
+error), registro real por email+contraseña con sesión inmediata, el
+trigger `handle_new_user` crea la fila automáticamente, recarga de
+página mantiene la sesión, un "dispositivo nuevo" simulado (localStorage
+vaciado por completo, incluida la sesión) recupera settings+despensa
+exactos desde la nube al volver a iniciar sesión, logout vacía la caché
+local y welcomes de vuelta en modo invitado limpio, la migración
+invitado→cuenta ocurre automáticamente en el primer login (rama 'push'),
+volver a reconciliar sin cambios es un no-op real (rama 'already_synced',
+sin duplicar nada), y el conflicto (datos locales Y datos de nube a la
+vez, navegador nuevo) abre el diálogo y la fusión ("combinar") suma
+gramos de despensa y dejó local Y nube idénticos. **Aislamiento entre
+usuarios probado atacando la API directamente, no solo mirando la UI**:
+con el token de sesión real del Usuario B, un intento de `PATCH` sobre
+la fila del Usuario A devolvió `200` pero **0 filas afectadas** —
+confirmado releyendo los datos del Usuario A después, intactos. Google
+OAuth: el flujo completo `signInWithOAuth` → `Supabase /authorize` →
+Google `accounts.google.com` se siguió de verdad (sin credenciales,
+nunca se rellenó ningún formulario de login) y Google aceptó la petición
+con el `client_id`/`redirect_uri` correctos, sin `invalid_client` ni
+`redirect_uri_mismatch` — verificado hasta el único punto que
+físicamente requiere que un humano introduzca sus credenciales de Google,
+que no hice ni debía hacer. Regresión completa: 246 tests siguen en
+verde, generación de plan/despensa (comprar→cocinar)/sin-cocinar/mobile
+sin cambios de comportamiento. Commiteado (`f66bfac`), pusheado, y
+desplegado a producción — verificado en el propio
+`https://offline-nutrition-helper.pages.dev` con el mismo usuario de
+prueba recuperando los mismos datos que en local, confirmando que
+producción habla con el mismo backend real. Ver sección dedicada
+"Aprovisionamiento real de Supabase + Google OAuth — 2026-08-14a" más
+abajo para el detalle completo, y "Session handoff (2026-08-14a)" para
+el estado acumulado.
 
 **Resumen de la sesión 2026-08-13f (sistema de cuentas — Supabase Auth +
 Postgres + RLS)** (ver sección dedicada más abajo, "Sistema de cuentas
@@ -1890,6 +1933,151 @@ propio `tests/run-tests.js` se extendió para soportar tests async (una
 función de test puede devolver una promesa) manteniendo 100% de
 compatibilidad con los tests síncronos existentes.
 
+## Aprovisionamiento real de Supabase + Google OAuth — 2026-08-14a
+
+Continuación directa de "Sistema de cuentas (accounts) — Supabase Auth +
+Postgres + RLS (2026-08-13f)" arriba — mismo código, cero reescritura,
+solo aprovisionamiento externo + verificación en vivo contra un backend
+real. El usuario proporcionó, en dos rondas mínimas (una por servicio
+externo, cada una un único bloque de acciones):
+
+**Ronda 1 — Supabase**: el usuario creó el proyecto
+(`tizrdycctkiwdcmlyqku.supabase.co`), ejecutó `supabase/schema.sql` en el
+SQL Editor, desactivó "Confirm email" (Authentication → Providers →
+Email — así se pudo verificar el flujo completo de sesión sin depender
+de acceso a una bandeja de entrada), configuró Site URL/Redirect URLs a
+`https://offline-nutrition-helper.pages.dev`, y pasó el Project URL +
+clave `anon public`. Verificado ANTES de fijar el valor en
+`js/data/supabase-config.js`: `GET /rest/v1/user_data` con esa clave y
+sin sesión → `[]` (RLS activo, tabla existe). Nota sobre las claves:
+Supabase ofrece ahora dos formatos equivalentes para el cliente —
+`sb_publishable_...` (nuevo) y el JWT `anon` clásico — ambos verificados
+como funcionalmente idénticos contra la API real antes de elegir; se usó
+el nuevo `sb_publishable_...` por ser el que Supabase recomienda hacia
+adelante.
+
+**Ronda 2 — Google Cloud Console**: el usuario creó un OAuth Client ID
+(Web application) con el redirect URI exacto que le di
+(`https://tizrdycctkiwdcmlyqku.supabase.co/auth/v1/callback` — el
+dominio de Supabase, NO el de la app, la confusión más común en este
+tipo de configuración) y pasó Client ID + Client Secret. El Client
+Secret **nunca se escribió en ningún archivo del repo** — solo se usó
+para instruir al usuario a pegarlo él mismo en Supabase → Authentication
+→ Providers → Google (yo no tengo Management API / Personal Access
+Token de Supabase, así que esa pantalla concreta es la única que no
+pude tocar directamente).
+
+**Config final** (`js/data/supabase-config.js`, único archivo cambiado
+en esta sesión, commit `f66bfac`): `SUPABASE_URL` +
+`SUPABASE_ANON_KEY` reales. Ambos públicos por diseño — la clave anon/
+publishable está pensada por Supabase para vivir en el cliente, la
+seguridad real la da RLS, no el secreto de la clave (ver cabecera del
+propio archivo).
+
+**Verificación en vivo — no solo tests, no solo UI, contra el backend
+real** (`https://tizrdycctkiwdcmlyqku.supabase.co`), primero en local
+(`http://localhost:5250` vía el servidor estático del proyecto) y
+repetida después en producción:
+
+1. **Registro real** (email+contraseña por la UI real, no simulado):
+   sesión concedida de inmediato (email confirm off), `getCurrentUser()`
+   devuelve el usuario correcto. Confirmado por REST directo con el
+   `access_token` de la sesión: el trigger `handle_new_user` había creado
+   la fila `user_data` — y ya contenía, migrados, los datos de invitado
+   que existían en ese navegador ANTES del registro (edad/objetivo/
+   presupuesto de una generación de plan previa) — la migración 'push'
+   ocurrió sola, sin intervención, en el primer `SIGNED_IN`.
+2. **Recarga de página**: sesión persiste (el propio SDK de Supabase la
+   guarda en localStorage), formulario sigue relleno.
+3. **"Dispositivo nuevo" simulado de verdad**: `localStorage.clear()`
+   completo (incluida la sesión) → recarga → vuelve a modo invitado
+   limpio (`getCurrentUser() === null`, despensa vacía, edad por
+   defecto) → login manual con el mismo usuario → **edad y despensa
+   exactas recuperadas de la nube** (edad 41, despensa con "aguacate"
+   150g y "arroz blanco cocido" 321g, ambos añadidos ANTES de vaciar
+   localStorage, ambos ya en la nube gracias al push automático tras
+   cada mutación real de despensa vía la UI — ver nota sobre
+   `setStock()` directo vs. el botón real "Añadir" abajo).
+4. **Idempotencia real**: recargar de nuevo sin cambiar nada → mismo
+   usuario, mismos 3 ingredientes en despensa, ni uno más — la rama
+   `already_synced` de `classifySyncState()` no vuelve a empujar nada
+   (confirmado, no solo asumido del test unitario).
+5. **Conflicto real**: con el navegador ya limpio (logout borra la caché
+   local, ver `onAuthSignOut`), se creó despensa de invitado NUEVA
+   ("almendras" 77g) y LUEGO se inició sesión con el mismo usuario (que
+   ya tenía datos en la nube) → se abrió el diálogo de conflicto de
+   verdad, `cloudSyncedUserId` seguía `null` (nada se decidió solo) →
+   se pulsó "Combinar" → resultado: los 3 ingredientes previos de la
+   nube + el nuevo de invitado, TODOS presentes, en local Y en la nube
+   por igual (confirmado releyendo la fila vía REST tras la fusión).
+6. **Logout**: vacía despensa/settings/marcador locales, vuelve a
+   "Invitado" — confirmado que un login posterior de OTRO usuario en el
+   mismo navegador arranca limpio (el caso de "ordenador compartido" que
+   `migration.js` existe para prevenir).
+7. **Aislamiento entre usuarios — probado como pidió el usuario
+   explícitamente: atacando la API, no solo mirando la interfaz**. Con
+   el `access_token` real del Usuario B recién registrado:
+   - `GET /rest/v1/user_data` sin filtro → solo devuelve la fila del
+     propio Usuario B (vacía), nunca la del Usuario A.
+   - `GET /rest/v1/user_data?user_id=eq.<id-del-Usuario-A>` (intento
+     explícito de leer la fila de otro usuario POR SU ID) → `[]`, RLS la
+     hace invisible en vez de devolver un error de permisos.
+   - `PATCH /rest/v1/user_data?user_id=eq.<id-del-Usuario-A>` con un
+     payload de ataque (`{"pantry_state":{"hacked":{"grams":9999}}}`) →
+     `HTTP 200` pero **`body: []`, CERO filas afectadas**. Se releyó
+     después la fila real del Usuario A (con su propio token) y seguía
+     exactamente igual, sin ningún rastro de "hacked" — RLS bloqueó la
+     escritura de verdad, a nivel de base de datos, no de interfaz.
+8. **Google OAuth**: se disparó `signInWithOAuth({provider:'google'})`
+   con `skipBrowserRedirect` para poder inspeccionar la URL antes de
+   navegar, y luego SÍ se navegó de verdad por la cadena completa
+   Supabase → Google. `accounts.google.com` devolvió una pantalla de
+   login real (no un error) con `client_id` y `redirect_uri` EXACTOS a
+   los configurados — prueba de que Google aceptó la configuración del
+   lado de Supabase. **Límite explícito, deliberado**: no se introdujo
+   ninguna credencial de Google real (violaría la regla de no manejar
+   nunca contraseñas ajenas) — la verificación se detuvo exactamente en
+   el punto donde un humano tiene que autenticarse de verdad, tal como
+   pidió el usuario ("остановись только на этом конкретном внешнем
+   шаге").
+9. **Regresión del resto de la app**: 246 tests (`node tests/run-tests.js`
+   + `node poc/tests/run-tests.js`) en verde tras el cambio de config.
+   En navegador: generar plan, "Usar este plan hoy", "Marcar compra como
+   hecha" (sumó stock de los 11 ingredientes del plan de ejemplo
+   correctamente), "Marcar como cocinado" (restó exactamente lo
+   consumido de una comida, dejó el resto intacto), modo "sin cocinar",
+   y mobile 375px sin desbordamiento horizontal — todo en modo invitado,
+   cero interacción con la capa de cuentas, confirmando que sigue
+   totalmente desacoplada.
+
+**Nota técnica encontrada durante la verificación (no es un bug de la
+app)**: llamar a `setStock()` directamente (saltándose el botón real
+"Añadir" de la UI) NO dispara el push a la nube — es coherente y
+correcto: ese push vive en el callback `onPantryChange` que solo
+`render-pantry.js` invoca desde sus propios manejadores de evento reales,
+nunca desde una llamada directa a la función de dominio. Confirmado con
+el flujo real (seleccionar ingrediente + gramos + clic en "Añadir") que
+el push sí ocurre y arrastra el estado COMPLETO de la despensa (incluida
+cualquier entrada anterior), no solo lo último añadido — comportamiento
+esperado de `pushPantryToCloud()` (siempre serializa el blob entero, ver
+cabecera de `cloud-sync.js`), no una regresión.
+
+**Deploy**: commit `f66bfac` en `main`, pusheado, desplegado a Cloudflare
+Pages (`npx wrangler pages deploy .`, reutilizando la sesión OAuth de
+`wrangler` ya existente, sin pedir un token nuevo). Verificado en la URL
+de producción real (`https://offline-nutrition-helper.pages.dev`, no
+solo local): mismo usuario de prueba, mismos datos recuperados desde la
+nube — confirma que producción habla con el mismo proyecto Supabase real,
+no con una config distinta olvidada.
+
+**Usuarios de prueba creados durante esta verificación** (quedan en el
+proyecto Supabase real, no se borraron — son inofensivos, ninguno tiene
+datos sensibles, ambos con el email `andreyostrik228+claudetest...
+@gmail.com`, alias del propio email del usuario): si se quiere una base
+de datos "limpia" antes de un uso real, se pueden borrar manualmente
+desde Supabase → Authentication → Users. No es necesario para que el
+sistema funcione correctamente para usuarios reales nuevos.
+
 ## Exploración descartada: Google AI Studio para el rediseño (2026-08-04)
 
 Antes de implementar el rediseño v2 directamente, se probó pedirle a
@@ -2087,22 +2275,25 @@ llamadas con el mismo input pueden aterrizar en tiers distintos por azar.
   privado) — hoy solo se ve en el aviso posterior a "Usar este plan hoy",
   no en las acciones de comprar/cocinar del historial.
 
-## Session handoff (2026-08-13f)
+## Session handoff (2026-08-14a)
 
 Escrito para que la siguiente sesión/chat pueda continuar sin haber visto
 esta conversación. No repite lo de arriba en detalle — apunta a la
-sección correspondiente. Esta sesión de trabajo tuvo 6 tramos en el mismo
-día: **(a)** presupuesto de compra MARGINAL durante la selección
-(2026-08-13, ver esa sección arriba), **(b)** bug real de precio en
-`renderFoodRow` (2026-08-13b), **(c)** mitigación en la UI del bug de
-macros fabricados (2026-08-13c, ocultar el desglose), **(d)** rediseño
+sección correspondiente. La sesión 2026-08-13 tuvo 6 tramos en un mismo
+día: **(a)** presupuesto de compra MARGINAL durante la selección, **(b)**
+bug real de precio en `renderFoodRow` (2026-08-13b), **(c)** mitigación
+en la UI del bug de macros fabricados (2026-08-13c), **(d)** rediseño
 ARQUITECTÓNICO completo del modelo de nutrición por ingrediente
-(2026-08-13d), **(e)** auditoría del "recorte a cero" + corrección de
-consistencia Atwater (2026-08-13e), **(f)** sistema de cuentas completo
-(Supabase Auth + Postgres + RLS) sobre localStorage local-first, esta es
-la foto final del día — ver "Sistema de cuentas (accounts) — Supabase
-Auth + Postgres + RLS" arriba para el detalle completo. Este handoff
-describe el estado ACUMULADO tras los 6, no solo el último.
+(2026-08-13d), **(e)** auditoría del "recorte a cero" + consistencia
+Atwater (2026-08-13e), **(f)** sistema de cuentas completo en CÓDIGO
+(Supabase Auth + Postgres + RLS, todavía sin proyecto real). La sesión
+**2026-08-14a** (un día después) es la que cierra el círculo: el usuario
+aprovisionó Supabase + Google OAuth de verdad, y todo se verificó en vivo
+contra el backend real (registro, login, reload, sync, logout, migración,
+aislamiento entre usuarios probado atacando la API, y Google OAuth hasta
+el límite de necesitar credenciales humanas) — ver "Aprovisionamiento
+real de Supabase + Google OAuth — 2026-08-14a" arriba para el detalle
+completo. Este handoff describe el estado ACUMULADO tras los 7 tramos.
 
 **Para orientarse en el código en sí, antes de leer archivo por archivo,
 usa el grafo de Graphify** (regenerado al final de esta sesión — 388
@@ -2121,13 +2312,16 @@ la SELECCIÓN de plato consciente de coste de compra MARGINAL (desde
 81 roles** (desde 2026-08-13d; antes: 0 — todo era reparto del total del
 plato por peso), con la consistencia interna de kcal corregida
 (2026-08-13e — kcal ya no puede contradecir el resto de macros de su
-propia fila), y ahora un **sistema de cuentas completo** (2026-08-13f —
-registro/login por email+contraseña, login con Google, sesión persistente,
-despensa/historial/settings sincronizados a la nube por cuenta, modo
-invitado preservado íntegro) aunque **todavía sin un proyecto Supabase
-real aprovisionado** — hasta que eso ocurra (checklist en la sección
-dedicada) el sitio se comporta exactamente igual que antes de este
-tramo, solo en modo invitado. El generador ahora se comporta, en la
+propia fila), y ahora un **sistema de cuentas completo Y FUNCIONANDO EN
+PRODUCCIÓN** (código 2026-08-13f, aprovisionado y verificado en vivo
+2026-08-14a) — registro/login por email+contraseña, login con Google
+(configurado y verificado hasta el límite de necesitar credenciales
+humanas reales), sesión persistente, despensa/historial/settings
+sincronizados a la nube por cuenta (probado con dispositivo nuevo
+simulado), migración invitado→cuenta automática e idempotente,
+aislamiento entre usuarios confirmado a nivel de RLS/API (no solo UI), y
+modo invitado preservado íntegro para quien no quiera cuenta. El
+generador ahora se comporta, en la
 medida de lo que la arquitectura actual permite, como pediría un
 nutricionista real: prefiere activamente envases baratos de comprar,
 reutiliza despensa y paquetes ya comprometidos, y muestra la composición
@@ -2135,17 +2329,19 @@ nutricional real de cada ingrediente cuando existe un dato verificado —
 nunca una cifra fabricada con apariencia de precisión que no tiene, y
 nunca una fila donde un macro contradiga a otro de la misma fila.
 
-**Commit/branch/deploy actuales**: **sin commitear todavía** — todo el
-trabajo de esta sesión (2026-08-13, los 6 tramos) está en el working
-tree, no comiteado ni pusheado, y por tanto tampoco desplegado a
-`offline-nutrition-helper.pages.dev` (proyecto Cloudflare Pages
-confirmado como direct-upload, `Git Provider: No` — un push a
-`origin/main` NO despliega solo, hace falta `wrangler pages deploy`
-explícito). Antes de esta sesión, `main`/`origin/main` coincidían en
-`c758a01` (ver `git log -1`/`git status -sb` para confirmar que sigue
-siendo así). **Nota**: sigue habiendo basura suelta sin relación en la
-raíz del repo (preexistente, nunca comiteada a propósito) — no tocarla
-sin que se pida.
+**Commit/branch/deploy actuales**: `main`/`origin/main` en `f66bfac`
+(verificar con `git log -1`/`git status -sb` antes de asumir que sigue
+siendo así). Dos commits desde el `c758a01` con el que arrancó la sesión
+2026-08-13: `aa4f20b` (todo el código/esquema/tests del sistema de
+cuentas, sesión 2026-08-13f) y `f66bfac` (solo `js/data/
+supabase-config.js` con los valores reales del proyecto Supabase
+aprovisionado, sesión 2026-08-14a). **Desplegado a producción** —
+`offline-nutrition-helper.pages.dev` (Cloudflare Pages, proyecto
+direct-upload, `Git Provider: No` — un push a `origin/main` NUNCA
+despliega solo, hace falta `wrangler pages deploy` explícito cada vez,
+ya ejecutado y verificado para ambos commits). **Nota**: sigue habiendo
+basura suelta sin relación en la raíz del repo (preexistente, nunca
+comiteada a propósito) — no tocarla sin que se pida.
 
 **Qué funciona**: generación de plan completo (5 tomas, horario, macros)
 con presupuesto de COMPRA real decidido desde la SELECCIÓN de plato,
@@ -2158,9 +2354,13 @@ modo "sin cocinar" (con horario y macros reales de `REAL_PRODUCTS`, nunca
 tocado por este cambio); catálogo de productos; la Despensa completa
 (comprar → cocinar por comida → deshacer, influye en selección y recorte
 final); el formulario ahora recuerda el último perfil guardado entre
-recargas (novedad 2026-08-13f, modo invitado); botón de perfil + diálogo
-de acceso funcionando en modo invitado (registro/login/Google quedan
-pendientes de un proyecto Supabase real, ver checklist); los 246 tests.
+recargas (novedad 2026-08-13f); **registro/login por email+contraseña
+REALES, login con Google configurado y verificado hasta el límite de
+credenciales humanas, sesión persistente, sincronización de despensa/
+historial/settings a la nube, migración invitado→cuenta automática e
+idempotente, aislamiento entre usuarios confirmado a nivel de RLS/API —
+todo esto verificado en vivo contra el proyecto Supabase real, en local
+Y en producción (2026-08-14a, ver sección dedicada)**; los 246 tests.
 
 **Qué NO funciona / sigue pendiente**: 31/81 ingredient roles siguen sin
 nutrición fiable (Plátano, Salmón, Tempeh, Aguacate, Brócoli, Pepino,
@@ -2183,7 +2383,17 @@ construyó optimización multi-día de compra (ver sección de presupuesto
 marginal); NO se completó la migración Fase 1-2 completa de
 `ROADMAP.md` (ampliar más allá del 50/81 actual requiere MÁS productos
 verificados en `real-products.js`, trabajo del lado Python, no de este
-repo).
+repo). **Límite honesto de la verificación de Google OAuth**: se
+confirmó toda la cadena técnica (config de Supabase, config de Google,
+`client_id`/`redirect_uri` aceptados por Google sin error) hasta el
+punto exacto en que un humano tendría que introducir sus credenciales
+reales de Google — eso NUNCA se hizo (violaría la regla de no manejar
+contraseñas ajenas) y por tanto un login completo por Google en
+producción, de principio a fin, todavía no lo ha probado nadie
+literalmente — la próxima persona que use el botón real "Continuar con
+Google" será la primera prueba end-to-end completa; no hay ninguna razón
+técnica para esperar que falle, pero no está confirmado con la misma
+certeza que el resto.
 
 **Qué se cambió en TODA la sesión (2026-08-13, los 5 tramos)** — resumen
 de archivos, ver cada sección dedicada arriba para el detalle:
@@ -2231,8 +2441,13 @@ de archivos, ver cada sección dedicada arriba para el detalle:
   (ningún archivo) — confirmado explícitamente para (f): el sistema de
   cuentas no tocó NINGÚN archivo de dominio/motor.
 - Documentación: este archivo, `PROJECT.md`, `ROADMAP.md`. Grafo de
-  Graphify pendiente de regenerar tras (f) (regenerado tras (a)-(e), no
-  después de añadir el sistema de cuentas).
+  Graphify pendiente de regenerar tras (f)/(g) (regenerado tras (a)-(e),
+  no después).
+- **(g) Aprovisionamiento real (2026-08-14a, sesión distinta, un día
+  después)**: SOLO `js/data/supabase-config.js` — placeholders
+  reemplazados por el Project URL + clave `anon public`/`publishable`
+  reales del proyecto Supabase que el usuario aprovisionó. Cero cambios
+  de código; todo el resto de (f) se usó tal cual, sin reescribir nada.
 
 **Qué se verificó y qué no**: los 180 tests se re-ejecutaron y pasan
 (verificado, no heredado) — 13 de `purchase-economics.test.js` + 18 de
@@ -2275,15 +2490,27 @@ vez de fingir que el login funciona; generación de plan / despensa
 persiste entre recargas (edad/peso/objetivo/presupuesto/horario, round-
 trip completo verificado leyendo `localStorage` directamente); layout
 mobile (375×812) sin desbordamiento horizontal, diálogo cabe dentro del
-viewport. **Lo que NO se pudo verificar en vivo** (requiere el proyecto
-Supabase + credenciales Google reales del checklist, ninguno existe
-todavía): registro/login/logout reales, Google OAuth de extremo a
-extremo, aislamiento de datos entre dos cuentas reales, y la migración
-invitado→cuenta contra una base de datos real (la lógica de migración SÍ
-está verificada exhaustivamente, pero contra un cliente Supabase
-SIMULADO en `tests/migration.test.js`, no contra Postgres real) — no
-afirmar que esto "funciona en producción" hasta que exista un proyecto
-real y se repita esta verificación contra él.
+viewport. En ese momento (2026-08-13f) NO se había podido verificar
+registro/login real, Google OAuth, aislamiento entre cuentas, ni
+migración contra una base de datos real — **eso se cerró al día
+siguiente, ver "Verificación específica del tramo (g)" justo debajo**,
+no sigue pendiente.
+
+**Verificación específica del tramo (g) (2026-08-14a, contra el proyecto
+Supabase REAL, no un simulado)**: ver la sección dedicada
+"Aprovisionamiento real de Supabase + Google OAuth — 2026-08-14a" arriba
+para el detalle completo punto por punto. Resumen: registro/login/logout/
+reload/migración (push, pull, conflicto+combinar, idempotencia)
+verificados con llamadas REST reales usando tokens de sesión reales, no
+solo la UI; aislamiento entre usuarios confirmado intentando leer/
+escribir la fila de otro usuario directamente por API (0 filas afectadas
+en el intento de escritura); Google OAuth verificado hasta el límite
+exacto de necesitar credenciales humanas (nunca traspasado, a propósito);
+246 tests siguen en verde; producción re-verificada tras el deploy con
+el mismo usuario de prueba recuperando los mismos datos. **Lo único que
+sigue sin un login por Google 100% de principio a fin realizado por una
+persona real** — la cadena técnica está confirmada, falta solo el primer
+uso real del botón.
 
 **Decisiones de arquitectura que no hay que perder**: la comparación
 completa de Estrategia A/B/C (migración de datos) y por qué se eligió B
@@ -2305,21 +2532,20 @@ mismo que el remanente de `nutrition.js` (macros) — dos conceptos de
 "lo que sobra" completamente distintos, en dominios distintos, no
 fusionarlos.
 
-**Prioridad actual**: el sistema de cuentas (tramo f) está completo en
-código/esquema/tests pero bloqueado en el ÚNICO paso que requiere las
-cuentas propias del usuario — aprovisionar el proyecto Supabase real y
-el cliente OAuth de Google (checklist completo en la sección dedicada).
-Una vez hecho eso: rellenar `js/data/supabase-config.js` con los valores
-reales, repetir la verificación en navegador pero esta vez con
-login/registro/Google/aislamiento entre cuentas real, comitear/pushear
-(ver "Commit/branch/deploy actuales"), y desplegar con `npx wrangler
-pages deploy .`. Aparte de eso, sigue pendiente Fase 1 del roadmap de
-migración de nutrición (ampliar cobertura de datos reales más allá del
-50/81 actual, ver `ROADMAP.md` — requiere que el pipeline Python
-verifique más productos en `real-products.js`, no es tarea de este repo
-en solitario); investigar el bug de overflow mobile
-`.panel`/`.meal-head`/`.actions`; conectar la Despensa al modo "sin
-cocinar" (issue #9).
+**Prioridad actual**: el sistema de cuentas está COMPLETO y verificado en
+producción — ya no es la prioridad. Opcional, no bloqueante: que una
+persona real complete un login por Google de principio a fin al menos
+una vez (ver límite honesto arriba); considerar borrar los usuarios de
+prueba `andreyostrik228+claudetest...@gmail.com` desde Supabase →
+Authentication → Users si se quiere una base limpia antes de invitar a
+usuarios reales (no imprescindible, son inofensivos). Aparte de eso,
+sigue pendiente Fase 1 del roadmap de migración de nutrición (ampliar
+cobertura de datos reales más allá del 50/81 actual, ver `ROADMAP.md` —
+requiere que el pipeline Python verifique más productos en
+`real-products.js`, no es tarea de este repo en solitario); investigar
+el bug de overflow mobile `.panel`/`.meal-head`/`.actions`; conectar la
+Despensa al modo "sin cocinar" (issue #9); regenerar el grafo de
+Graphify (desactualizado desde antes de (f)/(g)).
 
 **Qué no romper**: los `id="..."` del HTML; `data.budget` sigue siendo
 purchaseCost, no usageCost; `enforcePurchaseBudgetCap` sigue siendo la
@@ -2360,10 +2586,16 @@ sección dedicada antes de tocar esto; `js/core/cloud-sync.js` es el
 cualquier otro sitio que empiece a construir queries Postgres es la
 regresión que ese módulo existe para prevenir; `js/data/
 supabase-config.js` nunca debe llevar una `service_role` key, solo la
-`anon public`.
+`anon public`/`publishable`. Específico de 2026-08-14a: el proyecto
+Supabase real ya existe (`tizrdycctkiwdcmlyqku.supabase.co`) y está en
+`js/data/supabase-config.js` en claro — es intencional y seguro (ver
+cabecera del archivo), no "arreglarlo" volviendo a placeholders sin que
+se pida; el Google Client Secret NUNCA se escribió en ningún archivo del
+repo, solo vive en el dashboard de Supabase — si algún día hace falta
+rotarlo, es un paso manual en Supabase, no algo que tocar aquí.
 
 Lee `PROJECT.md` y `ROADMAP.md` además de este archivo. Para el sistema
 completo (con el pipeline Python), lee también `PythonProject/docs/
 architecture.md` y `PythonProject/docs/data_flow.md`. No asumas que el
 estado descrito aquí sigue siendo exacto sin verificar contra el código —
-esto es una foto fija al final de la sesión 2026-08-13 (tramo d).
+esto es una foto fija al final de la sesión 2026-08-14 (tramo a).

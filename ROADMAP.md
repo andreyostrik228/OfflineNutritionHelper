@@ -2,17 +2,20 @@
 
 ## Current status
 
-**Stage:** working prototype, updated 2026-08-13f — the site now has a
-**complete accounts layer** (Supabase Auth email+password/Google OAuth +
-Postgres + Row Level Security, guest mode preserved as the default,
-local-first sync, idempotent guest→account migration with conflict
-resolution) sitting on top of the existing localStorage-only app,
-architecturally separate from the nutrition engine (see `STATE.md`,
-"Sistema de cuentas (accounts) — Supabase Auth + Postgres + RLS") — code,
-schema (`supabase/schema.sql`), RLS policies, and 66 new tests are all
-complete and passing, but **no real Supabase project is provisioned
-yet**, so the account features are inert (guest mode only) until that
-external step happens (checklist in the same `STATE.md` section). **Fase
+**Stage:** working prototype, updated 2026-08-14a — the site now has a
+**complete, LIVE accounts layer** (Supabase Auth email+password/Google
+OAuth + Postgres + Row Level Security, guest mode preserved as the
+default, local-first sync, idempotent guest→account migration with
+conflict resolution), architecturally separate from the nutrition
+engine, running against a real provisioned Supabase project and verified
+end-to-end against it — real signup/login, cross-device cloud sync,
+migration, and RLS-enforced user isolation all confirmed with live REST
+calls, not just UI clicks or unit tests (see `STATE.md`,
+"Aprovisionamiento real de Supabase + Google OAuth — 2026-08-14a"). Only
+remaining open item: no human has completed a real Google login
+end-to-end yet (verification deliberately stopped short of entering
+real credentials — the technical chain up to that point is confirmed).
+**Fase
 1 of the data migration below is also partially done**: ingredient-level
 kcal/protein/carbs/fat for 50 of 81 roles is real, verified, and live in
 production (`js/data/ingredient-nutrition.js` + `js/core/nutrition.js`),
@@ -210,17 +213,39 @@ their ingredients' nutrition is computed and displayed.
   keep-local/merge. 66 new tests (settings/migration/cloud-sync/auth,
   246 total, 0 failures across `tests/`+`poc/tests/`), all against a
   simulated Supabase client (the Node test sandbox has no real network).
-  Verified live in browser (desktop + mobile) in guest mode — the only
-  mode possible until a real Supabase project + Google OAuth client
-  exist, which requires the user's own accounts (full checklist in
-  `STATE.md`) — 0 console errors, plan generation/despensa/no-cook
-  unaffected, the profile button/dialog work correctly, and the
-  form now persists between reloads (new capability). Full design
-  record, external-setup checklist, and known caveats in `STATE.md`,
-  "Sistema de cuentas (accounts) — Supabase Auth + Postgres + RLS —
-  2026-08-13f". **Not committed/pushed, and real login/Google OAuth/
-  cross-account isolation not yet verifiable against a live backend as
-  of this update** — see `STATE.md` session handoff.
+  Verified live in browser (desktop + mobile) in guest mode at first
+  (2026-08-13f, no real Supabase project existed yet), then committed
+  (`aa4f20b`).
+  **2026-08-14a — provisioned for real and fully verified against the
+  live backend**: the user created the Supabase project + Google OAuth
+  client (the only two steps that genuinely required their own accounts)
+  and handed over the public URL/anon key; everything else was
+  automated or verified via direct REST calls, not just the UI. Real
+  email+password signup/login with an immediate session, page-reload
+  persistence, a simulated brand-new device (localStorage wiped
+  entirely) correctly pulling settings/despensa back from the cloud,
+  idempotent re-sync (no duplication), a live conflict+merge run that
+  left both sides identical, and logout correctly wiping the local
+  cache. **User isolation was tested by attacking the API directly**,
+  not just checking the UI: User B's real session token could not read
+  User A's row (even filtering by User A's exact id), and a `PATCH`
+  attempt against User A's row using User B's token returned `200` but
+  affected 0 rows — confirmed by re-reading User A's row afterward,
+  unchanged. The Google OAuth redirect chain (app → Supabase
+  `/authorize` → `accounts.google.com`) was followed for real and Google
+  accepted the configured `client_id`/`redirect_uri` with a genuine
+  sign-in page — verification stopped exactly at the point a human
+  would need to enter real Google credentials, deliberately, since
+  entering someone's real password is never something to automate. Full
+  regression: 246 tests green, despensa's 3-stage lifecycle (buy →
+  cook → undo) and no-cook re-verified in guest mode, mobile unaffected.
+  Committed (`f66bfac`, config-only — zero code changes) and deployed;
+  production re-verified against the same live Supabase project. Full
+  blow-by-blow in `STATE.md`, "Aprovisionamiento real de Supabase +
+  Google OAuth — 2026-08-14a". Honest open item: no human has completed
+  a real Google login end-to-end yet (the technical chain is confirmed,
+  but no credentials were ever entered by design) — first real use of
+  the button is that final proof.
 
 ## Decisión de arquitectura: migración a productos reales (2026-08-04)
 
