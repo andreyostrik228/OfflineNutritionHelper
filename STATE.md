@@ -3297,46 +3297,45 @@ dedicada) — a cambio de necesitar relajación de tiempo/sabor/cap25% con
 más frecuencia (tier "perfect" 52.3%→31.7%), reportado honestamente por
 `report.violations`, no oculto.
 
-**Commit/branch/deploy actuales**: `main`/`origin/main` en `35f35a8`
-(verificar con `git log -1`/`git status -sb` antes de asumir que sigue
-siendo así — este handoff se escribió con el repo en ese estado exacto;
-nota: `35f35a8` apareció comiteado al reanudar esta sesión sin que este
-handoff lo hubiera registrado como tal en su momento — si algo similar
-vuelve a pasar, confiar en `git log`, no en la última foto fija escrita
-aquí). Commits desde el `c758a01` con el que arrancó la sesión
-2026-08-13: `aa4f20b` (sistema de cuentas, 2026-08-13f), `f66bfac` (solo
-`js/data/supabase-config.js` con los valores reales de Supabase,
+**Commit/branch/deploy actuales**: `main`/`origin/main` en `1f7798b`
+("Fix despensa double-purchase bug, expand dish diversity, reduce budget
+deadlocks" — verificar con `git log -1`/`git status -sb` antes de asumir
+que sigue siendo así). Commits desde el `c758a01` con el que arrancó la
+sesión 2026-08-13: `aa4f20b` (sistema de cuentas, 2026-08-13f), `f66bfac`
+(solo `js/data/supabase-config.js` con los valores reales de Supabase,
 2026-08-14a), `e11308d`+`f0b70e0`+`9612687` (rediseño de UX de la
-Despensa + documentación/fixup, 2026-08-14b), y `35f35a8` ("Polish
-despensa UI: split into 3 clear blocks" — incluye TODO el trabajo de
-2026-08-14c: reubicación de "Tu plan" + `planDate`). **Los tramos
-2026-08-19 (j, UPSERT), 2026-08-19b (k, diversidad del generador) y
-2026-08-19c/d (l, reserva de presupuesto + reparto secuencial) están
-SIN COMITEAR a la hora de escribir esto** — `git status -sb` debe
-mostrar `index.html`, `js/app.js`, `js/core/pantry.js`,
-`js/ui/render-pantry.js`, `js/engine/dish-selector.js`,
-`js/engine/plan-generator.js`, `tests/pantry.test.js`,
-`tests/plan-generator.characterization.test.js`
-y este mismo `STATE.md` como modificados; el usuario no ha pedido commit
-todavía en esta sesión. Hay además un archivo suelto sin relación,
-`PANTRY_HISTORY_MAX_ENTRIES)` (0 bytes, sin trackear, en la raíz) —
-mismo tipo de basura preexistente que ya se documentaba aquí antes; no
-tocarlo sin que se pida.
-**Desplegado a producción — último estado CONFIRMADO: solo hasta
-`f66bfac`** (`offline-nutrition-helper.pages.dev`, Cloudflare Pages,
-proyecto direct-upload, `Git Provider: No` — un push a `origin/main`
+Despensa + documentación/fixup, 2026-08-14b), `35f35a8` ("Polish despensa
+UI: split into 3 clear blocks" — incluye TODO el trabajo de 2026-08-14c:
+reubicación de "Tu plan" + `planDate`), y **`1f7798b`** (2026-08-19, los
+tramos j+k+l en un solo commit: UPSERT sobre el borrador del día,
+eliminación de `TOP_CANDIDATES_POOL` + reequilibrio protein/€, y reserva
+de presupuesto + reparto secuencial — `index.html`, `js/app.js`,
+`js/core/pantry.js`, `js/ui/render-pantry.js`,
+`js/engine/dish-selector.js`, `js/engine/plan-generator.js`,
+`tests/pantry.test.js`, `tests/plan-generator.characterization.test.js`,
+`STATE.md`, `PROJECT.md`, `ROADMAP.md`). **Pusheado a
+`origin/main`** (`github.com/andreyostrik228/OfflineNutritionHelper`).
+Sigue habiendo un archivo suelto sin relación,
+`PANTRY_HISTORY_MAX_ENTRIES)` (0 bytes, sin trackear, en la raíz,
+deliberadamente NUNCA comiteado) — mismo tipo de basura preexistente que
+ya se documentaba aquí antes; no tocarlo sin que se pida.
+
+**Desplegado a producción — CONFIRMADO en esta sesión**: `npx wrangler
+pages deploy . --project-name=offline-nutrition-helper` (reutilizó la
+sesión OAuth de `wrangler` ya existente, sin pedir credenciales nuevas)
+subió 12 archivos nuevos + 115 sin cambios, deployment alias
+`https://17d7ed5d.offline-nutrition-helper.pages.dev`, y
+`https://offline-nutrition-helper.pages.dev` (dominio de producción del
+proyecto) responde 200 y sirve el `js/engine/plan-generator.js` con
+`BUDGET_RESERVE_RATIO = 0.12`/`SEQUENCING_BLEND_RATIO = 0.5` presentes y
+`TOP_CANDIDATES_POOL` ausente — verificado con fetch directo al archivo
+servido en producción, no solo asumido. Este es el primer deploy desde
+`f66bfac` (2026-08-14a) — 2026-08-14b, 2026-08-14c, 2026-08-19, 2026-08-19b
+y 2026-08-19c/d viajan TODOS juntos en este mismo deploy (nunca se
+desplegó nada entre medias). Cloudflare Pages, proyecto direct-upload,
+`Git Provider: No` — recordar para el futuro: un push a `origin/main`
 NUNCA despliega solo, hace falta `wrangler pages deploy` explícito cada
-vez) — **esto NO se ha reverificado en esta sesión**, así que si se
-desplegó entretanto por fuera de esta conversación, este dato podría
-estar desactualizado; confirmar antes de asumir. Ninguno de
-2026-08-14b/2026-08-14c/2026-08-19 se ha desplegado DESDE ESTA
-conversación — el usuario no lo ha pedido en esta sesión; si una sesión
-futura retoma esto, `npx wrangler pages deploy . --project-name=offline-nutrition-helper`
-lo despliega en un solo comando, reutilizando la sesión OAuth de
-`wrangler` ya existente (confirmada funcionando en sesiones anteriores,
-no pedir un token nuevo) — pero solo tiene sentido ejecutarlo DESPUÉS de
-comitear 2026-08-19, si no seguiría desplegando la versión con el bug de
-inflado de despensa.
+vez.
 
 **Qué funciona**: generación de plan completo (5 tomas, horario, macros)
 con presupuesto de COMPRA real decidido desde la SELECCIÓN de plato,
@@ -3585,23 +3584,18 @@ mismo que el remanente de `nutrition.js` (macros) — dos conceptos de
 "lo que sobra" completamente distintos, en dominios distintos, no
 fusionarlos.
 
-**Prioridad actual**: decidir con el usuario si comitear/pushear los
-tramos 2026-08-19 (UPSERT del borrador del día) y 2026-08-19b
-(diversidad del generador) — ambos siguen sin comitear a la hora de
-escribir esto, ver "Commit/branch/deploy actuales" arriba. Opcional, no
-bloqueante: el usuario podría querer un ajuste fino adicional de los
-pesos de `scoreDishForSelection` (macroFit×20/purchasePpeBucket×40 en
-modo "tight") si considera que el aumento de relajación/violaciones
-cap25 (ver tabla antes/después en la sección dedicada) es demasiado —
-no se iteró más de una vez sobre las constantes, a propósito, para no
-sobreajustar a un único stress-test sin pedir más señal primero. Una
-vez comiteada, desplegar TODO lo pendiente (2026-08-14b+c ya están
-comiteados en `35f35a8` pero NUNCA desplegados, más 2026-08-19+2026-08-19b encima)
-con `npx wrangler pages deploy . --project-name=offline-nutrition-helper`
-— confirmar con el usuario antes de hacerlo si no lo ha pedido
-explícitamente en la sesión actual; no tiene sentido desplegar sin
-2026-08-19, dejaría producción con el bug de inflado de despensa que
-motivó esta sesión. El sistema de cuentas sigue COMPLETO y verificado en
+**Prioridad actual**: ninguna acción pendiente de commit/push/deploy —
+los tramos j/k/l (2026-08-19, 2026-08-19b, 2026-08-19c/d) están
+comiteados en `1f7798b`, pusheados a `origin/main`, y desplegados en
+producción (ver "Commit/branch/deploy actuales" arriba para el detalle
+completo verificado). Opcional, no bloqueante: el usuario podría querer
+un ajuste fino adicional de los pesos de `scoreDishForSelection`
+(macroFit×20/purchasePpeBucket×40 en modo "tight") si considera que el
+aumento de relajación/violaciones cap25 de 19b (ver tabla antes/después
+en la sección dedicada) sigue siendo demasiado incluso después del
+reparto secuencial de 19d — no se ha vuelto a tocar `dish-selector.js`
+desde 19b, a propósito, para no sobreajustar sin pedir más señal
+primero. El sistema de cuentas sigue COMPLETO y verificado en
 producción, ya no es prioridad. Opcional, no bloqueante: que una persona
 real complete un login por Google de principio a fin al menos una vez
 (ver límite honesto arriba); considerar borrar los usuarios de prueba
@@ -3736,4 +3730,7 @@ completo (con el pipeline Python), lee también `PythonProject/docs/
 architecture.md` y `PythonProject/docs/data_flow.md`. No asumas que el
 estado descrito aquí sigue siendo exacto sin verificar contra el código —
 esto es una foto fija al final de la sesión 2026-08-19, tramo (l)
-(2026-08-19c/d).
+(2026-08-19c/d), con los tramos j+k+l ya comiteados (`1f7798b`),
+pusheados a `origin/main` y desplegados en producción
+(`offline-nutrition-helper.pages.dev`, verificado en vivo sirviendo el
+código con `BUDGET_RESERVE_RATIO=0.12`/`SEQUENCING_BLEND_RATIO=0.5`).

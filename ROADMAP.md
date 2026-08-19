@@ -17,8 +17,11 @@ regression), then blended to half-strength and confirmed as a clean win:
 `status:"perfect"` 240→251, tier-0 (no relaxation) 321→339, `cap25`/
 `calories`/`time` violations all down, overall dish coverage 86.2%→86.8%
 (breakfast unchanged) — see `STATE.md`, "Reserva de presupuesto y
-reparto secuencial — 2026-08-19c/d". 2026-08-19a/b/c/d are all **not yet
-committed** as of this update.
+reparto secuencial — 2026-08-19c/d". 2026-08-19a/b/c/d are all committed
+together in `1f7798b`, pushed to `origin/main`, and deployed to
+production (`offline-nutrition-helper.pages.dev`) — verified live
+serving `plan-generator.js` with `BUDGET_RESERVE_RATIO=0.12`/
+`SEQUENCING_BLEND_RATIO=0.5` and no `TOP_CANDIDATES_POOL`.
 
 Previously, updated 2026-08-19b — a mass stress test
 (1000 real generations, one fixed profile) requested by the user found
@@ -51,9 +54,9 @@ history; `planDate` field distinct from `createdAt` — see `STATE.md`,
 2026-08-14b (3 clear blocks instead of one flat list mixing
 stock/history/sub-stages, zero changes to the underlying logic — see
 `STATE.md`, "Rediseño de UX de la Despensa — 2026-08-14b"). 2026-08-14b/c
-are committed (`35f35a8`); **2026-08-19a/2026-08-19b are not yet
-committed** as of this update — see `STATE.md` session handoff. Before
-that, the site already has a
+are committed (`35f35a8`); 2026-08-19a/b/c/d are committed together in
+`1f7798b` (see above) — see `STATE.md` session handoff for the full
+commit/deploy record. Before that, the site already has a
 **complete, LIVE accounts layer** (Supabase Auth email+password/Google
 OAuth + Postgres + Row Level Security, guest mode preserved as the
 default, local-first sync, idempotent guest→account migration with
