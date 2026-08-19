@@ -28,8 +28,8 @@
  * un plan alternativo por la noche dejaba la despensa con un "sobrante"
  * neto arbitrario en vez de la cantidad realmente comprada):
  *
- *   1. savePlanForToday()  — registrar el plan del día. Pura contabilidad,
- *      CERO mutación de stock.
+ *   1. savePlanForToday()  — registrar/CONFIRMAR el plan del día. Pura
+ *      contabilidad, CERO mutación de stock.
  *   2. markPurchaseDone()  — la ÚNICA función que SUMA stock (lo
  *      realmente comprado). Se puede llamar más de una vez (varios viajes
  *      a comprar para el mismo plan).
@@ -41,6 +41,27 @@
  * comprar, baja al cocinar) — no se espera a "marcar como comido" para
  * cambiar nada, porque eso dejaría la despensa desactualizada durante la
  * ventana real entre comprar y cocinar.
+ *
+ * ── Confirmar es un UPSERT sobre el borrador del día (2026-08-19) ───────
+ * Bug real reportado por el usuario: regenerar el plan y volver a pulsar
+ * "Confirmar" (antes "Usar este plan hoy") varias veces creaba una
+ * entrada de historial NUEVA cada vez — savePlanForToday() en sí seguía
+ * sin tocar stock, pero cada una de esas entradas duplicadas era
+ * "comprable" por separado, así que si el usuario marcaba la compra en
+ * más de una (razonable: todas se veían como "mi plan de hoy", nada en
+ * la UI decía que eran copias) el stock se inflaba varias veces por la
+ * MISMA compra real. Fix: savePlanForToday() ahora busca si YA existe una
+ * entrada de HOY que sea todavía un BORRADOR puro — ni comprada
+ * (`purchase.done`) ni con ninguna comida cocinada (`hasRealPantryAction()`,
+ * más abajo) — y si la hay, ACTUALIZA esa misma entrada en vez de crear
+ * una nueva. En cuanto una entrada tiene algo real encima (se compró o se
+ * cocinó algo), deja de ser un borrador: confirmar un plan distinto ese
+ * mismo día entonces SÍ crea una entrada nueva, porque la anterior ya
+ * representa un hecho real (dinero gastado o comida consumida) que nunca
+ * debe sobrescribirse en silencio. Efecto práctico: regenerar/editar el
+ * plan y volver a confirmar tantas veces como haga falta ANTES de comprar
+ * nada es seguro por diseño — nunca puede, por sí mismo, producir más de
+ * una entrada "comprable" para el mismo día.
  *
  * Depende de:
  *   js/core/pricing.js (normalizeIngredientKey, resolvePackageInfo,
@@ -55,7 +76,8 @@
  *   resolvePurchaseCostWithPantry(name, requiredGrams, storeId, pantryState?)
  *   formatLocalDateKey(date) → "YYYY-MM-DD" (hora LOCAL, nunca UTC)
  *   getEntryPlanDate(entry) → "YYYY-MM-DD"
- *   savePlanForToday(meals, storeId) → { entry, historySaved }
+ *   hasRealPantryAction(entry) → boolean (comprado o algo cocinado)
+ *   savePlanForToday(meals, storeId) → { entry, historySaved, replaced }
  *   aggregatePlanMealItems(meals) → [{name, requiredGrams}]
  *   markPurchaseDone(entryId, excludedNames?, storeId?) → { saved, historySaved, run } | null
  *   markMealCooked(entryId, mealKey, cooked) → { saved, historySaved, entry, meal } | null
@@ -327,60 +349,101 @@ function getEntryPlanDate(entry) {
 }
 
 /**
- * Etapa 1 del ciclo de vida: "Usar este plan hoy". Registra el plan en el
- * historial, desglosado POR COMIDA (no solo el agregado del día), para
- * que las Etapas 2 (comprar) y 3 (cocinar, por comida) puedan actuar
- * sobre él más tarde de forma independiente. NO llama a getStock/
- * setStock/adjustStock — no toca la despensa en absoluto, es pura
- * contabilidad de "esto es lo que voy a hacer hoy".
+ * True si una entrada de historial ya tiene algo REAL encima — una
+ * compra confirmada (`purchase.done`) o al menos una comida cocinada.
+ * Una entrada sin ninguna de las dos cosas es un BORRADOR puro: registrar
+ * el plan del día no cambió nada del mundo real todavía (ver cabecera del
+ * archivo, "Confirmar es un UPSERT sobre el borrador del día") — mientras
+ * lo sea, confirmar un plan nuevo para hoy puede sustituirla sin perder
+ * nada real. En cuanto hay una compra o una comida cocinada, la entrada
+ * representa un hecho real (dinero gastado o comida consumida) y
+ * savePlanForToday() ya no debe tocarla.
+ * @param {object} entry
+ * @returns {boolean}
+ */
+function hasRealPantryAction(entry) {
+  if (!entry) return false;
+  if (entry.purchase && entry.purchase.done) return true;
+  return (entry.meals || []).some(function (m) { return !!m.cooked; });
+}
+
+/**
+ * Etapa 1 del ciclo de vida: "Confirmar plan de hoy" (antes "Usar este
+ * plan hoy"). Registra el plan en el historial, desglosado POR COMIDA (no
+ * solo el agregado del día), para que las Etapas 2 (comprar) y 3
+ * (cocinar, por comida) puedan actuar sobre él más tarde de forma
+ * independiente. NO llama a getStock/setStock/adjustStock — no toca la
+ * despensa en absoluto, es pura contabilidad de "esto es lo que voy a
+ * hacer hoy".
  *
- * `planDate` (día de calendario LOCAL) es un campo NUEVO, separado de
+ * `planDate` (día de calendario LOCAL) es un campo separado de
  * `createdAt` (marca de tiempo de auditoría) — igual que `migrated_at` no
  * es la guarda real de idempotencia en migration.js, `createdAt` no es el
- * campo que decide "a qué día pertenece este plan". Guardar dos planes el
- * mismo día está permitido a propósito (decisión explícita del usuario,
- * no un descuido): esta función NUNCA reemplaza ni fusiona una entrada
- * existente, siempre crea una nueva — la UI es responsable de mostrar
- * varias entradas del mismo planDate de forma distinguible (ver
- * getEntryPlanDate() y el uso de createdAt para desambiguar por hora en
- * render-pantry.js).
+ * campo que decide "a qué día pertenece este plan".
+ *
+ * UPSERT (2026-08-19, ver cabecera del archivo): si ya existe una entrada
+ * de HOY que sigue siendo un borrador puro (`!hasRealPantryAction()`),
+ * esta función ACTUALIZA esa misma entrada (mismo `id`, `meals`/
+ * `createdAt`/`store` sustituidos) en vez de crear una nueva — así,
+ * regenerar/editar el plan y volver a confirmar cuantas veces haga falta
+ * ANTES de comprar/cocinar nunca acumula entradas "comprables" por
+ * separado. Solo crea una entrada nueva cuando no hay ningún borrador de
+ * hoy todavía, o cuando el único que hay ya tiene algo real encima (esa
+ * SÍ es una decisión del usuario de empezar un plan distinto sin haber
+ * terminado el anterior, no un reintento del mismo).
  *
  * @param {object[]} meals - result.meals de generateDietPlan(), tal cual
  * @param {string} [storeId]
- * @returns {{ entry:object, historySaved:boolean }}
+ * @returns {{ entry:object, historySaved:boolean, replaced:boolean }}
  */
 function savePlanForToday(meals, storeId) {
   var now = new Date();
   var nowISO = now.toISOString();
+  var todayKey = formatLocalDateKey(now);
+
+  var newMeals = (meals || []).map(function (meal) {
+    return {
+      key: meal.key,
+      label: meal.label,
+      // time: "HH:MM" si el plan se generó con horario (js/core/
+      // meal-schedule.js) — null en planes sin horario calculado. Puro
+      // dato de contabilidad aquí: nadie en pantry.js lee ni calcula con
+      // este campo, solo se conserva para que el historial pueda
+      // mostrarlo (ver render-pantry.js).
+      time: typeof meal.time === "string" ? meal.time : null,
+      items: (meal.items || []).map(function (item) {
+        return { name: item.name, requiredGrams: item.grams };
+      }),
+      cooked: false,
+      cookedAt: null,
+      consumed: null
+    };
+  });
+
+  var history = getPantryHistory();
+  var draft = history.find(function (e) {
+    return getEntryPlanDate(e) === todayKey && !hasRealPantryAction(e);
+  });
+
+  if (draft) {
+    draft.createdAt = nowISO;
+    draft.store = storeId || null;
+    draft.meals = newMeals;
+    var historySavedReplace = savePantryHistory(history);
+    return { entry: draft, historySaved: historySavedReplace, replaced: true };
+  }
 
   var entry = {
     id: generateHistoryId(),
     createdAt: nowISO,
-    planDate: formatLocalDateKey(now),
+    planDate: todayKey,
     store: storeId || null,
-    meals: (meals || []).map(function (meal) {
-      return {
-        key: meal.key,
-        label: meal.label,
-        // time: "HH:MM" si el plan se generó con horario (js/core/
-        // meal-schedule.js, después de esta sesión) — null en planes sin
-        // horario calculado. Puro dato de contabilidad aquí: nadie en
-        // pantry.js lee ni calcula con este campo, solo se conserva para
-        // que el historial pueda mostrarlo (ver render-pantry.js).
-        time: typeof meal.time === "string" ? meal.time : null,
-        items: (meal.items || []).map(function (item) {
-          return { name: item.name, requiredGrams: item.grams };
-        }),
-        cooked: false,
-        cookedAt: null,
-        consumed: null
-      };
-    }),
+    meals: newMeals,
     purchase: { done: false, runs: [] }
   };
 
   var historySaved = appendPantryHistory(entry);
-  return { entry: entry, historySaved: historySaved };
+  return { entry: entry, historySaved: historySaved, replaced: false };
 }
 
 // ── Agregación auxiliar (reutilizada por Etapa 2 y por su UI) ────────────

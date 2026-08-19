@@ -623,13 +623,20 @@ function handleEntryClick(event) {
 // ── Aviso tras guardar un plan (Etapa 1) ──────────────────────────────────
 
 /**
- * Pinta el aviso inmediatamente después de "Usar este plan hoy" — en este
- * punto todavía no se ha comprado ni cocinado nada, así que solo indica
- * dónde continuar (panel de despensa, ya abierto).
+ * Pinta el aviso inmediatamente después de "Confirmar plan de hoy" — en
+ * este punto todavía no se ha comprado ni cocinado nada, así que solo
+ * indica dónde continuar. Distingue explícitamente confirmar por primera
+ * vez de volver a confirmar (tras regenerar/editar) sobre el MISMO
+ * borrador del día (`replaced`, ver savePlanForToday/UPSERT en
+ * pantry.js) — mensaje distinto a propósito, para que quede claro que no
+ * se creó nada nuevo ni se compró nada, tranquilizando exactamente la
+ * duda que motivó este cambio ("¿esto añade algo a mi despensa?").
  * @param {object} entry - entry de historial devuelta por savePlanForToday
  * @param {boolean} historySaved - si el guardado en localStorage tuvo éxito
+ * @param {boolean} [replaced] - true si se actualizó un borrador ya
+ *   existente de hoy en vez de crear uno nuevo
  */
-function renderPlanSavedNotice(entry, historySaved) {
+function renderPlanSavedNotice(entry, historySaved, replaced) {
   if (!planSavedNoticeEl) return;
 
   if (!entry) {
@@ -641,9 +648,11 @@ function renderPlanSavedNotice(entry, historySaved) {
   var warning = historySaved ? "" :
     '<p class="confirm-receipt__warning">No se ha podido guardar en este navegador (almacenamiento lleno o deshabilitado) &mdash; los cambios no persistir&aacute;n al recargar.</p>';
 
+  var title = replaced ? "Plan actualizado" : "Plan confirmado";
+  var body = replaced
+    ? '<p>Sigue siendo el mismo plan de hoy en <strong>Tu plan</strong> &mdash; no se ha comprado ni cocinado nada todav&iacute;a, ni se ha a&ntilde;adido nada a tu despensa.</p>'
+    : '<p>Cuando compres, toca <strong>Ya compr&eacute; todo esto</strong> ah&iacute; abajo, en <strong>Tu plan</strong> &mdash; as&iacute; no te lo volver&aacute; a pedir la pr&oacute;xima vez.</p>';
+
   planSavedNoticeEl.hidden = false;
-  planSavedNoticeEl.innerHTML =
-    '<h4>Plan guardado</h4>' +
-    warning +
-    '<p>Cuando compres, toca <strong>Ya compr&eacute; todo esto</strong> ah&iacute; abajo, en <strong>Tu plan</strong> &mdash; as&iacute; no te lo volver&aacute; a pedir la pr&oacute;xima vez.</p>';
+  planSavedNoticeEl.innerHTML = '<h4>' + title + '</h4>' + warning + body;
 }

@@ -97,10 +97,14 @@ The app remembers leftover ingredients across sessions and discounts them
 from future shopping lists. 3 independent, optional stages — buying and
 cooking are separate real-world events, not one atomic action (a v1 design
 that combined them produced wrong data in a real "bought groceries, never
-cooked" scenario): **(1)** "Usar este plan hoy" saves the displayed plan,
-no stock change; **(2)** "Marcar compra como hecha" (per saved plan, in the
-despensa history panel) adds purchased stock; **(3)** "Marcar como
-cocinado" (per meal) subtracts consumed stock, with exact undo. Deliberately
+cooked" scenario): **(1)** "Confirmar plan de hoy" (renamed 2026-08-19,
+was "Usar este plan hoy") saves/confirms the displayed plan, no stock
+change — since 2026-08-19 it's an UPSERT onto today's still-untouched
+draft, not always a new entry, see below; **(2)** "Marcar compra como
+hecha" (per saved plan, in the "Tu plan" section since 2026-08-14c —
+no longer inside the despensa accordion) adds purchased stock;
+**(3)** "Marcar como cocinado" (per meal) subtracts consumed stock,
+with exact undo. Deliberately
 NOT connected to `dish-selector.js` (budget selection stays pantry-unaware)
 or no-cook mode. Full design record and rejected alternatives in
 `STATE.md`.
@@ -155,6 +159,36 @@ verification was confirmed via a `git stash` A/B test to be pre-existing
 (same known mobile-overflow issue tracked since 2026-08-08), not a
 regression. Full detail in `STATE.md`, "Reubicación de 'Tu plan' fuera de
 la despensa — 2026-08-14c".
+
+**2026-08-19 — confirming a plan is now an upsert onto today's draft,
+fixing a real inflation bug**: the user found in real use that clicking
+"Confirmar plan de hoy" more than once (e.g. while regenerating to
+decide what to eat) created a separate, independently-purchasable
+history entry each time — `savePlanForToday()` itself never touched
+stock, but each duplicate entry could be individually marked "bought,"
+inflating stock several times for what was the same real purchase.
+Reproduced live before touching anything (3 clicks → 3 entries → buying
+through all 3 → stock clearly multiplied, e.g. "Leche semidesnatada" at
+1000g). Fix: `savePlanForToday()` now looks for an existing entry for
+today that's still a pure draft — `hasRealPantryAction(entry)` (new)
+is false, meaning neither bought nor any meal cooked — and updates it
+in place instead of creating a copy; the moment an entry has anything
+real on it, it's protected, and confirming a different plan that day
+creates a genuine new entry instead of silently overwriting real
+spending/consumption. Practical effect: regenerating/editing the plan
+and reconfirming as many times as needed, before buying or cooking
+anything, is now safe by construction. Button relabeled "Usar este plan
+hoy" → "Confirmar plan de hoy" (`id` unchanged); the post-confirm notice
+now distinguishes "Plan confirmado" (new entry) from "Plan actualizado"
+(same draft, explicitly reassuring that nothing was bought/added to the
+pantry). 8 new tests in `tests/pantry.test.js`, including the exact
+reported regression (confirm 3×, buy once, exactly one package bought).
+Verified live with real clicks on the real button (not just function
+calls). `markPurchaseDone`/`markMealCooked`/`js/core/budget.js`/
+`js/core/pricing.js`/`js/engine/*` unchanged — the bug was entirely in
+how many entries Stage 1 produced, never in Stages 2/3. Full detail in
+`STATE.md`, "Confirmar plan: UPSERT sobre el borrador del día —
+2026-08-19".
 
 ## Meal schedule (2026-08-07)
 
@@ -314,6 +348,70 @@ green; despensa/no-cook/mobile re-verified unaffected. Committed
 project. Full write-up in `STATE.md`, "Aprovisionamiento real de
 Supabase + Google OAuth — 2026-08-14a".
 
+**2026-08-19b — dish-selection diversity fix, requested after a 1000-run
+stress test**: the user asked for a mass stress test of the generator
+(fixed profile, 1000 real `generateDietPlan()` calls) before changing
+anything. Finding: breakfast and lunch — the two meal slots processed
+first, with `usedState`/`committedGrams` still empty, so their score is
+nearly deterministic run-to-run — only ever produced **12 distinct
+dishes** across 1000 runs (exactly `TOP_CANDIDATES_POOL`, the hard cap
+on the weighted lottery's candidate pool), out of 64 and 110 available
+respectively; 89%/72% of lunch/dinner's catalog never appeared at all,
+almost entirely meat/fish, because the "tight" budget scoring mode
+ranked candidates by purchase-protein-per-euro alone (×100 weight, no
+macro-fit term at all) and legumes/tofu structurally beat meat/fish on
+that metric. Fix, requested explicitly after seeing the report:
+`TOP_CANDIDATES_POOL` removed entirely (the softmax lottery already
+gives near-zero weight to far-below-max candidates, so the manual
+cutoff added nothing but hard exclusion); `scoreDishForSelection`
+rebalanced so macro fit counts in both budget modes, with purchase
+efficiency reweighted down from being nearly the sole variable to the
+heaviest-but-not-exclusionary one. Hard constraints untouched (budget
+cap, relaxation ladder, macro tolerances). Re-running the same
+1000-run stress test after the fix: breakfast coverage 18.8%→98.4%,
+lunch 10.9%→80.0%, dinner 27.7%→81.2%, total distinct dishes used
+27.8%→87.1% of the catalog; meat/fish dishes confirmed live in the
+browser too. Honest trade-off, not hidden: the generator needs
+relaxation (time/taste/25%-cap) more often now — "perfect" (tier 0)
+dropped from 52.3% to 31.7% of runs — reported transparently via
+`report.violations`, never silently. 2 golden-master tests recaptured
+on purpose (same seed, different dish now wins the lottery); the 7
+contract/invariant tests were untouched and still pass. Full write-up,
+before/after table, and the published stress-test report in `STATE.md`,
+"Diversidad del generador: eliminación de TOP_CANDIDATES_POOL y
+reequilibrio de protein/€ — 2026-08-19b".
+
+**2026-08-19c/d — budget headroom for diversity, two attempts, one that
+worked**: follow-up request after 19b — give the generator more freedom
+to avoid budget deadlocks without losing the diversity just gained.
+First attempt (19c, the user's original idea): steer generation toward
+an internal target ~12% below the real budget (`data.targetBudget`),
+leaving the difference as headroom — the real ceiling and all
+user-facing savings numbers stay untouched. **Measured with the same
+1000-run stress test: essentially inert.** Root cause found by reading
+the code: budget-driven tier escalation is decided in `dish-selector.js`
+purely against the unreserved hard cap, never against the reduced
+target, so the reserve couldn't touch the actual failure mode; where the
+target *did* apply (`allocationScore`), it was outweighed by `macroFit`
+roughly 33:1. Second attempt (19d, proposed after reporting the above,
+approved by the user): sequence the hard cap itself — early meals
+(breakfast, lunch) now get a `mealCap` pulled toward their proportional
+share of the day's slack (by calorie ratio) instead of being free to
+spend the whole day's headroom just by going first, guaranteeing more
+room for later meals. Tried at full strength first and rejected after
+measuring: cut calorie violations 53% but cost ~20pp of dish coverage in
+breakfast/lunch and raised 25%-cap violations 25% — a real diversity
+regression. Blended to half-strength (`SEQUENCING_BLEND_RATIO = 0.5`)
+and confirmed clean: `status:"perfect"` 240→251, tier-0 (no relaxation)
+321→339, `cap25`/`calories`/`time` violations all down, overall dish
+coverage 86.2%→86.8% (breakfast unchanged, lunch -2.7pp only). Verified
+live that `report.budgetDelta` still tracks the real `data.budget`
+exactly, never any internal number. Golden-master recaptured 4 times
+(one per real algorithm change); the 7 contract/invariant tests
+untouched throughout. Full write-up with all three comparison tables in
+`STATE.md`, "Reserva de presupuesto y reparto secuencial —
+2026-08-19c/d".
+
 ## Product direction
 
 Evolve into a real personal nutrition assistant: nutrition + shopping +
@@ -345,8 +443,10 @@ Fase 1.
 ## Current status
 
 See `STATE.md` for the authoritative, dated engineering log and `ROADMAP.md`
-for the phased migration plan and architecture decision record. Last
-updated here 2026-08-14b (real per-ingredient nutrition for 50/81 roles,
+for the phased migration plan and architecture decision record. This
+section last revised 2026-08-14b; see the dated entries above (2026-08-19,
+2026-08-19b, 2026-08-19c/d) for what's happened since — real per-ingredient
+nutrition for 50/81 roles,
 dish selection made purchase-cost-aware, the Atwater-consistency fix for
 unresolved-ingredient kcal, a complete multi-user accounts layer LIVE
 against a real Supabase project and verified end-to-end, and a full UX

@@ -2,19 +2,58 @@
 
 ## Current status
 
-**Stage:** working prototype, updated 2026-08-14c — after a full
-architecture/UX audit of despensa requested by the user, active plans
-(buy/cook actions) were moved OUT of the despensa accordion into a new
-always-expanded "Tu plan" section right below the shopping list; despensa
-itself is back to being just stock + completed-plan history; a new
-`planDate` field (distinct from `createdAt`) lets multiple same-day plans
-be tracked and disambiguated by creation time instead of being
-ambiguous — see `STATE.md`, "Reubicación de 'Tu plan' fuera de la
-despensa — 2026-08-14c". This builds directly on 2026-08-14b (3 clear
-blocks instead of one flat list mixing stock/history/sub-stages, zero
-changes to the underlying logic — see `STATE.md`, "Rediseño de UX de la
-Despensa — 2026-08-14b"). **Not yet committed** as of this update — see
-`STATE.md` session handoff. Before that, the site already has a
+**Stage:** working prototype, updated 2026-08-19c/d — after the 2026-08-19b
+diversity fix below, the user asked for the generator to hit budget
+deadlocks less often WITHOUT losing that new diversity. Two attempts, both
+measured against the same 1000-run stress test: (1) a ~12% internal
+budget reserve (`data.targetBudget`) — turned out essentially inert,
+because tier escalation is decided against the real hard cap, never the
+reduced target; (2) sequencing the hard cap itself so early meals
+(breakfast, lunch) get a share proportional to their calorie weight
+instead of being free to spend the whole day's slack just by going
+first — tried at full strength and rejected (cut calorie violations 53%
+but cost ~20pp of dish coverage in breakfast/lunch, a real diversity
+regression), then blended to half-strength and confirmed as a clean win:
+`status:"perfect"` 240→251, tier-0 (no relaxation) 321→339, `cap25`/
+`calories`/`time` violations all down, overall dish coverage 86.2%→86.8%
+(breakfast unchanged) — see `STATE.md`, "Reserva de presupuesto y
+reparto secuencial — 2026-08-19c/d". 2026-08-19a/b/c/d are all **not yet
+committed** as of this update.
+
+Previously, updated 2026-08-19b — a mass stress test
+(1000 real generations, one fixed profile) requested by the user found
+that dish SELECTION had a real diversity problem: breakfast/lunch only
+ever produced 12 distinct dishes each (exactly the hard-coded
+`TOP_CANDIDATES_POOL` cap on the selection lottery), and meat/fish were
+almost entirely excluded from lunch/dinner (89%/72% of the catalog
+never chosen) because the "tight" budget scoring mode ranked purely by
+purchase-protein-per-euro, ignoring macro fit entirely. Fixed on the
+user's explicit request: `TOP_CANDIDATES_POOL` removed, `dish-selector.js`
+scoring rebalanced so macro fit always counts — re-running the same
+1000-run test confirms real improvement (breakfast coverage
+18.8%→98.4%, lunch 10.9%→80.0%, catalog-wide usage 27.8%→87.1%) at the
+honestly-disclosed cost of needing time/taste/25%-cap relaxation more
+often. All other generator constraints (hard budget cap, relaxation
+ladder, macro tolerances) untouched; 2 golden-master tests recaptured
+on purpose, 7 contract tests unchanged and green — see `STATE.md`,
+"Diversidad del generador: eliminación de TOP_CANDIDATES_POOL y
+reequilibrio de protein/€ — 2026-08-19b". This sits on top of
+2026-08-19a (a real bug the user hit in use — confirming the plan more
+than once created independently "purchasable" duplicate entries,
+inflating pantry stock if bought through more than one — fixed via
+upsert-onto-draft in `savePlanForToday()`, see `STATE.md`, "Confirmar
+plan: UPSERT sobre el borrador del día — 2026-08-19"), 2026-08-14c
+(full architecture/UX audit of despensa: active plans moved OUT of the
+despensa accordion into a new always-expanded "Tu plan" section right
+below the shopping list; despensa itself is just stock + completed-plan
+history; `planDate` field distinct from `createdAt` — see `STATE.md`,
+"Reubicación de 'Tu plan' fuera de la despensa — 2026-08-14c") and
+2026-08-14b (3 clear blocks instead of one flat list mixing
+stock/history/sub-stages, zero changes to the underlying logic — see
+`STATE.md`, "Rediseño de UX de la Despensa — 2026-08-14b"). 2026-08-14b/c
+are committed (`35f35a8`); **2026-08-19a/2026-08-19b are not yet
+committed** as of this update — see `STATE.md` session handoff. Before
+that, the site already has a
 **complete, LIVE accounts layer** (Supabase Auth email+password/Google
 OAuth + Postgres + Row Level Security, guest mode preserved as the
 default, local-first sync, idempotent guest→account migration with
@@ -137,8 +176,8 @@ their ingredients' nutrition is computed and displayed.
   passing. Verified live in browser, including an isolated proof that
   stocking a pantry with exactly a required amount drops that ingredient's
   purchase cost to €0 and the day total by the exact same amount. Full
-  design record in `STATE.md`. **Not committed/pushed as of this update**
-  — see `STATE.md` session handoff.
+  design record in `STATE.md`. Committed as part of `aa4f20b` (bundled
+  with the rest of the 2026-08-13 session) and pushed.
 - **Real per-ingredient nutrition — Fase 1 partially done (2026-08-13d)**:
   a user-reported bug (an ingredient showing macros that biologically
   belonged to a different ingredient in the same dish — mass-allocation
@@ -160,8 +199,8 @@ their ingredients' nutrition is computed and displayed.
   golden-masters recaptured on purpose (data model changed
   fundamentally), 177 tests total, 7 contract/invariant tests unchanged
   and still passing. Verified live in browser against the exact reported
-  case. Full design record in `STATE.md`. **Not committed/pushed as of
-  this update** — see `STATE.md` session handoff.
+  case. Full design record in `STATE.md`. Committed as part of `aa4f20b`
+  (bundled with the rest of the 2026-08-13 session) and pushed.
 - **Real per-ingredient nutrition — auditoría del recorte a cero +
   consistencia Atwater (2026-08-13e)**: antes de tocar nada más, se
   investigó a fondo el compromiso conocido de la fase anterior (172/334
@@ -190,8 +229,8 @@ their ingredients' nutrition is computed and displayed.
   mobile) contra el caso exacto de "Mermelada light"; despensa, no-cook
   y purchase cost sin cambios. Análisis completo en `STATE.md`, sección
   "Auditoría del recorte a cero y corrección de consistencia Atwater —
-  2026-08-13e". **Not committed/pushed as of this update** — see
-  `STATE.md` session handoff.
+  2026-08-13e". Committed as part of `aa4f20b` (bundled with the rest of
+  the 2026-08-13 session) and pushed.
 - **Multi-user accounts — Supabase Auth + Postgres + RLS (2026-08-13f)**:
   the user asked to turn the site from a purely local, single-user app
   into a real multi-user one — email+password and Google sign-in, a

@@ -404,7 +404,13 @@
       <ul class="shopping-list" id="shoppingListContainer"></ul>
 
       <div class="shopping-panel__actions" id="shoppingActions">
-        <button type="button" class="btn-primary" id="usePlanTodayBtn">Usar este plan hoy</button>
+        <!-- Texto "Confirmar plan de hoy" (2026-08-19, antes "Usar este
+             plan hoy") -- refleja que este botón es idempotente sobre el
+             borrador del día (ver savePlanForToday en pantry.js): pulsarlo
+             varias veces tras regenerar/editar el plan actualiza el mismo
+             borrador, nunca crea copias que se puedan "comprar" por
+             separado. -->
+        <button type="button" class="btn-primary" id="usePlanTodayBtn">Confirmar plan de hoy</button>
         <div class="confirm-receipt" id="planSavedNotice" hidden></div>
       </div>
     </section>

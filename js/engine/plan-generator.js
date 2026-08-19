@@ -97,6 +97,85 @@
  * principio, y la verificación sigue existiendo como red de seguridad —
  * nunca "confiar y ya está" en que la cascada acertó.
  *
+ * ── Reserva de presupuesto para diversidad (2026-08-19c) ─────────────────
+ * `data.budget` (lo que el usuario eligió, ej. 17€) sigue siendo — y debe
+ * seguir siendo siempre — el ÚNICO techo real: `mealCap`/`remainingBudget`
+ * (el límite duro que nunca se cruza), `enforcePurchaseBudgetCap`,
+ * `verifyPlanFeasibility` (violación "budget"), `scorePlan`
+ * (`budgetOverrun`) y `budgetDelta` del informe se calculan TODOS contra
+ * `data.budget` sin excepción — un plan de 16,50€ con `data.budget=17`
+ * sigue siendo "ahorraste 0,50€ de los 17€ disponibles", nunca se compara
+ * contra ningún número reducido.
+ *
+ * Lo que SÍ cambia: `data.targetBudget` (nuevo, derivado — ver
+ * `sanitizeInputs`) es un objetivo interno MENOR que `data.budget`
+ * (`BUDGET_RESERVE_RATIO`, hoy 12% — 17€ → objetivo ≈14,96€), usado
+ * ÚNICAMENTE para calcular `targetSpend` (la cuota orientativa por toma
+ * que ve `pickDish`/`isBudgetTight`/`allocationScore` en dish-selector.js)
+ * en vez de `data.budget * ratio`. Motivo: con `targetSpend` anclado al
+ * presupuesto COMPLETO, `isBudgetTight()` entraba en modo "tight"
+ * (decide casi solo por proteína/€, ver dish-selector.js) para cualquier
+ * toma cuyo `mealCap` no tuviera un colchón generoso por encima de esa
+ * cuota completa — en la práctica, la mayoría de las tomas, incluso con
+ * presupuestos no especialmente ajustados (medido con el stress-test de
+ * 1000 generaciones de la sesión 2026-08-19b). Al apuntar la cuota
+ * orientativa un poco más abajo, sobra margen real entre `targetSpend` y
+ * el techo duro `mealCap` — modo "allocation" (más equilibrado entre
+ * macros/diversidad/eficiencia) se activa con más frecuencia, y ese
+ * margen queda disponible para que la cascada elija un plato mejor
+ * (mejor macroFit, más variado) cuando de verdad hace falta, sin que eso
+ * cuente nunca como "sobre lo previsto" contra el presupuesto real del
+ * usuario — `allocationScore()` (dish-selector.js) ya premia igual de
+ * bien gastar hasta `maxCost` que gastar justo `targetSpend`, así que
+ * usar la reserva nunca penaliza el score de un candidato.
+ *
+ * MEDIDO (stress-test de 1000 generaciones, sesión 2026-08-19c): la reserva
+ * de arriba por sí sola NO mueve las cifras de forma medible. Dos motivos
+ * estructurales: (1) la factibilidad -- si `attemptPlanAtTier` escala de
+ * tier por "no cabe en el presupuesto" -- se decide en pickDish() SOLO
+ * contra `maxCost` (=mealCap, el techo duro sin reservar), `targetSpend`
+ * nunca entra en ese filtro; (2) dentro de `scoreDishForSelection`,
+ * `macroFit*100` domina sobre `allocation*30` por ~33x, así que mover el
+ * "ideal" de `allocationScore` un 12% apenas cambia el ranking. La reserva
+ * de `targetBudget` se deja tal cual (es inofensiva y sigue documentada
+ * arriba) pero el mecanismo que de verdad reduce tier escalation por
+ * presupuesto es el reparto secuencial de abajo, que sí actúa sobre
+ * `mealCap` (el techo de FACTIBILIDAD).
+ *
+ * ── Reparto secuencial del presupuesto (2026-08-19d) ──────────────────────
+ * Motivo: `mealCap` (el techo duro que ve pickDish) se calculaba como
+ * `remainingBudget - reserveForRest`, donde `reserveForRest` solo reserva
+ * el MÍNIMO ABSOLUTO de las tomas siguientes. Eso deja a la primera toma
+ * del día (desayuno) gastar hasta el 100% del margen del día por encima de
+ * los mínimos, sin importar su peso calórico real (24%) -- y si lo agota,
+ * las tomas siguientes quedan ancladas cerca de su propio mínimo absoluto,
+ * lo que dispara tier escalation para ELLAS por simple orden de llegada,
+ * no porque el día en conjunto sea ajustado.
+ *
+ * Ahora cada toma recibe además un `fairShareCap`: su propio mínimo
+ * absoluto + una porción del margen restante (por encima de los mínimos de
+ * TODO lo que queda, esta toma incluida) proporcional a su `ratio`
+ * calórico -- la misma proporcionalidad que ya usa `targetSpend`.
+ *
+ * MEDIDO (stress-test de 1000 generaciones, sesión 2026-08-19d): aplicar
+ * `fairShareCap` a plena fuerza (`mealCap = Math.min(hardCap,
+ * fairShareCap)`) SÍ reduce violaciones de calorías (-53%, 36→17) pero
+ * estrecha de forma notable la cobertura de platos en las tomas que van
+ * primero -- desayuno 98.4%→79.7%, comida 84.5%→64.5% -- y sube un 25% las
+ * violaciones de cap25 (253→317). Contradice el objetivo de "conservar la
+ * diversidad actual". Por eso `mealCap` real usa `blendedCap`, una
+ * combinación convexa entre `hardCap` (0% de recorte) y `fairShareCap`
+ * (100%) ponderada por `SEQUENCING_BLEND_RATIO` (ver esa constante más
+ * abajo para el valor actual y el razonamiento) -- da solo PARTE de la
+ * protección de tier escalation, a cambio de perder mucha menos cobertura
+ * en las tomas tempranas. `mealCap` final es siempre
+ * `Math.min(hardCap, blendedCap)`: nunca puede ser MÁS permisivo que
+ * antes de 2026-08-19d (hardCap no cambia), y siempre
+ * `>= minCostByCategory` de esa toma cuando el día es factible en conjunto
+ * (blendedCap es una combinación convexa de dos valores que ya cumplen
+ * eso) -- así que la garantía de factibilidad por inducción documentada
+ * arriba (`reserveForRest`) queda intacta sin cambios.
+ *
  * Expone (global):
  *   generateDietPlan(profile, data) → { meals, total, report }
  *     total.cost         = usageCost del día (informativo)
@@ -104,6 +183,8 @@
  *                           el presupuesto
  *     report.status es siempre uno de: 'perfect' | 'adjusted' | 'minimal'
  *     (o 'unavailable' únicamente ante un error técnico inesperado)
+ *     report.targetBudget = objetivo interno con reserva (informativo/
+ *       depuración — nunca es lo que se compara contra purchaseCost)
  * ─────────────────────────────────────────────────────────────────────────
  */
 
@@ -148,6 +229,38 @@ var HEADLINES = {
   minimal:  "No fue posible respetar tus preferencias con los datos actuales; este es el mejor plan disponible."
 };
 
+/**
+ * Fracción de `data.budget` que se reserva como margen de diversidad —
+ * ver "Reserva de presupuesto para diversidad" en la cabecera del
+ * archivo. Solo afecta a `data.targetBudget` (la cuota ORIENTATIVA por
+ * toma); el techo duro real (`data.budget`) nunca se toca. 0.12 (12%) es
+ * un primer ajuste razonado: sobre los presupuestos calibrados
+ * (`js/data/budget-presets.js` — Ajustado 15€/Equilibrado 20€/Amplio
+ * 28€) deja una reserva de ~1,80€/2,40€/3,36€, en la misma magnitud que
+ * el ejemplo que motivó este cambio (17€ → objetivo ≈15€, reserva ≈2€).
+ * Si una futura sesión lo recalibra, repetir el stress-test de 1000
+ * generaciones (ver STATE.md, sesión 2026-08-19b) antes/después para
+ * confirmar el efecto real, no asumirlo.
+ */
+var BUDGET_RESERVE_RATIO = 0.12;
+
+/**
+ * Cuánto se aplica el recorte proporcional (`fairShareCap`) del "Reparto
+ * secuencial del presupuesto" (ver cabecera del archivo) sobre `mealCap`.
+ * 0 = sin efecto (mealCap = hardCap, comportamiento de antes de
+ * 2026-08-19d). 1 = recorte proporcional COMPLETO (lo que se probó primero
+ * en 2026-08-19d: redujo violaciones de calorías un 53% pero le costó
+ * ~20pp de cobertura de platos en desayuno y comida, y SUBIÓ un 25% las
+ * violaciones de cap25 -- ver STATE.md, sesión 2026-08-19d). 0.5 es un
+ * punto medio deliberado tras ese resultado: aplica solo la mitad del
+ * recorte proporcional para conservar parte de la protección de tier
+ * escalation sin sacrificar tanta cobertura en las tomas tempranas. Si se
+ * recalibra, repetir el stress-test de 1000 generaciones (mismo perfil fijo
+ * que sesiones anteriores) antes/después -- este valor NO se ha ajustado
+ * por intuición, cada cambio se mide.
+ */
+var SEQUENCING_BLEND_RATIO = 0.5;
+
 // ── Saneamiento de entrada (restricción absoluta) ─────────────────────────
 
 function isFiniteNum(n) {
@@ -178,8 +291,15 @@ function sanitizeInputs(profile, data) {
     ? data.store
     : DEFAULT_STORE_ID;
 
+  var safeBudget = isFiniteNum(data && data.budget) && data.budget > 0 ? data.budget : 15;
+
   var safeOverrides = {
-    budget:   isFiniteNum(data && data.budget)   && data.budget   > 0 ? data.budget   : 15,
+    budget:   safeBudget,
+    // Objetivo interno CON reserva (ver "Reserva de presupuesto para
+    // diversidad" en la cabecera del archivo) — SOLO para targetSpend en
+    // attemptPlanAtTier, nunca para el techo duro. safeBudget (arriba)
+    // sigue siendo `data.budget` sin tocar.
+    targetBudget: round2(Math.max(0, safeBudget * (1 - BUDGET_RESERVE_RATIO))),
     cookTime: isFiniteNum(data && data.cookTime) && data.cookTime > 0 ? data.cookTime : 30,
     taste:    safeTaste,
     store:    safeStore
@@ -333,8 +453,35 @@ function attemptPlanAtTier(profile, data, tier, pantryState) {
     var reserveForRest = MEAL_DEFS.slice(index + 1).reduce(function (sum, d) {
       return sum + minCostByCategory[d.category];
     }, 0);
-    var mealCap = Math.max(0, round2(remainingBudget - reserveForRest));
-    var targetSpend = round2(data.budget * def.ratio);
+    // mealCap (techo duro de ESTA toma) sigue anclado a remainingBudget,
+    // que a su vez arranca en data.budget SIN reserva -- nunca se reduce
+    // lo que de verdad se puede gastar. Solo targetSpend (cuota
+    // ORIENTATIVA, ver "Reserva de presupuesto para diversidad" en la
+    // cabecera) usa data.targetBudget -- deja margen real entre lo que
+    // pickDish() intenta alcanzar y lo que puede alcanzar como máximo.
+    var hardCap = Math.max(0, round2(remainingBudget - reserveForRest));
+
+    // ── Reparto por turnos (secuencial) -- ver "Reparto secuencial del
+    // presupuesto" en la cabecera del archivo. hardCap (arriba) sigue
+    // siendo el único techo de FACTIBILIDAD -- nunca se supera. fairShareCap
+    // reduce ADEMÁS ese techo para tomas tempranas, reservando una porción
+    // proporcional (por ratio calórico) del margen que sobra por encima de
+    // los mínimos absolutos de TODO lo que queda (esta toma incluida) para
+    // que no lo agote una toma anterior por simple orden de llegada.
+    var remainingMinCost = minCostByCategory[def.category] + reserveForRest;
+    var remainingSlack = Math.max(0, round2(remainingBudget - remainingMinCost));
+    var remainingRatioSum = MEAL_DEFS.slice(index).reduce(function (sum, d) { return sum + d.ratio; }, 0);
+    var fairShareCap = round2(minCostByCategory[def.category] + remainingSlack * (def.ratio / remainingRatioSum));
+    // blendedCap interpola entre hardCap (0% de recorte) y fairShareCap
+    // (100%, el recorte proporcional completo) -- ver
+    // SEQUENCING_BLEND_RATIO en la cabecera para el motivo del 50%. Es una
+    // combinación convexa de dos valores que ya son ambos >=
+    // minCostByCategory cuando el día es factible en conjunto, así que
+    // blendedCap hereda esa misma garantía sin comprobación extra.
+    var blendedCap = round2(hardCap - SEQUENCING_BLEND_RATIO * (hardCap - fairShareCap));
+    var mealCap = Math.max(0, Math.min(hardCap, blendedCap));
+
+    var targetSpend = round2(data.targetBudget * def.ratio);
 
     var pick = pickDish(def.category, data, usedState, tier, mealCap, target, store, targetSpend, committedGrams, pantryState);
 
@@ -649,7 +796,11 @@ function buildCompromiseReport(attempt, profile, data) {
       fat:     round1(attempt.total.fat     - profile.fats)
     },
     budgetDelta: round2(attempt.total.purchaseCost - data.budget),
-    budgetTrims: attempt.budgetTrims || 0
+    budgetTrims: attempt.budgetTrims || 0,
+    // Informativo/depuración únicamente (ver "Reserva de presupuesto para
+    // diversidad" en la cabecera) -- budgetDelta de arriba SIGUE
+    // comparando contra data.budget, nunca contra este valor.
+    targetBudget: data.targetBudget
   };
 }
 

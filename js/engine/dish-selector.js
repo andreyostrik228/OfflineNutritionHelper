@@ -388,21 +388,45 @@ function allocationScore(estCost, targetSpend, maxCost) {
 /**
  * Puntuación unificada para rankear candidatos DENTRO del techo maxCost.
  *
- * La eficiencia AUTORITATIVA es proteína / coste-de-compra-MARGINAL
+ * La eficiencia de compra es proteína / coste-de-compra-MARGINAL
  * (purchasePpeBucket) — cuánta proteína aporta este plato por cada € que
  * de verdad suma a la compra de hoy, dados los paquetes ya comprometidos y
  * la despensa. proteína/usageCost (usagePpeBucket, vía proteinPerEuro,
  * pricing.js) se conserva como desempate SECUNDARIO de peso menor — sigue
- * siendo información útil (eficiencia de uso del paquete comprado), pero
- * ya no decide qué plato "cabe" ni cuál gana.
+ * siendo información útil (eficiencia de uso del paquete comprado).
  *
- * Modo efficiency (presupuesto ajustado): eficiencia de compra manda,
- * eficiencia de uso y diversidad desempatan — comportamiento anterior,
- * ahora con el coste correcto.
+ * ── Por qué el modo "tight" ya NO decide solo por proteína/€ (2026-08-19) ──
+ * Hasta esta sesión, el modo `tight` puntuaba SOLO por
+ * `purchasePpeBucket*100` (+ un desempate casi irrelevante) — sin mirar
+ * `macroFit` en absoluto. Legumbres/tofu/tempeh dan sistemáticamente más
+ * proteína por € de compra marginal que carne/pescado (paquetes más
+ * compartibles entre tomas del mismo día, formatos que casan mejor con el
+ * gramaje real que pide un plato — ver auditoría de la sesión), así que
+ * ese ×100 en solitario no era un desempate: era casi la ÚNICA variable,
+ * y auditado con 1000 generaciones reales dejaba fuera de comida/cena el
+ * 89%/72% del catálogo de esas categorías, casi todo carne/pescado, sin
+ * importar cuántas veces se regenerara el plan ni lo bien que un plato de
+ * carne encajara en macros. Presupuesto ajustado debería significar
+ * "prioriza más lo barato de comprar", no "ignora si esto es lo que el
+ * usuario pidió comer" — por eso `macroFit` ahora SIEMPRE cuenta, en los
+ * dos modos, y `purchasePpeBucket` pasa de ser prácticamente la única
+ * variable a ser el criterio más pesado pero no excluyente dentro de
+ * `tight` (40 puntos de peso nominal, frente a los 20 de `macroFit` —
+ * sigue siendo la variable que más pesa cuando el presupuesto aprieta,
+ * que es la intención original del modo, pero ya no aplasta
+ * matemáticamente categorías enteras de platos). El modo `allocation`
+ * (presupuesto con margen) ya daba peso real a `macroFit`; ahí solo se
+ * sube ligeramente el peso de `purchasePpeBucket` (×1 → ×3) para que la
+ * eficiencia de compra sea un desempate algo más presente incluso con
+ * margen, sin acercarse a dominar sobre macros/asignación de cuota.
+ *
+ * Modo efficiency (presupuesto ajustado): eficiencia de compra pesa más
+ * que en el otro modo, pero el ajuste a los macros objetivo participa
+ * siempre — carne/pescado con buen macroFit puede competir de verdad.
  *
  * Modo allocation (margen disponible): macros + uso de cuota (medido en
- * coste de compra marginal) + diversidad; eficiencia de compra/uso solo
- * como desempate fino.
+ * coste de compra marginal) + diversidad siguen mandando; eficiencia de
+ * compra/uso como desempate, algo más presente que antes.
  *
  * @param {object} dish
  * @param {object} usedState
@@ -415,14 +439,14 @@ function scoreDishForSelection(dish, usedState, ctx) {
   var purchasePpe = (dish.protein * impact.scaleFactor) / Math.max(impact.marginalCost, 0.01);
   var purchasePpeBucket = Math.round(purchasePpe / 2) * 2;
   var usagePpeBucket = Math.round(proteinPerEuro(dish, ctx.storeId) / 2) * 2; // informativo/desempate, ver arriba
+  var macroFit = macroFitScore(dish, ctx.target, impact.scaleFactor);
 
   if (ctx.tight) {
-    return purchasePpeBucket * 100 + usagePpeBucket * 0.5 + div;
+    return macroFit * 20 + purchasePpeBucket * 40 + usagePpeBucket * 0.5 + div;
   }
 
-  var macroFit   = macroFitScore(dish, ctx.target, impact.scaleFactor);
   var allocation = allocationScore(impact.marginalCost, ctx.targetSpend, ctx.maxCost);
-  return macroFit * 100 + allocation * 30 + div * 10 + purchasePpeBucket + usagePpeBucket * 0.5;
+  return macroFit * 100 + allocation * 30 + div * 10 + purchasePpeBucket * 3 + usagePpeBucket * 0.5;
 }
 
 /**
@@ -442,88 +466,101 @@ function rankDishesByBudgetMode(dishes, usedState, ctx) {
 }
 
 /**
- * Cuántos de los mejores candidatos entran en la lotería de elección final
- * (tanto en pickWeightedByScore como en pickWeightedFromTop). Con 46
- * candidatos "affordable" típicos para comida/cena, un pool de 12 sigue
- * cubriendo solo platos dentro de un ~4-5% del score máximo (ver prueba
- * manual) — nada de fondo de la lista, solo variantes igual de válidas.
- */
-var TOP_CANDIDATES_POOL = 12;
-
-/**
  * Cuánto "reparte" la lotería entre candidatos de score parecido, como
  * fracción del score máximo del grupo. Con macroFit/ppeBucket pesando ×100,
  * varios platos a solo un 1-5% de diferencia relativa son, en la práctica,
  * igual de buenos — deberían tener probabilidades parecidas de salir, en
  * vez de que el primero gane siempre solo por estar en el puesto #1.
  * Subir este valor reparte más (más variedad, menos fiel al ranking);
- * bajarlo concentra más en el primer puesto. 0.15 daba ~30% de
- * repetición del top-1 con 12-13 platos distintos apareciendo en 200
- * generaciones de prueba (antes: ~90-100% del tiempo el mismo plato).
+ * bajarlo concentra más en el primer puesto.
+ *
+ * ── Sin tope de candidatos (2026-08-19) ──────────────────────────────────
+ * Hasta esta sesión, `pickWeightedByScore`/`pickWeightedFromTop` recortaban
+ * `ranked` a los 12 mejores (`TOP_CANDIDATES_POOL`) antes de sortear —
+ * cualquier candidato fuera del top-12 tenía 0% de probabilidad SIEMPRE,
+ * sin importar cuántas veces se regenerara el plan. Auditoría con 1000
+ * generaciones reales (perfil fijo, ver conversación de la sesión) lo
+ * confirmó de forma medible: desayuno y comida — las dos categorías cuyo
+ * score es casi determinista porque se resuelven con `usedState`/
+ * `committedGrams` todavía vacíos — solo mostraron 12 platos distintos
+ * cada una en 1000 intentos, exactamente el tope, de un catálogo de 64 y
+ * 110 respectivamente. El recorte a 12 no aportaba nada que la propia
+ * lotería softmax no hiciera ya sola (un candidato muy por debajo del
+ * máximo recibe peso ~0 de todas formas, ver la fórmula de `temperature`
+ * más abajo) — solo excluía candidatos con una probabilidad YA pequeña
+ * pero real, convirtiéndola en cero. Ahora la lotería considera TODO
+ * `ranked` — el peso exponencial (softmax) sigue haciendo que solo los
+ * candidatos cerca del máximo tengan una probabilidad práctica de salir,
+ * pero ninguno queda estructuralmente a cero solo por su posición.
  */
 var SELECTION_TEMPERATURE_RATIO = 0.15;
 
 /**
- * Elige un plato entre los mejores de `ranked` (con score) mediante una
+ * Elige un plato entre los candidatos de `ranked` (con score) mediante una
  * lotería ponderada por lo CERCA que está cada score del máximo (softmax),
- * no por su posición fija en el ranking.
+ * no por su posición fija en el ranking ni por un recorte previo del pool
+ * (ver nota "Sin tope de candidatos" junto a SELECTION_TEMPERATURE_RATIO).
  *
- * Por qué: con pesos fijos por posición (ej. 3/2/1), el candidato #1 se
- * llevaba siempre la misma probabilidad aunque estuviera empatado por
- * debajo del 1% con el #2 y el #3 — que es justo lo que pasaba con
- * "comida": el mejor plato quedaba a menos de un 1% del segundo, pero aun
- * así ganaba la lotería la mitad de las veces, sintiéndose repetitivo. Al
- * ponderar por la distancia real de score (relativa a la magnitud del
- * mejor), candidatos casi empatados obtienen probabilidades casi iguales,
- * y solo un candidato CLARAMENTE mejor domina la lotería.
+ * Por qué softmax y no pesos fijos por posición: con pesos fijos (ej.
+ * 3/2/1), el candidato #1 se llevaba siempre la misma probabilidad aunque
+ * estuviera empatado por debajo del 1% con el #2 y el #3 — que es justo lo
+ * que pasaba con "comida": el mejor plato quedaba a menos de un 1% del
+ * segundo, pero aun así ganaba la lotería la mitad de las veces,
+ * sintiéndose repetitivo. Al ponderar por la distancia real de score
+ * (relativa a la magnitud del mejor), candidatos casi empatados obtienen
+ * probabilidades casi iguales, y solo un candidato CLARAMENTE mejor domina
+ * la lotería — un candidato muy por debajo del máximo recibe un peso
+ * exponencialmente pequeño (nunca cero mientras `ranked` no esté vacío),
+ * así que no hace falta un recorte manual del pool para lograr lo mismo.
  *
  * @param {{dish:object, score:number}[]} ranked - ya ordenado, mejor primero
  * @returns {object} - el dish elegido
  */
 function pickWeightedByScore(ranked) {
-  var poolSize = Math.min(TOP_CANDIDATES_POOL, ranked.length);
-  if (poolSize <= 1) return ranked[0].dish;
+  if (ranked.length <= 1) return ranked[0].dish;
 
-  var top = ranked.slice(0, poolSize);
-  var maxScore = top[0].score;
+  var maxScore = ranked[0].score;
   var temperature = Math.max(Math.abs(maxScore) * SELECTION_TEMPERATURE_RATIO, 0.01);
 
-  var weights = top.map(function (entry) {
-    return Math.exp((entry.score - maxScore) / temperature); // 1 para el mejor, <1 para el resto
+  var weights = ranked.map(function (entry) {
+    return Math.exp((entry.score - maxScore) / temperature); // 1 para el mejor, ~0 para los muy alejados
   });
   var totalWeight = weights.reduce(function (a, b) { return a + b; }, 0);
 
   var r = Math.random() * totalWeight;
-  for (var i = 0; i < top.length; i++) {
+  for (var i = 0; i < ranked.length; i++) {
     r -= weights[i];
-    if (r <= 0) return top[i].dish;
+    if (r <= 0) return ranked[i].dish;
   }
-  return top[0].dish;
+  return ranked[0].dish;
 }
 
 /**
  * Variante de la lotería ponderada para cuando solo se tiene un array de
  * platos ya ordenados por prioridad (sin score numérico) — ej. el fallback
  * de fase 2 en modo "tight", ordenado por coste nativo ascendente. Usa peso
- * lineal decreciente por posición en vez de distancia real de score.
+ * lineal decreciente por posición en vez de distancia real de score — sin
+ * recorte previo del pool, mismo razonamiento que pickWeightedByScore (ver
+ * nota "Sin tope de candidatos" junto a SELECTION_TEMPERATURE_RATIO): un
+ * candidato en la última posición de una lista larga recibe un peso lineal
+ * pequeño pero real, nunca cero solo por estar "demasiado abajo".
  *
  * @param {object[]} ranked - candidatos ya ordenados, mejor/más prioritario primero
  * @returns {object}
  */
 function pickWeightedFromTop(ranked) {
-  var poolSize = Math.min(TOP_CANDIDATES_POOL, ranked.length);
-  if (poolSize <= 1) return ranked[0];
+  if (ranked.length <= 1) return ranked[0];
 
   var totalWeight = 0;
   var weights = [];
-  for (var i = 0; i < poolSize; i++) {
-    var w = poolSize - i; // más peso a los mejor puntuados
+  for (var i = 0; i < ranked.length; i++) {
+    var w = ranked.length - i; // más peso a los mejor puntuados
     weights.push(w);
     totalWeight += w;
   }
 
   var r = Math.random() * totalWeight;
-  for (var j = 0; j < poolSize; j++) {
+  for (var j = 0; j < ranked.length; j++) {
     r -= weights[j];
     if (r <= 0) return ranked[j];
   }

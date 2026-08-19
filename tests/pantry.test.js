@@ -311,22 +311,115 @@ function run(t) {
     assert.strictEqual(typeof result.entry.createdAt, "string");
   });
 
-  t.test("savePlanForToday: dos planes el mismo día NO se fusionan ni se reemplazan -- dos entradas distintas, mismo planDate", function () {
-    // Comportamiento intencional (decisión explícita del usuario, no un
-    // descuido): esta función nunca hace upsert por fecha. La UI es quien
-    // debe distinguir varias entradas del mismo planDate por hora.
+  // ── UPSERT sobre el borrador del día (2026-08-19) ─────────────────────
+  // Reemplaza el comportamiento anterior (savePlanForToday nunca hacía
+  // upsert, ver historial en git) -- bug real reportado por el usuario:
+  // confirmar el mismo plan varias veces (regenerar + volver a confirmar,
+  // o simplemente pulsar el botón más de una vez) creaba una entrada de
+  // historial NUEVA cada vez; cada una era "comprable" por separado, así
+  // que comprar en más de una inflaba el stock varias veces por la MISMA
+  // compra real. Ver cabecera de pantry.js, "Confirmar es un UPSERT sobre
+  // el borrador del día".
+
+  t.test("hasRealPantryAction: false para un borrador recién guardado (ni comprado ni cocinado)", function () {
+    var s = freshPantrySandbox();
+    var meals = fakeMeals({ breakfast: [{ name: "Avena", grams: 80 }] });
+    var result = s.savePlanForToday(meals, "mercadona");
+    assert.strictEqual(s.hasRealPantryAction(result.entry), false);
+  });
+
+  t.test("hasRealPantryAction: true en cuanto purchase.done es true", function () {
+    var s = freshPantrySandbox();
+    var entry = { purchase: { done: true, runs: [] }, meals: [] };
+    assert.strictEqual(s.hasRealPantryAction(entry), true);
+  });
+
+  t.test("hasRealPantryAction: true en cuanto CUALQUIER comida está cocinada, aunque purchase.done siga false", function () {
+    var s = freshPantrySandbox();
+    var entry = { purchase: { done: false, runs: [] }, meals: [{ key: "breakfast", cooked: true }, { key: "lunch", cooked: false }] };
+    assert.strictEqual(s.hasRealPantryAction(entry), true);
+  });
+
+  t.test("hasRealPantryAction: false/nunca lanza con entrada null o sin purchase/meals", function () {
+    var s = freshPantrySandbox();
+    assert.strictEqual(s.hasRealPantryAction(null), false);
+    assert.strictEqual(s.hasRealPantryAction({}), false);
+  });
+
+  t.test("savePlanForToday: confirmar dos veces seguidas el MISMO día, sin comprar/cocinar entre medias, ACTUALIZA el mismo borrador -- no crea una segunda entrada", function () {
+    var s = freshPantrySandbox();
+    var mealsA = fakeMeals({ breakfast: [{ name: "Avena", grams: 80 }] });
+    var mealsB = fakeMeals({ breakfast: [{ name: "Salmón", grams: 150 }] }); // plan regenerado, distinto
+
+    var resultA = s.savePlanForToday(mealsA, "mercadona");
+    var resultB = s.savePlanForToday(mealsB, "mercadona");
+
+    assert.strictEqual(resultA.replaced, false); // primera confirmación del día: entrada nueva
+    assert.strictEqual(resultB.replaced, true);  // segunda: actualiza el borrador de A
+    assert.strictEqual(resultA.entry.id, resultB.entry.id); // MISMO id -- no es una entrada nueva
+
+    var history = s.getPantryHistory();
+    assert.strictEqual(history.length, 1); // nunca dos entradas por confirmar dos veces
+    assert.strictEqual(history[0].meals[0].items[0].name, "Salmón"); // refleja la ÚLTIMA confirmación
+  });
+
+  t.test("REGRESIÓN EXACTA reportada por el usuario: confirmar el plan 3 veces seguidas y comprar UNA vez nunca duplica/triplica el stock", function () {
+    var s = freshPantryShoppingListSandbox(); // pricing+pantry+budget, ver helper arriba
+    injectSyntheticIngredient(s, { key: "test nueces reg", pricePer100Units: 0.7, packageSize: 200 });
+    var meals = fakeMeals({ breakfast: [{ name: "test nueces reg", grams: 60 }] });
+
+    var last;
+    for (var i = 0; i < 3; i++) {
+      last = s.savePlanForToday(meals, "mercadona");
+    }
+    assert.strictEqual(s.getPantryHistory().length, 1); // las 3 confirmaciones son la MISMA entrada
+
+    s.markPurchaseDone(last.entry.id, []);
+    // 60g requeridos, envase de 200g -> 1 paquete, 200g exactos. Si el bug
+    // de duplicar entradas siguiera presente, comprar en 3 entradas
+    // distintas habría dejado 600g (3 paquetes) en vez de 200g.
+    assert.strictEqual(s.getStock("test nueces reg"), 200);
+  });
+
+  t.test("savePlanForToday: tras marcar la compra hecha, confirmar un plan nuevo el MISMO día SÍ crea una entrada nueva (el anterior ya no es un borrador)", function () {
+    var s = freshPantryShoppingListSandbox();
+    injectSyntheticIngredient(s, { key: "test tofu reg2", pricePer100Units: 0.75, packageSize: 200 });
+    var mealsA = fakeMeals({ breakfast: [{ name: "test tofu reg2", grams: 100 }] });
+    var mealsB = fakeMeals({ breakfast: [{ name: "Salmón", grams: 150 }] });
+
+    var resultA = s.savePlanForToday(mealsA, "mercadona");
+    s.markPurchaseDone(resultA.entry.id, []); // acción real: A deja de ser un borrador
+
+    var resultB = s.savePlanForToday(mealsB, "mercadona");
+    assert.strictEqual(resultB.replaced, false);
+    assert.notStrictEqual(resultB.entry.id, resultA.entry.id);
+    assert.strictEqual(s.getPantryHistory().length, 2); // A (comprado) + B (borrador nuevo)
+  });
+
+  t.test("savePlanForToday: tras cocinar una comida, confirmar un plan nuevo el MISMO día SÍ crea una entrada nueva", function () {
     var s = freshPantrySandbox();
     var mealsA = fakeMeals({ breakfast: [{ name: "Avena", grams: 80 }] });
     var mealsB = fakeMeals({ breakfast: [{ name: "Salmón", grams: 150 }] });
 
     var resultA = s.savePlanForToday(mealsA, "mercadona");
+    s.markMealCooked(resultA.entry.id, "breakfast", true); // acción real sin haber comprado nunca
+
     var resultB = s.savePlanForToday(mealsB, "mercadona");
+    assert.strictEqual(resultB.replaced, false);
+    assert.notStrictEqual(resultB.entry.id, resultA.entry.id);
+    assert.strictEqual(s.getPantryHistory().length, 2);
+  });
 
-    assert.notStrictEqual(resultA.entry.id, resultB.entry.id);
+  t.test("savePlanForToday: al actualizar el borrador, createdAt se refresca pero id y planDate se mantienen", function () {
+    var s = freshPantrySandbox();
+    var meals = fakeMeals({ breakfast: [{ name: "Avena", grams: 80 }] });
+
+    var resultA = s.savePlanForToday(meals, "mercadona");
+    var resultB = s.savePlanForToday(meals, "mercadona");
+
+    assert.strictEqual(resultA.entry.id, resultB.entry.id);
     assert.strictEqual(resultA.entry.planDate, resultB.entry.planDate);
-
-    var history = s.getPantryHistory();
-    assert.strictEqual(history.length, 2);
+    assert.strictEqual(typeof resultB.entry.createdAt, "string");
   });
 
   t.test("getEntryPlanDate: usa entry.planDate cuando existe, sin mirar createdAt", function () {

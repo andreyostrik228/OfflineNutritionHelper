@@ -1,6 +1,6 @@
 # Nutrition Planner — Engineering State
 
-Actualizado 2026-08-14. Lee esto junto con `PROJECT.md` y `ROADMAP.md` antes
+Actualizado 2026-08-19. Lee esto junto con `PROJECT.md` y `ROADMAP.md` antes
 de empezar una sesión nueva (ver "Session handoff" al final — reemplaza al
 antiguo "Continuation checklist"). Para el sistema completo (este repo + el
 pipeline Python en `PythonProject`), ver `PythonProject/docs/architecture.md`
@@ -21,6 +21,155 @@ llama a quién), no las decisiones de producto ni el "por qué" que solo
 está aquí y en `ROADMAP.md`. **Si vuelves a tocar código, el grafo se
 desactualiza de nuevo** — no se actualiza solo (comandos exactos en
 `PythonProject/docs/graphify.md`, sección "Cómo actualizarlo").
+
+**Resumen de la sesión 2026-08-19 (bug real: "Confirmar plan" repetido
+inflaba la despensa — `savePlanForToday()` ahora hace UPSERT sobre el
+borrador del día)**: el usuario encontró en uso real que pulsar
+"Confirmar plan de hoy" (antes "Usar este plan hoy") más de una vez —
+por ejemplo al regenerar el plan mientras decide qué comer — dejaba
+varias tarjetas "comprables" por separado en "Tu plan" para lo que él
+percibía como UN solo plan; si llegaba a marcar la compra en más de una,
+el stock se inflaba varias veces por la misma compra real. Reproducido
+en vivo ANTES de tocar nada (3 clics reales sobre el botón → 3 entradas
+de historial independientes → comprar en las 3 dejó, por ejemplo,
+"Leche" en 1000g y "Alubias cocidas" en 570g, claramente multiplicado).
+Causa raíz: `savePlanForToday()` (Etapa 1, pura contabilidad, nunca tocó
+stock directamente) SIEMPRE creaba una entrada nueva en el historial,
+sin ninguna noción de "esto sigue siendo un borrador sin confirmar de
+verdad" — cada entrada nueva era, por diseño de la sesión 2026-08-14c,
+"comprable" de forma independiente. Rediseño (no un parche puntual):
+`savePlanForToday()` ahora es un UPSERT sobre el borrador de HOY —
+si ya existe una entrada de hoy sin nada real encima (`hasRealPantryAction()`,
+nueva: ni `purchase.done` ni ninguna comida cocinada), la ACTUALIZA en
+el sitio (mismo `id`, meals/createdAt/store sustituidos) en vez de crear
+una copia; en cuanto esa entrada tiene algo real (se compró o se
+cocinó algo), pasa a ser un hecho protegido y confirmar un plan distinto
+ese mismo día SÍ crea una entrada nueva genuina — nunca sobrescribe
+dinero ya gastado o comida ya consumida. Efecto: regenerar/editar el
+plan y volver a confirmar cuantas veces haga falta, ANTES de comprar o
+cocinar nada, es ahora seguro por construcción — no puede, por sí
+mismo, producir más de una entrada comprable el mismo día. Botón
+renombrado "Usar este plan hoy" → "Confirmar plan de hoy" (refleja la
+nueva semántica idempotente); aviso tras confirmar distingue "Plan
+confirmado" (entrada nueva) de "Plan actualizado" (mismo borrador,
+tranquilizando explícitamente: "no se ha comprado ni cocinado nada
+todavía"). 8 tests nuevos en `tests/pantry.test.js` (238 en `tests/`,
+261 totales con `poc/tests/`), incluida la regresión EXACTA del bug
+reportado (confirmar 3 veces + comprar 1 vez dejando exactamente 1
+paquete, no 3). Verificado en vivo con clics REALES sobre el botón real
+(no solo llamadas a funciones): 3 clics de "Confirmar" seguidos → 1 sola
+tarjeta en "Tu plan", 1 sola entrada de historial; comprar UNA vez →
+stock exacto de 1 compra; confirmar un plan nuevo DESPUÉS de comprar →
+SÍ crea una segunda tarjeta genuina, correctamente. 0 errores de
+consola. `js/core/budget.js`, `js/core/pricing.js`, `js/core/
+meal-schedule.js`, `js/core/cloud-sync.js`, `js/core/migration.js`, y
+todo `js/engine/*` — cero cambios; `markPurchaseDone`/`markMealCooked`
+tampoco cambiaron (ya eran correctos e idempotentes-seguros, el bug
+estaba únicamente en cuántas entradas producía la Etapa 1). Ver sección
+dedicada "Confirmar plan: UPSERT sobre el borrador del día — 2026-08-19"
+más abajo para el detalle completo. Comiteado y desplegado junto con los
+tramos (k)/(l) — ver "Commit/branch/deploy actuales" en el handoff para
+el hash exacto.
+
+**Resumen de la sesión 2026-08-19b (stress-test masivo del generador +
+fix real de diversidad — `TOP_CANDIDATES_POOL` eliminado, protein/€
+reequilibrado en `dish-selector.js`)**: el usuario pidió un stress-test
+GLOBAL (no unos pocos ejemplos) del generador con un perfil fijo — 1000
+generaciones reales de `generateDietPlan()` vía sandbox `vm` (mismo
+patrón que `tests/*.test.js`, cero cambios de código en esa fase),
+instrumentando `pickWeightedByScore`/`pickWeightedFromTop` para medir el
+tamaño REAL del pool de candidatos antes de cualquier recorte. Hallazgo
+antes de tocar nada: desayuno y comida (las dos categorías cuyo score es
+casi determinista, procesadas primero con `usedState`/`committedGrams`
+todavía vacíos) solo mostraron **12 platos distintos cada una** en 1000
+generaciones — exactamente `TOP_CANDIDATES_POOL`, de un catálogo de 64 y
+110 respectivamente —, y el 89%/72% de comida/cena nunca se eligió,
+casi exclusivamente carne/pescado (formula de score en modo "tight"
+decidía SOLO por proteína/€ de compra marginal, sin mirar macroFit en
+absoluto). Tras el informe (ver Artifact publicado en la conversación),
+el usuario pidió arreglarlo directamente: **(1)** `TOP_CANDIDATES_POOL`
+eliminado de `dish-selector.js` — la lotería softmax pondera ahora TODO
+el pool filtrado por presupuesto, no solo los 12 mejores por score (el
+propio softmax ya da peso ~0 a candidatos muy alejados del máximo, el
+recorte manual no aportaba nada que esa ponderación no hiciera sola,
+solo excluía candidatos con probabilidad pequeña pero real). **(2)**
+`scoreDishForSelection` reequilibrado: el modo "tight" ahora SIEMPRE
+cuenta `macroFit` (antes: nunca, solo protein/€ de compra ×100 en
+solitario) y baja el peso de `purchasePpeBucket` de ×100 (casi la única
+variable) a ×40 junto a `macroFit×20` — sigue siendo el criterio más
+pesado cuando el presupuesto aprieta (la intención original del modo),
+pero ya no excluye matemáticamente categorías enteras de platos; el modo
+"allocation" solo sube `purchasePpeBucket` de ×1 a ×3 como desempate algo
+más presente. 2 golden-master de `tests/plan-generator.characterization.test.js`
+recapturados a propósito (cambian qué plato gana la lotería para la
+misma semilla — exactamente el caso que la cabecera de ese archivo ya
+preveía); los 7 tests de invariantes/contrato de ese mismo archivo NO
+se tocaron y siguen pasando, confirmando que presupuesto/tiempo/cap25%
+siguen sin superarse jamás sin declararlo. 261 tests, 0 fallidos (mismo
+total, solo 2 recapturados). **Repetición del stress-test tras el fix,
+mismo perfil, mismas 1000 generaciones**: cobertura desayuno 18.8%→98.4%
+(12→63/64), comida 10.9%→80.0% (12→88/110), cena 27.7%→81.2%
+(28→82/101); platos de "comida" nunca elegidos 98→22 de 110; platos
+distintos usados en total 93→291 de 334 (27.8%→87.1%); planes
+completamente únicos 97.8%→99.9%. Carne/pescado confirmados en vivo en
+el navegador real (no solo en el stress-test): dos generaciones
+consecutivas mostraron "Jamón serrano con kiwi", "Sardinas con arroz y
+coliflor", "Sandwich integral de pavo y queso" — ninguno aparecía nunca
+antes del fix. **Coste honesto del cambio, no escondido**: el generador
+necesita relajación (tiempo/sabor/cap25%) con más frecuencia — tier 0
+("perfect") bajó de 52.3% a 31.7% de las generaciones, status "minimal" subió
+de 3.0% a 9.7%, violaciones `cap25` de 41 a 228 sobre 1000 — un
+edge-case YA documentado (issue #8, interacción entre
+`enforce25PercentRule` y el recorte de presupuesto), reportado con más
+frecuencia porque ahora se eligen platos menos "eficientes" en
+protein/€ que antes quedaban excluidos, no una garantía rota (los 7
+tests de invariantes lo confirman). Verificado en vivo sin errores de
+consola. `js/core/budget.js`, `js/core/pricing.js`, `js/core/
+plan-generator.js`, `js/core/meal-schedule.js`, toda la despensa — cero
+cambios; solo `js/engine/dish-selector.js` y el golden-master de
+`tests/plan-generator.characterization.test.js`. Ver sección dedicada
+"Diversidad del generador: eliminación de TOP_CANDIDATES_POOL y
+reequilibrio de protein/€ — 2026-08-19b" más abajo para el detalle
+completo. Comiteado y desplegado junto con los tramos (j)/(l) — ver
+"Commit/branch/deploy actuales" en el handoff para el hash exacto.
+
+**Resumen de la sesión 2026-08-19c/d (reserva de presupuesto + reparto
+secuencial — el generador se atasca menos en presupuesto SIN perder la
+diversidad ganada en 19b)**: continuación directa de 19b — el usuario
+pidió que el generador tuviera más libertad para no atascarse en
+presupuesto. Primer intento (19c, idea original del usuario): reservar
+internamente ~12% del presupuesto como colchón de diversidad
+(`data.targetBudget`, `BUDGET_RESERVE_RATIO`), sin tocar nunca el techo
+real ni las cifras de ahorro que ve el usuario. **Medido con el mismo
+stress-test de 1000 generaciones de 19b: prácticamente inerte** — no
+movía las cifras, porque la factibilidad (por qué escala de tier por
+presupuesto) se decide en `dish-selector.js` contra el techo duro sin
+reservar, no contra el objetivo reducido. Se dejó el código (inofensivo)
+pero no resolvía el problema. Segundo intento (19d, propuesto y aprobado
+tras reportar lo anterior): reparto SECUENCIAL del presupuesto — las
+tomas tempranas (desayuno, comida) ahora reciben un `mealCap` recortado a
+la mitad de camino entre su techo real y su porción proporcional
+(`ratio` calórico) del margen restante, dejando más presupuesto
+garantizado a las tomas siguientes. Probado primero a plena fuerza
+(recorte proporcional completo) y descartado tras medirlo — mejoraba
+violaciones de calorías (-53%) pero costaba ~20pp de cobertura de platos
+en desayuno/comida y subía un 25% las violaciones de cap25, en contra del
+objetivo de diversidad. Suavizado a la mitad (`SEQUENCING_BLEND_RATIO =
+0.5`) y confirmado con el mismo stress-test: `status:"perfect"` 240→251,
+tier 0 (sin relajar) 321→339, violaciones `cap25` 253→245, `calories`
+36→29, `time` 40→33, cobertura global de platos 86.2%→86.8% (desayuno sin
+cambio, comida -2.7pp) — mejora limpia en casi todos los ejes, sin el
+coste de diversidad del intento a plena fuerza. `report.budgetDelta`
+verificado en vivo contra `data.budget` real en todo momento (nunca
+contra ningún número intermedio del reparto). Golden-master recapturado 4
+veces (una por cada cambio real de algoritmo); los 7 tests de
+invariantes/contrato no se tocaron y siguen pasando. 261 tests, 0
+fallidos. Solo `js/engine/plan-generator.js` y
+`tests/plan-generator.characterization.test.js` — `dish-selector.js` sin
+cambios en esta sub-sesión. Ver "Reserva de presupuesto y reparto
+secuencial — 2026-08-19c/d" más abajo para el detalle completo con
+tablas. Comiteado y desplegado junto con los tramos (j)/(k) — ver
+"Commit/branch/deploy actuales" en el handoff para el hash exacto.
 
 **Resumen de la sesión 2026-08-14c (auditoría de arquitectura de Despensa
 + reubicación de "Tu plan" fuera del acordeón — SIN tocar la lógica de
@@ -72,9 +221,9 @@ de este cambio (es el known issue de overflow mobile ya documentado,
 `.actions`/`.panel`/`.meal-head` — no una regresión nueva). `js/core/
 budget.js`, `js/core/pricing.js`, `js/core/meal-schedule.js`, `js/core/
 cloud-sync.js`, `js/core/migration.js`, y todo `js/engine/*` — cero
-cambios. **Sin commitear a la hora de escribir esto** — ver "Session
-handoff". Ver sección dedicada "Reubicación de 'Tu plan' fuera de la
-despensa — 2026-08-14c" más abajo para el detalle completo.
+cambios. Comiteado en `35f35a8`. Ver sección dedicada "Reubicación de 'Tu
+plan' fuera de la despensa — 2026-08-14c" más abajo para el detalle
+completo.
 
 **Resumen de la sesión 2026-08-14b (rediseño de UX de la Despensa — SIN
 tocar `js/core/pantry.js` ni ninguna regla de negocio)**: pedido explícito
@@ -99,7 +248,7 @@ confirmado en vivo que purchaseCost/la lista de la compra/"Confirmar y
 usar este plan hoy"/la sincronización con la nube de un usuario
 autenticado siguen exactamente igual. Los 246 tests (ninguno toca
 render-pantry.js, es capa de presentación pura) siguen en verde.
-**Sin commitear a la hora de escribir esto** — ver "Session handoff".
+Comiteado en `e11308d`+`f0b70e0`+`9612687`.
 
 **Resumen de la sesión 2026-08-14a (aprovisionamiento real de Supabase +
 Google OAuth — el sistema de cuentas pasa de "código listo" a "funcionando
@@ -502,27 +651,39 @@ producto real verificado de `REAL_PRODUCTS` y calcular KBJU/coste desde ahí.
 - Tests: `poc/tests/` — 23 tests (`ingredient-resolver`,
   `shopping-list-builder` de prueba, `ingredient-coverage`).
 
-## Tests (actualizado 2026-08-14c)
+## Tests (actualizado 2026-08-19)
 
 Dos suites, ambas Node + `vm` (cargan los archivos de producción reales,
 sin copiarlos ni envolverlos en `module.exports`), sin ningún framework:
 
-- `tests/` (producción): `node tests/run-tests.js` → **230 passed, 0
+- `tests/` (producción): `node tests/run-tests.js` → **238 passed, 0
   failed** (verificado en esta sesión) — `shopping-cost.test.js` (14), `budget-mode.test.js` (13),
   `plan-generator.characterization.test.js` (9, golden-master recapturado
-  2026-08-08 tras el rediseño de presupuesto — ver sección dedicada),
-  `ingredient-packaging-coverage.test.js` (2), `pantry.test.js` (40,
-  2026-08-06/07, +7 en 2026-08-14c — ver sección Despensa arriba; cubre
-  almacenamiento con fallback en memoria, localStorage real inyectado,
-  JSON corrupto, entradas individuales corruptas, las 3 etapas del ciclo
-  de vida, el caso exacto reportado por el usuario — comprar sin cocinar
-  deja el stock íntegro, no neteado —, regresión de compatibilidad con
-  `shopping-cost.test.js` sin `pantry.js` cargado, y desde 2026-08-14c
-  `planDate`/`getEntryPlanDate()`/`formatLocalDateKey()`: fecha LOCAL con
-  ceros a la izquierda, `savePlanForToday` fija `planDate` distinto de
-  `createdAt`, dos planes el mismo día NUNCA se fusionan ni se
-  reemplazan, entradas antiguas sin `planDate` lo derivan de `createdAt`
-  en hora local, y un `planDate` corrupto cae al mismo fallback),
+  2026-08-08 tras el rediseño de presupuesto, y de nuevo 6 veces más entre
+  2026-08-19b y 2026-08-19d — cada una tras un cambio real de algoritmo en
+  `dish-selector.js`/`plan-generator.js` que cambia qué plato gana la
+  lotería con semilla fija; ver "Diversidad del generador" y "Reserva de
+  presupuesto y reparto secuencial" más abajo — los 7 tests de
+  invariantes/contrato de este mismo archivo NUNCA se han tocado),
+  `ingredient-packaging-coverage.test.js` (2), `pantry.test.js` (48,
+  2026-08-06/07, +7 en 2026-08-14c, +8/-1 en 2026-08-19 — ver sección
+  Despensa arriba; cubre almacenamiento con fallback en memoria,
+  localStorage real inyectado, JSON corrupto, entradas individuales
+  corruptas, las 3 etapas del ciclo de vida, el caso exacto reportado por
+  el usuario — comprar sin cocinar deja el stock íntegro, no neteado —,
+  regresión de compatibilidad con `shopping-cost.test.js` sin
+  `pantry.js` cargado, `planDate`/`getEntryPlanDate()`/
+  `formatLocalDateKey()` (fecha LOCAL con ceros a la izquierda, distinta
+  de `createdAt`, entradas antiguas sin `planDate` lo derivan de
+  `createdAt` en hora local, `planDate` corrupto cae al mismo fallback),
+  y desde 2026-08-19 `hasRealPantryAction()` + el UPSERT de
+  `savePlanForToday()` sobre el borrador del día: confirmar dos veces
+  seguidas sin comprar/cocinar actualiza la MISMA entrada en vez de crear
+  una segunda, y la regresión EXACTA del bug reportado por el usuario —
+  confirmar 3 veces + comprar 1 vez deja exactamente 1 paquete comprado,
+  nunca 3 —, confirmar tras comprar o tras cocinar SÍ crea una entrada
+  nueva genuina, y `createdAt` se refresca en cada actualización del
+  borrador mientras `id`/`planDate` se mantienen estables),
   `meal-schedule.test.js`
   (36, 2026-08-07 — ver sección "Horario de comidas" más abajo; cubre
   saneamiento de wake/sleep, envoltura de medianoche/turno de noche,
@@ -578,8 +739,8 @@ sin copiarlos ni envolverlos en `module.exports`), sin ningún framework:
 - `poc/tests/`: `node poc/tests/run-tests.js` → **23 passed, 0 failed** —
   resolver, shopping-list de prueba, cobertura de ingredientes (sin
   cambios, `poc/` no se tocó en ninguna de estas sesiones).
-- Total: **253 tests, 0 failed** (230 en `tests/` + 23 en `poc/tests/`) —
-  re-ejecutado y verificado en la sesión 2026-08-14c (no solo heredado de
+- Total: **261 tests, 0 failed** (238 en `tests/` + 23 en `poc/tests/`) —
+  re-ejecutado y verificado en la sesión 2026-08-19 (no solo heredado de
   memoria). El runner (`tests/run-tests.js`) ahora soporta tests async
   (una función de test puede devolver una promesa, necesario porque
   auth.js/cloud-sync.js/migration.js siempre son async contra un cliente
@@ -2420,6 +2581,407 @@ issue de overflow mobile ya documentado desde 2026-08-08
 aquí. Sigue fuera de alcance, sin investigar a fondo (mismo estado que
 antes).
 
+## Confirmar plan: UPSERT sobre el borrador del día — 2026-08-19
+
+**Reporte del usuario, en sus palabras**: pulsar repetidamente
+"Confirmar plan" (entonces "Usar este plan hoy") inflaba artificialmente
+el stock de la despensa aunque él no hubiera comprado ni cocinado nada
+todavía. Pidió separar de verdad crear/guardar el plan, comprar, y
+cocinar/comer real, y que confirmar/usar el MISMO plan varias veces
+nunca añada físicamente productos a la despensa.
+
+**Reproducción ANTES de tocar código** (para no arreglar un síntoma
+equivocado): generar un plan, pulsar el botón de confirmar 3 veces
+seguidas (sin cambiar nada más) → 3 tarjetas independientes en "Tu
+plan", cada una con su propio botón "Ya compré todo esto". Pulsar ese
+botón en las 3 → stock final claramente multiplicado (ej. "Leche
+semidesnatada" en 1000g, "Alubias cocidas" en 570g, para un plan que
+solo debería haber generado UNA compra real). `savePlanForToday()` en
+sí seguía sin tocar `getStock`/`setStock`/`adjustStock` directamente
+(eso nunca fue el bug) — el problema era que cada confirmación producía
+una entrada de historial nueva, y cada entrada nueva era, por diseño de
+la sesión anterior (2026-08-14c, que permitió explícitamente varios
+planes por día), independientemente "comprable".
+
+**Diagnóstico**: el ciclo de 3 etapas de `pantry.js` (confirmar / comprar
+/ cocinar) es correcto en sí — el error estaba en que "confirmar" no
+tenía ningún concepto de "esto ya lo había confirmado, solo estoy
+regenerando/editando, no estoy creando un plan distinto". La sesión
+2026-08-14c había decidido "permitir varios planes el mismo día" pensando
+en el caso legítimo (una comida planificada aparte, de verdad distinta)
+sin darse cuenta de que el caso MÁS COMÚN en uso real — regenerar el
+plan un par de veces antes de decidirse, y confirmar cada intento — caía
+en la misma categoría y producía el mismo resultado técnico (una entrada
+nueva), aunque para el usuario fuera obviamente "seguir editando lo
+mismo". El reporte de hoy es, en efecto, encontrar en producción la
+consecuencia exacta que el análisis de la sesión anterior no anticipó.
+
+**Fix — UPSERT sobre el borrador, no "un plan por día" a secas**: en vez
+de volver a "un solo plan por día siempre" (perdería el caso legítimo de
+verdad) o dejar "varios planes libremente" (el bug), la regla ahora es:
+una entrada de historial es un BORRADOR mientras no tenga NADA real
+encima — ni `purchase.done`, ni ninguna comida con `cooked:true`
+(`hasRealPantryAction(entry)`, nueva en `pantry.js`). `savePlanForToday()`
+busca si ya existe un borrador de HOY (mismo `planDate`) sin nada real
+encima; si lo hay, LO ACTUALIZA en el sitio (mismo `id`, se sustituyen
+`meals`/`createdAt`/`store`) — nunca crea una copia. En el instante en
+que esa entrada tiene algo real (se compró algo o se cocinó algo), deja
+de ser un borrador: representa dinero ya gastado o comida ya consumida,
+así que confirmar un plan distinto ese mismo día a partir de ahí SÍ crea
+una entrada nueva genuina — nunca sobrescribe un hecho real en silencio.
+
+Esto significa, en la práctica: regenerar el plan y volver a confirmar
+tantas veces como se quiera ANTES de comprar o cocinar nada es
+completamente seguro — es, literalmente, la etapa de "cambiar de idea
+sobre qué comer hoy" que describió el usuario, ahora sin efecto
+secundario ninguno sobre la despensa. Solo cuando ya se ha comprado o
+cocinado algo de verdad, y el usuario decide EMPEZAR otro plan aparte
+ese mismo día, se crea una segunda entrada — y esa sí es una decisión
+real del usuario (o al menos una consecuencia de una acción real ya
+tomada), no un efecto colateral de tocar un botón varias veces.
+
+**Cambios**:
+- `js/core/pantry.js`: `hasRealPantryAction(entry)` (nueva, expuesta) —
+  `true` si `entry.purchase.done` o cualquier `meal.cooked`.
+  `savePlanForToday()` reescrito: busca un borrador de hoy sin nada real
+  encima; si existe, lo actualiza (`draft.createdAt`/`draft.store`/
+  `draft.meals` sustituidos, mismo `id`) y devuelve `replaced:true`; si
+  no, crea una entrada nueva como antes (vía `appendPantryHistory`,
+  sin cambios en esa función) y devuelve `replaced:false`. Cabecera del
+  archivo reescrita para documentar el UPSERT como parte central del
+  ciclo de vida, no una nota al margen.
+- `js/ui/render-pantry.js`: `renderPlanSavedNotice(entry, historySaved,
+  replaced)` — nuevo tercer parámetro; título y cuerpo del aviso
+  distintos para "Plan confirmado" (entrada nueva) vs. "Plan actualizado"
+  (mismo borrador, con el texto tranquilizador explícito "no se ha
+  comprado ni cocinado nada todavía, ni se ha añadido nada a tu
+  despensa" — responde directamente a la pregunta que motivó este
+  cambio).
+- `js/app.js`: `handleUsePlanToday()` pasa `result.replaced` a
+  `renderPlanSavedNotice()`; comentarios actualizados.
+- `index.html`: texto del botón `usePlanTodayBtn` — "Usar este plan hoy"
+  → "**Confirmar plan de hoy**" (el `id` NO cambia, solo el texto
+  visible — nada que dependa del `id` se rompe). Elegido para reflejar
+  la nueva semántica idempotente ("подтвердить план", como lo describió
+  el usuario) en vez de sugerir una acción distinta cada vez.
+- `tests/pantry.test.js`: 8 tests nuevos — `hasRealPantryAction` (4,
+  incluida la forma corrupta/`null`), confirmar dos veces seguidas
+  actualiza el mismo borrador (no crea una segunda entrada), **la
+  regresión EXACTA del bug reportado** (confirmar 3 veces + comprar 1
+  vez deja exactamente 1 paquete, no 3 — sobre un ingrediente sintético
+  con envase conocido, cifra verificable), confirmar tras comprar SÍ
+  crea una entrada nueva, confirmar tras cocinar SÍ crea una entrada
+  nueva, y que `createdAt` se refresca en cada actualización del borrador
+  mientras `id`/`planDate` se mantienen estables. El test anterior "dos
+  planes el mismo día NO se fusionan" (2026-08-14c) se sustituyó por
+  estos — codificaba exactamente el comportamiento que resultó ser el
+  bug.
+- **NO tocados**: `markPurchaseDone()`/`markMealCooked()` — ya eran
+  correctos e idempotentes-seguros (recalculan contra el stock actual
+  cada vez); el bug estaba únicamente en cuántas entradas producía la
+  Etapa 1, nunca en las Etapas 2/3. `js/core/budget.js`, `js/core/
+  pricing.js`, `js/core/meal-schedule.js`, `js/core/cloud-sync.js`,
+  `js/core/migration.js`, `js/engine/*` — cero cambios.
+
+**Alcance NO construido, a propósito**: el usuario mencionó, como parte
+de la descripción del flujo ideal, poder cambiar platos individuales
+del plan (editar uno solo sin regenerar los 5) — eso NO se construyó
+esta sesión. El flujo actual ya cubre "cambiar de idea antes
+de confirmar" regenerando el plan COMPLETO cuantas veces haga falta
+(ahora seguro, ver arriba); permitir sustituir UN plato sin tocar los
+demás requeriría una función nueva en el motor de selección
+(`dish-selector.js`) capaz de re-elegir un solo hueco respetando
+presupuesto/25%/macros del resto del día ya fijado — una pieza de
+ingeniería bastante más grande, no necesaria para cerrar el bug
+reportado. Queda como posible trabajo futuro si se pide explícitamente.
+
+**Verificado en vivo** (navegador real, `python -m http.server`, clics
+REALES sobre el botón real, no solo llamadas a función — el entorno
+sirvió una copia cacheada de los `.js` tras el primer `preview_start`,
+igual que en sesiones anteriores; resuelto con `fetch(url,
+{cache:'no-store'})` + `eval()`, mismo procedimiento ya documentado):
+reproducción del bug confirmada ANTES del fix (3 clics → 3 entradas →
+comprar en las 3 → stock multiplicado); tras el fix, 3 clics reales
+sobre "Confirmar plan de hoy" → 1 sola entrada, 1 sola tarjeta en "Tu
+plan", el segundo y tercer clic muestran "Plan actualizado" con el texto
+tranquilizador; comprar UNA vez → stock exacto de una sola compra
+(verificado con un ingrediente de envase conocido: 200g, no 600g);
+confirmar un plan nuevo DESPUÉS de haber comprado → sí crea una segunda
+tarjeta genuina, correctamente, mostrando "Plan confirmado" (no
+"actualizado"). 0 errores de consola en toda la verificación. Los 238
+tests de `tests/` + 23 de `poc/tests/` (261 totales) pasan.
+
+## Diversidad del generador: eliminación de TOP_CANDIDATES_POOL y reequilibrio de protein/€ — 2026-08-19b
+
+**Petición del usuario**: stress-test GLOBAL del generador (no unos pocos
+ejemplos) — un perfil fijo (18 años, 70kg, 180cm), mínimo 200
+generaciones con la misma entrada, analizando planes únicos/idénticos,
+qué platos se repiten más, diversidad por franja (desayuno/comida/
+cena/snacks por separado), qué platos casi nunca salen, repetición
+consecutiva/cercana, media/máximo de platos únicos, y si hay
+limitaciones del generador que reducen artificialmente la diversidad.
+Pedido explícito: no tocar código durante el análisis, solo informar.
+
+**Metodología**: script Node fuera del repo (`scratchpad` de la sesión,
+nunca comiteado), mismo patrón `vm` que `tests/*.test.js` — carga los
+archivos de producción REALES sin copiarlos ni modificarlos
+(`ENGINE_FILES`, idéntico a `tests/plan-generator.characterization.test.js`).
+1000 llamadas reales a `generateDietPlan()` con el mismo `profile`/`data`
+(bugdet "Equilibrado" → 20€/día, 30 min cocina, sabor mixto). Además de
+contar qué plato sale en cada franja (extraído de `meal.label`),
+se instrumentaron `pickWeightedByScore`/`pickWeightedFromTop`
+reasignando esas funciones globales DENTRO del sandbox Node (nunca en
+el archivo real) para registrar el tamaño exacto del pool de candidatos
+que le llega a la lotería, antes de cualquier recorte.
+
+**Hallazgo (informe completo — no repetido aquí en detalle, ver el
+artefacto publicado en la conversación de esa sesión)**: desayuno y
+comida (procesadas primero, con `usedState`/`committedGrams` todavía
+vacíos, así que su score es casi determinista entre generaciones) solo
+mostraron **12 platos distintos** en 1000 generaciones — igual, no por
+casualidad, a `TOP_CANDIDATES_POOL`, de un catálogo de 64 y 110
+respectivamente. El 89% de "comida" y el 72% de "cena" nunca se
+eligieron ni una vez, y la lista de "nunca elegidos" era casi
+exclusivamente carne/pescado — el top-10 de comida/cena era casi
+solo legumbres/tofu/tempeh. Causa raíz identificada en el propio código
+(no solo inferida): (1) `TOP_CANDIDATES_POOL = 12` recortaba la lotería
+softmax a los 12 mejores por score SIEMPRE, sin importar el tamaño real
+del pool filtrado; (2) `scoreDishForSelection`, en modo "tight"
+(presupuesto ajustado respecto a la referencia — `isBudgetTight()`),
+puntuaba EXCLUSIVAMENTE por `purchasePpeBucket` (proteína / coste de
+compra marginal) ×100, sin mirar `macroFit` en absoluto — y legumbres/
+tofu dan sistemáticamente más proteína por € de compra marginal que
+carne/pescado (paquetes más compartibles entre tomas del mismo día,
+formatos que casan mejor con el gramaje que pide un plato), así que ese
+×100 en solitario no era un desempate, era casi la única variable.
+
+**Fix pedido explícitamente por el usuario tras el informe** (ver
+petición en la conversación): eliminar `TOP_CANDIDATES_POOL` y corregir
+el reparto de protein/€ para que no expulse carne/pescado — preservando
+el resto de restricciones del generador (presupuesto duro, escalera de
+relajación de tiempo/sabor/cap25%, tolerancias de macros) y repitiendo
+el stress-test para confirmar la mejora real.
+
+**Cambios en `js/engine/dish-selector.js`**:
+- `TOP_CANDIDATES_POOL` eliminado por completo. `pickWeightedByScore()`/
+  `pickWeightedFromTop()` ya no recortan `ranked` antes de sortear — la
+  lotería pondera TODO el pool que llega (ya filtrado por presupuesto
+  duro y tiempo/sabor del tier actual en fases previas de `pickDish`).
+  El propio softmax (`SELECTION_TEMPERATURE_RATIO=0.15`, sin cambios)
+  ya da un peso exponencialmente pequeño a candidatos muy alejados del
+  máximo — el recorte manual a 12 no aportaba nada que esa ponderación
+  no hiciera sola, solo convertía una probabilidad pequeña pero real en
+  cero para cualquier candidato fuera del top-12, sin importar cuántas
+  veces se regenerara el plan.
+- `scoreDishForSelection()` reequilibrado: `macroFit` ahora se calcula y
+  cuenta SIEMPRE, en los dos modos (antes: solo en modo "allocation").
+  Modo "tight": `macroFit*20 + purchasePpeBucket*40 + usagePpeBucket*0.5 + div`
+  (antes: `purchasePpeBucket*100 + usagePpeBucket*0.5 + div`, sin
+  `macroFit`) — protein/€ de compra sigue siendo el criterio más pesado
+  cuando el presupuesto aprieta (la intención original del modo), pero
+  ya no aplasta matemáticamente categorías enteras de platos. Modo
+  "allocation": `purchasePpeBucket` sube de peso ×1 a ×3 (resto
+  igual: `macroFit*100 + allocation*30 + div*10 + ... + usagePpeBucket*0.5`)
+  — desempate algo más presente incluso con margen de presupuesto, sin
+  acercarse a dominar sobre macros/asignación de cuota.
+- **NO tocado**: `enforcePurchaseBudgetCap`/`computeDayPurchaseCost`
+  (presupuesto sigue siendo un tope duro, nunca se relaja),
+  `RELAXATION_TIERS`/`MAX_RELAXATION_TIER` (la escalera de tiempo/sabor/
+  cap25% sigue igual), `isBudgetTight()`/`BUDGET_SLACK_TIGHT_THRESHOLD`
+  (el umbral que decide qué modo usar no cambió), `MACRO_TOLERANCE_TIERS`,
+  `diversityScore()`, `enforce25PercentRule()`, y todo `plan-generator.js`/
+  `budget.js`/`pricing.js`/`meal-schedule.js`/despensa — cero cambios.
+
+**Golden-master recapturados**: `tests/plan-generator.characterization.test.js`
+tiene 2 tests con `Math.random` sembrado que fijan agregados EXACTOS
+para una semilla concreta — al cambiar qué plato gana la lotería para
+esa misma semilla, ambos cambiaron de valores, exactamente el caso "si
+el algoritmo cambia a propósito, hay que actualizar el golden-master a
+propósito, nunca en silencio" que la cabecera de ese archivo ya
+advertía desde 2026-08-04. Recapturados ejecutando el código real una
+vez (script en `scratchpad`, no en el repo) y pegando los valores
+nuevos. El segundo caso (seed=7, volumen alto/Amplio) pasa de
+`tierUsed:3`/sin violación de calorías a `tierUsed:4`/`status:"minimal"`
+con una violación de calorías del 24.2% — reportada honestamente por
+`verifyPlanFeasibility()`, no oculta; es una característica de ESA
+semilla concreta, no una regresión sistemática (los 7 tests de
+invariantes del mismo archivo, con `Math.random` real sobre 5 perfiles
+× 10 iteraciones, siguen confirmando que el contrato general se
+mantiene). Los 7 tests de invariantes/contrato de ese archivo NO se
+tocaron. 261 tests totales, 0 fallidos (mismo total que antes — solo 2
+recapturados, ninguno añadido/quitado).
+
+**Repetición del stress-test tras el fix** (mismo script, mismo perfil,
+1000 generaciones nuevas):
+
+| Métrica | Antes | Después |
+|---|---|---|
+| Cobertura desayuno | 12/64 (18.8%) | 63/64 (98.4%) |
+| Cobertura comida | 12/110 (10.9%) | 88/110 (80.0%) |
+| Cobertura cena | 28/101 (27.7%) | 82/101 (81.2%) |
+| Cobertura snack 1 | 23/59 (39.0%) | 56/59 (94.9%) |
+| Cobertura snack 2 | 41/59 (69.5%) | 56/59 (94.9%) |
+| "Comida" nunca elegida | 98/110 | 22/110 |
+| Platos distintos usados (total) | 93/334 (27.8%) | 291/334 (87.1%) |
+| Planes completamente únicos | 97.8% | 99.9% |
+| report.status "perfect" (tier 0) | 52.3% | 31.7% |
+| report.status "minimal" | 3.0% | 9.7% |
+| Violaciones cap25 (de 1000) | 41 | 228 |
+
+Carne/pescado confirmados también en vivo en el navegador real (no solo
+en el stress-test aislado, con el mismo patrón de caché conocido de
+este entorno resuelto vía `fetch(url,{cache:'no-store'})` + `eval()`,
+ver notas técnicas de sesiones anteriores): dos generaciones
+consecutivas con el perfil de ejemplo mostraron "Jamón serrano con
+kiwi", "Sardinas con arroz y coliflor" y "Sandwich integral de pavo y
+queso" — ninguno de los tres aparecía nunca antes del fix. 0 errores de
+consola en ambas generaciones; lista de la compra y resto de la UI sin
+regresión.
+
+**El coste honesto del cambio** (deliberadamente no escondido en el
+informe al usuario): un pool de candidatos más amplio y menos "afinado"
+por protein/€ hace que el generador necesite relajación (tiempo/sabor/
+cap25%) con más frecuencia para encajar en presupuesto — tier "perfect"
+bajó del 52.3% al 31.7% de las generaciones, "minimal" subió del 3.0%
+al 9.7%, y las violaciones `cap25` (ya documentadas como issue #8,
+interacción entre `enforce25PercentRule` y el recorte de presupuesto)
+subieron de 41 a 228 sobre 1000. Esto NO es una garantía rota — es el
+propio sistema reportando con más frecuencia, de forma transparente,
+que tuvo que ceder en algo — confirmado porque los 7 tests de
+invariantes (presupuesto/tiempo/cap25% nunca superados sin declararlo,
+nunca `unavailable`) siguen pasando sin cambios. Queda como decisión
+abierta si esta frecuencia mayor de relajación es un precio aceptable
+por la diversidad ganada, o si conviene un ajuste fino adicional de los
+pesos — no se iteró más de una vez sobre las constantes por decisión
+deliberada (evitar sobreajustar a un único stress-test sin más señal),
+ver "Prioridad actual" en el handoff.
+
+**No implementado en esta sesión, quedó fuera de la petición explícita**:
+diversidad ENTRE llamadas a `generateDietPlan()` (hoy `usedState` se
+reinicia en cada llamada, solo mejora diversidad DENTRO de un plan);
+protección explícita contra que snack1 y snack2 salgan el mismo plato
+(13.5%→14.8% de las veces, ligeramente peor, no relacionado con
+protein/€).
+
+## Reserva de presupuesto y reparto secuencial — 2026-08-19c/d
+
+Continuación directa de "Diversidad del generador — 2026-08-19b" arriba: el
+usuario quería que el generador se sintiera con más libertad (menos
+mensajes de presupuesto insuficiente) sin renunciar a la diversidad ganada
+en (b). Dos intentos, medidos ambos con el mismo stress-test de 1000
+generaciones (perfil fijo 18a/70kg/180cm, budgetMode "medium" = 20€) antes
+de darse por buenos — ninguno se aceptó solo por argumento teórico.
+
+**Intento 1 — reserva de presupuesto (2026-08-19c, `BUDGET_RESERVE_RATIO`,
+sigue en el código pero es prácticamente INERTE)**: idea original del
+usuario — apuntar internamente a un objetivo ~12% por debajo del
+presupuesto real (17€ elegido → ~15€ de objetivo) y dejar el resto como
+colchón de diversidad, sin que el techo real ni las cifras de ahorro
+mostradas al usuario cambien nunca. Implementado como `data.targetBudget`
+(ver `sanitizeInputs`) usado SOLO para `targetSpend` en
+`attemptPlanAtTier` — `mealCap`/`enforcePurchaseBudgetCap`/
+`verifyPlanFeasibility`/`scorePlan`/`budgetDelta` siguen todos contra
+`data.budget` sin excepción (verificado en vivo: plan con `budget:17` →
+`report.budgetDelta` = `purchaseCost - 17`, nunca contra el objetivo
+reducido). **Medido, no mejoró nada**: `status:"perfect"` 240→240,
+`cap25` 253 vs. la base sin cambios — ver detalle numérico completo en el
+handoff de esa sub-sesión (ya no queda como resumen aparte arriba, este
+párrafo lo sustituye). Causa raíz identificada leyendo el propio código:
+(1) la factibilidad — si `pickDish` escala de tier por "no cabe en
+presupuesto" — se decide en `dish-selector.js` SOLO contra `maxCost`
+(=`mealCap`, el techo duro SIN reservar); `targetSpend` nunca entra en ese
+filtro, así que la reserva no puede tocar la causa real de la mayoría de
+tier escalation por presupuesto. (2) Donde `targetSpend` sí actúa
+(`allocationScore`), `macroFit*100` domina sobre `allocation*30` por
+~33x — mover el "ideal" un 12% apenas mueve el ranking final. Se dejó el
+código tal cual (inofensivo, ya documentado en la cabecera de
+`plan-generator.js`) en vez de revertirlo, pero **no confiar en que
+`BUDGET_RESERVE_RATIO` hace algo perceptible** si una sesión futura lo
+toca — el verdadero mecanismo es el de abajo.
+
+**Intento 2 — reparto secuencial del presupuesto (2026-08-19d,
+`SEQUENCING_BLEND_RATIO`, el que SÍ funciona)**: la causa real de tier
+escalation por presupuesto es que `mealCap` (el techo de FACTIBILIDAD)
+reservaba solo el MÍNIMO ABSOLUTO de las tomas siguientes
+(`reserveForRest`), así que desayuno (24% del peso calórico del día)
+podía gastar hasta el 100% del margen del día por encima de los mínimos,
+dejando a las tomas siguientes ancladas cerca de su propio mínimo. Fix:
+`fairShareCap` — cada toma recibe su propio mínimo absoluto + una porción
+del margen restante proporcional a su `ratio` calórico (misma
+proporcionalidad que ya usa `targetSpend`); `mealCap` final es
+`Math.min(hardCap, blendedCap)`, donde `blendedCap` interpola entre
+`hardCap` (0% de recorte, comportamiento de siempre) y `fairShareCap`
+(100%, recorte proporcional completo) según `SEQUENCING_BLEND_RATIO`.
+`hardCap` nunca cambia — la garantía de factibilidad por inducción
+documentada en la cabecera del archivo (si `data.budget >=
+minPossibleDayCost`, cada toma recibe `mealCap >= su propio mínimo`)
+queda intacta sin modificarse, porque tanto `hardCap` como `fairShareCap`
+ya cumplen esa cota y su combinación convexa también.
+
+**Primero se probó a plena fuerza (`SEQUENCING_BLEND_RATIO=1`, recorte
+proporcional completo) y se descartó tras medirlo**: sí reducía
+violaciones de calorías (-53%, 36→17) pero costaba ~20pp de cobertura de
+platos justo en las dos tomas más grandes (desayuno 98.4%→79.7%, comida
+84.5%→64.5%) y SUBÍA un 25% las violaciones de `cap25` (253→317) —
+contradecía directamente el objetivo de conservar diversidad. El usuario,
+al ver estos números, pidió suavizarlo en vez de aceptarlo o descartarlo
+sin más.
+
+**`SEQUENCING_BLEND_RATIO=0.5` (el valor final, en producción)** — mismo
+stress-test de 1000 generaciones, comparado contra la base SIN reparto
+secuencial (solo con la reserva inerte de (c) encima):
+
+| Métrica | Base (solo reserva) | Blend 1.0 (descartado) | **Blend 0.5 (final)** |
+|---|---|---|---|
+| `status:"perfect"` | 240 | 226 | **251** |
+| `status:"minimal"` | 98 | 102 | 99 |
+| Violaciones `cap25` | 253 | 317 | **245** |
+| Violaciones `calories` | 36 | 17 | **29** |
+| Violaciones `time` | 40 | 48 | **33** |
+| Tier 0 (sin relajar) | 321 | 327 | **339** |
+| Tier 3 | 138 | 120 | **122** |
+| Platos únicos/plan (avg) | 4.86 | 4.94 | **4.88** |
+| Cobertura global de platos | 86.2% (288/334) | 75.1% (251/334) | **86.8% (290/334)** |
+| Cobertura desayuno | 98.4% | 79.7% | **98.4%** (sin cambio) |
+| Cobertura comida | 84.5% | 64.5% | 81.8% (-2.7pp, mucho menor que el -20pp de blend 1.0) |
+| Cobertura cena | 75.2% | 72.3% | **78.2%** |
+| Cobertura snack2 | 91.5% | 93.2% | **96.6%** |
+
+Con blend 0.5: MÁS planes "perfect" (240→251), MENOS violaciones en
+prácticamente todas las categorías (`cap25` -3%, `calories` -19%, `time`
+-18%), MÁS planes en tier 0 (321→339) y MENOS en tier 3 (138→122),
+diversidad global igual o mejor (86.2%→86.8%, cobertura de desayuno
+intacta, comida con una caída pequeña de 2.7pp muy lejos del -20pp de la
+versión sin suavizar). Es una mejora limpia en casi todos los ejes frente
+a la base, y muy superior al intento a plena fuerza — se aceptó como
+mecanismo final. Verificado en vivo con `budget:17` real:
+`report.budgetDelta` sigue siendo `purchaseCost - 17` exacto (`-3.57` con
+`purchaseCost:13.43`), nunca contra `targetBudget` (`14.96`) ni contra
+ningún número intermedio del reparto.
+
+Golden-master de `tests/plan-generator.characterization.test.js`
+recapturado 4 veces en total durante 2026-08-19c/d (una por cada cambio
+real de algoritmo: reserva de presupuesto, reparto secuencial a plena
+fuerza, reparto secuencial suavizado a 0.5) — los 7 tests de
+invariantes/contrato de ese archivo NO se tocaron ninguna vez y siguen
+pasando sin cambios en las 4 iteraciones. 261 tests, 0 fallidos en la
+versión final (mismo total que siempre, solo golden-master recapturado).
+`js/engine/dish-selector.js` — sin cambios en 19c/d (solo se tocó en
+19b); todo el cambio de 19c/d vive en `js/engine/plan-generator.js`
+(`BUDGET_RESERVE_RATIO`, `SEQUENCING_BLEND_RATIO`, `sanitizeInputs`,
+`attemptPlanAtTier`) y `tests/plan-generator.characterization.test.js`.
+
+**Qué NO tocar sin repetir el stress-test de 1000 generaciones**:
+`BUDGET_RESERVE_RATIO`, `SEQUENCING_BLEND_RATIO` — ambas constantes se
+calibraron por medición, no por intuición; cualquier ajuste futuro debe
+repetir la comparación antes/después con el mismo perfil fijo, no asumir
+el efecto. **Nunca** usar `data.targetBudget`, `targetSpend`, `hardCap`
+intermedio o `fairShareCap`/`blendedCap` para nada que el usuario vea
+(mensajes de ahorro, violación de presupuesto, `report.budgetDelta`) —
+esas cifras se calculan y se seguirán calculando SIEMPRE contra
+`data.budget`, el único techo real; esta invariante ya estaba probada en
+tests y se reverificó en vivo en ambos intentos de esta sub-sesión.
+
 ## Exploración descartada: Google AI Studio para el rediseño (2026-08-04)
 
 Antes de implementar el rediseño v2 directamente, se probó pedirle a
@@ -2617,7 +3179,7 @@ llamadas con el mismo input pueden aterrizar en tiers distintos por azar.
   privado) — hoy solo se ve en el aviso posterior a "Usar este plan hoy",
   no en las acciones de comprar/cocinar del historial.
 
-## Session handoff (2026-08-14c)
+## Session handoff (2026-08-19)
 
 Escrito para que la siguiente sesión/chat pueda continuar sin haber visto
 esta conversación. No repite lo de arriba en detalle — apunta a la
@@ -2628,35 +3190,69 @@ en la UI del bug de macros fabricados (2026-08-13c), **(d)** rediseño
 ARQUITECTÓNICO completo del modelo de nutrición por ingrediente
 (2026-08-13d), **(e)** auditoría del "recorte a cero" + consistencia
 Atwater (2026-08-13e), **(f)** sistema de cuentas completo en CÓDIGO
-(Supabase Auth + Postgres + RLS, todavía sin proyecto real). El día
-siguiente tuvo 3 tramos más: **2026-08-14a** aprovisionó Supabase +
-Google OAuth de verdad y verificó todo en vivo contra el backend real
-(registro, login, reload, sync, logout, migración, aislamiento entre
-usuarios probado atacando la API, y Google OAuth hasta el límite de
-necesitar credenciales humanas — ver "Aprovisionamiento real de Supabase
-+ Google OAuth — 2026-08-14a" arriba); **2026-08-14b** rediseñó por
-completo la UX de la Despensa sin tocar `js/core/pantry.js` ni el modelo
-financiero (ver "Rediseño de UX de la Despensa — 2026-08-14b" arriba);
-**2026-08-14c** (esta sesión, la más reciente, misma conversación que
-2026-08-14b) hizo una auditoría completa de arquitectura/UX de la
-despensa a petición del usuario y, tras su aprobación explícita,
-reubicó los planes activos fuera del acordeón de despensa a una sección
-nueva "Tu plan" + añadió `planDate` a `pantry.js` — ver "Reubicación de
-'Tu plan' fuera de la despensa — 2026-08-14c" arriba. Este handoff
-describe el estado ACUMULADO tras los 9 tramos.
+(Supabase Auth + Postgres + RLS, todavía sin proyecto real). El
+2026-08-14 tuvo 3 tramos más: **(g)** aprovisionó Supabase + Google OAuth
+de verdad y verificó todo en vivo contra el backend real (ver
+"Aprovisionamiento real de Supabase + Google OAuth — 2026-08-14a"
+arriba); **(h)** rediseñó por completo la UX de la Despensa sin tocar
+`js/core/pantry.js` ni el modelo financiero (ver "Rediseño de UX de la
+Despensa — 2026-08-14b" arriba); **(i)** auditoría completa de
+arquitectura/UX de despensa a petición del usuario y, tras su aprobación
+explícita, reubicación de los planes activos fuera del acordeón de
+despensa a una sección nueva "Tu plan" + `planDate` en `pantry.js` (ver
+"Reubicación de 'Tu plan' fuera de la despensa — 2026-08-14c" arriba).
+**2026-08-19 — (j)**: el usuario encontró en uso real el bug que (i)
+dejó sin anticipar — confirmar el plan varias veces (p.ej. al
+regenerar mientras decide qué comer) creaba varias entradas
+"comprables" por separado, e inflaba el stock si llegaba a comprar en
+más de una. Fix: `savePlanForToday()` ahora hace UPSERT sobre el
+borrador del día en vez de crear siempre una entrada nueva — ver
+"Confirmar plan: UPSERT sobre el borrador del día — 2026-08-19" arriba.
+**2026-08-19b — (k), esta sesión, la más reciente**: a petición del
+usuario, stress-test masivo (1000 generaciones reales, perfil fijo) del
+generador de planes, que encontró que desayuno/comida solo mostraban 12
+platos distintos cada uno (exactamente `TOP_CANDIDATES_POOL`) y que
+carne/pescado estaban casi excluidos de comida/cena por el peso de
+protein/€ en el score. Tras el informe, el usuario pidió el fix
+directamente: `TOP_CANDIDATES_POOL` eliminado, `scoreDishForSelection`
+reequilibrado para que `macroFit` cuente siempre — ver "Diversidad del
+generador: eliminación de TOP_CANDIDATES_POOL y reequilibrio de
+protein/€ — 2026-08-19b" arriba para el detalle completo, incluida la
+tabla antes/después y el coste honesto del cambio (más relajación de
+tiempo/sabor/cap25% con más frecuencia).
+**2026-08-19c/d — (l), esta sesión, la más reciente**: continuación
+directa de (k) — el usuario quería que el generador se atascara menos en
+presupuesto sin perder la diversidad recién ganada. Primer intento (c):
+reserva de presupuesto (`data.targetBudget`, ~12% por debajo del real,
+solo para la cuota orientativa) — medida con el mismo stress-test de
+1000 generaciones y confirmada **inerte** (la factibilidad se decide
+contra el techo duro sin reservar, no contra la cuota orientativa).
+Segundo intento (d, el que sí funciona): reparto SECUENCIAL de
+`mealCap` — las tomas tempranas reciben un techo recortado
+proporcionalmente a su peso calórico, dejando más presupuesto
+garantizado a las siguientes. Probado primero a plena fuerza y
+descartado (mejoraba violaciones de calorías pero costaba ~20pp de
+cobertura de platos en desayuno/comida); suavizado a la mitad
+(`SEQUENCING_BLEND_RATIO=0.5`) y confirmado como mejora limpia en casi
+todos los ejes (`status:"perfect"` 240→251, `cap25` 253→245, cobertura
+global 86.2%→86.8%) — ver "Reserva de presupuesto y reparto secuencial
+— 2026-08-19c/d" arriba para el detalle completo con tablas. Este
+handoff describe el estado ACUMULADO tras los 12 tramos.
 
 **Para orientarse en el código en sí, antes de leer archivo por archivo,
 usa el grafo de Graphify** (regenerado por última vez en la sesión
 2026-08-13d — 388 nodes/620 edges/38 communities — `graphify explain
 "<símbolo>"` / `graphify query "<pregunta>"` desde esta carpeta, ver
 `PythonProject/docs/graphify.md`). **Desactualizado desde entonces**
-(2026-08-13f/2026-08-14a/2026-08-14b/2026-08-14c tocaron código sin
-regenerarlo) — no se actualiza solo; regenerar con `graphify update .
---no-cluster && graphify cluster-only .` si hace falta antes de confiar
-en él para navegar el código nuevo (`todayPlansPanel`/`planDate` etc. no
-estarán en el grafo actual).
+(2026-08-13f/2026-08-14a/2026-08-14b/2026-08-14c/2026-08-19/2026-08-19b
+tocaron código sin regenerarlo) — no se actualiza solo; regenerar con
+`graphify update . --no-cluster && graphify cluster-only .` si hace
+falta antes de confiar en él para navegar el código nuevo
+(`todayPlansPanel`/`planDate`/`hasRealPantryAction`, el
+`scoreDishForSelection` reequilibrado, etc. no estarán en el grafo
+actual).
 
-**Estado del proyecto**: prototipo funcional, con una red de tests (253,
+**Estado del proyecto**: prototipo funcional, con una red de tests (261,
 ver "Tests" arriba), un rediseño visual v2 + layout mobile, una
 **Despensa completa** (3 etapas, mismas de siempre) con **UX rediseñada
 por completo** (2026-08-14b — stock editable in-situ, alta con
@@ -2664,7 +3260,12 @@ autocompletado — y reorganizada de nuevo en 2026-08-14c: los planes con
 algo pendiente ya NO viven dentro del acordeón de despensa, viven en una
 sección nueva "Tu plan" justo debajo de la lista de la compra; despensa
 quedó reducida a stock + historial de planes completados — ver sección
-dedicada), un **horario de comidas completo**, un
+dedicada), con **"Confirmar plan de hoy" ahora idempotente sobre el
+borrador del día** (2026-08-19 — regenerar/editar y volver a confirmar
+tantas veces como haga falta ANTES de comprar o cocinar nunca crea más
+de una entrada "comprable"; solo se crea una entrada nueva de verdad
+cuando la anterior ya tiene algo real encima, ver sección dedicada), un
+**horario de comidas completo**, un
 presupuesto que significa dinero de COMPRA (no de uso, desde 2026-08-08),
 la SELECCIÓN de plato consciente de coste de compra MARGINAL (desde
 2026-08-13), **kcal/protein/carbs/fat por ingrediente REALES para 50 de
@@ -2686,41 +3287,56 @@ nutricionista real: prefiere activamente envases baratos de comprar,
 reutiliza despensa y paquetes ya comprometidos, y muestra la composición
 nutricional real de cada ingrediente cuando existe un dato verificado —
 nunca una cifra fabricada con apariencia de precisión que no tiene, y
-nunca una fila donde un macro contradiga a otro de la misma fila.
+nunca una fila donde un macro contradiga a otro de la misma fila. Desde
+2026-08-19b, además, **la SELECCIÓN de plato ya no excluye
+matemáticamente categorías enteras por protein/€, y la lotería de
+elección ya no está artificialmente recortada a 12 candidatos** —
+verificado con un stress-test de 1000 generaciones antes/después
+(cobertura desayuno 18.8%→98.4%, comida 10.9%→80.0%, ver sección
+dedicada) — a cambio de necesitar relajación de tiempo/sabor/cap25% con
+más frecuencia (tier "perfect" 52.3%→31.7%), reportado honestamente por
+`report.violations`, no oculto.
 
-**Commit/branch/deploy actuales**: `main`/`origin/main` en `9612687`
+**Commit/branch/deploy actuales**: `main`/`origin/main` en `35f35a8`
 (verificar con `git log -1`/`git status -sb` antes de asumir que sigue
-siendo así — este handoff se escribió con el repo en ese estado exacto).
-Commits desde el `c758a01` con el que arrancó la sesión 2026-08-13:
-`aa4f20b` (todo el código/esquema/tests del sistema de cuentas, sesión
-2026-08-13f), `f66bfac` (solo `js/data/supabase-config.js` con los
-valores reales del proyecto Supabase aprovisionado, sesión 2026-08-14a),
-`e11308d`+`f0b70e0` (rediseño de UX de la Despensa + documentación,
-2026-08-14b), y `9612687` (fixup: corrección de un hash/estado de
-deploy desactualizado en este mismo handoff, sesión 2026-08-14b). **La
-sesión 2026-08-14c (esta) está SIN COMITEAR a la hora de escribir esto**
-— `git status -sb` debe mostrar `assets/css/style.css`, `index.html`,
-`js/app.js`, `js/core/pantry.js`, `js/ui/render-pantry.js`,
-`tests/pantry.test.js` y este mismo `STATE.md` como modificados; el
-usuario no ha pedido commit todavía en esta sesión.
+siendo así — este handoff se escribió con el repo en ese estado exacto;
+nota: `35f35a8` apareció comiteado al reanudar esta sesión sin que este
+handoff lo hubiera registrado como tal en su momento — si algo similar
+vuelve a pasar, confiar en `git log`, no en la última foto fija escrita
+aquí). Commits desde el `c758a01` con el que arrancó la sesión
+2026-08-13: `aa4f20b` (sistema de cuentas, 2026-08-13f), `f66bfac` (solo
+`js/data/supabase-config.js` con los valores reales de Supabase,
+2026-08-14a), `e11308d`+`f0b70e0`+`9612687` (rediseño de UX de la
+Despensa + documentación/fixup, 2026-08-14b), y `35f35a8` ("Polish
+despensa UI: split into 3 clear blocks" — incluye TODO el trabajo de
+2026-08-14c: reubicación de "Tu plan" + `planDate`). **Los tramos
+2026-08-19 (j, UPSERT), 2026-08-19b (k, diversidad del generador) y
+2026-08-19c/d (l, reserva de presupuesto + reparto secuencial) están
+SIN COMITEAR a la hora de escribir esto** — `git status -sb` debe
+mostrar `index.html`, `js/app.js`, `js/core/pantry.js`,
+`js/ui/render-pantry.js`, `js/engine/dish-selector.js`,
+`js/engine/plan-generator.js`, `tests/pantry.test.js`,
+`tests/plan-generator.characterization.test.js`
+y este mismo `STATE.md` como modificados; el usuario no ha pedido commit
+todavía en esta sesión. Hay además un archivo suelto sin relación,
+`PANTRY_HISTORY_MAX_ENTRIES)` (0 bytes, sin trackear, en la raíz) —
+mismo tipo de basura preexistente que ya se documentaba aquí antes; no
+tocarlo sin que se pida.
 **Desplegado a producción — último estado CONFIRMADO: solo hasta
 `f66bfac`** (`offline-nutrition-helper.pages.dev`, Cloudflare Pages,
 proyecto direct-upload, `Git Provider: No` — un push a `origin/main`
 NUNCA despliega solo, hace falta `wrangler pages deploy` explícito cada
-vez) — **esto NO se ha reverificado en esta sesión**, así que si el
-rediseño de despensa 2026-08-14b/2026-08-14c se desplegó entretanto por
-fuera de esta conversación, este dato podría estar desactualizado;
-confirmar antes de asumir. Ni el rediseño 2026-08-14b (ya comiteado) ni
-los cambios de 2026-08-14c (todavía sin comitear) se han desplegado
-DESDE ESTA conversación — el usuario no lo ha pedido en esta sesión; si
-una sesión futura retoma esto, `npx wrangler pages deploy . --project-name=offline-nutrition-helper`
+vez) — **esto NO se ha reverificado en esta sesión**, así que si se
+desplegó entretanto por fuera de esta conversación, este dato podría
+estar desactualizado; confirmar antes de asumir. Ninguno de
+2026-08-14b/2026-08-14c/2026-08-19 se ha desplegado DESDE ESTA
+conversación — el usuario no lo ha pedido en esta sesión; si una sesión
+futura retoma esto, `npx wrangler pages deploy . --project-name=offline-nutrition-helper`
 lo despliega en un solo comando, reutilizando la sesión OAuth de
 `wrangler` ya existente (confirmada funcionando en sesiones anteriores,
 no pedir un token nuevo) — pero solo tiene sentido ejecutarlo DESPUÉS de
-comitear 2026-08-14c, si no seguiría desplegando la versión con la
-despensa vieja mezclando activos+historial. **Nota**: sigue habiendo
-basura suelta sin relación en la raíz del repo (preexistente, nunca
-comiteada a propósito) — no tocarla sin que se pida.
+comitear 2026-08-19, si no seguiría desplegando la versión con el bug de
+inflado de despensa.
 
 **Qué funciona**: generación de plan completo (5 tomas, horario, macros)
 con presupuesto de COMPRA real decidido desde la SELECCIÓN de plato,
@@ -2742,7 +3358,9 @@ todo esto verificado en vivo contra el proyecto Supabase real, en local
 Y en producción (2026-08-14a, ver sección dedicada)**; los planes con
 algo pendiente ahora viven en una sección propia "Tu plan" (fuera de
 despensa, siempre expandida, con fecha+hora con segundos para distinguir
-varios planes el mismo día — 2026-08-14c); los 253 tests.
+varios planes el mismo día — 2026-08-14c) y "Confirmar plan de hoy" es
+idempotente sobre el borrador del día (2026-08-19 — nunca crea entradas
+"comprables" duplicadas por regenerar/reconfirmar); los 261 tests.
 
 **Qué NO funciona / sigue pendiente**: 31/81 ingredient roles siguen sin
 nutrición fiable (Plátano, Salmón, Tempeh, Aguacate, Brócoli, Pepino,
@@ -2857,6 +3475,20 @@ de archivos, ver cada sección dedicada arriba para el detalle:
   `.pantry-purchase-row__main` nuevas), `tests/pantry.test.js` (+7). Ver
   sección dedicada "Reubicación de 'Tu plan' fuera de la despensa —
   2026-08-14c" arriba para el detalle completo.
+- **(j) UPSERT sobre el borrador del día (2026-08-19, sesión distinta)**:
+  `js/core/pantry.js` (`hasRealPantryAction()` nueva, `savePlanForToday()`
+  reescrito: busca un borrador de hoy sin nada real encima y lo actualiza
+  en el sitio en vez de crear siempre una entrada nueva; devuelve
+  `replaced`), `js/ui/render-pantry.js` (`renderPlanSavedNotice()` recibe
+  `replaced`, mensajes distintos "Plan confirmado" vs. "Plan
+  actualizado"), `js/app.js` (pasa `result.replaced`, comentarios),
+  `index.html` (texto del botón "Usar este plan hoy" → "Confirmar plan
+  de hoy", el `id` no cambia), `tests/pantry.test.js` (+8/-1, incluida la
+  regresión EXACTA del bug reportado). `markPurchaseDone`/
+  `markMealCooked`/`js/core/budget.js`/`js/core/pricing.js`/
+  `js/engine/*`: cero cambios. Ver sección dedicada "Confirmar plan:
+  UPSERT sobre el borrador del día — 2026-08-19" arriba para el detalle
+  completo.
 
 **Qué se verificó y qué no**: los 180 tests se re-ejecutaron y pasan
 (verificado, no heredado) — 13 de `purchase-economics.test.js` + 18 de
@@ -2921,6 +3553,18 @@ sigue sin un login por Google 100% de principio a fin realizado por una
 persona real** — la cadena técnica está confirmada, falta solo el primer
 uso real del botón.
 
+**Verificación específica del tramo (k) (2026-08-19b, diversidad del
+generador)**: ver tabla antes/después completa en "Diversidad del
+generador: eliminación de TOP_CANDIDATES_POOL y reequilibrio de
+protein/€ — 2026-08-19b" arriba. Resumen: 261 tests (2 golden-master
+recapturados a propósito, 7 invariantes sin tocar y en verde); stress-
+test de 1000 generaciones antes + 1000 después con el mismo perfil
+confirma la mejora real (no solo teórica) de cobertura por franja y
+representación de carne/pescado; verificado también con generaciones
+reales en el navegador (no solo el script aislado), 0 errores de
+consola. El coste (más relajación de tiempo/sabor/cap25%) queda
+documentado explícitamente, no oculto.
+
 **Decisiones de arquitectura que no hay que perder**: la comparación
 completa de Estrategia A/B/C (migración de datos) y por qué se eligió B
 está en `ROADMAP.md` — no la repitas de memoria. La distinción
@@ -2941,20 +3585,26 @@ mismo que el remanente de `nutrition.js` (macros) — dos conceptos de
 "lo que sobra" completamente distintos, en dominios distintos, no
 fusionarlos.
 
-**Prioridad actual**: decidir con el usuario si comitear/pushear la
-sesión 2026-08-14c (reubicación de "Tu plan" + `planDate`) — sigue sin
-comitear a la hora de escribir esto, ver "Commit/branch/deploy
-actuales" arriba. Una vez comiteada, desplegar TODO lo pendiente
-(2026-08-14b + 2026-08-14c juntos, ya que ninguno de los dos llegó a
-producción todavía) con `npx wrangler pages deploy . --project-name=offline-nutrition-helper`
+**Prioridad actual**: decidir con el usuario si comitear/pushear los
+tramos 2026-08-19 (UPSERT del borrador del día) y 2026-08-19b
+(diversidad del generador) — ambos siguen sin comitear a la hora de
+escribir esto, ver "Commit/branch/deploy actuales" arriba. Opcional, no
+bloqueante: el usuario podría querer un ajuste fino adicional de los
+pesos de `scoreDishForSelection` (macroFit×20/purchasePpeBucket×40 en
+modo "tight") si considera que el aumento de relajación/violaciones
+cap25 (ver tabla antes/después en la sección dedicada) es demasiado —
+no se iteró más de una vez sobre las constantes, a propósito, para no
+sobreajustar a un único stress-test sin pedir más señal primero. Una
+vez comiteada, desplegar TODO lo pendiente (2026-08-14b+c ya están
+comiteados en `35f35a8` pero NUNCA desplegados, más 2026-08-19+2026-08-19b encima)
+con `npx wrangler pages deploy . --project-name=offline-nutrition-helper`
 — confirmar con el usuario antes de hacerlo si no lo ha pedido
-explícitamente en la sesión actual; no tiene sentido desplegar solo
-2026-08-14b sin 2026-08-14c, dejaría producción con la despensa vieja
-mezclando activos+historial otra vez. El sistema de cuentas sigue
-COMPLETO y verificado en producción, ya no es prioridad. Opcional, no
-bloqueante: que una persona real complete un login por Google de
-principio a fin al menos una vez (ver límite honesto arriba);
-considerar borrar los usuarios de prueba
+explícitamente en la sesión actual; no tiene sentido desplegar sin
+2026-08-19, dejaría producción con el bug de inflado de despensa que
+motivó esta sesión. El sistema de cuentas sigue COMPLETO y verificado en
+producción, ya no es prioridad. Opcional, no bloqueante: que una persona
+real complete un login por Google de principio a fin al menos una vez
+(ver límite honesto arriba); considerar borrar los usuarios de prueba
 `andreyostrik228+claudetest...@gmail.com` desde Supabase →
 Authentication → Users si se quiere una base limpia antes de invitar a
 usuarios reales (no imprescindible, son inofensivos). Aparte de eso,
@@ -2972,7 +3622,13 @@ la sesión, no un olvido**: no se fusionaron las tarjetas de comida
 (el "Modelo B" más agresivo del análisis) — se prefirió el Modelo A
 (reubicación, menor riesgo) tras sopesarlo explícitamente con el
 usuario; si en el futuro se quiere ir más lejos, retomar esa
-conversación antes de tocar `render.js`.
+conversación antes de tocar `render.js`. **Fuera de alcance deliberado
+de 2026-08-19**: editar un plato individual del plan sin regenerar los 5
+(el usuario lo mencionó como parte del flujo ideal) — requeriría una
+función nueva en `dish-selector.js` capaz de re-elegir un solo hueco
+respetando presupuesto/25%/macros ya fijados por el resto del día; no
+necesaria para cerrar el bug reportado, queda como posible trabajo
+futuro si se pide explícitamente.
 
 **Qué no romper**: los `id="..."` del HTML; `data.budget` sigue siendo
 purchaseCost, no usageCost; `enforcePurchaseBudgetCap` sigue siendo la
@@ -2991,7 +3647,7 @@ argumentos 9 y 10; `buildMealFromDish` ya NO calcula macros inline, usa
 por gramos; dentro de esa función, kcal de un ingrediente sin resolver
 NUNCA debe volver a tener su propio remanente anclado a `dish.kcal` — se
 deriva por Atwater de protein/carbs/fat, esa es la regresión que
-2026-08-13e existe para prevenir. Los 253 tests deben seguir pasando
+2026-08-13e existe para prevenir. Los 261 tests deben seguir pasando
 después de cualquier cambio en `js/core/`, `js/engine/`, `js/ui/`, o
 `assets/css/style.css`.
 Específico de la Despensa: `applyPlanToPantry()` y
@@ -3006,13 +3662,51 @@ precisamente la confusión de UX que esta sesión existe para resolver
 y distinto de `entry.createdAt` — `getEntryPlanDate()` es la única
 función que debe leerlo (con fallback a `createdAt` para entradas
 viejas); no asumir que `entry.planDate` siempre existe al leer
-`pantryHistory` directamente en otro sitio. `savePlanForToday()` sigue
-sin hacer upsert por fecha — varios planes el mismo día es
-comportamiento correcto, no un bug a "arreglar" fusionándolos.
-`formatEntryDateTime()` DEBE incluir segundos, no solo minutos — se
-quitaron a propósito tras confirmar en vivo que sin segundos dos planes
-guardados con pocos clics de diferencia eran indistinguibles; no
-volver a truncar a "HH:MM".
+`pantryHistory` directamente en otro sitio. `formatEntryDateTime()` DEBE
+incluir segundos, no solo minutos — se añadieron a propósito tras
+confirmar en vivo que sin segundos dos planes guardados con pocos clics
+de diferencia eran indistinguibles; no volver a truncar a "HH:MM".
+**CORREGIDO en 2026-08-19 — la frase de este mismo handoff que decía
+"`savePlanForToday()` sigue sin hacer upsert por fecha... no un bug a
+arreglar fusionándolos" ERA la causa raíz del bug real que motivó esa
+sesión** — ver "Confirmar plan: UPSERT sobre el borrador del día —
+2026-08-19" arriba: `savePlanForToday()` AHORA SÍ hace upsert, pero solo
+sobre un borrador SIN nada real encima (`!hasRealPantryAction(entry)`);
+no revertir a "siempre crear una entrada nueva" pensando que eso es
+"restaurar" el diseño de 2026-08-14c, sería reintroducir el bug de
+inflado de despensa. `hasRealPantryAction(entry)` es la ÚNICA función
+que debe decidir si una entrada sigue siendo un borrador (comprado o
+cualquier comida cocinada) — no reimplementar ese criterio en otro
+sitio. `renderPlanSavedNotice(entry, historySaved, replaced)` tiene un
+tercer parámetro nuevo — omitirlo no rompe nada (cae a "Plan
+confirmado"), pero pierde la distinción "Plan actualizado" que
+tranquiliza al usuario; mantenerlo en cualquier llamador nuevo. El botón
+`usePlanTodayBtn` dice "Confirmar plan de hoy" (antes "Usar este plan
+hoy") — el `id` no cambió, solo el texto; si se retoca ese botón, no
+volver al texto antiguo, ya no describe correctamente lo que hace.
+Específico de 2026-08-19b: `TOP_CANDIDATES_POOL` **ya NO existe** en
+`js/engine/dish-selector.js` — no reintroducir un recorte fijo del pool
+de candidatos en `pickWeightedByScore`/`pickWeightedFromTop`, es
+exactamente la causa raíz medida (con instrumentación real, no
+supuesta) del bug de diversidad que esta sesión existe para arreglar;
+si hiciera falta limitar el coste computacional en el futuro (no hizo
+falta con 334 platos), preferir subir el umbral, no volver a un tope
+fijo pequeño. El modo "tight" de `scoreDishForSelection` **ya NO
+decide solo por `purchasePpeBucket`** — `macroFit` cuenta siempre en
+los dos modos; no revertir a `purchasePpeBucket*100` en solitario, es
+la fórmula que excluía carne/pescado casi por completo. Los pesos
+actuales (`macroFit*20 + purchasePpeBucket*40` en tight,
+`purchasePpeBucket*3` en allocation) son un primer ajuste razonado y
+verificado empíricamente UNA vez con el stress-test de esta sesión, no
+una calibración exhaustiva — si una futura sesión los retoca, repetir
+el mismo stress-test (script en el histórico de esta conversación, no
+en el repo) antes/después para confirmar el efecto real, no asumirlo.
+`enforcePurchaseBudgetCap`/`isBudgetTight`/`RELAXATION_TIERS` — cero
+cambios, siguen siendo la autoridad de presupuesto/tiers. Los 2
+golden-master de `tests/plan-generator.characterization.test.js`
+reflejan el algoritmo NUEVO — si se vuelve a tocar `dish-selector.js` a
+propósito, volver a recapturarlos a propósito (nunca en silencio), tal
+como advierte la cabecera de ese archivo.
 Específico del sistema de cuentas (2026-08-13f): `js/core/pantry.js`,
 `js/ui/render-pantry.js`, `js/core/calculator.js`, `js/core/
 meal-schedule.js` y todo `js/engine/*` deben seguir sin ninguna
@@ -3041,5 +3735,5 @@ Lee `PROJECT.md` y `ROADMAP.md` además de este archivo. Para el sistema
 completo (con el pipeline Python), lee también `PythonProject/docs/
 architecture.md` y `PythonProject/docs/data_flow.md`. No asumas que el
 estado descrito aquí sigue siendo exacto sin verificar contra el código —
-esto es una foto fija al final de la sesión 2026-08-14, tramo (i)
-(2026-08-14c).
+esto es una foto fija al final de la sesión 2026-08-19, tramo (l)
+(2026-08-19c/d).

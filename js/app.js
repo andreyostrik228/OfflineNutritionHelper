@@ -144,7 +144,7 @@ document.addEventListener("DOMContentLoaded", function () {
   var authConflictMergeBtn     = document.getElementById("authConflictMergeBtn");
   var authConflictKeepLocalBtn = document.getElementById("authConflictKeepLocalBtn");
 
-  // El plan actualmente mostrado — necesario para que "Usar este plan
+  // El plan actualmente mostrado — necesario para que "Confirmar plan de
   // hoy" sepa sobre qué comidas actuar sin regenerar nada. Una vez
   // guardado (savePlanForToday), la Etapa 2 (comprar) y la Etapa 3
   // (cocinar, por comida) ya no dependen de esto: actúan sobre el
@@ -206,9 +206,9 @@ document.addEventListener("DOMContentLoaded", function () {
       if (typeof clearScheduleUI === "function") clearScheduleUI();
     });
 
-    // No hay ya ningún plan mostrado que "Usar este plan hoy" pueda usar
-    // — pero la despensa NO se toca: es stock real que el usuario posee,
-    // "Resetear" solo limpia el formulario/plan en pantalla.
+    // No hay ya ningún plan mostrado que "Confirmar plan de hoy" pueda
+    // usar — pero la despensa NO se toca: es stock real que el usuario
+    // posee, "Resetear" solo limpia el formulario/plan en pantalla.
     lastGeneratedMeals = null;
     lastGeneratedStore = null;
     if (planSavedNoticeEl) {
@@ -272,8 +272,8 @@ document.addEventListener("DOMContentLoaded", function () {
           });
         }
 
-        // Guardado para que "Usar este plan hoy" pueda actuar sobre este
-        // plan concreto sin tener que regenerarlo.
+        // Guardado para que "Confirmar plan de hoy" pueda actuar sobre
+        // este plan concreto sin tener que regenerarlo.
         lastGeneratedMeals = result.meals;
         lastGeneratedStore = result.report && result.report.store;
 
@@ -530,9 +530,13 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  // Etapa 1 del ciclo de vida de la despensa: registra el plan mostrado
-  // como "el plan de hoy". NO compra ni cocina nada — eso ocurre después,
-  // de forma independiente, desde el panel de despensa (Etapas 2 y 3).
+  // Etapa 1 del ciclo de vida de la despensa: registra/CONFIRMA el plan
+  // mostrado como "el plan de hoy". NO compra ni cocina nada — eso ocurre
+  // después, de forma independiente, desde el panel de despensa (Etapas 2
+  // y 3). Idempotente sobre el borrador del día (ver savePlanForToday,
+  // pantry.js) -- regenerar el plan y volver a pulsar este botón nunca
+  // crea una segunda entrada "comprable" mientras no se haya comprado ni
+  // cocinado nada todavía.
   function handleUsePlanToday() {
     safeInit("use-plan-today", function () {
       if (!lastGeneratedMeals) return;
@@ -542,7 +546,7 @@ document.addEventListener("DOMContentLoaded", function () {
       try {
         var result = savePlanForToday(lastGeneratedMeals, lastGeneratedStore);
         if (typeof renderPantryPanel === "function") renderPantryPanel();
-        if (typeof renderPlanSavedNotice === "function") renderPlanSavedNotice(result.entry, result.historySaved);
+        if (typeof renderPlanSavedNotice === "function") renderPlanSavedNotice(result.entry, result.historySaved, result.replaced);
 
         // savePlanForToday() escribe en pantryHistory pero NO pasa por
         // syncAfterPantryChange() (no se llama desde render-pantry.js) --
