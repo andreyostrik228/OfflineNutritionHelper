@@ -63,6 +63,39 @@
  * nada es seguro por diseño — nunca puede, por sí mismo, producir más de
  * una entrada "comprable" para el mismo día.
  *
+ * ── Gate en "Generar plan" + reemplazo explícito del plan activo (2026-08-20) ─
+ * Bug real reportado por el usuario: el UPSERT de arriba protege un
+ * borrador SIN acción real, pero en cuanto una entrada de hoy tiene algo
+ * real encima (comprado y/o alguna comida cocinada), savePlanForToday()
+ * crea, A PROPÓSITO, una entrada nueva en vez de tocarla -- correcto para
+ * no pisar dinero gastado o comida cocinada, pero "Generar plan" nunca
+ * avisaba de que eso iba a pasar: se podía pulsar sin más y, si se volvía
+ * a confirmar, se acababa con dos (o más) tarjetas "Tu plan" activas el
+ * mismo día, cada una con sus propios chips de cocinar ya desbloqueados --
+ * confuso y, en la práctica, casi imposible de limpiar a mano. Reproducido
+ * en vivo antes de tocar nada: confirmar+comprar un plan, generar uno
+ * nuevo sin regenerar el anterior, confirmar el nuevo -> 2 tarjetas
+ * "Tu plan" distintas para el mismo día.
+ *
+ * Fix: js/app.js consulta findTodayEntry() al pulsar "Generar plan" -- si
+ * hay una entrada de hoy con hasRealPantryAction()=true y todavía NO
+ * isEntryFullyCooked() (algo real ya pasó, y algo sigue pendiente), no
+ * genera nada: abre un diálogo (showPlanReplaceDialog, render-pantry.js)
+ * que redirige a esa tarjeta y pregunta explícitamente si se quiere
+ * cambiar el plan completo. Solo si el usuario lo confirma se genera un
+ * plan nuevo Y, al confirmarlo, se llama a replacePendingMealsForToday()
+ * en vez del UPSERT normal -- reemplaza las comidas NO cocinadas de la
+ * entrada existente (nunca crea una tarjeta nueva), preservando intactas
+ * las que ya se cocinaron. Un borrador puro (sin acción real) o un plan ya
+ * completado del todo NO interrumpen -- el primero porque el UPSERT normal
+ * ya lo resuelve sin riesgo; el segundo porque no hay nada pendiente que
+ * un plan nuevo pueda pisar (es una intención legítima de empezar algo
+ * distinto, ej. un snack tardío tras terminar el día). Esto REFINA, no
+ * revierte, la decisión de 2026-08-14c de permitir varios planes el mismo
+ * día a propósito -- sigue siendo posible, pero ahora requiere una
+ * elección explícita en vez de ser un efecto colateral de pulsar "Generar
+ * plan" sin pensarlo.
+ *
  * Depende de:
  *   js/core/pricing.js (normalizeIngredientKey, resolvePackageInfo,
  *                        resolvePurchaseCost)
@@ -77,7 +110,11 @@
  *   formatLocalDateKey(date) → "YYYY-MM-DD" (hora LOCAL, nunca UTC)
  *   getEntryPlanDate(entry) → "YYYY-MM-DD"
  *   hasRealPantryAction(entry) → boolean (comprado o algo cocinado)
+ *   isEntryFullyCooked(entry) → boolean (TODAS las comidas cocinadas)
+ *   findTodayEntry() → entry|null (la más reciente cuyo día es hoy, cualquier estado)
  *   savePlanForToday(meals, storeId) → { entry, historySaved, replaced }
+ *   replacePendingMealsForToday(entryId, meals, storeId) →
+ *     { entry, historySaved, replacedMealKeys, keptMealKeys } | null
  *   aggregatePlanMealItems(meals) → [{name, requiredGrams}]
  *   markPurchaseDone(entryId, excludedNames?, storeId?) → { saved, historySaved, run } | null
  *   markMealCooked(entryId, mealKey, cooked) → { saved, historySaved, entry, meal } | null
@@ -368,6 +405,45 @@ function hasRealPantryAction(entry) {
 }
 
 /**
+ * Un plan se considera "terminado" en cuanto TODAS sus comidas están
+ * cocinadas -- momento en el que render-pantry.js lo muda al historial
+ * colapsado en vez de "Tu plan", y en el que el gate de "Generar plan"
+ * (js/app.js, ver "Gate en Generar plan..." en la cabecera de este
+ * archivo) deja de interrumpir: no hay nada pendiente que un plan nuevo
+ * pueda pisar. La compra en sí no forma parte de esta condición a
+ * propósito: alguien puede cocinar con lo que ya tenía sin haber pulsado
+ * nunca "Ya compré todo esto", y eso sigue siendo un plan terminado
+ * igualmente. (Antes vivía en render-pantry.js -- movida aquí porque es un
+ * predicado puro sobre la forma de una entry, sin DOM, igual que
+ * hasRealPantryAction; ahora también la necesita js/app.js.)
+ * @param {object} entry
+ * @returns {boolean}
+ */
+function isEntryFullyCooked(entry) {
+  var meals = (entry && entry.meals) || [];
+  return meals.length > 0 && meals.every(function (m) { return m.cooked; });
+}
+
+/**
+ * Entrada de historial MÁS RECIENTE cuyo día de calendario
+ * (getEntryPlanDate) es HOY, sea borrador o tenga ya algo real encima --
+ * a diferencia del UPSERT interno de savePlanForToday() (que busca
+ * específicamente un borrador SIN acción real), esta función no filtra
+ * por estado: js/app.js la usa para decidir si "Generar plan" debe
+ * interrumpir con el diálogo de "ya tienes un plan activo hoy" antes de
+ * generar nada (ver cabecera del archivo). getPantryHistory() ya devuelve
+ * más reciente primero, así que en el caso raro de que existan varias
+ * entradas de hoy (datos de antes de este cambio, o varias creadas a
+ * propósito) esto siempre elige la más reciente.
+ * @returns {object|null}
+ */
+function findTodayEntry() {
+  var todayKey = formatLocalDateKey(new Date());
+  var history = getPantryHistory();
+  return history.find(function (e) { return getEntryPlanDate(e) === todayKey; }) || null;
+}
+
+/**
  * Etapa 1 del ciclo de vida: "Confirmar plan de hoy" (antes "Usar este
  * plan hoy"). Registra el plan en el historial, desglosado POR COMIDA (no
  * solo el agregado del día), para que las Etapas 2 (comprar) y 3
@@ -444,6 +520,85 @@ function savePlanForToday(meals, storeId) {
 
   var historySaved = appendPantryHistory(entry);
   return { entry: entry, historySaved: historySaved, replaced: false };
+}
+
+/**
+ * "Cambiar el plan completo" desde el diálogo de "ya tienes un plan activo
+ * hoy" (ver "Gate en Generar plan..." en la cabecera del archivo,
+ * showPlanReplaceDialog en render-pantry.js) -- SOLO se llama tras una
+ * elección EXPLÍCITA del usuario, nunca automáticamente (a diferencia del
+ * UPSERT silencioso de savePlanForToday(), que solo actúa sobre un
+ * borrador SIN ninguna acción real todavía).
+ *
+ * Reemplaza, comida por comida, cada entrada de newMeals sobre la entry
+ * existente -- EXCEPTO las que ya estaban cocinadas: una comida cocinada
+ * es un hecho consumado (despensa ya descontada por markMealCooked, comida
+ * ya comida) que ningún regenerado puede deshacer, así que se conserva TAL
+ * CUAL, con su propio cooked/cookedAt/consumed intactos. Nunca crea una
+ * entrada nueva -- a diferencia de savePlanForToday() en este mismo caso,
+ * que sí crearía una segunda tarjeta "Tu plan" (correcto, sin este
+ * diálogo, para no pisar nada en silencio).
+ *
+ * purchase.done se resetea a false en cuanto se reemplaza AL MENOS una
+ * comida (nunca se borran purchase.runs, quedan como historial de lo YA
+ * comprado) -- las comidas reemplazadas casi siempre piden ingredientes
+ * distintos a los que el checklist de compra daba por buenos, así que
+ * "✓ Ya compraste esto" dejaría de ser cierto sin este reseteo. Volver a
+ * pulsar "Ya compré todo esto" tras esto es seguro y barato:
+ * markPurchaseDone() ya relee el stock actual y solo compra lo que de
+ * verdad sigue faltando (nunca duplica lo ya comprado antes del reemplazo).
+ * Si TODAS las comidas de newMeals resultan estar ya cocinadas (caso raro:
+ * el usuario cocinó todo mientras decidía), no se reemplaza nada y
+ * purchase.done se deja tal cual -- no hay nada que comprar de nuevo.
+ *
+ * @param {string} entryId
+ * @param {object[]} newMeals - result.meals de generateDietPlan(), tal cual
+ * @param {string} [storeId]
+ * @returns {{
+ *   entry:object, historySaved:boolean,
+ *   replacedMealKeys:string[], keptMealKeys:string[]
+ * }|null} - null si entryId no existe
+ */
+function replacePendingMealsForToday(entryId, newMeals, storeId) {
+  var history = getPantryHistory();
+  var entry = history.find(function (e) { return e.id === entryId; });
+  if (!entry) return null;
+
+  var oldByKey = {};
+  (entry.meals || []).forEach(function (m) { oldByKey[m.key] = m; });
+
+  var replacedMealKeys = [];
+  var keptMealKeys = [];
+
+  var mergedMeals = (newMeals || []).map(function (meal) {
+    var old = oldByKey[meal.key];
+    if (old && old.cooked) {
+      keptMealKeys.push(meal.key);
+      return old;
+    }
+    replacedMealKeys.push(meal.key);
+    return {
+      key: meal.key,
+      label: meal.label,
+      time: typeof meal.time === "string" ? meal.time : null,
+      items: (meal.items || []).map(function (item) {
+        return { name: item.name, requiredGrams: item.grams };
+      }),
+      cooked: false,
+      cookedAt: null,
+      consumed: null
+    };
+  });
+
+  entry.createdAt = new Date().toISOString();
+  entry.store = storeId || entry.store;
+  entry.meals = mergedMeals;
+  if (replacedMealKeys.length > 0) {
+    entry.purchase.done = false;
+  }
+
+  var historySaved = savePantryHistory(history);
+  return { entry: entry, historySaved: historySaved, replacedMealKeys: replacedMealKeys, keptMealKeys: keptMealKeys };
 }
 
 // ── Agregación auxiliar (reutilizada por Etapa 2 y por su UI) ────────────

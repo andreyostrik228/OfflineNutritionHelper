@@ -3012,6 +3012,15 @@ dialog.auth-dialog[open] {
   gap: var(--space-2);
 }
 
+/* Diálogo "ya tienes un plan activo hoy" -- reutiliza la misma cabecera
+   .auth-dialog (chrome genérico de <dialog>) y .auth-conflict__actions
+   (botones apilados); solo la nota sobre comidas ya cocinadas es propia. */
+.plan-replace-dialog__note {
+  margin: var(--space-2) 0 0;
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
 @media (max-width: 640px) {
   .topbar__menu {
     min-width: 180px;

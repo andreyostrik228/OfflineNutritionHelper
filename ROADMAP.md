@@ -2,7 +2,22 @@
 
 ## Current status
 
-**Stage:** working prototype, updated 2026-08-19c/d — after the 2026-08-19b
+**Stage:** working prototype, updated 2026-08-20 — a real bug the user hit
+in use: with a plan already confirmed and bought, generating and
+confirming a new plan silently created a SECOND active "Tu plan" card for
+the same day. Fix: "Generar plan" now checks whether today already has an
+active plan with something real on it (bought and/or cooked) and
+something still pending — if so, it opens a dialog asking to change the
+whole plan instead of generating silently; confirming that replaces the
+NOT-yet-cooked meals of the existing entry in place (never creates a
+second card), keeping already-cooked meals untouched. A pure draft or an
+already-fully-cooked plan never interrupts. 13 new tests (274 total, 0
+failed); verified live end-to-end against the local build, including the
+exact reported scenario. See `STATE.md`, "Gate en Generar plan +
+reemplazo explícito del plan activo — 2026-08-20". **Not yet
+committed/deployed** as of this update.
+
+Previously, updated 2026-08-19c/d — after the 2026-08-19b
 diversity fix below, the user asked for the generator to hit budget
 deadlocks less often WITHOUT losing that new diversity. Two attempts, both
 measured against the same 1000-run stress test: (1) a ~12% internal

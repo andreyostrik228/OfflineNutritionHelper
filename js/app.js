@@ -40,6 +40,19 @@
  *      (safeRenderRows) — una fila individual que falle al pintarse no
  *      vacía toda la lista, solo se omite ella.
  *
+ * ── Gate en "Generar plan" (2026-08-20) ───────────────────────────────────
+ * handleSubmit() ya no genera directamente -- primero comprueba
+ * getBlockingActiveEntry() (findTodayEntry/hasRealPantryAction/
+ * isEntryFullyCooked de pantry.js). Si hay un plan de hoy con algo real
+ * encima y algo todavía pendiente, abre showPlanReplaceDialog()
+ * (render-pantry.js) en vez de generar; "Cambiar el plan completo" ahí
+ * llama a handleReplaceWholePlan(), que sí genera (runGeneration(), el
+ * cuerpo real, compartido) pero marca pendingReplaceEntryId para que
+ * handleUsePlanToday() confirme con replacePendingMealsForToday() en vez
+ * del UPSERT normal. Ver "Gate en Generar plan..." en la cabecera de
+ * js/core/pantry.js para el razonamiento completo (por qué, y por qué un
+ * borrador puro o un plan ya completado no interrumpen).
+ *
  * Depende de:
  *   js/core/calculator.js   (readForm, validateInput, calculateProfile)
  *   js/engine/plan-generator.js (generateDietPlan)
@@ -112,6 +125,13 @@ document.addEventListener("DOMContentLoaded", function () {
   var pantryHistoryContainer   = document.getElementById("pantryHistoryContainer");
   var pantryCountEl            = document.getElementById("pantryCount");
 
+  // Diálogo "ya tienes un plan activo hoy" -- ver "Gate en Generar plan..."
+  // en la cabecera de js/core/pantry.js.
+  var planReplaceDialogEl    = document.getElementById("planReplaceDialog");
+  var planReplaceBodyEl      = document.getElementById("planReplaceBody");
+  var planReplaceFullBtn     = document.getElementById("planReplaceFullBtn");
+  var planReplaceCancelBtn   = document.getElementById("planReplaceCancelBtn");
+
   // "Tu plan" (2026-08-14c) -- fuera del acordeón de despensa, ver
   // cabecera de js/ui/render-pantry.js. Planes con algo pendiente
   // (comprar/cocinar) se pintan y gestionan aquí, no dentro de pantryPanel.
@@ -151,6 +171,15 @@ document.addEventListener("DOMContentLoaded", function () {
   // historial persistido, resuelto por su propio entryId.
   var lastGeneratedMeals = null;
   var lastGeneratedStore = null;
+
+  // Distinto de null SOLO entre "Cambiar el plan completo" (diálogo de
+  // plan activo, ver "Gate en Generar plan..." en pantry.js) y la
+  // siguiente confirmación -- le dice a handleUsePlanToday() que llame a
+  // replacePendingMealsForToday() en vez del UPSERT normal
+  // (savePlanForToday), dirigido a ESTA entry en concreto. Se limpia tras
+  // usarse una vez, y también al "Resetear" (clearOutput) para que nunca
+  // sobreviva a un plan distinto generado después sin pasar por el diálogo.
+  var pendingReplaceEntryId = null;
 
   var budgetModeRadios   = document.querySelectorAll('input[name="budgetMode"]');
   var budgetCustomField  = document.getElementById("budgetCustomField");
@@ -211,6 +240,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // posee, "Resetear" solo limpia el formulario/plan en pantalla.
     lastGeneratedMeals = null;
     lastGeneratedStore = null;
+    pendingReplaceEntryId = null;
     if (planSavedNoticeEl) {
       planSavedNoticeEl.hidden = true;
       planSavedNoticeEl.innerHTML = "";
@@ -219,22 +249,92 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // ── Generar el plan (flujo principal) ────────────────────────────────
 
+  /**
+   * Lee y valida el formulario, y resuelve data.budget a un número plano
+   * (igual que antes de que existieran los presets — plan-generator.js/
+   * dish-selector.js no necesitan saber si vino de un preset o de una
+   * cantidad exacta). Compartido por handleSubmit() y
+   * handleReplaceWholePlan() -- las dos vías que acaban llamando a
+   * runGeneration().
+   * @returns {{data:object, error:string|null}}
+   */
+  function readValidatedFormData() {
+    var data = readForm();
+    var error = validateInput(data);
+    if (error) return { data: null, error: error };
+    data.budget = resolveBudget(data);
+    return { data: data, error: null };
+  }
+
+  /**
+   * Entrada de hoy que debe interrumpir "Generar plan" con el diálogo de
+   * "ya tienes un plan activo" -- ver "Gate en Generar plan..." en la
+   * cabecera de js/core/pantry.js. Solo bloquea cuando hay algo real
+   * encima (comprado y/o cocinado) Y todavía algo pendiente: un borrador
+   * puro ya lo resuelve sin riesgo el UPSERT normal (savePlanForToday), y
+   * un plan ya completado del todo no tiene nada pendiente que un plan
+   * nuevo pueda pisar. Nunca lanza -- un fallo aquí no puede impedir que
+   * "Generar plan" siga funcionando (mismo principio que safeInit).
+   * @returns {object|null}
+   */
+  function getBlockingActiveEntry() {
+    try {
+      if (typeof findTodayEntry !== "function") return null;
+      var entry = findTodayEntry();
+      if (!entry) return null;
+      if (typeof hasRealPantryAction === "function" && !hasRealPantryAction(entry)) return null;
+      if (typeof isEntryFullyCooked === "function" && isEntryFullyCooked(entry)) return null;
+      return entry;
+    } catch (err) {
+      console.error("[plan-replace-gate] fallo comprobando el plan activo -- se deja generar con normalidad:", err);
+      return null;
+    }
+  }
+
   function handleSubmit(event) {
     event.preventDefault();
 
-    var data = readForm();
-    var error = validateInput(data);
-
-    if (error) {
-      showWarning(error);
+    var parsed = readValidatedFormData();
+    if (parsed.error) {
+      showWarning(parsed.error);
       return;
     }
 
-    // A partir de aquí data.budget es un número plano, igual que antes de
-    // que existieran los presets — plan-generator.js/dish-selector.js no
-    // necesitan saber si vino de un preset o de una cantidad exacta.
-    data.budget = resolveBudget(data);
+    var activeEntry = getBlockingActiveEntry();
+    if (activeEntry) {
+      safeInit("plan-replace-prompt", function () {
+        if (typeof showPlanReplaceDialog === "function") showPlanReplaceDialog(activeEntry);
+      });
+      return;
+    }
 
+    runGeneration(parsed.data);
+  }
+
+  /**
+   * "Cambiar el plan completo" en el diálogo de plan activo -- genera un
+   * plan nuevo igual que handleSubmit(), pero marca pendingReplaceEntryId
+   * para que handleUsePlanToday() reemplace la entry existente (comidas NO
+   * cocinadas) en vez de crear una nueva al confirmar.
+   * @param {string} entryId
+   */
+  function handleReplaceWholePlan(entryId) {
+    var parsed = readValidatedFormData();
+    if (parsed.error) {
+      showWarning(parsed.error);
+      return;
+    }
+    pendingReplaceEntryId = entryId;
+    runGeneration(parsed.data);
+  }
+
+  /**
+   * Cuerpo real de "Generar plan" -- extraído de handleSubmit() para
+   * poder llamarlo también desde handleReplaceWholePlan() sin pasar por
+   * el gate una segunda vez.
+   * @param {object} data - ya validado, con data.budget resuelto
+   */
+  function runGeneration(data) {
     showSpinner();
 
     // setTimeout para permitir que el spinner se pinte antes del cálculo
@@ -536,22 +636,36 @@ document.addEventListener("DOMContentLoaded", function () {
   // y 3). Idempotente sobre el borrador del día (ver savePlanForToday,
   // pantry.js) -- regenerar el plan y volver a pulsar este botón nunca
   // crea una segunda entrada "comprable" mientras no se haya comprado ni
-  // cocinado nada todavía.
+  // cocinado nada todavía. Si pendingReplaceEntryId está fijado (el
+  // usuario eligió "Cambiar el plan completo" en el diálogo de plan
+  // activo, ver "Gate en Generar plan..." en pantry.js), confirma sobre
+  // ESA entry en concreto (replacePendingMealsForToday) en vez de crear
+  // una nueva.
   function handleUsePlanToday() {
     safeInit("use-plan-today", function () {
       if (!lastGeneratedMeals) return;
-      if (typeof savePlanForToday !== "function") return;
 
       usePlanTodayBtn.disabled = true; // guarda simple contra doble clic (la llamada es síncrona)
       try {
-        var result = savePlanForToday(lastGeneratedMeals, lastGeneratedStore);
-        if (typeof renderPantryPanel === "function") renderPantryPanel();
-        if (typeof renderPlanSavedNotice === "function") renderPlanSavedNotice(result.entry, result.historySaved, result.replaced);
+        var result, mode;
+        if (pendingReplaceEntryId && typeof replacePendingMealsForToday === "function") {
+          result = replacePendingMealsForToday(pendingReplaceEntryId, lastGeneratedMeals, lastGeneratedStore);
+          pendingReplaceEntryId = null;
+          mode = "active-replaced";
+        } else if (typeof savePlanForToday === "function") {
+          result = savePlanForToday(lastGeneratedMeals, lastGeneratedStore);
+          mode = result.replaced ? "draft-updated" : "created";
+        }
+        if (!result) return;
 
-        // savePlanForToday() escribe en pantryHistory pero NO pasa por
-        // syncAfterPantryChange() (no se llama desde render-pantry.js) --
-        // sin este empuje explícito, un plan recién guardado no llegaría a
-        // la nube hasta la siguiente mutación de despensa.
+        if (typeof renderPantryPanel === "function") renderPantryPanel();
+        if (typeof renderPlanSavedNotice === "function") renderPlanSavedNotice(result.entry, result.historySaved, mode);
+
+        // savePlanForToday()/replacePendingMealsForToday() escriben en
+        // pantryHistory pero NO pasan por syncAfterPantryChange() (no se
+        // llama desde render-pantry.js) -- sin este empuje explícito, un
+        // plan recién guardado no llegaría a la nube hasta la siguiente
+        // mutación de despensa.
         safeInit("plan-saved-cloud-push", function () {
           if (typeof pushPantryToCloud === "function") pushPantryToCloud();
         });
@@ -592,7 +706,12 @@ document.addEventListener("DOMContentLoaded", function () {
         pantryHistoryContainer: pantryHistoryContainer,
         pantryCountEl: pantryCountEl,
         planSavedNoticeEl: planSavedNoticeEl,
-        onPantryChange: syncAfterPantryChange
+        onPantryChange: syncAfterPantryChange,
+        planReplaceDialogEl: planReplaceDialogEl,
+        planReplaceBodyEl: planReplaceBodyEl,
+        planReplaceFullBtn: planReplaceFullBtn,
+        planReplaceCancelBtn: planReplaceCancelBtn,
+        onReplaceWholePlan: handleReplaceWholePlan
       });
       if (typeof renderPantryPanel === "function") renderPantryPanel();
     }

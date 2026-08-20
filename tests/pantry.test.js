@@ -422,6 +422,159 @@ function run(t) {
     assert.strictEqual(typeof resultB.entry.createdAt, "string");
   });
 
+  // ── isEntryFullyCooked / findTodayEntry / replacePendingMealsForToday ───
+  // (2026-08-20 -- "Gate en Generar plan...", ver cabecera del archivo)
+
+  t.test("isEntryFullyCooked: false para una entry recién guardada (ninguna comida cocinada)", function () {
+    var s = freshPantrySandbox();
+    var meals = fakeMeals({ breakfast: [{ name: "Avena", grams: 80 }], lunch: [{ name: "Salmón", grams: 150 }] });
+    var saved = s.savePlanForToday(meals, "mercadona");
+    assert.strictEqual(s.isEntryFullyCooked(saved.entry), false);
+  });
+
+  t.test("isEntryFullyCooked: false cuando SOLO ALGUNAS comidas están cocinadas", function () {
+    var s = freshPantrySandbox();
+    var meals = fakeMeals({ breakfast: [{ name: "Avena", grams: 80 }], lunch: [{ name: "Salmón", grams: 150 }] });
+    var saved = s.savePlanForToday(meals, "mercadona");
+    var afterCook = s.markMealCooked(saved.entry.id, "breakfast", true);
+    assert.strictEqual(s.isEntryFullyCooked(afterCook.entry), false);
+  });
+
+  t.test("isEntryFullyCooked: true cuando TODAS las comidas están cocinadas", function () {
+    var s = freshPantrySandbox();
+    var meals = fakeMeals({ breakfast: [{ name: "Avena", grams: 80 }], lunch: [{ name: "Salmón", grams: 150 }] });
+    var saved = s.savePlanForToday(meals, "mercadona");
+    s.markMealCooked(saved.entry.id, "breakfast", true);
+    var afterCook = s.markMealCooked(saved.entry.id, "lunch", true);
+    assert.strictEqual(s.isEntryFullyCooked(afterCook.entry), true);
+  });
+
+  t.test("isEntryFullyCooked: false/nunca lanza con entrada null, sin meals, o meals vacío", function () {
+    var s = freshPantrySandbox();
+    assert.strictEqual(s.isEntryFullyCooked(null), false);
+    assert.strictEqual(s.isEntryFullyCooked({}), false);
+    assert.strictEqual(s.isEntryFullyCooked({ meals: [] }), false);
+  });
+
+  t.test("findTodayEntry: null cuando no hay ninguna entrada guardada", function () {
+    var s = freshPantrySandbox();
+    assert.strictEqual(s.findTodayEntry(), null);
+  });
+
+  t.test("findTodayEntry: devuelve la entrada de hoy (borrador puro incluido, sin filtrar por estado)", function () {
+    var s = freshPantrySandbox();
+    var meals = fakeMeals({ breakfast: [{ name: "Avena", grams: 80 }] });
+    var saved = s.savePlanForToday(meals, "mercadona");
+    var found = s.findTodayEntry();
+    assert.strictEqual(found.id, saved.entry.id);
+  });
+
+  t.test("findTodayEntry: null cuando la única entrada guardada es de OTRO día", function () {
+    var s = freshPantrySandbox();
+    s.localStorage = createFakeLocalStorage();
+    s.localStorage.setItem("nutritionPlanner.pantryHistory.v1", JSON.stringify([
+      { id: "old1", createdAt: "2020-01-01T00:00:00.000Z", planDate: "2020-01-01", store: "mercadona", meals: [], purchase: { done: false, runs: [] } }
+    ]));
+    assert.strictEqual(s.findTodayEntry(), null);
+  });
+
+  t.test("findTodayEntry: con VARIAS entradas de hoy (caso raro), devuelve la MÁS RECIENTE", function () {
+    var s = freshPantrySandbox();
+    var mealsA = fakeMeals({ breakfast: [{ name: "Avena", grams: 80 }] });
+    var mealsB = fakeMeals({ breakfast: [{ name: "Salmón", grams: 150 }] });
+
+    var resultA2 = s.savePlanForToday(mealsA, "mercadona");
+    s.markMealCooked(resultA2.entry.id, "breakfast", true); // acción real -> ya no es un borrador
+    var resultB2 = s.savePlanForToday(mealsB, "mercadona"); // crea una SEGUNDA entrada de hoy
+
+    var found = s.findTodayEntry();
+    assert.strictEqual(found.id, resultB2.entry.id); // la más reciente, no A
+  });
+
+  t.test("replacePendingMealsForToday: entryId inexistente devuelve null, no lanza", function () {
+    var s = freshPantrySandbox();
+    assert.strictEqual(s.replacePendingMealsForToday("no-existe", []), null);
+  });
+
+  t.test("replacePendingMealsForToday: reemplaza las comidas NO cocinadas, conserva TAL CUAL las ya cocinadas", function () {
+    var s = freshPantrySandbox();
+    var meals = fakeMeals({
+      breakfast: [{ name: "Avena", grams: 80 }],
+      lunch: [{ name: "Salmón", grams: 150 }]
+    });
+    var saved = s.savePlanForToday(meals, "mercadona");
+    s.markMealCooked(saved.entry.id, "breakfast", true); // desayuno YA cocinado
+
+    var newMeals = fakeMeals({
+      breakfast: [{ name: "Tostadas", grams: 60 }], // no debería aplicarse -- ya cocinado
+      lunch: [{ name: "Pollo", grams: 200 }]
+    });
+    var result = s.replacePendingMealsForToday(saved.entry.id, newMeals, "mercadona");
+
+    // JSON round-trip: normaliza arrays creados en el sandbox vm (realm
+    // distinto) antes de comparar contra literales del host -- ver el
+    // mismo patrón en tests/plan-generator.characterization.test.js.
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.keptMealKeys)), ["breakfast"]);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.replacedMealKeys)), ["lunch"]);
+
+    var entry = s.getPantryHistory()[0];
+    var breakfastMeal = entry.meals.find(function (m) { return m.key === "breakfast"; });
+    var lunchMeal = entry.meals.find(function (m) { return m.key === "lunch"; });
+
+    assert.strictEqual(breakfastMeal.items[0].name, "Avena"); // intacto, NO reemplazado
+    assert.strictEqual(breakfastMeal.cooked, true);
+    assert.strictEqual(lunchMeal.items[0].name, "Pollo"); // reemplazado
+    assert.strictEqual(lunchMeal.cooked, false);
+  });
+
+  t.test("replacePendingMealsForToday: resetea purchase.done a false cuando reemplaza algo, pero conserva purchase.runs", function () {
+    var s = freshPantryShoppingListSandbox();
+    injectSyntheticIngredient(s, { key: "test avena reemplazo", pricePer100Units: 0.3, packageSize: 500 });
+    var meals = fakeMeals({ breakfast: [{ name: "test avena reemplazo", grams: 80 }] });
+    var saved = s.savePlanForToday(meals, "mercadona");
+    s.markPurchaseDone(saved.entry.id, []);
+
+    var entryBefore = s.getPantryHistory()[0];
+    assert.strictEqual(entryBefore.purchase.done, true);
+    assert.strictEqual(entryBefore.purchase.runs.length, 1);
+
+    var newMeals = fakeMeals({ breakfast: [{ name: "Salmón", grams: 150 }] });
+    s.replacePendingMealsForToday(saved.entry.id, newMeals, "mercadona");
+
+    var entryAfter = s.getPantryHistory()[0];
+    assert.strictEqual(entryAfter.purchase.done, false); // hay que volver a comprar
+    assert.strictEqual(entryAfter.purchase.runs.length, 1); // pero el historial de compra NO se borra
+  });
+
+  t.test("replacePendingMealsForToday: si TODAS las comidas de newMeals ya estaban cocinadas, no reemplaza nada y no toca purchase.done", function () {
+    var s = freshPantrySandbox();
+    var meals = fakeMeals({ breakfast: [{ name: "Avena", grams: 80 }] });
+    var saved = s.savePlanForToday(meals, "mercadona");
+    s.markMealCooked(saved.entry.id, "breakfast", true);
+
+    var newMeals = fakeMeals({ breakfast: [{ name: "Tostadas", grams: 60 }] });
+    var result = s.replacePendingMealsForToday(saved.entry.id, newMeals, "mercadona");
+
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.replacedMealKeys)), []);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.keptMealKeys)), ["breakfast"]);
+    var entry = s.getPantryHistory()[0];
+    assert.strictEqual(entry.purchase.done, false); // no se tocó (ya era false, nunca se compró)
+  });
+
+  t.test("replacePendingMealsForToday: refresca createdAt pero mantiene id y planDate, y nunca crea una entrada nueva", function () {
+    var s = freshPantrySandbox();
+    var meals = fakeMeals({ breakfast: [{ name: "Avena", grams: 80 }] });
+    var saved = s.savePlanForToday(meals, "mercadona");
+
+    var newMeals = fakeMeals({ breakfast: [{ name: "Salmón", grams: 150 }] });
+    var result = s.replacePendingMealsForToday(saved.entry.id, newMeals, "mercadona");
+
+    assert.strictEqual(result.entry.id, saved.entry.id);
+    assert.strictEqual(result.entry.planDate, saved.entry.planDate);
+    assert.strictEqual(typeof result.entry.createdAt, "string");
+    assert.strictEqual(s.getPantryHistory().length, 1);
+  });
+
   t.test("getEntryPlanDate: usa entry.planDate cuando existe, sin mirar createdAt", function () {
     var s = freshPantrySandbox();
     var entry = { planDate: "2026-08-14", createdAt: "2020-01-01T00:00:00.000Z", meals: [], purchase: { done: false, runs: [] } };

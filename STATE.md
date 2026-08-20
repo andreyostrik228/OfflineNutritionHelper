@@ -1,6 +1,6 @@
 # Nutrition Planner — Engineering State
 
-Actualizado 2026-08-19. Lee esto junto con `PROJECT.md` y `ROADMAP.md` antes
+Actualizado 2026-08-20. Lee esto junto con `PROJECT.md` y `ROADMAP.md` antes
 de empezar una sesión nueva (ver "Session handoff" al final — reemplaza al
 antiguo "Continuation checklist"). Para el sistema completo (este repo + el
 pipeline Python en `PythonProject`), ver `PythonProject/docs/architecture.md`
@@ -170,6 +170,54 @@ cambios en esta sub-sesión. Ver "Reserva de presupuesto y reparto
 secuencial — 2026-08-19c/d" más abajo para el detalle completo con
 tablas. Comiteado y desplegado junto con los tramos (j)/(k) — ver
 "Commit/branch/deploy actuales" en el handoff para el hash exacto.
+
+**Resumen de la sesión 2026-08-20 (bug real: "Generar plan" podía crear
+tarjetas "Tu plan" duplicadas el mismo día — gate + reemplazo explícito
+del plan activo)**: el usuario reportó en uso real que, con un plan ya
+confirmado y comprado, pulsar "Generar plan" otra vez y confirmar el
+resultado dejaba DOS tarjetas "Tu plan" activas para el mismo día, cada
+una con sus propios chips de "cocinado" ya desbloqueados — reproducido en
+vivo antes de tocar nada (confirmar+comprar, generar de nuevo,
+confirmar → 2 tarjetas distintas). Causa raíz: el UPSERT de 2026-08-19
+protege un borrador SIN acción real, pero en cuanto una entrada de hoy
+tiene algo real encima (comprado y/o cocinado), `savePlanForToday()` crea
+una entrada NUEVA a propósito (correcto, para no pisar dinero gastado o
+comida cocinada) — pero "Generar plan" nunca avisaba de que eso iba a
+pasar. Fix (aprobado por el usuario tras proponer 2 fases y elegir
+empezar por la primera): `handleSubmit()` (`js/app.js`) ahora comprueba
+`findTodayEntry()` + `hasRealPantryAction()` + `isEntryFullyCooked()`
+(las 3 en `js/core/pantry.js`) antes de generar. Si hay un plan de hoy con
+algo real encima y todavía algo pendiente, no genera nada: abre un
+diálogo nuevo (`showPlanReplaceDialog`, `js/ui/render-pantry.js`,
+`<dialog>` nativo con el mismo patrón que el de conflicto de
+sincronización) que redirige a esa tarjeta y pregunta explícitamente. Solo
+tras elegir "Cambiar el plan completo" se genera un plan nuevo, y al
+confirmarlo se llama a la función nueva `replacePendingMealsForToday()`
+en vez del UPSERT normal — reemplaza las comidas NO cocinadas de la
+entrada existente (nunca crea una tarjeta nueva), preserva intactas las
+que ya se cocinaron, y resetea `purchase.done` a `false` (conservando
+`purchase.runs`) porque los ingredientes reemplazados casi siempre
+cambian. Un borrador puro o un plan ya completado del todo NO interrumpen
+a propósito (ver razonamiento completo en la cabecera de `pantry.js`).
+Esto REFINA, no revierte, la decisión de 2026-08-14c de permitir varios
+planes el mismo día -- sigue siendo posible, pero ahora requiere una
+elección explícita. 13 tests nuevos en `tests/pantry.test.js`
+(`isEntryFullyCooked` ×4, `findTodayEntry` ×4, `replacePendingMealsForToday`
+×5) — 274 tests totales (251 en `tests/` + 23 en `poc/tests/`), 0
+fallidos. Verificado en vivo reproduciendo el escenario
+completo: confirmar+comprar → generar de nuevo → gate abre el diálogo (no
+genera nada) → "Cambiar el plan completo" → confirmar → sigue siendo 1
+sola tarjeta, aviso "Plan reemplazado", estado de compra reseteado
+correctamente; y por función directa (los clics sintéticos en el chip de
+comida no se registraban de forma fiable en este entorno de automatización
+concreto -- limitación conocida ya documentada en sesiones anteriores, no
+un bug de la app: `markMealCooked()`/`replacePendingMealsForToday()`
+llamados directamente confirmaron el comportamiento exacto, comida
+cocinada conservada tal cual, el resto reemplazado). `js/engine/*` — cero
+cambios; `js/core/budget.js`/`pricing.js`/`meal-schedule.js` — cero
+cambios. Ver "Gate en Generar plan + reemplazo explícito — 2026-08-20" más
+abajo para el detalle completo. **Sin commitear a la hora de escribir
+esto** — pendiente de decisión del usuario, ver "Session handoff".
 
 **Resumen de la sesión 2026-08-14c (auditoría de arquitectura de Despensa
 + reubicación de "Tu plan" fuera del acordeón — SIN tocar la lógica de
@@ -651,12 +699,12 @@ producto real verificado de `REAL_PRODUCTS` y calcular KBJU/coste desde ahí.
 - Tests: `poc/tests/` — 23 tests (`ingredient-resolver`,
   `shopping-list-builder` de prueba, `ingredient-coverage`).
 
-## Tests (actualizado 2026-08-19)
+## Tests (actualizado 2026-08-20)
 
 Dos suites, ambas Node + `vm` (cargan los archivos de producción reales,
 sin copiarlos ni envolverlos en `module.exports`), sin ningún framework:
 
-- `tests/` (producción): `node tests/run-tests.js` → **238 passed, 0
+- `tests/` (producción): `node tests/run-tests.js` → **251 passed, 0
   failed** (verificado en esta sesión) — `shopping-cost.test.js` (14), `budget-mode.test.js` (13),
   `plan-generator.characterization.test.js` (9, golden-master recapturado
   2026-08-08 tras el rediseño de presupuesto, y de nuevo 6 veces más entre
@@ -665,9 +713,10 @@ sin copiarlos ni envolverlos en `module.exports`), sin ningún framework:
   lotería con semilla fija; ver "Diversidad del generador" y "Reserva de
   presupuesto y reparto secuencial" más abajo — los 7 tests de
   invariantes/contrato de este mismo archivo NUNCA se han tocado),
-  `ingredient-packaging-coverage.test.js` (2), `pantry.test.js` (48,
-  2026-08-06/07, +7 en 2026-08-14c, +8/-1 en 2026-08-19 — ver sección
-  Despensa arriba; cubre almacenamiento con fallback en memoria,
+  `ingredient-packaging-coverage.test.js` (2), `pantry.test.js` (68,
+  2026-08-06/07, +7 en 2026-08-14c, +8/-1 en 2026-08-19, +13 en 2026-08-20
+  — ver sección Despensa arriba y "Gate en Generar plan..." más abajo;
+  cubre almacenamiento con fallback en memoria,
   localStorage real inyectado, JSON corrupto, entradas individuales
   corruptas, las 3 etapas del ciclo de vida, el caso exacto reportado por
   el usuario — comprar sin cocinar deja el stock íntegro, no neteado —,
@@ -683,7 +732,15 @@ sin copiarlos ni envolverlos en `module.exports`), sin ningún framework:
   confirmar 3 veces + comprar 1 vez deja exactamente 1 paquete comprado,
   nunca 3 —, confirmar tras comprar o tras cocinar SÍ crea una entrada
   nueva genuina, y `createdAt` se refresca en cada actualización del
-  borrador mientras `id`/`planDate` se mantienen estables),
+  borrador mientras `id`/`planDate` se mantienen estables; y desde
+  2026-08-20 `isEntryFullyCooked()` (ninguna/algunas/todas las comidas
+  cocinadas, nunca lanza con entrada corrupta), `findTodayEntry()` (sin
+  entradas, entrada de hoy sin filtrar por estado, entrada de otro día,
+  varias entradas de hoy -- devuelve la más reciente) y
+  `replacePendingMealsForToday()` (reemplaza lo no cocinado y conserva TAL
+  CUAL lo ya cocinado, resetea `purchase.done` conservando `purchase.runs`,
+  no toca nada si todo ya estaba cocinado, refresca `createdAt` manteniendo
+  `id`/`planDate`, `entryId` inexistente devuelve `null`)),
   `meal-schedule.test.js`
   (36, 2026-08-07 — ver sección "Horario de comidas" más abajo; cubre
   saneamiento de wake/sleep, envoltura de medianoche/turno de noche,
@@ -739,8 +796,8 @@ sin copiarlos ni envolverlos en `module.exports`), sin ningún framework:
 - `poc/tests/`: `node poc/tests/run-tests.js` → **23 passed, 0 failed** —
   resolver, shopping-list de prueba, cobertura de ingredientes (sin
   cambios, `poc/` no se tocó en ninguna de estas sesiones).
-- Total: **261 tests, 0 failed** (238 en `tests/` + 23 en `poc/tests/`) —
-  re-ejecutado y verificado en la sesión 2026-08-19 (no solo heredado de
+- Total: **274 tests, 0 failed** (251 en `tests/` + 23 en `poc/tests/`) —
+  re-ejecutado y verificado en la sesión 2026-08-20 (no solo heredado de
   memoria). El runner (`tests/run-tests.js`) ahora soporta tests async
   (una función de test puede devolver una promesa, necesario porque
   auth.js/cloud-sync.js/migration.js siempre son async contra un cliente
@@ -2982,6 +3039,122 @@ esas cifras se calculan y se seguirán calculando SIEMPRE contra
 `data.budget`, el único techo real; esta invariante ya estaba probada en
 tests y se reverificó en vivo en ambos intentos de esta sub-sesión.
 
+## Gate en Generar plan + reemplazo explícito del plan activo (2026-08-20)
+
+### El bug reportado, reproducido en vivo antes de tocar nada
+
+Con un plan ya confirmado (`savePlanForToday`) y con la compra marcada
+(`markPurchaseDone`), pulsar "Generar plan" otra vez mostraba un preview
+nuevo -- correcto, no toca nada todavía. El problema aparecía al pulsar
+"Confirmar plan de hoy" sobre ESE preview nuevo: como la entrada de hoy ya
+tenía algo real encima (`hasRealPantryAction()=true`), el UPSERT de
+2026-08-19 (a propósito, para no pisar dinero gastado) creaba una entrada
+SEGUNDA -- resultado: 2 tarjetas "Tu plan" activas para el mismo día,
+ambas con sus chips de "cocinado" ya desbloqueados. Reproducido con 2
+llamadas reales (`usePlanTodayBtn.click()` dos veces con una regeneración
+entre medias) contra el sitio en producción antes de cambiar una sola
+línea.
+
+### Por qué "Generar plan" nunca avisaba
+
+`handleSubmit()` (`js/app.js`) no tenía ninguna noción de "ya existe un
+plan de hoy" -- generaba un preview nuevo sin más, siempre. La protección
+existente (UPSERT sobre un borrador SIN acción real) vive en
+`savePlanForToday()`, un paso DESPUÉS de generar -- para cuando actúa, el
+usuario ya decidió confirmar, es demasiado tarde para preguntar "¿seguro
+que quieres esto?".
+
+### El fix: gate ANTES de generar + reemplazo explícito
+
+Tres funciones nuevas en `js/core/pantry.js` (puro, sin DOM, mismo patrón
+que `hasRealPantryAction`):
+
+- **`isEntryFullyCooked(entry)`** -- movida aquí desde `render-pantry.js`
+  (ya existía para decidir qué entra en "Tu plan" vs. el historial
+  colapsado; ahora `js/app.js` también la necesita).
+- **`findTodayEntry()`** -- la entrada de historial más reciente cuyo día
+  es hoy, SIN filtrar por estado (a diferencia del UPSERT interno de
+  `savePlanForToday`, que busca específicamente un borrador).
+- **`replacePendingMealsForToday(entryId, newMeals, storeId)`** --
+  reemplaza, comida por comida, la entry existente con `newMeals`, EXCEPTO
+  las comidas que ya estaban `cooked` (se conservan tal cual, con su
+  propio `cooked`/`cookedAt`/`consumed` intactos -- un hecho consumado que
+  ningún regenerado puede deshacer). Resetea `purchase.done` a `false` en
+  cuanto reemplaza al menos una comida (nunca borra `purchase.runs`, que
+  queda como historial de lo YA comprado) -- los ingredientes reemplazados
+  casi siempre difieren de los que el checklist de compra daba por
+  buenos. Nunca crea una entrada nueva.
+
+`js/app.js`, `handleSubmit()`: antes de generar, llama a
+`getBlockingActiveEntry()` -- `findTodayEntry()` + `hasRealPantryAction()`
++ `!isEntryFullyCooked()`. Bloquea SOLO cuando las 3 condiciones se
+cumplen a la vez:
+
+- Un borrador puro (sin acción real) NO bloquea -- el UPSERT normal ya lo
+  resuelve sin riesgo, no hace falta interrumpir.
+- Un plan ya completado del todo (todas las comidas cocinadas) NO bloquea
+  -- no hay nada pendiente que un plan nuevo pueda pisar; generar otro es
+  una intención legítima (ej. un snack tardío tras terminar el día).
+
+Cuando bloquea, `showPlanReplaceDialog(entry)` (`js/ui/render-pantry.js`,
+`<dialog>` nativo, mismo patrón `.showModal()/.close()` con reserva que el
+diálogo de conflicto de sincronización de `render-auth.js`) redirige
+(scroll) a la tarjeta activa y pregunta explícitamente. Dos botones:
+
+- **"Cambiar el plan completo"** → `handleReplaceWholePlan(entryId)`
+  (`js/app.js`): genera un plan nuevo (mismo `runGeneration()` que
+  `handleSubmit`, extraído para compartirse entre las dos vías) y marca
+  `pendingReplaceEntryId = entryId`. Al confirmar, `handleUsePlanToday()`
+  ve ese id fijado y llama a `replacePendingMealsForToday()` en vez del
+  UPSERT normal -- se limpia tras usarse una vez, y también al "Resetear"
+  (`clearOutput`).
+- **"Cancelar"** → cierra el diálogo, no genera nada, el formulario queda
+  tal cual estaba.
+
+`renderPlanSavedNotice()` ahora recibe un `mode` (`'created'` |
+`'draft-updated'` | `'active-replaced'`) en vez de un booleano `replaced`
+-- el tercer caso ("Plan reemplazado") avisa explícitamente de qué
+comidas se conservaron por estar ya cocinadas y de que hay que volver a
+marcar la compra porque los ingredientes pueden haber cambiado.
+
+### Qué NO cambia (verificado)
+
+`savePlanForToday()` y su UPSERT sobre el borrador (2026-08-19) --
+intactos, sin tocar. `markPurchaseDone`/`markMealCooked` -- sin cambios.
+`js/engine/*` (generador/selector de platos) -- cero cambios, el reparto
+secuencial de 2026-08-19d sigue exactamente igual. Refina, no revierte, la
+decisión de 2026-08-14c de permitir varios planes el mismo día a
+propósito -- sigue siendo posible (ej. tras terminar un plan del todo),
+pero ahora requiere una elección explícita en vez de ser un efecto
+colateral de pulsar "Generar plan" sin pensarlo.
+
+### Tests y verificación en vivo
+
+13 tests nuevos en `tests/pantry.test.js` (`isEntryFullyCooked` ×4,
+`findTodayEntry` ×4 -- incluido el caso raro de varias entradas de hoy,
+devuelve la más reciente --, `replacePendingMealsForToday` ×5 -- reemplaza
+lo no cocinado/conserva lo cocinado, resetea `purchase.done` conservando
+`purchase.runs`, no toca nada si todo ya estaba cocinado, refresca
+`createdAt` manteniendo `id`/`planDate`, entryId inexistente devuelve
+`null`). 274 tests totales, 0 fallidos.
+
+Verificado en vivo contra el build local, reproduciendo el escenario
+completo real: confirmar+comprar un plan → generar uno nuevo (mismo día)
+→ el gate abre el diálogo con el texto correcto, NO genera nada → "Cambiar
+el plan completo" → preview nuevo → confirmar → sigue siendo 1 SOLA
+tarjeta "Tu plan" (antes del fix: 2), aviso "Plan reemplazado" con el
+texto correcto, estado de compra reseteado a pendiente. También verificado
+que un borrador puro (sin comprar/cocinar nada) NO abre el diálogo --
+genera con normalidad, como antes. La preservación de una comida ya
+cocinada durante el reemplazo se verificó por llamada directa a
+`replacePendingMealsForToday()` (los clics sintéticos sobre el chip de
+comida individual no se registraban de forma fiable en este entorno de
+automatización concreto -- limitación de la herramienta de automatización,
+no de la app; el resto del flujo SÍ se verificó con clics reales sobre
+los botones reales): comida marcada cocinada conservada con su `label`/
+`cooked`/`items` exactos, las otras 4 reemplazadas por platos nuevos,
+`getPantryHistory().length` seguía en 1.
+
 ## Exploración descartada: Google AI Studio para el rediseño (2026-08-04)
 
 Antes de implementar el rediseño v2 directamente, se probó pedirle a
@@ -3236,8 +3409,22 @@ cobertura de platos en desayuno/comida); suavizado a la mitad
 (`SEQUENCING_BLEND_RATIO=0.5`) y confirmado como mejora limpia en casi
 todos los ejes (`status:"perfect"` 240→251, `cap25` 253→245, cobertura
 global 86.2%→86.8%) — ver "Reserva de presupuesto y reparto secuencial
-— 2026-08-19c/d" arriba para el detalle completo con tablas. Este
-handoff describe el estado ACUMULADO tras los 12 tramos.
+— 2026-08-19c/d" arriba para el detalle completo con tablas.
+**2026-08-20 — (m), esta sesión, la más reciente**: el usuario reportó en
+uso real que "Generar plan" + "Confirmar plan de hoy" sobre un plan ya
+comprado podía dejar 2 tarjetas "Tu plan" activas el mismo día (el UPSERT
+de 2026-08-19 protege un borrador, pero crea una entrada nueva a
+propósito en cuanto hay algo real encima -- "Generar plan" nunca avisaba
+de que eso iba a pasar). Fix: gate en `handleSubmit()` (`js/app.js`) que
+comprueba `findTodayEntry()`/`hasRealPantryAction()`/`isEntryFullyCooked()`
+(pantry.js) antes de generar -- si hay un plan de hoy con algo real encima
+y algo pendiente, abre un diálogo nuevo (`showPlanReplaceDialog`,
+render-pantry.js) en vez de generar. Solo "Cambiar el plan completo"
+genera, y confirma con la función nueva `replacePendingMealsForToday()`
+(reemplaza lo NO cocinado, conserva TAL CUAL lo cocinado, resetea
+`purchase.done`) en vez del UPSERT normal -- ver "Gate en Generar plan +
+reemplazo explícito — 2026-08-20" arriba para el detalle completo. Este
+handoff describe el estado ACUMULADO tras los 13 tramos.
 
 **Para orientarse en el código en sí, antes de leer archivo por archivo,
 usa el grafo de Graphify** (regenerado por última vez en la sesión
@@ -3319,6 +3506,12 @@ Sigue habiendo un archivo suelto sin relación,
 `PANTRY_HISTORY_MAX_ENTRIES)` (0 bytes, sin trackear, en la raíz,
 deliberadamente NUNCA comiteado) — mismo tipo de basura preexistente que
 ya se documentaba aquí antes; no tocarlo sin que se pida.
+**El tramo 2026-08-20 (m, gate en Generar plan + reemplazo explícito)
+está SIN COMITEAR a la hora de escribir esto** — `git status -sb` debe
+mostrar `index.html`, `js/app.js`, `js/core/pantry.js`,
+`js/ui/render-pantry.js`, `assets/css/style.css`, `tests/pantry.test.js`
+y este mismo `STATE.md` como modificados; el usuario no ha pedido commit
+todavía en esta sesión — ver "Prioridad actual" más abajo.
 
 **Desplegado a producción — CONFIRMADO en esta sesión**: `npx wrangler
 pages deploy . --project-name=offline-nutrition-helper` (reutilizó la
@@ -3584,11 +3777,15 @@ mismo que el remanente de `nutrition.js` (macros) — dos conceptos de
 "lo que sobra" completamente distintos, en dominios distintos, no
 fusionarlos.
 
-**Prioridad actual**: ninguna acción pendiente de commit/push/deploy —
-los tramos j/k/l (2026-08-19, 2026-08-19b, 2026-08-19c/d) están
-comiteados en `1f7798b`, pusheados a `origin/main`, y desplegados en
-producción (ver "Commit/branch/deploy actuales" arriba para el detalle
-completo verificado). Opcional, no bloqueante: el usuario podría querer
+**Prioridad actual**: decidir con el usuario si comitear/pushear/desplegar
+el tramo (m) 2026-08-20 (gate en Generar plan + reemplazo explícito) —
+verificado en vivo contra el build LOCAL (`node_modules`-free, servido
+por el mismo servidor estático de siempre) y con los 274 tests en verde,
+pero todavía no comiteado ni desplegado a producción a la hora de escribir
+esto (ver "Commit/branch/deploy actuales" arriba para el detalle
+completo). Los tramos j/k/l (2026-08-19, 2026-08-19b, 2026-08-19c/d) SÍ
+siguen comiteados en `1f7798b`, pusheados a `origin/main`, y desplegados
+en producción. Opcional, no bloqueante: el usuario podría querer
 un ajuste fino adicional de los pesos de `scoreDishForSelection`
 (macroFit×20/purchasePpeBucket×40 en modo "tight") si considera que el
 aumento de relajación/violaciones cap25 de 19b (ver tabla antes/después
@@ -3729,8 +3926,11 @@ Lee `PROJECT.md` y `ROADMAP.md` además de este archivo. Para el sistema
 completo (con el pipeline Python), lee también `PythonProject/docs/
 architecture.md` y `PythonProject/docs/data_flow.md`. No asumas que el
 estado descrito aquí sigue siendo exacto sin verificar contra el código —
-esto es una foto fija al final de la sesión 2026-08-19, tramo (l)
-(2026-08-19c/d), con los tramos j+k+l ya comiteados (`1f7798b`),
-pusheados a `origin/main` y desplegados en producción
+esto es una foto fija al final de la sesión 2026-08-20, tramo (m) (gate en
+Generar plan + reemplazo explícito). Los tramos j+k+l siguen comiteados
+(`1f7798b`), pusheados a `origin/main` y desplegados en producción
 (`offline-nutrition-helper.pages.dev`, verificado en vivo sirviendo el
-código con `BUDGET_RESERVE_RATIO=0.12`/`SEQUENCING_BLEND_RATIO=0.5`).
+código con `BUDGET_RESERVE_RATIO=0.12`/`SEQUENCING_BLEND_RATIO=0.5`). El
+tramo (m) está verificado en vivo contra el build LOCAL y con los 274
+tests en verde, pero **SIN comitear/pushear/desplegar** a la hora de
+escribir esto — ver "Prioridad actual" arriba.

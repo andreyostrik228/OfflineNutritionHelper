@@ -140,6 +140,24 @@
       </div>
     </dialog>
 
+    <!-- "Generar plan" interrumpe con esto cuando ya hay un plan activo hoy
+         con algo real encima (comprado y/o cocinado) y algo todavía
+         pendiente -- ver "Gate en Generar plan..." en la cabecera de
+         js/core/pantry.js. Un borrador puro o un plan ya completado del
+         todo no llegan a abrir esto. -->
+    <dialog class="auth-dialog auth-dialog--conflict" id="planReplaceDialog">
+      <div class="auth-dialog__head">
+        <h2>Ya tienes un plan activo hoy</h2>
+      </div>
+      <div class="auth-dialog__body">
+        <div id="planReplaceBody"></div>
+        <div class="auth-conflict__actions">
+          <button type="button" class="btn-primary" id="planReplaceFullBtn">Cambiar el plan completo</button>
+          <button type="button" class="btn-secondary" id="planReplaceCancelBtn">Cancelar</button>
+        </div>
+      </div>
+    </dialog>
+
     <!-- ══ PRÓXIMA COMIDA (mobile): barra compacta sticky con SOLO la
          próxima toma y su hora — en mobile el formulario ocupa toda la
          pantalla antes de llegar a la franja de horario completa

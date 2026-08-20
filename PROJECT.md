@@ -412,6 +412,29 @@ untouched throughout. Full write-up with all three comparison tables in
 `STATE.md`, "Reserva de presupuesto y reparto secuencial —
 2026-08-19c/d".
 
+**2026-08-20 — gate on "Generar plan" + explicit plan-replace dialog**:
+real bug the user hit in use — with a plan already confirmed and bought,
+generating and confirming a new one silently created a SECOND active
+"Tu plan" card for the same day (the 2026-08-19 upsert protects a pure
+draft, but deliberately creates a new entry once anything real is on top
+of it — "Generar plan" itself never warned that was about to happen).
+Fix: `handleSubmit()` now checks `findTodayEntry()` +
+`hasRealPantryAction()` + `isEntryFullyCooked()` (all in `pantry.js`)
+before generating anything; if today's active plan has something real on
+it (bought and/or cooked) and something still pending, it opens a new
+dialog instead of generating — redirects to that card and asks
+explicitly. Only "Change the whole plan" generates, and confirming it
+calls the new `replacePendingMealsForToday()` instead of the normal
+upsert: replaces meals that aren't cooked yet, leaves already-cooked
+meals untouched, resets the purchase checklist (ingredients likely
+changed). A pure draft or an already-fully-cooked plan never interrupts —
+refines, doesn't revert, the 2026-08-14c decision to allow multiple plans
+per day. 13 new tests in `pantry.test.js` (274 total, 0 failed). Verified
+live end-to-end against the local build, including the exact reported
+scenario (confirm+buy, generate again, confirm → now stays 1 card, was
+2). Full write-up in `STATE.md`, "Gate en Generar plan + reemplazo
+explícito del plan activo — 2026-08-20".
+
 ## Product direction
 
 Evolve into a real personal nutrition assistant: nutrition + shopping +

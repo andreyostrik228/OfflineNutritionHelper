@@ -47,7 +47,12 @@
  *      propósito (decisión explícita del usuario, no un descuido, ver
  *      `savePlanForToday` en pantry.js) -- cada tarjeta se distingue por
  *      fecha Y HORA de creación (`formatEntryDateTime`), nunca solo la
- *      fecha, para que dos planes del mismo día no se confundan.
+ *      fecha, para que dos planes del mismo día no se confundan. Desde
+ *      2026-08-20, crear una SEGUNDA tarjeta cuando la primera ya tiene
+ *      algo real encima requiere pasar por `showPlanReplaceDialog` (más
+ *      abajo) -- ya no es un efecto colateral silencioso de pulsar
+ *      "Generar plan" dos veces, ver "Gate en Generar plan..." en la
+ *      cabecera de pantry.js.
  *   3. `pantryHistoryContainer` (dentro de despensa, en un <details>
  *      anidado, oculto por completo si está vacío) -- los planes YA
  *      completados (todas las comidas cocinadas), como una fila de
@@ -89,7 +94,8 @@
  * Expone (globales):
  *   initPantryRefs(refs)
  *   renderPantryPanel()
- *   renderPlanSavedNotice(entry, historySaved)
+ *   renderPlanSavedNotice(entry, historySaved, mode)
+ *   showPlanReplaceDialog(entry) / hidePlanReplaceDialog()
  * ─────────────────────────────────────────────────────────────────────────
  */
 
@@ -99,6 +105,12 @@ var pantryListContainer, pantryEmptyEl, pantryAddForm, pantryAddNameInput, pantr
     pantryCountEl, planSavedNoticeEl;
 var pantryOnChange; // callback de app.js — sincroniza la lista de la compra visible
 var pantryIngredientByKey = {}; // clave normalizada -> nombre canónico, para resolver lo tecleado en el alta
+
+// Diálogo "ya tienes un plan activo hoy" -- ver "Gate en Generar plan..."
+// en la cabecera de js/core/pantry.js.
+var planReplaceDialogEl, planReplaceBodyEl, planReplaceFullBtn, planReplaceCancelBtn;
+var pantryOnReplaceWholePlan; // callback de app.js — genera el plan de reemplazo
+var _planReplaceEntryId = null;
 
 /**
  * Conecta los nodos DOM necesarios para este módulo.
@@ -129,6 +141,12 @@ function initPantryRefs(refs) {
   planSavedNoticeEl            = refs.planSavedNoticeEl;
   pantryOnChange               = typeof refs.onPantryChange === "function" ? refs.onPantryChange : function () {};
 
+  planReplaceDialogEl    = refs.planReplaceDialogEl;
+  planReplaceBodyEl      = refs.planReplaceBodyEl;
+  planReplaceFullBtn     = refs.planReplaceFullBtn;
+  planReplaceCancelBtn   = refs.planReplaceCancelBtn;
+  pantryOnReplaceWholePlan = typeof refs.onReplaceWholePlan === "function" ? refs.onReplaceWholePlan : function () {};
+
   populatePantryIngredientOptions();
 
   if (pantryAddForm) pantryAddForm.addEventListener("submit", handleManualAdd);
@@ -137,6 +155,13 @@ function initPantryRefs(refs) {
   // cada fila/tarjeta individual.
   if (pantryListContainer)  pantryListContainer.addEventListener("click", handlePantryListClick);
   if (todayPlansContainer)  todayPlansContainer.addEventListener("click", handleEntryClick);
+
+  if (planReplaceFullBtn) planReplaceFullBtn.addEventListener("click", function () {
+    var id = _planReplaceEntryId;
+    hidePlanReplaceDialog();
+    if (id) pantryOnReplaceWholePlan(id);
+  });
+  if (planReplaceCancelBtn) planReplaceCancelBtn.addEventListener("click", hidePlanReplaceDialog);
 }
 
 // ── Alta manual ───────────────────────────────────────────────────────────
@@ -349,20 +374,9 @@ function beginEditPantryRow(btn) {
 
 // ── Planes activos (compra y/o comidas pendientes) + historial ──────────────
 
-/**
- * Un plan se considera "terminado" en cuanto TODAS sus comidas están
- * cocinadas -- en ese momento deja de necesitar atención y se muda solo
- * al historial colapsado. La compra en sí no forma parte de esta
- * condición a propósito: alguien puede cocinar con lo que ya tenía sin
- * haber pulsado nunca "Ya compré todo esto", y eso sigue siendo un plan
- * terminado igualmente.
- * @param {object} entry
- * @returns {boolean}
- */
-function isEntryFullyCooked(entry) {
-  var meals = entry.meals || [];
-  return meals.length > 0 && meals.every(function (m) { return m.cooked; });
-}
+// isEntryFullyCooked() vive ahora en js/core/pantry.js (predicado puro
+// sobre la forma de una entry, sin DOM -- js/app.js también lo necesita
+// para el gate de "Generar plan", ver cabecera de pantry.js).
 
 function renderPantryHistorySections() {
   var history = getPantryHistory();
@@ -514,6 +528,58 @@ function renderMealChips(entry) {
   return '<div class="pantry-meal-chips"><span class="pantry-meal-chips__label">Comidas</span>' + chips + '</div>';
 }
 
+// ── Diálogo "ya tienes un plan activo hoy" ──────────────────────────────
+
+/**
+ * Abre el diálogo que interrumpe "Generar plan" cuando ya hay una entrada
+ * de hoy con algo real encima y algo todavía pendiente (ver "Gate en
+ * Generar plan..." en la cabecera de js/core/pantry.js) -- redirige
+ * visualmente a esa tarjeta (scroll) y pregunta explícitamente antes de
+ * generar nada nuevo. Mismo patrón que el diálogo de conflicto de
+ * sincronización (render-auth.js): `<dialog>` nativo, .showModal()/.close()
+ * con reserva para navegadores sin soporte.
+ * @param {object} entry
+ */
+function showPlanReplaceDialog(entry) {
+  if (!planReplaceDialogEl || !entry) return;
+  _planReplaceEntryId = entry.id;
+
+  var cookedMeals = (entry.meals || []).filter(function (m) { return m.cooked; });
+  var pendingMeals = (entry.meals || []).filter(function (m) { return !m.cooked; });
+  var pendingLabels = pendingMeals.map(function (m) { return m.label; }).join(", ");
+
+  var cookedNote = cookedMeals.length > 0
+    ? '<p class="plan-replace-dialog__note">Ya cocinaste ' + escapeHtml(cookedMeals.map(function (m) { return m.label; }).join(", ")) +
+      ' hoy &mdash; eso se mantiene tal cual, solo cambiaría el resto.</p>'
+    : '';
+
+  if (planReplaceBodyEl) {
+    planReplaceBodyEl.innerHTML =
+      '<p>Tu plan de ' + escapeHtml(formatEntryDateTime(entry.createdAt)) + ' sigue activo: <strong>' +
+      escapeHtml(pendingLabels) + '</strong> todavía por comprar o cocinar.</p>' + cookedNote;
+  }
+
+  if (typeof planReplaceDialogEl.showModal === "function") {
+    planReplaceDialogEl.showModal();
+  } else {
+    planReplaceDialogEl.setAttribute("open", "");
+  }
+
+  if (todayPlansPanel && typeof todayPlansPanel.scrollIntoView === "function") {
+    todayPlansPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
+function hidePlanReplaceDialog() {
+  if (!planReplaceDialogEl) return;
+  if (typeof planReplaceDialogEl.close === "function" && planReplaceDialogEl.open) {
+    planReplaceDialogEl.close();
+  } else {
+    planReplaceDialogEl.removeAttribute("open");
+  }
+  _planReplaceEntryId = null;
+}
+
 /**
  * Fila de solo lectura para un plan ya completado -- vive dentro del
  * <details> "Ver planes anteriores", colapsado por defecto.
@@ -623,20 +689,25 @@ function handleEntryClick(event) {
 // ── Aviso tras guardar un plan (Etapa 1) ──────────────────────────────────
 
 /**
- * Pinta el aviso inmediatamente después de "Confirmar plan de hoy" — en
- * este punto todavía no se ha comprado ni cocinado nada, así que solo
- * indica dónde continuar. Distingue explícitamente confirmar por primera
- * vez de volver a confirmar (tras regenerar/editar) sobre el MISMO
- * borrador del día (`replaced`, ver savePlanForToday/UPSERT en
- * pantry.js) — mensaje distinto a propósito, para que quede claro que no
- * se creó nada nuevo ni se compró nada, tranquilizando exactamente la
- * duda que motivó este cambio ("¿esto añade algo a mi despensa?").
+ * Pinta el aviso inmediatamente después de "Confirmar plan de hoy". `mode`
+ * distingue los 3 casos posibles, cada uno con un mensaje pensado para
+ * despejar una duda distinta:
+ *   - 'created': primera confirmación de hoy -- entrada nueva.
+ *   - 'draft-updated': se actualizó un borrador de hoy sin acción real
+ *     todavía (UPSERT normal, savePlanForToday) -- tranquiliza la duda que
+ *     motivó ese cambio ("¿esto añade algo a mi despensa?").
+ *   - 'active-replaced': el usuario confirmó explícitamente "Cambiar el
+ *     plan completo" sobre un plan que YA tenía algo real encima
+ *     (replacePendingMealsForToday, ver "Gate en Generar plan..." en
+ *     pantry.js) -- avisa de que las comidas ya cocinadas se conservaron y
+ *     de que el estado de compra se reinició porque los ingredientes
+ *     pueden haber cambiado.
  * @param {object} entry - entry de historial devuelta por savePlanForToday
+ *   o replacePendingMealsForToday
  * @param {boolean} historySaved - si el guardado en localStorage tuvo éxito
- * @param {boolean} [replaced] - true si se actualizó un borrador ya
- *   existente de hoy en vez de crear uno nuevo
+ * @param {'created'|'draft-updated'|'active-replaced'} mode
  */
-function renderPlanSavedNotice(entry, historySaved, replaced) {
+function renderPlanSavedNotice(entry, historySaved, mode) {
   if (!planSavedNoticeEl) return;
 
   if (!entry) {
@@ -648,10 +719,22 @@ function renderPlanSavedNotice(entry, historySaved, replaced) {
   var warning = historySaved ? "" :
     '<p class="confirm-receipt__warning">No se ha podido guardar en este navegador (almacenamiento lleno o deshabilitado) &mdash; los cambios no persistir&aacute;n al recargar.</p>';
 
-  var title = replaced ? "Plan actualizado" : "Plan confirmado";
-  var body = replaced
-    ? '<p>Sigue siendo el mismo plan de hoy en <strong>Tu plan</strong> &mdash; no se ha comprado ni cocinado nada todav&iacute;a, ni se ha a&ntilde;adido nada a tu despensa.</p>'
-    : '<p>Cuando compres, toca <strong>Ya compr&eacute; todo esto</strong> ah&iacute; abajo, en <strong>Tu plan</strong> &mdash; as&iacute; no te lo volver&aacute; a pedir la pr&oacute;xima vez.</p>';
+  var title, body;
+  if (mode === "active-replaced") {
+    title = "Plan reemplazado";
+    var cookedLabels = (entry.meals || []).filter(function (m) { return m.cooked; }).map(function (m) { return m.label; });
+    var cookedNote = cookedLabels.length > 0
+      ? ' Lo que ya cocinaste (' + escapeHtml(cookedLabels.join(", ")) + ') se mantuvo tal cual.'
+      : '';
+    body = '<p>Se actualizó tu plan activo de hoy en <strong>Tu plan</strong>.' + cookedNote +
+      ' Como los ingredientes pueden haber cambiado, marca <strong>Ya compr&eacute; todo esto</strong> de nuevo cuando compres.</p>';
+  } else if (mode === "draft-updated") {
+    title = "Plan actualizado";
+    body = '<p>Sigue siendo el mismo plan de hoy en <strong>Tu plan</strong> &mdash; no se ha comprado ni cocinado nada todav&iacute;a, ni se ha a&ntilde;adido nada a tu despensa.</p>';
+  } else {
+    title = "Plan confirmado";
+    body = '<p>Cuando compres, toca <strong>Ya compr&eacute; todo esto</strong> ah&iacute; abajo, en <strong>Tu plan</strong> &mdash; as&iacute; no te lo volver&aacute; a pedir la pr&oacute;xima vez.</p>';
+  }
 
   planSavedNoticeEl.hidden = false;
   planSavedNoticeEl.innerHTML = '<h4>' + title + '</h4>' + warning + body;
