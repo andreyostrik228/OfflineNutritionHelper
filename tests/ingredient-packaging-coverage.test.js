@@ -102,32 +102,32 @@ function extractUniqueIngredientNames(dishDb) {
 // no lo modela como dato) -- fija el conjunto completo como línea base;
 // la clasificación de arriba es para quien lea este archivo, no una
 // aserción del test.
+// Línea base ACTUALIZADA 2026-08-20d (known issue #7): 13 de los 14 huecos
+// reales de la auditoría original (Fase 0, 2026-08-03) se cubrieron con
+// entradas nuevas en packaging.js (ver su cabecera, sección "Añadidos
+// 2026-08-20d") -- Calabacín/Kiwi/Pimiento (perUnit) y Carne picada 5%
+// grasa/Champiñones/Coliflor/Fresas/Gamba cocida/Jamón serrano/Langostino
+// cocido/Pan de centeno/Pavo picado/Trigo sarraceno cocido (fixedPackage).
+// Quedan sin cubrir, a propósito: los 11 de carne/pescado fresco (comprado
+// al peso real, ver clasificación 4 en la cabecera de packaging.js) y
+// "Lechuga: Pepino" -- NO es un hueco de packaging.js, es un nombre de
+// ingrediente CORRUPTO en dishes.js (dos ingredientes concatenados con
+// ":", known issue documentado desde 2026-08-03, sin corregir todavía) --
+// darle una entrada de envase a esa clave tal cual sería tapar el síntoma
+// equivocado.
 var EXPECTED_NO_FIXED_PACKAGE = [
   "Bacalao",
-  "Calabacín",
-  "Carne picada 5% grasa",
-  "Champiñones",
-  "Coliflor",
   "Conejo",
-  "Fresas",
-  "Gamba cocida",
-  "Jamón serrano",
-  "Kiwi",
-  "Langostino cocido",
   "Lechuga: Pepino",
   "Lomo de cerdo",
   "Lubina",
   "Merluza",
   "Muslo de pollo deshuesado",
-  "Pan de centeno",
-  "Pavo picado",
   "Pechuga de pavo",
-  "Pimiento",
   "Rape",
   "Salmón",
   "Solomillo de ternera",
-  "Ternera magra",
-  "Trigo sarraceno cocido"
+  "Ternera magra"
 ].sort();
 
 // Línea base del tamaño del dataset -- si esto cambia, la lista de arriba

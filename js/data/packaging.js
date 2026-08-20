@@ -11,11 +11,14 @@
  * deben coincidir exactamente con esa normalización, igual que las claves
  * de js/data/prices/mercadona.js.
  *
- * Solo cubre los 65 ingredientes que aparecen en DISH_DB. Clasificación:
+ * NO cubre necesariamente los 81 ingredient roles de DISH_DB (la cifra "65"
+ * que este comentario tenía hasta 2026-08-20d estaba desactualizada desde
+ * que el dataset creció a 334 platos — no confiar en un número fijo aquí,
+ * ver tests/ingredient-packaging-coverage.test.js para la línea base real,
+ * auditada ejecutando resolvePackageInfo() de verdad). Clasificación:
  *
  *   1. spoonable  — condimentos que se miden a cucharadas, no a gramos
- *      (miel, mermelada, mantequilla de cacahuete). Son los únicos 3 de
- *      los 65 donde "gramos" no es cómo nadie los usa en la práctica.
+ *      (miel, mermelada, mantequilla de cacahuete).
  *
  *   2. perUnit    — se compran y cuentan por unidad (huevos, fruta entera).
  *      gramsPerUnit es una media razonable, no un valor exacto.
@@ -23,11 +26,12 @@
  *   3. fixedPackage — se venden en un formato de envase fijo (bote, bolsa,
  *      lata, paquete...) — no puedes comprar "345g de pasta", compras un
  *      paquete de 500g y usas parte. packageG es el tamaño más común en
- *      Mercadona/Hacendado.
+ *      Mercadona/Hacendado, no un dato exacto de SKU.
  *
- *   4. (sin entrada aquí) — carne y pescado frescos: se compran al peso
- *      real en el mostrador o en bandejas de peso variable, así que
- *      mostrar gramos SÍ es realista para estos — no necesitan traducción.
+ *   4. (sin entrada aquí) — carne/pescado fresco (se compra al peso real,
+ *      mostrar gramos ya es realista) y algún ingrediente resuelto por
+ *      otra vía (`js/data/real-ingredient-matches.js`, ver
+ *      `resolvePackageInfo()` en pricing.js para la cascada completa).
  *
  * Consumido por: js/ui/render.js (renderFoodRow)
  * ─────────────────────────────────────────────────────────────────────────
@@ -48,6 +52,12 @@ var PACKAGING_INFO = {
   "aguacate":        { type: "perUnit", gramsPerUnit: 180, unitLabel: "aguacate" },
   "pepino":          { type: "perUnit", gramsPerUnit: 300, unitLabel: "pepino" },
   "tomate":          { type: "perUnit", gramsPerUnit: 120, unitLabel: "tomate" },
+  // Añadidos 2026-08-20d (known issue #7, ver tests/ingredient-packaging-
+  // coverage.test.js) — mismo criterio y nivel de precisión (medias
+  // razonables, no valores exactos) que el resto de este bloque.
+  "calabacin":       { type: "perUnit", gramsPerUnit: 200, unitLabel: "calabacín" },
+  "kiwi":            { type: "perUnit", gramsPerUnit: 80,  unitLabel: "kiwi" },
+  "pimiento":        { type: "perUnit", gramsPerUnit: 150, unitLabel: "pimiento" },
 
   // ── 3. Envase fijo — compra el paquete, usa una parte ───────────────────
   "almendras":                    { type: "fixedPackage", packageG: 200,  packageLabel: "bolsa" },
@@ -94,10 +104,34 @@ var PACKAGING_INFO = {
   "leche semidesnatada":          { type: "fixedPackage", packageG: 1000, packageLabel: "brick" },
   "claras de huevo":              { type: "fixedPackage", packageG: 500,  packageLabel: "brick" },
   "patata cocida":                { type: "fixedPackage", packageG: 1000, packageLabel: "bolsa (cocida al vacío)" },
-  "batata":                       { type: "fixedPackage", packageG: 1000, packageLabel: "bolsa" }
+  "batata":                       { type: "fixedPackage", packageG: 1000, packageLabel: "bolsa" },
 
-  // El resto (pechuga de pollo, muslo de pollo deshuesado, pechuga de
-  // pavo, carne picada, ternera magra, lomo de cerdo, salmón, merluza,
-  // bacalao) se compra al peso real — mostrar gramos ahí ya es correcto,
-  // por eso no tienen entrada.
+  // Añadidos 2026-08-20d (known issue #7) -- mismo criterio: tamaño más
+  // común en Mercadona/Hacendado, no un dato exacto de SKU.
+  "carne picada 5% grasa":        { type: "fixedPackage", packageG: 400,  packageLabel: "bandeja" },
+  "pavo picado":                  { type: "fixedPackage", packageG: 400,  packageLabel: "bandeja" },
+  "champinones":                  { type: "fixedPackage", packageG: 250,  packageLabel: "bandeja" },
+  "coliflor":                     { type: "fixedPackage", packageG: 500,  packageLabel: "bolsa (congelada)" },
+  "fresas":                       { type: "fixedPackage", packageG: 400,  packageLabel: "tarrina" },
+  "gamba cocida":                 { type: "fixedPackage", packageG: 200,  packageLabel: "bolsa (congelada)" },
+  "langostino cocido":            { type: "fixedPackage", packageG: 400,  packageLabel: "bolsa (congelada)" },
+  "jamon serrano":                { type: "fixedPackage", packageG: 100,  packageLabel: "paquete (loncheado)" },
+  "pan de centeno":               { type: "fixedPackage", packageG: 460,  packageLabel: "barra" },
+  "trigo sarraceno cocido":       { type: "fixedPackage", packageG: 500,  packageLabel: "paquete (en crudo)" }
+
+  // El resto -- carne/pescado fresco que se compra al peso real (Bacalao,
+  // Conejo, Lomo de cerdo, Lubina, Merluza, Muslo de pollo deshuesado,
+  // Pechuga de pavo, Rape, Salmón, Solomillo de ternera, Ternera magra) --
+  // mostrar gramos ahí ya es correcto, por eso no tienen entrada aquí (ver
+  // clasificación 4 de la cabecera). "Pechuga de pollo" NO está en esta
+  // lista pese a ser también carne fresca -- resuelve por otra vía
+  // (real-ingredient-matches.js, sizeG:500), confirmado con
+  // resolvePackageInfo() real, no por asunción. "Lechuga: Pepino" también
+  // queda sin envase -- pero es un nombre de ingrediente CORRUPTO en
+  // dishes.js (dos ingredientes concatenados con ":", known issue
+  // documentado desde 2026-08-03, sin corregir), no un hueco de
+  // packaging.js -- no tiene sentido darle una entrada de envase a una
+  // clave que ni siquiera debería existir tal cual. Línea base exacta,
+  // auditada ejecutando resolvePackageInfo() real (no una suposición):
+  // tests/ingredient-packaging-coverage.test.js.
 };

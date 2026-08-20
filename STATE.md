@@ -97,6 +97,36 @@ compatibilidad hacia atrás con entradas de despensa antiguas sin
 `render-insights.js` — cero cambios de lógica salvo el campo nuevo en el
 `meal` (el fallback por label se conserva intacto para compatibilidad).
 
+**Resumen de la sesión 2026-08-20d (known issue #7: hueco de cobertura de
+`packaging.js` reducido de 25 a 12)**: continuación de la misma sesión —
+siguiente item de la lista priorizada de issues abiertos. 13 entradas
+nuevas en `js/data/packaging.js` (Calabacín/Kiwi/Pimiento como `perUnit`;
+Carne picada 5% grasa/Champiñones/Coliflor/Fresas/Gamba cocida/Jamón
+serrano/Langostino cocido/Pan de centeno/Pavo picado/Trigo sarraceno
+cocido como `fixedPackage`), mismo criterio y precisión que las 46 ya
+existentes (tamaño más común en Mercadona/Hacendado). Verificado en vivo
+con `resolvePackageInfo()` real: jamón serrano ahora resuelve a "1
+paquete (loncheado) de 100g, €2.50" en vez de "sin envase fijo, al peso".
+De los 12 roles que quedan sin cobertura, 11 son carne/pescado fresco
+(correcto por diseño) y 1 es `"Lechuga: Pepino"` — el nombre de
+ingrediente corrupto ya documentado, un issue DISTINTO (dishes.js, no
+packaging.js) que este fix NO toca a propósito, para no tapar el síntoma
+equivocado. `tests/ingredient-packaging-coverage.test.js` recapturado con
+la nueva línea base (12, antes 25). Añadir estos tamaños cambió el coste
+de compra MARGINAL de esos ingredientes lo suficiente como para cambiar
+qué plato gana la lotería ponderada en 2 semillas concretas — 2
+golden-master de `plan-generator.characterization.test.js` recapturados a
+propósito (mismo mecanismo de siempre, aquí el cambio real está en los
+DATOS, no en `dish-selector.js`); los 7 tests de invariantes/contrato de
+ese archivo no se tocaron y siguen pasando. 255 tests en `tests/` (sin
+cambio de cantidad, solo de contenido), 278 totales, 0 fallidos. Nota
+honesta conservada de ROADMAP.md: esto se volverá irrelevante
+ingrediente a ingrediente conforme la Fase 1 de la migración avance —
+mientras tanto, mejora la precisión real de la lista de la compra hoy,
+con riesgo bajo (mismo patrón de datos ya establecido, ningún mecanismo
+nuevo). `js/core/`, `js/engine/*` (código, no datos), y el resto de la
+app — cero cambios.
+
 **Resumen de la sesión 2026-08-19 (bug real: "Confirmar plan" repetido
 inflaba la despensa — `savePlanForToday()` ahora hace UPSERT sobre el
 borrador del día)**: el usuario encontró en uso real que pulsar
@@ -3303,15 +3333,33 @@ para tocar código de producción de este proyecto.
 6. ~~**Current branding is misleading.**~~ **RESOLVED** (sesión 2026-08-03,
    ver "Rediseño visual" arriba) — el producto ya no se presenta como
    "AI"/"Chef Mode".
-7. **`packaging.js` tiene un hueco de cobertura real: 25 de 81 ingredient
-   roles sin envase fijo conocido.** Encontrado y medido en Fase 0
-   (2026-08-04, ver arriba) con un test real, no un script suelto. ~10-11
-   son carne/pescado fresco (correcto por diseño), el resto (fruta por
-   unidad, pan, congelados) probablemente no. **Sin corregir** — y, dada
-   la Estrategia B de migración (ver arriba), probablemente no vale la
-   pena corregirlo a mano: cada ingrediente que se resuelva contra un
-   producto real en Fase 1 trae su propio tamaño de envase y hace
-   irrelevante su entrada en `packaging.js`.
+7. ~~**`packaging.js` tiene un hueco de cobertura real: 25 de 81
+   ingredient roles sin envase fijo conocido.**~~ **REDUCIDO 2026-08-20d**
+   de 25 a 12: 13 entradas nuevas añadidas a mano (Calabacín, Carne picada
+   5% grasa, Champiñones, Coliflor, Fresas, Gamba cocida, Jamón serrano,
+   Kiwi, Langostino cocido, Pan de centeno, Pavo picado, Pimiento, Trigo
+   sarraceno cocido), siguiendo el mismo criterio que las 46 ya existentes
+   (tamaño más común en Mercadona/Hacendado, no un dato exacto de SKU).
+   Verificado en vivo con `resolvePackageInfo()` real (no solo el test):
+   p.ej. jamón serrano resuelve ahora a "1 paquete (loncheado) de 100g,
+   €2.50" en vez de "sin envase fijo, al peso". De los 12 restantes, 11
+   son carne/pescado fresco (correcto por diseño, comprado al peso real)
+   y 1 es `"Lechuga: Pepino"` — un nombre de ingrediente CORRUPTO en
+   `dishes.js` (issue distinto, ver más abajo "Corregir el bug de
+   nombre..."), no un hueco de packaging.js de verdad. `tests/
+   ingredient-packaging-coverage.test.js` recapturado a propósito con la
+   nueva línea base (12, no 25). 2 golden-master de
+   `plan-generator.characterization.test.js` también recapturados (el
+   coste de compra marginal de esos ingredientes cambió, lo que puede
+   cambiar qué plato gana la lotería para la misma semilla — mismo
+   mecanismo ya documentado varias veces en ese archivo, aquí el cambio
+   real está en los DATOS, no en el algoritmo). Los 7 tests de
+   invariantes/contrato de ese archivo no se tocaron. Sigue siendo cierto
+   que, dada la Estrategia B de migración, esto se volverá irrelevante
+   ingrediente a ingrediente conforme Fase 1 avance — pero mientras tanto
+   mejora la precisión real de la lista de la compra para el usuario de
+   hoy, con riesgo bajo (mismo patrón de datos ya establecido, no
+   mecanismo nuevo).
 8. **Interacción sutil entre `enforce25PercentRule` y el recorte de
    presupuesto en `plan-generator.js`.** El recorte de presupuesto
    (`enforcePurchaseBudgetCap` desde 2026-08-08 — antes `enforceBudgetCap`,

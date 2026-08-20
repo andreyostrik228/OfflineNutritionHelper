@@ -479,6 +479,22 @@ finding, not fixed (flagged separately): that same dish's `mainProt`
 value in `dishes.js` itself looks miscurated (says "pavo", the real
 protein is ham). 4 new tests, 255 tests total, 0 failed.
 
+**2026-08-20d — known issue #7 reduced: `packaging.js` coverage gap 25 →
+12**: 13 new entries added (Calabacín/Kiwi/Pimiento as `perUnit`; Carne
+picada 5% grasa/Champiñones/Coliflor/Fresas/Gamba cocida/Jamón serrano/
+Langostino cocido/Pan de centeno/Pavo picado/Trigo sarraceno cocido as
+`fixedPackage`), same estimation criteria as the existing 46 entries.
+Live-verified with the real `resolvePackageInfo()`: jamón serrano now
+resolves to a real 100g package at €2.50 instead of falling back to
+"sold at weight, no fixed package." The remaining 12 gaps: 11 are fresh
+meat/fish (correct by design) and 1 is `"Lechuga: Pepino"` — a corrupted
+ingredient name in `dishes.js` (a distinct, pre-existing bug, not a
+packaging gap), deliberately left untouched. Adding real package sizes
+changed 2 seeded golden-master results (marginal purchase cost shifted
+enough to change which dish wins the weighted lottery for those seeds);
+recaptured on purpose, the 7 contract/invariant tests untouched. 255
+tests in `tests/`, 278 total, 0 failed.
+
 ## Product direction
 
 Evolve into a real personal nutrition assistant: nutrition + shopping +

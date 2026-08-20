@@ -2,7 +2,19 @@
 
 ## Current status
 
-**Stage:** working prototype, updated 2026-08-20c — known issue #5
+**Stage:** working prototype, updated 2026-08-20d — known issue #7
+(`packaging.js` coverage) reduced from 25 to 12 uncovered ingredient
+roles: 13 new package-size entries added (fruit/veg by unit, fresh-tray
+meats, breads, frozen seafood), same estimation criteria as the existing
+46. Live-verified with the real `resolvePackageInfo()`. The remaining 12
+gaps are 11 fresh meat/fish (by design) plus the pre-existing
+`"Lechuga: Pepino"` corrupted-name bug, left untouched on purpose. 2
+golden-masters recaptured (marginal purchase cost shifted for a couple
+of seeded runs); 7 contract tests untouched. See `STATE.md`, "Resumen de
+la sesión 2026-08-20d". Part of the same priority-ordered pass through
+open issues as 2026-08-20c below.
+
+Previously, updated 2026-08-20c — known issue #5
 (`mainProt` reporting) fixed: `buildMealFromDish()` never copied
 `dish.mainProt` onto the generated meal, so the protein-diversity report
 always fell back to a non-exhaustive label-text guess. One-line fix
