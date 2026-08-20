@@ -21,6 +21,13 @@
 
 var noCookResults, noCookCount, noCookStatus;
 
+// Último plan generado, tal cual (plan.slots) -- js/app.js lo lee para
+// "Confirmar plan sin cocinar" (2026-08-20f, known issue #9), mismo
+// patrón que lastGeneratedMeals para el plan normal, salvo que ese vive
+// en app.js (ahí es donde se llama a generateDietPlan()) mientras que
+// aquí es este módulo el que llama a generateNoCookPlan().
+var lastNoCookSlots = null;
+
 var LEVEL_LABEL = {
   0: "Listo para comer",
   1: "Preparación mínima",
@@ -67,6 +74,7 @@ function runNoCookGenerator() {
   if (noCookStatus) noCookStatus.textContent = "Plan sin cocinar generado.";
 
   noCookResults.innerHTML = plan.slots.map(renderNoCookSlot).join("");
+  lastNoCookSlots = plan.slots;
 }
 
 /**

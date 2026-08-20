@@ -378,10 +378,23 @@ function beginEditPantryRow(btn) {
 // sobre la forma de una entry, sin DOM -- js/app.js también lo necesita
 // para el gate de "Generar plan", ver cabecera de pantry.js).
 
+/**
+ * Igual que isEntryFullyCooked()/isNoCookEntryFullyConsumed() pero
+ * despachando por entry.type -- las entradas "sin cocinar" (2026-08-20f)
+ * comparten este mismo array de historial con las de plato, distinguidas
+ * por type, así que cualquier filtro que recorra pantryHistory entero
+ * necesita saber cuál de las dos formas tiene cada entrada.
+ * @param {object} entry
+ * @returns {boolean}
+ */
+function isEntryDone(entry) {
+  return entry.type === "nocook" ? isNoCookEntryFullyConsumed(entry) : isEntryFullyCooked(entry);
+}
+
 function renderPantryHistorySections() {
   var history = getPantryHistory();
-  var active = history.filter(function (e) { return !isEntryFullyCooked(e); });
-  var completed = history.filter(isEntryFullyCooked);
+  var active = history.filter(function (e) { return !isEntryDone(e); });
+  var completed = history.filter(isEntryDone);
 
   // "Tu plan" -- fuera de despensa (ver cabecera, reubicación 2026-08-14c).
   // Toda la sección se oculta cuando no hay ningún plan pendiente, en vez
@@ -423,6 +436,8 @@ function sumPantryCoverageGrams(aggregated) {
  * @returns {string}
  */
 function renderActiveEntryCard(entry) {
+  if (entry.type === "nocook") return renderNoCookActiveCard(entry);
+
   var dateLabel = formatEntryDateTime(entry.createdAt);
   var aggregated = aggregatePlanMealItems(entry.meals);
   var coveredGrams = sumPantryCoverageGrams(aggregated);
@@ -528,6 +543,89 @@ function renderMealChips(entry) {
   return '<div class="pantry-meal-chips"><span class="pantry-meal-chips__label">Comidas</span>' + chips + '</div>';
 }
 
+// ── "Sin cocinar" (2026-08-20f, known issue #9) ──────────────────────────
+// Mismas 3 clases CSS que las tarjetas de plato (.pantry-active-card,
+// .pantry-meal-chip, .pantry-history-row) -- misma forma visual, sin CSS
+// nuevo, solo texto/acciones adaptados a "productos" en vez de "comidas".
+
+/**
+ * Tarjeta de un plan "sin cocinar" con algo pendiente (comprar y/o
+ * consumir alguna toma) -- equivalente a renderActiveEntryCard() para
+ * planes de plato, pero sin checklist de exclusión parcial (los
+ * productos son unidades discretas, no hay "cuánto falta" que calcular,
+ * ver markNoCookPurchaseDone en pantry.js).
+ * @param {object} entry
+ * @returns {string}
+ */
+function renderNoCookActiveCard(entry) {
+  var dateLabel = formatEntryDateTime(entry.createdAt);
+  var itemCount = (entry.slots || []).reduce(function (sum, s) { return sum + (s.items || []).length; }, 0);
+
+  var purchaseBlock = entry.purchase.done
+    ? '<div class="pantry-active-card__purchase pantry-active-card__purchase--done">' +
+        '<span class="pantry-active-card__purchase-status">&#10003; Ya compraste esto</span>' +
+      '</div>'
+    : '<div class="pantry-active-card__purchase">' +
+        '<button type="button" class="btn-primary pantry-active-card__buy-btn" data-action="confirm-nocook-purchase" data-id="' + escapeHtml(entry.id) + '">Ya compr&eacute; todo esto</button>' +
+      '</div>';
+
+  return (
+    '<div class="pantry-active-card" data-id="' + escapeHtml(entry.id) + '">' +
+      '<div class="pantry-active-card__head">' +
+        '<span class="pantry-active-card__date">' + dateLabel + '</span>' +
+        '<span class="pantry-active-card__summary">' + itemCount + ' productos &mdash; sin cocinar</span>' +
+      '</div>' +
+      purchaseBlock +
+      renderNoCookSlotChips(entry) +
+    '</div>'
+  );
+}
+
+/**
+ * Un chip compacto por toma (Desayuno/Comida/Snack/Cena) -- equivalente a
+ * renderMealChips() para planes de plato. "Consumido" en vez de
+ * "cocinado" porque ningún producto "sin cocinar" se cocina de verdad
+ * (ver cabecera de no-cook-generator.js: comprado -> abierto/servido/
+ * calentado rápido -> comido).
+ * @param {object} entry
+ * @returns {string}
+ */
+function renderNoCookSlotChips(entry) {
+  var chips = (entry.slots || []).map(function (slot) {
+    var consumedClass = slot.consumed ? " pantry-meal-chip--cooked" : "";
+    var timeBadge = typeof slot.time === "string"
+      ? '<span class="pantry-meal-chip__time">' + escapeHtml(slot.time) + '</span>'
+      : '';
+    return (
+      '<button type="button" class="pantry-meal-chip' + consumedClass + '" data-action="toggle-nocook-slot-consumed" data-id="' + escapeHtml(entry.id) + '" data-slot-key="' + escapeHtml(slot.key) + '" title="' + escapeHtml(slot.label) + '">' +
+        timeBadge + (slot.consumed ? "&#10003; " : "") + escapeHtml(slot.label) +
+      '</button>'
+    );
+  }).join("");
+
+  return '<div class="pantry-meal-chips"><span class="pantry-meal-chips__label">Tomas</span>' + chips + '</div>';
+}
+
+/**
+ * Fila de resumen de solo lectura para un plan "sin cocinar" ya
+ * completado (todas las tomas consumidas) -- equivalente a
+ * renderCompletedEntryRow() para planes de plato.
+ * @param {object} entry
+ * @returns {string}
+ */
+function renderNoCookCompletedRow(entry) {
+  var dateLabel = formatEntryDateTime(entry.createdAt);
+  var itemCount = (entry.slots || []).reduce(function (sum, s) { return sum + (s.items || []).length; }, 0);
+  var boughtNote = entry.purchase.done ? "comprado y consumido" : "consumido (sin registrar compra)";
+
+  return (
+    '<li class="pantry-history-row">' +
+      '<span class="pantry-history-row__date">' + dateLabel + '</span>' +
+      '<span class="pantry-history-row__summary">' + itemCount + ' productos &mdash; ' + boughtNote + ' &#10003;</span>' +
+    '</li>'
+  );
+}
+
 // ── Diálogo "ya tienes un plan activo hoy" ──────────────────────────────
 
 /**
@@ -587,6 +685,8 @@ function hidePlanReplaceDialog() {
  * @returns {string}
  */
 function renderCompletedEntryRow(entry) {
+  if (entry.type === "nocook") return renderNoCookCompletedRow(entry);
+
   var dateLabel = formatEntryDateTime(entry.createdAt);
   var aggregated = aggregatePlanMealItems(entry.meals);
   var boughtNote = entry.purchase.done ? "comprado y cocinado" : "cocinado (sin registrar compra)";
@@ -677,6 +777,28 @@ function handleEntryClick(event) {
       var alreadyCooked = cookChip.classList.contains("pantry-meal-chip--cooked");
 
       markMealCooked(id, mealKey, !alreadyCooked);
+      renderPantryPanel();
+      pantryOnChange();
+      return;
+    }
+
+    // "Sin cocinar" (2026-08-20f) -- mismos data-action que las de arriba,
+    // solo el nombre cambia, para no colisionar con los de plato.
+    var confirmNoCookBtn = event.target.closest('button[data-action="confirm-nocook-purchase"]');
+    if (confirmNoCookBtn) {
+      markNoCookPurchaseDone(confirmNoCookBtn.getAttribute("data-id"));
+      renderPantryPanel();
+      pantryOnChange();
+      return;
+    }
+
+    var consumeChip = event.target.closest('button[data-action="toggle-nocook-slot-consumed"]');
+    if (consumeChip) {
+      var ncId = consumeChip.getAttribute("data-id");
+      var slotKey = consumeChip.getAttribute("data-slot-key");
+      var alreadyConsumed = consumeChip.classList.contains("pantry-meal-chip--cooked");
+
+      markNoCookSlotConsumed(ncId, slotKey, !alreadyConsumed);
       renderPantryPanel();
       pantryOnChange();
       return;

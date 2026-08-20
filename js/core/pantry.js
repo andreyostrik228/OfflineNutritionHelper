@@ -119,6 +119,20 @@
  *   markPurchaseDone(entryId, excludedNames?, storeId?) → { saved, historySaved, run } | null
  *   markMealCooked(entryId, mealKey, cooked) → { saved, historySaved, entry, meal } | null
  *   getPantryHistory() / appendPantryHistory(entry)
+ *
+ * ── "Sin cocinar" (2026-08-20f, known issue #9) ──────────────────────────
+ * Mismo ciclo de 3 etapas, productos reales discretos (id/ean/quantity) en
+ * vez de ingredientes por gramos -- ver el bloque "Despensa 'sin cocinar'"
+ * más abajo para el razonamiento completo (por qué un stock paralelo, por
+ * qué comparte pantryHistory con las entradas de plato vía entry.type):
+ *   getNoCookStock() / saveNoCookStock(state)
+ *   getNoCookProductStock(productId, state?) / setNoCookProductStock(productId, quantity, displayName?) /
+ *     adjustNoCookProductStock(productId, deltaQuantity, displayName?)
+ *   hasRealNoCookAction(entry) → boolean
+ *   isNoCookEntryFullyConsumed(entry) → boolean
+ *   saveNoCookPlanForToday(slots) → { entry, historySaved, replaced }
+ *   markNoCookPurchaseDone(entryId) → { saved, historySaved, run } | null
+ *   markNoCookSlotConsumed(entryId, slotKey, consumed) → { saved, historySaved, entry, slot } | null
  * ─────────────────────────────────────────────────────────────────────────
  */
 
@@ -775,6 +789,310 @@ function markMealCooked(entryId, mealKey, cooked) {
   return { saved: saved, historySaved: historySaved, entry: entry, meal: meal };
 }
 
+// ── Despensa "sin cocinar" — productos reales, no ingredientes ───────────
+// (known issue #9, 2026-08-20f) Los planes "sin cocinar"
+// (js/engine/no-cook-generator.js) usan productos reales discretos
+// (id/ean, quantity, size/sizeUnit) en vez de ingredientes genéricos por
+// gramos -- reutilizar getStock/setStock (arriba) con ese shape distinto
+// se descartaría en silencio en sanitizePantryState() (exige
+// {grams:number>0}). Stock PARALELO, mismo patrón exacto (getX/saveX/
+// sanitizeX, nunca lanza, fallback en memoria si no hay localStorage),
+// clave de almacenamiento propia. Las entradas de historial SÍ comparten
+// el mismo array que las de plato (pantryHistory) -- distinguidas por
+// entry.type==="nocook" (las de plato no llevan `type`, tratado como
+// "dish" por defecto) -- migration.js/cloud-sync.js ya tratan cada
+// entrada como un blob opaco (solo miran `.id`/`.createdAt`), así que
+// compartir el array no les exige ningún cambio.
+//
+// Local-only por ahora, igual que el resto de la despensa (el propio
+// known issue #9 documentaba "sin sincronización entre dispositivos" para
+// TODA la despensa, no solo esto) -- el stock de productos NO está
+// enganchado a cloud-sync.js/migration.js/supabase todavía; ver STATE.md
+// para el razonamiento de alcance de esta sesión. `pantryHistory` (las
+// entradas en sí, incluidas las "nocook") SÍ sincroniza como siempre,
+// solo el stock de PRODUCTOS es local-only por ahora.
+//
+// Deliberadamente FUERA de esta sesión: el gate de "Generar plan" +
+// diálogo de reemplazo (2026-08-20, ver arriba) no se extiende aquí --
+// generar un plan "sin cocinar" nuevo con uno activo pendiente simplemente
+// crea una entrada adicional (mismo comportamiento que el modo normal
+// tenía ANTES de 2026-08-20). Revisar esa extensión si se pide.
+
+var NOCOOK_STOCK_KEY = "nutritionPlanner.nocookStock.v1";
+var _nocookMemoryStock = null;
+
+/**
+ * Igual que sanitizePantryState() pero para el stock de productos
+ * "sin cocinar" -- exige {quantity:number>0} en vez de {grams:number>0}.
+ * @param {*} raw
+ * @returns {object}
+ */
+function sanitizeNoCookStock(raw) {
+  if (!raw || typeof raw !== "object") return {};
+  var clean = {};
+  Object.keys(raw).forEach(function (key) {
+    var entry = raw[key];
+    if (entry && typeof entry === "object" && typeof entry.quantity === "number" && entry.quantity > 0) {
+      clean[key] = {
+        quantity: entry.quantity,
+        displayName: typeof entry.displayName === "string" ? entry.displayName : key,
+        updatedAt: typeof entry.updatedAt === "string" ? entry.updatedAt : null
+      };
+    }
+  });
+  return clean;
+}
+
+/** Igual que getPantryState() pero para el stock de productos "sin cocinar". */
+function getNoCookStock() {
+  if (typeof localStorage === "undefined") {
+    return _nocookMemoryStock || (_nocookMemoryStock = {});
+  }
+  try {
+    var raw = localStorage.getItem(NOCOOK_STOCK_KEY);
+    if (!raw) return {};
+    return sanitizeNoCookStock(JSON.parse(raw));
+  } catch (err) {
+    return {};
+  }
+}
+
+/** Igual que savePantryState() pero para el stock de productos "sin cocinar". */
+function saveNoCookStock(state) {
+  if (typeof localStorage === "undefined") {
+    _nocookMemoryStock = state;
+    return true;
+  }
+  try {
+    localStorage.setItem(NOCOOK_STOCK_KEY, JSON.stringify(state));
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
+/**
+ * Unidades disponibles en despensa de un producto, por su id de catálogo
+ * (no por nombre normalizado -- dos productos pueden compartir nombre
+ * comercial con EAN/tamaño distintos, ver cabecera de
+ * no-cook-generator.js). 0 si no hay entrada.
+ * @param {string} productId
+ * @param {object} [state] - evita releer localStorage en bucles
+ * @returns {number}
+ */
+function getNoCookProductStock(productId, state) {
+  var s = state || getNoCookStock();
+  var entry = s[productId];
+  return (entry && typeof entry.quantity === "number" && entry.quantity > 0) ? entry.quantity : 0;
+}
+
+/**
+ * Fija la cantidad en despensa de un producto "sin cocinar". 0 o negativo
+ * BORRA la entrada (mismo criterio que setStock()).
+ * @param {string} productId
+ * @param {number} quantity
+ * @param {string} [displayName]
+ * @returns {object} - el nuevo estado guardado
+ */
+function setNoCookProductStock(productId, quantity, displayName) {
+  var state = getNoCookStock();
+  var q = Math.max(0, Math.round(quantity));
+
+  if (q <= 0) {
+    delete state[productId];
+  } else {
+    state[productId] = { quantity: q, displayName: displayName || productId, updatedAt: new Date().toISOString() };
+  }
+
+  saveNoCookStock(state);
+  return state;
+}
+
+/**
+ * Suma (o resta, con delta negativo) unidades al stock existente de un
+ * producto, nunca por debajo de 0.
+ * @param {string} productId
+ * @param {number} deltaQuantity
+ * @param {string} [displayName]
+ * @returns {object}
+ */
+function adjustNoCookProductStock(productId, deltaQuantity, displayName) {
+  var current = getNoCookProductStock(productId);
+  return setNoCookProductStock(productId, current + deltaQuantity, displayName);
+}
+
+/**
+ * Igual que hasRealPantryAction() pero para planes "sin cocinar": compra
+ * confirmada o al menos una toma marcada como consumida.
+ * @param {object} entry
+ * @returns {boolean}
+ */
+function hasRealNoCookAction(entry) {
+  if (!entry) return false;
+  if (entry.purchase && entry.purchase.done) return true;
+  return (entry.slots || []).some(function (s) { return !!s.consumed; });
+}
+
+/**
+ * Igual que isEntryFullyCooked() pero para "sin cocinar": TODAS las tomas
+ * consumidas.
+ * @param {object} entry
+ * @returns {boolean}
+ */
+function isNoCookEntryFullyConsumed(entry) {
+  var slots = (entry && entry.slots) || [];
+  return slots.length > 0 && slots.every(function (s) { return s.consumed; });
+}
+
+/**
+ * Etapa 1 "sin cocinar": registra/confirma el plan del día. Mismo UPSERT
+ * sobre el borrador que savePlanForToday() (ver cabecera del archivo) --
+ * busca una entrada de HOY, type "nocook", sin ninguna acción real
+ * todavía, y la actualiza en vez de crear una copia. Pura contabilidad,
+ * cero mutación de stock (igual que la versión de plato).
+ * @param {{key:string,label:string,items:object[]}[]} slots - plan.slots de generateNoCookPlan()
+ * @returns {{ entry:object, historySaved:boolean, replaced:boolean }}
+ */
+function saveNoCookPlanForToday(slots) {
+  var now = new Date();
+  var nowISO = now.toISOString();
+  var todayKey = formatLocalDateKey(now);
+
+  var newSlots = (slots || []).map(function (slot) {
+    return {
+      key: slot.key,
+      label: slot.label,
+      time: typeof slot.time === "string" ? slot.time : null,
+      items: (slot.items || []).map(function (item) {
+        return {
+          id: item.id, name: item.name, brand: item.brand || null,
+          quantity: item.quantity, unit: item.unit || null,
+          size: typeof item.size === "number" ? item.size : null,
+          sizeUnit: item.sizeUnit || null,
+          price: typeof item.price === "number" ? item.price : null
+        };
+      }),
+      consumed: false,
+      consumedAt: null,
+      consumedQuantities: null
+    };
+  });
+
+  var history = getPantryHistory();
+  var draft = history.find(function (e) {
+    return e.type === "nocook" && getEntryPlanDate(e) === todayKey && !hasRealNoCookAction(e);
+  });
+
+  if (draft) {
+    draft.createdAt = nowISO;
+    draft.slots = newSlots;
+    var historySavedReplace = savePantryHistory(history);
+    return { entry: draft, historySaved: historySavedReplace, replaced: true };
+  }
+
+  var entry = {
+    id: generateHistoryId(),
+    type: "nocook",
+    createdAt: nowISO,
+    planDate: todayKey,
+    slots: newSlots,
+    purchase: { done: false, runs: [] }
+  };
+  var historySaved = appendPantryHistory(entry);
+  return { entry: entry, historySaved: historySaved, replaced: false };
+}
+
+/**
+ * Etapa 2 "sin cocinar": "Ya compré todo esto" -- añade quantity de cada
+ * producto (por id de catálogo, no por nombre) al stock de productos.
+ * A diferencia de markPurchaseDone() (ingredientes agregados, checklist
+ * de exclusión parcial contra un tamaño de paquete a redondear), aquí es
+ * todo-o-nada: cada producto ya es una unidad discreta e identificada, no
+ * hay "cuánto falta" que calcular -- si algo no se compró de verdad, no
+ * confirmar la compra hasta tenerlo todo (o repetir la acción más tarde,
+ * es idempotente-seguro: cada llamada solo SUMA lo de esa llamada).
+ * @param {string} entryId
+ * @returns {{ saved:boolean, historySaved:boolean, run:object }|null}
+ */
+function markNoCookPurchaseDone(entryId) {
+  var history = getPantryHistory();
+  var entry = history.find(function (e) { return e.id === entryId && e.type === "nocook"; });
+  if (!entry) return null;
+
+  var stock = getNoCookStock();
+  var nowISO = new Date().toISOString();
+  var lines = [];
+  var totalCost = 0;
+
+  (entry.slots || []).forEach(function (slot) {
+    (slot.items || []).forEach(function (item) {
+      var current = getNoCookProductStock(item.id, stock);
+      stock[item.id] = { quantity: current + item.quantity, displayName: item.name, updatedAt: nowISO };
+      lines.push({ id: item.id, name: item.name, quantity: item.quantity, price: item.price });
+      totalCost += (item.price || 0) * item.quantity;
+    });
+  });
+
+  var saved = saveNoCookStock(stock);
+  var run = { at: nowISO, lines: lines, totals: { purchaseCost: round2(totalCost), itemCount: lines.length } };
+  entry.purchase.runs.push(run);
+  entry.purchase.done = true;
+  var historySaved = savePantryHistory(history);
+
+  return { saved: saved, historySaved: historySaved, run: run };
+}
+
+/**
+ * Etapa 3 "sin cocinar": "Marcar como consumido", UNA toma completa a la
+ * vez (mismo grano que markMealCooked() por comida) -- única función que
+ * resta stock de productos. Idempotente y con undo exacto vía
+ * slot.consumedQuantities, mismo patrón exacto que meal.consumed en
+ * markMealCooked().
+ * @param {string} entryId
+ * @param {string} slotKey
+ * @param {boolean} consumed
+ * @returns {{ saved:boolean, historySaved:boolean, entry:object, slot:object }|null}
+ */
+function markNoCookSlotConsumed(entryId, slotKey, consumed) {
+  var history = getPantryHistory();
+  var entry = history.find(function (e) { return e.id === entryId && e.type === "nocook"; });
+  if (!entry) return null;
+
+  var slot = (entry.slots || []).find(function (s) { return s.key === slotKey; });
+  if (!slot) return null;
+
+  if (!!consumed === !!slot.consumed) {
+    // Ya está en el estado pedido -- no-op idempotente, no se toca stock.
+    return { saved: true, historySaved: true, entry: entry, slot: slot };
+  }
+
+  var stock = getNoCookStock();
+  var nowISO = new Date().toISOString();
+
+  if (consumed) {
+    slot.consumedQuantities = (slot.items || []).map(function (item) {
+      var current = getNoCookProductStock(item.id, stock);
+      var used = Math.min(item.quantity, current);
+      stock[item.id] = { quantity: Math.max(0, current - used), displayName: item.name, updatedAt: nowISO };
+      return { id: item.id, name: item.name, quantity: used };
+    });
+    slot.consumed = true;
+    slot.consumedAt = nowISO;
+  } else {
+    (slot.consumedQuantities || []).forEach(function (c) {
+      var current = getNoCookProductStock(c.id, stock);
+      stock[c.id] = { quantity: current + c.quantity, displayName: c.name, updatedAt: nowISO };
+    });
+    slot.consumed = false;
+    slot.consumedAt = null;
+    slot.consumedQuantities = null;
+  }
+
+  var saved = saveNoCookStock(stock);
+  var historySaved = savePantryHistory(history);
+  return { saved: saved, historySaved: historySaved, entry: entry, slot: slot };
+}
+
 // ── Historial de planes confirmados ───────────────────────────────────────
 
 /**
@@ -791,9 +1109,21 @@ function markMealCooked(entryId, mealKey, cooked) {
  */
 function isValidHistoryEntry(entry) {
   if (!entry || typeof entry !== "object") return false;
-  if (!Array.isArray(entry.meals)) return false;
   if (!entry.purchase || typeof entry.purchase !== "object" || !Array.isArray(entry.purchase.runs)) return false;
 
+  // "sin cocinar" (2026-08-20f): entry.slots sustituye a entry.meals --
+  // misma validación estricta, forma distinta (ver cabecera del bloque
+  // "Despensa 'sin cocinar'" más abajo).
+  if (entry.type === "nocook") {
+    if (!Array.isArray(entry.slots)) return false;
+    return entry.slots.every(function (slot) {
+      return slot && typeof slot === "object"
+        && typeof slot.key === "string"
+        && Array.isArray(slot.items);
+    });
+  }
+
+  if (!Array.isArray(entry.meals)) return false;
   return entry.meals.every(function (meal) {
     return meal && typeof meal === "object"
       && typeof meal.key === "string"

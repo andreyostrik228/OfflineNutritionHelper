@@ -106,7 +106,9 @@ no longer inside the despensa accordion) adds purchased stock;
 **(3)** "Marcar como cocinado" (per meal) subtracts consumed stock,
 with exact undo. Deliberately
 NOT connected to `dish-selector.js` (budget selection stays pantry-unaware)
-or no-cook mode. Full design record and rejected alternatives in
+~~or no-cook mode~~ — the lifecycle IS connected to no-cook mode as of
+2026-08-20f (dish selection itself still isn't, deliberately, see that
+date below). Full design record and rejected alternatives in
 `STATE.md`.
 
 **2026-08-14b — UX redesign, zero logic changes**: the panel used to
@@ -517,6 +519,33 @@ applied to a related case). 2 golden-masters recaptured (second time
 this session, first was the packaging.js fix); 7 contract tests
 untouched. 255 tests, 0 failed. Full write-up in `STATE.md`, "Auditoría
 Atwater del nivel de plato — 2026-08-20e".
+
+**2026-08-20f — known issue #9: despensa connected to no-cook mode, full
+3-stage lifecycle**: no-cook plans (real discrete catalog products, not
+gram-based ingredients) never had any save/buy/consume flow. Scope
+confirmed with the user first: full lifecycle (confirm → buy → consume),
+selection itself stays pantry-unaware for now (matches how the main
+generator was rolled out — lifecycle in 2026-08-06/07, selection-aware
+later in 2026-08-13). Architecture: a parallel product stock ledger
+(`nutritionPlanner.nocookStock.v1`, `{quantity}` instead of `{grams}` —
+reusing the existing gram-shaped store would have been silently dropped
+by `sanitizePantryState()`'s strict validation), but history entries
+share the same `pantryHistory` array as dish-mode plans, distinguished
+by `entry.type==="nocook"` — verified by reading `migration.js`/
+`cloud-sync.js` that both already treat entries as opaque blobs, so
+sharing the array needed no changes there. New pantry.js functions
+mirror the dish-mode ones exactly (`saveNoCookPlanForToday`/
+`markNoCookPurchaseDone`/`markNoCookSlotConsumed`). UI reuses the exact
+same CSS classes as dish-mode cards/chips — zero new CSS. 10 new tests
+(cross-type isolation between a same-day dish draft and no-cook draft,
+corrupt-data resilience, exact undo); 265 total, 0 failed. Verified live
+end-to-end (generate → confirm → buy → consume per slot → moves to
+completed history), including that dish-mode is completely unaffected by
+a no-cook entry sharing its history array. Deliberately out of scope:
+the 2026-08-20 "Generar plan" gate/replace-dialog, pantry-aware product
+selection, and cloud sync for the product stock ledger (history entries
+still sync as always). Full write-up in `STATE.md`, "Despensa conectada
+al modo 'sin cocinar' — 2026-08-20f".
 
 ## Product direction
 

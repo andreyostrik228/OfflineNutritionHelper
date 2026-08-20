@@ -2,7 +2,22 @@
 
 ## Current status
 
-**Stage:** working prototype, updated 2026-08-20e — known issue #1
+**Stage:** working prototype, updated 2026-08-20f — known issue #9
+(despensa not connected to no-cook mode) addressed: the full 3-stage
+lifecycle (confirm → buy → consume) now exists for no-cook plans too,
+mirroring the main generator's pattern exactly. Scope was confirmed with
+the user before building — full lifecycle, but product SELECTION stays
+pantry-unaware for now (matches how the main generator was rolled out in
+two separate steps back in 2026-08-06/07 and 2026-08-13). Architecture
+keeps a parallel product-quantity stock ledger (discrete products can't
+reuse the gram-shaped pantry store) while sharing the existing
+`pantryHistory` array for entries, verified safe by reading
+`migration.js`/`cloud-sync.js` rather than assuming. UI reuses the exact
+same CSS as dish-mode — zero new styles. 10 new tests, 265 total, 0
+failed; verified live end-to-end including cross-type isolation. See
+`STATE.md`, "Despensa conectada al modo 'sin cocinar' — 2026-08-20f".
+
+Previously, updated 2026-08-20e — known issue #1
 re-audited on the current 334-dish set for the first time since the old
 204-dish audit: found and fixed a real, localized authoring bug (23
 dishes, 15 of them all containing "Quinoa cocida," had `dish.kcal`
@@ -214,7 +229,9 @@ their ingredients' nutrition is computed and displayed.
   design produced wrong data in a real-world "bought but never cooked"
   scenario. Deliberately not connected to `dish-selector.js` (dish
   SELECTION stays pantry-unaware — as of 2026-08-08 the budget check that
-  happens after selection IS pantry-aware, see below) or no-cook mode. 33
+  happens after selection IS pantry-aware, see below) or no-cook mode
+  (as of 2026-08-20f the lifecycle IS connected to no-cook mode —
+  selection there still isn't, deliberately, see that date above). 33
   new tests. Full design record, including why v1 was rejected, in
   `STATE.md`.
 - **App-startup architecture hardening (2026-08-07)**: the same real-world
@@ -504,9 +521,11 @@ decisión de arquitectura de datos.
   Originally deliberately NOT connected to `dish-selector.js`; **as of
   2026-08-13 it IS** — dish selection now prefers pantry-covered
   ingredients via marginal purchase cost (see `STATE.md`, "Presupuesto de
-  compra MARGINAL durante la selección"). Still NOT connected to no-cook
-  mode. See `STATE.md`, section "Despensa (pantry/inventory)" for the full
-  design and the real-world bug that drove the v1→v2 redesign.
+  compra MARGINAL durante la selección"). ~~Still NOT connected to no-cook
+  mode~~ — **connected 2026-08-20f**, full 3-stage lifecycle (product
+  SELECTION in `generateNoCookPlan()` still isn't pantry-aware,
+  deliberately). See `STATE.md`, section "Despensa (pantry/inventory)" for
+  the full design and the real-world bug that drove the v1→v2 redesign.
 - Remaining: barcode/import flows, meal-prep batching, calendar
   integration, coach mode, multilingual content, and analytics.
 - Add only after the core plan is trustworthy, explainable, and testable.

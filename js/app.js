@@ -105,6 +105,7 @@ document.addEventListener("DOMContentLoaded", function () {
   var noCookResults = document.getElementById("noCookResults");
   var noCookCount   = document.getElementById("noCookCount");
   var noCookStatus  = document.getElementById("noCookStatus");
+  var usePlanTodayNoCookBtn = document.getElementById("usePlanTodayNoCookBtn");
 
   var shoppingPanel            = document.getElementById("shoppingPanel");
   var shoppingSummaryEl        = document.getElementById("shoppingSummary");
@@ -683,6 +684,40 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
+  /**
+   * "Confirmar plan sin cocinar" (2026-08-20f, known issue #9) -- mismo
+   * patrón que handleUsePlanToday(), sin la rama de reemplazo (el gate de
+   * "Generar plan" de 2026-08-20 no se extendió aquí a propósito, ver
+   * cabecera del bloque "sin cocinar" en pantry.js).
+   */
+  function handleUseNoCookPlanToday() {
+    safeInit("use-nocook-plan-today", function () {
+      if (typeof lastNoCookSlots === "undefined" || !lastNoCookSlots) return;
+      if (typeof saveNoCookPlanForToday !== "function") return;
+
+      usePlanTodayNoCookBtn.disabled = true;
+      try {
+        var result = saveNoCookPlanForToday(lastNoCookSlots);
+        if (!result) return;
+
+        if (typeof renderPantryPanel === "function") renderPantryPanel();
+        if (typeof renderPlanSavedNotice === "function") {
+          renderPlanSavedNotice(result.entry, result.historySaved, result.replaced ? "draft-updated" : "created");
+        }
+
+        safeInit("nocook-plan-saved-cloud-push", function () {
+          if (typeof pushPantryToCloud === "function") pushPantryToCloud();
+        });
+
+        if (todayPlansPanel && typeof todayPlansPanel.scrollIntoView === "function") {
+          todayPlansPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      } finally {
+        usePlanTodayNoCookBtn.disabled = false;
+      }
+    });
+  }
+
   // A diferencia de shoppingPanel/noCookPanel (vacíos hasta generar un
   // plan), la despensa pinta su estado persistido YA, al cargar la
   // página — no depende de ningún plan generado en esta sesión. Los datos
@@ -716,6 +751,7 @@ document.addEventListener("DOMContentLoaded", function () {
       if (typeof renderPantryPanel === "function") renderPantryPanel();
     }
     if (usePlanTodayBtn) usePlanTodayBtn.addEventListener("click", handleUsePlanToday);
+    if (usePlanTodayNoCookBtn) usePlanTodayNoCookBtn.addEventListener("click", handleUseNoCookPlanToday);
   });
 
   // ── Catálogo verificado (productos reales, EAN) ──────────────────────

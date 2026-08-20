@@ -906,6 +906,158 @@ function run(t) {
     assert.strictEqual(items[0].purchase.purchaseCost, 2.5);
     assert.strictEqual(items[0].purchase.coveredFromPantry, undefined); // el campo ni existe sin pantry.js
   });
+
+  // ── "Sin cocinar" (2026-08-20f, known issue #9) ─────────────────────────
+  // Mismo ciclo de 3 etapas que arriba, productos reales discretos
+  // (id/quantity) en vez de ingredientes por gramos, y comparten
+  // pantryHistory con las entradas de plato (distinguidas por type) --
+  // los tests de aislamiento cruzado son tan importantes como los del
+  // ciclo de vida en sí, porque ese array compartido es nuevo esta sesión.
+
+  function fakeNoCookSlots(itemsBySlotKey) {
+    return Object.keys(itemsBySlotKey).map(function (key) {
+      return { key: key, label: key, items: itemsBySlotKey[key] };
+    });
+  }
+
+  function fakeProduct(id, name, quantity, price) {
+    return { id: id, name: name, brand: "Marca", quantity: quantity, unit: "ud", size: 200, sizeUnit: "g", price: price };
+  }
+
+  t.test("saveNoCookPlanForToday() crea una entrada type:'nocook' con planDate de hoy", function () {
+    var s = freshPantrySandbox();
+    var slots = fakeNoCookSlots({ breakfast: [fakeProduct("p1", "Yogur", 1, 0.5)] });
+    var result = s.saveNoCookPlanForToday(slots);
+    assert.strictEqual(result.replaced, false);
+    assert.strictEqual(result.entry.type, "nocook");
+    assert.strictEqual(result.entry.planDate, s.formatLocalDateKey(new Date()));
+    assert.strictEqual(result.entry.slots[0].items[0].id, "p1");
+    assert.strictEqual(result.entry.purchase.done, false);
+  });
+
+  t.test("saveNoCookPlanForToday() llamado dos veces seguidas sin comprar/consumir actualiza el MISMO borrador (UPSERT), no crea una entrada nueva", function () {
+    var s = freshPantrySandbox();
+    var first = s.saveNoCookPlanForToday(fakeNoCookSlots({ breakfast: [fakeProduct("p1", "Yogur", 1, 0.5)] }));
+    var second = s.saveNoCookPlanForToday(fakeNoCookSlots({ breakfast: [fakeProduct("p2", "Queso", 1, 1.2)] }));
+    assert.strictEqual(second.replaced, true);
+    assert.strictEqual(second.entry.id, first.entry.id);
+    assert.strictEqual(s.getPantryHistory().filter(function (e) { return e.type === "nocook"; }).length, 1);
+    assert.strictEqual(s.getPantryHistory()[0].slots[0].items[0].id, "p2");
+  });
+
+  t.test("un borrador 'nocook' de hoy y un borrador de plato de hoy conviven como entradas SEPARADAS (savePlanForToday no toca la de nocook y viceversa)", function () {
+    var s = freshPantrySandbox();
+    var dishResult = s.savePlanForToday(fakeMeals({ breakfast: [{ name: "Avena", grams: 80 }] }), "mercadona");
+    var noCookResult = s.saveNoCookPlanForToday(fakeNoCookSlots({ breakfast: [fakeProduct("p1", "Yogur", 1, 0.5)] }));
+
+    assert.notStrictEqual(dishResult.entry.id, noCookResult.entry.id);
+    var history = s.getPantryHistory();
+    assert.strictEqual(history.length, 2);
+    assert.strictEqual(history.filter(function (e) { return e.type === "nocook"; }).length, 1);
+    assert.strictEqual(history.filter(function (e) { return e.type !== "nocook"; }).length, 1);
+
+    // Confirmar un segundo plan de plato no debe tocar la entrada nocook.
+    s.savePlanForToday(fakeMeals({ breakfast: [{ name: "Avena", grams: 90 }] }), "mercadona");
+    var afterSecond = s.getPantryHistory().find(function (e) { return e.id === noCookResult.entry.id; });
+    assert.strictEqual(afterSecond.slots[0].items[0].id, "p1");
+  });
+
+  t.test("markNoCookPurchaseDone() suma quantity de cada producto (por id) al stock, acumulando entre varias compras", function () {
+    var s = freshPantrySandbox();
+    var saved = s.saveNoCookPlanForToday(fakeNoCookSlots({
+      breakfast: [fakeProduct("p1", "Yogur pack 4", 1, 2.0)],
+      lunch: [fakeProduct("p2", "Ensalada lista", 1, 3.5)]
+    }));
+
+    var run1 = s.markNoCookPurchaseDone(saved.entry.id);
+    assert.strictEqual(s.getNoCookProductStock("p1"), 1);
+    assert.strictEqual(s.getNoCookProductStock("p2"), 1);
+    assert.strictEqual(run1.run.totals.purchaseCost, 5.5);
+    assert.strictEqual(s.getPantryHistory()[0].purchase.done, true);
+
+    // Segunda compra (viaje aparte) SUMA, nunca sobrescribe.
+    s.markNoCookPurchaseDone(saved.entry.id);
+    assert.strictEqual(s.getNoCookProductStock("p1"), 2);
+    assert.strictEqual(s.getPantryHistory()[0].purchase.runs.length, 2);
+  });
+
+  t.test("markNoCookPurchaseDone() con un entryId de una entrada de PLATO (no nocook) devuelve null -- no confunde los dos tipos", function () {
+    var s = freshPantrySandbox();
+    var dishResult = s.savePlanForToday(fakeMeals({ breakfast: [{ name: "Avena", grams: 80 }] }), "mercadona");
+    assert.strictEqual(s.markNoCookPurchaseDone(dishResult.entry.id), null);
+  });
+
+  t.test("markNoCookSlotConsumed(true) resta stock exacto de cada producto de esa toma; false lo devuelve EXACTO (undo), nunca recalcula", function () {
+    var s = freshPantrySandbox();
+    var saved = s.saveNoCookPlanForToday(fakeNoCookSlots({ breakfast: [fakeProduct("p1", "Yogur", 2, 0.5)] }));
+    s.markNoCookPurchaseDone(saved.entry.id); // stock p1 = 2
+
+    var consumed = s.markNoCookSlotConsumed(saved.entry.id, "breakfast", true);
+    assert.strictEqual(s.getNoCookProductStock("p1"), 0);
+    assert.strictEqual(consumed.slot.consumed, true);
+    assert.strictEqual(consumed.slot.consumedQuantities[0].quantity, 2);
+
+    // Mientras tanto el stock cambia por otra vía -- el undo debe restaurar
+    // el snapshot EXACTO guardado al consumir, no recalcular contra esto.
+    s.adjustNoCookProductStock("p1", 5, "Yogur");
+    var undone = s.markNoCookSlotConsumed(saved.entry.id, "breakfast", false);
+    assert.strictEqual(undone.slot.consumed, false);
+    assert.strictEqual(s.getNoCookProductStock("p1"), 7); // 5 + 2 devueltos, no recalculado
+  });
+
+  t.test("markNoCookSlotConsumed() nunca resta stock por debajo de 0, y es idempotente (llamar dos veces con el mismo valor no vuelve a tocar stock)", function () {
+    var s = freshPantrySandbox();
+    var saved = s.saveNoCookPlanForToday(fakeNoCookSlots({ breakfast: [fakeProduct("p1", "Yogur", 3, 0.5)] }));
+    // Nunca se compró -- stock real de p1 es 0.
+    s.markNoCookSlotConsumed(saved.entry.id, "breakfast", true);
+    assert.strictEqual(s.getNoCookProductStock("p1"), 0); // Math.max(0, ...), nunca negativo
+
+    var again = s.markNoCookSlotConsumed(saved.entry.id, "breakfast", true);
+    assert.strictEqual(again.saved, true); // no-op idempotente, no lanza ni cambia nada
+  });
+
+  t.test("isNoCookEntryFullyConsumed()/hasRealNoCookAction() reflejan el estado real de las tomas y la compra", function () {
+    var s = freshPantrySandbox();
+    var saved = s.saveNoCookPlanForToday(fakeNoCookSlots({
+      breakfast: [fakeProduct("p1", "Yogur", 1, 0.5)],
+      lunch: [fakeProduct("p2", "Ensalada", 1, 3.5)]
+    }));
+    assert.strictEqual(s.hasRealNoCookAction(saved.entry), false);
+    assert.strictEqual(s.isNoCookEntryFullyConsumed(saved.entry), false);
+
+    s.markNoCookSlotConsumed(saved.entry.id, "breakfast", true);
+    var entry = s.getPantryHistory().find(function (e) { return e.id === saved.entry.id; });
+    assert.strictEqual(s.hasRealNoCookAction(entry), true); // una toma consumida ya es "real"
+    assert.strictEqual(s.isNoCookEntryFullyConsumed(entry), false); // falta lunch
+
+    s.markNoCookSlotConsumed(saved.entry.id, "lunch", true);
+    var entryDone = s.getPantryHistory().find(function (e) { return e.id === saved.entry.id; });
+    assert.strictEqual(s.isNoCookEntryFullyConsumed(entryDone), true);
+  });
+
+  t.test("una entrada 'nocook' corrupta (slots ausente) se descarta en silencio de getPantryHistory(), igual que una de plato sin meals", function () {
+    var s = freshPantrySandbox();
+    s.localStorage = createFakeLocalStorage();
+    var valid = { id: "h1", type: "nocook", createdAt: new Date().toISOString(), planDate: "2026-08-20", slots: [{ key: "breakfast", items: [] }], purchase: { done: false, runs: [] } };
+    var corrupt = { id: "h2", type: "nocook", createdAt: new Date().toISOString(), planDate: "2026-08-20", purchase: { done: false, runs: [] } }; // sin slots
+    s.localStorage.setItem("nutritionPlanner.pantryHistory.v1", JSON.stringify([valid, corrupt]));
+
+    var history = s.getPantryHistory();
+    assert.strictEqual(history.length, 1);
+    assert.strictEqual(history[0].id, "h1");
+  });
+
+  t.test("getNoCookStock() usa una clave de localStorage propia, separada de la despensa de ingredientes (nunca colisionan)", function () {
+    var s = freshPantrySandbox();
+    s.localStorage = createFakeLocalStorage();
+    s.setStock("Avena", 300);
+    s.setNoCookProductStock("p1", 2, "Yogur");
+
+    assert.ok(s.localStorage.getItem("nutritionPlanner.pantry.v1"));
+    assert.ok(s.localStorage.getItem("nutritionPlanner.nocookStock.v1"));
+    assert.strictEqual(s.getStock("Avena"), 300); // sin tocar por el stock de productos
+    assert.strictEqual(s.getNoCookProductStock("p1"), 2);
+  });
 }
 
 module.exports = { run: run };

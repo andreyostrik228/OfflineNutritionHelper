@@ -161,6 +161,48 @@ fallidos. `js/core/`, `js/engine/*` (código), `js/data/
 ingredient-nutrition.js`, y el resto de la app — cero cambios; solo
 `js/data/dishes.js` (23 valores de `kcal`) y los golden-master.
 
+**Resumen de la sesión 2026-08-20f (known issue #9: despensa conectada al
+modo "sin cocinar", ciclo completo de 3 etapas)**: siguiente item de la
+lista priorizada, el más grande de los seis (única build de feature
+nueva, no un bug fix contenido) — el usuario confirmó explícitamente
+alcance "completo, mismas 3 etapas que el plan normal" y "solo el ciclo
+de vida, sin hacer la SELECCIÓN de producto consciente de despensa
+todavía" antes de empezar. Los planes "sin cocinar" (productos reales
+discretos, id/ean/quantity, no ingredientes por gramos) nunca tuvieron
+ningún botón de guardar/comprar/consumir. Diseño: stock de PRODUCTOS
+paralelo al de ingredientes (`nutritionPlanner.nocookStock.v1`, mismo
+patrón exacto que el stock existente pero `{quantity}` en vez de
+`{grams}` — reutilizar el mismo shape se habría descartado en silencio
+en `sanitizePantryState()`), pero las ENTRADAS de historial comparten el
+mismo array `pantryHistory` que las de plato, distinguidas por
+`entry.type==="nocook"` — migration.js/cloud-sync.js ya tratan cada
+entrada como un blob opaco, así que compartir el array no les exigió
+ningún cambio (verificado leyendo su código, no asumido). Nuevas
+funciones en `pantry.js`, mismo patrón exacto que las de plato:
+`saveNoCookPlanForToday`/`markNoCookPurchaseDone`/
+`markNoCookSlotConsumed`/`hasRealNoCookAction`/
+`isNoCookEntryFullyConsumed` (+ el stock: `getNoCookStock`/
+`setNoCookProductStock`/`adjustNoCookProductStock`). UI: reutiliza las
+MISMAS clases CSS que las tarjetas de plato
+(`.pantry-active-card`/`.pantry-meal-chip`/`.pantry-history-row`) — cero
+CSS nuevo, solo texto/acciones adaptados ("consumido" en vez de
+"cocinado", sin checklist de compra parcial porque los productos son
+unidades discretas, no hay "cuánto falta" que calcular). 10 tests nuevos
+en `tests/pantry.test.js` (ciclo de vida completo, aislamiento cruzado
+entre un borrador de plato y uno "sin cocinar" el mismo día, resiliencia
+a datos corruptos, undo exacto). 265 tests, 0 fallidos. Verificado en
+vivo end-to-end (generar → confirmar → comprar → consumir toma por toma
+→ se muda solo al historial completado), incluyendo que despensa/plato
+siguen funcionando exactamente igual con una entrada "sin cocinar"
+mezclada en el mismo historial, 0 errores de consola. **Alcance
+explícito, no un olvido**: NO se extendió el gate de "Generar plan"
+(2026-08-20) a este modo, NO se hizo la SELECCIÓN de producto consciente
+de despensa (ambos, deliberadamente diferidos por decisión del usuario),
+y el stock de productos "sin cocinar" es LOCAL-ONLY (no engancha a
+cloud-sync.js/migration.js/supabase todavía) — ver sección dedicada
+"Despensa conectada al modo 'sin cocinar' — 2026-08-20f" más abajo para
+el detalle completo.
+
 **Resumen de la sesión 2026-08-19 (bug real: "Confirmar plan" repetido
 inflaba la despensa — `savePlanForToday()` ahora hace UPSERT sobre el
 borrador del día)**: el usuario encontró en uso real que pulsar
@@ -3432,16 +3474,20 @@ para tocar código de producción de este proyecto.
    exactamente el tipo de cosa que la Fase 2 del roadmap de migración
    debería resolver al rediseñar el motor, no algo para parchear ahora.
 9. **La Despensa (2026-08-06/07) vive solo en `localStorage` de un
-   navegador, sin sincronización entre dispositivos, y no está conectada
-   al modo "sin cocinar".** ~~Tampoco está conectada a `dish-selector.js`
-   (no influye en qué platos se eligen)~~ — **ya no es así desde
-   2026-08-13**: la SELECCIÓN de plato ahora SÍ es consciente de despensa
-   (vía coste de compra marginal, ver "Presupuesto de compra MARGINAL
-   durante la selección" más abajo); lo único que sigue sin conectar es el
-   modo "sin cocinar". Ambas eran decisiones de arquitectura deliberadas
-   en su momento, no descuidos — ver sección Despensa arriba para el
-   razonamiento completo de por qué se pospuso originalmente. No es un
-   "bug", pero cualquiera que asuma sincronización multi-dispositivo se
+   navegador, sin sincronización entre dispositivos.** ~~Tampoco está
+   conectada a `dish-selector.js` (no influye en qué platos se eligen)~~ —
+   **ya no es así desde 2026-08-13**: la SELECCIÓN de plato ahora SÍ es
+   consciente de despensa (vía coste de compra marginal, ver "Presupuesto
+   de compra MARGINAL durante la selección" más abajo). ~~Tampoco está
+   conectada al modo "sin cocinar"~~ — **CONECTADA 2026-08-20f**: el ciclo
+   de 3 etapas (confirmar → comprar → consumir) ahora existe también para
+   planes "sin cocinar", ver sección dedicada "Despensa conectada al modo
+   'sin cocinar' — 2026-08-20f" más abajo. Sigue sin sincronización entre
+   dispositivos (issue de fondo sin resolver, decisión de arquitectura
+   deliberada, no un descuido) — y el stock de PRODUCTOS "sin cocinar" en
+   concreto es local-only incluso para cuentas con sync activado (alcance
+   explícito de 2026-08-20f, ver esa sección). Cualquiera que asuma
+   sincronización multi-dispositivo de cualquiera de las dos despensas se
    equivoca.
 
 ## Audit evidence (2026-07-18, histórico — sobre el set de 204 platos)
@@ -3745,6 +3791,153 @@ plan-generator.characterization.test.js` (2 golden-master
 recapturados). **No tocados**: `js/data/ingredient-nutrition.js`,
 `js/core/nutrition.js`, `js/engine/dish-selector.js` (código, no datos),
 cualquier otro archivo.
+
+## Despensa conectada al modo "sin cocinar" — 2026-08-20f
+
+**Contexto**: known issue #9 desde 2026-06-06/07 — los planes "sin
+cocinar" (`js/engine/no-cook-generator.js`, productos reales discretos
+del catálogo, no ingredientes por gramos) nunca tuvieron ningún botón de
+guardar/comprar/consumir, a diferencia del plan normal (ciclo de 3
+etapas desde 2026-08-06/07). Decisión de arquitectura deliberada en su
+momento, documentada como "posible fase futura" en la propia cabecera de
+`no-cook-generator.js" (el shape de cada item ya incluía ean/brand/size/
+price "para que una futura despensa pudiera restar lo consumido sin
+rediseñar esta estructura" — dicho antes de que existiera el resto del
+sistema de despensa).
+
+**Alcance, confirmado con el usuario ANTES de escribir código** (dos
+preguntas explícitas, ver la sesión): (1) ciclo COMPLETO de 3 etapas,
+igual que el plan normal (confirmar → comprar → consumir), no solo
+mostrar cobertura de despensa de forma informativa; (2) SOLO el ciclo de
+vida -- la SELECCIÓN de producto en `generateNoCookPlan()` NO se hace
+consciente de despensa en esta pasada (eso replicaría el patrón del plan
+normal, donde la selección se hizo despensa-consciente en 2026-08-13,
+DESPUÉS de que el ciclo de vida ya llevara meses funcionando -- mismo
+orden aquí, deliberado, no un recorte).
+
+### Por qué un stock de productos PARALELO, no reutilizar el existente
+
+`getStock()`/`setStock()` (arriba) operan sobre `{grams:number}` por
+ingrediente NORMALIZADO. Los productos "sin cocinar" son unidades
+discretas identificadas por `id`/`ean` (dos productos pueden compartir
+nombre comercial con EAN/tamaño distintos, ver cabecera de
+`no-cook-generator.js`), con `quantity` como número entero de unidades,
+no gramos continuos. Probé mentalmente reutilizar el mismo `pantryState`
+con una clave namespaced (`"product:" + id`) y descarté la idea al leer
+`sanitizePantryState()`: exige estrictamente `{grams:number>0}` en cada
+entrada y DESCARTA EN SILENCIO cualquier otra forma -- una entrada
+`{quantity:N}` ahí simplemente desaparecería en la siguiente lectura, un
+bug de datos silencioso esperando a pasar. Stock paralelo, mismo patrón
+exacto (`getNoCookStock`/`saveNoCookStock`/`sanitizeNoCookStock`, nunca
+lanza, fallback en memoria), clave de `localStorage` propia
+(`nutritionPlanner.nocookStock.v1`).
+
+### Por qué las ENTRADAS de historial sí comparten `pantryHistory`
+
+A diferencia del stock, las entradas de historial de "sin cocinar" SÍ
+viven en el mismo array `pantryHistory` que las de plato, distinguidas
+por `entry.type==="nocook"` (las de plato no llevan `type`, tratado como
+`"dish"` por defecto -- mismo patrón de compatibilidad hacia atrás que
+`planDate` en 2026-08-14c). Verificado LEYENDO el código real, no
+asumido, que esto es seguro: `mergePantryHistoryBlobs()`
+(`migration.js`) solo mira `entry.id`/`entry.createdAt`, nunca
+`entry.meals`; `cloud-sync.js` sincroniza `pantry_history` como un array
+JSON opaco. Compartir el array evita tener que tocar ninguno de los dos
+archivos, tener una segunda clave de `localStorage` para historial, o
+duplicar el límite de 30 entradas / la lógica de deduplicación por id.
+La única función que SÍ necesitaba saber de la forma nueva era
+`isValidHistoryEntry()` (la que filtra entradas corruptas al leer) --
+ahora despacha por `entry.type` antes de validar `meals` vs. `slots`.
+
+### Ciclo de 3 etapas, mismo patrón exacto que el de plato
+
+- **`saveNoCookPlanForToday(slots)`** -- mismo UPSERT-sobre-el-borrador
+  que `savePlanForToday()` (2026-08-19): si ya existe un borrador "sin
+  cocinar" de HOY sin ninguna acción real (`!hasRealNoCookAction()`), lo
+  actualiza en el sitio; si no, crea una entrada nueva. Un borrador "sin
+  cocinar" y uno de plato el mismo día son entradas COMPLETAMENTE
+  independientes (cada UPSERT filtra por su propio `type`) -- confirmar
+  un plan de plato nunca toca un borrador "sin cocinar" pendiente, y
+  viceversa (verificado con un test dedicado, ver abajo).
+- **`markNoCookPurchaseDone(entryId)`** -- SUMA `item.quantity` de cada
+  producto (por `id`, no por nombre) al stock. A diferencia de
+  `markPurchaseDone()` (checklist de exclusión parcial contra un tamaño
+  de paquete a redondear), aquí es todo-o-nada: cada producto ya es una
+  unidad discreta, no hay "cuánto falta" que calcular. Simplificación
+  deliberada, no una limitación técnica -- si hace falta un checklist
+  parcial más adelante, es una extensión aislada a esta función.
+- **`markNoCookSlotConsumed(entryId, slotKey, consumed)`** -- única
+  función que RESTA stock, UNA toma completa a la vez (mismo grano que
+  `markMealCooked()` por comida, no por producto individual dentro de la
+  toma -- "consumido" en vez de "cocinado" porque nada se cocina de
+  verdad en este modo). Undo exacto vía `slot.consumedQuantities`
+  (snapshot guardado al consumir), mismo patrón que `meal.consumed` --
+  revertir SIEMPRE devuelve la cantidad exacta snapshotada, nunca
+  recalcula contra el stock actual (que pudo cambiar mientras tanto por
+  otra acción, verificado con un test que cambia el stock entre consumir
+  y deshacer).
+
+### UI: cero CSS nuevo, mismas clases que las tarjetas de plato
+
+`renderNoCookActiveCard()`/`renderNoCookSlotChips()`/
+`renderNoCookCompletedRow()` (`js/ui/render-pantry.js`) reutilizan
+literalmente `.pantry-active-card`/`.pantry-meal-chip`/
+`.pantry-history-row` -- misma tarjeta, mismos chips compactos por toma
+(heredan también el fix de overflow de `.pantry-meal-chip` de
+2026-08-20b sin hacer nada extra), solo texto y `data-action` distintos
+para no colisionar con los del plato
+(`confirm-nocook-purchase`/`toggle-nocook-slot-consumed` vs.
+`confirm-purchase-all`/`toggle-meal-cooked`).
+`renderActiveEntryCard()`/`renderCompletedEntryRow()` despachan al inicio
+por `entry.type` -- el código de plato existente no se tocó, solo se le
+añadió una rama por delante. Botón nuevo en `index.html`,
+`usePlanTodayNoCookBtn` ("Confirmar plan sin cocinar"), dentro de
+`#noCookPanel`, mismo patrón que `usePlanTodayBtn`. `js/ui/
+render-no-cook.js` gana `lastNoCookSlots` (variable global, igual que
+`lastGeneratedMeals` en `app.js` para el plan normal) para que
+`handleUseNoCookPlanToday()` (`app.js`) tenga qué confirmar.
+
+### Fuera de alcance, a propósito (confirmado con el usuario, no un olvido)
+
+- El gate de "Generar plan" + diálogo de reemplazo (2026-08-20) NO se
+  extendió aquí -- generar un plan "sin cocinar" nuevo con uno activo
+  pendiente simplemente crea una entrada adicional (mismo comportamiento
+  que el modo normal tenía ANTES de 2026-08-20).
+- La SELECCIÓN de producto en `generateNoCookPlan()` sigue sin ser
+  consciente de despensa (elección explícita del usuario, ver "Alcance"
+  arriba) -- el catálogo elegible no prefiere productos que ya tengas.
+- El stock de productos "sin cocinar" es LOCAL-ONLY -- no engancha a
+  `cloud-sync.js`/`migration.js`/`supabase/schema.sql`. Las ENTRADAS de
+  historial (`pantryHistory`) SÍ sincronizan como siempre (comparten
+  array con las de plato); solo el stock de PRODUCTOS en sí no. Si se
+  pide sincronización completa más adelante, es una extensión aislada
+  (nueva columna JSONB + su merge en `migration.js`), no un rediseño.
+- Sin checklist de compra parcial (ver `markNoCookPurchaseDone` arriba).
+
+**Verificado en vivo**: contra los archivos REALES servidos (cache-bust
+del `<script>`, no solo el sandbox de tests) -- ciclo completo generar →
+confirmar → comprar → consumir toma por toma → el plan se muda solo al
+historial completado con el texto "comprado y consumido ✓"; stock de
+productos sube exactamente a `quantity:1` por producto al comprar (10
+productos, €28.74 total) y baja exactamente a 0 tras consumir todas las
+tomas; un borrador de plato y uno "sin cocinar" el mismo día coexisten
+sin interferirse (confirmar uno no toca al otro); marcar una comida de
+PLATO como cocinada tras todo esto sigue usando `toggle-meal-cooked`
+(nunca se confunde con las acciones "sin cocinar"); 0 errores de
+consola. 10 tests nuevos en `tests/pantry.test.js`, 265 tests totales, 0
+fallidos.
+
+**Archivos modificados**: `js/core/pantry.js` (+stock de productos,
++ciclo de 3 etapas "sin cocinar", `isValidHistoryEntry` despacha por
+type), `js/ui/render-pantry.js` (+3 funciones de render, 2 puntos de
+despacho, 2 ramas nuevas en `handleEntryClick`), `js/ui/
+render-no-cook.js` (`lastNoCookSlots`), `js/app.js`
+(`handleUseNoCookPlanToday` + wiring), `index.html`
+(`usePlanTodayNoCookBtn`), `tests/pantry.test.js` (+10). **No tocados**:
+`js/engine/no-cook-generator.js` (generación en sí, sin cambios --
+alcance "solo ciclo de vida"), `js/core/cloud-sync.js`,
+`js/core/migration.js`, `supabase/schema.sql`, `assets/css/style.css`
+(cero CSS nuevo), toda la lógica de despensa de PLATO.
 
 ## Session handoff (2026-08-19)
 
