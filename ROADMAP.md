@@ -20,8 +20,12 @@ failed (CSS + one HTML attribute only). Verified live against the real
 served files (cache-busted, not a test-only `<style>` injection):
 `document.documentElement.scrollWidth` 412px→376px, 0 overflow
 offenders left in a full-DOM scan, real ellipsis truncation confirmed,
-desktop unaffected. See `STATE.md`, "Fix real: overflow horizontal en
-mobile — .pantry-meal-chip — 2026-08-20b".
+desktop unaffected — and re-verified live against production itself
+after deploy (real 375px viewport, 10 real meal chips, `scrollWidth`
+376px, 0 offenders). Committed (`061ea4a`), pushed to `origin/main`, and
+deployed to production (`offline-nutrition-helper.pages.dev`). See
+`STATE.md`, "Fix real: overflow horizontal en mobile —
+.pantry-meal-chip — 2026-08-20b".
 
 Previously, updated 2026-08-20 — a real bug the user hit
 in use: with a plan already confirmed and bought, generating and

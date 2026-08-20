@@ -3648,12 +3648,11 @@ en Generar plan + reemplazo explícito del plan activo — `index.html`,
 `js/app.js`, `js/core/pantry.js`, `js/ui/render-pantry.js`,
 `assets/css/style.css`, `tests/pantry.test.js`, `STATE.md`, `PROJECT.md`,
 `ROADMAP.md`), `ef5cee8` (docs: registrar hash y estado de deploy de
-0f6c658), y **la sesión actual — fix de overflow horizontal en
-`.pantry-meal-chip`** (`assets/css/style.css`, `js/ui/render-pantry.js`,
-`STATE.md`, `PROJECT.md`, `ROADMAP.md`), commiteada en esta misma
-sesión (ver el commit de solo documentación inmediatamente después de
-éste para el hash exacto y la confirmación de deploy, mismo patrón de
-siempre). **Pusheado a `origin/main`**
+0f6c658), y **`061ea4a`** (2026-08-20b, tramo n: fix de overflow
+horizontal en `.pantry-meal-chip` — `assets/css/style.css`,
+`js/ui/render-pantry.js`, `STATE.md`, `PROJECT.md`, `ROADMAP.md`) —
+verificar con `git log -1`/`git status -sb` antes de asumir que sigue
+siendo así. **Pusheado a `origin/main`**
 (`github.com/andreyostrik228/OfflineNutritionHelper`). Sigue habiendo un
 archivo suelto sin relación, `PANTRY_HISTORY_MAX_ENTRIES)` (0 bytes, sin
 trackear, en la raíz, deliberadamente NUNCA comiteado) — mismo tipo de
@@ -3679,7 +3678,21 @@ sesión, con el tramo (m) encima**: mismo comando
 `https://offline-nutrition-helper.pages.dev` verificado sirviendo
 `js/core/pantry.js` con `findTodayEntry`/`replacePendingMealsForToday`,
 `js/app.js` con `getBlockingActiveEntry`, e `index.html` con el diálogo
-`planReplaceDialog` — con fetch directo, no solo asumido. Cloudflare
+`planReplaceDialog` — con fetch directo, no solo asumido. **Tercer
+deploy, esta sesión (2026-08-20b), con el tramo (n) encima**: mismo
+comando (`npx wrangler pages deploy . --project-name=offline-nutrition-helper`),
+6 archivos nuevos + 121 sin cambios, alias
+`https://41fb33b1.offline-nutrition-helper.pages.dev`, y
+`https://offline-nutrition-helper.pages.dev` verificado sirviendo
+`assets/css/style.css` con la regla nueva de `.pantry-meal-chip`
+(`text-overflow: ellipsis`/`max-width: 100%`/`min-width: 0`) y
+`js/ui/render-pantry.js` con el atributo `title` nuevo — con fetch
+directo al CSS/JS servidos en producción, no solo asumido; y
+re-verificado EN VIVO contra producción en 375px real (no solo el
+servidor de desarrollo): plan generado y confirmado, 10 chips de comida
+reales incluyendo varios nombres largos, `document.documentElement.
+scrollWidth` en 376px (no 412+), 0 elementos desbordando el viewport en
+un escaneo completo del DOM. Cloudflare
 Pages, proyecto direct-upload, `Git Provider: No` — recordar para el
 futuro: un push a `origin/main` NUNCA despliega solo, hace falta
 `wrangler pages deploy` explícito cada vez.
@@ -4087,7 +4100,8 @@ estado descrito aquí sigue siendo exacto sin verificar contra el código —
 esto es una foto fija al final de la sesión 2026-08-20b, tramo (n) (fix
 de overflow horizontal en `.pantry-meal-chip`), con los tramos j+k+l+m
 comiteados (hasta `ef5cee8`) y desplegados en producción antes de que
-empezara esta sesión, y el tramo (n) de esta sesión comiteado, pusheado
-a `origin/main`, y desplegado en producción junto con ellos (ver
-"Commit/branch/deploy actuales" arriba para el hash y la confirmación de
-deploy exactos).
+empezara esta sesión, y el tramo (n) comiteado en `061ea4a`, pusheado
+a `origin/main`, y desplegado en producción
+(`https://41fb33b1.offline-nutrition-helper.pages.dev`, verificado en
+`offline-nutrition-helper.pages.dev` sirviendo la regla CSS nueva y
+re-probado en vivo en 375px real contra producción).
