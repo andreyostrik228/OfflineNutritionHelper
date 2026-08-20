@@ -127,6 +127,40 @@ con riesgo bajo (mismo patrón de datos ya establecido, ningún mecanismo
 nuevo). `js/core/`, `js/engine/*` (código, no datos), y el resto de la
 app — cero cambios.
 
+**Resumen de la sesión 2026-08-20e (known issue #1: re-auditoría Atwater
+del nivel de plato sobre los 334 platos actuales, nunca repetida desde el
+set de 204)**: siguiente item de la lista priorizada. La cifra vieja
+(54/204, 2026-07-18) nunca se había vuelto a medir tras crecer el
+dataset. Re-audit: 156/334 (46.7%) dentro de 20kcal de
+`protein*4+carbs*4+fat*9` antes de tocar nada — pero el hallazgo real no
+fue el porcentaje, fue un patrón CLARAMENTE sistemático dentro de los
+fuera de tolerancia: 23 platos con `dish.kcal` muy por debajo de lo que
+implican su propio protein/carbs/fat (hasta -148kcal), 15 de ellos con
+"Quinoa cocida" (15/27 = 55.6% de todos los platos con quinoa, frente a
+0-2/13-34 para cualquier otro ingrediente de guarnición) — un error de
+autoría real y localizado, no ruido difuso. Corregido: los 23
+`dish.kcal` recalculados desde su propio protein/carbs/fat (Atwater
+exacto), sin tocar protein/carbs/fat ni `ingredient-nutrition.js` en
+absoluto. Impacto funcional real, no solo estético: `dish.kcal` es el
+divisor del `scaleFactor` en `buildMealFromDish()`
+(`js/engine/dish-selector.js`) — un kcal artificialmente bajo
+sobre-porcionaba estos 23 platos. Verificado en vivo con los archivos
+reales servidos que el peor caso ("Tempeh con quinoa y verduras
+salteadas") ahora tiene `dish.kcal===780===protein*4+carbs*4+fat*9`
+exacto. Los 155 restantes fuera de tolerancia (todos de signo contrario,
+máximo 92kcal, sin patrón por ingrediente) se dejaron intactos a
+propósito — ver sección dedicada "Auditoría Atwater del nivel de plato —
+2026-08-20e" más abajo para el razonamiento completo. Cambiar `dish.kcal`
+en 23 platos cambió qué candidato gana la lotería ponderada para 2
+semillas concretas — 2 golden-master de
+`plan-generator.characterization.test.js` recapturados a propósito (la
+SEGUNDA vez esta sesión, la primera fue por el fix de packaging.js); los
+7 tests de invariantes/contrato de ese archivo no se tocaron y siguen
+pasando. 255 tests en `tests/` (sin cambio de cantidad), 278 totales, 0
+fallidos. `js/core/`, `js/engine/*` (código), `js/data/
+ingredient-nutrition.js`, y el resto de la app — cero cambios; solo
+`js/data/dishes.js` (23 valores de `kcal`) y los golden-master.
+
 **Resumen de la sesión 2026-08-19 (bug real: "Confirmar plan" repetido
 inflaba la despensa — `savePlanForToday()` ahora hace UPSERT sobre el
 borrador del día)**: el usuario encontró en uso real que pulsar
@@ -3285,10 +3319,33 @@ para tocar código de producción de este proyecto.
 
 ## Critical known issues (estado a 2026-08-07)
 
-1. **Nutrition data is internally inconsistent.** Auditado sobre el set de
-   204 platos (antes de que creciera a 334): solo 54/204 dishes tenían
-   calorías dentro de 20 kcal de `protein*4+carbs*4+fat*9`. **No re-auditado
-   sobre los 334 actuales** — no asumir que la proporción se mantiene igual.
+1. ~~**Nutrition data is internally inconsistent.**~~ **RE-AUDITADO
+   2026-08-20e sobre los 334 platos actuales** (la cifra vieja, 54/204 =
+   26.5%, era del set de 204 platos, nunca repetida hasta ahora): 156/334
+   (46.7%) dentro de 20kcal de `protein*4+carbs*4+fat*9` ANTES de tocar
+   nada. La auditoría encontró un patrón sistemático, no ruido difuso: 23
+   platos (15 de los 27 que llevan "Quinoa cocida", el resto trigo
+   sarraceno/cuscús/arroz integral/pasta de forma aislada) tenían
+   `dish.kcal` muy por DEBAJO de lo que su propio protein/carbs/fat
+   implican (hasta -148kcal) — un error de autoría real y localizado, no
+   una limitación aceptada del modelo. **Corregido**: los 23 `dish.kcal`
+   recalculados a partir de su propio protein/carbs/fat (Atwater exacto),
+   sin tocar protein/carbs/fat ni ningún dato de `ingredient-nutrition.js`.
+   Esto SÍ tenía impacto funcional real, no solo cosmético — `dish.kcal`
+   es el divisor de `buildMealFromDish()`'s `scaleFactor`
+   (`target.kcal / dish.kcal`), así que un kcal artificialmente bajo
+   sobre-porcionaba estos 23 platos. Cobertura tras el fix: 179/334
+   (53.6%), 0 casos con kcal por DEBAJO de lo implícito (antes: 23). Los
+   155 restantes fuera de tolerancia son TODOS de signo positivo (kcal
+   declarado por ENCIMA de lo implícito), magnitud máxima 92kcal, 106/155
+   por debajo de 50kcal — sin un ingrediente/patrón común identificable,
+   consistente con ruido de estimación manual de una era anterior a los
+   datos reales por ingrediente, mismo tipo de hallazgo que 2026-08-13e ya
+   investigó a fondo para un caso relacionado y concluyó no forzar.
+   **Deliberadamente NO corregidos** — ver sección dedicada "Auditoría
+   Atwater del nivel de plato — 2026-08-20e" más abajo para el
+   razonamiento completo de por qué parar aquí (coincide con la nota de
+   `ROADMAP.md`: no priorizar esto sobre la migración misma).
 2. ~~**Ingredient nutrition and cost are fabricated by mass allocation.**~~
    **RESUELTO PARA MACROS 2026-08-13d, para 50 de 81 ingredient roles**
    (ver "Rediseño del modelo de nutrición por ingrediente" arriba).
@@ -3572,6 +3629,122 @@ un cambio de solo CSS + un atributo HTML, ninguna lógica de
 +4 propiedades), `js/ui/render-pantry.js` (`renderMealChips()`, +1
 atributo `title`). **No tocados**: `js/core/pantry.js`, todo
 `js/engine/*`, cualquier otro archivo CSS/JS/HTML.
+
+## Auditoría Atwater del nivel de plato — 2026-08-20e
+
+**Qué es esta auditoría, para no confundirla con otras similares**: mide
+si `dish.kcal` (el campo hand-curated de `dishes.js`) es internamente
+consistente con `dish.protein*4 + dish.carbs*4 + dish.fat*9` — los
+CUATRO campos hand-curated del propio `dishes.js`, escritos antes de que
+existiera `js/core/nutrition.js`/`ingredient-nutrition.js` (2026-08-13d).
+Esto es DISTINTO de la auditoría de 2026-08-13e ("recorte a cero"), que
+medía la consistencia interna del REMANENTE calculado en tiempo real
+para ingredientes sin resolver — dos métricas sobre capas de datos
+distintas, no repetir el análisis de una asumiendo que cubre a la otra.
+
+**Por qué importa hoy, no solo históricamente**: aunque desde 2026-08-13d
+las macros REALES mostradas al usuario vienen de
+`computeDishIngredientNutrition()` (no de `dish.kcal`/protein/carbs/fat
+directamente), estos 4 campos siguen teniendo dos usos funcionales
+reales: **(1)** son el techo/estimación en el modelo de remanente
+(`total = max(sumaReal, dish.kcal)`, ver 2026-08-13d/e) para los
+ingredientes SIN resolver de ese plato, y **(2)** `dish.kcal`
+específicamente es el DIVISOR de `scaleFactor` en `buildMealFromDish()`
+(`js/engine/dish-selector.js`: `target.kcal / dish.kcal`) — decide
+cuánto se escala la ración del plato para acercarse al objetivo calórico
+del usuario. Un `dish.kcal` artificialmente bajo no es solo un número
+feo en un campo legacy: hace que el generador sirva raciones MÁS GRANDES
+de lo que debería para ese plato.
+
+**Metodología**: script Node cargando `js/data/dishes.js` real (sin
+copiar) vía el mismo `loadBrowserGlobals()` que usan los tests,
+calculando `diff = dish.kcal - (protein*4+carbs*4+fat*9)` para los 334
+platos, con la misma tolerancia de ±20kcal que la auditoría original de
+2026-07-18 (sobre 204 platos).
+
+**Resultado ANTES de tocar nada**: 156/334 (46.7%) dentro de tolerancia
+— una fracción similar a la vieja (54/204=26.5%... en realidad MEJOR,
+aunque la comparación directa es débil porque el dataset casi se
+duplicó). 178 fuera de tolerancia, con un sesgo MUY marcado: 155 con
+`dish.kcal` por ENCIMA de lo implícito (positivo), solo 23 por DEBAJO
+(negativo) — pero esos 23 tenían la magnitud más grande con diferencia
+(hasta -148kcal, frente a un máximo de 92kcal entre los 155 positivos).
+
+**El hallazgo real**: de los 23 negativos, 15 llevan "Quinoa cocida"
+entre sus ingredientes — 15 de los 27 platos que llevan quinoa en total
+(55.6%). Ningún otro ingrediente de guarnición muestra nada parecido:
+trigo sarraceno cocido 2/13, cuscús cocido 1/24, arroz integral cocido
+1/18, pasta cocida 1/26, arroz blanco cocido 0/34. Esto no es ruido
+disperso — es un patrón atado a un ingrediente concreto, consistente con
+un error de cálculo real cuando se autoraron estos platos (probablemente
+en el mismo lote/sesión de creación, dado que comparten un estilo de
+`mainProt` distinto al resto — "gamba", "lubina", "conejo", "jamon" como
+valores de `mainProt`, un patrón de nombrado que no aparece en los platos
+más antiguos).
+
+**Fix, acotado al hallazgo, no una reescritura general**: los 23
+`dish.kcal` recalculados como `Math.round(protein*4 + carbs*4 + fat*9)`
+— se ASUME que protein/carbs/fat reflejan la intención real del autor
+(son los campos más "creativos"/deliberados de un plato, menos
+propensos a un error aritmético simple) y que `kcal` fue el campo mal
+calculado, no al revés. `protein`/`carbs`/`fat` de estos 23 platos: SIN
+TOCAR. Lista completa de los 23 (antes → después): "Queso fresco batido
+con copos de maíz y kiwi" 287→310, "Muslo de pollo con quinoa y
+zanahoria" 607→704, "Pavo picado con quinoa y coliflor" 472→583, "Pavo
+con quinoa y pimientos" 486→585, "Carne picada con quinoa y calabacín"
+555→661, "Conejo con arroz integral y brócoli" 584→623, "Caballa con
+quinoa y pimientos" 515→617, "Lubina con quinoa y calabacín" 517→629,
+"Rape con quinoa y champiñones" 383→490, "Gambas con quinoa y verduras
+salteadas" 471→592, "Gambas con trigo sarraceno y coliflor" 380→409,
+"Tofu con patatas y pimientos" 361→382, "Tempeh con cuscús y brócoli"
+612→653, "Tempeh con patatas y calabacín" 550→592, "Conejo con pasta y
+verduras salteadas" 646→668, "Conejo con quinoa y coliflor" 537→680,
+"Jamón serrano con quinoa y pimientos" 477→587, "Salmón con quinoa y
+calabacín" 603→699, "Merluza con quinoa y champiñones" 429→539, "Alubias
+con quinoa y calabacín" 411→496, "Tofu con quinoa y champiñones"
+383→513, "Tempeh con quinoa y verduras salteadas" 632→780, "Tempeh con
+trigo sarraceno y coliflor" 540→597.
+
+**Resultado DESPUÉS**: 179/334 (53.6%) dentro de tolerancia, 0 casos
+negativos restantes (los 23 quedaron exactamente en diff=0 por
+construcción). Los 155 restantes fuera de tolerancia siguen siendo TODOS
+positivos, máximo 92kcal ("Ternera con quinoa y brócoli"), 106/155 por
+debajo de 50kcal, sin ningún ingrediente ni patrón dominante visible en
+los peores 15 casos (aparecen pollo, ternera, cerdo, atún, pavo, bacalao,
+legumbres, cada uno una vez) — consistente con ruido de estimación
+manual disperso de una era anterior a `ingredient-nutrition.js`, no con
+otro bug localizado.
+
+**Por qué NO se corrigieron esos 155, a propósito, no por pereza**: (1)
+`ROADMAP.md` ya documenta explícitamente que re-auditar/corregir esto
+"puede volverse irrelevante en cuanto la Fase 1-2 de la migración
+reemplace macros fabricadas por macros reales; no priorizar sobre la
+migración misma" — corregir 155 valores a mano sería trabajo
+potencialmente desechable, a diferencia de los 23 que eran un bug
+concreto y localizado, no un proyecto de re-curación completo; (2) sin
+un patrón sistemático identificable, "corregir" estos 155 significaría
+decidir arbitrariamente si kcal o los 3 macros son el campo "correcto"
+para cada uno de 155 platos individuales, un juicio subjetivo repetido
+155 veces sin ninguna señal objetiva que lo guíe — el mismo tipo de
+decisión que 2026-08-13e ya tomó explícitamente para un caso relacionado
+(dejar el mecanismo de remanente tal cual, no forzar consistencia
+donde el origen de la estimación antigua es simplemente impreciso, no
+erróneo).
+
+**Verificado en vivo**: contra los archivos REALES servidos (no solo el
+script de auditoría) — `Tempeh con quinoa y verduras salteadas` (el peor
+caso, -148kcal) confirma `dish.kcal===780===protein*4+carbs*4+fat*9`
+exacto. 255 tests re-ejecutados, 0 fallidos (2 golden-master
+recapturados a propósito por segunda vez en la sesión, ver "Resumen de
+la sesión 2026-08-20e" arriba; los 7 tests de invariantes/contrato NO
+tocados).
+
+**Archivos modificados**: `js/data/dishes.js` (23 valores de `kcal`,
+`protein`/`carbs`/`fat` sin tocar), `tests/
+plan-generator.characterization.test.js` (2 golden-master
+recapturados). **No tocados**: `js/data/ingredient-nutrition.js`,
+`js/core/nutrition.js`, `js/engine/dish-selector.js` (código, no datos),
+cualquier otro archivo.
 
 ## Session handoff (2026-08-19)
 

@@ -495,6 +495,29 @@ enough to change which dish wins the weighted lottery for those seeds);
 recaptured on purpose, the 7 contract/invariant tests untouched. 255
 tests in `tests/`, 278 total, 0 failed.
 
+**2026-08-20e — known issue #1: re-audited dish-level Atwater
+consistency on the current 334-dish set (never repeated since the old
+204-dish audit)**: 156/334 (46.7%) within 20kcal of
+`protein*4+carbs*4+fat*9` before touching anything, but the real finding
+was a systematic pattern, not just a percentage: 23 dishes had
+`dish.kcal` well below what their own protein/carbs/fat imply (up to
+-148kcal), 15 of them containing "Quinoa cocida" (15/27 = 55.6% of all
+quinoa dishes, vs. 0-8% for any other side ingredient) — a real,
+localized authoring bug, not diffuse noise. This mattered functionally,
+not just cosmetically: `dish.kcal` is the divisor of `scaleFactor` in
+`buildMealFromDish()`, so an artificially low value over-portioned these
+23 dishes. Fixed by recalculating those 23 `dish.kcal` values from their
+own protein/carbs/fat (exact Atwater), leaving the macros and
+`ingredient-nutrition.js` untouched. Coverage after: 179/334 (53.6%), 0
+negative outliers left. The remaining 155 out-of-tolerance dishes are
+all positive-diff, max 92kcal, no ingredient pattern — deliberately left
+alone (matches `ROADMAP.md`'s own guidance not to prioritize this over
+the Fase 1-2 migration, and the same reasoning 2026-08-13e already
+applied to a related case). 2 golden-masters recaptured (second time
+this session, first was the packaging.js fix); 7 contract tests
+untouched. 255 tests, 0 failed. Full write-up in `STATE.md`, "Auditoría
+Atwater del nivel de plato — 2026-08-20e".
+
 ## Product direction
 
 Evolve into a real personal nutrition assistant: nutrition + shopping +

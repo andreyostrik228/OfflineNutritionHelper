@@ -2,7 +2,21 @@
 
 ## Current status
 
-**Stage:** working prototype, updated 2026-08-20d — known issue #7
+**Stage:** working prototype, updated 2026-08-20e — known issue #1
+re-audited on the current 334-dish set for the first time since the old
+204-dish audit: found and fixed a real, localized authoring bug (23
+dishes, 15 of them all containing "Quinoa cocida," had `dish.kcal`
+noticeably below what their own protein/carbs/fat imply — up to
+-148kcal) rather than diffuse rounding noise. This had real functional
+impact since `dish.kcal` drives portion scaling in
+`buildMealFromDish()`. Coverage went from 156/334 to 179/334 dishes
+within Atwater tolerance; the remaining 155 (all positive-diff, no
+ingredient pattern) were deliberately left alone per this file's own
+guidance not to prioritize hand-fixing dish data ahead of the Fase 1-2
+migration. 2 golden-masters recaptured; 7 contract tests untouched. See
+`STATE.md`, "Auditoría Atwater del nivel de plato — 2026-08-20e".
+
+Previously, updated 2026-08-20d — known issue #7
 (`packaging.js` coverage) reduced from 25 to 12 uncovered ingredient
 roles: 13 new package-size entries added (fruit/veg by unit, fresh-tray
 meats, breads, frozen seafood), same estimation criteria as the existing

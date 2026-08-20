@@ -323,19 +323,19 @@ function run(t) {
   // cambió -- purchaseCost sigue por debajo de cada budget real
   // (14.54/20€ y 20.68/28€). Los 7 tests de invariantes/contrato #1-7 de
   // este mismo archivo NO se tocaron y siguen pasando sin cambios.
-  // Golden-masters de ambos tests recapturados 2026-08-20d (known issue
-  // #7): añadir 13 entradas nuevas a packaging.js (Calabacín, Carne picada
-  // 5% grasa, Champiñones, Coliflor, Fresas, Gamba cocida, Jamón serrano,
-  // Kiwi, Langostino cocido, Pan de centeno, Pavo picado, Pimiento, Trigo
-  // sarraceno cocido) cambia el coste de compra MARGINAL de esos
-  // ingredientes (antes: purchaseCost==usageCost por "sin envase fijo
-  // conocido"; ahora: coste real de paquete/unidad) -- eso puede cambiar
-  // qué candidato gana la lotería ponderada para la misma semilla, exacto
-  // el mismo tipo de recaptura ya documentado varias veces en este archivo
-  // para cambios de `dish-selector.js`, solo que aquí el cambio real está
-  // en los DATOS (packaging.js), no en el algoritmo de selección en sí.
-  // Los 7 tests de invariantes/contrato #1-7 de este mismo archivo NO se
-  // tocaron y siguen pasando sin cambios.
+  // Golden-masters de ambos tests recapturados dos veces esta sesión:
+  // 2026-08-20d (known issue #7, packaging.js) y de nuevo 2026-08-20e
+  // (known issue #1 -- 23 dishes con un dish.kcal internamente
+  // inconsistente con su propio protein/carbs/fat corregidos, ver
+  // "Auditoría Atwater del nivel de plato" más abajo). Corregir dish.kcal
+  // cambia el `scaleFactor` de esos platos en buildMealFromDish()
+  // (`target.kcal / dish.kcal`), lo que puede cambiar qué candidato gana
+  // la lotería ponderada para la misma semilla -- exactamente el mismo
+  // tipo de recaptura ya documentado varias veces en este archivo, aquí
+  // el cambio real está en los DATOS, no en el algoritmo de selección en
+  // sí. Los 7 tests de invariantes/contrato #1-7 de este mismo archivo NO
+  // se tocaron y siguen pasando sin cambios en ninguna de las dos
+  // recapturas.
   t.test("golden-master (seed=42): recomposición/Equilibrado -- agregados exactos del resultado actual", function () {
     var s = freshEngineSandbox();
     seedRandomInContext(s, 42);
@@ -346,15 +346,15 @@ function run(t) {
     // (realm distinto) antes de comparar contra literales del host -- ver
     // comentario del test #1 más arriba para el motivo completo.
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.key; }))), EXPECTED_MEAL_KEYS);
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [4, 3, 3, 3, 3]);
-    assert.strictEqual(result.total.kcal, 2852.7999999999997);
-    assert.strictEqual(result.total.protein, 167.49999999999997);
-    assert.strictEqual(result.total.carbs, 372);
-    assert.strictEqual(result.total.fat, 63.4);
-    assert.strictEqual(result.total.cost, 7.22);
-    assert.strictEqual(result.total.purchaseCost, 19.85);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 2, 3, 2, 3]);
+    assert.strictEqual(result.total.kcal, 3039.0000000000005);
+    assert.strictEqual(result.total.protein, 159.20000000000002);
+    assert.strictEqual(result.total.carbs, 363.79999999999995);
+    assert.strictEqual(result.total.fat, 91.6);
+    assert.strictEqual(result.total.cost, 7.299999999999999);
+    assert.strictEqual(result.total.purchaseCost, 13.49);
     assert.strictEqual(result.report.status, "adjusted");
-    assert.strictEqual(result.report.tierUsed, 1);
+    assert.strictEqual(result.report.tierUsed, 3);
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.report.violations)), []);
   });
 
@@ -365,15 +365,15 @@ function run(t) {
     var result = s.generateDietPlan(built.profile, built.data);
 
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.key; }))), EXPECTED_MEAL_KEYS);
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 3, 3, 3, 3]);
-    assert.strictEqual(result.total.kcal, 3344.2999999999997);
-    assert.strictEqual(result.total.protein, 172.99999999999997);
-    assert.strictEqual(result.total.carbs, 382.1);
-    assert.strictEqual(result.total.fat, 112.39999999999999);
-    assert.strictEqual(result.total.cost, 8.559999999999999);
-    assert.strictEqual(result.total.purchaseCost, 18.51);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 3, 3, 3, 2]);
+    assert.strictEqual(result.total.kcal, 3332.1);
+    assert.strictEqual(result.total.protein, 191);
+    assert.strictEqual(result.total.carbs, 458.6);
+    assert.strictEqual(result.total.fat, 61.599999999999994);
+    assert.strictEqual(result.total.cost, 8.799999999999999);
+    assert.strictEqual(result.total.purchaseCost, 24.2);
     assert.strictEqual(result.report.status, "adjusted");
-    assert.strictEqual(result.report.tierUsed, 3);
+    assert.strictEqual(result.report.tierUsed, 1);
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.report.violations)), [{ type: "cap25", meal: "lunch", item: "Arroz blanco cocido" }]);
   });
 }
