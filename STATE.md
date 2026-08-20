@@ -4106,14 +4106,16 @@ en Generar plan + reemplazo explícito del plan activo — `index.html`,
 0f6c658), `061ea4a` (2026-08-20b, tramo n: fix de overflow
 horizontal en `.pantry-meal-chip` — `assets/css/style.css`,
 `js/ui/render-pantry.js`, `STATE.md`, `PROJECT.md`, `ROADMAP.md`),
-`bf70868` (docs: registrar hash y estado de deploy de 061ea4a), y el
-commit MÁS RECIENTE de esta sesión (tramo o: known issue #5, mainProt
-real — `js/engine/dish-selector.js`,
-`tests/ingredient-nutrition.test.js`, `STATE.md`, `PROJECT.md`,
-`ROADMAP.md`) — verificar con `git log -1`/`git status -sb` antes de
-asumir que sigue siendo así, este handoff no repite el hash exacto de
-cada tramo individual a partir de aquí para no quedar desactualizado en
-cada fix pequeño de la misma sesión. **Pusheado a `origin/main`**
+`bf70868` (docs: registrar hash y estado de deploy de 061ea4a), y varios
+tramos más de esta misma sesión (o: known issue #5 mainProt; packaging.js
+known issue #7; known issue #1 Atwater/kcal; y **`1116ff9`**, el más
+reciente al escribir esto: known issue #9, despensa conectada al modo
+"sin cocinar") — cada uno con su propio commit + su propio "docs: record
+hash" de seguimiento, todos comiteados y desplegados individualmente. A
+partir de aquí este handoff deja de repetir el hash exacto de cada tramo
+pequeño (queda documentado en su propia sección dedicada más arriba,
+buscar por fecha) — **verificar siempre con `git log -1`/`git status -sb`
+antes de asumir que `1116ff9` sigue siendo el HEAD real**. **Pusheado a `origin/main`**
 (`github.com/andreyostrik228/OfflineNutritionHelper`). Sigue habiendo un
 archivo suelto sin relación, `PANTRY_HISTORY_MAX_ENTRIES)` (0 bytes, sin
 trackear, en la raíz, deliberadamente NUNCA comiteado) — mismo tipo de
@@ -4408,22 +4410,26 @@ mismo que el remanente de `nutrition.js` (macros) — dos conceptos de
 fusionarlos.
 
 **Prioridad actual**: ninguna acción pendiente de commit/push/deploy —
-todos los tramos j/k/l/m (2026-08-19 a 2026-08-20) están comiteados
-(hasta `0f6c658`), pusheados a `origin/main`, y desplegados en producción
-(ver "Commit/branch/deploy actuales" arriba para el detalle completo
-verificado). Opcional, no bloqueante: per-meal editing ("cambiar solo el
+todos los tramos hasta el (n)/(o) de 2026-08-20f inclusive están
+comiteados, pusheados a `origin/main`, y desplegados en producción (ver
+"Commit/branch/deploy actuales" arriba para el hash exacto — verificar
+con `git log -1` antes de asumir que sigue siendo así, este handoff no
+se reescribe entero en cada tramo pequeño). Opcional, no bloqueante: per-meal editing ("cambiar solo el
 desayuno" desde el diálogo de plan activo) quedó deliberadamente fuera de
 alcance del tramo (m) — el usuario eligió empezar por el gate +
 reemplazo del plan completo primero, ver "Gate en Generar plan..." en la
 cabecera de `pantry.js` para el razonamiento; retomar esa conversación
-antes de construirlo, no asumir el diseño. El usuario podría querer
-un ajuste fino adicional de los pesos de `scoreDishForSelection`
-(macroFit×20/purchasePpeBucket×40 en modo "tight") si considera que el
-aumento de relajación/violaciones cap25 de 19b (ver tabla antes/después
-en la sección dedicada) sigue siendo demasiado incluso después del
-reparto secuencial de 19d — no se ha vuelto a tocar `dish-selector.js`
-desde 19b, a propósito, para no sobreajustar sin pedir más señal
-primero. El sistema de cuentas sigue COMPLETO y verificado en
+antes de construirlo, no asumir el diseño. **Preguntado explícitamente en
+2026-08-20f y declinado por el usuario, no un olvido**: un ajuste fino
+adicional de los pesos de `scoreDishForSelection`
+(macroFit×20/purchasePpeBucket×40 en modo "tight") — el usuario confirmó
+que la relajación/diversidad actual sigue sintiéndose bien en uso real,
+así que sigue sin haber señal nueva que justifique retocarlo; no se ha
+vuelto a tocar `dish-selector.js` desde 19b, a propósito, para no
+sobreajustar sin pedir más señal primero. Si en el futuro vuelve a
+sentirse demasiado agresivo, pedir ejemplos concretos y repetir el
+stress-test de 1000 generaciones antes de tocar nada (mismo patrón que
+19b/19c/19d). El sistema de cuentas sigue COMPLETO y verificado en
 producción, ya no es prioridad. Opcional, no bloqueante: que una persona
 real complete un login por Google de principio a fin al menos una vez
 (ver límite honesto arriba); considerar borrar los usuarios de prueba
@@ -4436,8 +4442,10 @@ requiere que el pipeline Python verifique más productos en
 `real-products.js`, no es tarea de este repo en solitario). ~~investigar
 el bug de overflow mobile `.panel`/`.meal-head`/`.actions`/
 `.pantry-meal-chip`~~ **RESUELTO 2026-08-20b** (ver sección dedicada
-arriba). Sigue pendiente: conectar la Despensa al modo "sin cocinar"
-(issue #9); regenerar el
+arriba). ~~Sigue pendiente: conectar la Despensa al modo "sin cocinar"
+(issue #9)~~ **RESUELTO 2026-08-20f** (ver sección dedicada arriba —
+ciclo de vida completo; la SELECCIÓN de producto sigue sin ser
+consciente de despensa, a propósito). Sigue pendiente: regenerar el
 grafo de Graphify (desactualizado desde 2026-08-13f). **Fuera de
 alcance deliberado de 2026-08-14c, documentado en el propio análisis de
 la sesión, no un olvido**: no se fusionaron las tarjetas de comida
@@ -4446,12 +4454,14 @@ la sesión, no un olvido**: no se fusionaron las tarjetas de comida
 (reubicación, menor riesgo) tras sopesarlo explícitamente con el
 usuario; si en el futuro se quiere ir más lejos, retomar esa
 conversación antes de tocar `render.js`. **Fuera de alcance deliberado
-de 2026-08-19**: editar un plato individual del plan sin regenerar los 5
-(el usuario lo mencionó como parte del flujo ideal) — requeriría una
-función nueva en `dish-selector.js` capaz de re-elegir un solo hueco
-respetando presupuesto/25%/macros ya fijados por el resto del día; no
-necesaria para cerrar el bug reportado, queda como posible trabajo
-futuro si se pide explícitamente.
+de 2026-08-19, reconfirmado explícitamente en 2026-08-20f**: editar un
+plato individual del plan sin regenerar los 5 (el usuario lo mencionó
+como parte del flujo ideal) — requeriría una función nueva en
+`dish-selector.js` capaz de re-elegir un solo hueco respetando
+presupuesto/25%/macros ya fijados por el resto del día; preguntado
+explícitamente en 2026-08-20f si se quería empezar esa conversación de
+diseño ahora, el usuario prefirió dejarlo diferido — no es un olvido,
+retomar esa conversación antes de construirlo si se pide en el futuro.
 
 **Qué no romper**: los `id="..."` del HTML; `data.budget` sigue siendo
 purchaseCost, no usageCost; `enforcePurchaseBudgetCap` sigue siendo la
@@ -4558,11 +4568,18 @@ Lee `PROJECT.md` y `ROADMAP.md` además de este archivo. Para el sistema
 completo (con el pipeline Python), lee también `PythonProject/docs/
 architecture.md` y `PythonProject/docs/data_flow.md`. No asumas que el
 estado descrito aquí sigue siendo exacto sin verificar contra el código —
-esto es una foto fija al final de la sesión 2026-08-20b, tramo (n) (fix
-de overflow horizontal en `.pantry-meal-chip`), con los tramos j+k+l+m
-comiteados (hasta `ef5cee8`) y desplegados en producción antes de que
-empezara esta sesión, y el tramo (n) comiteado en `061ea4a`, pusheado
-a `origin/main`, y desplegado en producción
-(`https://41fb33b1.offline-nutrition-helper.pages.dev`, verificado en
-`offline-nutrition-helper.pages.dev` sirviendo la regla CSS nueva y
-re-probado en vivo en 375px real contra producción).
+esto es una foto fija al final de la sesión 2026-08-20f (tramo más
+reciente: known issue #9, despensa conectada al modo "sin cocinar"),
+cierre de una pasada completa por la lista priorizada de issues abiertos
+que el usuario pidió arreglar uno a uno esta misma sesión (overflow
+mobile 2026-08-20b, known issue #5 2026-08-20c, known issue #7
+2026-08-20d, known issue #1 2026-08-20e, known issue #9 2026-08-20f — 5
+tramos, cada uno comiteado, pusheado y desplegado por separado, ver
+"Commit/branch/deploy actuales" arriba para el HEAD real). Los dos items
+restantes de la lista original (ajuste de pesos de `dish-selector.js` y
+per-meal editing) se preguntaron explícitamente y el usuario los
+declinó/difirió — no son trabajo pendiente por descuido, ver "Prioridad
+actual" arriba. `1116ff9` verificado sirviendo en producción
+(`offline-nutrition-helper.pages.dev`) — no asumas que sigue siendo el
+HEAD real sin comprobar `git log -1` primero, esto es una foto fija, no
+una garantía.

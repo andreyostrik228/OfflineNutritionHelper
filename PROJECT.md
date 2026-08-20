@@ -579,15 +579,20 @@ Fase 1.
 
 See `STATE.md` for the authoritative, dated engineering log and `ROADMAP.md`
 for the phased migration plan and architecture decision record. This
-section last revised 2026-08-14b; see the dated entries above (2026-08-19,
-2026-08-19b, 2026-08-19c/d, 2026-08-20, 2026-08-20b) for what's happened
+section last revised 2026-08-14b; see the dated entries above (2026-08-19
+through 2026-08-20f) for what's happened
 since — real per-ingredient
 nutrition for 50/81 roles,
 dish selection made purchase-cost-aware, the Atwater-consistency fix for
 unresolved-ingredient kcal, a complete multi-user accounts layer LIVE
 against a real Supabase project and verified end-to-end, a full UX
 redesign of the Despensa panel with zero changes to its underlying logic,
-a gate preventing duplicate active-plan cards, and the long-standing
-mobile horizontal-overflow bug finally root-caused and fixed — see
-above. Not production-ready or suitable for health-critical
-personalization — see "Critical known issues" in `STATE.md`.
+a gate preventing duplicate active-plan cards, the long-standing mobile
+horizontal-overflow bug finally root-caused and fixed, and a full pass
+through the open-issues list (mainProt reporting, packaging.js coverage,
+a dish-level Atwater audit that found and fixed a real 23-dish data bug,
+and despensa connected to no-cook mode) — see above. Two items from that
+same list (dish-selector score tuning, per-meal editing) were explicitly
+asked about and deferred by the user, not overlooked. Not production-ready
+or suitable for health-critical personalization — see "Critical known
+issues" in `STATE.md`.
