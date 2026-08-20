@@ -14,8 +14,11 @@ second card), keeping already-cooked meals untouched. A pure draft or an
 already-fully-cooked plan never interrupts. 13 new tests (274 total, 0
 failed); verified live end-to-end against the local build, including the
 exact reported scenario. See `STATE.md`, "Gate en Generar plan +
-reemplazo explícito del plan activo — 2026-08-20". **Not yet
-committed/deployed** as of this update.
+reemplazo explícito del plan activo — 2026-08-20". Committed (`0f6c658`),
+pushed to `origin/main`, and deployed to production
+(`offline-nutrition-helper.pages.dev`) — verified live serving
+`findTodayEntry`/`replacePendingMealsForToday`/`getBlockingActiveEntry`
+and the `planReplaceDialog` markup.
 
 Previously, updated 2026-08-19c/d — after the 2026-08-19b
 diversity fix below, the user asked for the generator to hit budget
