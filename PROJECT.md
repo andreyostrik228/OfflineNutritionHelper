@@ -435,6 +435,36 @@ scenario (confirm+buy, generate again, confirm → now stays 1 card, was
 2). Full write-up in `STATE.md`, "Gate en Generar plan + reemplazo
 explícito del plan activo — 2026-08-20".
 
+**2026-08-20b — mobile horizontal-overflow bug finally root-caused and
+fixed**: a CSS overflow issue on ~375px viewports (`.actions`/`.panel`/
+`.meal-head`/`.pantry-meal-chip`) had been reconfirmed every session
+since 2026-08-08 without ever being traced to a specific element. Live
+DOM measurement (not just visual inspection) found the actual offender:
+`.pantry-meal-chip` uses `white-space: nowrap` with no width limit
+inside a `flex-wrap` container, so a chip holding a long dish name
+refuses to shrink below its own content width (a flex item's default
+`min-width: auto`) and forces the entire document wider to fit —
+confirmed by measuring `document.documentElement.scrollWidth` (412px
+instead of 375px, with the offending chip alone at 383px). `.actions`/
+`.panel`/`.meal-head` were never independently broken — they only
+inherited the viewport the chip had already widened; patching only the
+chip brought the whole page back to ~375px with zero remaining overflow
+in a full-DOM scan. Fix: `overflow: hidden; text-overflow: ellipsis;
+max-width: 100%; min-width: 0;` on `.pantry-meal-chip`, plus a
+`title="<full label>"` attribute on the chip button
+(`renderMealChips()`, `render-pantry.js`) so the truncated dish name
+stays recoverable on hover — the full name is already shown elsewhere
+on the card, so nothing is actually hidden, only compacted. 251 tests
+re-run, 0 failed (CSS + one HTML attribute, no logic touched). Verified
+live against the real served files (explicit cache-bust of the CSS
+`<link>`, not just an injected test `<style>`): `scrollWidth`
+412px→376px, 0 overflow offenders left anywhere on the page, and real
+ellipsis truncation confirmed (`scrollWidth`>`clientWidth` under
+`overflow:hidden`, not a silent clip); desktop re-checked to confirm the
+same chip renders fully untruncated when its row has room. Full
+write-up in `STATE.md`, "Fix real: overflow horizontal en mobile —
+.pantry-meal-chip — 2026-08-20b".
+
 ## Product direction
 
 Evolve into a real personal nutrition assistant: nutrition + shopping +
@@ -468,11 +498,14 @@ Fase 1.
 See `STATE.md` for the authoritative, dated engineering log and `ROADMAP.md`
 for the phased migration plan and architecture decision record. This
 section last revised 2026-08-14b; see the dated entries above (2026-08-19,
-2026-08-19b, 2026-08-19c/d) for what's happened since — real per-ingredient
+2026-08-19b, 2026-08-19c/d, 2026-08-20, 2026-08-20b) for what's happened
+since — real per-ingredient
 nutrition for 50/81 roles,
 dish selection made purchase-cost-aware, the Atwater-consistency fix for
 unresolved-ingredient kcal, a complete multi-user accounts layer LIVE
-against a real Supabase project and verified end-to-end, and a full UX
-redesign of the Despensa panel with zero changes to its underlying logic
-— see above). Not production-ready or suitable for health-critical
+against a real Supabase project and verified end-to-end, a full UX
+redesign of the Despensa panel with zero changes to its underlying logic,
+a gate preventing duplicate active-plan cards, and the long-standing
+mobile horizontal-overflow bug finally root-caused and fixed — see
+above. Not production-ready or suitable for health-critical
 personalization — see "Critical known issues" in `STATE.md`.

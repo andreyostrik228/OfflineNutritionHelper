@@ -2316,6 +2316,15 @@ button:focus-visible {
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
+  /* Un chip con un nombre de plato largo, sin esto, se niega a encoger
+     por debajo de su propio contenido (min-width:auto por defecto en un
+     flex item) y fuerza el viewport móvil entero a ensancharse -- ese
+     era el bug real de overflow horizontal documentado desde 2026-08-08,
+     nunca antes localizado a este elemento concreto. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  min-width: 0;
 }
 
 @media (hover: hover) {

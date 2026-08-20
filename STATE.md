@@ -22,6 +22,52 @@ está aquí y en `ROADMAP.md`. **Si vuelves a tocar código, el grafo se
 desactualiza de nuevo** — no se actualiza solo (comandos exactos en
 `PythonProject/docs/graphify.md`, sección "Cómo actualizarlo").
 
+**Resumen de la sesión 2026-08-20b (fix real: overflow horizontal en
+mobile — localizado por fin a `.pantry-meal-chip`, bug documentado sin
+diagnosticar desde 2026-08-08)**: sesión nueva (sin memoria de la
+conversación anterior), que empezó pidiendo un resumen de orientación y
+luego una sugerencia de fix para uno de los issues abiertos del handoff
+— el usuario eligió el overflow horizontal mobile
+(`.actions`/`.panel`/`.meal-head`/`.pantry-meal-chip`, reconfirmado en
+2026-08-08 y de nuevo en 2026-08-14c vía A/B con `git stash`, pero nunca
+localizado a un elemento concreto). Diagnóstico en vivo ANTES de tocar
+nada (servidor real, viewport 375×812, medición DOM directa —
+`getBoundingClientRect()`/`scrollWidth`, no solo inspección visual):
+`.pantry-meal-chip` tiene `white-space:nowrap` sin `min-width:0`/
+`max-width` dentro de un contenedor `flex-wrap:wrap` — un chip con un
+nombre de plato largo (ej. "07:30✓ Desayuno — Crepes de avena con
+requesón y fruta") se niega a encoger por debajo de su propio contenido
+(`min-width:auto`, valor por defecto de un flex item) y fuerza el
+DOCUMENTO ENTERO a ensancharse para acomodarlo — confirmado midiendo
+`document.documentElement.scrollWidth`: 412px en vez de 375px, con ese
+chip solo en 383px de ancho. `.actions`/`.panel`/`.meal-head`,
+mencionados en el mismo known issue desde siempre, nunca tuvieron un
+overflow independiente — solo heredaban el viewport ya ensanchado por
+este chip (confirmado: fijar SOLO `.pantry-meal-chip` basta para que
+TODO el documento vuelva a 375px, cero elementos desbordando en un
+escaneo completo del DOM). Fix de una sola regla en `assets/css/
+style.css` (`.pantry-meal-chip`): `overflow:hidden; text-overflow:
+ellipsis; max-width:100%; min-width:0` — el chip ahora se trunca con
+"…" en vez de forzar el layout (el nombre completo del plato ya se ve en
+la propia tarjeta de comida, así que no se pierde información), más un
+`title="<label completo>"` nuevo en el botón (`js/ui/render-pantry.js`,
+`renderMealChips`) para que quede recuperable al pasar el ratón. 251
+tests re-ejecutados, 0 fallidos (cambio de solo CSS + un atributo, sin
+lógica tocada). Verificado en vivo contra los archivos REALES servidos
+(cache-bust explícito del `<link>` de CSS, no solo un `<style>` de
+prueba inyectado): `scrollWidth` 412px→376px (~375, redondeo), 0
+elementos desbordando el viewport tras el fix (antes: 5, incluido el
+propio chip), truncamiento con elipsis confirmado de verdad
+(`scrollWidth`>`clientWidth` con `overflow:hidden`, no un clip
+silencioso), y en desktop el mismo chip largo se muestra completo SIN
+truncar (confirma que `max-width`/`min-width` solo actúan cuando el
+contenedor realmente aprieta). `js/core/pantry.js` y el resto de
+`js/engine/*` — cero cambios; solo `assets/css/style.css` y un atributo
+`title` en `render-pantry.js`. Cierra el known issue de overflow mobile
+documentado desde 2026-08-08. Ver sección dedicada "Fix real: overflow
+horizontal en mobile — .pantry-meal-chip — 2026-08-20b" más abajo para
+el detalle completo.
+
 **Resumen de la sesión 2026-08-19 (bug real: "Confirmar plan" repetido
 inflaba la despensa — `savePlanForToday()` ahora hace UPSERT sobre el
 borrador del día)**: el usuario encontró en uso real que pulsar
@@ -3352,6 +3398,92 @@ llamadas con el mismo input pueden aterrizar en tiers distintos por azar.
   privado) — hoy solo se ve en el aviso posterior a "Usar este plan hoy",
   no en las acciones de comprar/cocinar del historial.
 
+## Fix real: overflow horizontal en mobile — .pantry-meal-chip — 2026-08-20b
+
+**Contexto**: known issue mencionado en todos los handoffs desde
+2026-08-08 (`.actions`/`.panel`/`.meal-head`/`.pantry-meal-chip`
+desbordando el viewport en mobile, ~375px renderizando hasta ~435px) y
+reconfirmado en 2026-08-14c con un A/B real (`git stash`) contra el
+código anterior a esa sesión — pero nunca localizado a un elemento
+concreto, solo "sigue sin investigar a fondo" en cada handoff sucesivo.
+Esta sesión lo investigó por fin.
+
+**Diagnóstico, en vivo, ANTES de tocar código**: servidor real
+(`python -m http.server`) con el navegador de este entorno en 375×812,
+plan de ejemplo generado y guardado en "Tu plan" para tener chips de
+comida reales en pantalla. Un escaneo del DOM completo
+(`getBoundingClientRect()` sobre cada elemento, comparado contra el
+ancho del viewport) encontró el offender exacto: un
+`<button class="pantry-meal-chip pantry-meal-chip--cooked">` con el
+texto `"07:30✓ Desayuno — Crepes de avena con requesón y fruta"`, en
+383px de ancho — más ancho que el propio viewport. `document.
+documentElement.scrollWidth` medía 412px, no 375px: el navegador móvil
+había ensanchado el viewport ENTERO para acomodar ese único elemento
+que se negaba a encoger.
+
+**Causa raíz**: `.pantry-meal-chip` (`assets/css/style.css`) tiene
+`white-space: nowrap` desde que se introdujo el patrón de chips
+compactos (2026-08-14b) — intencional, para que el chip sea una
+"píldora" de una sola línea. Pero un elemento flex (el chip vive dentro
+de `.pantry-meal-chips { display:flex; flex-wrap:wrap; }`) tiene por
+defecto `min-width: auto`, lo que significa que NUNCA encoge por debajo
+del ancho de su propio contenido — con `white-space:nowrap`, ese ancho
+es el de todo el texto en una sola línea, sin importar cuánto mida el
+contenedor. Un nombre de plato largo simplemente no cabía en 375px, y
+en vez de truncarse o envolver, forzaba el documento entero a
+ensancharse. Confirmado experimentalmente que `.actions`/`.panel`/
+`.meal-head` (mencionados en el mismo known issue desde el principio)
+NUNCA tuvieron un overflow propio: parcheando en vivo SOLO
+`.pantry-meal-chip` (`min-width:0` + `max-width:100%`), el documento
+completo volvió a 376px (~375, redondeo) y un reescaneo del DOM no
+encontró NINGÚN otro elemento desbordando — esos otros selectores solo
+heredaban el viewport ya ensanchado por el chip, no tenían un bug
+independiente.
+
+**Fix**, una sola regla nueva en `.pantry-meal-chip`:
+```css
+overflow: hidden;
+text-overflow: ellipsis;
+max-width: 100%;
+min-width: 0;
+```
+`min-width: 0` anula el `min-width:auto` por defecto del flex item,
+permitiendo que el chip encoja hasta el ancho real de su fila;
+`max-width: 100%` lo limita ahí; `overflow:hidden` + `text-overflow:
+ellipsis` truncan el texto (que sigue en una sola línea,
+`white-space:nowrap` no se tocó) en vez de forzar el layout. Se
+mantiene el aspecto de píldora compacta que el diseño de 2026-08-14b
+buscaba — solo deja de romper el viewport cuando el contenido no cabe.
+Además, `renderMealChips()` (`js/ui/render-pantry.js`) gana un
+`title="<label completo del plato>"` en el botón, para que el texto
+truncado siga siendo recuperable al pasar el ratón — el nombre completo
+del plato ya se muestra sin truncar en la propia tarjeta de comida, así
+que esto es una mejora de descubribilidad, no una reparación de pérdida
+de información.
+
+**Verificado en vivo contra los archivos REALES servidos** (cache-bust
+explícito del `<link rel="stylesheet">`, no solo un `<style>` de prueba
+inyectado, para descartar el problema de caché HTTP de este entorno ya
+documentado en sesiones anteriores): `document.documentElement.
+scrollWidth` 412px → 376px; un escaneo completo del DOM tras el fix
+encontró 0 elementos desbordando el viewport (antes: 5, incluido el
+propio chip); el chip largo mostró `scrollWidth` (381px) > `clientWidth`
+(316px) con `overflow:hidden` — confirma que SÍ está truncando de
+verdad, no solo escondiendo el problema; y el atributo `title` con el
+texto completo presente en los 5 chips de un plan real. Repetido en
+desktop (viewport ancho): el mismo chip largo se muestra COMPLETO, sin
+truncar — confirma que `max-width`/`min-width` nuevos solo actúan
+cuando el contenedor realmente aprieta, nunca encogen un chip
+innecesariamente cuando sobra espacio. 251 tests (`node tests/
+run-tests.js`) re-ejecutados tras el cambio, 0 fallidos — esperado, es
+un cambio de solo CSS + un atributo HTML, ninguna lógica de
+`js/core/`/`js/engine/` tocada.
+
+**Archivos modificados**: `assets/css/style.css` (`.pantry-meal-chip`,
++4 propiedades), `js/ui/render-pantry.js` (`renderMealChips()`, +1
+atributo `title`). **No tocados**: `js/core/pantry.js`, todo
+`js/engine/*`, cualquier otro archivo CSS/JS/HTML.
+
 ## Session handoff (2026-08-19)
 
 Escrito para que la siguiente sesión/chat pueda continuar sin haber visto
@@ -3410,7 +3542,7 @@ cobertura de platos en desayuno/comida); suavizado a la mitad
 todos los ejes (`status:"perfect"` 240→251, `cap25` 253→245, cobertura
 global 86.2%→86.8%) — ver "Reserva de presupuesto y reparto secuencial
 — 2026-08-19c/d" arriba para el detalle completo con tablas.
-**2026-08-20 — (m), esta sesión, la más reciente**: el usuario reportó en
+**2026-08-20 — (m)**: el usuario reportó en
 uso real que "Generar plan" + "Confirmar plan de hoy" sobre un plan ya
 comprado podía dejar 2 tarjetas "Tu plan" activas el mismo día (el UPSERT
 de 2026-08-19 protege un borrador, pero crea una entrada nueva a
@@ -3423,8 +3555,22 @@ render-pantry.js) en vez de generar. Solo "Cambiar el plan completo"
 genera, y confirma con la función nueva `replacePendingMealsForToday()`
 (reemplaza lo NO cocinado, conserva TAL CUAL lo cocinado, resetea
 `purchase.done`) en vez del UPSERT normal -- ver "Gate en Generar plan +
-reemplazo explícito — 2026-08-20" arriba para el detalle completo. Este
-handoff describe el estado ACUMULADO tras los 13 tramos.
+reemplazo explícito — 2026-08-20" arriba para el detalle completo.
+**2026-08-20b — (n), esta sesión, la más reciente, conversación nueva**:
+el usuario pidió orientación y luego una sugerencia de fix para un issue
+abierto del handoff; eligió el overflow horizontal mobile
+(`.actions`/`.panel`/`.meal-head`/`.pantry-meal-chip`, documentado sin
+diagnosticar desde 2026-08-08). Diagnosticado por fin: el offender real
+es únicamente `.pantry-meal-chip` (`white-space:nowrap` sin
+`min-width:0` dentro de un flex-item, que se niega a encoger por debajo
+de su contenido con un nombre de plato largo y fuerza el viewport
+entero a ensancharse) -- los otros tres selectores mencionados en el
+mismo known issue nunca tuvieron un overflow propio, solo heredaban el
+viewport ya ensanchado por el chip. Fix de 4 propiedades CSS en ese
+único selector + un atributo `title` nuevo en el chip -- ver "Fix real:
+overflow horizontal en mobile — .pantry-meal-chip — 2026-08-20b" arriba
+para el detalle completo, incluida la verificación en vivo. Este
+handoff describe el estado ACUMULADO tras los 14 tramos.
 
 **Para orientarse en el código en sí, antes de leer archivo por archivo,
 usa el grafo de Graphify** (regenerado por última vez en la sesión
@@ -3497,11 +3643,17 @@ despensa UI: split into 3 clear blocks" — incluye TODO el trabajo de
 (2026-08-19, los tramos j+k+l: UPSERT sobre el borrador del día,
 eliminación de `TOP_CANDIDATES_POOL` + reequilibrio protein/€, y reserva
 de presupuesto + reparto secuencial), `a42d468` (docs: registrar hash y
-estado de deploy de 1f7798b), y **`0f6c658`** (2026-08-20, tramo m: gate
+estado de deploy de 1f7798b), `0f6c658` (2026-08-20, tramo m: gate
 en Generar plan + reemplazo explícito del plan activo — `index.html`,
 `js/app.js`, `js/core/pantry.js`, `js/ui/render-pantry.js`,
 `assets/css/style.css`, `tests/pantry.test.js`, `STATE.md`, `PROJECT.md`,
-`ROADMAP.md`). **Pusheado a `origin/main`**
+`ROADMAP.md`), `ef5cee8` (docs: registrar hash y estado de deploy de
+0f6c658), y **la sesión actual — fix de overflow horizontal en
+`.pantry-meal-chip`** (`assets/css/style.css`, `js/ui/render-pantry.js`,
+`STATE.md`, `PROJECT.md`, `ROADMAP.md`), commiteada en esta misma
+sesión (ver el commit de solo documentación inmediatamente después de
+éste para el hash exacto y la confirmación de deploy, mismo patrón de
+siempre). **Pusheado a `origin/main`**
 (`github.com/andreyostrik228/OfflineNutritionHelper`). Sigue habiendo un
 archivo suelto sin relación, `PANTRY_HISTORY_MAX_ENTRIES)` (0 bytes, sin
 trackear, en la raíz, deliberadamente NUNCA comiteado) — mismo tipo de
@@ -3566,14 +3718,16 @@ verificable, y la UI lo dice explícitamente en vez de inventarlo;
 `mainProt` mal reportado (issue #5); hueco de cobertura en `packaging.js`
 (issue #7); interacción cap25/recorte de presupuesto sin corregir (issue
 #8, sin cambios); Despensa sigue sin conectar al modo "sin cocinar"
-(issue #9); no hay recordatorios de cocina separados (a propósito); **el
-bug de CSS de `.actions`/`.panel`/`.meal-head`/`.pantry-meal-chip`
+(issue #9); no hay recordatorios de cocina separados (a propósito).
+~~El bug de CSS de `.actions`/`.panel`/`.meal-head`/`.pantry-meal-chip`
 desbordando el viewport en mobile (~375px vs. hasta ~435px, mencionado
-en handoffs anteriores desde 2026-08-08, `task_089a68aa`) sigue sin
-investigar a fondo** — reconfirmado en 2026-08-14c con un A/B real
-(`git stash`) contra el código de ANTES de esta sesión, mismos números
-exactos en ambos casos: no es una regresión de "Tu plan", es el mismo
-issue de siempre, sigue fuera de alcance.
+en handoffs anteriores desde 2026-08-08, `task_089a68aa`)~~ **RESUELTO
+2026-08-20b** — el offender real era únicamente `.pantry-meal-chip`
+(`min-width:auto` por defecto de un flex item + `white-space:nowrap`
+sin límite de ancho, con un nombre de plato largo); `.actions`/`.panel`/
+`.meal-head` nunca tuvieron un overflow propio, solo heredaban el
+viewport ya ensanchado por el chip — ver "Fix real: overflow horizontal
+en mobile — .pantry-meal-chip — 2026-08-20b" arriba.
 **Fuera de alcance deliberado** (pedido explícito del usuario): NO se
 construyó optimización multi-día de compra (ver sección de presupuesto
 marginal); NO se completó la migración Fase 1-2 completa de
@@ -3805,10 +3959,11 @@ usuarios reales (no imprescindible, son inofensivos). Aparte de eso,
 sigue pendiente Fase 1 del roadmap de migración de nutrición (ampliar
 cobertura de datos reales más allá del 50/81 actual, ver `ROADMAP.md` —
 requiere que el pipeline Python verifique más productos en
-`real-products.js`, no es tarea de este repo en solitario); investigar
+`real-products.js`, no es tarea de este repo en solitario). ~~investigar
 el bug de overflow mobile `.panel`/`.meal-head`/`.actions`/
-`.pantry-meal-chip` (reconfirmado, no corregido, en 2026-08-14c);
-conectar la Despensa al modo "sin cocinar" (issue #9); regenerar el
+`.pantry-meal-chip`~~ **RESUELTO 2026-08-20b** (ver sección dedicada
+arriba). Sigue pendiente: conectar la Despensa al modo "sin cocinar"
+(issue #9); regenerar el
 grafo de Graphify (desactualizado desde 2026-08-13f). **Fuera de
 alcance deliberado de 2026-08-14c, documentado en el propio análisis de
 la sesión, no un olvido**: no se fusionaron las tarjetas de comida
@@ -3929,9 +4084,10 @@ Lee `PROJECT.md` y `ROADMAP.md` además de este archivo. Para el sistema
 completo (con el pipeline Python), lee también `PythonProject/docs/
 architecture.md` y `PythonProject/docs/data_flow.md`. No asumas que el
 estado descrito aquí sigue siendo exacto sin verificar contra el código —
-esto es una foto fija al final de la sesión 2026-08-20, tramo (m) (gate en
-Generar plan + reemplazo explícito), con los tramos j+k+l+m TODOS
-comiteados (hasta `0f6c658`), pusheados a `origin/main`, y desplegados en
-producción (`offline-nutrition-helper.pages.dev`, verificado en vivo
-sirviendo `findTodayEntry`/`replacePendingMealsForToday`/
-`getBlockingActiveEntry`/el diálogo `planReplaceDialog`).
+esto es una foto fija al final de la sesión 2026-08-20b, tramo (n) (fix
+de overflow horizontal en `.pantry-meal-chip`), con los tramos j+k+l+m
+comiteados (hasta `ef5cee8`) y desplegados en producción antes de que
+empezara esta sesión, y el tramo (n) de esta sesión comiteado, pusheado
+a `origin/main`, y desplegado en producción junto con ellos (ver
+"Commit/branch/deploy actuales" arriba para el hash y la confirmación de
+deploy exactos).

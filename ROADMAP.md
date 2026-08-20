@@ -2,7 +2,28 @@
 
 ## Current status
 
-**Stage:** working prototype, updated 2026-08-20 — a real bug the user hit
+**Stage:** working prototype, updated 2026-08-20b — a mobile CSS
+horizontal-overflow bug (`.actions`/`.panel`/`.meal-head`/
+`.pantry-meal-chip`), reconfirmed in every session since 2026-08-08 but
+never traced to a specific element, was finally root-caused: live DOM
+measurement at 375px found the actual offender is `.pantry-meal-chip`
+alone — `white-space: nowrap` with no width limit inside a
+`flex-wrap` container means a chip holding a long dish name refuses to
+shrink below its own content width (a flex item's default
+`min-width: auto`) and forces the whole document wider to fit it; the
+other three selectors were never independently broken, they only
+inherited the viewport the chip had already widened. Fix: `overflow:
+hidden; text-overflow: ellipsis; max-width: 100%; min-width: 0;` on
+`.pantry-meal-chip`, plus a `title` attribute on the chip button so the
+truncated dish name stays recoverable on hover. 251 tests re-run, 0
+failed (CSS + one HTML attribute only). Verified live against the real
+served files (cache-busted, not a test-only `<style>` injection):
+`document.documentElement.scrollWidth` 412px→376px, 0 overflow
+offenders left in a full-DOM scan, real ellipsis truncation confirmed,
+desktop unaffected. See `STATE.md`, "Fix real: overflow horizontal en
+mobile — .pantry-meal-chip — 2026-08-20b".
+
+Previously, updated 2026-08-20 — a real bug the user hit
 in use: with a plan already confirmed and bought, generating and
 confirming a new plan silently created a SECOND active "Tu plan" card for
 the same day. Fix: "Generar plan" now checks whether today already has an

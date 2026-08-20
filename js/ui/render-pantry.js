@@ -519,7 +519,7 @@ function renderMealChips(entry) {
       ? '<span class="pantry-meal-chip__time">' + escapeHtml(meal.time) + '</span>'
       : '';
     return (
-      '<button type="button" class="pantry-meal-chip' + cookedClass + '" data-action="toggle-meal-cooked" data-id="' + escapeHtml(entry.id) + '" data-meal-key="' + escapeHtml(meal.key) + '">' +
+      '<button type="button" class="pantry-meal-chip' + cookedClass + '" data-action="toggle-meal-cooked" data-id="' + escapeHtml(entry.id) + '" data-meal-key="' + escapeHtml(meal.key) + '" title="' + escapeHtml(meal.label) + '">' +
         timeBadge + (meal.cooked ? "&#10003; " : "") + escapeHtml(meal.label) +
       '</button>'
     );
