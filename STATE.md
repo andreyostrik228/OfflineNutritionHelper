@@ -68,6 +68,35 @@ documentado desde 2026-08-08. Ver sección dedicada "Fix real: overflow
 horizontal en mobile — .pantry-meal-chip — 2026-08-20b" más abajo para
 el detalle completo.
 
+**Resumen de la sesión 2026-08-20c (known issue #5: mainProt real en vez
+de adivinado por el label)**: continuación de la misma sesión que
+2026-08-20b — el usuario pidió la lista completa de issues abiertos y
+luego arreglarlos todos, empezando por el más importante; se acordó
+diferir el known issue #8 (respeta la decisión de `ROADMAP.md` de
+resolverlo en la Fase 2, no como parche aislado) y empezar por el #5.
+Causa raíz: `buildMealFromDish()` (`js/engine/dish-selector.js`) nunca
+copiaba `dish.mainProt` al `meal` que construye, así que
+`collectProteinSources()` (`js/ui/render-insights.js`, usada en "Notas
+del plan" y en el aviso de "menos de 3 fuentes de proteína") caía
+SIEMPRE a `extractMainProtFromLabel()` — una heurística de texto no
+exhaustiva — pese a que el propio comentario de cabecera del archivo
+afirmaba (incorrectamente) que ya leía el campo real. Fix de una línea:
+`mainProt: dish.mainProt` añadido a la construcción del `meal`. Impacto
+real confirmado EN VIVO (no solo en tests): "Tostadas con jamón cocido y
+tomate" (`dish.mainProt:"pavo"`) no tiene ninguna palabra clave que
+`extractMainProtFromLabel` reconozca en su label — con el bug, esa
+fuente proteica se perdía del todo del audit de diversidad; con el fix,
+`collectProteinSources` la reporta correctamente. Efecto colateral
+encontrado de paso, NO corregido (fuera de alcance, ver known issue #5
+arriba): ese mismo plato parece tener un `mainProt` mal curado en
+`dishes.js` (dice "pavo", la proteína real es jamón). 4 tests nuevos en
+`tests/ingredient-nutrition.test.js` (regresión exacta del caso real,
+compatibilidad hacia atrás con entradas de despensa antiguas sin
+`mainProt`, y verificación directa de `buildMealFromDish`). 255 tests,
+0 fallidos. `js/core/`, el resto de `js/engine/*`, y
+`render-insights.js` — cero cambios de lógica salvo el campo nuevo en el
+`meal` (el fallback por label se conserva intacto para compatibilidad).
+
 **Resumen de la sesión 2026-08-19 (bug real: "Confirmar plan" repetido
 inflaba la despensa — `savePlanForToday()` ahora hace UPSERT sobre el
 borrador del día)**: el usuario encontró en uso real que pulsar
@@ -750,8 +779,10 @@ producto real verificado de `REAL_PRODUCTS` y calcular KBJU/coste desde ahí.
 Dos suites, ambas Node + `vm` (cargan los archivos de producción reales,
 sin copiarlos ni envolverlos en `module.exports`), sin ningún framework:
 
-- `tests/` (producción): `node tests/run-tests.js` → **251 passed, 0
-  failed** (verificado en esta sesión) — `shopping-cost.test.js` (14), `budget-mode.test.js` (13),
+- `tests/` (producción): `node tests/run-tests.js` → **255 passed, 0
+  failed** (verificado en esta sesión; +4 de `ingredient-nutrition.test.js`
+  para el known issue #5, ver "Resumen de la sesión 2026-08-20c" arriba)
+  — `shopping-cost.test.js` (14), `budget-mode.test.js` (13),
   `plan-generator.characterization.test.js` (9, golden-master recapturado
   2026-08-08 tras el rediseño de presupuesto, y de nuevo 6 veces más entre
   2026-08-19b y 2026-08-19d — cada una tras un cambio real de algoritmo en
@@ -842,8 +873,8 @@ sin copiarlos ni envolverlos en `module.exports`), sin ningún framework:
 - `poc/tests/`: `node poc/tests/run-tests.js` → **23 passed, 0 failed** —
   resolver, shopping-list de prueba, cobertura de ingredientes (sin
   cambios, `poc/` no se tocó en ninguna de estas sesiones).
-- Total: **274 tests, 0 failed** (251 en `tests/` + 23 en `poc/tests/`) —
-  re-ejecutado y verificado en la sesión 2026-08-20 (no solo heredado de
+- Total: **278 tests, 0 failed** (255 en `tests/` + 23 en `poc/tests/`) —
+  re-ejecutado y verificado en la sesión 2026-08-20c (no solo heredado de
   memoria). El runner (`tests/run-tests.js`) ahora soporta tests async
   (una función de test puede devolver una promesa, necesario porque
   auth.js/cloud-sync.js/migration.js siempre son async contra un cliente
@@ -3255,10 +3286,20 @@ para tocar código de producción de este proyecto.
    ver historial en el bloque de abajo, sin cambios esta sesión.
 4. ~~**The 25% calorie cap is applied before rebalance.**~~ RESOLVED
    (sesión anterior), sin cambios esta sesión.
-5. **Protein-source reporting is wrong.** `mainProt` sigue sin copiarse a
-   los items generados; la UI lo sigue adivinando por la etiqueta del
-   plato (`js/ui/render-insights.js: extractMainProtFromLabel`). **Sin
-   tocar esta sesión.**
+5. ~~**Protein-source reporting is wrong.**~~ **RESUELTO 2026-08-20c** —
+   `buildMealFromDish()` (`js/engine/dish-selector.js`) ahora copia
+   `dish.mainProt` al `meal` generado; `collectProteinSources()`
+   (`render-insights.js`) ya no depende SIEMPRE de adivinar por el label
+   (`extractMainProtFromLabel` se conserva solo como fallback para
+   entradas de despensa antiguas sin el campo). Verificado en vivo que el
+   caso real "Tostadas con jamón cocido y tomate" (`mainProt:"pavo"`, sin
+   match posible por texto) pasaba de perder su fuente proteica del audit
+   por completo a reportarse correctamente. 4 tests nuevos en
+   `tests/ingredient-nutrition.test.js`. Efecto colateral encontrado, NO
+   corregido (fuera de alcance, anotado aparte): ese mismo plato tiene
+   `mainProt:"pavo"` en `dishes.js` pese a que su proteína real es jamón
+   cocido — parece un error de curación de datos preexistente, no algo
+   que este fix causó ni resolvió.
 6. ~~**Current branding is misleading.**~~ **RESOLVED** (sesión 2026-08-03,
    ver "Rediseño visual" arriba) — el producto ya no se presenta como
    "AI"/"Chef Mode".
@@ -3648,11 +3689,17 @@ en Generar plan + reemplazo explícito del plan activo — `index.html`,
 `js/app.js`, `js/core/pantry.js`, `js/ui/render-pantry.js`,
 `assets/css/style.css`, `tests/pantry.test.js`, `STATE.md`, `PROJECT.md`,
 `ROADMAP.md`), `ef5cee8` (docs: registrar hash y estado de deploy de
-0f6c658), y **`061ea4a`** (2026-08-20b, tramo n: fix de overflow
+0f6c658), `061ea4a` (2026-08-20b, tramo n: fix de overflow
 horizontal en `.pantry-meal-chip` — `assets/css/style.css`,
-`js/ui/render-pantry.js`, `STATE.md`, `PROJECT.md`, `ROADMAP.md`) —
-verificar con `git log -1`/`git status -sb` antes de asumir que sigue
-siendo así. **Pusheado a `origin/main`**
+`js/ui/render-pantry.js`, `STATE.md`, `PROJECT.md`, `ROADMAP.md`),
+`bf70868` (docs: registrar hash y estado de deploy de 061ea4a), y el
+commit MÁS RECIENTE de esta sesión (tramo o: known issue #5, mainProt
+real — `js/engine/dish-selector.js`,
+`tests/ingredient-nutrition.test.js`, `STATE.md`, `PROJECT.md`,
+`ROADMAP.md`) — verificar con `git log -1`/`git status -sb` antes de
+asumir que sigue siendo así, este handoff no repite el hash exacto de
+cada tramo individual a partir de aquí para no quedar desactualizado en
+cada fix pequeño de la misma sesión. **Pusheado a `origin/main`**
 (`github.com/andreyostrik228/OfflineNutritionHelper`). Sigue habiendo un
 archivo suelto sin relación, `PANTRY_HISTORY_MAX_ENTRIES)` (0 bytes, sin
 trackear, en la raíz, deliberadamente NUNCA comiteado) — mismo tipo de

@@ -2,7 +2,21 @@
 
 ## Current status
 
-**Stage:** working prototype, updated 2026-08-20b — a mobile CSS
+**Stage:** working prototype, updated 2026-08-20c — known issue #5
+(`mainProt` reporting) fixed: `buildMealFromDish()` never copied
+`dish.mainProt` onto the generated meal, so the protein-diversity report
+always fell back to a non-exhaustive label-text guess. One-line fix
+(`js/engine/dish-selector.js`); live-verified that a real dish
+("Tostadas con jamón cocido y tomate") had its protein source silently
+dropped from the diversity count under the old guess, now reported
+correctly. 4 new tests, 255 total, 0 failed. Committed, pushed, and
+deployed. See `STATE.md`, "Resumen de la sesión 2026-08-20c". This is
+part of a broader pass working through all currently-open issues in
+priority order (per the user's request); known issue #8 was
+deliberately deferred to the Fase 2 redesign below rather than patched
+in isolation.
+
+Previously, updated 2026-08-20b — a mobile CSS
 horizontal-overflow bug (`.actions`/`.panel`/`.meal-head`/
 `.pantry-meal-chip`), reconfirmed in every session since 2026-08-08 but
 never traced to a specific element, was finally root-caused: live DOM

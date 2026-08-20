@@ -800,9 +800,15 @@ function buildMealFromDish(dish, mealKey, mealLabel, target, storeId, forcedScal
     : Math.min(MAX_PORTION_SCALE, Math.max(0.70, rawScale));
 
   var meal = {
-    key:   mealKey,
-    label: mealLabel + " — " + dish.name,
-    items: []
+    key:      mealKey,
+    label:    mealLabel + " — " + dish.name,
+    // Copiado del dish real (known issue #5): antes se dejaba sin definir
+    // y render-insights.js caía SIEMPRE a adivinar la fuente proteica por
+    // texto del label (extractMainProtFromLabel) en vez de usar el dato
+    // real ya disponible aquí -- sigue existiendo un fallback por label
+    // para entradas antiguas de despensa guardadas antes de este fix.
+    mainProt: dish.mainProt,
+    items:    []
   };
 
   var ingredientNutrition = computeDishIngredientNutrition(dish, scaleFactor);

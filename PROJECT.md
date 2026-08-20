@@ -465,6 +465,20 @@ same chip renders fully untruncated when its row has room. Full
 write-up in `STATE.md`, "Fix real: overflow horizontal en mobile —
 .pantry-meal-chip — 2026-08-20b".
 
+**2026-08-20c — known issue #5 fixed: real `mainProt` instead of
+guessing from the dish label**: `buildMealFromDish()` (`dish-selector.js`)
+never copied `dish.mainProt` onto the generated `meal`, so
+`collectProteinSources()` (`render-insights.js`, feeds "Notas del plan"
+and the "fewer than 3 protein sources" warning) always fell back to a
+non-exhaustive label-text heuristic despite the file's own header
+claiming otherwise. One-line fix. Live-verified real-world impact: for
+"Tostadas con jamón cocido y tomate" (`mainProt:"pavo"`), the label
+heuristic returns `null` — that source was silently dropped from the
+diversity count entirely; with the fix it's reported correctly. Side
+finding, not fixed (flagged separately): that same dish's `mainProt`
+value in `dishes.js` itself looks miscurated (says "pavo", the real
+protein is ham). 4 new tests, 255 tests total, 0 failed.
+
 ## Product direction
 
 Evolve into a real personal nutrition assistant: nutrition + shopping +

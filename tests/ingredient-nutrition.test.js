@@ -62,6 +62,15 @@ function freshFullEngineWithShoppingListSandbox() {
   return sandbox;
 }
 
+function freshFullEngineWithInsightsSandbox() {
+  var sandbox = freshEngineSandbox();
+  var fs = require("fs");
+  var vm = require("vm");
+  var file = projPath("js/ui/render-insights.js");
+  vm.runInContext(fs.readFileSync(file, "utf8"), sandbox, { filename: file });
+  return sandbox;
+}
+
 function findItem(nutritionResult, name) {
   return nutritionResult.find(function (r) { return r.name === name; });
 }
@@ -376,6 +385,71 @@ function run(t) {
     var nutrition = s.computeDishIngredientNutrition(dish, 1);
     var cacahuetes = findItem(nutrition, "Cacahuetes");
     assert.strictEqual(cacahuetes.kcal, itemKcal, "el kcal del ingrediente resuelto debe ser el REAL, no el derivado por Atwater");
+  });
+
+  // ── I) known issue #5: mainProt real en vez de adivinado por el label (2026-08-20c) ─
+  // Antes, buildMealFromDish() nunca copiaba dish.mainProt al meal, así que
+  // collectProteinSources() (render-insights.js) SIEMPRE caía a
+  // extractMainProtFromLabel() -- una heurística de texto no exhaustiva que
+  // puede fallar en dishes reales (ver caso concreto abajo). Ahora meal.mainProt
+  // viene directo de dishes.js, la única fuente de verdad.
+
+  t.test("I) buildMealFromDish(): meal.mainProt es exactamente dish.mainProt, para varios platos reales de distintas categorías", function () {
+    var s = freshEngineSandbox();
+    var names = [
+      "Pollo a la plancha con arroz y brócoli",
+      "Salmón con patatas al horno y brócoli",
+      "Tofu salteado con arroz y verduras",
+      "Lentejas con verduras y arroz"
+    ];
+    names.forEach(function (name) {
+      var dish = s.DISH_DB.find(function (d) { return d.name === name; });
+      assert.ok(dish, "el plato real debe seguir existiendo: " + name);
+      var target = { kcal: dish.kcal, protein: dish.protein, carbs: dish.carbs, fat: dish.fat };
+      var meal = s.buildMealFromDish(dish, "lunch", "Comida", target, "mercadona", 1);
+      assert.strictEqual(meal.mainProt, dish.mainProt, name);
+      assert.strictEqual(typeof meal.mainProt, "string", name + ": mainProt nunca debe quedar undefined");
+    });
+  });
+
+  t.test("I) collectProteinSources() (render-insights.js) usa el meal.mainProt real, no el label adivinado, para platos generados de verdad", function () {
+    var s = freshFullEngineWithInsightsSandbox();
+    var pollo  = s.DISH_DB.find(function (d) { return d.name === "Pollo a la plancha con arroz y brócoli"; });
+    var salmon = s.DISH_DB.find(function (d) { return d.name === "Salmón con patatas al horno y brócoli"; });
+    var mealPollo  = s.buildMealFromDish(pollo,  "lunch",  "Comida", { kcal: pollo.kcal,  protein: pollo.protein,  carbs: pollo.carbs,  fat: pollo.fat  }, "mercadona", 1);
+    var mealSalmon = s.buildMealFromDish(salmon, "dinner", "Cena",   { kcal: salmon.kcal, protein: salmon.protein, carbs: salmon.carbs, fat: salmon.fat }, "mercadona", 1);
+
+    var sources = s.collectProteinSources([mealPollo, mealSalmon]);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(sources)), ["pollo", "salmon"]);
+  });
+
+  t.test("I) caso real donde el label NO permite adivinar correctamente: sin el fix, esta fuente proteica se perdía del audit de diversidad", function () {
+    var s = freshFullEngineWithInsightsSandbox();
+    // "Tostadas con jamón cocido y tomate" -- dishes.js lo etiqueta
+    // mainProt:"pavo"; su label no contiene ninguna palabra clave de
+    // extractMainProtFromLabel() (ni "jamón serrano", ni "pavo"), así que
+    // ADIVINAR por texto no encuentra nada -- confirma por qué depender del
+    // label era frágil, más allá de simplemente estar sin implementar.
+    var dish = s.DISH_DB.find(function (d) { return d.name === "Tostadas con jamón cocido y tomate"; });
+    assert.ok(dish, "el plato real debe seguir existiendo");
+    assert.strictEqual(s.extractMainProtFromLabel("Desayuno — " + dish.name), null,
+      "confirma que ADIVINAR por texto no encuentra nada para este label real");
+
+    var meal = s.buildMealFromDish(dish, "breakfast", "Desayuno", { kcal: dish.kcal, protein: dish.protein, carbs: dish.carbs, fat: dish.fat }, "mercadona", 1);
+    var sources = s.collectProteinSources([meal]);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(sources)), [dish.mainProt], "con el fix, el audit de diversidad ya no pierde esta fuente proteica");
+  });
+
+  t.test("I) collectProteinSources() conserva el fallback por label para entradas de despensa antiguas sin mainProt (compatibilidad hacia atrás)", function () {
+    var s = freshFullEngineWithInsightsSandbox();
+    // Simula una entrada de historial guardada ANTES de este fix --
+    // savePlanForToday() nunca ha persistido mainProt (no hace falta, ver
+    // cabecera de esta sección), así que un meal reconstruido desde
+    // pantryHistory tampoco lo tendrá. El fallback debe seguir funcionando.
+    var legacyMeal = { label: "Comida — Pollo a la plancha con arroz y brócoli", items: [] };
+    assert.strictEqual(legacyMeal.mainProt, undefined);
+    var sources = s.collectProteinSources([legacyMeal]);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(sources)), ["pollo"]);
   });
 }
 
