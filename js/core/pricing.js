@@ -28,6 +28,8 @@
  *
  * Depende de:
  *   js/data/prices/*.js              (PRICE_CATALOGS)
+ *   js/data/real-products*.js        (REAL_PRODUCTS_CATALOGS) — opcional,
+ *                                     solo para getRealProductsForStore()
  *   js/data/real-ingredient-matches.js (REAL_INGREDIENT_MATCHES) — opcional
  *   js/data/packaging.js             (PACKAGING_INFO) — opcional, solo para
  *                                     resolvePackageInfo/resolvePurchaseCost
@@ -37,6 +39,8 @@
  *   DEFAULT_STORE_ID
  *   normalizeIngredientKey(name)
  *   listAvailableStores()                    → [{ storeId, storeName }]
+ *   getRealProductsForStore(storeId)         → productos reales de esa tienda
+ *     (2026-08-24, selector de tienda — ver "Sin cocinar"/catálogo)
  *   resolveIngredientPrice(name, storeId)     → { pricePer100g, source, group }
  *   priceDishAtStore(dish, storeId)           → { cost, breakdown[], confidence }
  *   proteinPerEuro(dish, storeId)             → g de proteína por €, a escala nativa
@@ -104,14 +108,54 @@ function normalizeIngredientKey(name) {
 }
 
 /**
- * Lista los supermercados disponibles actualmente (para un futuro selector
- * de tienda en la UI — no usado todavía por el algoritmo).
+ * Lista los supermercados disponibles actualmente -- usada por el
+ * selector de tienda de la UI (2026-08-24, ver index.html/app.js) para
+ * generar sus <option> en vez de tenerlas hardcodeadas: añadir una
+ * tienda nueva (un archivo js/data/prices/<tienda>.js más) basta para
+ * que aparezca sola en el selector.
+ *
+ * UNIÓN de PRICE_CATALOGS y REAL_PRODUCTS_CATALOGS, no solo
+ * PRICE_CATALOGS -- una tienda puede tener catálogo de productos reales
+ * (para "Sin cocinar") sin tener todavía precios curados por ingrediente
+ * para el motor de platos (ej. Alcampo/Carrefour en la Fase A de
+ * 2026-08-24, ver plan de esa sesión), y el selector debe ofrecerla de
+ * todos modos -- confirmado en vivo que sin esto el selector solo
+ * mostraba Mercadona pese a que "Sin cocinar" ya tenía datos reales de
+ * las otras dos tiendas.
  * @returns {{storeId:string, storeName:string}[]}
  */
 function listAvailableStores() {
-  return Object.keys(PRICE_CATALOGS).map(function (id) {
-    return { storeId: id, storeName: PRICE_CATALOGS[id].storeName || id };
+  var ids = {};
+  Object.keys(PRICE_CATALOGS || {}).forEach(function (id) { ids[id] = true; });
+  if (typeof REAL_PRODUCTS_CATALOGS !== "undefined") {
+    Object.keys(REAL_PRODUCTS_CATALOGS).forEach(function (id) { ids[id] = true; });
+  }
+
+  return Object.keys(ids).map(function (id) {
+    // Nombre curado si el catálogo de precios lo trae; si la tienda solo
+    // existe en REAL_PRODUCTS_CATALOGS (sin PRICE_CATALOGS todavía), se
+    // deriva capitalizando el id -- nunca se deja el <option> sin texto.
+    var storeName = (PRICE_CATALOGS[id] && PRICE_CATALOGS[id].storeName)
+      || (id.charAt(0).toUpperCase() + id.slice(1));
+    return { storeId: id, storeName: storeName };
   });
+}
+
+/**
+ * Catálogo de productos reales (para el modo "Sin cocinar" y el panel
+ * de catálogo, no para el motor de platos) de la tienda pedida --
+ * mismo patrón/registro que PRICE_CATALOGS, pero para
+ * REAL_PRODUCTS_CATALOGS (ver js/data/real-products.js y
+ * js/data/real-products-<tienda>.js, generados por
+ * PythonProject/scripts/export_real_products.py). Cae en
+ * DEFAULT_STORE_ID si storeId no está registrado, igual que
+ * resolveIngredientPrice.
+ * @param {string} [storeId]
+ * @returns {object[]}
+ */
+function getRealProductsForStore(storeId) {
+  if (typeof REAL_PRODUCTS_CATALOGS === "undefined") return [];
+  return REAL_PRODUCTS_CATALOGS[storeId] || REAL_PRODUCTS_CATALOGS[DEFAULT_STORE_ID] || [];
 }
 
 /**

@@ -62,6 +62,8 @@ var suites = [
   "plan-generator.characterization.test",
   "ingredient-packaging-coverage.test",
   "pantry.test",
+  "pricing.test",
+  "no-cook-generator.test",
   "meal-schedule.test",
   "budget-purchase.test",
   "purchase-economics.test",

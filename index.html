@@ -306,6 +306,23 @@
               </select>
             </div>
 
+            <!-- ══ SELECTOR DE TIENDA (2026-08-24): campo nuevo al final a
+                 propósito, para no desplazar los índices nth-child que ya
+                 usa el reflow de .form-grid (ver assets/css/style.css) --
+                 insertar en cualquier otra posición obligaría a
+                 renumerar esas reglas. Opciones generadas en JS desde
+                 listAvailableStores() (js/core/pricing.js) -- la de
+                 Mercadona de aquí es solo un fallback si ese script
+                 fallara, nunca la única fuente real. Afecta tanto al
+                 motor de platos (precio por tienda) como a "Sin
+                 cocinar" (catálogo de productos reales por tienda). ══ -->
+            <div class="field full">
+              <label for="store">&iquest;D&oacute;nde compras?</label>
+              <select id="store" required>
+                <option value="mercadona" selected>Mercadona</option>
+              </select>
+            </div>
+
           </div>
 
           <div class="actions">
@@ -569,6 +586,8 @@
 <script src="js/data/supabase-config.js"></script>
 <script src="js/data/dishes.js"></script>
 <script src="js/data/real-products.js"></script>
+<script src="js/data/real-products-alcampo.js"></script>
+<script src="js/data/real-products-carrefour.js"></script>
 <script src="js/data/packaging.js"></script>
 <script src="js/data/real-ingredient-matches.js"></script>
 <script src="js/data/ingredient-nutrition.js"></script>

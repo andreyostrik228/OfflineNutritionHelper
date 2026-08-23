@@ -135,7 +135,7 @@
  *     adjustNoCookProductStock(productId, deltaQuantity, displayName?)
  *   hasRealNoCookAction(entry) → boolean
  *   isNoCookEntryFullyConsumed(entry) → boolean
- *   saveNoCookPlanForToday(slots) → { entry, historySaved, replaced }
+ *   saveNoCookPlanForToday(slots, storeId) → { entry, historySaved, replaced }
  *   markNoCookPurchaseDone(entryId) → { saved, historySaved, run } | null
  *   markNoCookSlotConsumed(entryId, slotKey, consumed) → { saved, historySaved, entry, slot } | null
  * ─────────────────────────────────────────────────────────────────────────
@@ -1088,9 +1088,12 @@ function isNoCookEntryFullyConsumed(entry) {
  * todavía, y la actualiza en vez de crear una copia. Pura contabilidad,
  * cero mutación de stock (igual que la versión de plato).
  * @param {{key:string,label:string,items:object[]}[]} slots - plan.slots de generateNoCookPlan()
+ * @param {string} [storeId] - tienda del plan (2026-08-24, selector de
+ *   tienda) -- mismo campo `store` que ya usan las entradas de plato
+ *   (ver savePlanForToday más abajo), antes ausente aquí.
  * @returns {{ entry:object, historySaved:boolean, replaced:boolean }}
  */
-function saveNoCookPlanForToday(slots) {
+function saveNoCookPlanForToday(slots, storeId) {
   var now = new Date();
   var nowISO = now.toISOString();
   var todayKey = formatLocalDateKey(now);
@@ -1123,6 +1126,7 @@ function saveNoCookPlanForToday(slots) {
   if (draft) {
     draft.createdAt = nowISO;
     draft.slots = newSlots;
+    draft.store = storeId || draft.store || null;
     var historySavedReplace = savePantryHistory(history);
     return { entry: draft, historySaved: historySavedReplace, replaced: true };
   }
@@ -1132,6 +1136,7 @@ function saveNoCookPlanForToday(slots) {
     type: "nocook",
     createdAt: nowISO,
     planDate: todayKey,
+    store: storeId || null,
     slots: newSlots,
     purchase: { done: false, runs: [] }
   };

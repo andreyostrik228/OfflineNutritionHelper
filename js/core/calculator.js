@@ -28,11 +28,12 @@
  * budgetMode es null si el usuario no ha elegido ninguna — validateInput()
  * lo rechaza explícitamente, nunca se asume un valor por defecto aquí.
  *
- * @returns {{age, sex, weight, height, activity, workouts, goal, budgetMode, budgetCustom, cookTime, taste}}
+ * @returns {{age, sex, weight, height, activity, workouts, goal, budgetMode, budgetCustom, cookTime, taste, store}}
  */
 function readForm() {
   var budgetModeInput = document.querySelector('input[name="budgetMode"]:checked');
   var budgetCustomEl = document.getElementById("budgetCustom");
+  var storeEl = document.getElementById("store");
 
   return {
     age:      Number(document.getElementById("age").value),
@@ -45,7 +46,12 @@ function readForm() {
     budgetMode:   budgetModeInput ? budgetModeInput.value : null,
     budgetCustom: budgetCustomEl ? Number(budgetCustomEl.value) : NaN,
     cookTime: Number(document.getElementById("cookTime").value),
-    taste:    document.getElementById("taste").value
+    taste:    document.getElementById("taste").value,
+    // Selector de tienda (2026-08-24) -- opcional a propósito (storeEl
+    // puede no existir si este módulo se usa fuera de index.html, ej.
+    // en tests): plan-generator.js::sanitizeInputs() ya cae en
+    // DEFAULT_STORE_ID si data.store viene undefined.
+    store:    storeEl ? storeEl.value : undefined
   };
 }
 

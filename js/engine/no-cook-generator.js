@@ -11,22 +11,29 @@
  * que cocinar un plato desde cero.
  *
  * Deliberadamente NO limita el catálogo a un subconjunto pequeño — usa
- * TODOS los productos elegibles (~1800 de 2769) para maximizar variedad
- * entre generaciones. Cada llamada a generateNoCookPlan() vuelve a
- * muestrear al azar, así que pulsar el botón varias veces da combinaciones
- * distintas.
+ * TODOS los productos elegibles de la tienda activa para maximizar
+ * variedad entre generaciones. Cada llamada a generateNoCookPlan()
+ * vuelve a muestrear al azar, así que pulsar el botón varias veces da
+ * combinaciones distintas.
  *
  * Forma de cada producto elegido — deliberadamente más rica de lo
  * estrictamente necesario hoy (ean, brand, size, sizeUnit, price) para que
  * una futura "despensa" (Fase 7 del plan original) pueda restar lo
  * consumido del envase comprado sin rediseñar esta estructura.
  *
+ * ── Selector de tienda (2026-08-24) ───────────────────────────────────
+ * `storeId` es ahora un parámetro opcional de punta a punta (igual que
+ * en el motor de platos, ver js/core/pricing.js::DEFAULT_STORE_ID) --
+ * el pool elegible se calcula por tienda, con una caché POR TIENDA
+ * (`_noCookEligiblePoolByStore`), no una caché única global: cambiar de
+ * tienda sin esto seguiría sirviendo productos de la tienda anterior.
+ *
  * Depende de:
- *   js/data/real-products.js       (REAL_PRODUCTS)
+ *   js/core/pricing.js             (getRealProductsForStore, DEFAULT_STORE_ID)
  *   js/data/no-cook-classifier.js  (classifyNoCookProduct)
  *
  * Expone (global):
- *   generateNoCookPlan() → { slots: [{ key, label, items[] }], poolSize }
+ *   generateNoCookPlan(storeId) → { slots: [{ key, label, items[] }], poolSize }
  * ─────────────────────────────────────────────────────────────────────────
  */
 
@@ -62,20 +69,36 @@ var NO_COOK_SLOT_DEFS = [
   { key: "dinner", label: "Cena", itemCount: 3 },
 ];
 
-// Cache del pool elegible completo — se calcula una vez, no en cada click.
-var _noCookEligiblePool = null;
+// Caché del pool elegible, UNA por tienda — se calcula una vez por
+// tienda, no en cada click (2026-08-24: antes era una caché única
+// global, que servía productos de la tienda anterior tras cambiar de
+// selector).
+var _noCookEligiblePoolByStore = {};
 
-function getNoCookEligiblePool() {
-  if (_noCookEligiblePool) return _noCookEligiblePool;
+/**
+ * @param {string} [storeId] - por defecto DEFAULT_STORE_ID (pricing.js)
+ * @returns {{product:object, level:number, unit:string}[]}
+ */
+function getNoCookEligiblePool(storeId) {
+  var resolvedStoreId = storeId || (typeof DEFAULT_STORE_ID !== "undefined" ? DEFAULT_STORE_ID : "mercadona");
 
-  _noCookEligiblePool = REAL_PRODUCTS
+  if (_noCookEligiblePoolByStore[resolvedStoreId]) {
+    return _noCookEligiblePoolByStore[resolvedStoreId];
+  }
+
+  var products = (typeof getRealProductsForStore === "function")
+    ? getRealProductsForStore(resolvedStoreId)
+    : (typeof REAL_PRODUCTS !== "undefined" ? REAL_PRODUCTS : []);
+
+  var pool = products
     .map(function (p) {
       var classification = classifyNoCookProduct(p);
       return classification ? { product: p, level: classification.level, unit: classification.unit } : null;
     })
     .filter(Boolean);
 
-  return _noCookEligiblePool;
+  _noCookEligiblePoolByStore[resolvedStoreId] = pool;
+  return pool;
 }
 
 /**
@@ -141,10 +164,11 @@ function buildNoCookItem(entry) {
  * lo que sea el pool preferido de una toma queda vacío, cae al pool
  * elegible completo antes de dejar la toma sin productos.
  *
+ * @param {string} [storeId] - tienda activa, por defecto DEFAULT_STORE_ID
  * @returns {{ slots: {key:string,label:string,items:object[]}[], poolSize:number }}
  */
-function generateNoCookPlan() {
-  var pool = getNoCookEligiblePool();
+function generateNoCookPlan(storeId) {
+  var pool = getNoCookEligiblePool(storeId);
   var usedKeys = new Set();
 
   var slots = NO_COOK_SLOT_DEFS.map(function (def) {

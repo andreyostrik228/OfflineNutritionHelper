@@ -93,6 +93,11 @@ document.addEventListener("DOMContentLoaded", function () {
   var scheduleTimelineEl = document.getElementById("scheduleTimeline");
   var nextMealStickyEl   = document.getElementById("nextMealSticky");
 
+  // Selector de tienda (2026-08-24) -- afecta al motor de platos
+  // (vía readForm().store) y a "Sin cocinar"/catálogo (storeEl.value
+  // pasado explícitamente, ver handleNoCook/catalog-init más abajo).
+  var storeEl = document.getElementById("store");
+
   var verifiedGrid        = document.getElementById("verifiedGrid");
   var verifiedCount       = document.getElementById("verifiedCount");
   var verifiedSearchInput = document.getElementById("verifiedSearchInput");
@@ -457,6 +462,7 @@ document.addEventListener("DOMContentLoaded", function () {
     setVal("taste", settings.taste);
     setVal("wakeTime", settings.wakeTime);
     setVal("sleepTime", settings.sleepTime);
+    setVal("store", settings.store);
 
     if (settings.budgetMode) {
       var radioId = settings.budgetMode === "small"  ? "budgetModeSmall"
@@ -516,6 +522,24 @@ document.addEventListener("DOMContentLoaded", function () {
     if (foodCountEl && typeof DISH_DB !== "undefined") {
       foodCountEl.textContent = DISH_DB.length;
     }
+  });
+
+  // ── Selector de tienda (2026-08-24) -- opciones generadas desde
+  //    listAvailableStores() (pricing.js), nunca hardcodeadas, para que
+  //    añadir una tienda nueva (un archivo js/data/prices/<tienda>.js
+  //    más) baste sin tocar index.html. Tiene que ejecutarse ANTES de
+  //    "settings-prefill" (más abajo): un <select> no acepta un
+  //    .value para el que todavía no existe <option>. El <option>
+  //    "mercadona" ya en el HTML es solo el fallback si esto fallara.
+  safeInit("store-select-init", function () {
+    if (!storeEl || typeof listAvailableStores !== "function") return;
+
+    var stores = listAvailableStores();
+    if (!stores.length) return;
+
+    storeEl.innerHTML = stores.map(function (s) {
+      return '<option value="' + escapeHtml(s.storeId) + '">' + escapeHtml(s.storeName) + '</option>';
+    }).join("");
   });
 
   // ── Perfil/ajustes guardados: rellena el formulario con lo último
@@ -697,7 +721,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
       usePlanTodayNoCookBtn.disabled = true;
       try {
-        var result = saveNoCookPlanForToday(lastNoCookSlots);
+        var storeForEntry = (typeof lastNoCookStore !== "undefined") ? lastNoCookStore : undefined;
+        var result = saveNoCookPlanForToday(lastNoCookSlots, storeForEntry);
         if (!result) return;
 
         safeInit("select-today-in-plans", function () {
@@ -773,7 +798,8 @@ document.addEventListener("DOMContentLoaded", function () {
         verifiedCount: verifiedCount,
         verifiedSearchInput: verifiedSearchInput,
         verifiedEmpty: verifiedEmpty,
-        verifiedEmptyQuery: verifiedEmptyQuery
+        verifiedEmptyQuery: verifiedEmptyQuery,
+        storeSelectEl: storeEl
       });
       initRealProductsPanel();
     }
@@ -786,7 +812,7 @@ document.addEventListener("DOMContentLoaded", function () {
     safeInit("no-cook-run", function () {
       if (typeof runNoCookGenerator !== "function") return;
       if (noCookPanel) noCookPanel.hidden = false;
-      runNoCookGenerator();
+      runNoCookGenerator(storeEl ? storeEl.value : undefined);
       if (noCookPanel && typeof noCookPanel.scrollIntoView === "function") {
         noCookPanel.scrollIntoView({ behavior: "smooth", block: "start" });
       }

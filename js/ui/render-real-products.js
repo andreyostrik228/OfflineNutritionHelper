@@ -7,19 +7,43 @@
  * y pinta tarjetas, no participa en la generación del plan.
  *
  * Depende de:
- *   js/data/real-products.js (REAL_PRODUCTS)
+ *   js/core/pricing.js       (getRealProductsForStore, DEFAULT_STORE_ID)
  *   js/core/utils.js         (round0, round1, round2, escapeHtml)
  *
  * Inicialización obligatoria:
  *   Llamar a initRealProductsRefs(refs) desde js/app.js antes de usar.
  *
+ * ── Selector de tienda (2026-08-24) ───────────────────────────────────
+ * El catálogo mostrado ya no es la REAL_PRODUCTS global fija -- se lee
+ * de getRealProductsForStore(tienda activa) en cada render, y un
+ * listener sobre refs.storeSelectEl vuelve a pintar (respetando la
+ * búsqueda en curso) en cuanto cambia el <select> de tienda.
+ *
  * Expone (globales):
  *   initRealProductsRefs(refs)
- *   initRealProductsPanel()   – primer render + listener de búsqueda
+ *   initRealProductsPanel()   – primer render + listeners de búsqueda/tienda
  * ─────────────────────────────────────────────────────────────────────────
  */
 
-var verifiedGrid, verifiedCount, verifiedSearchInput, verifiedEmpty, verifiedEmptyQuery;
+var verifiedGrid, verifiedCount, verifiedSearchInput, verifiedEmpty, verifiedEmptyQuery, storeSelectEl;
+
+/**
+ * @returns {string} tienda actualmente elegida en el selector, o
+ *   DEFAULT_STORE_ID si el selector no existe/está vacío.
+ */
+function getCurrentStoreId() {
+  if (storeSelectEl && storeSelectEl.value) return storeSelectEl.value;
+  return (typeof DEFAULT_STORE_ID !== "undefined") ? DEFAULT_STORE_ID : "mercadona";
+}
+
+/**
+ * @returns {object[]} catálogo de la tienda actualmente elegida.
+ */
+function getActiveRealProducts() {
+  return (typeof getRealProductsForStore === "function")
+    ? getRealProductsForStore(getCurrentStoreId())
+    : (typeof REAL_PRODUCTS !== "undefined" ? REAL_PRODUCTS : []);
+}
 
 // Por encima de esto, mostrar todos los resultados de golpe deja de tener
 // sentido (rendimiento de DOM + usabilidad) — se pide afinar la búsqueda.
@@ -35,6 +59,7 @@ function initRealProductsRefs(refs) {
   verifiedSearchInput = refs.verifiedSearchInput;
   verifiedEmpty = refs.verifiedEmpty;
   verifiedEmptyQuery = refs.verifiedEmptyQuery;
+  storeSelectEl = refs.storeSelectEl;
 }
 
 /**
@@ -58,34 +83,53 @@ function normalizeSearchText(text) {
  * Llamar una vez desde app.js tras initRealProductsRefs().
  */
 function initRealProductsPanel() {
-  if (!verifiedGrid || typeof REAL_PRODUCTS === "undefined") return;
+  if (!verifiedGrid) return;
 
-  if (verifiedCount) verifiedCount.textContent = REAL_PRODUCTS.length;
-
-  renderRealProducts(REAL_PRODUCTS.slice(0, MAX_RENDERED_PRODUCTS), "");
+  renderCurrentSearch();
 
   if (verifiedSearchInput) {
     verifiedSearchInput.addEventListener("input", function () {
       handleRealProductsSearch(verifiedSearchInput.value);
     });
   }
+
+  // Cambiar de tienda repinta con la búsqueda actual todavía aplicada
+  // (2026-08-24) -- sin esto, el catálogo mostrado quedaría "pegado" a
+  // la tienda con la que se cargó la página.
+  if (storeSelectEl) {
+    storeSelectEl.addEventListener("change", renderCurrentSearch);
+  }
 }
 
 /**
- * Filtra REAL_PRODUCTS por texto (nombre o marca) y renderiza.
+ * Vuelve a pintar con lo que haya en el input de búsqueda ahora mismo
+ * (o el catálogo completo si está vacío) -- extraído para poder
+ * llamarlo tanto en el primer render como al cambiar de tienda, sin
+ * duplicar la lógica de "sin búsqueda -> catálogo completo".
+ */
+function renderCurrentSearch() {
+  handleRealProductsSearch(verifiedSearchInput ? verifiedSearchInput.value : "");
+}
+
+/**
+ * Filtra el catálogo de la tienda activa por texto (nombre o marca) y
+ * renderiza.
  * @param {string} query
  */
 function handleRealProductsSearch(query) {
+  var products = getActiveRealProducts();
+  if (verifiedCount) verifiedCount.textContent = products.length;
+
   var trimmed = query.trim();
 
   if (!trimmed) {
-    renderRealProducts(REAL_PRODUCTS.slice(0, MAX_RENDERED_PRODUCTS), "");
+    renderRealProducts(products.slice(0, MAX_RENDERED_PRODUCTS), "");
     return;
   }
 
   var needle = normalizeSearchText(trimmed);
 
-  var matches = REAL_PRODUCTS.filter(function (p) {
+  var matches = products.filter(function (p) {
     var haystack = normalizeSearchText((p.name || "") + " " + (p.brand || ""));
     return haystack.indexOf(needle) !== -1;
   });

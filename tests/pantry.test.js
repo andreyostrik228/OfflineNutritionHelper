@@ -970,6 +970,20 @@ function run(t) {
     assert.strictEqual(result.entry.purchase.done, false);
   });
 
+  t.test("saveNoCookPlanForToday(slots, storeId) guarda entry.store (2026-08-24, selector de tienda)", function () {
+    var s = freshPantrySandbox();
+    var slots = fakeNoCookSlots({ breakfast: [fakeProduct("p1", "Yogur", 1, 0.5)] });
+    var result = s.saveNoCookPlanForToday(slots, "alcampo");
+    assert.strictEqual(result.entry.store, "alcampo");
+  });
+
+  t.test("saveNoCookPlanForToday() sin storeId deja entry.store en null, nunca undefined ni inventado", function () {
+    var s = freshPantrySandbox();
+    var slots = fakeNoCookSlots({ breakfast: [fakeProduct("p1", "Yogur", 1, 0.5)] });
+    var result = s.saveNoCookPlanForToday(slots);
+    assert.strictEqual(result.entry.store, null);
+  });
+
   t.test("saveNoCookPlanForToday() llamado dos veces seguidas sin comprar/consumir actualiza el MISMO borrador (UPSERT), no crea una entrada nueva", function () {
     var s = freshPantrySandbox();
     var first = s.saveNoCookPlanForToday(fakeNoCookSlots({ breakfast: [fakeProduct("p1", "Yogur", 1, 0.5)] }));

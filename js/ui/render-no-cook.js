@@ -15,7 +15,7 @@
  *
  * Expone (globales):
  *   initNoCookRefs(refs)
- *   runNoCookGenerator()  – genera un plan nuevo y lo pinta
+ *   runNoCookGenerator(storeId)  – genera un plan nuevo y lo pinta
  * ─────────────────────────────────────────────────────────────────────────
  */
 
@@ -27,6 +27,12 @@ var noCookResults, noCookCount, noCookStatus;
 // en app.js (ahí es donde se llama a generateDietPlan()) mientras que
 // aquí es este módulo el que llama a generateNoCookPlan().
 var lastNoCookSlots = null;
+
+// Tienda del último plan generado (2026-08-24, selector de tienda) --
+// mismo motivo que lastNoCookSlots: app.js necesita saber con qué
+// tienda se generó para guardar la entrada con el store correcto (ver
+// saveNoCookPlanForToday, pantry.js).
+var lastNoCookStore = null;
 
 var LEVEL_LABEL = {
   0: "Listo para comer",
@@ -51,11 +57,15 @@ function initNoCookRefs(refs) {
 /**
  * Genera un plan "sin cocinar" nuevo y lo pinta. Pensado para colgarse
  * directamente del listener del botón "Sin cocinar".
+ * @param {string} [storeId] - tienda activa (2026-08-24, selector de
+ *   tienda) -- por defecto DEFAULT_STORE_ID dentro de
+ *   generateNoCookPlan()/getNoCookEligiblePool() si se omite.
  */
-function runNoCookGenerator() {
+function runNoCookGenerator(storeId) {
   if (!noCookResults || typeof generateNoCookPlan !== "function") return;
 
-  var plan = generateNoCookPlan();
+  var plan = generateNoCookPlan(storeId);
+  lastNoCookStore = storeId || null;
 
   // Mismo cálculo de horario que el plan normal (js/core/meal-schedule.js)
   // — reutilizado, no reimplementado. Aislado con su propio try/catch (en

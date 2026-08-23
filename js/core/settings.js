@@ -37,7 +37,7 @@ var SETTINGS_STORAGE_KEY = "nutritionPlanner.settings.v1";
 var _settingsMemoryState = null;
 
 var SETTINGS_NUMERIC_FIELDS = ["age", "weight", "height", "activity", "workouts", "budgetCustom", "cookTime"];
-var SETTINGS_STRING_FIELDS  = ["sex", "goal", "budgetMode", "taste", "wakeTime", "sleepTime"];
+var SETTINGS_STRING_FIELDS  = ["sex", "goal", "budgetMode", "taste", "wakeTime", "sleepTime", "store"];
 
 /**
  * Sanea un objeto de settings campo por campo -- nunca lanza, nunca deja

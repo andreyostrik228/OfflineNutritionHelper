@@ -23,6 +23,11 @@
  *
  * NO regenerar a mano -- re-ejecutar el script de export si el catálogo
  * Python cambia.
+ *
+ * Se registra en REAL_PRODUCTS_CATALOGS.mercadona (2026-08-24, selector
+ * de tienda) -- mismo patrón que PRICE_CATALOGS, ver
+ * js/data/real-products-alcampo.js/-carrefour.js para las otras
+ * tiendas y js/core/pricing.js::getRealProductsForStore().
  * -----------------------------------------------------------------------
  */
 
@@ -52639,3 +52644,6 @@ var REAL_PRODUCTS = [
   "sizeUnit": "kg"
  }
 ];
+
+var REAL_PRODUCTS_CATALOGS = (typeof REAL_PRODUCTS_CATALOGS === "undefined") ? {} : REAL_PRODUCTS_CATALOGS;
+REAL_PRODUCTS_CATALOGS.mercadona = REAL_PRODUCTS;
