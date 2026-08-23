@@ -4902,5 +4902,9 @@ pasada de simplificación visual (cabecera compacta, despensa como
 plan" al final) — puramente presentación, ver "Resumen de la sesión
 2026-08-23b" y la sección dedicada arriba para el detalle completo; 281
 tests, 0 fallidos, verificado en vivo (desktop y móvil 375px, cero
-errores de consola). Verificar con `git log -1` antes de asumir cuál es
-el HEAD real — esto es una foto fija, no una garantía.
+errores de consola). `085c44a` verificado sirviendo en producción
+(`https://227596a3.offline-nutrition-helper.pages.dev`, y confirmado en
+`offline-nutrition-helper.pages.dev` tras el deploy) con comprobación en
+vivo (no solo el push) de que `#despensaBtn`/`#dateStrip` existen y
+`#fillExampleBtn` ya no. Verificar con `git log -1` antes de asumir cuál
+es el HEAD real — esto es una foto fija, no una garantía.
