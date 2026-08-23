@@ -533,11 +533,23 @@ function renderMealChips(entry) {
     var timeBadge = typeof meal.time === "string"
       ? '<span class="pantry-meal-chip__time">' + escapeHtml(meal.time) + '</span>'
       : '';
-    return (
+    var chip = (
       '<button type="button" class="pantry-meal-chip' + cookedClass + '" data-action="toggle-meal-cooked" data-id="' + escapeHtml(entry.id) + '" data-meal-key="' + escapeHtml(meal.key) + '" title="' + escapeHtml(meal.label) + '">' +
         timeBadge + (meal.cooked ? "&#10003; " : "") + escapeHtml(meal.label) +
       '</button>'
     );
+
+    // "Cambiar este plato" (per-meal editing, 2026-08-20g) -- solo si la
+    // comida no está ya cocinada Y la entry se guardó con los datos que
+    // regenerateSingleMeal() necesita (entry.budget + meal.total);
+    // entradas guardadas ANTES de esta sesión no los tienen, y ocultar el
+    // botón es preferible a mostrarlo y que falle -- ver cabecera de
+    // regenerateSingleMeal() en plan-generator.js.
+    var swapBtn = (!meal.cooked && typeof entry.budget === "number" && meal.total)
+      ? '<button type="button" class="pantry-link-btn" data-action="regenerate-single-meal" data-id="' + escapeHtml(entry.id) + '" data-meal-key="' + escapeHtml(meal.key) + '">cambiar</button>'
+      : '';
+
+    return '<span class="pantry-meal-chip-group">' + chip + swapBtn + '</span>';
   }).join("");
 
   return '<div class="pantry-meal-chips"><span class="pantry-meal-chips__label">Comidas</span>' + chips + '</div>';
@@ -777,6 +789,41 @@ function handleEntryClick(event) {
       var alreadyCooked = cookChip.classList.contains("pantry-meal-chip--cooked");
 
       markMealCooked(id, mealKey, !alreadyCooked);
+      renderPantryPanel();
+      pantryOnChange();
+      return;
+    }
+
+    // "Cambiar este plato" (per-meal editing, 2026-08-20g) -- re-elige UN
+    // plato para esta toma (regenerateSingleMeal, plan-generator.js) sin
+    // tocar las otras 4, y lo aplica sobre la entry ya guardada
+    // (replaceSingleMealForEntry, pantry.js). El único error realista
+    // desde la UI (el botón ya está oculto si la comida está cocinada o
+    // si a la entry le faltan los datos que esto necesita, ver
+    // renderMealChips) es no_alternative_found -- ni relajando tiempo/
+    // sabor al máximo cabe nada en lo que queda de presupuesto del día;
+    // se muestra en el propio botón en vez de fallar en silencio.
+    var regenBtn = event.target.closest('button[data-action="regenerate-single-meal"]');
+    if (regenBtn) {
+      var regenEntryId = regenBtn.getAttribute("data-id");
+      var regenMealKey = regenBtn.getAttribute("data-meal-key");
+      var regenEntry = (typeof getPantryHistory === "function")
+        ? getPantryHistory().find(function (e) { return e.id === regenEntryId; })
+        : null;
+      if (!regenEntry) return;
+
+      var pantryStateForRegen = (typeof getPantryState === "function") ? getPantryState() : null;
+      var regen = (typeof regenerateSingleMeal === "function")
+        ? regenerateSingleMeal(regenEntry, regenMealKey, pantryStateForRegen)
+        : { error: "not_available" };
+
+      if (!regen || regen.error) {
+        regenBtn.textContent = "sin alternativa dentro del presupuesto";
+        regenBtn.disabled = true;
+        return;
+      }
+
+      replaceSingleMealForEntry(regenEntryId, regenMealKey, regen.meal);
       renderPantryPanel();
       pantryOnChange();
       return;

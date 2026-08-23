@@ -185,6 +185,10 @@
  *     (o 'unavailable' únicamente ante un error técnico inesperado)
  *     report.targetBudget = objetivo interno con reserva (informativo/
  *       depuración — nunca es lo que se compara contra purchaseCost)
+ *   regenerateSingleMeal(entry, mealKey, pantryState) → { meal, tier } |
+ *     { error } — per-meal editing (2026-08-20g), ver esa sección más
+ *     abajo. Re-elige UN plato para una toma de un plan de PLATO ya
+ *     confirmado, sin regenerar las otras 4.
  * ─────────────────────────────────────────────────────────────────────────
  */
 
@@ -880,4 +884,105 @@ function scaleItemUp(item, addGrams) {
   item.carbs   = round1(item.carbs   * factor);
   item.fat     = round1(item.fat     * factor);
   item.cost    = round2(item.cost    * factor);
+}
+
+// ── Per-meal editing (2026-08-20g) ─────────────────────────────────────────
+
+/**
+ * Re-elige UN plato para UNA toma concreta de un plan de PLATO ya
+ * CONFIRMADO (entry de pantry.js, no un plan recién generado) — "cambiar
+ * este plato" sin regenerar los otros 4. A diferencia de
+ * generateDietPlanTiered()/attemptPlanAtTier() (que construyen las 5
+ * tomas juntas, en orden, acumulando estado compartido conforme avanzan),
+ * esto opera sobre UNA sola toma dentro de un día que ya existe y cuyas
+ * otras 4 tomas son un HECHO, no una estimación futura:
+ *
+ *   - target: los macros que la toma reemplazada YA tenía
+ *     (oldMeal.total) — no se re-deriva del perfil calórico original (no
+ *     se persiste con la entry), así que "cambiar este plato" significa
+ *     "un plato distinto con un papel nutricional similar al que ya
+ *     cumplía esta toma", no "recalcular desde cero contra el perfil".
+ *   - mealCap: el presupuesto REAL que queda hoy
+ *     (entry.budget − coste de compra real de las otras 4 tomas, ya
+ *     fijas, vía computeDayPurchaseCost) — más preciso que la reserva
+ *     estimada de attemptPlanAtTier durante la generación original,
+ *     porque aquí las otras tomas ya no son mínimos futuros, son un
+ *     coste conocido.
+ *   - targetSpend: cuota orientativa de ESTA categoría sobre
+ *     entry.budget (mismo ratio que MEAL_DEFS usa siempre) — deliberadamente
+ *     MENOR que mealCap cuando sobra presupuesto, para que
+ *     isBudgetTight() (dish-selector.js) no fuerce el modo "solo
+ *     proteína/€" en cuanto haya margen real.
+ *   - committedGrams/usedState: reconstruidos de las OTRAS 4 tomas
+ *     (incluyendo la propia toma que se va a reemplazar en usedState, no
+ *     en committedGrams — así diversityScore la penaliza sin excluirla
+ *     por completo, mismo criterio de "reroll" que el resto del motor;
+ *     nunca hay garantía absoluta de plato distinto, igual que
+ *     "Generar plan" tampoco la da).
+ *   - tier: prueba 0..MAX_RELAXATION_TIER igual que attemptPlanAtTier,
+ *     hasta encontrar un candidato o agotar la escalera.
+ *
+ * Requiere que la entry se haya guardado con dayOptions (savePlanForToday/
+ * replacePendingMealsForToday, 2026-08-20g) y que buildMealFromDish()
+ * hubiera poblado dishName/mainProt/taste/total en su momento — entradas
+ * más antiguas simplemente no tienen estos campos; el llamador
+ * (render-pantry.js) comprueba esto ANTES de ofrecer la acción, no aquí.
+ *
+ * @param {object} entry - entry de pantryHistory, type "dish" (nunca "nocook")
+ * @param {string} mealKey - "breakfast"|"lunch"|"dinner"|"snack"|"snack2"
+ * @param {object|null} pantryState - snapshot de getPantryState(), o null
+ * @returns {{ meal:object, tier:number }|{ error:string }}
+ */
+function regenerateSingleMeal(entry, mealKey, pantryState) {
+  var def = MEAL_DEFS.find(function (d) { return d.key === mealKey; });
+  if (!def) return { error: "unknown_meal_key" };
+
+  var oldMeal = (entry.meals || []).find(function (m) { return m.key === mealKey; });
+  if (!oldMeal) return { error: "meal_not_found" };
+  if (oldMeal.cooked) return { error: "meal_already_cooked" };
+  if (!oldMeal.total || typeof entry.budget !== "number") return { error: "missing_data" };
+
+  var otherMeals = entry.meals.filter(function (m) { return m.key !== mealKey; });
+  var store = entry.store || DEFAULT_STORE_ID;
+
+  // usedState incluye las 5 tomas (la vieja incluida, ver cabecera) —
+  // entries guardadas ANTES de esta sesión no tienen dishName/mainProt/
+  // taste, se ignoran en silencio (mismo criterio que el resto del motor
+  // ante datos ausentes, nunca "undefined" contaminando la diversidad).
+  var usedState = { usedNames: [], usedProts: [], usedTastes: [] };
+  entry.meals.forEach(function (m) {
+    if (typeof m.dishName === "string") usedState.usedNames.push(m.dishName);
+    if (typeof m.mainProt === "string") usedState.usedProts.push(m.mainProt);
+    if (typeof m.taste === "string")    usedState.usedTastes.push(m.taste);
+  });
+
+  // committedGrams SOLO de las otras 4 (ya fijas) — la toma que se va a
+  // reemplazar no debe "reservarse" a sí misma.
+  var committedGrams = {};
+  var otherMealsForCost = otherMeals.map(function (m) {
+    var items = (m.items || []).map(function (it) { return { name: it.name, grams: it.requiredGrams }; });
+    return { items: items };
+  });
+  otherMealsForCost.forEach(function (m) { addItemsToPurchaseState(committedGrams, m.items); });
+
+  var otherCost = computeDayPurchaseCost(otherMealsForCost, store, pantryState).purchaseCost;
+  var mealCap = Math.max(0, round2(entry.budget - otherCost));
+  var targetSpend = round2(entry.budget * def.ratio);
+
+  var target = { kcal: oldMeal.total.kcal, protein: oldMeal.total.protein, carbs: oldMeal.total.carbs, fat: oldMeal.total.fat };
+  var data = {
+    cookTime: typeof entry.cookTime === "number" ? entry.cookTime : 999,
+    taste:    typeof entry.taste === "string" ? entry.taste : "mixed",
+    store:    store
+  };
+
+  for (var tier = 0; tier <= MAX_RELAXATION_TIER; tier++) {
+    var pick = pickDish(def.category, data, usedState, tier, mealCap, target, store, targetSpend, committedGrams, pantryState);
+    if (pick.dish) {
+      var meal = buildMealFromDish(pick.dish, def.key, def.label, target, store, pick.scaleFactor);
+      return { meal: meal, tier: tier };
+    }
+  }
+
+  return { error: "no_alternative_found" };
 }

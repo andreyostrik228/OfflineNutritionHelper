@@ -118,6 +118,9 @@
  *   aggregatePlanMealItems(meals) → [{name, requiredGrams}]
  *   markPurchaseDone(entryId, excludedNames?, storeId?) → { saved, historySaved, run } | null
  *   markMealCooked(entryId, mealKey, cooked) → { saved, historySaved, entry, meal } | null
+ *   replaceSingleMealForEntry(entryId, mealKey, newMeal) → { saved, historySaved, entry, meal } | null
+ *     (2026-08-20g, per-meal editing — aplica el resultado de
+ *     regenerateSingleMeal(), plan-generator.js)
  *   getPantryHistory() / appendPantryHistory(entry)
  *
  * ── "Sin cocinar" (2026-08-20f, known issue #9) ──────────────────────────
@@ -561,6 +564,9 @@ function savePlanForToday(meals, storeId, dayOptions) {
     draft.createdAt = nowISO;
     draft.store = storeId || null;
     draft.meals = newMeals;
+    if (budget !== null)   draft.budget = budget;
+    if (cookTime !== null) draft.cookTime = cookTime;
+    if (taste !== null)    draft.taste = taste;
     var historySavedReplace = savePantryHistory(history);
     return { entry: draft, historySaved: historySavedReplace, replaced: true };
   }
@@ -571,6 +577,12 @@ function savePlanForToday(meals, storeId, dayOptions) {
     planDate: todayKey,
     store: storeId || null,
     meals: newMeals,
+    // budget/cookTime/taste (2026-08-20g, per-meal editing) -- solo
+    // presentes si el llamador pasó dayOptions; ver regenerateSingleMeal()
+    // en plan-generator.js, que los necesita para re-elegir UNA toma.
+    budget: budget,
+    cookTime: cookTime,
+    taste: taste,
     purchase: { done: false, runs: [] }
   };
 
@@ -610,12 +622,14 @@ function savePlanForToday(meals, storeId, dayOptions) {
  * @param {string} entryId
  * @param {object[]} newMeals - result.meals de generateDietPlan(), tal cual
  * @param {string} [storeId]
+ * @param {object} [dayOptions] - { budget, cookTime, taste } (2026-08-20g,
+ *   per-meal editing) -- mismo criterio opcional que savePlanForToday().
  * @returns {{
  *   entry:object, historySaved:boolean,
  *   replacedMealKeys:string[], keptMealKeys:string[]
  * }|null} - null si entryId no existe
  */
-function replacePendingMealsForToday(entryId, newMeals, storeId) {
+function replacePendingMealsForToday(entryId, newMeals, storeId, dayOptions) {
   var history = getPantryHistory();
   var entry = history.find(function (e) { return e.id === entryId; });
   if (!entry) return null;
@@ -640,6 +654,10 @@ function replacePendingMealsForToday(entryId, newMeals, storeId) {
       items: (meal.items || []).map(function (item) {
         return { name: item.name, requiredGrams: item.grams };
       }),
+      dishName: typeof meal.dishName === "string" ? meal.dishName : null,
+      mainProt: typeof meal.mainProt === "string" ? meal.mainProt : null,
+      taste:    typeof meal.taste === "string" ? meal.taste : null,
+      total:    meal.total ? { kcal: meal.total.kcal, protein: meal.total.protein, carbs: meal.total.carbs, fat: meal.total.fat } : null,
       cooked: false,
       cookedAt: null,
       consumed: null
@@ -649,6 +667,9 @@ function replacePendingMealsForToday(entryId, newMeals, storeId) {
   entry.createdAt = new Date().toISOString();
   entry.store = storeId || entry.store;
   entry.meals = mergedMeals;
+  if (dayOptions && typeof dayOptions.budget === "number")   entry.budget = dayOptions.budget;
+  if (dayOptions && typeof dayOptions.cookTime === "number") entry.cookTime = dayOptions.cookTime;
+  if (dayOptions && typeof dayOptions.taste === "string")    entry.taste = dayOptions.taste;
   if (replacedMealKeys.length > 0) {
     entry.purchase.done = false;
   }
@@ -829,6 +850,57 @@ function markMealCooked(entryId, mealKey, cooked) {
   var historySaved = savePantryHistory(history);
 
   return { saved: saved, historySaved: historySaved, entry: entry, meal: meal };
+}
+
+// ── Per-meal editing (2026-08-20g) ─────────────────────────────────────────
+
+/**
+ * Aplica el resultado de regenerateSingleMeal() (plan-generator.js) a una
+ * entry ya guardada — "cambiar este plato" sin regenerar los otros 4.
+ * Sustituye SOLO esa toma; las otras 4 quedan intactas. Nunca sobre una
+ * comida ya cocinada — pickDish() ya evita esto dentro de
+ * regenerateSingleMeal(), pero se comprueba aquí también por si esta
+ * función se llama alguna vez desde otro sitio.
+ *
+ * purchase.done se resetea a false (mismo motivo que
+ * replacePendingMealsForToday: los ingredientes cambiaron, "✓ Ya
+ * compraste esto" dejaría de ser cierto sin este reseteo).
+ *
+ * @param {string} entryId
+ * @param {string} mealKey
+ * @param {object} newMeal - el `meal` devuelto por regenerateSingleMeal()
+ * @returns {{ saved:boolean, historySaved:boolean, entry:object, meal:object }|null}
+ */
+function replaceSingleMealForEntry(entryId, mealKey, newMeal) {
+  var history = getPantryHistory();
+  var entry = history.find(function (e) { return e.id === entryId && e.type !== "nocook"; });
+  if (!entry) return null;
+
+  var index = (entry.meals || []).findIndex(function (m) { return m.key === mealKey; });
+  if (index === -1) return null;
+  if (entry.meals[index].cooked) return null;
+
+  var replacedMeal = {
+    key: mealKey,
+    label: newMeal.label,
+    time: entry.meals[index].time, // el horario de la toma no cambia por un swap
+    items: (newMeal.items || []).map(function (item) {
+      return { name: item.name, requiredGrams: item.grams };
+    }),
+    dishName: typeof newMeal.dishName === "string" ? newMeal.dishName : null,
+    mainProt: typeof newMeal.mainProt === "string" ? newMeal.mainProt : null,
+    taste:    typeof newMeal.taste === "string" ? newMeal.taste : null,
+    total:    newMeal.total ? { kcal: newMeal.total.kcal, protein: newMeal.total.protein, carbs: newMeal.total.carbs, fat: newMeal.total.fat } : null,
+    cooked: false,
+    cookedAt: null,
+    consumed: null
+  };
+
+  entry.meals[index] = replacedMeal;
+  entry.purchase.done = false;
+
+  var historySaved = savePantryHistory(history);
+  return { saved: true, historySaved: historySaved, entry: entry, meal: replacedMeal };
 }
 
 // ── Despensa "sin cocinar" — productos reales, no ingredientes ───────────

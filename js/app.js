@@ -172,6 +172,11 @@ document.addEventListener("DOMContentLoaded", function () {
   // historial persistido, resuelto por su propio entryId.
   var lastGeneratedMeals = null;
   var lastGeneratedStore = null;
+  // budget/cookTime/taste del `data` que generó el plan actual --
+  // per-meal editing (2026-08-20g) los necesita persistidos en la entry
+  // (ver savePlanForToday(), pantry.js) para poder re-elegir UNA sola
+  // toma más tarde respetando el mismo presupuesto/tiempo/sabor.
+  var lastGeneratedDayOptions = null;
 
   // Distinto de null SOLO entre "Cambiar el plan completo" (diálogo de
   // plan activo, ver "Gate en Generar plan..." en pantry.js) y la
@@ -241,6 +246,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // posee, "Resetear" solo limpia el formulario/plan en pantalla.
     lastGeneratedMeals = null;
     lastGeneratedStore = null;
+    lastGeneratedDayOptions = null;
     pendingReplaceEntryId = null;
     if (planSavedNoticeEl) {
       planSavedNoticeEl.hidden = true;
@@ -377,6 +383,7 @@ document.addEventListener("DOMContentLoaded", function () {
         // este plan concreto sin tener que regenerarlo.
         lastGeneratedMeals = result.meals;
         lastGeneratedStore = result.report && result.report.store;
+        lastGeneratedDayOptions = { budget: data.budget, cookTime: data.cookTime, taste: data.taste };
 
         // Guarda el perfil/formulario para la próxima visita (invitado:
         // este navegador; con sesión iniciada: también se empuja a la
@@ -650,11 +657,11 @@ document.addEventListener("DOMContentLoaded", function () {
       try {
         var result, mode;
         if (pendingReplaceEntryId && typeof replacePendingMealsForToday === "function") {
-          result = replacePendingMealsForToday(pendingReplaceEntryId, lastGeneratedMeals, lastGeneratedStore);
+          result = replacePendingMealsForToday(pendingReplaceEntryId, lastGeneratedMeals, lastGeneratedStore, lastGeneratedDayOptions);
           pendingReplaceEntryId = null;
           mode = "active-replaced";
         } else if (typeof savePlanForToday === "function") {
-          result = savePlanForToday(lastGeneratedMeals, lastGeneratedStore);
+          result = savePlanForToday(lastGeneratedMeals, lastGeneratedStore, lastGeneratedDayOptions);
           mode = result.replaced ? "draft-updated" : "created";
         }
         if (!result) return;

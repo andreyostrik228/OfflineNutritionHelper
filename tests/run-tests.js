@@ -66,6 +66,7 @@ var suites = [
   "budget-purchase.test",
   "purchase-economics.test",
   "ingredient-nutrition.test",
+  "per-meal-editing.test",
   "settings.test",
   "migration.test",
   "cloud-sync.test",

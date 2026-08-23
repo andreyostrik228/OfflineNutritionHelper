@@ -2,7 +2,22 @@
 
 ## Current status
 
-**Stage:** working prototype, updated 2026-08-20g — a real data-corruption
+**Stage:** working prototype, updated 2026-08-20h — per-meal editing
+shipped: "cambiar este plato" re-picks one meal in an already-confirmed
+plan without regenerating the other 4, using the same weighted-lottery
+selection as generation. Required extending saved entries to retain
+per-meal `dishName`/`mainProt`/`taste`/`total` and day-level `budget`/
+`cookTime`/`taste` (new optional parameter, backward compatible). Budget
+for the replacement is capped by the day's real remaining spend, computed
+from the other 4 meals' actual cost rather than a generation-time
+estimate. A real CSS overflow bug was found and fixed during live
+verification (same root-cause class as 2026-08-20b, one level higher in
+the DOM). 12 new tests. This closes the last item from the priority list
+that wasn't explicitly declined — only `dish-selector.js` weight tuning
+remains, and the user confirmed that's fine as-is. See `STATE.md`,
+"Per-meal editing: 'cambiar este plato' — 2026-08-20h".
+
+Previously, updated 2026-08-20g — a real data-corruption
 bug found while designing per-meal editing: `savePlanForToday()`'s UPSERT
 and `findTodayEntry()` didn't filter by `entry.type`, so a same-day
 no-cook draft could get silently mistaken for a dish-mode one and gain a

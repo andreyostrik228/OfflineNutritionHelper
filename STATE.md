@@ -161,6 +161,96 @@ fallidos. `js/core/`, `js/engine/*` (código), `js/data/
 ingredient-nutrition.js`, y el resto de la app — cero cambios; solo
 `js/data/dishes.js` (23 valores de `kcal`) y los golden-master.
 
+**Resumen de la sesión 2026-08-20h (per-meal editing: "cambiar este
+plato" sin regenerar los otros 4)**: la pieza que originó esta sesión —
+el usuario pidió "empezar con per-meal editing" de la lista de issues
+declinados/diferidos. Confirmado el alcance ANTES de escribir código
+(2 preguntas explícitas): solo el plan YA CONFIRMADO ("Tu plan", no el
+resultado recién generado sin guardar), y un reroll de un solo clic
+(misma lotería ponderada que "Generar plan", sin selector de alternativas).
+Investigando el shape real de una entry guardada se encontraron DOS
+huecos de datos que había que cerrar primero: (1) el bug de corrupción
+cross-type de `savePlanForToday()`/`findTodayEntry()`, ver "Resumen de la
+sesión 2026-08-20g" arriba; (2) las entries guardadas no retenían
+`dishName`/`mainProt`/`taste`/`total` por comida ni `budget`/`cookTime`/
+`taste` del día — sin eso, no hay forma de reconstruir `usedState`
+(diversidad) ni un `target`/`mealCap` razonables para re-elegir una sola
+toma. `buildMealFromDish()` ahora también pone `dishName`/`taste` en el
+meal (mismo patrón que el fix de `mainProt` de known issue #5);
+`savePlanForToday()`/`replacePendingMealsForToday()` ganan un 3er
+parámetro OPCIONAL `dayOptions` (`{budget, cookTime, taste}`) — opcional
+a propósito, ningún llamador existente (ni los ~40 de los tests) necesitó
+cambiar.
+
+**La función nueva, `regenerateSingleMeal(entry, mealKey, pantryState)`**
+(`js/engine/plan-generator.js`) — NO reutiliza `attemptPlanAtTier()` (esa
+construye las 5 tomas juntas, acumulando estado secuencialmente; aquí las
+otras 4 ya son un HECHO, no una estimación futura). En su lugar: `target`
+= los macros que la toma reemplazada ya tenía (`oldMeal.total`, nunca se
+re-deriva del perfil calórico original porque no se persiste);
+`mealCap` = `entry.budget` menos el coste de compra REAL de las otras 4
+(vía `computeDayPurchaseCost`, más preciso que la reserva estimada que
+usa la generación original porque aquí no hay incertidumbre sobre tomas
+futuras); `targetSpend` = `entry.budget × def.ratio` (mismo ratio que
+`MEAL_DEFS` siempre usa, para que `isBudgetTight()` no fuerce el modo
+"solo proteína/€" en cuanto sobre presupuesto real); `usedState`
+reconstruido de las 5 tomas (la que se reemplaza incluida, así
+`diversityScore` la penaliza sin excluirla — mismo criterio de "reroll"
+que el resto del motor, nunca garantía absoluta de plato distinto);
+prueba tiers 0..MAX_RELAXATION_TIER igual que la generación original.
+`replaceSingleMealForEntry(entryId, mealKey, newMeal)` (`pantry.js`)
+aplica el resultado: sustituye SOLO esa toma, nunca una ya cocinada,
+resetea `purchase.done` (mismo motivo que `replacePendingMealsForToday`:
+ingredientes distintos), conserva `meal.time` (el horario no cambia por
+un swap).
+
+**UI**: botón "cambiar" (`.pantry-link-btn`) junto a cada chip de comida
+no cocinada, envuelto con él en un `.pantry-meal-chip-group` nuevo (única
+CSS nueva de verdad) para que el par no se separe en líneas distintas por
+el `flex-wrap` del contenedor. Oculto por completo si a la entry le
+faltan los datos nuevos (entries guardadas antes de esta sesión) — nunca
+se muestra un botón que fallaría. Error realista (`no_alternative_found`,
+ni relajando al máximo cabe nada en el presupuesto restante) se muestra
+en el propio botón, nunca falla en silencio.
+
+**Bug real encontrado y corregido DURANTE la verificación en vivo, no
+teórico**: el chip truncado con el nombre del plato NUEVO (tras un swap a
+un plato con nombre más largo) volvió a forzar el viewport móvil más
+ancho de 375px — pero NO por el propio `.pantry-meal-chip` (su fix de
+2026-08-20b seguía intacto y funcionando, verificado directamente:
+`chipWidth` correcto, truncado con elipsis) sino por el `.pantry-meal-chip-group`
+NUEVO que lo envuelve: sin su propio `max-width:100%`, el ancho
+"preferido" del grupo (el que `.pantry-meal-chips` usa para decidir
+cuánto puede encoger cada fila) seguía reflejando el ancho SIN truncar
+del chip -- el `max-width:100%` del chip no cuenta para el cálculo de
+tamaño intrínseco de su contenedor, exactamente el mismo tipo de
+problema de origen que 2026-08-20b, un nivel más arriba en el árbol de
+layout. Corregido añadiendo el mismo `max-width:100%` al grupo. Nota de
+metodología real: la primera medición tras aplicar el fix vía inyección
+de `<style>` en vivo seguía mostrando 398px -- resultó ser viewport
+"pegado" de ANTES del fix (este entorno de pruebas no recalcula el ancho
+del viewport móvil solo con una mutación de estilo en caliente); una
+recarga real de la página confirmó 375px correctamente. No asumir que un
+resultado sigue siendo válido tras cambiar CSS sin recargar de verdad.
+
+**Tests**: 12 nuevos en `tests/per-meal-editing.test.js` (archivo nuevo
+-- coste real del día tras el swap dentro de presupuesto, las otras 4
+tomas nunca se tocan, los 4 tipos de error, aplicar sobre una entry
+"nocook" devuelve null -- mismo tipo de regresión que 2026-08-20g,
+verificado explícitamente aquí también, varios swaps seguidos sobre el
+mismo plan). 279 tests, 0 fallidos. Verificado en vivo end-to-end con
+clics REALES (no solo llamadas directas a función): confirmar plan →
+"cambiar" en una toma → plato distinto aplicado, `purchase.done`
+reseteado, las otras 4 intactas, 0 errores de consola, 0px de overflow
+tras el fix del `.pantry-meal-chip-group`, en mobile 375px real Y
+desktop. **Hallazgo honesto, no oculto**: rerolls repetidos sobre la
+MISMA toma concentran mucho en el candidato de mayor score (8/10 en una
+prueba de 10 rerolls seguidos) -- mismo mecanismo de lotería ponderada ya
+aceptado para el resto del motor (`pickWeightedByScore`), solo que aquí
+se vuelve más visible al repetir sobre un único hueco fijo; no se ha
+tocado ese mecanismo, ver "Resumen de la sesión 2026-08-20e" (weight
+tuning) para el mismo criterio de no retocar sin señal real nueva.
+
 **Resumen de la sesión 2026-08-20g (bug real de corrupción de datos entre
 planes de plato y "sin cocinar", encontrado durante el trabajo de
 per-meal editing)**: sesión nueva, el usuario pidió empezar con "per-meal
@@ -3971,6 +4061,43 @@ alcance "solo ciclo de vida"), `js/core/cloud-sync.js`,
 `js/core/migration.js`, `supabase/schema.sql`, `assets/css/style.css`
 (cero CSS nuevo), toda la lógica de despensa de PLATO.
 
+## Per-meal editing: "cambiar este plato" — 2026-08-20h
+
+Ver "Resumen de la sesión 2026-08-20h" arriba para el razonamiento
+completo (por qué `target`/`mealCap` se derivan como se derivan, por qué
+`usedState` incluye la toma vieja, el bug real de overflow encontrado y
+corregido en `.pantry-meal-chip-group`). Esta sección solo fija lo que NO
+hay que romper y la lista de archivos.
+
+**Qué no romper**: `regenerateSingleMeal()`/`replaceSingleMealForEntry()`
+NUNCA actúan sobre una comida ya cocinada (dos comprobaciones
+independientes, una en cada función — no confiar en que la UI ya lo evita
+antes de llamar); `replaceSingleMealForEntry()` filtra
+`e.type !== "nocook"` explícitamente (mismo motivo que el bug de
+2026-08-20g — nunca asumir que un entryId es de plato solo porque el
+llamador "debería" solo pasar de esos); `savePlanForToday()`/
+`replacePendingMealsForToday()`'s `dayOptions` es y debe seguir siendo
+OPCIONAL — un test roto en cualquiera de los ~40 llamadores existentes
+sin `dayOptions` es la señal de que se volvió obligatorio por error;
+entries guardadas sin `entry.budget`/`meal.total` (de antes de esta
+sesión) deben seguir funcionando con el resto de la despensa exactamente
+igual que siempre — per-meal editing es la ÚNICA funcionalidad que las
+trata como "sin soporte" (oculta el botón), nunca debe convertirse en un
+requisito para el resto del ciclo de vida.
+
+**Archivos modificados**: `js/engine/dish-selector.js`
+(`buildMealFromDish` +dishName/+taste), `js/engine/plan-generator.js`
+(+`regenerateSingleMeal`), `js/core/pantry.js`
+(+`replaceSingleMealForEntry`, `dayOptions` opcional en
+`savePlanForToday`/`replacePendingMealsForToday`, +persistencia de
+`dishName`/`mainProt`/`taste`/`total`/`budget`/`cookTime`/`taste`),
+`js/ui/render-pantry.js` (botón "cambiar" + handler), `js/app.js`
+(`lastGeneratedDayOptions`), `assets/css/style.css`
+(`.pantry-meal-chip-group`), `tests/per-meal-editing.test.js` (nuevo, 12
+tests). **No tocados**: `js/engine/no-cook-generator.js`,
+`js/core/cloud-sync.js`/`migration.js` (las entries ganan campos nuevos,
+pero siguen sincronizando como blobs opacos, sin cambios necesarios ahí).
+
 ## Session handoff (2026-08-19)
 
 Escrito para que la siguiente sesión/chat pueda continuar sin haber visto
@@ -4138,16 +4265,18 @@ en Generar plan + reemplazo explícito del plan activo — `index.html`,
 0f6c658), `061ea4a` (2026-08-20b, tramo n: fix de overflow
 horizontal en `.pantry-meal-chip` — `assets/css/style.css`,
 `js/ui/render-pantry.js`, `STATE.md`, `PROJECT.md`, `ROADMAP.md`),
-`bf70868` (docs: registrar hash y estado de deploy de 061ea4a), y varios
-tramos más de esta misma sesión (o: known issue #5 mainProt; packaging.js
-known issue #7; known issue #1 Atwater/kcal; y **`1116ff9`**, el más
-reciente al escribir esto: known issue #9, despensa conectada al modo
-"sin cocinar") — cada uno con su propio commit + su propio "docs: record
-hash" de seguimiento, todos comiteados y desplegados individualmente. A
-partir de aquí este handoff deja de repetir el hash exacto de cada tramo
-pequeño (queda documentado en su propia sección dedicada más arriba,
-buscar por fecha) — **verificar siempre con `git log -1`/`git status -sb`
-antes de asumir que `1116ff9` sigue siendo el HEAD real**. **Pusheado a `origin/main`**
+`bf70868` (docs: registrar hash y estado de deploy de 061ea4a), varios
+tramos más de esta misma sesión y de una sesión posterior (o: known issue
+#5 mainProt; packaging.js known issue #7; known issue #1 Atwater/kcal;
+`1116ff9`: known issue #9, despensa conectada al modo "sin cocinar";
+`092df75`: bug real de corrupción cross-type, tramo g); y la sesión más
+reciente (tramo h: per-meal editing) — cada uno con su propio commit +
+su propio "docs: record hash" de seguimiento, todos comiteados y
+desplegados individualmente. A partir de aquí este handoff deja de
+repetir el hash exacto de cada tramo pequeño (queda documentado en su
+propia sección dedicada más arriba, buscar por fecha) — **verificar
+siempre con `git log -1`/`git status -sb` antes de asumir cuál es el HEAD
+real**. **Pusheado a `origin/main`**
 (`github.com/andreyostrik228/OfflineNutritionHelper`). Sigue habiendo un
 archivo suelto sin relación, `PANTRY_HISTORY_MAX_ENTRIES)` (0 bytes, sin
 trackear, en la raíz, deliberadamente NUNCA comiteado) — mismo tipo de
@@ -4442,16 +4571,13 @@ mismo que el remanente de `nutrition.js` (macros) — dos conceptos de
 fusionarlos.
 
 **Prioridad actual**: ninguna acción pendiente de commit/push/deploy —
-todos los tramos hasta el (n)/(o) de 2026-08-20f inclusive están
+todos los tramos hasta el (h) de 2026-08-20h inclusive están
 comiteados, pusheados a `origin/main`, y desplegados en producción (ver
 "Commit/branch/deploy actuales" arriba para el hash exacto — verificar
 con `git log -1` antes de asumir que sigue siendo así, este handoff no
-se reescribe entero en cada tramo pequeño). Opcional, no bloqueante: per-meal editing ("cambiar solo el
-desayuno" desde el diálogo de plan activo) quedó deliberadamente fuera de
-alcance del tramo (m) — el usuario eligió empezar por el gate +
-reemplazo del plan completo primero, ver "Gate en Generar plan..." en la
-cabecera de `pantry.js` para el razonamiento; retomar esa conversación
-antes de construirlo, no asumir el diseño. **Preguntado explícitamente en
+se reescribe entero en cada tramo pequeño). ~~Opcional, no bloqueante:
+per-meal editing~~ **CONSTRUIDO 2026-08-20h** — ver "Per-meal editing:
+'cambiar este plato' — 2026-08-20h" arriba. **Preguntado explícitamente en
 2026-08-20f y declinado por el usuario, no un olvido**: un ajuste fino
 adicional de los pesos de `scoreDishForSelection`
 (macroFit×20/purchasePpeBucket×40 en modo "tight") — el usuario confirmó
@@ -4485,15 +4611,12 @@ la sesión, no un olvido**: no se fusionaron las tarjetas de comida
 (el "Modelo B" más agresivo del análisis) — se prefirió el Modelo A
 (reubicación, menor riesgo) tras sopesarlo explícitamente con el
 usuario; si en el futuro se quiere ir más lejos, retomar esa
-conversación antes de tocar `render.js`. **Fuera de alcance deliberado
-de 2026-08-19, reconfirmado explícitamente en 2026-08-20f**: editar un
-plato individual del plan sin regenerar los 5 (el usuario lo mencionó
-como parte del flujo ideal) — requeriría una función nueva en
-`dish-selector.js` capaz de re-elegir un solo hueco respetando
-presupuesto/25%/macros ya fijados por el resto del día; preguntado
-explícitamente en 2026-08-20f si se quería empezar esa conversación de
-diseño ahora, el usuario prefirió dejarlo diferido — no es un olvido,
-retomar esa conversación antes de construirlo si se pide en el futuro.
+conversación antes de tocar `render.js`. ~~Fuera de alcance deliberado
+de 2026-08-19: editar un plato individual del plan sin regenerar los 5~~
+**CONSTRUIDO 2026-08-20h** — botón "cambiar" por comida en "Tu plan",
+alcance confirmado con el usuario primero (solo plan ya confirmado, un
+reroll de un solo clic) — ver "Per-meal editing: 'cambiar este plato' —
+2026-08-20h" arriba para el diseño completo.
 
 **Qué no romper**: `pantryHistory` es un array COMPARTIDO entre entradas
 de plato y "sin cocinar" (`entry.type==="nocook"`) desde 2026-08-20f —
@@ -4610,18 +4733,17 @@ Lee `PROJECT.md` y `ROADMAP.md` además de este archivo. Para el sistema
 completo (con el pipeline Python), lee también `PythonProject/docs/
 architecture.md` y `PythonProject/docs/data_flow.md`. No asumas que el
 estado descrito aquí sigue siendo exacto sin verificar contra el código —
-esto es una foto fija al final de la sesión 2026-08-20f (tramo más
-reciente: known issue #9, despensa conectada al modo "sin cocinar"),
-cierre de una pasada completa por la lista priorizada de issues abiertos
-que el usuario pidió arreglar uno a uno esta misma sesión (overflow
-mobile 2026-08-20b, known issue #5 2026-08-20c, known issue #7
-2026-08-20d, known issue #1 2026-08-20e, known issue #9 2026-08-20f — 5
-tramos, cada uno comiteado, pusheado y desplegado por separado, ver
-"Commit/branch/deploy actuales" arriba para el HEAD real). Los dos items
-restantes de la lista original (ajuste de pesos de `dish-selector.js` y
-per-meal editing) se preguntaron explícitamente y el usuario los
-declinó/difirió — no son trabajo pendiente por descuido, ver "Prioridad
-actual" arriba. `1116ff9` verificado sirviendo en producción
-(`offline-nutrition-helper.pages.dev`) — no asumas que sigue siendo el
-HEAD real sin comprobar `git log -1` primero, esto es una foto fija, no
-una garantía.
+esto es una foto fija al final de la sesión 2026-08-20h (tramo más
+reciente: per-meal editing, "cambiar este plato"), continuación de la
+pasada por la lista priorizada de issues abiertos que el usuario pidió
+arreglar uno a uno (overflow mobile 2026-08-20b, known issue #5
+2026-08-20c, known issue #7 2026-08-20d, known issue #1 2026-08-20e,
+known issue #9 2026-08-20f, bug de corrupción cross-type 2026-08-20g,
+per-meal editing 2026-08-20h — cada tramo comiteado, pusheado y
+desplegado por separado, ver "Commit/branch/deploy actuales" arriba para
+el HEAD real). El único item restante de la lista original (ajuste de
+pesos de `dish-selector.js`) se preguntó explícitamente y el usuario lo
+declinó — no es trabajo pendiente por descuido, ver "Prioridad actual"
+arriba. Verificar sirviendo en producción con `git log -1` antes de
+asumir que el HEAD descrito aquí sigue siendo exacto — esto es una foto
+fija, no una garantía.

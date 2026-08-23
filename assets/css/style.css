@@ -2306,6 +2306,23 @@ button:focus-visible {
   margin-right: 2px;
 }
 
+/* Agrupa el chip de una comida con su enlace "cambiar" (per-meal editing,
+   2026-08-20g) para que envuelvan como una sola unidad, nunca separados
+   en líneas distintas por el flex-wrap del contenedor padre. */
+.pantry-meal-chip-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  /* Sin esto, el ancho "preferido" del grupo (usado por .pantry-meal-chips
+     al calcular cuánto puede encoger cada fila) sigue reflejando el ancho
+     SIN truncar del texto del chip -- el max-width:100% del propio chip
+     no cuenta para el cálculo de tamaño intrínseco de ESTE contenedor,
+     mismo problema de origen que el fix de overflow de 2026-08-20b, un
+     nivel más arriba en el árbol. */
+  max-width: 100%;
+}
+
 .pantry-meal-chip {
   padding: 6px 12px;
   border-radius: 999px;

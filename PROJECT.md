@@ -565,6 +565,34 @@ passed even with the bug present (it only checked `slots[0].items[0].id`,
 never `.meals` absence) — assertions widened so this class of bug can't
 slip through silently again.
 
+**2026-08-20h — per-meal editing: "cambiar este plato" without
+regenerating the other 4**: the last deferred item from the priority
+list. Scope confirmed with the user first (only the already-confirmed
+plan, a one-click reroll using the same weighted lottery as generation).
+New `regenerateSingleMeal(entry, mealKey, pantryState)`
+(`plan-generator.js`) targets the macros the replaced meal already had
+(never re-derives the original day-level profile, which isn't
+persisted), caps spend at the day's real remaining budget (computed from
+the other 4 meals' actual cost, more precise than generation-time
+estimates since those meals are now a fact, not a forecast), and
+rebuilds diversity state from all 5 meals so the old dish is penalized
+but not hard-excluded — same "reroll" semantics as the rest of the
+engine. `replaceSingleMealForEntry()` (`pantry.js`) applies the result,
+refusing on an already-cooked meal and resetting `purchase.done`. Getting
+here required extending saved plan entries to retain `dishName`/
+`mainProt`/`taste`/`total` per meal and `budget`/`cookTime`/`taste` for
+the day — via a new optional 3rd parameter, backward compatible with
+every existing caller. A real CSS overflow bug was found and fixed
+during live verification (a new `.pantry-meal-chip-group` wrapper needed
+its own `max-width: 100%`, same root cause class as the 2026-08-20b fix,
+one level higher in the layout tree). 12 new tests
+(`tests/per-meal-editing.test.js`); verified live end-to-end with real
+clicks, zero console errors, zero overflow on mobile and desktop. Honest
+finding, not hidden: repeated rerolls on the same slot concentrate on
+the top-scoring candidate (8/10 in one 10-reroll test) — same weighted-
+lottery mechanism already accepted elsewhere in the engine, just more
+visible when repeating on one fixed slot.
+
 ## Product direction
 
 Evolve into a real personal nutrition assistant: nutrition + shopping +
