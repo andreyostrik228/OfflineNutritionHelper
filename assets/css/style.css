@@ -3027,6 +3027,15 @@ dialog.auth-dialog[open] {
 dialog.despensa-dialog {
   width: min(460px, 92vw);
   max-height: min(640px, 85vh);
+}
+
+/* `display:flex` SOLO con [open] -- un <dialog> cerrado se oculta vía el
+   estilo por defecto del navegador (`dialog:not([open]){display:none}`,
+   hoja de estilos de usuario), pero una regla de autor sin calificar
+   siempre le gana a esa hoja por origen, sin importar especificidad --
+   un `display:flex` suelto aquí (bug real 2026-08-23b) forzaba el diálogo
+   a renderizarse en el flujo normal de la página SIEMPRE, abierto o no. */
+dialog.despensa-dialog[open] {
   display: flex;
   flex-direction: column;
 }
