@@ -547,6 +547,24 @@ selection, and cloud sync for the product stock ledger (history entries
 still sync as always). Full write-up in `STATE.md`, "Despensa conectada
 al modo 'sin cocinar' — 2026-08-20f".
 
+**2026-08-20g — data-corruption bug fixed: `savePlanForToday()`/
+`findTodayEntry()` didn't filter by `entry.type`**: found while designing
+per-meal editing (which needs to inspect a saved entry's real shape).
+Since despensa "sin cocinar" (2026-08-20f) shares the `pantryHistory`
+array with dish-mode entries via `entry.type`, and
+`hasRealPantryAction()` always reads `entry.meals` (undefined on a
+"nocook" entry, so it always evaluates "no real action" for one),
+`savePlanForToday()`'s UPSERT could pick up a same-day "nocook" draft and
+overwrite its `store`/`createdAt` plus bolt on a spurious `.meals` array
+next to its real `.slots` — confirmed with a direct repro script, not
+just theorized. `findTodayEntry()` had the same gap, which could make the
+dish-only "Generar plan" gate react to an unrelated no-cook entry. Fixed
+by filtering `e.type !== "nocook"` in both. 4 new/strengthened tests in
+`tests/pantry.test.js`; the original isolation test from 2026-08-20f
+passed even with the bug present (it only checked `slots[0].items[0].id`,
+never `.meals` absence) — assertions widened so this class of bug can't
+slip through silently again.
+
 ## Product direction
 
 Evolve into a real personal nutrition assistant: nutrition + shopping +

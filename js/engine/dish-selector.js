@@ -808,6 +808,11 @@ function buildMealFromDish(dish, mealKey, mealLabel, target, storeId, forcedScal
     // real ya disponible aquí -- sigue existiendo un fallback por label
     // para entradas antiguas de despensa guardadas antes de este fix.
     mainProt: dish.mainProt,
+    // dishName/taste (per-meal editing, 2026-08-20g): necesarios para
+    // reconstruir usedState (diversidad) al re-elegir UNA sola toma de un
+    // plan ya guardado -- ver regenerateSingleMeal() en plan-generator.js.
+    dishName: dish.name,
+    taste:    dish.taste,
     items:    []
   };
 

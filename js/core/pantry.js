@@ -454,7 +454,16 @@ function isEntryFullyCooked(entry) {
 function findTodayEntry() {
   var todayKey = formatLocalDateKey(new Date());
   var history = getPantryHistory();
-  return history.find(function (e) { return getEntryPlanDate(e) === todayKey; }) || null;
+  // e.type !== "nocook" (2026-08-20g, bug real encontrado durante el
+  // trabajo de per-meal editing): esta función alimenta el gate de
+  // "Generar plan" (js/app.js), que solo tiene sentido para planes de
+  // PLATO (el diálogo que abre habla de "comidas"/"platos", nunca de
+  // productos) -- sin este filtro, si la entrada más reciente de hoy
+  // fuera "sin cocinar", el gate la trataba como un plan de plato activo
+  // (isEntryFullyCooked() lee entry.meals, undefined en una "nocook" →
+  // siempre "no completado"), pudiendo interrumpir "Generar plan" por una
+  // entrada que no tiene nada que ver.
+  return history.find(function (e) { return getEntryPlanDate(e) === todayKey && e.type !== "nocook"; }) || null;
 }
 
 /**
@@ -484,9 +493,16 @@ function findTodayEntry() {
  *
  * @param {object[]} meals - result.meals de generateDietPlan(), tal cual
  * @param {string} [storeId]
+ * @param {object} [dayOptions] - { budget, cookTime, taste } del `data`
+ *   original de generateDietPlan() (2026-08-20g, per-meal editing) --
+ *   OPCIONAL a propósito, para no romper ningún llamador existente
+ *   (tests incluidos): sin esto, la entrada se guarda exactamente igual
+ *   que siempre, solo que "cambiar este plato" (regenerateSingleMeal(),
+ *   plan-generator.js) no estará disponible para ella -- ver
+ *   render-pantry.js, que oculta esa acción cuando faltan estos campos.
  * @returns {{ entry:object, historySaved:boolean, replaced:boolean }}
  */
-function savePlanForToday(meals, storeId) {
+function savePlanForToday(meals, storeId, dayOptions) {
   var now = new Date();
   var nowISO = now.toISOString();
   var todayKey = formatLocalDateKey(now);
@@ -504,15 +520,41 @@ function savePlanForToday(meals, storeId) {
       items: (meal.items || []).map(function (item) {
         return { name: item.name, requiredGrams: item.grams };
       }),
+      // dishName/mainProt/taste/total (2026-08-20g, per-meal editing):
+      // solo presentes si `meal` viene de buildMealFromDish() real (ya lo
+      // hace desde known issue #5/esta sesión) -- fallback a null/undefined
+      // para cualquier `meal` sintético que un test le pase sin esos
+      // campos, nunca revienta.
+      dishName: typeof meal.dishName === "string" ? meal.dishName : null,
+      mainProt: typeof meal.mainProt === "string" ? meal.mainProt : null,
+      taste:    typeof meal.taste === "string" ? meal.taste : null,
+      total:    meal.total ? { kcal: meal.total.kcal, protein: meal.total.protein, carbs: meal.total.carbs, fat: meal.total.fat } : null,
       cooked: false,
       cookedAt: null,
       consumed: null
     };
   });
 
+  var budget   = dayOptions && typeof dayOptions.budget === "number" ? dayOptions.budget : null;
+  var cookTime = dayOptions && typeof dayOptions.cookTime === "number" ? dayOptions.cookTime : null;
+  var taste    = dayOptions && typeof dayOptions.taste === "string" ? dayOptions.taste : null;
+
   var history = getPantryHistory();
+  // e.type !== "nocook" (2026-08-20g, bug real encontrado durante el
+  // trabajo de per-meal editing, corrupción de datos confirmada con un
+  // repro directo): sin este filtro, si ya existía un borrador "sin
+  // cocinar" de hoy (type:"nocook", sin comprar/consumir todavía),
+  // hasRealPantryAction() lo consideraba igualmente "sin acción real"
+  // (lee entry.meals, undefined en una entrada "nocook" → siempre false)
+  // y este UPSERT lo tomaba como si fuera un borrador de PLATO —
+  // sobrescribía su store/createdAt y le añadía un `.meals` espurio
+  // encima de sus `.slots` reales, sin tocar el propio historial "sin
+  // cocinar" del array pero corrompiendo esa entrada compartida. Ver
+  // "Despensa conectada al modo 'sin cocinar' — 2026-08-20f" en STATE.md
+  // para el diseño que introdujo el array compartido; este filtro es el
+  // que le faltaba desde el principio.
   var draft = history.find(function (e) {
-    return getEntryPlanDate(e) === todayKey && !hasRealPantryAction(e);
+    return getEntryPlanDate(e) === todayKey && e.type !== "nocook" && !hasRealPantryAction(e);
   });
 
   if (draft) {

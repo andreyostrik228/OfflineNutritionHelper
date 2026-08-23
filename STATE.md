@@ -161,6 +161,38 @@ fallidos. `js/core/`, `js/engine/*` (código), `js/data/
 ingredient-nutrition.js`, y el resto de la app — cero cambios; solo
 `js/data/dishes.js` (23 valores de `kcal`) y los golden-master.
 
+**Resumen de la sesión 2026-08-20g (bug real de corrupción de datos entre
+planes de plato y "sin cocinar", encontrado durante el trabajo de
+per-meal editing)**: sesión nueva, el usuario pidió empezar con "per-meal
+editing" de la lista de issues declinados/diferidos. Al diseñar esa
+función (necesita reconstruir `usedState`/`committedGrams` de las otras
+tomas de un plan ya guardado) se detectó, investigando el shape real de
+una entrada de historial, que `savePlanForToday()` y `findTodayEntry()`
+(`js/core/pantry.js`) no filtraban por `entry.type` al buscar "la entrada
+de hoy" — un descuido real del diseño de 2026-08-20f (despensa "sin
+cocinar" compartiendo `pantryHistory` con las de plato). **Reproducido en
+vivo con un script directo ANTES de asumir que era un problema**: guardar
+un borrador de plato, luego un borrador "sin cocinar" el mismo día, y
+volver a llamar a `savePlanForToday()` — el UPSERT encontraba la entrada
+"nocook" (`hasRealPantryAction()` lee `entry.meals`, undefined en una
+entrada "nocook", así que siempre evalúa "sin acción real" para ella) y
+le añadía un `.meals` espurio ENCIMA de sus `.slots` reales, además de
+sobrescribirle `.store`/`.createdAt` — corrupción de datos confirmada,
+no solo teórica. `findTodayEntry()` tenía el mismo agujero: si la entrada
+"nocook" era la más reciente de hoy, el gate de "Generar plan" (que solo
+tiene sentido para plato) la trataba como si fuera un plan de plato
+activo. **Corregido**: ambas funciones ahora filtran explícitamente
+`e.type !== "nocook"`. 4 tests nuevos en `tests/pantry.test.js` (2
+regresiones directas del bug real + 2 aserciones ampliadas en el test de
+aislamiento que existía, que originalmente NO detectaba este bug —
+comprobaba `slots[0].items[0].id` pero nunca la ausencia de un `.meals`
+espurio ni la identidad de qué entrada recibió el UPSERT). 267 tests, 0
+fallidos. Verificado con el mismo script de repro directo tras el fix:
+la entrada "nocook" ya no gana ningún campo espurio. `js/ui/
+render-pantry.js`, `js/engine/*`, y el resto del sistema — cero cambios,
+el bug estaba contenido enteramente en esas dos funciones de
+`pantry.js`.
+
 **Resumen de la sesión 2026-08-20f (known issue #9: despensa conectada al
 modo "sin cocinar", ciclo completo de 3 etapas)**: siguiente item de la
 lista priorizada, el más grande de los seis (única build de feature
@@ -4463,7 +4495,17 @@ explícitamente en 2026-08-20f si se quería empezar esa conversación de
 diseño ahora, el usuario prefirió dejarlo diferido — no es un olvido,
 retomar esa conversación antes de construirlo si se pide en el futuro.
 
-**Qué no romper**: los `id="..."` del HTML; `data.budget` sigue siendo
+**Qué no romper**: `pantryHistory` es un array COMPARTIDO entre entradas
+de plato y "sin cocinar" (`entry.type==="nocook"`) desde 2026-08-20f —
+CUALQUIER función que busque "la entrada de hoy"/"un borrador" sobre
+`getPantryHistory()` (como `findTodayEntry()`/el UPSERT de
+`savePlanForToday()`) DEBE filtrar explícitamente por `entry.type` antes
+de tratar lo que encuentre como una entrada de plato — `hasRealPantryAction()`
+NUNCA distingue los dos tipos por sí sola (lee `entry.meals`, que en una
+entrada "nocook" simplemente no existe, así que siempre evalúa "falso"
+para ella) — esta es EXACTAMENTE la regresión real que 2026-08-20g existe
+para prevenir (corrupción de datos confirmada con un repro directo, ver
+esa sección). Los `id="..."` del HTML; `data.budget` sigue siendo
 purchaseCost, no usageCost; `enforcePurchaseBudgetCap` sigue siendo la
 red de seguridad final; `js/core/budget.js` sigue siendo la ÚNICA fuente
 de verdad para purchaseCost del día; `js/core/nutrition.js` (nuevo hoy)

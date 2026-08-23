@@ -2,7 +2,17 @@
 
 ## Current status
 
-**Stage:** working prototype, updated 2026-08-20f — known issue #9
+**Stage:** working prototype, updated 2026-08-20g — a real data-corruption
+bug found while designing per-meal editing: `savePlanForToday()`'s UPSERT
+and `findTodayEntry()` didn't filter by `entry.type`, so a same-day
+no-cook draft could get silently mistaken for a dish-mode one and gain a
+spurious `.meals` array next to its real `.slots` — confirmed with a
+direct repro, not theorized. Fixed by filtering `e.type !== "nocook"` in
+both; the original 2026-08-20f isolation test passed even with the bug
+present, so assertions were widened. 4 new/strengthened tests. See
+`STATE.md`, "Resumen de la sesión 2026-08-20g".
+
+Previously, updated 2026-08-20f — known issue #9
 (despensa not connected to no-cook mode) addressed: the full 3-stage
 lifecycle (confirm → buy → consume) now exists for no-cook plans too,
 mirroring the main generator's pattern exactly. Scope was confirmed with

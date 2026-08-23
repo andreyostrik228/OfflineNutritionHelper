@@ -491,6 +491,18 @@ function run(t) {
     assert.strictEqual(found.id, resultB2.entry.id); // la más reciente, no A
   });
 
+  t.test("REGRESIÓN (2026-08-20g): findTodayEntry() ignora una entrada 'nocook' de hoy, aunque sea la más reciente -- el gate de 'Generar plan' es solo de plato", function () {
+    var s = freshPantrySandbox();
+    var dishResult = s.savePlanForToday(fakeMeals({ breakfast: [{ name: "Avena", grams: 80 }] }), "mercadona");
+    // La entrada "nocook" se guarda DESPUÉS -- sin el filtro por type, sería
+    // la "más reciente" y findTodayEntry() la devolvería en su lugar.
+    s.saveNoCookPlanForToday(fakeNoCookSlots({ breakfast: [fakeProduct("p1", "Yogur", 1, 0.5)] }));
+
+    var found = s.findTodayEntry();
+    assert.strictEqual(found.id, dishResult.entry.id);
+    assert.notStrictEqual(found.type, "nocook");
+  });
+
   t.test("replacePendingMealsForToday: entryId inexistente devuelve null, no lanza", function () {
     var s = freshPantrySandbox();
     assert.strictEqual(s.replacePendingMealsForToday("no-existe", []), null);
@@ -957,9 +969,34 @@ function run(t) {
     assert.strictEqual(history.filter(function (e) { return e.type !== "nocook"; }).length, 1);
 
     // Confirmar un segundo plan de plato no debe tocar la entrada nocook.
-    s.savePlanForToday(fakeMeals({ breakfast: [{ name: "Avena", grams: 90 }] }), "mercadona");
+    // REGRESIÓN REAL (2026-08-20g): la primera versión de este test solo
+    // comprobaba slots[0].items[0].id, que seguía pasando incluso con el
+    // bug real presente (el UPSERT de savePlanForToday encontraba la
+    // entrada "nocook" como si fuera un borrador de plato -- por no
+    // filtrar por type -- y le añadía un `.meals` espurio ENCIMA de sus
+    // `.slots` reales, sin borrarlos). Reproducido en vivo con un script
+    // directo antes de corregirlo. Aserciones ampliadas para que esta
+    // clase de bug no pueda volver a colarse en silencio.
+    var dishResult2 = s.savePlanForToday(fakeMeals({ breakfast: [{ name: "Avena", grams: 90 }] }), "mercadona");
+    assert.strictEqual(dishResult2.entry.id, dishResult.entry.id, "el segundo savePlanForToday debe hacer UPSERT sobre el borrador de PLATO, no crear/tocar la entrada nocook");
+    assert.strictEqual(dishResult2.replaced, true);
+
     var afterSecond = s.getPantryHistory().find(function (e) { return e.id === noCookResult.entry.id; });
     assert.strictEqual(afterSecond.slots[0].items[0].id, "p1");
+    assert.strictEqual(afterSecond.type, "nocook");
+    assert.strictEqual(Object.prototype.hasOwnProperty.call(afterSecond, "meals"), false, "una entrada nocook nunca debe ganar un campo .meals espurio");
+    assert.strictEqual(s.getPantryHistory().length, 2, "siguen siendo exactamente 2 entradas, nunca 3");
+  });
+
+  t.test("REGRESIÓN: saveNoCookPlanForToday() tampoco hace UPSERT sobre un borrador de PLATO existente el mismo día (aislamiento en el otro sentido)", function () {
+    var s = freshPantrySandbox();
+    var dishResult = s.savePlanForToday(fakeMeals({ breakfast: [{ name: "Avena", grams: 80 }] }), "mercadona");
+    var noCookResult = s.saveNoCookPlanForToday(fakeNoCookSlots({ breakfast: [fakeProduct("p1", "Yogur", 1, 0.5)] }));
+
+    assert.notStrictEqual(noCookResult.entry.id, dishResult.entry.id);
+    assert.strictEqual(noCookResult.replaced, false);
+    var dishAfter = s.getPantryHistory().find(function (e) { return e.id === dishResult.entry.id; });
+    assert.strictEqual(Object.prototype.hasOwnProperty.call(dishAfter, "slots"), false, "una entrada de plato nunca debe ganar un campo .slots espurio");
   });
 
   t.test("markNoCookPurchaseDone() suma quantity de cada producto (por id) al stock, acumulando entre varias compras", function () {
