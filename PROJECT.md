@@ -639,6 +639,24 @@ with the new card visible, zero horizontal overflow, zero console
 errors. Full detail in `STATE.md`, "Rediseño visual: simplificación de
 la interfaz — 2026-08-23b".
 
+**2026-08-23c — fix: despensa dialog was always visible, not just when
+opened**: the user caught this live in production right after the
+2026-08-23b deploy. Root cause: `dialog.despensa-dialog` set
+`display:flex` without scoping it to `[open]` — a closed native
+`<dialog>` is hidden only by the browser's default `dialog:not([open])
+{display:none}` user-agent style, and an unqualified author rule always
+wins over that regardless of specificity, so the panel rendered inline
+on the page at all times. Fixed by moving `display:flex` to
+`dialog.despensa-dialog[open]`, matching the pattern `dialog.auth-dialog
+[open]` already used elsewhere. The prior verification pass had checked
+that `.open` toggled correctly and measured dimensions while open, but
+never checked the actual computed `display` in the default closed
+state — the exact gap this bug slipped through. Re-verified with all
+three transitions (closed→open→closed) measured directly, in both local
+dev and production. Pure CSS fix, 281 tests unaffected. Full detail in
+`STATE.md`, "Fix real: despensa visible siempre, no solo al abrirla —
+2026-08-23c".
+
 ## Product direction
 
 Evolve into a real personal nutrition assistant: nutrition + shopping +

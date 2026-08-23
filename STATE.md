@@ -4227,6 +4227,33 @@ calculator.js`, `js/core/meal-schedule.js`, lógica de negocio de
 despensa (compra/cocinado/stock) en `pantry.js`, `#verifiedPanel`
 (catálogo, sigue como `<details>`).
 
+## Fix real: despensa visible siempre, no solo al abrirla — 2026-08-23c
+
+Bug real reportado por el usuario tras el deploy de 2026-08-23b (visto
+en producción, no en tests): la despensa aparecía permanentemente en la
+página, no solo al pulsar el botón. Causa raíz: `dialog.despensa-dialog`
+ponía `display:flex` SIN calificar con `[open]` — un `<dialog>` cerrado
+solo se oculta vía el estilo por defecto del navegador
+(`dialog:not([open]){display:none}`, hoja de usuario), y una regla de
+autor sin calificar SIEMPRE gana a esa hoja por origen de la cascada
+(user agent < user < author), sin que importe la especificidad — así que
+el diálogo se renderizaba en el flujo normal de la página en TODO
+momento, abierto o no. Fix de una sola regla: `display:flex` movido a
+`dialog.despensa-dialog[open]`, el mismo patrón que ya usaba
+`dialog.auth-dialog[open]` (solo para la animación, nunca tocó
+`display`) sin que se replicara al escribir la regla nueva. **Hueco real
+en la verificación anterior**: se comprobó que `.open` cambiaba
+correctamente al hacer clic (abrir/cerrar funcional) y el ancho/alto
+DURANTE el estado abierto, pero nunca se comprobó el `display` real del
+`<dialog>` en su estado CERRADO por defecto — el hueco exacto que dejó
+pasar este bug a producción. Verificado esta vez con las tres
+transiciones explícitas (cerrado→abierto→cerrado), midiendo
+`getComputedStyle().display` y `getBoundingClientRect()` en cada una:
+`display:none`/0×0 antes de abrir, `display:flex` con tamaño real tras
+abrir, `display:none`/0×0 tras cerrar — en local y confirmado de nuevo
+contra el sitio real en producción tras el deploy. 281 tests sin cambios
+(bug de CSS puro, ninguna lógica tocada).
+
 ## Session handoff (2026-08-19)
 
 Escrito para que la siguiente sesión/chat pueda continuar sin haber visto
@@ -4906,5 +4933,13 @@ errores de consola). `085c44a` verificado sirviendo en producción
 (`https://227596a3.offline-nutrition-helper.pages.dev`, y confirmado en
 `offline-nutrition-helper.pages.dev` tras el deploy) con comprobación en
 vivo (no solo el push) de que `#despensaBtn`/`#dateStrip` existen y
-`#fillExampleBtn` ya no. Verificar con `git log -1` antes de asumir cuál
-es el HEAD real — esto es una foto fija, no una garantía.
+`#fillExampleBtn` ya no. **2026-08-23c**: el usuario reportó en
+producción que la despensa quedaba siempre visible, no solo al pulsar el
+botón — bug real de `display:flex` sin calificar con `[open]` en
+`dialog.despensa-dialog` (ver sección dedicada arriba para el
+razonamiento completo, incluido el hueco de verificación que lo dejó
+pasar). `9bd88e7` verificado en local (transición cerrado→abierto→cerrado
+con `getComputedStyle`/`getBoundingClientRect`, no solo la propiedad
+`.open`) y de nuevo en producción tras el deploy. Verificar con
+`git log -1` antes de asumir cuál es el HEAD real — esto es una foto
+fija, no una garantía.
