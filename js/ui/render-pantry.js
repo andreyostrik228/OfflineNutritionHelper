@@ -67,6 +67,36 @@
  * (ver cabecera de pantry.js) -- solo cambia qué botones existen, dónde
  * viven en la página, cómo se agrupan, y en qué idioma se explican.
  *
+ * ── Simplificación visual: "Mis planes" + despensa como diálogo
+ *    (2026-08-23) ─────────────────────────────────────────────────────
+ * Los puntos 2 y 3 de más arriba describen el modelo anterior (planes
+ * activos en `todayPlansContainer`, historial completado anidado dentro
+ * del acordeón de despensa) -- superado por esta pasada de simplificación
+ * visual, que fusiona ambos en una sola sección, "Mis planes", con un
+ * selector de fecha:
+ *   - `dateStripEl` -- tira de chips de fecha (radiogroup accesible,
+ *     mismo patrón que `.budget-modes`), pintada por renderDateStrip() a
+ *     partir de listPlanDates() (js/core/pantry.js) más "Hoy" siempre
+ *     presente. `_selectedPlanDate` guarda la fecha elegida ("Hoy" por
+ *     defecto al cargar).
+ *   - `todayPlansContainer` ahora pinta TODAS las entries de la fecha
+ *     elegida, pendientes Y completadas (antes: solo pendientes aquí,
+ *     completadas en el acordeón de despensa) -- mismos renderers de
+ *     siempre (renderActiveEntryCard/renderCompletedEntryRow y sus
+ *     variantes "sin cocinar"), solo cambia el criterio de agrupación.
+ *   - `plansEmptyNoteEl` sustituye al `hidden` de toda la sección: "Mis
+ *     planes" ahora es SIEMPRE visible (para que el selector de fecha
+ *     nunca desaparezca), y el aviso de "nada guardado este día" vive
+ *     dentro, no fuera.
+ *   - Despensa deja de ser un `<details>` siempre presente al final de la
+ *     página y pasa a ser un `<dialog>` (`despensaDialogEl`, mismo patrón
+ *     que showPlanReplaceDialog/hidePlanReplaceDialog más abajo),
+ *     abierto desde un botón nuevo en `.actions`. Ya NO contiene el
+ *     historial completado (fusionado en "Mis planes" arriba) -- solo
+ *     alta/stock, como en el punto 1 original.
+ * pantry.js no cambia en absoluto por esta pasada -- puramente
+ * presentación, igual que las anteriores.
+ *
  * ── Alta manual: texto+datalist en vez de <select> ────────────────────
  * Un <select> con las 81 opciones alfabéticas de golpe era pesado de
  * escanear, sobre todo en móvil. Ahora es un <input list="..."> (auto-
@@ -82,7 +112,8 @@
  * Depende de:
  *   js/core/pantry.js  (getPantryState, getStock, listPantryEntries,
  *                        setStock, adjustStock, clearStock,
- *                        getPantryHistory, aggregatePlanMealItems,
+ *                        getPantryHistory, getEntryPlanDate, listPlanDates,
+ *                        formatLocalDateKey, aggregatePlanMealItems,
  *                        markPurchaseDone, markMealCooked)
  *   js/core/pricing.js (normalizeIngredientKey)
  *   js/core/utils.js   (round0, round2, escapeHtml)
@@ -96,15 +127,23 @@
  *   renderPantryPanel()
  *   renderPlanSavedNotice(entry, historySaved, mode)
  *   showPlanReplaceDialog(entry) / hidePlanReplaceDialog()
+ *   showDespensaDialog() / hideDespensaDialog() (2026-08-23)
+ *   selectPlanDate(dateKey) (2026-08-23) -- fuerza la fecha seleccionada
+ *     en "Mis planes", usado por app.js tras confirmar un plan nuevo
  * ─────────────────────────────────────────────────────────────────────────
  */
 
 var pantryListContainer, pantryEmptyEl, pantryAddForm, pantryAddNameInput, pantryAddGrams,
     pantryIngredientOptionsList, pantryAddError,
-    todayPlansPanel, todayPlansContainer, pantryHistoryDisclosure, pantryHistoryContainer,
+    todayPlansPanel, todayPlansContainer, dateStripEl, plansEmptyNoteEl,
     pantryCountEl, planSavedNoticeEl;
 var pantryOnChange; // callback de app.js — sincroniza la lista de la compra visible
 var pantryIngredientByKey = {}; // clave normalizada -> nombre canónico, para resolver lo tecleado en el alta
+
+// "Mis planes" (2026-08-23) -- fecha elegida en la tira de chips; null
+// hasta el primer render, momento en el que renderPantryHistorySections()
+// la inicializa a "hoy" (ver esa función más abajo).
+var _selectedPlanDate = null;
 
 // Diálogo "ya tienes un plan activo hoy" -- ver "Gate en Generar plan..."
 // en la cabecera de js/core/pantry.js.
@@ -112,14 +151,22 @@ var planReplaceDialogEl, planReplaceBodyEl, planReplaceFullBtn, planReplaceCance
 var pantryOnReplaceWholePlan; // callback de app.js — genera el plan de reemplazo
 var _planReplaceEntryId = null;
 
+// Diálogo de despensa (2026-08-23) -- ver showDespensaDialog/hideDespensaDialog.
+var despensaDialogEl, despensaCloseBtn;
+
 /**
  * Conecta los nodos DOM necesarios para este módulo.
  * @param {object} refs
- * @param {Element} refs.todayPlansPanel - sección "Tu plan" completa
- *   (fuera de despensa) -- se oculta/muestra según haya o no algún plan
- *   con algo pendiente (ver renderPantryHistorySections).
+ * @param {Element} refs.todayPlansPanel - sección "Mis planes" completa
+ *   (fuera de despensa) -- siempre visible (2026-08-23); el selector de
+ *   fecha necesita estar siempre alcanzable, ver renderPantryHistorySections.
  * @param {Element} refs.todayPlansContainer - dentro de refs.todayPlansPanel,
- *   donde se pintan las tarjetas de plan activo en sí.
+ *   donde se pintan las tarjetas de la fecha elegida (pendientes y
+ *   completadas).
+ * @param {Element} refs.dateStripEl - tira de chips de fecha, ver
+ *   renderDateStrip().
+ * @param {Element} refs.plansEmptyNoteEl - aviso "nada guardado este día",
+ *   visible cuando la fecha elegida no tiene ninguna entry.
  * @param {function} [refs.onPantryChange] - se llama tras cualquier mutación
  *   de la despensa (alta manual/edición/borrado, compra, cocinado...), para
  *   que app.js pueda refrescar una lista de la compra visible cuyos
@@ -135,8 +182,8 @@ function initPantryRefs(refs) {
   pantryAddError                = refs.pantryAddError;
   todayPlansPanel               = refs.todayPlansPanel;
   todayPlansContainer          = refs.todayPlansContainer;
-  pantryHistoryDisclosure      = refs.pantryHistoryDisclosure;
-  pantryHistoryContainer       = refs.pantryHistoryContainer;
+  dateStripEl                  = refs.dateStripEl;
+  plansEmptyNoteEl             = refs.plansEmptyNoteEl;
   pantryCountEl                = refs.pantryCountEl;
   planSavedNoticeEl            = refs.planSavedNoticeEl;
   pantryOnChange               = typeof refs.onPantryChange === "function" ? refs.onPantryChange : function () {};
@@ -147,6 +194,9 @@ function initPantryRefs(refs) {
   planReplaceCancelBtn   = refs.planReplaceCancelBtn;
   pantryOnReplaceWholePlan = typeof refs.onReplaceWholePlan === "function" ? refs.onReplaceWholePlan : function () {};
 
+  despensaDialogEl = refs.despensaDialogEl;
+  despensaCloseBtn = refs.despensaCloseBtn;
+
   populatePantryIngredientOptions();
 
   if (pantryAddForm) pantryAddForm.addEventListener("submit", handleManualAdd);
@@ -155,6 +205,7 @@ function initPantryRefs(refs) {
   // cada fila/tarjeta individual.
   if (pantryListContainer)  pantryListContainer.addEventListener("click", handlePantryListClick);
   if (todayPlansContainer)  todayPlansContainer.addEventListener("click", handleEntryClick);
+  if (dateStripEl)          dateStripEl.addEventListener("change", handleDateStripChange);
 
   if (planReplaceFullBtn) planReplaceFullBtn.addEventListener("click", function () {
     var id = _planReplaceEntryId;
@@ -162,6 +213,8 @@ function initPantryRefs(refs) {
     if (id) pantryOnReplaceWholePlan(id);
   });
   if (planReplaceCancelBtn) planReplaceCancelBtn.addEventListener("click", hidePlanReplaceDialog);
+
+  if (despensaCloseBtn) despensaCloseBtn.addEventListener("click", hideDespensaDialog);
 }
 
 // ── Alta manual ───────────────────────────────────────────────────────────
@@ -391,19 +444,102 @@ function isEntryDone(entry) {
   return entry.type === "nocook" ? isNoCookEntryFullyConsumed(entry) : isEntryFullyCooked(entry);
 }
 
+/**
+ * "Mis planes" (2026-08-23) -- pinta la tira de fechas y, para la fecha
+ * elegida (`_selectedPlanDate`, "hoy" por defecto), TODAS sus entries de
+ * pantryHistory, pendientes y completadas, reutilizando los mismos
+ * renderers de siempre (ver cabecera del archivo). La sección entera ya
+ * no se oculta -- el selector de fecha tiene que seguir alcanzable
+ * aunque el día elegido no tenga ningún plan, momento en el que se
+ * muestra `plansEmptyNoteEl` en su lugar.
+ */
 function renderPantryHistorySections() {
   var history = getPantryHistory();
-  var active = history.filter(function (e) { return !isEntryDone(e); });
-  var completed = history.filter(isEntryDone);
+  var todayKey = (typeof formatLocalDateKey === "function") ? formatLocalDateKey(new Date()) : "";
 
-  // "Tu plan" -- fuera de despensa (ver cabecera, reubicación 2026-08-14c).
-  // Toda la sección se oculta cuando no hay ningún plan pendiente, en vez
-  // de quedar vacía y visible.
-  if (todayPlansPanel) todayPlansPanel.hidden = active.length === 0;
-  if (todayPlansContainer) todayPlansContainer.innerHTML = safeRenderRows(active, renderActiveEntryCard, "active");
+  if (!_selectedPlanDate) _selectedPlanDate = todayKey;
 
-  if (pantryHistoryDisclosure) pantryHistoryDisclosure.hidden = completed.length === 0;
-  if (pantryHistoryContainer) pantryHistoryContainer.innerHTML = safeRenderRows(completed, renderCompletedEntryRow, "history");
+  renderDateStrip(todayKey);
+
+  var dayEntries = history.filter(function (e) { return getEntryPlanDate(e) === _selectedPlanDate; });
+  var active = dayEntries.filter(function (e) { return !isEntryDone(e); });
+  var completed = dayEntries.filter(isEntryDone);
+
+  var html = safeRenderRows(active, renderActiveEntryCard, "active");
+  if (completed.length > 0) {
+    html += '<div class="pantry-history-heading">Completado</div>' +
+      '<ul class="pantry-history">' + safeRenderRows(completed, renderCompletedEntryRow, "history") + '</ul>';
+  }
+
+  if (todayPlansContainer) todayPlansContainer.innerHTML = html;
+  if (plansEmptyNoteEl) plansEmptyNoteEl.hidden = dayEntries.length > 0;
+}
+
+/**
+ * Tira de chips de fecha para "Mis planes" -- mismo patrón accesible que
+ * .budget-modes (radio oculto + <label> chip, ver index.html). "Hoy"
+ * siempre presente aunque no haya ningún plan guardado todavía, para que
+ * el usuario nunca se encuentre con una tira vacía; el resto son las
+ * fechas distintas de listPlanDates() (más reciente primero), sin
+ * duplicar "hoy" si ya tuviera un plan guardado.
+ * @param {string} todayKey - "YYYY-MM-DD" de hoy
+ */
+function renderDateStrip(todayKey) {
+  if (!dateStripEl) return;
+
+  var otherDates = (typeof listPlanDates === "function")
+    ? listPlanDates().filter(function (d) { return d !== todayKey; })
+    : [];
+  var allDates = [todayKey].concat(otherDates);
+
+  dateStripEl.innerHTML = allDates.map(function (dateKey, index) {
+    var isToday = dateKey === todayKey;
+    var inputId = "dateChip" + index;
+    var label = isToday ? "Hoy" : formatDateChipLabel(dateKey);
+    var checkedAttr = dateKey === _selectedPlanDate ? " checked" : "";
+    var todayClass = isToday ? " date-chip--today" : "";
+    return (
+      '<input type="radio" name="planDate" id="' + inputId + '" value="' + escapeHtml(dateKey) + '" class="visually-hidden"' + checkedAttr + '>' +
+      '<label for="' + inputId + '" class="date-chip' + todayClass + '">' + label + '</label>'
+    );
+  }).join("");
+}
+
+/**
+ * "23 ago" -- mismo locale/formato corto que formatEntryDateTime(), sin
+ * hora (el chip agrupa por día, la hora ya se ve dentro de cada tarjeta).
+ * @param {string} dateKey - "YYYY-MM-DD"
+ * @returns {string}
+ */
+function formatDateChipLabel(dateKey) {
+  try {
+    var parts = dateKey.split("-").map(Number);
+    var d = new Date(parts[0], parts[1] - 1, parts[2]);
+    return d.toLocaleDateString("es-ES", { day: "2-digit", month: "short" });
+  } catch (err) {
+    return dateKey;
+  }
+}
+
+function handleDateStripChange(event) {
+  var radio = event.target;
+  if (!radio || radio.name !== "planDate") return;
+  _selectedPlanDate = radio.value;
+  renderPantryHistorySections();
+}
+
+/**
+ * Fuerza la fecha seleccionada en "Mis planes" a `dateKey` -- usado por
+ * app.js justo después de confirmar un plan nuevo (savePlanForToday/
+ * saveNoCookPlanForToday siempre guardan bajo la fecha de HOY), para que
+ * el plan recién confirmado sea visible sin que el usuario tenga que
+ * volver a tocar el chip "Hoy" si estaba mirando otro día. No pinta nada
+ * por sí sola -- quien la llama ya renderiza después (ver
+ * handleUsePlanToday/handleUseNoCookPlanToday en app.js).
+ * @param {string} dateKey - "YYYY-MM-DD"
+ */
+function selectPlanDate(dateKey) {
+  if (dateKey) _selectedPlanDate = dateKey;
 }
 
 /**
@@ -690,6 +826,32 @@ function hidePlanReplaceDialog() {
   _planReplaceEntryId = null;
 }
 
+// ── Diálogo de despensa (2026-08-23) ────────────────────────────────────
+
+/**
+ * Abre el diálogo de despensa -- mismo patrón que showPlanReplaceDialog()
+ * más arriba. Sin contenido que preparar antes de abrir: el stock ya
+ * está pintado por renderPantryPanel() (se llama en cada mutación, ver
+ * app.js), así que solo hace falta mostrar el <dialog>.
+ */
+function showDespensaDialog() {
+  if (!despensaDialogEl) return;
+  if (typeof despensaDialogEl.showModal === "function") {
+    despensaDialogEl.showModal();
+  } else {
+    despensaDialogEl.setAttribute("open", "");
+  }
+}
+
+function hideDespensaDialog() {
+  if (!despensaDialogEl) return;
+  if (typeof despensaDialogEl.close === "function" && despensaDialogEl.open) {
+    despensaDialogEl.close();
+  } else {
+    despensaDialogEl.removeAttribute("open");
+  }
+}
+
 /**
  * Fila de solo lectura para un plan ya completado -- vive dentro del
  * <details> "Ver planes anteriores", colapsado por defecto.
@@ -895,14 +1057,14 @@ function renderPlanSavedNotice(entry, historySaved, mode) {
     var cookedNote = cookedLabels.length > 0
       ? ' Lo que ya cocinaste (' + escapeHtml(cookedLabels.join(", ")) + ') se mantuvo tal cual.'
       : '';
-    body = '<p>Se actualizó tu plan activo de hoy en <strong>Tu plan</strong>.' + cookedNote +
+    body = '<p>Se actualizó tu plan activo de hoy en <strong>Mis planes</strong>.' + cookedNote +
       ' Como los ingredientes pueden haber cambiado, marca <strong>Ya compr&eacute; todo esto</strong> de nuevo cuando compres.</p>';
   } else if (mode === "draft-updated") {
     title = "Plan actualizado";
-    body = '<p>Sigue siendo el mismo plan de hoy en <strong>Tu plan</strong> &mdash; no se ha comprado ni cocinado nada todav&iacute;a, ni se ha a&ntilde;adido nada a tu despensa.</p>';
+    body = '<p>Sigue siendo el mismo plan de hoy en <strong>Mis planes</strong> &mdash; no se ha comprado ni cocinado nada todav&iacute;a, ni se ha a&ntilde;adido nada a tu despensa.</p>';
   } else {
     title = "Plan confirmado";
-    body = '<p>Cuando compres, toca <strong>Ya compr&eacute; todo esto</strong> ah&iacute; abajo, en <strong>Tu plan</strong> &mdash; as&iacute; no te lo volver&aacute; a pedir la pr&oacute;xima vez.</p>';
+    body = '<p>Cuando compres, toca <strong>Ya compr&eacute; todo esto</strong> ah&iacute; abajo, en <strong>Mis planes</strong> &mdash; as&iacute; no te lo volver&aacute; a pedir la pr&oacute;xima vez.</p>';
   }
 
   planSavedNoticeEl.hidden = false;

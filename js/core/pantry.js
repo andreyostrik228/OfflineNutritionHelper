@@ -109,6 +109,8 @@
  *   resolvePurchaseCostWithPantry(name, requiredGrams, storeId, pantryState?)
  *   formatLocalDateKey(date) → "YYYY-MM-DD" (hora LOCAL, nunca UTC)
  *   getEntryPlanDate(entry) → "YYYY-MM-DD"
+ *   listPlanDates() → string[] (fechas descendentes, para el selector de
+ *     fecha de "Mis planes", 2026-08-23)
  *   hasRealPantryAction(entry) → boolean (comprado o algo cocinado)
  *   isEntryFullyCooked(entry) → boolean (TODAS las comidas cocinadas)
  *   findTodayEntry() → entry|null (la más reciente cuyo día es hoy, cualquier estado)
@@ -400,6 +402,27 @@ function getEntryPlanDate(entry) {
   var parsed = createdAt ? new Date(createdAt) : null;
   if (!parsed || isNaN(parsed.getTime())) return "";
   return formatLocalDateKey(parsed);
+}
+
+/**
+ * Fechas distintas ("YYYY-MM-DD") presentes en el historial de planes,
+ * más reciente primero -- alimenta la tira de chips de fecha de "Mis
+ * planes" (2026-08-23, ver renderDateStrip() en js/ui/render-pantry.js).
+ * Comparación de cadenas basta para ordenar cronológicamente porque el
+ * formato es siempre YYYY-MM-DD de ancho fijo.
+ * @returns {string[]}
+ */
+function listPlanDates() {
+  var seen = {};
+  var dates = [];
+  getPantryHistory().forEach(function (entry) {
+    var d = getEntryPlanDate(entry);
+    if (d && !seen[d]) {
+      seen[d] = true;
+      dates.push(d);
+    }
+  });
+  return dates.sort().reverse();
 }
 
 /**

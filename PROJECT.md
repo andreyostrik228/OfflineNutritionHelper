@@ -593,6 +593,52 @@ the top-scoring candidate (8/10 in one 10-reroll test) — same weighted-
 lottery mechanism already accepted elsewhere in the engine, just more
 visible when repeating on one fixed slot.
 
+**2026-08-23 — re-verification session, no code changes**: asked to
+double-check the open-issues list against the real code rather than
+trust the docs. Everything was confirmed exactly where it was left (31/81
+ingredient roles still unresolved, known issue #8 still unpatched,
+no-cook still not pantry-aware or gated, `"Lechuga: Pepino"` and the
+mislabeled jamón dish still uncorrected, the Atwater audit still at
+179/334, packaging.js still at 69/81, Graphify still stale since
+2026-08-13) — nothing had silently regressed or been fixed outside a
+commit. One real-world status change: the user confirmed they personally
+completed a real Google OAuth login end-to-end, closing the one
+remaining step of the accounts system (the technical chain itself was
+already verified as of 2026-08-14a).
+
+**2026-08-23b — visual simplification pass, presentation only**: the user
+asked to reduce visual noise/clutter across the whole interface, with
+latitude to improve on the literal ask where a clearer UX solution
+existed. `js/core/pantry.js` (buy/cook/stock business logic) is
+untouched except for one new pure aggregation function
+(`listPlanDates()`). Changes: the hero header shrank from a full "cover"
+(giant h1 + paragraph + decorative circle) to a single-row compact title
+bar (icon + small h1 + badge), with the paragraph removed from the HTML
+entirely (`.hero--compact`); "Notas del plan"/the legal footer note moved
+out of the results column to the very bottom of the page, after the
+product catalog; the despensa panel changed from an always-visible
+`<details>` accordion to a `<dialog>` (`.despensa-dialog`, same pattern
+as the auth/plan-replace dialogs) opened from a new `#despensaBtn` —
+which literally replaces `#fillExampleBtn` (confirmed the old button
+genuinely worked, wasn't dead code, but the user asked for an
+unambiguous replacement); and "Tu plan" merged with the completed-plan
+history (previously nested inside a collapsed `<details>` in despensa)
+into one "Mis planes" section with an accessible date-chip strip (same
+`role="radiogroup"` pattern as the budget-mode chips) — the section no
+longer ever hides, an empty-state note fills that gap instead, "Hoy" is
+the default selection and is always present even with no saved plan yet.
+A real CSS specificity bug was found and fixed during live verification:
+`.despensa-dialog { width }` never won against `dialog.auth-dialog
+{ width }` (a bare class always loses to element+class regardless of
+source order) — the fix is `dialog.despensa-dialog`. 2 new tests for
+`listPlanDates()`, 281 total, 0 failing. Verified live against the real
+served files (desktop + 375px mobile): compact header, dialog opens/
+closes at the corrected width, date strip correctly filters and
+highlights "Hoy", a full generate→confirm flow leaves the strip on "Hoy"
+with the new card visible, zero horizontal overflow, zero console
+errors. Full detail in `STATE.md`, "Rediseño visual: simplificación de
+la interfaz — 2026-08-23b".
+
 ## Product direction
 
 Evolve into a real personal nutrition assistant: nutrition + shopping +

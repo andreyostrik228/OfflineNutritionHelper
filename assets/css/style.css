@@ -31,7 +31,7 @@
  * changed, plus new additive classes for the shopping-list module and the
  * collapsible catalog panel.
  *   IDs:    plannerForm, age, sex, weight, height, activity, workouts,
- *           goal, budget, cookTime, taste, fillExampleBtn, resetBtn,
+ *           goal, budget, cookTime, taste, despensaBtn, resetBtn,
  *           spinnerWrap, statusText, foodCount, sumCalories/Sub,
  *           sumProtein/Sub, sumCarbs/Sub, sumFats/Sub, warningBox,
  *           mealsContainer, insightsList, verifiedGrid, verifiedCount,
@@ -267,14 +267,62 @@ body {
   font-weight: 600;
 }
 
-.hero p {
-  margin: var(--space-3) 0 0;
-  color: var(--hero-ink-soft);
-  max-width: 46ch;
-  font-size: 15px;
-  line-height: 1.65;
-  position: relative;
-  z-index: 1;
+/* ── Cabecera compacta (2026-08-23, simplificación visual) ────────────
+   La "portada" original (h1 gigante + párrafo + círculo decorativo)
+   dominaba la primera pantalla sin aportar nada accionable -- este
+   modificador la reduce a una barra de título de una sola fila (icono +
+   h1 pequeño, badge a la derecha), sin párrafo (eliminado del HTML, no
+   solo oculto) ni las formas decorativas (ruido visual innecesario a
+   este tamaño). Reutiliza el mismo fondo/color de .hero -- ver
+   index.html para el modificador aplicado. */
+.hero--compact {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: var(--space-4) clamp(20px, 4vw, 40px);
+}
+
+.hero--compact::before,
+.hero--compact::after {
+  display: none;
+}
+
+.hero__title-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.hero--compact .brand-mark {
+  width: 32px;
+  height: 32px;
+}
+
+.hero--compact .brand-mark svg {
+  width: 15px;
+  height: 15px;
+}
+
+.hero--compact h1 {
+  margin: 0;
+  font-size: clamp(19px, 2.2vw, 24px);
+  line-height: 1.2;
+  max-width: none;
+}
+
+.hero--compact h1 .hero__serif {
+  display: inline;
+}
+
+.hero--compact .brand-eyebrow {
+  transform: none;
+}
+
+.hero--compact .brand-eyebrow .badge-text {
+  font-size: 10px;
+  padding: 4px 10px;
 }
 
 .grid {
@@ -601,6 +649,13 @@ button:focus-visible {
     background: #f5d9c6;
     border-color: #f5d9c6;
   }
+}
+
+.despensa-btn__count {
+  margin-left: 2px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  opacity: 0.75;
 }
 
 /* ══ Meta boxes ═════════════════════════════════════════════ */
@@ -1871,6 +1926,75 @@ button:focus-visible {
   margin-bottom: var(--space-5);
 }
 
+/* ── Tira de fechas ("Mis planes", 2026-08-23) ─────────────────────────
+   Mismo patrón accesible que .budget-modes (radio oculto + <label> chip),
+   pero flex + scroll horizontal en vez de una grid de 4 columnas fijas:
+   el número de fechas varía (hasta 30, ver PANTRY_HISTORY_KEY en
+   pantry.js) y una tira que se desborda con scroll lateral es más clara
+   que envolver en muchas filas. Contenido pintado por
+   renderDateStrip() -- ver js/ui/render-pantry.js. */
+.date-strip {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding-bottom: 2px;
+  margin-bottom: var(--space-5);
+}
+
+.date-chip {
+  flex-shrink: 0;
+  padding: 7px 14px;
+  border-width: 1px;
+  border-style: solid;
+  border-color: var(--line-strong);
+  border-radius: 999px;
+  background: var(--paper-raised);
+  color: var(--ink-soft);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+/* "Hoy" siempre distinguible, esté seleccionado o no. */
+.date-chip--today {
+  border-color: var(--clay-wash);
+  color: var(--clay-deep);
+}
+
+.visually-hidden:checked + .date-chip {
+  border-color: var(--green);
+  background: var(--green-wash);
+  color: var(--green-deep);
+}
+
+.visually-hidden:focus-visible + .date-chip {
+  outline: 2px solid var(--green);
+  outline-offset: 1px;
+}
+
+@media (hover: hover) {
+  .date-chip:hover {
+    border-color: var(--ink-faint);
+  }
+}
+
+.pantry-history-heading {
+  margin: var(--space-4) 0 var(--space-2);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-faint);
+}
+
+.pantry-plans-empty {
+  margin: 0;
+  padding: var(--space-4) 0;
+  color: var(--ink-faint);
+  font-size: 13px;
+  text-align: center;
+}
+
 /* Nota de cobertura de despensa -- mismo tratamiento visual que
    .shopping-item__pantry, reutilizado en la tarjeta de plan activo y en
    su checklist de compra, para que "esto ya lo tienes" se lea igual en
@@ -1926,11 +2050,11 @@ button:focus-visible {
 /* ══ Despensa (pantry.js / render-pantry.js) ═══════════════════════════
    Rediseño de UX 2026-08-14b: bloques con roles claros en vez de una
    lista plana -- ver cabecera de render-pantry.js para el razonamiento
-   completo. Desde 2026-08-14c este acordeón es SOLO (1) stock actual,
-   editable in situ, y (2) historial ya completado, colapsado y de solo
-   lectura -- los planes con algo pendiente (.pantry-active-card y
-   compañía, estilos más abajo) ya no viven aquí dentro, se pintan en
-   "Tu plan" (.today-plans-panel), fuera de este acordeón. */
+   completo. Desde 2026-08-23 vive en un <dialog> (.despensa-dialog, ver
+   más abajo junto a dialog.auth-dialog) y es SOLO stock actual, editable
+   in situ -- ni los planes pendientes ni el historial completado viven
+   ya aquí dentro, ambos se pintan en "Mis planes" (.today-plans-panel),
+   fuera de este diálogo. */
 
 .pantry-intro {
   margin: 0 0 var(--space-4);
@@ -2356,32 +2480,9 @@ button:focus-visible {
   background: var(--green-wash);
 }
 
-/* ── Historial completado: colapsado, de solo lectura ──────────────────── */
-.pantry-history-disclosure {
-  margin: 0;
-  padding: 0;
-  border: none;
-}
-
-.pantry-history-disclosure > summary {
-  padding: var(--space-2) 0;
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--ink-faint);
-  cursor: pointer;
-  list-style: none;
-}
-
-.pantry-history-disclosure > summary::-webkit-details-marker {
-  display: none;
-}
-
-@media (hover: hover) {
-  .pantry-history-disclosure > summary:hover {
-    color: var(--ink);
-  }
-}
-
+/* ── Historial completado: de solo lectura, dentro de "Mis planes"
+   (2026-08-23) -- ya no vive en un <details> anidado dentro de despensa,
+   ver .pantry-history-heading más arriba para el título que lo precede. */
 .pantry-history {
   list-style: none;
   margin: var(--space-2) 0 0;
@@ -2461,17 +2562,13 @@ button:focus-visible {
     width: 92%;
   }
 
-  .hero {
+  .hero--compact {
+    padding: var(--space-3) var(--space-4);
     margin-bottom: var(--space-5);
-    padding: 28px var(--space-5) 30px;
   }
 
-  .hero h1 {
-    font-size: 36px;
-  }
-
-  .hero p {
-    font-size: 14px;
+  .hero--compact h1 {
+    font-size: 18px;
   }
 
   .grid {
@@ -2742,10 +2839,11 @@ button:focus-visible {
     padding-top: var(--space-4);
   }
 
-  /* Actions: primary CTA full-width on its own row, the two short
-     secondary actions paired on one row, and the example-data button
-     (longest label) on its own full-width row — 3 rows instead of 4
-     stacked buttons. Reordered with `order` only; DOM/JS untouched. */
+  /* Actions: primary CTA full-width on its own row, the two most-used
+     secondary actions (Sin cocinar / Despensa) paired on one row, and
+     Resetear (least-used) alone on its own full-width row — 3 rows
+     instead of 4 stacked buttons. Reordered with `order` only; DOM/JS
+     untouched. */
   .actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -2768,11 +2866,11 @@ button:focus-visible {
     order: 2;
   }
 
-  #resetBtn {
+  #despensaBtn {
     order: 3;
   }
 
-  #fillExampleBtn {
+  #resetBtn {
     grid-column: 1 / -1;
     order: 4;
   }
@@ -2915,6 +3013,27 @@ dialog.auth-dialog::backdrop {
 
 dialog.auth-dialog[open] {
   animation: pageIn 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* Despensa (2026-08-23): un poco más ancha que el resto de diálogos para
+   la lista de stock, y con altura máxima + scroll interno en el body --
+   a diferencia de los otros .auth-dialog, el contenido aquí (alta +
+   lista de stock) no tiene límite fijo (hasta 81 ingredientes posibles),
+   así que sin esto un stock largo podría desbordar el viewport.
+   Selector con prefijo `dialog.` (no solo `.despensa-dialog`) a propósito
+   -- misma especificidad que `dialog.auth-dialog` de arriba, si no esta
+   regla nunca gana el `width` (una clase sola pierde contra elemento+clase
+   aunque venga después en el archivo). */
+dialog.despensa-dialog {
+  width: min(460px, 92vw);
+  max-height: min(640px, 85vh);
+  display: flex;
+  flex-direction: column;
+}
+
+.despensa-dialog .auth-dialog__body {
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .auth-dialog__head {

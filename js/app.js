@@ -8,7 +8,7 @@
  *  - Capturar referencias al DOM
  *  - Inicializar los módulos de render (initRenderRefs / initInsightRefs)
  *  - Manejar el submit del formulario → calcular perfil → generar plan → render
- *  - Botones "Ejemplo alto en proteína" y "Resetear"
+ *  - Botones "Despensa" y "Resetear"
  *  - Mostrar/ocultar el spinner mientras se calcula
  *
  * ── Arquitectura de arranque a prueba de fallos (2026-08-06) ─────────────
@@ -83,7 +83,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // ── Referencias al DOM ───────────────────────────────────────────────
   var form          = document.getElementById("plannerForm");
-  var fillExampleBtn= document.getElementById("fillExampleBtn");
   var resetBtn      = document.getElementById("resetBtn");
   var spinnerWrap   = document.getElementById("spinnerWrap");
   var statusText    = document.getElementById("statusText");
@@ -122,9 +121,12 @@ document.addEventListener("DOMContentLoaded", function () {
   var pantryAddGrams           = document.getElementById("pantryAddGrams");
   var pantryIngredientOptionsList = document.getElementById("pantryIngredientOptions");
   var pantryAddError           = document.getElementById("pantryAddError");
-  var pantryHistoryDisclosure  = document.getElementById("pantryHistoryDisclosure");
-  var pantryHistoryContainer   = document.getElementById("pantryHistoryContainer");
   var pantryCountEl            = document.getElementById("pantryCount");
+
+  // Despensa como <dialog> (2026-08-23) -- pantryPanel (arriba) ES el
+  // propio <dialog>, abierto/cerrado desde estos dos.
+  var despensaBtn      = document.getElementById("despensaBtn");
+  var pantryCloseBtn   = document.getElementById("pantryCloseBtn");
 
   // Diálogo "ya tienes un plan activo hoy" -- ver "Gate en Generar plan..."
   // en la cabecera de js/core/pantry.js.
@@ -133,11 +135,14 @@ document.addEventListener("DOMContentLoaded", function () {
   var planReplaceFullBtn     = document.getElementById("planReplaceFullBtn");
   var planReplaceCancelBtn   = document.getElementById("planReplaceCancelBtn");
 
-  // "Tu plan" (2026-08-14c) -- fuera del acordeón de despensa, ver
-  // cabecera de js/ui/render-pantry.js. Planes con algo pendiente
-  // (comprar/cocinar) se pintan y gestionan aquí, no dentro de pantryPanel.
+  // "Mis planes" (2026-08-14c, fusionado con selector de fecha en
+  // 2026-08-23) -- fuera del diálogo de despensa, ver cabecera de
+  // js/ui/render-pantry.js. Todas las entries de la fecha elegida
+  // (pendientes y completadas) se pintan y gestionan aquí.
   var todayPlansPanel          = document.getElementById("todayPlansPanel");
   var todayPlansContainer      = document.getElementById("todayPlansContainer");
+  var dateStripEl              = document.getElementById("dateStrip");
+  var plansEmptyNoteEl         = document.getElementById("plansEmptyNote");
 
   var authProfileBtn   = document.getElementById("authProfileBtn");
   var authProfileLabel = document.getElementById("authProfileLabel");
@@ -425,27 +430,6 @@ document.addEventListener("DOMContentLoaded", function () {
     }, 50);
   }
 
-  // ── Botón: ejemplo alto en proteína ───────────────────────────────────
-
-  function fillExample() {
-    document.getElementById("age").value      = 27;
-    document.getElementById("sex").value      = "male";
-    document.getElementById("weight").value   = 82;
-    document.getElementById("height").value   = 180;
-    document.getElementById("activity").value = "1.55";
-    document.getElementById("workouts").value = 5;
-    document.getElementById("goal").value     = "bulk";
-    document.getElementById("cookTime").value = "35";
-    document.getElementById("taste").value    = "mixed";
-
-    var customRadio = document.getElementById("budgetModeCustom");
-    if (customRadio) {
-      customRadio.checked = true;
-      updateBudgetCustomVisibility();
-    }
-    if (budgetCustomInput) budgetCustomInput.value = 24; // entre Equilibrado(20) y Amplio(28) -- ver js/data/budget-presets.js
-  }
-
   // ── Perfil/ajustes guardados (invitado: localStorage; cuenta: nube vía
   //    js/core/cloud-sync.js, ver handleSubmit más abajo y render-auth.js) ─
   // Rellena el formulario con el último perfil guardado -- nunca lanza si
@@ -514,8 +498,7 @@ document.addEventListener("DOMContentLoaded", function () {
   initInsightRefs({ warningBox: warningBox, insightsList: insightsList });
 
   form.addEventListener("submit", handleSubmit);
-  if (fillExampleBtn) fillExampleBtn.addEventListener("click", fillExample);
-  if (resetBtn)        resetBtn.addEventListener("click", resetAll);
+  if (resetBtn) resetBtn.addEventListener("click", resetAll);
 
   budgetModeRadios.forEach(function (radio) {
     radio.addEventListener("change", updateBudgetCustomVisibility);
@@ -666,6 +649,16 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         if (!result) return;
 
+        // savePlanForToday()/replacePendingMealsForToday() siempre guardan
+        // bajo la fecha de HOY -- si el usuario estaba mirando otro día en
+        // "Mis planes", esto lo trae de vuelta a "Hoy" para que el plan
+        // recién confirmado sea visible sin tocar el chip a mano.
+        safeInit("select-today-in-plans", function () {
+          if (typeof selectPlanDate === "function" && typeof formatLocalDateKey === "function") {
+            selectPlanDate(formatLocalDateKey(new Date()));
+          }
+        });
+
         if (typeof renderPantryPanel === "function") renderPantryPanel();
         if (typeof renderPlanSavedNotice === "function") renderPlanSavedNotice(result.entry, result.historySaved, mode);
 
@@ -707,6 +700,12 @@ document.addEventListener("DOMContentLoaded", function () {
         var result = saveNoCookPlanForToday(lastNoCookSlots);
         if (!result) return;
 
+        safeInit("select-today-in-plans", function () {
+          if (typeof selectPlanDate === "function" && typeof formatLocalDateKey === "function") {
+            selectPlanDate(formatLocalDateKey(new Date()));
+          }
+        });
+
         if (typeof renderPantryPanel === "function") renderPantryPanel();
         if (typeof renderPlanSavedNotice === "function") {
           renderPlanSavedNotice(result.entry, result.historySaved, result.replaced ? "draft-updated" : "created");
@@ -744,8 +743,8 @@ document.addEventListener("DOMContentLoaded", function () {
         pantryAddError: pantryAddError,
         todayPlansPanel: todayPlansPanel,
         todayPlansContainer: todayPlansContainer,
-        pantryHistoryDisclosure: pantryHistoryDisclosure,
-        pantryHistoryContainer: pantryHistoryContainer,
+        dateStripEl: dateStripEl,
+        plansEmptyNoteEl: plansEmptyNoteEl,
         pantryCountEl: pantryCountEl,
         planSavedNoticeEl: planSavedNoticeEl,
         onPantryChange: syncAfterPantryChange,
@@ -753,10 +752,15 @@ document.addEventListener("DOMContentLoaded", function () {
         planReplaceBodyEl: planReplaceBodyEl,
         planReplaceFullBtn: planReplaceFullBtn,
         planReplaceCancelBtn: planReplaceCancelBtn,
-        onReplaceWholePlan: handleReplaceWholePlan
+        onReplaceWholePlan: handleReplaceWholePlan,
+        despensaDialogEl: pantryPanel,
+        despensaCloseBtn: pantryCloseBtn
       });
       if (typeof renderPantryPanel === "function") renderPantryPanel();
     }
+    if (despensaBtn) despensaBtn.addEventListener("click", function () {
+      if (typeof showDespensaDialog === "function") showDespensaDialog();
+    });
     if (usePlanTodayBtn) usePlanTodayBtn.addEventListener("click", handleUsePlanToday);
     if (usePlanTodayNoCookBtn) usePlanTodayNoCookBtn.addEventListener("click", handleUseNoCookPlanToday);
   });

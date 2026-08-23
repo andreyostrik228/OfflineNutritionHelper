@@ -171,15 +171,18 @@
     <div class="next-meal-sticky" id="nextMealSticky" hidden></div>
     <main>
 
-    <section class="hero">
-      <div class="brand-mark"><svg width="18" height="18"><use href="#icon-chef"/></svg></div>
+    <!-- ══ CABECERA compacta (2026-08-23, simplificación visual) -- antes
+         "portada" con h1 gigante + párrafo + círculo decorativo, dominaba
+         toda la primera pantalla sin ser accionable. Ahora es una barra de
+         título de una sola fila (icono + h1 pequeño + badge), sin párrafo
+         (eliminado del todo, no oculto) -- ver .hero--compact en
+         style.css. ══ -->
+    <section class="hero hero--compact">
+      <div class="hero__title-group">
+        <div class="brand-mark"><svg width="18" height="18"><use href="#icon-chef"/></svg></div>
+        <h1>Planificador de <span class="hero__serif">nutrición</span></h1>
+      </div>
       <span class="brand-eyebrow"><span class="badge-text">Motor de reglas &middot; 100% offline</span></span>
-      <h1>Planificador de<span class="hero__serif">nutrición</span></h1>
-      <p>
-        Calcula tus macros con Mifflin-St Jeor y construye un día completo con platos reales
-        (no listas de ingredientes sueltos): garantiza ≥3 fuentes de proteína y ≥3 de carbohidratos al día, y
-        asegura que ningún alimento supere el 25% de las calorías totales.
-      </p>
     </section>
 
     <div class="grid">
@@ -308,7 +311,7 @@
           <div class="actions">
             <button type="submit" class="btn-primary"><svg width="16" height="16"><use href="#icon-chef"/></svg> Generar plan</button>
             <button type="button" class="btn-secondary btn-nocook" id="noCookBtn"><svg width="16" height="16"><use href="#icon-bolt"/></svg> Sin cocinar</button>
-            <button type="button" class="btn-secondary" id="fillExampleBtn">Ejemplo alto en proteína</button>
+            <button type="button" class="btn-secondary" id="despensaBtn"><svg width="16" height="16"><use href="#icon-cart"/></svg> Despensa <span class="despensa-btn__count">(<span id="pantryCount">0</span>)</span></button>
             <button type="button" class="btn-secondary" id="resetBtn">Resetear</button>
           </div>
 
@@ -388,20 +391,6 @@
           </div>
         </div>
 
-        <div class="insights" id="insightsBox">
-          <h3><span class="icon-badge"><svg width="14" height="14"><use href="#icon-search"/></svg></span> Notas del plan</h3>
-          <ul id="insightsList">
-            <li>Motor: platos reales de DISH_DB (334 platos, 18 fuentes proteicas).</li>
-            <li>Garantiza ≥3 fuentes de proteína y ≥3 de carbohidratos al día.</li>
-            <li>Ningún alimento puede superar el 25% de las calorías diarias.</li>
-            <li>Sin dependencias externas — 100% offline.</li>
-          </ul>
-        </div>
-
-        <div class="footer-note">
-          Esta herramienta ofrece una planificación práctica orientada al fitness.
-          Si necesitas asesoramiento médico o nutricional personalizado, consulta con un profesional.
-        </div>
       </section>
 
     </div>
@@ -433,50 +422,50 @@
       </div>
     </section>
 
-    <!-- ══ TU PLAN: planes guardados con algo pendiente (falta comprar o
-         falta cocinar alguna comida) — reubicado aquí (2026-08-14c),
-         inmediatamente después de la lista de la compra, en vez de vivir
-         enterrado dentro del acordeón colapsado de despensa. Comprar y
-         cocinar (Etapas 2/3 de js/core/pantry.js) se gestionan aquí;
-         despensa (abajo) vuelve a ser solo inventario + historial. Oculto
-         por completo si no hay ningún plan con algo pendiente — ver
-         isEntryFullyCooked()/renderPantryHistorySections() en
-         js/ui/render-pantry.js. Permite varios planes activos el mismo
-         día a propósito (decisión explícita del usuario) — cada tarjeta
-         se distingue por fecha Y hora. ══ -->
-    <section class="today-plans-panel" id="todayPlansPanel" hidden>
+    <!-- ══ MIS PLANES: historial unificado con selector de fecha
+         (2026-08-23, simplificación visual) — fusiona los dos listados
+         anteriores (planes activos aquí + historial completado dentro de
+         despensa) en una sola sección, siempre visible, con una tira de
+         chips de fecha (mismo patrón accesible que .budget-modes) más
+         "Hoy" siempre presente aunque no haya plan todavía. Al elegir una
+         fecha se filtran y pintan TODAS las entries de pantryHistory de
+         ese día (pendientes y completadas), reutilizando los mismos
+         renderers de siempre — ver renderPantryHistorySections()/
+         renderDateStrip() en js/ui/render-pantry.js. Permite varios
+         planes el mismo día a propósito (decisión explícita del usuario)
+         — cada tarjeta se distingue por fecha Y hora. ══ -->
+    <section class="today-plans-panel" id="todayPlansPanel">
       <div class="today-plans-panel__head verified-panel__head">
         <div>
-          <h2>Tu <em>plan</em></h2>
-          <span class="eyebrow">Compra y marca cada comida cuando te toque</span>
+          <h2>Mis <em>planes</em></h2>
+          <span class="eyebrow">Elige un día para ver o gestionar ese plan</span>
         </div>
       </div>
+      <div class="date-strip" role="radiogroup" aria-label="Elegir fecha" id="dateStrip"></div>
       <div class="pantry-active" id="todayPlansContainer"></div>
+      <p class="pantry-plans-empty" id="plansEmptyNote" hidden>Todav&iacute;a no hay ning&uacute;n plan guardado para este d&iacute;a.</p>
     </section>
 
     <!-- ══ DESPENSA: recuerda cuánto de cada ingrediente ya tienes en casa
          y lo descuenta de lo que un plan futuro pide comprar. Persiste en
          localStorage (+ nube si hay sesión), INDEPENDIENTE de cualquier
          plan generado en esta sesión — nunca se oculta ni se vacía al
-         pulsar "Resetear". Desde 2026-08-14c es SOLO inventario +
-         historial de planes ya completados — los planes con algo
-         pendiente viven en "Tu plan" (arriba), fuera de este acordeón —
-         ver cabecera de js/ui/render-pantry.js para el razonamiento
-         completo. Misma lógica de negocio de siempre (js/core/pantry.js),
-         solo cambia cómo se presenta. ══ -->
-    <details class="disclosure" id="pantryPanel">
-      <summary>
-        <div class="verified-panel__head">
-          <div>
-            <h2>Tu <em>despensa</em></h2>
-            <span class="eyebrow">Lo que ya tienes en casa &mdash; se descuenta de tu pr&oacute;xima compra</span>
-          </div>
-          <div class="badge"><svg class="icon" width="14" height="14"><use href="#icon-cart"/></svg> <span id="pantryCount">0</span> productos</div>
-        </div>
-        <svg class="disclosure__chevron" width="20" height="20"><use href="#icon-chevron"/></svg>
-      </summary>
+         pulsar "Resetear". Desde 2026-08-23 vive en un <dialog> (antes
+         acordeón siempre visible al final de la página) abierto desde el
+         botón "Despensa" en .actions — reutiliza el mismo patrón de
+         diálogo que #authDialog/#planReplaceDialog (ver
+         showDespensaDialog()/hideDespensaDialog(), js/ui/render-pantry.js).
+         Es SOLO inventario — el historial de planes ya completados vive
+         ahora en "Mis planes" (arriba), no aquí dentro. Misma lógica de
+         negocio de siempre (js/core/pantry.js), solo cambia cómo se
+         presenta. ══ -->
+    <dialog class="auth-dialog despensa-dialog" id="pantryPanel">
+      <div class="auth-dialog__head">
+        <h2>Tu <em>despensa</em></h2>
+        <button type="button" class="auth-dialog__close" id="pantryCloseBtn" aria-label="Cerrar">&times;</button>
+      </div>
 
-      <div class="disclosure__body">
+      <div class="auth-dialog__body">
         <p class="pantry-intro">Guarda aqu&iacute; lo que ya tienes en la nevera o el armario (sobras, compras anteriores&hellip;). Cuando generes un plan, el sitio lo tendr&aacute; en cuenta y no te lo volver&aacute; a pedir en la lista de la compra.</p>
 
         <form class="pantry-add" id="pantryAddForm">
@@ -492,13 +481,8 @@
           <svg width="26" height="26"><use href="#icon-cart"/></svg>
           <p><strong>Tu despensa est&aacute; vac&iacute;a.</strong> Aqu&iacute; guardas lo que ya tienes en casa, para que el sitio no te lo vuelva a pedir comprar. A&ntilde;ade tu primer producto arriba &uarr;</p>
         </div>
-
-        <details class="disclosure pantry-history-disclosure" id="pantryHistoryDisclosure" hidden>
-          <summary>Historial de planes completados</summary>
-          <ul class="pantry-history" id="pantryHistoryContainer"></ul>
-        </details>
       </div>
-    </details>
+    </dialog>
 
     <!-- ══ SIN COCINAR: plan hecho enteramente de productos reales del
          catálogo (comprar → abrir/servir/calentar rápido → comer), sin
@@ -516,7 +500,7 @@
       <div class="nocook-results" id="noCookResults"></div>
       <!-- Despensa "sin cocinar" (2026-08-20f, known issue #9) -- mismo
            patrón que usePlanTodayBtn del plan normal: confirma el plan de
-           hoy en "Tu plan", desde donde se compra/consume por toma. -->
+           hoy en "Mis planes", desde donde se compra/consume por toma. -->
       <button type="button" class="btn-primary" id="usePlanTodayNoCookBtn">Confirmar plan sin cocinar</button>
     </section>
 
@@ -549,6 +533,26 @@
         </p>
       </div>
     </details>
+
+    <!-- ══ NOTAS DEL PLAN: reubicado al final de todo (2026-08-23,
+         simplificación visual) -- antes vivía dentro de la columna de
+         resultados, ocupando espacio junto a comidas reales con texto
+         que no es accionable. Mismo contenido/lógica de siempre (ver
+         js/ui/render-insights.js), solo cambia dónde vive en la página. ══ -->
+    <div class="insights" id="insightsBox">
+      <h3><span class="icon-badge"><svg width="14" height="14"><use href="#icon-search"/></svg></span> Notas del plan</h3>
+      <ul id="insightsList">
+        <li>Motor: platos reales de DISH_DB (334 platos, 18 fuentes proteicas).</li>
+        <li>Garantiza ≥3 fuentes de proteína y ≥3 de carbohidratos al día.</li>
+        <li>Ningún alimento puede superar el 25% de las calorías diarias.</li>
+        <li>Sin dependencias externas — 100% offline.</li>
+      </ul>
+    </div>
+
+    <div class="footer-note">
+      Esta herramienta ofrece una planificación práctica orientada al fitness.
+      Si necesitas asesoramiento médico o nutricional personalizado, consulta con un profesional.
+    </div>
 
     </main>
   </div>

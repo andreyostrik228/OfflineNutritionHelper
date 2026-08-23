@@ -1,6 +1,6 @@
 # Nutrition Planner — Engineering State
 
-Actualizado 2026-08-20. Lee esto junto con `PROJECT.md` y `ROADMAP.md` antes
+Actualizado 2026-08-23. Lee esto junto con `PROJECT.md` y `ROADMAP.md` antes
 de empezar una sesión nueva (ver "Session handoff" al final — reemplaza al
 antiguo "Continuation checklist"). Para el sistema completo (este repo + el
 pipeline Python en `PythonProject`), ver `PythonProject/docs/architecture.md`
@@ -21,6 +21,63 @@ llama a quién), no las decisiones de producto ni el "por qué" que solo
 está aquí y en `ROADMAP.md`. **Si vuelves a tocar código, el grafo se
 desactualiza de nuevo** — no se actualiza solo (comandos exactos en
 `PythonProject/docs/graphify.md`, sección "Cómo actualizarlo").
+
+**Resumen de la sesión 2026-08-23b (rediseño visual: simplificar la
+interfaz, sin tocar lógica de negocio)**: continuación de la sesión
+2026-08-23 (re-verificación) — el usuario pidió una pasada de
+simplificación visual explícita de toda la interfaz ("el sitio se siente
+sobrecargado"), con libertad para mejorar el UX más allá de la lista
+literal si había una solución más clara. Diseño acordado en Plan Mode
+antes de tocar código. Todos los cambios son de presentación —
+`js/core/pantry.js` (lógica de negocio real: compra/cocinado/stock) no
+cambió salvo por una función pura nueva de agregación (`listPlanDates()`):
+  - **Cabecera** (`.hero`): de "portada" (h1 gigante + párrafo + círculo
+    decorativo) a una barra de título compacta de una sola fila (icono +
+    h1 pequeño + badge), sin párrafo (eliminado del HTML, no oculto) —
+    nuevo modificador `.hero--compact`.
+  - **"Notas del plan"** (`#insightsBox`) y el aviso legal
+    (`.footer-note`) se sacaron de la columna de resultados y se
+    movieron al final absoluto de `<main>`, después del catálogo de
+    productos.
+  - **Despensa**: de `<details>` siempre visible al final de la página a
+    un `<dialog>` (`.despensa-dialog`, mismo patrón que
+    `#authDialog`/`#planReplaceDialog`), abierto desde un botón nuevo
+    `#despensaBtn` en `.actions` — sustituye literalmente a
+    `#fillExampleBtn` (confirmado con el código real que SÍ funcionaba,
+    no estaba realmente "muerto", pero el usuario pidió sustituirlo sin
+    ambigüedad, así que se eliminó del todo, sin dejarlo colgando).
+  - **"Tu plan" → "Mis planes"**: se fusionó con el historial de planes
+    completados (antes anidado dentro de un `<details>` colapsado en
+    despensa) en una sola sección con un selector de fecha (tira de
+    chips accesible, mismo patrón `role="radiogroup"` que
+    `.budget-modes`). La sección ya NO se oculta nunca (antes se ocultaba
+    si no había plan pendiente); un aviso (`#plansEmptyNote`) sustituye
+    ese hueco. "Hoy" es el chip por defecto y siempre está presente
+    aunque no haya plan guardado todavía. `selectPlanDate()` (nueva,
+    `render-pantry.js`) fuerza la vuelta a "Hoy" justo después de
+    confirmar un plan nuevo, para que sea visible sin que el usuario
+    tenga que re-tocar el chip si estaba mirando otro día.
+  - **Bug real encontrado y corregido durante la verificación en vivo**
+    (no en tests): `.despensa-dialog { width: ... }` nunca ganaba sobre
+    `dialog.auth-dialog { width: ... }` — una clase sola pierde contra
+    elemento+clase en especificidad CSS aunque venga después en el
+    archivo; el selector correcto es `dialog.despensa-dialog`.
+  - 2 tests nuevos para `listPlanDates()` en `tests/pantry.test.js` (con
+    el mismo patrón `JSON.parse(JSON.stringify(...))` ya documentado en
+    el resto de la suite para comparar arrays creados en el realm `vm`
+    del sandbox). 281 tests, 0 fallidos. Verificado en vivo contra el
+    servidor real (cache-busting por query string, ya que el
+    `fetch`+`eval` ya documentado en este archivo es para JS, no para el
+    propio HTML): cabecera compacta, diálogo de despensa abre/cierra con
+    el ancho correcto tras el fix, tira de fechas resalta "Hoy" y cambia
+    correctamente entre tarjetas activas e historial completado al
+    elegir otra fecha, flujo completo generar→confirmar deja la tira en
+    "Hoy" con la tarjeta nueva visible, "Notas del plan" al final de la
+    página, cero overflow horizontal en 375px móvil, orden de `.actions`
+    en móvil reordenado (Despensa emparejado con Sin cocinar, Resetear
+    solo en su fila), cero errores de consola. Ver sección dedicada
+    "Rediseño visual: simplificación de la interfaz — 2026-08-23b" más
+    abajo para el detalle completo.
 
 **Resumen de la sesión 2026-08-20b (fix real: overflow horizontal en
 mobile — localizado por fin a `.pantry-meal-chip`, bug documentado sin
@@ -160,6 +217,30 @@ pasando. 255 tests en `tests/` (sin cambio de cantidad), 278 totales, 0
 fallidos. `js/core/`, `js/engine/*` (código), `js/data/
 ingredient-nutrition.js`, y el resto de la app — cero cambios; solo
 `js/data/dishes.js` (23 valores de `kcal`) y los golden-master.
+
+**Resumen de la sesión 2026-08-23 (re-verificación de la lista de issues
+tras retomar la conversación)**: sesión nueva (resume de la anterior), el
+usuario preguntó si quedaba algún issue y luego pidió comprobar contra el
+código real en vez de confiar en la documentación. Re-verificado
+directamente contra el código (no asumido desde `STATE.md`): 31/81
+ingredient roles siguen sin nutrición real (contado en vivo sobre
+`ingredient-nutrition.js`), known issue #8 sigue presente
+(`enforce25PercentRule` sigue sin re-chequearse tras
+`enforcePurchaseBudgetCap`), no-cook sigue sin selección consciente de
+despensa (cero referencias a pantry en `no-cook-generator.js`) ni gate
+extendido (`handleNoCook()` llama a `runNoCookGenerator()` directo),
+`"Lechuga: Pepino"` y el `mainProt:"pavo"` mal etiquetado de "Tostadas
+con jamón cocido y tomate" siguen sin corregir, la auditoría Atwater
+sigue en 179/334 (53.6%) exacto, packaging.js sigue en 69/81, y el grafo
+de Graphify sigue sin regenerar desde 2026-08-13. Todo confirmado
+exactamente como `STATE.md` ya decía — nada se había arreglado en
+silencio. **Cambio real encontrado, no en el código sino en el mundo
+real**: el usuario confirmó que completó él mismo un login real por
+Google de principio a fin — cierra el único paso que quedaba pendiente
+del sistema de cuentas (la cadena técnica ya estaba confirmada desde
+2026-08-14a). Los usuarios de prueba de Supabase siguen sin borrar
+(opcional, confirmado por el usuario). Ningún archivo de código tocado
+esta sesión — solo `STATE.md`/`PROJECT.md`/`ROADMAP.md`.
 
 **Resumen de la sesión 2026-08-20h (per-meal editing: "cambiar este
 plato" sin regenerar los otros 4)**: la pieza que originó esta sesión —
@@ -4098,6 +4179,54 @@ tests). **No tocados**: `js/engine/no-cook-generator.js`,
 `js/core/cloud-sync.js`/`migration.js` (las entries ganan campos nuevos,
 pero siguen sincronizando como blobs opacos, sin cambios necesarios ahí).
 
+## Rediseño visual: simplificación de la interfaz — 2026-08-23b
+
+Ver "Resumen de la sesión 2026-08-23b" arriba para el razonamiento
+completo (por qué cada decisión de diseño, qué se fusionó y por qué).
+Esta sección fija lo que NO hay que romper y la lista de archivos.
+
+**Qué no romper**: `#pantryPanel` es ahora un `<dialog>`, no un
+`<details>` — cualquier código nuevo que lo abra/cierre debe usar
+`showDespensaDialog()`/`hideDespensaDialog()` (`render-pantry.js`), nunca
+`.open`/`hidden` a mano ni asumir el comportamiento de un `<details>`.
+`#todayPlansPanel` ya NO se oculta nunca — no reintroducir un
+`.hidden = active.length === 0` ahí, es justo la regresión que este
+rediseño elimina (el selector de fecha tiene que seguir alcanzable
+aunque el día elegido no tenga plan). `_selectedPlanDate` (estado interno
+de `render-pantry.js`) es la única fuente de verdad de qué fecha está
+elegida — no leerlo/escribirlo directamente desde fuera del módulo, usar
+`selectPlanDate(dateKey)` para forzarlo (como hace `js/app.js` tras
+confirmar un plan, porque `savePlanForToday`/`saveNoCookPlanForToday`
+siempre guardan bajo la fecha de HOY). Cualquier selector CSS nuevo que
+deba ganarle a `dialog.auth-dialog` en especificidad necesita el prefijo
+`dialog.` (ver el bug real de `.despensa-dialog` arriba) — una clase sola
+SIEMPRE pierde contra elemento+clase, sin importar el orden en el
+archivo. `pantryHistoryDisclosure`/`pantryHistoryContainer` (refs de JS)
+y `.pantry-history-disclosure` (CSS) **ya no existen** — el historial
+completado vive dentro de `todayPlansContainer`, agrupado bajo
+`.pantry-history-heading` cuando coincide con entries activas del mismo
+día. `fillExampleBtn`/`fillExample()` **ya no existen** en absoluto (ni
+el botón, ni la función, ni su wiring) — no reintroducirlos pensando que
+hace falta un atajo de relleno de formulario, fue una decisión explícita
+del usuario.
+
+**Archivos modificados**: `index.html` (cabecera, orden de secciones,
+despensa `<details>`→`<dialog>`, nueva sección "Mis planes" con tira de
+fechas, botón `#despensaBtn`), `assets/css/style.css` (`.hero--compact`,
+`dialog.despensa-dialog`, `.date-strip`/`.date-chip`,
+`.pantry-history-heading`, `.pantry-plans-empty`, `.despensa-btn__count`;
+eliminadas `.hero p` y `.pantry-history-disclosure`), `js/core/pantry.js`
+(+`listPlanDates()`), `js/ui/render-pantry.js`
+(`renderPantryHistorySections()` reescrita, +`renderDateStrip`/
+`formatDateChipLabel`/`handleDateStripChange`/`selectPlanDate`/
+`showDespensaDialog`/`hideDespensaDialog`), `js/app.js` (refs nuevas,
+wiring de `#despensaBtn`, `fillExample()` eliminada, `selectPlanDate()`
+llamado tras confirmar un plan), `tests/pantry.test.js` (+2 tests de
+`listPlanDates()`). **No tocados**: `js/engine/*`, `js/core/
+calculator.js`, `js/core/meal-schedule.js`, lógica de negocio de
+despensa (compra/cocinado/stock) en `pantry.js`, `#verifiedPanel`
+(catálogo, sigue como `<details>`).
+
 ## Session handoff (2026-08-19)
 
 Escrito para que la siguiente sesión/chat pueda continuar sin haber visto
@@ -4385,17 +4514,18 @@ construyó optimización multi-día de compra (ver sección de presupuesto
 marginal); NO se completó la migración Fase 1-2 completa de
 `ROADMAP.md` (ampliar más allá del 50/81 actual requiere MÁS productos
 verificados en `real-products.js`, trabajo del lado Python, no de este
-repo). **Límite honesto de la verificación de Google OAuth**: se
-confirmó toda la cadena técnica (config de Supabase, config de Google,
-`client_id`/`redirect_uri` aceptados por Google sin error) hasta el
-punto exacto en que un humano tendría que introducir sus credenciales
-reales de Google — eso NUNCA se hizo (violaría la regla de no manejar
-contraseñas ajenas) y por tanto un login completo por Google en
-producción, de principio a fin, todavía no lo ha probado nadie
-literalmente — la próxima persona que use el botón real "Continuar con
-Google" será la primera prueba end-to-end completa; no hay ninguna razón
-técnica para esperar que falle, pero no está confirmado con la misma
-certeza que el resto.
+repo). ~~**Límite honesto de la verificación de Google OAuth**: [...] un
+login completo por Google en producción, de principio a fin, todavía no
+lo ha probado nadie literalmente~~ — **CERRADO, confirmado por el
+usuario en una sesión posterior (2026-08-23)**: completó él mismo un
+login real por Google de principio a fin. Registrado por su palabra en
+el chat, no verificado de forma independiente por mí (no hay acceso a
+logs/API de Supabase Auth en este entorno) — si hiciera falta evidencia
+técnica adicional (ej. un usuario real, no de prueba, en Supabase →
+Authentication → Users), pedirlo explícitamente. La cadena técnica en sí
+ya estaba confirmada desde 2026-08-14a; esto cierra el único paso que
+quedaba, la verificación deliberadamente nunca hecha por mí porque
+habría requerido introducir credenciales reales de alguien.
 
 **Qué se cambió en TODA la sesión (2026-08-13, los 5 tramos)** — resumen
 de archivos, ver cada sección dedicada arriba para el detalle:
@@ -4603,9 +4733,10 @@ sobreajustar sin pedir más señal primero. Si en el futuro vuelve a
 sentirse demasiado agresivo, pedir ejemplos concretos y repetir el
 stress-test de 1000 generaciones antes de tocar nada (mismo patrón que
 19b/19c/19d). El sistema de cuentas sigue COMPLETO y verificado en
-producción, ya no es prioridad. Opcional, no bloqueante: que una persona
-real complete un login por Google de principio a fin al menos una vez
-(ver límite honesto arriba); considerar borrar los usuarios de prueba
+producción, ya no es prioridad. ~~Opcional, no bloqueante: que una
+persona real complete un login por Google de principio a fin al menos
+una vez~~ **CERRADO 2026-08-23** — el usuario confirmó que lo hizo él
+mismo (ver nota arriba). Sigue pendiente, opcional: considerar borrar los usuarios de prueba
 `andreyostrik228+claudetest...@gmail.com` desde Supabase →
 Authentication → Users si se quiere una base limpia antes de invitar a
 usuarios reales (no imprescindible, son inofensivos). Aparte de eso,
@@ -4759,7 +4890,17 @@ desplegado por separado, ver "Commit/branch/deploy actuales" arriba para
 el HEAD real). El único item restante de la lista original (ajuste de
 pesos de `dish-selector.js`) se preguntó explícitamente y el usuario lo
 declinó — no es trabajo pendiente por descuido, ver "Prioridad actual"
-arriba. `5bd841a` verificado sirviendo en producción
+arriba. `5bd841a`/`b382dee` verificado sirviendo en producción
 (`offline-nutrition-helper.pages.dev`) con clics reales tras una recarga
-limpia — verificar con `git log -1` antes de asumir que sigue siendo el
-HEAD real — esto es una foto fija, no una garantía.
+limpia. **2026-08-23**: sesión de re-verificación (sin cambios de
+código) confirmó contra el código real que todos los items de la lista
+seguían exactamente donde se dejaron — el único cambio real fue que el
+usuario completó él mismo el login por Google pendiente, cerrando ese
+punto (ver "Resumen de la sesión 2026-08-23" arriba). **2026-08-23b**:
+pasada de simplificación visual (cabecera compacta, despensa como
+`<dialog>`, "Mis planes" fusionado con selector de fecha, "Notas del
+plan" al final) — puramente presentación, ver "Resumen de la sesión
+2026-08-23b" y la sección dedicada arriba para el detalle completo; 281
+tests, 0 fallidos, verificado en vivo (desktop y móvil 375px, cero
+errores de consola). Verificar con `git log -1` antes de asumir cuál es
+el HEAD real — esto es una foto fija, no una garantía.

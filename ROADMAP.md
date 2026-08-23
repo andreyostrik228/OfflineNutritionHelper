@@ -2,7 +2,16 @@
 
 ## Current status
 
-**Stage:** working prototype, updated 2026-08-20h — per-meal editing
+**Stage:** working prototype, updated 2026-08-23 — re-verification
+session (no code changes): every item on the priority-ordered issues
+list was checked directly against the current code, not assumed from
+docs, and confirmed exactly where it was left. One real status change:
+the user confirmed they personally completed a real Google OAuth login
+end-to-end, closing the one remaining gap in the accounts system (the
+technical chain was already confirmed 2026-08-14a). See `STATE.md`,
+"Resumen de la sesión 2026-08-23".
+
+Previously, updated 2026-08-20h — per-meal editing
 shipped: "cambiar este plato" re-picks one meal in an already-confirmed
 plan without regenerating the other 4, using the same weighted-lottery
 selection as generation. Required extending saved entries to retain
@@ -188,10 +197,12 @@ engine, running against a real provisioned Supabase project and verified
 end-to-end against it — real signup/login, cross-device cloud sync,
 migration, and RLS-enforced user isolation all confirmed with live REST
 calls, not just UI clicks or unit tests (see `STATE.md`,
-"Aprovisionamiento real de Supabase + Google OAuth — 2026-08-14a"). Only
+"Aprovisionamiento real de Supabase + Google OAuth — 2026-08-14a"). ~~Only
 remaining open item: no human has completed a real Google login
-end-to-end yet (verification deliberately stopped short of entering
-real credentials — the technical chain up to that point is confirmed).
+end-to-end yet~~ — **closed 2026-08-23**, the user confirmed they
+personally completed a real Google login end-to-end (verification up to
+that point had deliberately stopped short of entering real credentials —
+the technical chain was already confirmed).
 **Fase
 1 of the data migration below is also partially done**: ingredient-level
 kcal/protein/carbs/fat for 50 of 81 roles is real, verified, and live in

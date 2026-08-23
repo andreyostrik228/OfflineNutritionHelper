@@ -613,6 +613,29 @@ function run(t) {
     assert.strictEqual(s.getEntryPlanDate(null), "");
   });
 
+  // ── listPlanDates ──────────────────────────────────────────────────────
+
+  t.test("listPlanDates: fechas distintas del historial, más reciente primero, sin duplicados", function () {
+    var s = freshPantrySandbox();
+    s.savePantryHistory([
+      { id: "a", planDate: "2026-08-10", meals: [], purchase: { done: false, runs: [] } },
+      { id: "b", planDate: "2026-08-14", meals: [], purchase: { done: false, runs: [] } },
+      { id: "c", planDate: "2026-08-14", meals: [], purchase: { done: false, runs: [] } },
+      { id: "d", planDate: "2026-08-12", meals: [], purchase: { done: false, runs: [] } }
+    ]);
+    // JSON.parse(JSON.stringify(...)): el array que devuelve listPlanDates()
+    // se creó en el realm del sandbox (vm), con un Array global distinto al
+    // de este proceso -- deepStrictEqual los trataría como "no
+    // reference-equal" pese a tener la misma forma (mismo motivo documentado
+    // en shopping-cost.test.js/meal-schedule.test.js).
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(s.listPlanDates())), ["2026-08-14", "2026-08-12", "2026-08-10"]);
+  });
+
+  t.test("listPlanDates: historial vacío devuelve un array vacío", function () {
+    var s = freshPantrySandbox();
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(s.listPlanDates())), []);
+  });
+
   // ── aggregatePlanMealItems ────────────────────────────────────────────
 
   t.test("aggregatePlanMealItems: suma un mismo ingrediente aparecido en 2 comidas en una sola fila", function () {
