@@ -4269,14 +4269,18 @@ horizontal en `.pantry-meal-chip` — `assets/css/style.css`,
 tramos más de esta misma sesión y de una sesión posterior (o: known issue
 #5 mainProt; packaging.js known issue #7; known issue #1 Atwater/kcal;
 `1116ff9`: known issue #9, despensa conectada al modo "sin cocinar";
-`092df75`: bug real de corrupción cross-type, tramo g); y la sesión más
-reciente (tramo h: per-meal editing) — cada uno con su propio commit +
-su propio "docs: record hash" de seguimiento, todos comiteados y
-desplegados individualmente. A partir de aquí este handoff deja de
-repetir el hash exacto de cada tramo pequeño (queda documentado en su
-propia sección dedicada más arriba, buscar por fecha) — **verificar
-siempre con `git log -1`/`git status -sb` antes de asumir cuál es el HEAD
-real**. **Pusheado a `origin/main`**
+`092df75`: bug real de corrupción cross-type, tramo g); y **`5bd841a`**
+(tramo h, sesión más reciente: per-meal editing, "cambiar este plato" —
+`js/engine/dish-selector.js`, `js/engine/plan-generator.js`,
+`js/core/pantry.js`, `js/ui/render-pantry.js`, `js/app.js`,
+`assets/css/style.css`, `tests/per-meal-editing.test.js` nuevo,
+`tests/run-tests.js`, `STATE.md`, `PROJECT.md`, `ROADMAP.md`) — cada
+tramo con su propio commit + su propio "docs: record hash" de
+seguimiento, todos comiteados y desplegados individualmente. A partir de
+aquí este handoff deja de repetir el hash exacto de cada tramo pequeño
+(queda documentado en su propia sección dedicada más arriba, buscar por
+fecha) — **verificar siempre con `git log -1`/`git status -sb` antes de
+asumir cuál es el HEAD real**. **Pusheado a `origin/main`**
 (`github.com/andreyostrik228/OfflineNutritionHelper`). Sigue habiendo un
 archivo suelto sin relación, `PANTRY_HISTORY_MAX_ENTRIES)` (0 bytes, sin
 trackear, en la raíz, deliberadamente NUNCA comiteado) — mismo tipo de
@@ -4316,7 +4320,18 @@ re-verificado EN VIVO contra producción en 375px real (no solo el
 servidor de desarrollo): plan generado y confirmado, 10 chips de comida
 reales incluyendo varios nombres largos, `document.documentElement.
 scrollWidth` en 376px (no 412+), 0 elementos desbordando el viewport en
-un escaneo completo del DOM. Cloudflare
+un escaneo completo del DOM. **Deploys posteriores de tramos g/h**:
+mismo comando, confirmados con fetch directo (`regenerateSingleMeal`/
+`replaceSingleMealForEntry` presentes en los archivos servidos) y
+re-verificados EN VIVO contra producción con clics REALES tras una
+recarga limpia (no solo llamadas a función) — confirmar plan → "cambiar"
+en una toma → plato distinto aplicado, `docScrollWidth` 376px, 0
+elementos desbordando, 0 errores de consola; nota de metodología: una
+medición intermedia en la MISMA pestaña sin recargar mostró 481px con
+194 "offenders" — resultó ser viewport pegado de horas de interacción
+acumulada en esa pestaña de pruebas, no un bug real; una recarga real
+volvió a confirmar 376px limpio, mismo patrón que ya advertía la sección
+dedicada del tramo (h) arriba. Cloudflare
 Pages, proyecto direct-upload, `Git Provider: No` — recordar para el
 futuro: un push a `origin/main` NUNCA despliega solo, hace falta
 `wrangler pages deploy` explícito cada vez.
@@ -4744,6 +4759,7 @@ desplegado por separado, ver "Commit/branch/deploy actuales" arriba para
 el HEAD real). El único item restante de la lista original (ajuste de
 pesos de `dish-selector.js`) se preguntó explícitamente y el usuario lo
 declinó — no es trabajo pendiente por descuido, ver "Prioridad actual"
-arriba. Verificar sirviendo en producción con `git log -1` antes de
-asumir que el HEAD descrito aquí sigue siendo exacto — esto es una foto
-fija, no una garantía.
+arriba. `5bd841a` verificado sirviendo en producción
+(`offline-nutrition-helper.pages.dev`) con clics reales tras una recarga
+limpia — verificar con `git log -1` antes de asumir que sigue siendo el
+HEAD real — esto es una foto fija, no una garantía.
