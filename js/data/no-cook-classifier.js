@@ -20,6 +20,13 @@
  * NO inventa productos ni cambia sus datos — solo decide si un producto ya
  * existente en el catálogo entra en este modo y con qué nivel/unidad.
  *
+ * Desde 2026-08-24 (selector de tienda), si category/leafCategory no
+ * coincide con NINGUNA regla curada (típico de Alcampo/Carrefour, cuya
+ * taxonomía no es la de Mercadona), cae en un fallback por palabras
+ * clave del NOMBRE (ver "Fallback por nombre" más abajo) antes de
+ * excluir -- deliberadamente menos preciso que las reglas curadas, solo
+ * para no dejar el catálogo de otra tienda con el pool siempre vacío.
+ *
  * Consumido por: js/engine/no-cook-generator.js
  * ─────────────────────────────────────────────────────────────────────────
  */
@@ -152,6 +159,103 @@ var NOT_READY_PHRASES = ["para guisar", "para cocido", "para asar", "para freir"
 
 var READY_KEYWORDS_STAPLE = ["cocid"]; // "cocido"/"cocida" -> ya preparado
 
+// ── Fallback por nombre (2026-08-24, selector de tienda) ────────────────
+// Todo lo de arriba está tasado contra la taxonomía de categorías
+// CURADA de Mercadona (category/leafCategory tal como los trae
+// products.db.json). Alcampo/Carrefour no comparten esa taxonomía --
+// su category/leafCategory viene de la propia estructura de navegación
+// de cada tienda (ver scrapers en PythonProject), así que no coincide
+// con NINGUNA regla de arriba. Sin este fallback, todo su catálogo
+// caía en el "excluir por defecto" final -- confirmado en vivo que
+// generateNoCookPlan("alcampo") devolvía el pool vacío pese a tener
+// productos reales (ver plan de la sesión).
+//
+// classifyByNameFallback() SOLO se consulta cuando ni la categoría
+// excluida, ni leaf, ni category dieron un resultado -- para Mercadona
+// esa rama nunca se alcanza, su categoría siempre coincide con alguna
+// regla curada de arriba. Mismo principio de seguridad que el resto
+// del archivo: ante la duda, excluir (mejor menos variedad que sugerir
+// algo que en realidad necesita cocinarse) -- esto es deliberadamente
+// una cobertura razonable de señales de nombre inequívocas, NO
+// exhaustiva, y con menos precisión que las reglas curadas de arriba.
+
+var FALLBACK_EXCLUDE_KEYWORDS = [
+  // Alcohol -- mismo motivo que la categoría "Bodega" ya excluida
+  // arriba, pero por nombre (aquí no hay categoría fiable en la que
+  // apoyarse).
+  "vino", "cerveza", "cava", "licor", "whisky", "vodka", "ginebra",
+  "tequila", "cóctel", "coctel", "sidra", "champagne", "champán", " ron ",
+  // Ingredientes/materias primas crudas -- necesitan cocinar de verdad,
+  // no son "un producto listo para una comida" por sí solos. "masa" NO
+  // vive en esta lista a propósito -- se comprueba aparte en
+  // classifyByNameFallback() con una excepción para "masa madre", ver
+  // ahí el razonamiento completo.
+  "harina", "levadura", "para guisar", "para asar", "para freir",
+  "para freír", "para hervir", "para cocido", "carne picada", "filete de",
+  "chuleta", "solomillo", "aceite", "vinagre", "especias",
+  // Higiene/farmacia/bebé -- fugas de categorización del scraping, no
+  // son comida (mismo motivo que NO_COOK_EXCLUDED_CATEGORIES arriba).
+  "pañal", "champú", "gel de ducha", "desodorante", "pasta de dientes",
+];
+
+// Grupos ordenados por especificidad -- el primero que matchee gana.
+// Los platos compuestos (pizza, lasaña...) van ANTES que los
+// ingredientes sueltos (queso, jamón...) a propósito: un nombre como
+// "Pizza cuatro quesos" contiene "queso" como ingrediente mencionado,
+// pero sigue siendo fundamentalmente una pizza (hay que calentarla, no
+// es una porción de queso suelta) -- confirmado por un test que
+// primero falló con el orden contrario antes de reordenar esto.
+var FALLBACK_READY_KEYWORDS = [
+  { keywords: ["pizza", "lasaña", "lasagna", "canelones", "croqueta", "empanadilla", "nugget"], level: 2, unit: "ración" },
+  { keywords: ["sopa", "crema de", "caldo"], level: 2, unit: "ración" },
+  { keywords: ["hummus", "guacamole"], level: 1, unit: "tarrina" },
+  { keywords: ["ensalada preparada", "ensalada lista"], level: 1, unit: "bolsa" },
+  { keywords: ["sandwich", "sándwich", "bocadillo"], level: 1, unit: "unidad" },
+  { keywords: ["yogur", "yogourt", "kefir", "kéfir", "cuajada", "petit suisse"], level: 0, unit: "unidad" },
+  { keywords: ["jamon cocido", "jamón cocido", "jamon serrano", "jamón serrano", "fiambre", "salchichon", "salchichón", "chorizo", "mortadela", "lomo embuchado", "pate", "paté"], level: 0, unit: "porción" },
+  { keywords: ["queso"], level: 0, unit: "porción" },
+  { keywords: ["manzana", "platano", "plátano", "banana", "pera", "naranja", "mandarina", "uva", "fresa", "melocoton", "melocotón", "kiwi", "sandia", "sandía", "melon", "melón", "ciruela", "nectarina", "aguacate"], level: 0, unit: "unidad" },
+  { keywords: ["frutos secos", "almendras", "nueces", "anacardos", "pistachos", "cacahuetes", "avellanas"], level: 0, unit: "puñado" },
+  { keywords: ["pan de molde", "pan bimbo", "pan tostado", "biscote"], level: 0, unit: "rebanada" },
+  { keywords: ["galleta", "cereales"], level: 1, unit: "ración" },
+  { keywords: ["zumo", "batido", "smoothie"], level: 0, unit: "vaso" },
+  { keywords: ["agua mineral", "agua con gas", "refresco", "cola", "fanta", "tonica", "tónica", "limonada", "isotonica", "isotónica"], level: 0, unit: "unidad" },
+];
+
+/**
+ * @param {string} name
+ * @returns {{level:number, unit:string}|null}
+ */
+function classifyByNameFallback(name) {
+  var text = normalizeText(name);
+
+  // "masa" suelto -> casi siempre base cruda sin hornear (masa de
+  // pizza/hojaldre/empanada...), pero "masa madre" es una excepción
+  // real: describe la fermentación de un pan YA HORNEADO ("Pan de
+  // hogaza (masa madre) con cereales"), no un producto crudo -- sin
+  // esta excepción, ese pan (perfectamente listo para comer) se
+  // excluiría por error. Confirmado en vivo que frases exactas como
+  // "masa para pizza"/"masa de pizza" no cubren variantes reales de
+  // nombre de producto ("Masa rectangular maxi para pizza"), así que
+  // se comprueba la palabra suelta en vez de una lista de frases.
+  if (text.indexOf("masa") !== -1 && text.indexOf("masa madre") === -1) {
+    return null;
+  }
+
+  if (FALLBACK_EXCLUDE_KEYWORDS.some(function (kw) { return text.indexOf(kw) !== -1; })) {
+    return null;
+  }
+
+  for (var i = 0; i < FALLBACK_READY_KEYWORDS.length; i++) {
+    var group = FALLBACK_READY_KEYWORDS[i];
+    if (group.keywords.some(function (kw) { return text.indexOf(kw) !== -1; })) {
+      return { level: group.level, unit: group.unit };
+    }
+  }
+
+  return null;
+}
+
 function normalizeText(s) {
   return String(s || "")
     .toLowerCase()
@@ -193,7 +297,10 @@ function classifyNoCookProduct(product) {
     return CATEGORY_RULES[category];
   }
 
-  // Categoría no contemplada -> por seguridad, excluir (mejor pecar de
-  // menos variedad que sugerir algo que en realidad necesita cocinarse).
-  return null;
+  // Categoría no contemplada en la taxonomía curada de Mercadona --
+  // antes de excluir directamente, prueba el fallback por nombre (ver
+  // "Fallback por nombre" más arriba): para Mercadona esta rama nunca
+  // se alcanza, pero es lo que permite que Alcampo/Carrefour tengan
+  // algún producto elegible en vez de un pool siempre vacío.
+  return classifyByNameFallback(product.name);
 }

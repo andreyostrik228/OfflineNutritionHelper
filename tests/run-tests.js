@@ -63,6 +63,7 @@ var suites = [
   "ingredient-packaging-coverage.test",
   "pantry.test",
   "pricing.test",
+  "no-cook-classifier.test",
   "no-cook-generator.test",
   "meal-schedule.test",
   "budget-purchase.test",
