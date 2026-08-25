@@ -27,6 +27,348 @@ está aquí y en `ROADMAP.md`. **Si vuelves a tocar código, el grafo se
 desactualiza de nuevo** — no se actualiza solo (comandos exactos en
 `PythonProject/docs/graphify.md`, sección "Cómo actualizarlo").
 
+**El catálogo de Alcampo es 21 veces mayor de lo que tenemos —
+2026-08-25, DECISIÓN PENDIENTE DEL USUARIO**. Al investigar por qué
+Monster Energy seguía sin aparecer se midió el árbol de categorías real
+de Alcampo. No era un problema de paginación:
+
+| nivel | categorías | refs únicas acumuladas | tiempo |
+| --- | --- | --- | --- |
+| L1 | 28 | 1.307 | 57s |
+| L2 | 316 | 11.082 | 676s |
+| L3 | 1.714 | **28.192** | 3.821s |
+| L4 | 1.844 en cola | sin medir | ~68 min |
+
+**Los 50 productos por página no son paginación, son un TOPE DE
+MUESTRA.** Prueba: una hoja del árbol
+(`alimentación/arroz-y-legumbres/arroz/arroz-ecológico`) devuelve **8**
+productos. 8 < 50, luego no la están truncando — las hojas dan su
+listado completo y las ramas solo enseñan una muestra. No hay API de
+scroll ni parámetro de offset que buscar: sin controles de paginación en
+el DOM, sin llamadas a API de productos al desplazar, y
+`?page=2`/`?offset=50` devuelven exactamente los mismos 50.
+
+**Y esto explica con precisión el catálogo que teníamos**: 28 raíces x 50
+muestreados = **1.307 refs**, frente a los **1.299 y 1.305** que dieron
+las dos corridas completas reales. Es el mismo número, no una
+aproximación sugerente: demuestra que el scraper nunca perdía productos
+DENTRO de las categorías que visitaba — simplemente nunca visitaba las
+otras 316. Tenemos 1.327 productos de un catálogo de **28.192+**.
+
+**Dimensionado, al ritmo medido de 2,23 s/página**: el scrape completo
+son **17,5 h** (≈25 h si L4 lo lleva a ~40.000). Contra un WAF que ya
+degradó al 22% una corrida de 1.300 productos, y con herramientas sin
+reanudación. **No es un plan arriesgado: es un plan con un modo de fallo
+conocido y sin recuperación.** Por eso hay una decisión pendiente del
+usuario y no se ha lanzado nada.
+
+**Opción recomendada**: acotar a las 13 raíces de comida (de 28) y
+recorrer+scrapear en UNA sola pasada con guardado incremental, en vez de
+descubrir y luego scrapear. Las 15 raíces excluidas (bricolaje, textil,
+juguetes, tecnología, papelería, deportes, automóvil, jardín...) dan 0%
+de comida medido sobre el catálogo actual.
+
+**Aviso para quien retome esto**: el recorrido de descubrimiento hay que
+REPETIRLO. La primera versión del script no guardaba nada en disco, así
+que las 28.192 refs se perdieron al salir el proceso (ver la lección de
+proceso en `PythonProject/PROJECT_CONTEXT.md` sección 17.4). El script ya
+está corregido —persiste refs, árbol y desglose por raíz, con checkpoint
+por nivel— pero esa corrida todavía no se ha hecho, y conviene esperar un
+tiempo de enfriamiento: la carga acumulada de hoy contra el WAF ya ha
+sido alta.
+
+**La respuesta a la pregunta que originó todo esto — 2026-08-25**. La
+sesión empezó con una observación del usuario: *"¿cómo puede ser que no
+encontréis nutrición para Monster Energy, si está en todas partes?"*.
+Tenía razón en la premisa, y la causa resultó ser **cinco problemas
+independientes**, no uno:
+
+1. **HTTP 403 en TODAS las búsquedas por nombre** — el pipeline
+   reportaba "no encontrado" para consultas que nunca llegó a hacer.
+2. **El scorer rechazaba matches correctos** — el mismo producto de
+   Lay's puntuaba 0.594 contra un umbral de 0.65.
+3. **Clave de caché sin componente de provider** — los negativos de un
+   backend roto silenciaban las búsquedas de otro.
+4. **Bugs de subcadena en LAS DOS listas del filtro de comida** —
+   "gel" dentro de "con-gel-ados" (comida real descartada) y "te" dentro
+   de "tex-te-il" (543 no-comestibles admitidos como comida).
+5. **El catálogo estaba sin scrapear al 78%** — 1011 de 1299 productos
+   perdidos por challenges de AWS WAF.
+
+Resultado acumulado en Alcampo: de **288 productos con 0 nutrición** a
+**1327 productos, 304 con nutrición y 46 listos para el frontend**.
+
+**Y sin embargo Monster Energy SIGUE sin estar** — comprobado, no
+supuesto. Está en OpenFoodFacts (25 candidatos en el índice local, con
+macros reales de 37-47 kcal), y el emparejador actual lo encontraría sin
+problema. Lo que falta es el producto en NUESTRO catálogo: las páginas
+de categoría de Alcampo solo exponen 50 productos aunque anuncien 1500,
+así que "bebidas" está representada por Red Bull y poco más. **El tope de
+paginación es ahora la única razón por la que la pregunta original sigue
+sin resolverse del todo** — y por eso es la siguiente palanca, no una
+mejora opcional.
+
+**Rework del emparejamiento nutricional — 2026-08-25**: el usuario
+señaló que 0/288 en Alcampo y el estancamiento de los 2467 de Mercadona
+no cuadraban ("Alcampo vende Monster Energy, que seguro está en
+OpenFoodFacts") y pidió diagnóstico concreto antes de tocar nada. Casi
+todo el trabajo es del lado Python (`PycharmProjects\PythonProject`);
+aquí se registra porque cambia el diagnóstico de la Fase 1 de
+`ROADMAP.md`. Detalle completo en `PythonProject/PROJECT_CONTEXT.md`
+(secciones 6, 7.1, 10, 11.1, 12.1, 17.1, 18.1, 19).
+
+**Tres bugs reales, encontrados midiendo, no leyendo**:
+
+1. **HTTP 403 en 20/20** — la causa raíz de todo. La búsqueda por nombre
+   usaba el endpoint legacy `cgi/search.pl` de OFF, que devolvía 403 en
+   TODAS las peticiones. Como 403 es un 4xx, `_request_with_retry` no
+   reintenta, `search_by_name` devuelve `([], False)` y el enricher
+   imprime "No search results": **el pipeline reportaba "producto no
+   encontrado" para consultas que nunca llegó a hacer**. El endpoint
+   moderno (Search-a-licious) dio 200 en 20/20 bajo la misma carga.
+2. **El scorer castigaba estructuralmente a los matches correctos**.
+   OFF SÍ tiene "Patatas Lay's al punto de sal" (marca Lay's), el mismo
+   producto que "LAY'S Al punto de sal Patatas fritas lisas de bolsa
+   150 g", y puntuaba **0.594** contra un umbral de 0.65. Causas: el
+   nombre de tienda arrastra ruido de envase que OFF nunca tiene
+   ("de bolsa 150 g"), `SequenceMatcher` es sensible al orden y las
+   tiendas reordenan, y `word_score` dividía solo entre los tokens de la
+   tienda, premiando candidatos genéricos cortísimos. Corregido
+   comparando like-with-like (tokens de contenido, orden-insensible, F1
+   simétrico, prefijos para abreviaturas tipo "semi"/"semidesnatada").
+   **Los umbrales NO se tocaron** (0.65 / 0.80): sube la fidelidad de la
+   comparación, no baja el listón. Ese caso pasó a 0.829.
+3. **Caché negativa envenenada**. 659 entradas `search_*` escritas por el
+   endpoint roto marcaban productos como "no existe, confirmado" y
+   cortocircuitaban la búsqueda antes de tocar la red, así que el fix no
+   podía surtir efecto. Movidas (no borradas) a
+   `database/cache/negative_stale_search_20260825/`, reversible; las 409
+   entradas `ean_*` se dejaron intactas porque ese endpoint sí funciona.
+
+**Del API al corpus local**: ni el endpoint moderno sirve para indexar
+España (paginar ~370k productos = ~3700 peticiones, `page_size` topado en
+100, 401 en páginas profundas). Se construye un índice local desde el
+export masivo: 4.532.767 productos escaneados → **256.838 de España con
+los 4 macros**, ~4 minutos, ~100 MB. **Está en `.gitignore`** (derivado
+regenerable) — en un clon nuevo hay que ejecutar
+`scripts/build_off_index.py` ANTES de enriquecer, o habrá degradación
+silenciosa.
+
+**Resultados medidos** (n=150 por tienda, umbrales sin tocar):
+
+| | API en vivo | Índice local |
+| --- | --- | --- |
+| Alcampo, exacto >=0.65 | 19.1% | **36.0%** |
+| Alcampo, auto-aceptado | 4.2% | **11.3%** |
+| Mercadona, exacto >=0.65 | 18.3% | **57.3%** |
+| Mercadona, auto-aceptado | 4.2% | **19.3%** |
+
+El 4.2% → 19.3% es lo que de verdad importa para el motor "sin cocinar":
+**~4.6x más productos usables**.
+
+**Precisión, auditada A MANO al 100%** (no muestreada): 77% → **88%**,
+registros con datos rotos aceptados **3 → 0**, tras añadir dos checks —
+consistencia Atwater (`kcal` que contradice sus propios macros: "Pepino"
+con 58 g de proteína, "Tacos de pavo" con 493 kcal cuando implican 118) y
+no auto-aceptar cuando falta la marca en algún lado. La tolerancia
+Atwater se **midió**, no se heredó del frontend: el 20 kcal plano de
+`js/core/nutrition.js` daría una falsa alarma y marcaría el 13.5% del
+corpus; `max(25, 0.20*atwater)` caza 5/5 con 0/11 falsas alarmas. Ojo con
+la asimetría, es deliberada: el frontend DERIVA kcal por Atwater porque
+allí son estimaciones propias; aquí solo se DETECTA, porque son datos de
+terceros y recalcular sobre macros ya rotos solo cambia un número
+equivocado por otro.
+
+**Tier 3 (aproximación genérica etiquetada)**: aprobado y construido. Un
+registro real de OFF del mismo alimento pero otra marca, con
+`nutrition_source` propio, `needs_review=True` SIEMPRE, y guardarraíl de
+categoría (solape de tokens de alimento >= 0.70: cola con cola, nunca con
+zumo). Aporta +18.7% (Alcampo) / +16.0% (Mercadona), todo en cuarentena.
+**Decisión de producto tomada: solo para MOSTRAR, nunca para la
+aritmética de comidas** — un error direccional silencioso del 20-30% en
+una restricción dura que el usuario se cree es peor que un hueco visible.
+
+**Límites conocidos, escritos con el mismo detalle que los aciertos**:
+- **Falso positivo real sin corregir**: "SANTA ANA Patatas fritas
+  **artesanas**" empareja con el registro de las **lisas** (0.830, por
+  encima del umbral de revisión, así que NO se caza). El scorer no
+  distingue variantes dentro de una misma marca+línea. Se deja a
+  propósito: afinar contra 9-13 casos sería sobreajustar.
+- **Único error nutricionalmente material**: "Yogur limón Hacendado
+  0% MG 0% azúcares" contra un yogur normal (75 kcal/1.7 g grasa frente
+  a ~50/~0.1).
+- **Alcohol sobre-cuarentenado**: Atwater (4/4/9) no modela el etanol
+  (7 kcal/g), así que cervezas/vinos/licores disparan el check aunque
+  estén bien. **Inocuo, verificado en el código y no asumido**: el
+  alcohol nunca llega a la planificación, excluido por partida doble en
+  `js/data/no-cook-classifier.js` (`FALLBACK_EXCLUDE_KEYWORDS` con
+  vino/cerveza/cava/licor/whisky/vodka/ginebra/tequila/sidra/champán/ron,
+  y `NO_COOK_EXCLUDED_CATEGORIES` con "Bodega"). Limitación aceptada, no
+  deuda pendiente.
+- **Carrefour sigue bloqueado**: dos corridas completas, la segunda tras
+  un día de espera, ambas paradas por Cloudflare. 0 productos. Se deja de
+  reintentar a ciegas.
+- **Alcampo: tope de ~50 productos por categoría, SIN resolver**. La
+  página anuncia "1500 productos" y su ItemList expone 50;
+  `?page=2`/`?offset=50` devuelven los mismos 50. Las ~1300 refs
+  descubiertas son un artefacto del tope (50 x 28 categorías), no el
+  catálogo. Mayor palanca de cobertura bruta que queda abierta.
+
+**Fase 1 del roadmap: diagnóstico corregido** — ver `ROADMAP.md`,
+"Next priorities" #1. Llevaba meses descrita como bloqueada esperando más
+scraping; los 31 roles sin resolver son fruta/verdura/pescado/carne
+frescos (10 de ellos YA están en el catálogo de Mercadona con
+`kcal=null`), que ningún catálogo de marcas va a cubrir. Se cierran con
+una tabla de composición: BEDCA (oficial española, API XML funcionando,
+gratuita) + USDA FoodData Central, ~20/31 cerrables según medición.
+
+**Re-enrichment bajo el filtro corregido — 2026-08-25, resultado final
+de Alcampo**: cambiar `is_probably_food()` invalida el enrichment
+anterior EN LAS DOS DIRECCIONES, y eso hay que tratarlo como parte del
+cambio, no como un seguimiento opcional:
+
+- los productos recién admitidos **nunca se habían buscado** (se
+  saltaban), así que no eran fallos de cobertura sino intentos
+  pendientes;
+- los recién rechazados podían **arrastrar nutrición que no deberían
+  tener**.
+
+Lo segundo era real: **"Funko Star Wars Maul 828"** —una figura
+coleccionable— tenía macros puestos por el tier genérico, porque el
+filtro viejo lo admitía como comida. Estaba en cuarentena
+(`needs_review`) y nunca llegó al frontend, pero es exactamente el fallo
+"champú con macros inventados" que el filtro existe para impedir. Ahora
+hay un invariante permanente (`contradicts_food_filter()`) con test, para
+que esta clase de contradicción no se acumule en silencio.
+
+**Bug de diseño corregido de paso**: `nutrition_missing=True` se ponía
+TANTO al buscar y no encontrar COMO al saltarse un producto por no ser
+comida — dos estados indistinguibles en los datos. Nuevo campo
+`nutrition_lookup` (`searched_not_found` | `skipped_non_food`) los separa.
+
+**Resultado tras re-enriquecer con el filtro corregido**:
+
+| | antes | después |
+| --- | --- | --- |
+| productos comida | 497 (con ~266 no-comida) | **456** (limpios) |
+| con nutrición | 134 (27%) | **304 (66.7%)** |
+| tier exacto | 93 | **190** |
+| tier genérico | 42 | **114** |
+| auto-aceptados | 22 (4.4%) | **46 (10.1%)** |
+| contradicciones | 2 | **0** |
+
+Precisión auditada a mano sobre los 46 auto-aceptados: se mantiene en
+~95%, no se degradó al doblar el volumen. Los 152 que siguen sin
+nutrición están ahora correctamente marcados `searched_not_found` — se
+buscaron de verdad.
+
+**Pérdida honesta**: al purgar contradicciones se perdió también
+"L.R. Leche de vaca entera 1l.", que es leche de verdad mal
+categorizada por Alcampo en "folletos y promociones". El invariante es
+correcto; el dato de origen es el que está mal. Queda como limitación
+conocida, no como éxito.
+
+**Guarda de variantes: idea probada dos veces y DESCARTADA — 2026-08-25**:
+los errores del tier exacto no son aleatorios, son de VARIANTE (cerveza
+normal contra SIN alcohol, sabores, formato cápsulas/grano, 0% grasa,
+horneadas/fritas). Parecía un patrón atacable: un token discriminador
+presente en un lado y ausente en el otro. Se midió dos veces contra las
+mismas 13 filas ya adjudicadas a mano, y **no funciona**:
+
+| intento | incorrectas cazadas | correctas ROTAS |
+| --- | --- | --- |
+| tokens sueltos | 3/6 | **2/5** |
+| frases (bigramas) | 3/8 | **1/4** |
+
+El criterio acordado era romper CERO correctas. Ninguno lo cumple, así
+que la idea queda descartada, no aparcada. Los fallos concretos explican
+por qué no es cuestión de afinarla:
+
+- **tokens**: "sin" suelto no distingue "sin alcohol" de "sin gluten" /
+  "sin aditivos" — rechazaba mantequilla PRÉSIDENT y crackers SCHÄR.
+- **frases**: OFF es multilingüe. "SCHÄR Crackers **Sin Gluten**" contra
+  "Crackers **Gluten free**" — la misma propiedad en dos idiomas, así que
+  la frase está en un lado y no en el otro. No hay lista de frases en
+  español que arregle eso.
+- **elipsis**: "Cerveza **Sin** Victoria" significa sin alcohol sin
+  decirlo; la frase literal nunca aparece.
+- **límite estructural**: 4 de los 8 errores de la muestra son de
+  PRODUCTOR equivocado (Oinoz/Ederra→carrizal, Protos→moralinos), no de
+  variante. Ninguna guarda de variantes puede cazarlos, por buena que
+  sea. Eso acota lo que la idea podía valer incluso funcionando.
+
+Lo que SÍ funciona contra estos errores sigue siendo el umbral de 0.80:
+95.5% de precisión por encima, 57-63% por debajo.
+
+**Filtro de comida: dos bugs de subcadena — 2026-08-25**: investigando
+por qué "L.R. Leche de vaca entera" quedaba fuera del filtro apareció un
+hueco de cobertura mayor que varios de los ya arreglados.
+`is_probably_food()` (Python, compartido por las tres tiendas)
+descartaba 830 productos de Alcampo; auditados 40 al azar, **10 eran
+comida real (25%)**. Causas: (1) la lista de palabras no-comida se
+comparaba por SUBCADENA, así que `"gel"` casaba con "con**gel**ados"
+(57 productos, incluidos pescado y verdura congelada) y `"dientes"` con
+"ingre**dientes**" (15, p.ej. ALVALLE Gazpacho); (2) el vocabulario de
+categorías estaba pensado para la taxonomía de Mercadona y no reconocía
+los slugs de Alcampo ("comida preparada", "desayuno y merienda",
+"supermercado ecológico", "veganos", "frescos") — 586 rechazos.
+
+Y un tercero, el mismo bug pero en la lista de COMIDA: `"te"` (la
+infusión) casaba dentro de "tex**te**il"/"depor**te**s"/"jugue**te**s",
+metiendo **543 productos** como comida entre los dos catálogos — ropa
+interior, juguetes, tecnología, maquillaje.
+
+**Resultado medido, en las dos direcciones**: Alcampo 497→**456** (+225
+comida recuperada, −266 no-comida rechazada), Mercadona 2773→**2978**
+(+282, −77). Que Alcampo BAJE es la mejora: el 497 original incluía ~266
+no-comestibles que entraban por el bug de "te".
+
+**Lección de método, más valiosa que el arreglo**: un muestreo aleatorio
+de 45 dijo "0 no comestibles" y aun así se le escaparon fugas reales
+(1 entre 154 no sale en 45 tiradas). Solo una búsqueda ADVERSARIA
+—buscar a propósito vocabulario de mascotas/higiene/limpieza— sacó
+"Pomada del pañal", 4 "Preservativos" y una lámpara de jardín. Y antes
+de añadir un término a la lista hay que comprobarlo contra los catálogos
+reales: "servilleta" parece no-comida, pero "Queso fresco servilleta" es
+un queso español de verdad. Detalle en
+`PythonProject/PROJECT_CONTEXT.md` sección 17.2.
+
+**Adjudicación del backlog `needs_review` de Alcampo — 2026-08-25**: tras
+el re-scrape (1327 productos) y el re-enrichment completo, la cuarentena
+pasó de 32 a **113** entradas: 71 del tier exacto + 42 del tier genérico
+(estas últimas son aproximaciones por construcción, no se adjudican ni se
+promocionan nunca). Muestra aleatoria de **30 de las 71** del tier
+exacto, cada una contrastada con su registro real de OFF:
+
+| | nº | % |
+| --- | --- | --- |
+| Correctas | 17 | 56.7% |
+| Dudosas | 2 | 6.7% |
+| **Incorrectas** | **11** | **36.7%** |
+
+**Respuesta directa a la pregunta que motivó esto** ("si la mayoría son
+correctas, eso son 9 exportables → 30+"): **no, la mayoría no lo son**.
+Alrededor de 6 de cada 10. Promocionarlas en bloque metería ~37-43% de
+error en el frontend. **No se promociona ninguna.** El umbral de 0.80
+está haciendo trabajo real: 95.5% de precisión por encima, ~57-63% por
+debajo.
+
+**Patrón dominante del fallo: confusión de VARIANTE**, no de producto
+equivocado sin más — cerveza normal contra cerveza SIN alcohol (Ambar,
+Victoria), sabores (Pepsi cola → Pepsi lima, Lay's sal y vinagre → al
+punto de sal), formato (cápsulas Starbucks → café en grano), grasa
+(Activia normal → Activia 0%), horneadas → fritas, y vinos emparejados a
+otra bodega distinta (Oinoz/Ederra → carrizal, Protos → moralinos).
+
+**Límite NUEVO del check Atwater, descubierto aquí**: caza registros
+internamente INCONSISTENTES, pero no un registro coherente consigo mismo
+que sea del producto equivocado. Ejemplos reales de esta muestra: "CASA
+TARRADELLAS Masa pizza fina" con 0.5 g de carbohidratos y 25 g de grasa
+(una masa es harina, o sea carbohidrato — absurdo, pero Atwater cuadra:
+293 kcal) y varios vinos con 0 kcal (un vino ronda 83). Atwater es un
+check de coherencia interna, no de plausibilidad por tipo de alimento —
+no confundir una cosa con la otra.
+
 **Resumen de la sesión 2026-08-23d/2026-08-24 (scrapers de Alcampo/
 Carrefour + selector de tienda)**: el usuario pidió "mejor código Python
 para encontrar productos de todos los supermercados, no solo Mercadona".
@@ -5131,6 +5473,43 @@ queso suelto).
    describiendo el pipeline como si Mercadona fuera el único catálogo
    y no existiera scraper propio -- desactualizados desde esta sesión,
    no se tocaron (ver aviso al principio de este archivo).
+
+**2026-08-25 — rework del emparejamiento nutricional (casi todo en el
+repo Python)**. Ver la sección dedicada "Rework del emparejamiento
+nutricional — 2026-08-25" arriba, y
+`PythonProject/PROJECT_CONTEXT.md` secciones 6, 7.1, 10, 11.1, 12.1,
+17.1, 18.1 y 19. Lo imprescindible para no perder el hilo:
+
+- **La causa raíz era un HTTP 403**, no falta de datos: la búsqueda por
+  nombre de OFF fallaba en el 100% de las peticiones y el pipeline lo
+  reportaba como "producto no encontrado". Corregido.
+- **Hay un índice local NUEVO y NO versionado**:
+  `PythonProject/database/off_spain.index.jsonl` (~100 MB, 256.838
+  productos). En un clon nuevo NO existe. Ejecutar
+  `.venv\Scripts\python.exe scripts\build_off_index.py` (~4 min) antes de
+  enriquecer, o habrá degradación silenciosa (sin error, solo peores
+  resultados).
+- **659 archivos de caché apartados**, no borrados, en
+  `PythonProject/database/cache/negative_stale_search_20260825/`. Eran
+  negativos falsos escritos por el endpoint roto. Reversible: devolverlos
+  a `database/cache/negative/`. Las 409 entradas `ean_*` NO se tocaron.
+- **Commits del repo Python** (este repo, `nutrition-planner`, solo
+  cambia documentación): `97566d1` (fix 403 + scorer), `fbd992e` (datos
+  Alcampo), `3700e31` (resiliencia WAF del scraper), `55b6b25` (índice
+  local + tier 3), `3afcf3e` (checks Atwater + marca). 82 tests en verde.
+  **Verificar con `git log -1` antes de asumir.**
+- **Fase 1 del roadmap: diagnóstico corregido**, ver `ROADMAP.md`
+  "Next priorities" #1 — no está bloqueada por falta de scraping, sino
+  por usar el tipo de fuente equivocado. BEDCA/USDA evaluados y medidos,
+  NO implementados.
+- **Pendiente inmediato**: terminar el re-scrape de Alcampo (en curso al
+  cerrar esta nota, ~95% de éxito frente al 22% anterior), re-enriquecer
+  Alcampo entero con el matcher nuevo, y exportar al frontend. **La
+  corrida completa de Mercadona (`main.py`, 4374 productos) sigue
+  BLOQUEADA** esperando validación a escala real primero — decisión
+  explícita del usuario.
+- **Nada de esto está desplegado**, y el frontend no se ha tocado: el
+  marcado visible del tier 3 en la UI está diseñado pero sin construir.
 
 Verificar con `git log -1` en AMBOS repos antes de asumir cuál es el
 HEAD real — esto es una foto fija, no una garantía.

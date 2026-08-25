@@ -2,7 +2,41 @@
 
 ## Current status
 
-**Stage:** working prototype, updated 2026-08-24 — first real multi-store
+**Stage:** working prototype, updated 2026-08-25 — the nutrition-matching
+pipeline was found to be **structurally broken, not merely incomplete**,
+and was reworked. Short version, all numbers measured:
+
+- OpenFoodFacts name search had been returning **HTTP 403 on 20/20**
+  requests through the real pipeline path. 403 is a 4xx, so it was never
+  retried, and the enricher logged it as "No search results" — it was
+  reporting "product not found" for queries it never actually made. This
+  alone explains Alcampo's 0/288 and most of Mercadona's stagnation.
+- Matching now runs against a **local OFF index** (256,838 Spain products
+  with all 4 macros, built in ~4 min from the bulk export). The search API
+  cannot be used at this scale: paginating Spain needs ~3700 requests,
+  `page_size` caps at 100 and deep pages return 401.
+- Exact-match rate, thresholds unchanged: **Alcampo 19.1% → 36.0%**,
+  **Mercadona 18.3% → 57.3%**. Auto-accepted **4.2% → 11.3% / 19.3%**.
+- Auto-accept precision, hand-audited at **100%** of the population (not
+  sampled): **77% → 88%**, with records carrying broken data **3 → 0**,
+  after adding an Atwater consistency check and refusing to auto-accept
+  matches where either side lacks a brand.
+- **Limits that remain, stated as plainly as the wins**: one false accept
+  survives ("Santa Ana artesanas" matching the "lisas" record at 0.830,
+  above the review threshold); one nutritionally material variant miss
+  ("Yogur 0% MG 0% azúcares" matched to a regular yogurt); alcohol is
+  over-quarantined because Atwater does not model ethanol (harmless —
+  verified that the frontend excludes alcohol from meal planning twice
+  over); **Carrefour is still hard-blocked** by Cloudflare after two full
+  attempts a day apart; and **Alcampo's category pages cap at ~50 products
+  while advertising 1500**, so the ~1300 refs discovered are an artefact of
+  that cap, not the catalog — the biggest raw-coverage lever still open.
+
+Full detail in `STATE.md` ("Rework del emparejamiento nutricional —
+2026-08-25") and `PythonProject/PROJECT_CONTEXT.md` (sections 6, 7.1, 10,
+11.1, 12.1, 17.1, 18.1, 19).
+
+Previously, updated 2026-08-24 — first real multi-store
 data pipeline plus a store picker in the UI. A separate Python repo
 (`PycharmProjects\PythonProject`, until now an OpenFoodFacts-enrichment
 tool only, never a scraper) gained real Playwright-based scrapers for
@@ -546,7 +580,7 @@ se empiece esa fase, no de antemano en abstracto.
 | Fase | Objetivo | Estado |
 | --- | --- | --- |
 | 0 | Estabilización y tests — red de seguridad antes de tocar el motor | **Completada 2026-08-04** |
-| 1 | Datos reales — ampliar cobertura de resolución ingrediente→producto más allá de 50/81; reparar el script de exportación Python→frontend que hoy no existe | **En progreso 2026-08-13d** — 50/81 integrados en producción (macros por ingrediente reales, ver `STATE.md`); ampliar más allá de 50/81 sigue pendiente (requiere más productos verificados en `real-products.js`, lado Python) |
+| 1 | Datos reales — ampliar cobertura de resolución ingrediente→producto más allá de 50/81; reparar el script de exportación Python→frontend que hoy no existe | **En progreso; diagnóstico corregido 2026-08-25** — 50/81 integrados desde 2026-08-13d. El script de exportación ya existe (`PythonProject/scripts/export_real_products.py`, 2026-08-24). Lo que NO es cierto y se creía desde hace meses: que los 31 restantes se cierren con más scraping. Son fruta/verdura/pescado/carne frescos y graneles — 10 de ellos ya están en el catálogo de Mercadona con `kcal=null`. Se cierran con una tabla de composición (BEDCA/USDA, ~20/31 cerrables medido), no con un catálogo de marcas. Ver "Next priorities" #1 |
 | 2 | Nuevo motor de planificación — `dish-selector.js`/`plan-generator.js` usan el resolver en vez de macros hardcodeadas; `dishes.js` pasa de "plato con macros fijas" a "plantilla de receta con roles" | Parcialmente empezada — `buildMealFromDish` ya usa datos reales por ingrediente cuando existen (2026-08-13d), pero `dishes.js` sigue siendo "plato con macros fijas" (el remanente de los 31/81 sin resolver todavía se ancla al total hand-curated del plato) |
 | 3 | Presupuesto y coste real — unificar `usageCost`/`purchaseCost` para que se calculen siempre desde el producto real resuelto; recalibrar `budget-presets.js` | No iniciada |
 | 4 | Variedad y generación de planes — planes multi-día; decidir el destino del modo "sin cocinar" (¿converge con el motor principal?) | No iniciada |
@@ -570,7 +604,51 @@ decisión de arquitectura de datos.
    matches (Alcampo) or 0 products (Carrefour) is acceptable UX, or
    whether to gate the picker to hide stores with empty/low-quality
    catalogs.
-1. **P0 — Fase 1 de la migración (ver arriba).** Ampliar cobertura de datos reales es ahora la prioridad más alta y concreta — todo lo demás en el known-issues list depende de o se vuelve irrelevante por esto.
+1. **P0 — Fase 1 de la migración — DIAGNÓSTICO CORREGIDO 2026-08-25.**
+   Durante meses esta línea decía que Fase 1 estaba bloqueada esperando
+   "más productos verificados en `real-products.js` (trabajo del lado
+   Python)", es decir: más scraping. **Eso era un diagnóstico
+   equivocado.** Los 31 roles de ingrediente sin resolver se
+   desglosan así (contado sobre `js/data/ingredient-nutrition.js`, no
+   estimado):
+
+   | `reason` | nº |
+   | --- | --- |
+   | `no_existe` | 12 |
+   | `sin_nutricion` (el producto existe, pero `kcal=null`) | 10 |
+   | `solo_producto_no_apto` | 3 |
+   | `match_ambiguo` | 3 |
+   | otros (`otra`, `needsReview`) | 3 |
+
+   Y la lista concreta es **brócoli, calabacín, kiwi, pepino, plátano,
+   fresas, conejo, lubina, rape, salmón, bacalao, aguacate, avena,
+   pasta cocida, cuscús cocido, arroz integral cocido...** — fruta y
+   verdura fresca, pescado fresco, carne fresca y graneles.
+
+   **Un catálogo de productos de marca nunca va a tener nutrición
+   fiable de un brócoli suelto**, por mucho que se amplíe: no es un
+   producto envasado con etiqueta. Los 10 casos `sin_nutricion` lo
+   dicen literalmente — el producto SÍ está en el catálogo de
+   Mercadona, con `kcal=null`. Más scraping no cambia eso.
+
+   Lo que sí lo cierra es una **tabla de composición de alimentos**,
+   que es exactamente el tipo de fuente que modela alimentos genéricos.
+   Medido el 2026-08-25 (ver `PythonProject/PROJECT_CONTEXT.md`,
+   sección 19): BEDCA (base oficial española, 2.336 alimentos, API XML
+   funcionando y gratuita) cubre bien ~12-14 de los 31; USDA FoodData
+   Central cubre buena parte del resto y además tiene variantes
+   **cocidas** explícitas, que resuelven el desajuste crudo/cocido que
+   bloquea `pasta cocida`/`cuscús cocido`/`arroz integral cocido`.
+   Juntas, **~20 de 31 parecen cerrables**.
+
+   **Cómo cerrarlo** (no implementado todavía): tier 4
+   (`bedca_generic`/`usda_generic`), siempre marcado como aproximación
+   con `needs_review`, alimentando `ingredient-nutrition.js` — donde la
+   UI ya distingue "real" de "no verificado" por ingrediente, así que
+   el andamiaje de honestidad ya existe. Aviso medido: el top-hit
+   ingenuo de ambas fuentes falla ~la mitad de las veces ("edamame" ->
+   "Queso **edam**" en BEDCA; "skyr" -> "Tofu yogurt" en USDA), así que
+   necesita el mismo scoring + umbral + `needs_review` que el tier 2.
 2. **P0 — Make constraints truthful.** Treat budget, prep time, nutrition tolerance, variety, and per-item calorie cap as hard post-generation checks. Budget specifically is now truthful in the sense that matters most (enforced against real purchase cost, not usage cost — 2026-08-08; and since 2026-08-13, the SELECTION cascade itself also optimizes for real purchase cost, not just the final check, see `STATE.md`); the remaining known gap is narrower — cap25%/budget-trim interaction (`STATE.md` known issue #8, still present under `enforcePurchaseBudgetCap`, unchanged 2026-08-13), and fixing that properly still belongs in Fase 2 of the migration above, not as an isolated patch.
 3. **P0 — Correct product claims and safety.** ~~Remove the current AI/guarantee claims~~ **done (2026-08-03):** branding no longer says "AI"/"Chef Mode". Still open: clear scope, contraindication guidance, and required dietary/medical constraints before personalization.
 4. **P1 — Establish an engineering foundation.** Fase 0 (2026-08-04) covers unit/characterization tests for the core engine — still missing: TypeScript, ES modules, linting, formatting, CI, package manifest.
