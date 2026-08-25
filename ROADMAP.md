@@ -2,7 +2,29 @@
 
 ## Current status
 
-**Stage:** working prototype, updated 2026-08-23 — re-verification
+**Stage:** working prototype, updated 2026-08-24 — first real multi-store
+data pipeline plus a store picker in the UI. A separate Python repo
+(`PycharmProjects\PythonProject`, until now an OpenFoodFacts-enrichment
+tool only, never a scraper) gained real Playwright-based scrapers for
+Alcampo and Carrefour, run to completion: Alcampo 288 products scraped /
+215 pass the food filter / **0 matched to real nutrition data** (honest
+gap, nothing fabricated); Carrefour blocked by Cloudflare mid-run, 0
+products, not yet successfully retried. A new export script feeds each
+store's catalog into this repo as `REAL_PRODUCTS_CATALOGS.<store>`, and a
+real `<select id="store">` now drives the "Sin cocinar" (no-cook) engine
+end-to-end (per-store cache, persisted setting). The dish-recipe engine
+was found to already be store-parameterized end-to-end from earlier
+sessions — only the missing UI edge was added; it still prices
+Alcampo/Carrefour choices using Mercadona's curated ingredient prices,
+since building `PRICE_CATALOGS.alcampo`/`.carrefour` with the same
+hand-curated quality is real data-curation work, deliberately deferred
+("Fase B", see "Next priorities" below and Fase 6 in the migration table).
+307 tests total (JS), 0 failing; 68 Python tests, 0 failing. Committed
+and pushed in both repos but **not deployed** — production still serves
+the pre-store-picker build. See `STATE.md`, "Resumen de la sesión
+2026-08-23d/2026-08-24" and PythonProject's `PROJECT_CONTEXT.md`.
+
+Previously, updated 2026-08-23 — re-verification
 session (no code changes): every item on the priority-ordered issues
 list was checked directly against the current code, not assumed from
 docs, and confirmed exactly where it was left. One real status change:
@@ -232,6 +254,16 @@ their ingredients' nutrition is computed and displayed.
 
 ## Completed
 
+- **Multi-store data pipeline + store picker (2026-08-23d/2026-08-24)**:
+  real Playwright scrapers for Alcampo and Carrefour (`PythonProject`
+  repo, `scrapers/alcampo.py`/`carrefour.py`), a new export script
+  (`scripts/export_real_products.py`) feeding this repo's
+  `REAL_PRODUCTS_CATALOGS` registry, and a real `<select id="store">`
+  driving the no-cook engine end-to-end (dish-recipe pricing still
+  Mercadona-only, see "Fase B" under Next priorities). Data state:
+  Alcampo 288 scraped/215 food-filtered/0 nutrition-matched; Carrefour
+  blocked by Cloudflare, 0 products. Not deployed to production. See
+  `STATE.md` and `ROADMAP.md` "Current status" above for full detail.
 - Modularized static JavaScript prototype; offline 334-dish dataset,
   responsive meal-plan interface.
 - Architecture, data, UX, accessibility, and generator audit (2026-07-18).
@@ -519,7 +551,7 @@ se empiece esa fase, no de antemano en abstracto.
 | 3 | Presupuesto y coste real — unificar `usageCost`/`purchaseCost` para que se calculen siempre desde el producto real resuelto; recalibrar `budget-presets.js` | No iniciada |
 | 4 | Variedad y generación de planes — planes multi-día; decidir el destino del modo "sin cocinar" (¿converge con el motor principal?) | No iniciada |
 | 5 | UX / funcionalidades — exportar lista de la compra, selector de tienda, persistencia local | No iniciada |
-| 6 | Extensión a otras tiendas — probar que la arquitectura generaliza más allá de Mercadona | No iniciada |
+| 6 | Extensión a otras tiendas — probar que la arquitectura generaliza más allá de Mercadona | **En progreso 2026-08-23d/2026-08-24** — scrapers reales de Alcampo/Carrefour y selector de tienda en el motor "sin cocinar" (ver `STATE.md`); el motor de PLATOS (`PRICE_CATALOGS`) sigue solo con Mercadona curado — precios reales de Alcampo/Carrefour para platos ("Fase B") pendiente, es trabajo de curación de datos, no de fontanería |
 
 Esta tabla de fases **reemplaza y detalla** las antiguas Milestones 1-2 de
 la tabla de abajo (fundación de tests + modelo de datos validado) — esas
@@ -530,6 +562,14 @@ decisión de arquitectura de datos.
 
 ## Next priorities
 
+0. **P0 — deploy the 2026-08-23d/2026-08-24 store-picker work, when ready.**
+   `6b5ff9f`/`1f38a5d`/`c20d9fe` (nutrition-planner) are committed and
+   pushed but never deployed (`npx wrangler pages deploy .` was not run
+   this session) — production still serves the pre-store-picker build.
+   Before deploying: decide whether shipping a store with 0 real nutrition
+   matches (Alcampo) or 0 products (Carrefour) is acceptable UX, or
+   whether to gate the picker to hide stores with empty/low-quality
+   catalogs.
 1. **P0 — Fase 1 de la migración (ver arriba).** Ampliar cobertura de datos reales es ahora la prioridad más alta y concreta — todo lo demás en el known-issues list depende de o se vuelve irrelevante por esto.
 2. **P0 — Make constraints truthful.** Treat budget, prep time, nutrition tolerance, variety, and per-item calorie cap as hard post-generation checks. Budget specifically is now truthful in the sense that matters most (enforced against real purchase cost, not usage cost — 2026-08-08; and since 2026-08-13, the SELECTION cascade itself also optimizes for real purchase cost, not just the final check, see `STATE.md`); the remaining known gap is narrower — cap25%/budget-trim interaction (`STATE.md` known issue #8, still present under `enforcePurchaseBudgetCap`, unchanged 2026-08-13), and fixing that properly still belongs in Fase 2 of the migration above, not as an isolated patch.
 3. **P0 — Correct product claims and safety.** ~~Remove the current AI/guarantee claims~~ **done (2026-08-03):** branding no longer says "AI"/"Chef Mode". Still open: clear scope, contraindication guidance, and required dietary/medical constraints before personalization.

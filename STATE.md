@@ -1,12 +1,17 @@
 # Nutrition Planner — Engineering State
 
-Actualizado 2026-08-23. Lee esto junto con `PROJECT.md` y `ROADMAP.md` antes
+Actualizado 2026-08-24. Lee esto junto con `PROJECT.md` y `ROADMAP.md` antes
 de empezar una sesión nueva (ver "Session handoff" al final — reemplaza al
 antiguo "Continuation checklist"). Para el sistema completo (este repo + el
 pipeline Python en `PythonProject`), ver `PythonProject/docs/architecture.md`
-y `PythonProject/docs/data_flow.md` (Python no se ha tocado desde
-2026-08-03; todo el trabajo desde entonces, incluida esta sesión, es
-exclusivamente en este repo).
+y `PythonProject/docs/data_flow.md` -- **ojo, esos dos `.md` describen el
+pipeline Python como era hasta 2026-08-23b (solo enrichment de un catálogo
+de Mercadona externo, scraper propio inexistente); la sesión 2026-08-23d/e/
+2026-08-24 SÍ tocó el repo Python de verdad (scrapers de Alcampo/Carrefour
+nuevos, script de exportación nuevo) y esos docs NO se actualizaron todavía
+para reflejarlo** -- para el estado real y actual del lado Python, lee
+`PycharmProjects/PythonProject/PROJECT_CONTEXT.md` (sí actualizado) en vez
+de esos dos, hasta que alguien los sincronice.
 
 **Para orientarse rápido sin leer todo este archivo**: hay un grafo de
 código real (Graphify) regenerado el 2026-08-13 (377 nodes, 609 edges, 39
@@ -21,6 +26,99 @@ llama a quién), no las decisiones de producto ni el "por qué" que solo
 está aquí y en `ROADMAP.md`. **Si vuelves a tocar código, el grafo se
 desactualiza de nuevo** — no se actualiza solo (comandos exactos en
 `PythonProject/docs/graphify.md`, sección "Cómo actualizarlo").
+
+**Resumen de la sesión 2026-08-23d/2026-08-24 (scrapers de Alcampo/
+Carrefour + selector de tienda)**: el usuario pidió "mejor código Python
+para encontrar productos de todos los supermercados, no solo Mercadona".
+Corrección de partida importante (investigación antes de tocar nada):
+`PythonProject` nunca scrapeó Mercadona -- solo enriquece con nutrición
+un catálogo que viene de un proyecto externo (`datania/mercadona-catalog`).
+Investigación de 6 cadenas candidatas (Carrefour/Alcampo/DIA/Consum/
+Eroski/Lidl): ninguna tenía un dataset abierto ya hecho; el usuario
+aprobó explícitamente Carrefour + Alcampo (Lidl no vende alimentación
+online en España; DIA/Consum/Eroski quedan fuera por ahora, anti-bot
+real o sin ninguna pista).
+
+**Scrapers nuevos, en `PycharmProjects/PythonProject/scrapers/`** (repo
+Python, no este): `alcampo.py` y `carrefour.py`. Primer intento de
+Alcampo fue `requests` + JSON-LD embebido (confirmado en vivo que
+category/producto traen `schema.org` completo en el HTML crudo, sin
+hidratación de cliente) -- pero un scrape COMPLETO reveló que eso no
+aguanta a escala real: AWS WAF empezó a responder con un challenge JS
+(HTTP 202, `x-amzn-waf-action: challenge`) que `requests` nunca puede
+resolver. **Alcampo se reescribió a Playwright** (Chromium real, mismo
+patrón que Carrefour) -- un navegador de verdad resuelve el challenge
+solo, como cualquier visita normal. Carrefour usa Playwright desde el
+principio (Cloudflare Bot Management activo, confirmado en vivo,
+product-listing sin JSON-LD explotable). `scripts/export_real_products.py`
+(nuevo) convierte `database/<tienda>.db.json` (ya enriquecido) al mismo
+esquema que `real-products.js` del frontend ya usa.
+
+**Resultado real del scrape completo** (dos intentos -- el primero
+falló para las dos tiendas, ver "Session handoff" para el detalle
+completo del diagnóstico en vivo de cada fallo): **Alcampo: 288
+productos** (de 1299 refs descubiertas; resistencia intermitente de AWS
+WAF a mitad del run que se auto-recuperó sola, no un bloqueo duro --
+100 productos sin error, luego 514 errores acumulados, luego 0 errores
+más el resto del run), **215 pasan el filtro de comida**, pero **0/288
+encontraron nutrición real vía OpenFoodFacts** (ni por EAN -- Alcampo no
+expone uno real, solo su SKU interno -- ni por nombre+marca: el
+naming de marca blanca de Alcampo no coincidió con nada en OFF).
+**Carrefour: 0 productos** -- el segundo intento completo chocó con un
+bloqueo REAL de Cloudflare ("Attention Required!") a mitad de sesión,
+casi seguro por el volumen acumulado de peticiones de toda la sesión
+(investigación + validaciones + dos intentos completos) -- se paró el
+proceso en vez de agotar las 71 categorías en balde. Necesita un
+reintento más adelante, no se reintentó en esta sesión.
+
+**Selector de tienda en el frontend (este repo), Fase A**: el motor de
+platos (DISH_DB) ya tenía `storeId` como parámetro de punta a punta
+desde antes (`pricing.js`/`budget.js`/`dish-selector.js`/
+`plan-generator.js`/`pantry.js`) -- solo faltaba el borde de entrada
+(ningún `<select>` de tienda existía). El motor "Sin cocinar" no tenía
+NINGÚN concepto de tienda. Cambios: nuevo `REAL_PRODUCTS_CATALOGS`
+(mismo patrón que `PRICE_CATALOGS`, un registro por tienda),
+`getRealProductsForStore(storeId)`/`getNoCookEligiblePool(storeId)` con
+caché POR TIENDA (antes única/global -- confirmado con test que
+cambiar de tienda "se pegaba" a la anterior sin esto),
+`saveNoCookPlanForToday(slots, storeId)` (antes sin store en absoluto,
+asimetría real con las entradas de plato), `<select id="store">` nuevo
+en `index.html` (insertado como ÚLTIMO campo de `.form-grid` a
+propósito, para no renumerar las reglas `nth-child` del reflow CSS
+existente), poblado dinámicamente desde `listAvailableStores()`
+(`pricing.js`, ya existía pero nunca se usaba).
+
+**Dos bugs reales encontrados verificando en vivo, no supuestos**: (1)
+`listAvailableStores()` solo miraba `PRICE_CATALOGS` -- el selector solo
+mostraba Mercadona pese a que Alcampo/Carrefour ya tenían catálogo de
+productos reales (arreglado: unión de `PRICE_CATALOGS` y
+`REAL_PRODUCTS_CATALOGS`). (2) `no-cook-classifier.js` está tasado
+contra la taxonomía de categorías CURADA de Mercadona -- la categoría
+scrapeada de Alcampo ("alimentación", del slug de URL) no coincide con
+ninguna regla, así que el pool de Alcampo daba 0 SIEMPRE pese a tener
+datos reales. Arreglado con un fallback por palabras clave del NOMBRE
+(`classifyByNameFallback`, solo se consulta cuando la categoría no
+coincide con NADA de lo curado -- para Mercadona esa rama nunca se
+alcanza) -- y ese propio fallback tuvo dos falsos positivos reales
+encontrados en vivo contra los 215 productos de verdad ("Pizza cuatro
+quesos" matcheaba "queso" antes que "pizza"; "Masa pizza fina familiar"
+matcheaba "pizza" pese a ser masa cruda sin hornear) y corregidos antes
+de dar el trabajo por terminado.
+
+**Fase B, explícitamente NO hecha esta sesión**: precios por ingrediente
+para Alcampo/Carrefour en el motor de platos (`PRICE_CATALOGS.alcampo`/
+`.carrefour`) -- `mercadona.js`'s `pricesPer100g` es un mapa CURADO A
+MANO, no un volcado mecánico; replicarlo con la misma fiabilidad es
+trabajo de curación de datos, no de fontanería, y se dejó fuera a
+propósito para no entregarlo con una calidad que no se pueda respaldar.
+Mientras tanto, elegir Alcampo/Carrefour en el selector solo afecta a
+"Sin cocinar" -- el motor de platos seguirá cayendo en
+`DEFAULT_STORE_ID` (Mercadona) para precios aunque el selector diga
+otra cosa, porque `PRICE_CATALOGS` solo tiene la entrada de Mercadona.
+
+307 tests (nutrition-planner) + 68 tests (PythonProject) pasando.
+Ambos repos con commits reales -- ver "Session handoff" para los
+hashes exactos y el detalle completo archivo por archivo.
 
 **Resumen de la sesión 2026-08-23b (rediseño visual: simplificar la
 interfaz, sin tocar lógica de negocio)**: continuación de la sesión
@@ -4940,6 +5038,99 @@ botón — bug real de `display:flex` sin calificar con `[open]` en
 razonamiento completo, incluido el hueco de verificación que lo dejó
 pasar). `9bd88e7` verificado en local (transición cerrado→abierto→cerrado
 con `getComputedStyle`/`getBoundingClientRect`, no solo la propiedad
-`.open`) y de nuevo en producción tras el deploy. Verificar con
-`git log -1` antes de asumir cuál es el HEAD real — esto es una foto
-fija, no una garantía.
+`.open`) y de nuevo en producción tras el deploy.
+
+**2026-08-23d/2026-08-24 (scrapers Alcampo/Carrefour + selector de
+tienda) — resumen del handoff, ver "Resumen de la sesión
+2026-08-23d/2026-08-24" arriba para el detalle completo**. Esta vez
+toca DOS repos, no solo este:
+
+- **`PycharmProjects\PythonProject`** (repo Python, separado, ahora
+  CON git -- no lo tenía hasta esta sesión, `git init` con permiso
+  explícito del usuario, identity local `andreyostrik228`/
+  `andreyostrik228@gmail.com`, la misma que este repo). HEAD real:
+  `870b6ce` (`git log --oneline -8` para toda la cadena: `870b6ce`
+  data Alcampo → `adac50e` export_real_products.py → `7763ad9` fix
+  ambos scrapers (Alcampo pasó de `requests` a Playwright) →
+  `d90a5b0` checkpointing incremental → `f5d25ca` docs →
+  `d0d8693` scraper Carrefour → `4ce4d08` scraper Alcampo (versión
+  requests, YA REEMPLAZADA) → `107e31f` commit inicial). Nuevo:
+  `scrapers/alcampo.py` (Playwright), `scrapers/carrefour.py`
+  (Playwright), `scripts/export_real_products.py`,
+  `main_alcampo.py`/`main_carrefour.py` (scrape + enrich, cada uno
+  con guardado incremental -- Alcampo cada 50 productos, Carrefour
+  tras cada categoría -- para no perder todo el progreso si un run
+  de horas falla a mitad). `enrich_database.py::DatabaseEnricher`
+  gana 3 parámetros opcionales (`product_database`/`progress_file`/
+  `audit_dir`) para poder enriquecer el catálogo de cualquier tienda
+  con la misma clase, sin fork -- `main.py` (Mercadona) sigue
+  funcionando idéntico sin tocarlo.
+
+- **Este repo (`nutrition-planner`)**: `c20d9fe` HEAD real
+  (`c20d9fe` data export → `1f38a5d` fallback del classifier →
+  `6b5ff9f` selector de tienda). Nuevo:
+  `js/data/real-products-alcampo.js`/`-carrefour.js` (generados,
+  NO se editan a mano -- volver a ejecutar
+  `PythonProject/scripts/export_real_products.py` si el catálogo
+  Python cambia), `REAL_PRODUCTS_CATALOGS` en `pricing.js`
+  (`getRealProductsForStore(storeId)`), `<select id="store">` en
+  `index.html`, `no-cook-generator.js`/`pantry.js` con `storeId`
+  threaded, fallback por nombre en `no-cook-classifier.js`. 307
+  tests, 0 fallidos.
+
+**IMPORTANTE -- NO desplegado a producción**: a diferencia del resto
+de esta sesión, este tramo (`6b5ff9f`/`1f38a5d`/`c20d9fe`) está
+COMITEADO Y PUSHEADO pero nunca se ejecutó
+`npx wrangler pages deploy .` -- `offline-nutrition-helper.pages.dev`
+sigue sirviendo `9bd88e7` (el fix de la despensa), SIN el selector de
+tienda. No asumir que está en producción sin comprobarlo.
+
+**Datos reales actuales** (`PycharmProjects\PythonProject\database\`):
+`alcampo.db.json` 288 productos (215 pasan el filtro de comida, **0
+con nutrición real** -- ni EAN real ni match por nombre en
+OpenFoodFacts, kcal/protein/carbs/fat en null para los 288, nunca
+inventados). `carrefour.db.json` VACÍO -- el run completo se paró a
+mitad por un bloqueo real de Cloudflare, ver más abajo.
+
+**Qué no romper (código nuevo de este tramo)**: `PRICE_CATALOGS` SOLO
+tiene la entrada `mercadona` -- elegir Alcampo/Carrefour en el
+selector afecta a "Sin cocinar" pero el motor de platos (DISH_DB)
+seguirá usando precios de Mercadona para esas tiendas hasta que exista
+un `PRICE_CATALOGS.alcampo`/`.carrefour` curado (Fase B, deliberadamente
+no hecha, ver razonamiento en el resumen de arriba) -- esto es
+comportamiento esperado, no un bug a "arreglar" sin la curación real.
+`getNoCookEligiblePool()`/`_noCookEligiblePoolByStore` -- la caché es
+POR TIENDA a propósito, nunca volver a una caché única global (bug real
+que esto reemplaza, confirmado con test). `classifyByNameFallback()`
+(`no-cook-classifier.js`) SOLO se alcanza cuando category/leafCategory
+no coincide con ninguna regla curada de Mercadona -- para Mercadona esa
+rama nunca se ejecuta; si algún día Mercadona empezara a fallar por
+ahí, sería señal de una regresión real, no de que el fallback "también
+debería aplicarse" a Mercadona. El orden de `FALLBACK_READY_KEYWORDS`
+importa (platos compuestos como "pizza" ANTES que ingredientes sueltos
+como "queso") -- reordenar sin cuidado reintroduce el bug real ya
+encontrado y corregido ("Pizza cuatro quesos" clasificándose como
+queso suelto).
+
+**Pendiente para la próxima sesión, honesto sobre lo que falta**:
+1. Reintentar el scrape completo de Carrefour cuando el bloqueo de
+   Cloudflare haya tenido tiempo de despejarse (no hay ETA conocida;
+   `scrapers/carrefour.py` ya tiene reintento+espera de 20s en
+   `scrape_category`, pero un bloqueo real como este no lo soluciona
+   solo).
+2. El 0% de nutrición real en Alcampo es un hueco de cobertura
+   genuino, no un bug -- `providers/openfoodfacts.py` (PythonProject)
+   no se tocó esta sesión; mejorar el matching por nombre para marca
+   blanca de Alcampo, si se decide que vale la pena, es trabajo aparte.
+3. Desplegar `6b5ff9f`/`1f38a5d`/`c20d9fe` a producción cuando se
+   decida (no se hizo en esta sesión, ver aviso arriba).
+4. Fase B (precios curados de Alcampo/Carrefour para el motor de
+   platos) -- deliberadamente fuera de esta sesión, ver razonamiento
+   en el resumen de arriba.
+5. `docs/architecture.md`/`docs/data_flow.md` (PythonProject) siguen
+   describiendo el pipeline como si Mercadona fuera el único catálogo
+   y no existiera scraper propio -- desactualizados desde esta sesión,
+   no se tocaron (ver aviso al principio de este archivo).
+
+Verificar con `git log -1` en AMBOS repos antes de asumir cuál es el
+HEAD real — esto es una foto fija, no una garantía.
