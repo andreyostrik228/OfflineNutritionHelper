@@ -93,11 +93,6 @@ document.addEventListener("DOMContentLoaded", function () {
   var scheduleTimelineEl = document.getElementById("scheduleTimeline");
   var nextMealStickyEl   = document.getElementById("nextMealSticky");
 
-  // Selector de tienda (2026-08-24) -- afecta al motor de platos
-  // (vía readForm().store) y a "Sin cocinar"/catálogo (storeEl.value
-  // pasado explícitamente, ver handleNoCook/catalog-init más abajo).
-  var storeEl = document.getElementById("store");
-
   var verifiedGrid        = document.getElementById("verifiedGrid");
   var verifiedCount       = document.getElementById("verifiedCount");
   var verifiedSearchInput = document.getElementById("verifiedSearchInput");
@@ -405,6 +400,18 @@ document.addEventListener("DOMContentLoaded", function () {
           var toSave = {};
           Object.keys(data).forEach(function (k) { toSave[k] = data[k]; });
           Object.keys(scheduleSettings).forEach(function (k) { toSave[k] = scheduleSettings[k]; });
+
+          // "No me gusta": texto libre separado por comas -> array. El
+          // saneado real (recorte, deduplicado, topes) lo hace
+          // sanitizeStringList() en settings.js; aquí solo se trocea.
+          var dislikesEl = document.getElementById("dislikes");
+          if (dislikesEl) {
+            toSave.dislikes = String(dislikesEl.value || "")
+              .split(",")
+              .map(function (part) { return part.trim(); })
+              .filter(Boolean);
+          }
+
           saveSettings(toSave);
           if (typeof pushSettingsToCloud === "function") pushSettingsToCloud();
         });
@@ -451,6 +458,12 @@ document.addEventListener("DOMContentLoaded", function () {
       if (el) el.value = value;
     }
 
+    // Array -> texto separado por comas (setVal solo maneja escalares).
+    var dislikesEl = document.getElementById("dislikes");
+    if (dislikesEl && Array.isArray(settings.dislikes)) {
+      dislikesEl.value = settings.dislikes.join(", ");
+    }
+
     setVal("age", settings.age);
     setVal("sex", settings.sex);
     setVal("weight", settings.weight);
@@ -462,7 +475,6 @@ document.addEventListener("DOMContentLoaded", function () {
     setVal("taste", settings.taste);
     setVal("wakeTime", settings.wakeTime);
     setVal("sleepTime", settings.sleepTime);
-    setVal("store", settings.store);
 
     if (settings.budgetMode) {
       var radioId = settings.budgetMode === "small"  ? "budgetModeSmall"
@@ -524,23 +536,12 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   });
 
-  // ── Selector de tienda (2026-08-24) -- opciones generadas desde
-  //    listAvailableStores() (pricing.js), nunca hardcodeadas, para que
-  //    añadir una tienda nueva (un archivo js/data/prices/<tienda>.js
-  //    más) baste sin tocar index.html. Tiene que ejecutarse ANTES de
-  //    "settings-prefill" (más abajo): un <select> no acepta un
-  //    .value para el que todavía no existe <option>. El <option>
-  //    "mercadona" ya en el HTML es solo el fallback si esto fallara.
-  safeInit("store-select-init", function () {
-    if (!storeEl || typeof listAvailableStores !== "function") return;
+  // ── Selector de tienda: RETIRADO (2026-08-25) ───────────────────────
+  //    La app es solo-Mercadona por ahora (ver el comentario en
+  //    index.html para los datos que lo motivan). No se pasa storeId a
+  //    ningún motor: todos caen en DEFAULT_STORE_ID. La arquitectura
+  //    multi-tienda sigue intacta, solo desaparece el borde de entrada.
 
-    var stores = listAvailableStores();
-    if (!stores.length) return;
-
-    storeEl.innerHTML = stores.map(function (s) {
-      return '<option value="' + escapeHtml(s.storeId) + '">' + escapeHtml(s.storeName) + '</option>';
-    }).join("");
-  });
 
   // ── Perfil/ajustes guardados: rellena el formulario con lo último
   //    guardado en ESTE navegador (invitado) -- si hay sesión iniciada, se
@@ -798,8 +799,7 @@ document.addEventListener("DOMContentLoaded", function () {
         verifiedCount: verifiedCount,
         verifiedSearchInput: verifiedSearchInput,
         verifiedEmpty: verifiedEmpty,
-        verifiedEmptyQuery: verifiedEmptyQuery,
-        storeSelectEl: storeEl
+        verifiedEmptyQuery: verifiedEmptyQuery
       });
       initRealProductsPanel();
     }
@@ -812,7 +812,8 @@ document.addEventListener("DOMContentLoaded", function () {
     safeInit("no-cook-run", function () {
       if (typeof runNoCookGenerator !== "function") return;
       if (noCookPanel) noCookPanel.hidden = false;
-      runNoCookGenerator(storeEl ? storeEl.value : undefined);
+      // Sin storeId: el generador cae en DEFAULT_STORE_ID (Mercadona).
+      runNoCookGenerator();
       if (noCookPanel && typeof noCookPanel.scrollIntoView === "function") {
         noCookPanel.scrollIntoView({ behavior: "smooth", block: "start" });
       }

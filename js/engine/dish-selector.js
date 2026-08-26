@@ -177,6 +177,8 @@ function resolveTier(tier) {
 function filterDishesByTimeTaste(category, maxPrep, taste, relax) {
   var effectivePrep = isFinite(relax.prepAdd) ? maxPrep + relax.prepAdd : Infinity;
 
+  var dislikes = (typeof getDislikes === "function") ? getDislikes() : [];
+
   return DISH_DB.filter(function (dish) {
     if (dish.category !== category) return false;
     if (isFinite(effectivePrep) && dish.prep > effectivePrep) return false;
@@ -184,6 +186,24 @@ function filterDishesByTimeTaste(category, maxPrep, taste, relax) {
       if (taste === "sweet"  && dish.taste === "savory" && category === "desayuno") return false;
       if (taste === "savory" && dish.taste === "sweet"  && category === "cena")     return false;
     }
+
+    // "No me gusta": se descarta el plato entero si CUALQUIER ingrediente
+    // suyo casa con la lista. Va aquí, en el filtro de candidatos, y NO en
+    // scoreDishForSelection() -- una preferencia se respeta, no se pondera:
+    // si entrase en la puntuación, un plato con cebolla podría ganar igual
+    // por ser barato, que es justo lo que el usuario ha pedido evitar.
+    //
+    // Ojo: esto NO es un filtro de alérgenos, y `dishes.js` no tiene datos
+    // de alérgenos con los que serlo (81 roles genéricos, sin SKU). El modo
+    // platos no puede afirmar seguridad frente a alergias -- ver la
+    // cabecera de js/core/preferences.js.
+    if (dislikes.length && typeof matchesDislike === "function") {
+      if (dish.items && dish.items.some(function (item) { return matchesDislike(item.name, dislikes); })) {
+        return false;
+      }
+      if (matchesDislike(dish.name, dislikes)) return false;
+    }
+
     return true;
   });
 }
@@ -441,12 +461,58 @@ function scoreDishForSelection(dish, usedState, ctx) {
   var usagePpeBucket = Math.round(proteinPerEuro(dish, ctx.storeId) / 2) * 2; // informativo/desempate, ver arriba
   var macroFit = macroFitScore(dish, ctx.target, impact.scaleFactor);
 
+  // Caducidad (2026-08-25): premia gastar despensa que está a punto de
+  // estropearse. Es un EMPUJÓN, nunca una restricción -- queda muy por
+  // debajo de macroFit a propósito. Un plan que se salta el presupuesto o
+  // descuadra los macros "para salvar una zanahoria" sería peor que tirar
+  // la zanahoria, y rompería la regla del proyecto de que las
+  // restricciones duras (presupuesto, tolerancia de macros) mandan.
+  //
+  // ⚠️ MEDIDO Y **NO EFECTIVO TODAVÍA**. Hay que ser honesto con esto en
+  // vez de dejar un comentario que sugiera que funciona:
+  //
+  //   - Separación MEDIANA entre dos platos consecutivos del ranking
+  //     (110 candidatos de "comida", `Math.random` fijado): ~15 puntos.
+  //     Rango del top-10: ~579.
+  //   - Peso 12 (primer intento): máximo 12 puntos, por debajo de la
+  //     separación mediana. Inerte.
+  //   - Peso 60 (actual): máximo 60, ~4 separaciones medianas. Mejora la
+  //     dirección pero SIGUE sin ser medible.
+  //
+  // Prueba decisiva (n=400 slots, 10 ingredientes en despensa marcados
+  // urgentes): la urgencia media de los platos ELEGIDOS es 0.2167 frente
+  // a 0.2198 de media del catálogo -- una diferencia de -0.24 errores
+  // estándar, o sea ninguna. El generador NO está prefiriendo lo que
+  // caduca.
+  //
+  // Causa: `macroFit * 100` produce puntuaciones del orden de 10.000, y la
+  // lotería selecciona sobre esa escala. Cualquier término lo bastante
+  // pequeño para seguir siendo "un empujón y no una restricción" es
+  // demasiado pequeño para mover la selección. Hacerlo efectivo exigiría
+  // que compitiera con el ajuste de macros, que es justo lo que el diseño
+  // prohíbe.
+  //
+  // El término se deja porque es correcto en su lógica, está probado y no
+  // hace daño (con despensa sin fechas vale 0 exacto). Pero la caducidad
+  // hoy es una función de la DESPENSA -- ver qué corre prisa y cocinarlo --
+  // no del generador. Si se quiere que influya de verdad, el camino no es
+  // subir este peso sino sesgar el POOL de candidatos (meter en él los
+  // platos que gastan stock urgente), que es un cambio de semántica y
+  // necesita decisión de producto.
+  //
+  // `expiry.js` es opcional, como el resto de módulos no críticos: si no
+  // está cargado el término vale 0 y el motor puntúa exactamente como
+  // antes -- de ahí que los golden-master no se muevan.
+  var expiry = (typeof dishExpiryUrgency === "function" && ctx.pantryState)
+    ? dishExpiryUrgency(dish.items, ctx.pantryState, ctx.todayISO)
+    : 0;
+
   if (ctx.tight) {
-    return macroFit * 20 + purchasePpeBucket * 40 + usagePpeBucket * 0.5 + div;
+    return macroFit * 20 + purchasePpeBucket * 40 + usagePpeBucket * 0.5 + div + expiry * 15;
   }
 
   var allocation = allocationScore(impact.marginalCost, ctx.targetSpend, ctx.maxCost);
-  return macroFit * 100 + allocation * 30 + div * 10 + purchasePpeBucket * 3 + usagePpeBucket * 0.5;
+  return macroFit * 100 + allocation * 30 + div * 10 + purchasePpeBucket * 3 + usagePpeBucket * 0.5 + expiry * 60;
 }
 
 /**

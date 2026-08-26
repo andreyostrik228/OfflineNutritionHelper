@@ -159,6 +159,23 @@ function computeDayPurchaseCost(meals, storeId, pantryState) {
   var resolvedPantryState = pantryState;
   if (resolvedPantryState === undefined && typeof getPantryState === "function") {
     resolvedPantryState = getPantryState();
+
+    // Cuando la despensa se resuelve AQUÍ (el llamador no la pasó), se
+    // proyecta a hoy antes de usarla: lo ya caducado no debe descontar del
+    // coste de compra. Sin esto, la LISTA DE LA COMPRA
+    // (render-shopping-list.js, que llama sin pantryState) usaría el
+    // estado crudo mientras el generador usa el proyectado, y los dos
+    // números se separarían -- justo la divergencia que el rediseño de
+    // coste de compra de 2026-08-08 existe para impedir ("la lista de la
+    // compra y el generador nunca pueden mostrar totales distintos").
+    //
+    // Solo afecta al camino IMPLÍCITO: quien pasa `pantryState` a mano
+    // decide por su cuenta (el generador ya proyecta al día objetivo).
+    // Y degrada con seguridad igual que con pantry.js: si expiry.js no
+    // está cargado, se usa el estado tal cual.
+    if (typeof projectPantryState === "function") {
+      resolvedPantryState = projectPantryState(resolvedPantryState);
+    }
   }
 
   var lines = aggregateMealItems(meals).map(function (entry) {

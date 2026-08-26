@@ -378,6 +378,22 @@ function generateDietPlanTiered(profile, data) {
   // seguridad a "sin despensa" en ese caso.
   var pantryState = (typeof getPantryState === "function") ? getPantryState() : null;
 
+  // Proyecta la despensa al día que se planifica (2026-08-25). Dos cosas
+  // a la vez, y la primera es un arreglo, no una función nueva:
+  //
+  //   1. Lo ya CADUCADO deja de descontar del coste de compra. Antes sí
+  //      descontaba: unas zanahorias caducadas en enero dejaban el día en
+  //      0,00 € en vez de 1,70 € (medido). Ver projectPantryState().
+  //   2. Si `data.targetDate` pide un día futuro, se descuenta solo lo que
+  //      seguirá bueno ESE día -- la leche que caduca el jueves no puede
+  //      "ahorrar" en el plan del sábado.
+  //
+  // Se filtra aquí, en el único sitio donde entra la despensa, para no
+  // acoplar budget.js/pricing.js a la caducidad.
+  if (typeof projectPantryState === "function") {
+    pantryState = projectPantryState(pantryState, data && data.targetDate);
+  }
+
   var bestAttempt = null;
   var bestScore   = -Infinity;
 

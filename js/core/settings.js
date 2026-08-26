@@ -37,7 +37,37 @@ var SETTINGS_STORAGE_KEY = "nutritionPlanner.settings.v1";
 var _settingsMemoryState = null;
 
 var SETTINGS_NUMERIC_FIELDS = ["age", "weight", "height", "activity", "workouts", "budgetCustom", "cookTime"];
-var SETTINGS_STRING_FIELDS  = ["sex", "goal", "budgetMode", "taste", "wakeTime", "sleepTime", "store"];
+// "store" retirado 2026-08-25 junto con el selector de tienda. Un ajuste
+// guardado de antes simplemente se ignora al sanear -- no rompe nada.
+var SETTINGS_STRING_FIELDS  = ["sex", "goal", "budgetMode", "taste", "wakeTime", "sleepTime"];
+
+/**
+ * Listas de exclusión del usuario. Son ARRAYS de texto, no cadenas, así
+ * que se sanean aparte (ver sanitizeStringList).
+ *
+ * ── Por qué "no me gusta" y las alergias NO comparten lista ──────────
+ * Son cosas de naturaleza distinta y se guardan por separado A PROPÓSITO:
+ *
+ *   dislikes  -> PREFERENCIA blanda. Si algo se cuela, el usuario se
+ *                encoge de hombros. Filtrar es suficiente.
+ *   allergens -> RESTRICCIÓN DURA de seguridad. Si algo se cuela, alguien
+ *                puede acabar en urgencias. Va con el techo de presupuesto
+ *                y las tolerancias de macros, nunca en el sorteo de
+ *                puntuación.
+ *
+ * Fundirlas en una sola lista con un flag de "severidad" es la forma
+ * evidente de ahorrarse código, y es justo lo que no hay que hacer:
+ * invita a que alguien "optimice" después el camino de alergias
+ * convirtiéndolo en una puntuación, sin darse cuenta de lo que rompe.
+ * Mientras sean dos campos distintos, ese error necesita ser deliberado.
+ */
+var SETTINGS_LIST_FIELDS = ["dislikes"];
+
+// Topes defensivos: el usuario escribe esto a mano y se sincroniza a la
+// nube, así que ni la lista ni una entrada suelta pueden crecer sin
+// límite.
+var MAX_LIST_ENTRIES = 50;
+var MAX_LIST_ENTRY_LENGTH = 60;
 
 /**
  * Sanea un objeto de settings campo por campo -- nunca lanza, nunca deja
@@ -46,6 +76,42 @@ var SETTINGS_STRING_FIELDS  = ["sex", "goal", "budgetMode", "taste", "wakeTime",
  * @param {*} raw - lo que venga de JSON.parse() o de la llamada a saveSettings()
  * @returns {object}
  */
+/**
+ * Sanea una lista de textos libres del usuario: descarta lo que no sea
+ * cadena con contenido, recorta espacios, quita duplicados sin distinguir
+ * mayúsculas, y acota el tamaño.
+ *
+ * Nunca lanza y siempre devuelve un array -- misma disciplina que el resto
+ * del saneado: un valor corrupto en localStorage no puede tumbar el
+ * arranque (ver el bug de 2026-08-07).
+ *
+ * @param {*} raw
+ * @returns {string[]}
+ */
+function sanitizeStringList(raw) {
+  if (!Array.isArray(raw)) return [];
+
+  var seen = {};
+  var out = [];
+
+  for (var i = 0; i < raw.length && out.length < MAX_LIST_ENTRIES; i++) {
+    var v = raw[i];
+    if (typeof v !== "string") continue;
+
+    var trimmed = v.trim();
+    if (!trimmed) continue;
+    if (trimmed.length > MAX_LIST_ENTRY_LENGTH) trimmed = trimmed.slice(0, MAX_LIST_ENTRY_LENGTH);
+
+    var dedupeKey = trimmed.toLowerCase();
+    if (seen[dedupeKey]) continue;
+
+    seen[dedupeKey] = true;
+    out.push(trimmed);
+  }
+
+  return out;
+}
+
 function sanitizeSettings(raw) {
   if (!raw || typeof raw !== "object") return {};
   var clean = {};
@@ -57,6 +123,10 @@ function sanitizeSettings(raw) {
   SETTINGS_STRING_FIELDS.forEach(function (key) {
     var v = raw[key];
     if (typeof v === "string" && v.length > 0) clean[key] = v;
+  });
+  SETTINGS_LIST_FIELDS.forEach(function (key) {
+    var list = sanitizeStringList(raw[key]);
+    if (list.length) clean[key] = list;
   });
   if (typeof raw.updatedAt === "string") clean.updatedAt = raw.updatedAt;
 

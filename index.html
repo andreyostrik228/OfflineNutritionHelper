@@ -306,22 +306,47 @@
               </select>
             </div>
 
-            <!-- ══ SELECTOR DE TIENDA (2026-08-24): campo nuevo al final a
-                 propósito, para no desplazar los índices nth-child que ya
-                 usa el reflow de .form-grid (ver assets/css/style.css) --
-                 insertar en cualquier otra posición obligaría a
-                 renumerar esas reglas. Opciones generadas en JS desde
-                 listAvailableStores() (js/core/pricing.js) -- la de
-                 Mercadona de aquí es solo un fallback si ese script
-                 fallara, nunca la única fuente real. Afecta tanto al
-                 motor de platos (precio por tienda) como a "Sin
-                 cocinar" (catálogo de productos reales por tienda). ══ -->
+            <!-- ══ NO ME GUSTA (2026-08-26) ══════════════════════════════
+                 PREFERENCIA blanda, no una restriccion de seguridad. El
+                 texto es deliberadamente modesto sobre lo que hace: filtra
+                 por NOMBRE, y el motor de platos trabaja con 81 roles
+                 genericos, asi que "cebolla" o "ajo" no existen como rol y
+                 no se pueden filtrar de un plato. Decirlo aqui es mas
+                 honesto que dejar que el usuario asuma cobertura total.
+
+                 Esto NO es un filtro de alergenos y la UI no debe
+                 insinuarlo nunca -- ver js/core/preferences.js. ══ -->
             <div class="field full">
-              <label for="store">&iquest;D&oacute;nde compras?</label>
-              <select id="store" required>
-                <option value="mercadona" selected>Mercadona</option>
-              </select>
+              <label for="dislikes">Alimentos que no te gustan</label>
+              <input type="text" id="dislikes" autocomplete="off"
+                     placeholder="cebolla, queso azul, salm&oacute;n" />
+              <p class="field-hint" id="dislikesHint">
+                Separa con comas. Se descarta cualquier producto o plato cuyo
+                nombre o ingredientes coincidan.
+                <strong>No sirve para alergias:</strong> es una preferencia, no
+                una comprobaci&oacute;n de seguridad.
+              </p>
             </div>
+
+            <!-- ══ SELECTOR DE TIENDA: RETIRADO (2026-08-25) ══
+                 La app vuelve a ser solo-Mercadona por ahora. Medido:
+                 Mercadona 2.769 productos / 1.863 con nutrición / 1.401
+                 usables en planes; Alcampo 220 / 40 / 21; Carrefour 0.
+                 Y `PRICE_CATALOGS` solo tiene entrada "mercadona", así
+                 que el motor de PLATOS siempre ha cobrado con precios de
+                 Mercadona hubiera lo que hubiera en el selector. Elegir
+                 Alcampo daba un pool "sin cocinar" 67 veces menor y el
+                 mismo precio de platos: el selector solo empeoraba la
+                 app.
+
+                 La ARQUITECTURA multi-tienda NO se ha tocado
+                 (REAL_PRODUCTS_CATALOGS, PRICE_CATALOGS,
+                 getRealProductsForStore, listAvailableStores,
+                 DEFAULT_STORE_ID y el parámetro storeId siguen enhebrados
+                 por todo el motor). Los llamadores simplemente ya no
+                 pasan storeId y cae en DEFAULT_STORE_ID. Volver a
+                 activarlo es re-añadir este <select>. ══ -->
+
 
           </div>
 
@@ -594,9 +619,25 @@
 <script src="js/data/no-cook-classifier.js"></script>
 <script src="js/data/prices/mercadona.js"></script>
 <script src="js/data/budget-presets.js"></script>
+<script src="js/data/shelf-life.js"></script>
+<!-- Conservación REAL publicada por Mercadona (generado por
+     PythonProject/scripts/export_product_storage.py). Tiene prioridad
+     sobre shelf-life.js, que es estimación nuestra. -->
+<script src="js/data/product-storage.js"></script>
 <script src="js/core/utils.js"></script>
 <script src="js/core/pricing.js"></script>
 <script src="js/core/nutrition.js"></script>
+<!-- expiry.js despues de pricing.js (usa normalizeIngredientKey) y de
+     shelf-life.js (usa getShelfLife); antes de pantry.js, que lo consulta
+     desde listPantryEntries(). Los tres son opcionales: si expiry.js
+     faltara, la despensa sigue funcionando sin columna de caducidad. -->
+<script src="js/core/expiry.js"></script>
+<!-- preferences.js despues de pricing.js (reutiliza
+     normalizeIngredientKey para no tener dos normalizaciones que puedan
+     divergir). Es SOLO preferencias blandas ("no me gusta"); las alergias
+     son una restriccion de seguridad y viviran en su propio archivo, a
+     proposito -- ver la cabecera de preferences.js. -->
+<script src="js/core/preferences.js"></script>
 <script src="js/core/pantry.js"></script>
 <script src="js/core/budget.js"></script>
 <script src="js/core/calculator.js"></script>

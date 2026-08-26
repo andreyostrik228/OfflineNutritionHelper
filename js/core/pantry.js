@@ -171,13 +171,48 @@ function sanitizePantryState(raw) {
       clean[key] = {
         grams: entry.grams,
         displayName: typeof entry.displayName === "string" ? entry.displayName : key,
-        updatedAt: typeof entry.updatedAt === "string" ? entry.updatedAt : null
+        updatedAt: typeof entry.updatedAt === "string" ? entry.updatedAt : null,
+        // Caducidad (2026-08-25). Este saneado RECONSTRUYE la entrada campo
+        // a campo, así que cualquier campo no listado aquí se pierde en
+        // silencio al leer -- es exactamente lo que le pasó al stock "sin
+        // cocinar" en 2026-08-20f. Si se añade otro campo, va aquí Y en
+        // sanitizeNoCookStock().
+        acquiredAt: typeof entry.acquiredAt === "string" ? entry.acquiredAt : null,
+        expiresAt: typeof entry.expiresAt === "string" ? entry.expiresAt : null,
+        storage: typeof entry.storage === "string" ? entry.storage : null
       };
     }
     // Cualquier otra forma (null, string, número suelto, grams<=0/no-numérico)
     // se descarta en silencio — más seguro que intentar adivinar.
   });
   return clean;
+}
+
+/**
+ * Conserva los campos de caducidad al reescribir una entrada.
+ *
+ * Los 7 sitios que escriben stock (`setStock`, compra, cocinado, deshacer,
+ * y sus equivalentes "sin cocinar") construyen la entrada entera de cero.
+ * Sin esto, comprar o cocinar borraría la fecha de caducidad y el
+ * `acquiredAt` de forma invisible.
+ *
+ * `acquiredAt` se fija UNA vez y no se vuelve a tocar: es la fecha de
+ * adquisición, no de modificación. `updatedAt` ya cubre lo segundo, y
+ * anclar la estimación de vida útil a un campo que cambia cada vez que se
+ * cocina haría que la fecha estimada se alejara sola.
+ *
+ * @param {object|undefined} prev - entrada anterior, si existía
+ * @param {object} next - entrada nueva ya construida
+ * @param {string} nowISO
+ * @returns {object} `next` con los campos de caducidad puestos
+ */
+function preserveExpiryFields(prev, next, nowISO) {
+  next.acquiredAt = (prev && typeof prev.acquiredAt === "string" && prev.acquiredAt)
+    ? prev.acquiredAt
+    : nowISO;
+  next.expiresAt = (prev && typeof prev.expiresAt === "string") ? prev.expiresAt : null;
+  next.storage = (prev && typeof prev.storage === "string") ? prev.storage : null;
+  return next;
 }
 
 /**
@@ -225,16 +260,32 @@ function savePantryState(state) {
  * Lista la despensa ordenada alfabéticamente (es-ES), lista para pintar.
  * @returns {{key:string, name:string, grams:number, updatedAt:string}[]}
  */
-function listPantryEntries() {
+function listPantryEntries(todayISO) {
   var state = getPantryState();
+  // `expiry.js` es opcional, igual que `pantry.js` lo es para el motor:
+  // si no está cargado la despensa sigue funcionando exactamente igual,
+  // solo sin la columna de caducidad. Nunca se asume que existe.
+  var canResolve = typeof resolveExpiry === "function";
+  var today = todayISO || new Date().toISOString().slice(0, 10);
+
   return Object.keys(state)
     .map(function (key) {
       var entry = state[key];
+      var expiry = canResolve
+        ? resolveExpiry(entry, key, today)
+        : { date: null, source: "unknown", daysLeft: null, tier: "desconocido", storage: null };
       return {
         key: key,
         name: entry.displayName || key,
         grams: entry.grams || 0,
-        updatedAt: entry.updatedAt || null
+        updatedAt: entry.updatedAt || null,
+        acquiredAt: entry.acquiredAt || null,
+        storage: expiry.storage,
+        expiryDate: expiry.date,
+        expirySource: expiry.source,
+        expiryDaysLeft: expiry.daysLeft,
+        expiryTotalDays: expiry.totalDays,
+        expiryTier: expiry.tier
       };
     })
     .sort(function (a, b) { return a.name.localeCompare(b.name, "es"); });
@@ -270,8 +321,63 @@ function setStock(name, grams) {
   if (g <= 0) {
     delete state[key];
   } else {
-    state[key] = { grams: g, displayName: name, updatedAt: new Date().toISOString() };
+    var nowISO = new Date().toISOString();
+    state[key] = preserveExpiryFields(
+      state[key],
+      { grams: g, displayName: name, updatedAt: nowISO },
+      nowISO
+    );
   }
+
+  savePantryState(state);
+  return state;
+}
+
+/**
+ * Fija a mano la fecha de caducidad de un ingrediente (la del envase).
+ *
+ * Pasar `null` o cadena vacía BORRA la fecha manual, con lo que la entrada
+ * vuelve a la estimación por vida útil si la hay. No crea entradas: si no
+ * hay stock de ese ingrediente no hay nada que caduque.
+ *
+ * @param {string} name
+ * @param {string|null} isoDate - "YYYY-MM-DD"
+ * @returns {object} - el nuevo estado guardado
+ */
+function setExpiry(name, isoDate) {
+  var state = getPantryState();
+  var key = normalizeIngredientKey(name);
+  var entry = state[key];
+
+  if (!entry) return state;
+
+  entry.expiresAt = (typeof isoDate === "string" && isoDate) ? isoDate.slice(0, 10) : null;
+  entry.updatedAt = new Date().toISOString();
+
+  savePantryState(state);
+  return state;
+}
+
+/**
+ * Fija dónde se guarda un ingrediente ("nevera"/"despensa"/"congelador").
+ *
+ * Cambia la vida útil ESTIMADA (ver `getShelfLife`), nunca una fecha
+ * introducida a mano -- esa siempre gana. `null` vuelve al sitio que
+ * `shelf-life.js` asume por defecto para ese ingrediente.
+ *
+ * @param {string} name
+ * @param {string|null} storage
+ * @returns {object} - el nuevo estado guardado
+ */
+function setStorage(name, storage) {
+  var state = getPantryState();
+  var key = normalizeIngredientKey(name);
+  var entry = state[key];
+
+  if (!entry) return state;
+
+  entry.storage = (typeof storage === "string" && storage) ? storage : null;
+  entry.updatedAt = new Date().toISOString();
 
   savePantryState(state);
   return state;
@@ -774,7 +880,11 @@ function markPurchaseDone(entryId, excludedNames, storeId) {
     // diferencia con la v1 (que hacía oldStock + purchasedGrams -
     // requiredGrams): comprar no consume nada por sí mismo.
     var newStock = oldStock + purchasedGrams;
-    pantryState[key] = { grams: round0(newStock), displayName: item.name, updatedAt: nowISO };
+    pantryState[key] = preserveExpiryFields(
+      pantryState[key],
+      { grams: round0(newStock), displayName: item.name, updatedAt: nowISO },
+      nowISO
+    );
 
     lines.push({
       name: item.name,
@@ -853,7 +963,11 @@ function markMealCooked(entryId, mealKey, cooked) {
       var current = getStock(item.name, pantryState);
       var used = Math.min(item.requiredGrams, current);
       var key = normalizeIngredientKey(item.name);
-      pantryState[key] = { grams: round0(Math.max(0, current - used)), displayName: item.name, updatedAt: nowISO };
+      pantryState[key] = preserveExpiryFields(
+        pantryState[key],
+        { grams: round0(Math.max(0, current - used)), displayName: item.name, updatedAt: nowISO },
+        nowISO
+      );
       return { name: item.name, grams: round0(used) };
     });
     meal.cooked = true;
@@ -862,7 +976,11 @@ function markMealCooked(entryId, mealKey, cooked) {
     (meal.consumed || []).forEach(function (c) {
       var current = getStock(c.name, pantryState);
       var key = normalizeIngredientKey(c.name);
-      pantryState[key] = { grams: round0(current + c.grams), displayName: c.name, updatedAt: nowISO };
+      pantryState[key] = preserveExpiryFields(
+        pantryState[key],
+        { grams: round0(current + c.grams), displayName: c.name, updatedAt: nowISO },
+        nowISO
+      );
     });
     meal.cooked = false;
     meal.cookedAt = null;
@@ -973,7 +1091,13 @@ function sanitizeNoCookStock(raw) {
       clean[key] = {
         quantity: entry.quantity,
         displayName: typeof entry.displayName === "string" ? entry.displayName : key,
-        updatedAt: typeof entry.updatedAt === "string" ? entry.updatedAt : null
+        updatedAt: typeof entry.updatedAt === "string" ? entry.updatedAt : null,
+        // Ver el comentario equivalente en sanitizePantryState(): este
+        // saneado también reconstruye campo a campo, así que los campos de
+        // caducidad tienen que declararse en AMBOS o se pierden en uno.
+        acquiredAt: typeof entry.acquiredAt === "string" ? entry.acquiredAt : null,
+        expiresAt: typeof entry.expiresAt === "string" ? entry.expiresAt : null,
+        storage: typeof entry.storage === "string" ? entry.storage : null
       };
     }
   });
@@ -1038,7 +1162,12 @@ function setNoCookProductStock(productId, quantity, displayName) {
   if (q <= 0) {
     delete state[productId];
   } else {
-    state[productId] = { quantity: q, displayName: displayName || productId, updatedAt: new Date().toISOString() };
+    var nowNoCookISO = new Date().toISOString();
+    state[productId] = preserveExpiryFields(
+      state[productId],
+      { quantity: q, displayName: displayName || productId, updatedAt: nowNoCookISO },
+      nowNoCookISO
+    );
   }
 
   saveNoCookStock(state);
@@ -1169,7 +1298,11 @@ function markNoCookPurchaseDone(entryId) {
   (entry.slots || []).forEach(function (slot) {
     (slot.items || []).forEach(function (item) {
       var current = getNoCookProductStock(item.id, stock);
-      stock[item.id] = { quantity: current + item.quantity, displayName: item.name, updatedAt: nowISO };
+      stock[item.id] = preserveExpiryFields(
+        stock[item.id],
+        { quantity: current + item.quantity, displayName: item.name, updatedAt: nowISO },
+        nowISO
+      );
       lines.push({ id: item.id, name: item.name, quantity: item.quantity, price: item.price });
       totalCost += (item.price || 0) * item.quantity;
     });
@@ -1215,7 +1348,11 @@ function markNoCookSlotConsumed(entryId, slotKey, consumed) {
     slot.consumedQuantities = (slot.items || []).map(function (item) {
       var current = getNoCookProductStock(item.id, stock);
       var used = Math.min(item.quantity, current);
-      stock[item.id] = { quantity: Math.max(0, current - used), displayName: item.name, updatedAt: nowISO };
+      stock[item.id] = preserveExpiryFields(
+        stock[item.id],
+        { quantity: Math.max(0, current - used), displayName: item.name, updatedAt: nowISO },
+        nowISO
+      );
       return { id: item.id, name: item.name, quantity: used };
     });
     slot.consumed = true;

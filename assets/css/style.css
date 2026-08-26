@@ -2133,6 +2133,76 @@ button:focus-visible {
   white-space: nowrap;
 }
 
+/* Caducidad (2026-08-25). Un tap la convierte en <input type=date>, mismo
+   patrón que la cantidad. El prefijo "~" del texto (lo pone
+   renderExpiryBadge, no el CSS) marca que la fecha es ESTIMADA y no la del
+   envase -- no ocultarlo al reestilar.
+   min-width:0 + max-width:100% por el mismo motivo que .pantry-meal-chip
+   (2026-08-20b): un flex item con texto corto no debe poder ensanchar la
+   fila en móvil. */
+.pantry-item__expiry {
+  flex-shrink: 0;
+  min-width: 0;
+  max-width: 100%;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink-muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.pantry-item__expiry--caducado {
+  border-color: #b3261e;
+  background: #fdecea;
+  color: #8c1d18;
+}
+
+.pantry-item__expiry--urgente {
+  border-color: #b3261e;
+  color: #b3261e;
+}
+
+.pantry-item__expiry--pronto {
+  border-color: #b26a00;
+  color: #8a5200;
+}
+
+/* Ventana de frescura: un perecedero pasada la mitad de su vida útil.
+   Deliberadamente MÁS suave que --pronto: todavía quedan días, es un
+   "gástalo pronto", no una alarma. Los NO perecederos nunca llegan aquí,
+   así que una lata de atún al mes 12 de 24 sigue viéndose neutra. */
+.pantry-item__expiry--pasado {
+  border-color: #7a6a00;
+  color: #6b5d00;
+  background: #fdfbe8;
+}
+
+.pantry-item__expiry--ok,
+.pantry-item__expiry--desconocido,
+.pantry-item__expiry--none {
+  opacity: 0.65;
+}
+
+@media (hover: hover) {
+  .pantry-item__expiry:hover { border-color: var(--line-strong); opacity: 1; }
+}
+
+.pantry-item__expiry-input {
+  flex-shrink: 0;
+  max-width: 150px;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line-strong);
+  background: var(--paper-raised);
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--ink);
+}
+
 /* Cantidad tocable -- un tap la convierte en un <input> editable con el
    valor exacto ya seleccionado (beginEditPantryRow, render-pantry.js).
    Reemplaza los pasos ciegos de ±50g: ahora se corrige a un número

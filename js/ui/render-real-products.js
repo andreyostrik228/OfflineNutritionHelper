@@ -13,31 +13,29 @@
  * Inicialización obligatoria:
  *   Llamar a initRealProductsRefs(refs) desde js/app.js antes de usar.
  *
- * ── Selector de tienda (2026-08-24) ───────────────────────────────────
- * El catálogo mostrado ya no es la REAL_PRODUCTS global fija -- se lee
- * de getRealProductsForStore(tienda activa) en cada render, y un
- * listener sobre refs.storeSelectEl vuelve a pintar (respetando la
- * búsqueda en curso) en cuanto cambia el <select> de tienda.
+ * ── Selector de tienda: RETIRADO (2026-08-25) ─────────────────────────
+ * El catálogo se resuelve siempre contra DEFAULT_STORE_ID. Se sigue
+ * leyendo vía getRealProductsForStore() en vez de la global REAL_PRODUCTS
+ * a propósito: así el día que vuelva un selector basta con volver a
+ * pasarle una tienda, sin tocar el resto del render.
  *
  * Expone (globales):
  *   initRealProductsRefs(refs)
- *   initRealProductsPanel()   – primer render + listeners de búsqueda/tienda
+ *   initRealProductsPanel()   – primer render + listener de búsqueda
  * ─────────────────────────────────────────────────────────────────────────
  */
 
-var verifiedGrid, verifiedCount, verifiedSearchInput, verifiedEmpty, verifiedEmptyQuery, storeSelectEl;
+var verifiedGrid, verifiedCount, verifiedSearchInput, verifiedEmpty, verifiedEmptyQuery;
 
 /**
- * @returns {string} tienda actualmente elegida en el selector, o
- *   DEFAULT_STORE_ID si el selector no existe/está vacío.
+ * @returns {string} tienda por defecto -- ya no hay selector (2026-08-25).
  */
 function getCurrentStoreId() {
-  if (storeSelectEl && storeSelectEl.value) return storeSelectEl.value;
   return (typeof DEFAULT_STORE_ID !== "undefined") ? DEFAULT_STORE_ID : "mercadona";
 }
 
 /**
- * @returns {object[]} catálogo de la tienda actualmente elegida.
+ * @returns {object[]} catálogo de la tienda por defecto.
  */
 function getActiveRealProducts() {
   return (typeof getRealProductsForStore === "function")
@@ -59,7 +57,6 @@ function initRealProductsRefs(refs) {
   verifiedSearchInput = refs.verifiedSearchInput;
   verifiedEmpty = refs.verifiedEmpty;
   verifiedEmptyQuery = refs.verifiedEmptyQuery;
-  storeSelectEl = refs.storeSelectEl;
 }
 
 /**
@@ -93,12 +90,6 @@ function initRealProductsPanel() {
     });
   }
 
-  // Cambiar de tienda repinta con la búsqueda actual todavía aplicada
-  // (2026-08-24) -- sin esto, el catálogo mostrado quedaría "pegado" a
-  // la tienda con la que se cargó la página.
-  if (storeSelectEl) {
-    storeSelectEl.addEventListener("change", renderCurrentSearch);
-  }
 }
 
 /**

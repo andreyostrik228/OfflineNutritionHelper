@@ -79,6 +79,29 @@ var _noCookEligiblePoolByStore = {};
  * @param {string} [storeId] - por defecto DEFAULT_STORE_ID (pricing.js)
  * @returns {{product:object, level:number, unit:string}[]}
  */
+/**
+ * ¿Este producto tiene nutrición utilizable para construir un plan?
+ *
+ * Un producto sin kcal no puede acercar el plan a los objetivos: aporta
+ * `null` a los totales y ocupa una toma que podría llevar comida real.
+ * Antes NO se filtraba, y con el catálogo de Alcampo eso era la mayoría:
+ * medido el 2026-08-25, 55 de 82 productos del pool (67%) tenían kcal
+ * nula, y un plan generado traía 6 platos sin ningún dato nutricional
+ * (helados Magnum, melón al peso, bombones Auchan). El plan parecía
+ * normal y no significaba nada.
+ *
+ * Se filtra aquí, en el GENERADOR, y no en la exportación: el catálogo de
+ * "Productos" sigue mostrándolos para buscar precio y marca, que es
+ * información legítima. Lo que no puede pasar es que entren en un plan
+ * cuyos totales el usuario se va a creer.
+ *
+ * @param {object} p
+ * @returns {boolean}
+ */
+function hasUsableNutrition(p) {
+  return !!p && typeof p.kcal === "number" && isFinite(p.kcal) && p.kcal > 0;
+}
+
 function getNoCookEligiblePool(storeId) {
   var resolvedStoreId = storeId || (typeof DEFAULT_STORE_ID !== "undefined" ? DEFAULT_STORE_ID : "mercadona");
 
@@ -91,6 +114,7 @@ function getNoCookEligiblePool(storeId) {
     : (typeof REAL_PRODUCTS !== "undefined" ? REAL_PRODUCTS : []);
 
   var pool = products
+    .filter(hasUsableNutrition)
     .map(function (p) {
       var classification = classifyNoCookProduct(p);
       return classification ? { product: p, level: classification.level, unit: classification.unit } : null;
@@ -169,6 +193,20 @@ function buildNoCookItem(entry) {
  */
 function generateNoCookPlan(storeId) {
   var pool = getNoCookEligiblePool(storeId);
+
+  // "No me gusta" se aplica AQUÍ y no dentro de getNoCookEligiblePool()
+  // a propósito: ese pool está cacheado POR TIENDA, y las preferencias
+  // del usuario cambian sin que cambie el catálogo. Filtrar dentro
+  // obligaría a invalidar la caché cada vez que alguien edita su lista,
+  // o peor, serviría un pool cacheado con las preferencias de antes.
+  //
+  // Es una preferencia BLANDA: si no hay lista, no quita nada. Las
+  // alergias NO se filtran aquí -- son una restricción dura y viven
+  // aparte (ver js/core/preferences.js para por qué no comparten camino).
+  if (typeof filterDislikedProducts === "function" && typeof getDislikes === "function") {
+    pool = filterDislikedProducts(pool, getDislikes());
+  }
+
   var usedKeys = new Set();
 
   var slots = NO_COOK_SLOT_DEFS.map(function (def) {

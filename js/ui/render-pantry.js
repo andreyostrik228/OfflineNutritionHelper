@@ -352,10 +352,74 @@ function renderPantryPanel() {
   renderPantryHistorySections();
 }
 
+/**
+ * Etiqueta de caducidad de una fila.
+ *
+ * Una fecha ESTIMADA se marca con "~" y lo dice en su `title`; una fecha
+ * introducida a mano se muestra tal cual. Esa distinción es deliberada y no
+ * debe perderse al reestilar: mostrar una estimación como si fuera la fecha
+ * del envase sería inventar un dato, que es justo lo que el resto del
+ * proyecto evita con los badges "real"/"no verificado" de nutrición.
+ *
+ * @param {object} entry - fila de listPantryEntries()
+ * @returns {string} HTML
+ */
+function renderExpiryBadge(entry) {
+  var name = escapeHtml(entry.name);
+
+  if (!entry.expiryDate) {
+    return '<button type="button" class="pantry-item__expiry pantry-item__expiry--none" ' +
+      'data-action="expiry" title="Sin fecha de caducidad. Pulsa para ponerla." ' +
+      'aria-label="Añadir fecha de caducidad de ' + name + '">+ fecha</button>';
+  }
+
+  var estimated = entry.expirySource === "estimated";
+  var fromStore = entry.expirySource === "store";
+  var d = entry.expiryDaysLeft;
+  var text;
+
+  if (d < 0) text = "caducado";
+  else if (d === 0) text = "hoy";
+  else text = d + " d";
+
+  // Solo la ESTIMACIÓN lleva "~". Los días publicados por la tienda son un
+  // dato del fabricante, no una aproximación nuestra, así que se muestran
+  // igual que una fecha introducida a mano.
+  var label = (estimated ? "~" : "") + text;
+
+  var title;
+  if (estimated) {
+    title = "Caducidad ESTIMADA (" + entry.expiryDate + ") a partir de la fecha de compra y la vida útil típica"
+      + (entry.storage ? " en " + entry.storage : "") + ". No es la fecha del envase. Pulsa para poner la real.";
+  } else if (fromStore) {
+    title = "Mercadona indica consumir en " + entry.expiryDaysLeft + " días desde la apertura"
+      + (entry.storage ? " (conservar en " + entry.storage + ")" : "")
+      + ". Pulsa para poner la fecha del envase.";
+  } else {
+    title = "Caduca el " + entry.expiryDate + " (fecha introducida a mano). Pulsa para cambiarla.";
+  }
+
+  // Ventana de frescura (perecederos): pasada la mitad de su vida útil, el
+  // aviso explica POR QUÉ marca algo que todavía tiene días por delante --
+  // sin esto, "13 d" resaltado parecería un error de la app.
+  if (entry.expiryTier === "pasado") {
+    var used = (typeof entry.expiryTotalDays === "number" && typeof entry.expiryDaysLeft === "number")
+      ? (entry.expiryTotalDays - entry.expiryDaysLeft) + " de " + entry.expiryTotalDays + " días"
+      : "más de la mitad de su vida útil";
+    title = "Fresco a medias: lleva " + used + ". Aún no caduca ("
+      + entry.expiryDate + "), pero conviene gastarlo pronto. " + title;
+  }
+
+  return '<button type="button" class="pantry-item__expiry pantry-item__expiry--' + escapeHtml(entry.expiryTier) + '" ' +
+    'data-action="expiry" title="' + escapeHtml(title) + '" ' +
+    'aria-label="Caducidad de ' + name + ': ' + escapeHtml(title) + '">' + escapeHtml(label) + '</button>';
+}
+
 function renderPantryRow(entry) {
   return (
     '<li class="pantry-item" data-key="' + escapeHtml(entry.key) + '" data-name="' + escapeHtml(entry.name) + '">' +
       '<span class="pantry-item__name">' + escapeHtml(entry.name) + '</span>' +
+      renderExpiryBadge(entry) +
       '<button type="button" class="pantry-item__amount" data-action="edit" aria-label="Editar cantidad de ' + escapeHtml(entry.name) + '">' + round0(entry.grams) + ' g</button>' +
       '<button type="button" class="pantry-item__remove" data-action="remove" aria-label="Quitar ' + escapeHtml(entry.name) + '">&times;</button>' +
     '</li>'
@@ -366,6 +430,9 @@ function handlePantryListClick(event) {
   try {
     var editBtn = event.target.closest('button[data-action="edit"]');
     if (editBtn) { beginEditPantryRow(editBtn); return; }
+
+    var expiryBtn = event.target.closest('button[data-action="expiry"]');
+    if (expiryBtn) { beginEditExpiryRow(expiryBtn); return; }
 
     var removeBtn = event.target.closest('button[data-action="remove"]');
     if (removeBtn) {
@@ -414,6 +481,60 @@ function beginEditPantryRow(btn) {
     settled = true;
     var grams = parseFloat(input.value);
     setStock(name, isFinite(grams) ? grams : 0);
+    renderPantryPanel();
+    pantryOnChange();
+  }
+
+  input.addEventListener("blur", commit);
+  input.addEventListener("keydown", function (event) {
+    if (event.key === "Enter") { event.preventDefault(); input.blur(); }
+    if (event.key === "Escape") { settled = true; renderPantryPanel(); }
+  });
+}
+
+/**
+ * Igual que beginEditPantryRow pero para la fecha de caducidad: sustituye
+ * el badge por un <input type=date> in situ.
+ *
+ * Se PRERRELLENA con la estimación cuando no hay fecha manual, para que
+ * confirmarla sea un solo gesto si resulta ser correcta -- pero en cuanto
+ * se guarda pasa a ser un dato del usuario (`source:"user"`), no una
+ * estimación, porque una persona la ha confirmado. Vaciar el campo borra
+ * la fecha manual y devuelve la fila a la estimación.
+ *
+ * @param {HTMLButtonElement} btn
+ */
+function beginEditExpiryRow(btn) {
+  var row = btn.closest(".pantry-item");
+  var name = row.getAttribute("data-name");
+  var key = row.getAttribute("data-key");
+  var state = getPantryState();
+  var entry = state[key];
+
+  var current = "";
+  if (entry) {
+    if (typeof entry.expiresAt === "string" && entry.expiresAt) {
+      current = entry.expiresAt.slice(0, 10);
+    } else if (typeof resolveExpiry === "function") {
+      var info = resolveExpiry(entry, key, new Date().toISOString().slice(0, 10));
+      if (info.date) current = info.date;
+    }
+  }
+
+  var input = document.createElement("input");
+  input.type = "date";
+  input.className = "pantry-item__expiry-input";
+  input.value = current;
+  input.setAttribute("aria-label", "Fecha de caducidad de " + name + ". Vacío para volver a la estimación.");
+
+  btn.replaceWith(input);
+  input.focus();
+
+  var settled = false;
+  function commit() {
+    if (settled) return;
+    settled = true;
+    setExpiry(name, input.value || null);
     renderPantryPanel();
     pantryOnChange();
   }
