@@ -249,6 +249,28 @@ var HEADLINES = {
 var BUDGET_RESERVE_RATIO = 0.12;
 
 /**
+ * Tope de cordura: un ingrediente no puede superar en un día esta
+ * proporción de su mayor ración CURADA (dishes.js). Ver applyPortionSanity
+ * para el bug real y la medición. 2.5 es un primer corte conservador,
+ * pensado para revisarse con uso real, no un número definitivo.
+ */
+var PORTION_CAP_MULTIPLIER = 2.5;
+
+/**
+ * Si pasarse del borde de un envase consume menos de esta fracción del
+ * paquete, se recorta el plan HASTA el borde en vez de comprar un paquete
+ * entero más. Fracción y no gramos fijos porque los envases van de 100 g a
+ * 1 kg.
+ *
+ * El ahorro en dinero es MODESTO y conviene no venderlo de más: 804,60 EUR
+ * -> 799,22 EUR sobre 60 planes (~5,40 EUR, 0,7%). Se queda ahí porque la
+ * compensación de kcal vuelve a añadir gramos que cuestan dinero. Lo que
+ * de verdad arregla es la sensación de absurdo de comprar dos bolsas para
+ * usar el 2% de la segunda.
+ */
+var PACKAGE_TRIM_RATIO = 0.20;
+
+/**
  * Cuánto se aplica el recorte proporcional (`fairShareCap`) del "Reparto
  * secuencial del presupuesto" (ver cabecera del archivo) sobre `mealCap`.
  * 0 = sin efecto (mealCap = hardCap, comportamiento de antes de
@@ -547,6 +569,18 @@ function attemptPlanAtTier(profile, data, tier, pantryState) {
   total = purchaseResult.total;
   total.purchaseCost = purchaseResult.purchase.purchaseCost;
 
+  // "Con lógica, no solo con matemáticas" (bug real, 2026-08-26): el
+  // usuario recibió un plan con 1020 g de patata Y la instrucción de
+  // comprar DOS bolsas de 1 kg. Dos defectos distintos, se corrigen aquí
+  // en un orden deliberado (ver applyPortionSanity).
+  var sanity = applyPortionSanity(meals, store, profile.calories);
+  if (sanity.changed) {
+    total = sumMeals(meals);
+    var repricedPurchase = computeDayPurchaseCost(meals, store, pantryState);
+    total.purchaseCost = repricedPurchase.purchaseCost;
+    total.cost = repricedPurchase.usageCost;
+  }
+
   var violations = verifyPlanFeasibility(meals, total, profile, data);
 
   placeholderInfo.forEach(function (p) {
@@ -562,8 +596,258 @@ function attemptPlanAtTier(profile, data, tier, pantryState) {
 
   return {
     meals: meals, total: total, violations: violations, tier: tier,
-    simplifiedCategories: simplifiedCategories, budgetTrims: purchaseResult.trims
+    simplifiedCategories: simplifiedCategories, budgetTrims: purchaseResult.trims,
+    portionSanity: sanity
   };
+}
+
+/**
+ * Cordura de porciones: dos arreglos sobre el plato ya montado.
+ *
+ * ── El bug real que lo motiva (2026-08-26) ──────────────────────────────
+ * El usuario generó un plan y le dijo que comiera 1020 g de patata en un
+ * día, y que comprase DOS bolsas de 1 kg para conseguirlo. Sus palabras:
+ * "deberíamos crear los planes no solo con matemáticas, también con
+ * lógica". Tenía razón, y son DOS defectos independientes:
+ *
+ *   (a) NADA acotaba cuánto de un mismo ingrediente cabe en un día.
+ *       Escalar hasta MAX_PORTION_SCALE y repetir ingrediente entre
+ *       comidas se compone sin techo. Medido: 822 g de batata, 671 g de
+ *       quinoa, 663 g de pasta en planes generados.
+ *   (b) Pasarse de un envase por poco disparaba Math.ceil y añadía un
+ *       paquete ENTERO. Medido: 409 g pedidos con bolsas de 400 g ->
+ *       comprar 800 g para comer 409 g, con la segunda bolsa al 2,3%.
+ *
+ * ── El ORDEN importa y es deliberado: primero (a), después (b) ──────────
+ * Recortar por cordura BAJA los gramos, y eso puede devolver el
+ * ingrediente por debajo del borde del envase, dejando el recorte (b)
+ * innecesario. Al revés —ajustar al envase y luego capar— se acabaría por
+ * debajo del borde igualmente, habiendo hecho el trabajo dos veces y sin
+ * quedar ni en el borde ni en el tope. Cap primero converge.
+ *
+ * ── El tope NO son 81 números a mano ────────────────────────────────────
+ * Es PORTION_CAP_MULTIPLIER x la mayor ración CURADA de ese ingrediente en
+ * dishes.js. Esas 334 entradas ya son porciones validadas por una persona,
+ * así que el techo sale del dato y se reajusta solo si cambia el catálogo.
+ * 2.5x permite que un ingrediente aparezca en dos comidas del día con
+ * holgura; más allá es el bug de composición.
+ *
+ * Medido sobre 60 planes sembrados, antes -> después:
+ *   peor ración de un día      1097 g -> 625 g  (la queja era 1020 g)
+ *   ingrediente-días >500 g    36/650 -> 9/650
+ *   violaciones de macros      10     -> 6
+ *   kcal medias vs objetivo    -4,8%  -> -3,7%
+ *   paquetes abiertos al <20%  30     -> 0
+ * Es un primer corte conservador, revisable con uso real.
+ *
+ * @param {object[]} meals
+ * @param {string} storeId
+ * @param {number} targetKcal - objetivo diario, para compensar el recorte
+ * @returns {{changed:boolean, capped:object[], trimmed:object[], compensated:number}}
+ */
+function applyPortionSanity(meals, storeId, targetKcal) {
+  var result = { changed: false, capped: [], trimmed: [], compensated: 0 };
+  if (!meals || !meals.length) return result;
+
+  // ── (a) Tope de porción diaria ────────────────────────────────────────
+  var caps = getCuratedPortionCaps();
+  var totals = sumIngredientGrams(meals);
+
+  Object.keys(totals).forEach(function (name) {
+    var cap = caps[name];
+    if (!cap || totals[name] <= cap) return;
+
+    scaleIngredientAcrossMeals(meals, name, cap / totals[name], Math.floor(cap));
+    result.capped.push({ name: name, from: Math.round(totals[name]), to: Math.round(cap) });
+    result.changed = true;
+  });
+
+  // ── (a2) Compensar lo que el tope se ha llevado ───────────────────────
+  // SIN esto el tope es un recorte a secas: medido sobre 60 planes, la
+  // media caía a -8,8% de las kcal objetivo y 14 planes acababan con
+  // violación `calories`. Honesto, pero un plan que no alimenta no sirve.
+  // Se devuelven las kcal a ingredientes que TIENEN holgura bajo su propio
+  // tope, así que compensar no puede reintroducir el bug (a).
+  if (result.changed) {
+    result.compensated = compensateCappedCalories(meals, targetKcal, caps);
+  }
+
+  // ── (b) Ajuste al borde de envase ─────────────────────────────────────
+  // Recalculado DESPUÉS del tope y de la compensación: los gramos han
+  // cambiado dos veces, y es el número final el que decide el envase.
+  totals = sumIngredientGrams(meals);
+
+  Object.keys(totals).forEach(function (name) {
+    var pkg = (typeof resolvePackageInfo === "function") ? resolvePackageInfo(name, storeId) : null;
+    if (!pkg || !pkg.packageSizeG) return;
+
+    var size = pkg.packageSizeG;
+    var need = totals[name];
+    var packs = Math.ceil(need / size);
+    if (packs < 2) return;
+
+    // Cuánto se usa del ÚLTIMO paquete abierto.
+    var overshoot = need - (packs - 1) * size;
+    if (overshoot > size * PACKAGE_TRIM_RATIO) return;
+
+    var target = (packs - 1) * size;
+    scaleIngredientAcrossMeals(meals, name, target / need, target);
+    result.trimmed.push({ name: name, from: Math.round(need), to: target, packagesSaved: 1 });
+    result.changed = true;
+  });
+
+  if (result.changed) {
+    meals.forEach(function (meal) { meal.total = getMealTotals(meal); });
+  }
+
+  return result;
+}
+
+/** Gramos totales por ingrediente en todo el día. */
+function sumIngredientGrams(meals) {
+  var totals = {};
+  meals.forEach(function (meal) {
+    (meal.items || []).forEach(function (item) {
+      totals[item.name] = (totals[item.name] || 0) + (item.grams || 0);
+    });
+  });
+  return totals;
+}
+
+/**
+ * Escala un ingrediente por igual en todas las comidas donde aparece.
+ * Macros y coste se escalan CON los gramos: mover `grams` a solas dejaría
+ * las kcal del ítem describiendo una cantidad que ya no existe.
+ */
+function scaleIngredientAcrossMeals(meals, name, factor, targetGrams) {
+  var touched = [];
+
+  meals.forEach(function (meal) {
+    (meal.items || []).forEach(function (item) {
+      if (item.name !== name) return;
+      item.grams   = Math.round(item.grams * factor);
+      item.kcal    = round1(item.kcal    * factor);
+      item.protein = round1(item.protein * factor);
+      item.carbs   = round1(item.carbs   * factor);
+      item.fat     = round1(item.fat     * factor);
+      item.cost    = round2(item.cost    * factor);
+      touched.push(item);
+    });
+  });
+
+  // Cuadrar el redondeo cuando el destino es EXACTO (borde de envase).
+  //
+  // Sin esto, un ingrediente repartido en 3 tomas puede redondear a 401 g
+  // con destino 400 g -- y 1 g de más abre una bolsa entera. Sería
+  // reintroducir el bug que este código existe para arreglar, en su
+  // versión más absurda. Medido: pasaba en 2 de 60 planes.
+  if (typeof targetGrams !== "number" || !touched.length) return;
+
+  var sum = touched.reduce(function (a, i) { return a + i.grams; }, 0);
+  var excess = sum - targetGrams;
+  if (excess === 0) return;
+
+  var biggest = touched.reduce(function (a, b) { return b.grams > a.grams ? b : a; });
+  if (biggest.grams - excess <= 0) return;
+
+  var adjusted = (biggest.grams - excess) / biggest.grams;
+  biggest.grams   -= excess;
+  biggest.kcal    = round1(biggest.kcal    * adjusted);
+  biggest.protein = round1(biggest.protein * adjusted);
+  biggest.carbs   = round1(biggest.carbs   * adjusted);
+  biggest.fat     = round1(biggest.fat     * adjusted);
+  biggest.cost    = round2(biggest.cost    * adjusted);
+}
+
+/**
+ * Devuelve al plan las kcal que se llevó el tope, repartidas entre los
+ * ingredientes que TODAVÍA tienen holgura por debajo de su propio tope.
+ *
+ * Se reparte proporcionalmente a las kcal actuales de cada ingrediente
+ * (el que ya aporta más, absorbe más) y NUNCA se pasa del tope de nadie:
+ * por eso compensar no puede reintroducir el bug de las porciones
+ * gigantes. Si no queda holgura suficiente, se devuelve lo que se pueda y
+ * el déficit restante lo reporta verifyPlanFeasibility como violación
+ * `calories` -- que es lo correcto: mejor un plan que admite que no llega
+ * que uno que finge.
+ *
+ * @param {object[]} meals
+ * @param {number} targetKcal
+ * @param {object} caps - tope en gramos por ingrediente
+ * @returns {number} kcal efectivamente recuperadas
+ */
+function compensateCappedCalories(meals, targetKcal, caps) {
+  if (!targetKcal) return 0;
+
+  var deficit = targetKcal - sumMeals(meals).kcal;
+  if (deficit <= 0) return 0;
+
+  var totals = sumIngredientGrams(meals);
+  var recovered = 0;
+
+  // Cuánto puede crecer cada ingrediente antes de tocar su propio tope.
+  var headroom = [];
+  Object.keys(totals).forEach(function (name) {
+    var cap = caps[name];
+    var maxG = cap ? cap : totals[name] * PORTION_CAP_MULTIPLIER;
+    if (maxG <= totals[name]) return;
+    headroom.push({ name: name, grams: totals[name], maxG: maxG });
+  });
+  if (!headroom.length) return 0;
+
+  var kcalPerG = {};
+  var totalKcalWithRoom = 0;
+  headroom.forEach(function (h) {
+    var k = 0;
+    meals.forEach(function (meal) {
+      (meal.items || []).forEach(function (item) {
+        if (item.name === h.name) k += item.kcal;
+      });
+    });
+    kcalPerG[h.name] = h.grams > 0 ? k / h.grams : 0;
+    totalKcalWithRoom += k;
+    h.kcal = k;
+  });
+  if (totalKcalWithRoom <= 0) return 0;
+
+  headroom.forEach(function (h) {
+    if (recovered >= deficit) return;
+    var share = deficit * (h.kcal / totalKcalWithRoom);
+    var wantG = kcalPerG[h.name] > 0 ? share / kcalPerG[h.name] : 0;
+    var canG = Math.min(wantG, h.maxG - h.grams);
+    if (canG <= 0) return;
+
+    scaleIngredientAcrossMeals(meals, h.name, (h.grams + canG) / h.grams);
+    recovered += canG * kcalPerG[h.name];
+  });
+
+  return round1(recovered);
+}
+
+/**
+ * Mayor ración CURADA de cada ingrediente x PORTION_CAP_MULTIPLIER.
+ * Se calcula una vez y se memoiza: dishes.js no cambia en runtime.
+ */
+var _curatedPortionCaps = null;
+
+function getCuratedPortionCaps() {
+  if (_curatedPortionCaps) return _curatedPortionCaps;
+
+  var maxByName = {};
+  if (typeof DISH_DB !== "undefined") {
+    DISH_DB.forEach(function (dish) {
+      (dish.items || []).forEach(function (item) {
+        maxByName[item.name] = Math.max(maxByName[item.name] || 0, item.g || 0);
+      });
+    });
+  }
+
+  _curatedPortionCaps = {};
+  Object.keys(maxByName).forEach(function (name) {
+    _curatedPortionCaps[name] = maxByName[name] * PORTION_CAP_MULTIPLIER;
+  });
+
+  return _curatedPortionCaps;
 }
 
 /**

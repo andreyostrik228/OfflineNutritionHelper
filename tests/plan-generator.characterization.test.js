@@ -287,6 +287,74 @@ function run(t) {
     });
   });
 
+  // ── 6b. Cordura de porciones (bug real 2026-08-26) ───────────────────────
+  // El usuario recibió un plan con 1020 g de patata en un día Y la orden de
+  // comprar DOS bolsas de 1 kg. Estos dos tests fijan que ninguna de las
+  // dos cosas puede volver, sobre la aleatoriedad REAL (no sembrada) de
+  // todos los perfiles -- son invariantes, no golden-masters.
+  t.test("ningún ingrediente supera su tope diario de cordura (2,5x la mayor ración curada)", function () {
+    runsByProfile.forEach(function (rp) {
+      rp.runs.forEach(function (result, i) {
+        var caps = sandbox.getCuratedPortionCaps();
+        var totals = {};
+        result.meals.forEach(function (meal) {
+          meal.items.forEach(function (item) {
+            totals[item.name] = (totals[item.name] || 0) + item.grams;
+          });
+        });
+        Object.keys(totals).forEach(function (name) {
+          // Cota ABSOLUTA, independiente de PORTION_CAP_MULTIPLIER. Sin
+          // ella este test sería tautológico: compara contra la misma
+          // constante que configura el tope, así que subir la constante lo
+          // haría pasar siempre. 800 g codifica la queja real del usuario
+          // (recibió 1020 g de patata) con margen sobre el peor caso
+          // medido tras el arreglo (625 g).
+          assert.ok(
+            totals[name] <= 800,
+            rp.def.name + " (run " + i + "): " + name + " llega a " +
+            Math.round(totals[name]) + " g en un solo día -- ración absurda"
+          );
+
+          if (!caps[name]) return;
+          // +1 g de holgura: el reparto entre tomas redondea a gramo entero.
+          assert.ok(
+            totals[name] <= caps[name] + 1,
+            rp.def.name + " (run " + i + "): " + name + " llega a " +
+            Math.round(totals[name]) + " g, por encima del tope " + Math.round(caps[name]) + " g"
+          );
+        });
+      });
+    });
+  });
+
+  t.test("ningún ingrediente abre un paquete para usar menos del 20% de él", function () {
+    runsByProfile.forEach(function (rp) {
+      rp.runs.forEach(function (result, i) {
+        var totals = {};
+        result.meals.forEach(function (meal) {
+          meal.items.forEach(function (item) {
+            totals[item.name] = (totals[item.name] || 0) + item.grams;
+          });
+        });
+        Object.keys(totals).forEach(function (name) {
+          var pkg = sandbox.resolvePackageInfo(name, "mercadona");
+          if (!pkg || !pkg.packageSizeG) return;
+
+          var packs = Math.ceil(totals[name] / pkg.packageSizeG);
+          if (packs < 2) return;
+
+          var lastPackUse = totals[name] - (packs - 1) * pkg.packageSizeG;
+          assert.ok(
+            lastPackUse > pkg.packageSizeG * 0.20,
+            rp.def.name + " (run " + i + "): " + name + " pide " + Math.round(totals[name]) +
+            " g con envases de " + pkg.packageSizeG + " g -- abre un paquete para usar solo " +
+            Math.round(lastPackUse) + " g (" + Math.round(lastPackUse / pkg.packageSizeG * 100) + "%)"
+          );
+        });
+      });
+    });
+  });
+
   // ── 7. Comportamiento por nivel de presupuesto ────────────────────────────
   // Convierte en test automático lo que hoy solo afirma la cabecera de
   // budget-presets.js ("Ajustado fuerza relajación pero nunca falla, Amplio
@@ -336,6 +404,20 @@ function run(t) {
   // sí. Los 7 tests de invariantes/contrato #1-7 de este mismo archivo NO
   // se tocaron y siguen pasando sin cambios en ninguna de las dos
   // recapturas.
+  // ── RECAPTURA 2026-08-26: cordura de porciones ────────────────────────
+  // applyPortionSanity() (plan-generator.js) añade un post-pase que topa
+  // las raciones diarias, COMPENSA las kcal que el tope se lleva, y ajusta
+  // al borde de envase. Cambio DELIBERADO del algoritmo, así que estos
+  // agregados se recapturan a propósito, no en silencio.
+  //
+  // Los dos golden-masters se acercan a su objetivo, no se alejan:
+  //   seed=42: 3039.0 -> 2822.1 kcal (objetivo 2822: +7,7% -> exacto)
+  //   seed=7:  3332.1 -> 3793.2 kcal (objetivo 3871: -13,9% -> -2,0%)
+  // seed=7 pasa de tierUsed 1/"adjusted" a 0/"perfect" y pierde su
+  // violación cap25 justamente porque ya no depende de una ración enorme
+  // de arroz para llegar a las calorías.
+  //
+  // Los 7 tests de invariantes #1-7 NO se tocaron y siguen pasando.
   t.test("golden-master (seed=42): recomposición/Equilibrado -- agregados exactos del resultado actual", function () {
     var s = freshEngineSandbox();
     seedRandomInContext(s, 42);
@@ -346,15 +428,15 @@ function run(t) {
     // (realm distinto) antes de comparar contra literales del host -- ver
     // comentario del test #1 más arriba para el motivo completo.
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.key; }))), EXPECTED_MEAL_KEYS);
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 2, 3, 2, 3]);
-    assert.strictEqual(result.total.kcal, 3039.0000000000005);
-    assert.strictEqual(result.total.protein, 159.20000000000002);
-    assert.strictEqual(result.total.carbs, 363.79999999999995);
-    assert.strictEqual(result.total.fat, 91.6);
-    assert.strictEqual(result.total.cost, 7.299999999999999);
-    assert.strictEqual(result.total.purchaseCost, 13.49);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 4, 2, 3, 2]);
+    assert.strictEqual(result.total.kcal, 2822.1);
+    assert.strictEqual(result.total.protein, 239.30000000000004);
+    assert.strictEqual(result.total.carbs, 313.6);
+    assert.strictEqual(result.total.fat, 54.30000000000001);
+    assert.strictEqual(result.total.cost, 11.47);
+    assert.strictEqual(result.total.purchaseCost, 18.7);
     assert.strictEqual(result.report.status, "adjusted");
-    assert.strictEqual(result.report.tierUsed, 3);
+    assert.strictEqual(result.report.tierUsed, 2);
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.report.violations)), []);
   });
 
@@ -365,16 +447,16 @@ function run(t) {
     var result = s.generateDietPlan(built.profile, built.data);
 
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.key; }))), EXPECTED_MEAL_KEYS);
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 3, 3, 3, 2]);
-    assert.strictEqual(result.total.kcal, 3332.1);
-    assert.strictEqual(result.total.protein, 191);
-    assert.strictEqual(result.total.carbs, 458.6);
-    assert.strictEqual(result.total.fat, 61.599999999999994);
-    assert.strictEqual(result.total.cost, 8.799999999999999);
-    assert.strictEqual(result.total.purchaseCost, 24.2);
-    assert.strictEqual(result.report.status, "adjusted");
-    assert.strictEqual(result.report.tierUsed, 1);
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.report.violations)), [{ type: "cap25", meal: "lunch", item: "Arroz blanco cocido" }]);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 3, 3, 2, 3]);
+    assert.strictEqual(result.total.kcal, 3793.2);
+    assert.strictEqual(result.total.protein, 268.99999999999994);
+    assert.strictEqual(result.total.carbs, 486.00000000000006);
+    assert.strictEqual(result.total.fat, 87.89999999999999);
+    assert.strictEqual(result.total.cost, 14.25);
+    assert.strictEqual(result.total.purchaseCost, 23.77);
+    assert.strictEqual(result.report.status, "perfect");
+    assert.strictEqual(result.report.tierUsed, 0);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.report.violations)), []);
   });
 }
 
