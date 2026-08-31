@@ -1,19 +1,26 @@
 # Nutrition Planner — Roadmap
 
-## Estado y prioridades al 2026-08-27 (leer antes que nada de lo de abajo)
+## Estado y prioridades al 2026-08-31 (leer antes que nada de lo de abajo)
 
 **La carpeta buena es `Desktop\Offline Nutrition Helper\nutrition-planner`.**
 `nutrition-planner-fase2` ya no existe; `Desktop\nutrition-planner-app` es
-una copia vieja sin git ni tests. HEAD `ec6f686`, 372 tests en verde, y
-**nada de lo de esta sesión está commiteado** — siete diffs esperan la
-aprobación del usuario, uno por uno. El detalle completo, con constantes y
-mediciones, está en el bloque "EMPIEZA AQUÍ" al principio de `STATE.md`.
+una copia vieja sin git ni tests. HEAD `4477365`, 372 tests en verde.
+
+**Los siete diffs de esa sesión YA están commiteados** (2026-08-31):
+revisados con el usuario grupo por grupo y dejados en cuatro commits
+(`f9f2777` / `0a69db5` / `76d4e86` / `4477365`), aprobados uno a uno, sobre
+`ec6f686`; push forzado a `origin/main`. Reemplazaron a `9dbc616`, un
+bundle sin revisar que el hook `SessionStart` de claude-flow commiteó y
+pusheó solo (tercer caso de lo mismo; el hook sigue activo). El detalle,
+con constantes y mediciones, está en el bloque "EMPIEZA AQUÍ" al principio
+de `STATE.md`. `PythonProject` (14 archivos) sigue sin commitear, aparte.
 
 ### Lo siguiente, en orden
 
-1. **P0 — que el usuario revise los siete diffs.** Es el cuello de botella
-   real: hay ~1.200 líneas de trabajo verificado y en verde esperando. Nada
-   más avanza hasta que se decida qué entra.
+1. ~~**P0 — que el usuario revise los siete diffs.**~~ **HECHO 2026-08-31**
+   — cuatro commits aprobados uno a uno (ver arriba). Queda que el usuario
+   pruebe a mano las flechas del teclado del autocompletado de "no me
+   gusta", lo único no verificable desde la herramienta.
 
 2. **P1 — API key de USDA FoodData Central** (gratis, un minuto, sin
    tarjeta, en fdc.nal.usda.gov/api-key-signup.html). Desbloquea de una vez

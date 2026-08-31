@@ -5,6 +5,35 @@
 > Escrito para alguien que llega SIN NINGÚN contexto previo. Si solo lees
 > una parte de este archivo, que sea esta.
 >
+> ### ⏩ UPDATE 2026-08-31 — T1 hecho; el auto-push ocurrió una tercera vez
+>
+> Los siete diffs de más abajo **YA ESTÁN commiteados y en `origin/main`.**
+> La sesión del 2026-08-31 los revisó con el usuario grupo por grupo y los
+> dejó en cuatro commits, aprobados uno a uno, sobre `ec6f686`:
+>
+> | commit | qué |
+> | --- | --- |
+> | `f9f2777` | cordura de porciones + recorte de paquete (bug de la patata) |
+> | `0a69db5` | módulo de autocompletado de "no me gusta" (aún sin cablear) |
+> | `76d4e86` | sesgo de cocina + reajuste del peso de caducidad 60→2500 |
+> | `4477365` | instrucciones de cocina, filtro equipo/dificultad, aceite/cebolla/ajo, cableado de UI, docs |
+>
+> `git diff` entre el árbol de esos cuatro commits y el bundle sin revisar
+> (`9dbc616`, ver abajo) es **VACÍO**: reconstruyen exactamente lo mismo.
+> 372 tests en verde en cada commit. Push forzado con `--force-with-lease`.
+>
+> **El auto-commit-y-push volvió a pasar, y ahora se sabe qué es.** Al
+> arrancar esa sesión, el hook `SessionStart` de claude-flow
+> (`@claude-flow/cli hooks session-restore` → `~/.claude/helpers/auto-commit.sh`,
+> con `AUTO_PUSH=true`) commiteó y pusheó el working tree entero como
+> `9dbc616` (2026-08-31 **06:42**). Es el **tercer** caso (§1). Se rehízo en
+> los cuatro commits de arriba y `9dbc616` ya no existe en remoto. **El hook
+> SIGUE ACTIVO** por decisión del usuario: lo que dejes sin commitear,
+> `SessionEnd`/`Stop` lo commiteará y lo intentará pushear.
+>
+> Todo lo que sigue debajo describe el estado ANTERIOR a esos cuatro
+> commits; se conserva por el detalle de las mediciones.
+>
 > ### 0. ¿Estás en la carpeta correcta?
 >
 > El proyecto **se movió**. La ruta buena, y la única con git y tests, es:
@@ -18,29 +47,33 @@
 > bueno: es una foto vieja, no el proyecto. Si `git status` falla o
 > `node tests/run-tests.js` no existe, estás en la copia equivocada.
 >
-> Estado del repo real: **HEAD `ec6f686`, 372 tests en verde**.
+> Estado del repo real: **HEAD `4477365`, 372 tests en verde** (era
+> `ec6f686` antes de los cuatro commits del 2026-08-31 — ver el UPDATE de
+> arriba).
 >
-> ### 1. NADA ESTÁ COMMITEADO, y eso no es garantía de nada
+> ### 1. YA COMMITEADO (2026-08-31), y "sin comitear" nunca fue garantía
 >
-> Todo el trabajo descrito abajo vive en el working tree: 15 archivos
-> modificados (+1.168/−62) y 3 nuevos (`js/data/dish-cuisine.js`,
-> `js/data/dish-instructions.js`, `js/ui/ingredient-suggest.js`). El
-> usuario aprueba **cada diff por separado** antes de commitear; hay siete
-> pendientes de su visto bueno:
+> Lo que este handoff describía como siete diffs sin commitear ya está en
+> los cuatro commits `f9f2777` / `0a69db5` / `76d4e86` / `4477365` (ver el
+> UPDATE de arriba para el reparto). El working tree quedó limpio.
 >
-> 1. cordura de porciones (bug de la patata) — `js/engine/plan-generator.js`
-> 2. autocompletado de "no me gusta" — `js/ui/ingredient-suggest.js`, `index.html`, CSS, `js/app.js`
-> 3. campo y vocabulario de cocina — `js/data/dish-cuisine.js`
-> 4. sesgo de cocina cableado — `js/engine/dish-selector.js`, `js/core/preferences.js`, `js/core/settings.js`, `js/core/calculator.js`, `index.html`
-> 5. peso de caducidad 60 → 2500 — `js/engine/dish-selector.js`
-> 6. aceite de oliva + cebolla + ajo — `ingredient-nutrition.js`, `packaging.js`, `prices/mercadona.js`
-> 7. recetas, lotes 1-5 — `js/data/dish-instructions.js`
+> El mapeo de los siete diffs lógicos a los cuatro commits:
 >
-> **AVISO IMPORTANTE:** dos veces algo commiteó Y PUSHEÓ un working tree sin
-> revisar, arrastrando archivos a medias de dos sesiones distintas, y nunca
-> se atribuyó a nadie: `8e1bd74` (2026-08-25 **13:41**) y `ec6f686`
-> (2026-08-26 **03:17**). No des por hecho que "lo dejé sin commitear"
-> signifique que seguirá así. Comprueba `git log` al empezar.
+> 1. cordura de porciones (bug de la patata) — `plan-generator.js` → `f9f2777`
+> 2. autocompletado de "no me gusta" — `ingredient-suggest.js` → `0a69db5` (módulo); cableado (`index.html`, CSS, `app.js`) → `4477365`
+> 3. campo y vocabulario de cocina — `dish-cuisine.js` → `76d4e86`
+> 4. sesgo de cocina cableado — `dish-selector.js`, `calculator.js` → `76d4e86`; `preferences.js`, `settings.js`, `index.html` → `4477365`
+> 5. peso de caducidad 60 → 2500 — `dish-selector.js` → `76d4e86`
+> 6. aceite de oliva + cebolla + ajo — `ingredient-nutrition.js`, `packaging.js`, `prices/mercadona.js` → `4477365`
+> 7. recetas + filtro equipo/dificultad — `dish-instructions.js`, `render.js` → `4477365`
+>
+> **AVISO IMPORTANTE:** **TRES veces** algo commiteó Y PUSHEÓ un working
+> tree sin revisar, y nunca se atribuyó a nadie: `8e1bd74` (2026-08-25
+> **13:41**), `ec6f686` (2026-08-26 **03:17**) y `9dbc616` (2026-08-31
+> **06:42**). El tercero está identificado: el hook `SessionStart` de
+> claude-flow → `~/.claude/helpers/auto-commit.sh` con `AUTO_PUSH=true`, que
+> **sigue activo**. No des por hecho que "lo dejé sin commitear" signifique
+> que seguirá así. Comprueba `git log` al empezar.
 >
 > ### 2. La regla que más cuesta aprender: COHERENTE ≠ CORRECTO
 >
@@ -5780,16 +5813,26 @@ Este repo vive ahora en `Desktop\Offline Nutrition Helper\nutrition-planner`.
 La ruta antigua `Desktop\nutrition-planner-fase2\nutrition-planner` **ya no
 existe**; cualquier documento que la cite está obsoleto. Y hay una **copia
 MUERTA en `Desktop\nutrition-planner`** sin git y sin nada de este trabajo,
-que se abre por error con facilidad. El bueno tiene git, HEAD `ec6f686` y
-372 tests en verde. Comprueba con `git log -1` antes de fiarte de una carpeta.
+que se abre por error con facilidad. El bueno tiene git, HEAD `4477365`
+(2026-08-31) y 372 tests en verde. Comprueba con `git log -1` antes de
+fiarte de una carpeta.
 
-### 1. NADA ESTÁ COMITEADO — y "sin comitear" no es garantía
+### 1. YA COMITEADO (2026-08-31) — y "sin comitear" nunca fue garantía
 
-Hay siete diffs lógicos en el working tree. Además, DOS VECES algo comiteó
-**y pusheó** un working tree sin revisar hacia las 3 de la mañana
-(`8e1bd74` y `ec6f686`), arrastrando en cada caso ficheros a medio hacer de
-DOS sesiones distintas, y nunca se atribuyó a nadie. No asumas que lo que
-dejes sin comitear seguirá sin comitear.
+> **Actualizado 2026-08-31.** Los siete diffs de este handoff se revisaron
+> con el usuario grupo por grupo y se commitearon en cuatro
+> (`f9f2777` / `0a69db5` / `76d4e86` / `4477365`), aprobados uno a uno,
+> sobre `ec6f686`; push forzado a `origin/main`. Ver el "UPDATE 2026-08-31"
+> al principio del archivo para el reparto. El resto de esta sección se
+> conserva como registro de por qué importaba revisarlos.
+
+Había siete diffs lógicos en el working tree. Además, **TRES VECES** algo
+comiteó **y pusheó** un working tree sin revisar (`8e1bd74` 2026-08-25
+13:41, `ec6f686` 2026-08-26 03:17, `9dbc616` 2026-08-31 06:42), arrastrando
+ficheros a medio hacer de sesiones distintas. El tercero está identificado:
+el hook `SessionStart` de claude-flow → `~/.claude/helpers/auto-commit.sh`
+(`AUTO_PUSH=true`), que SIGUE ACTIVO. No asumas que lo que dejes sin
+comitear seguirá sin comitear.
 
 El usuario exige aprobación explícita **suya** por cada diff. La aprobación
 de otra sesión NO sirve — la sesión de código rechazó correctamente la del
@@ -6017,28 +6060,21 @@ destinatario con `ListAgents`, nunca con un nombre recordado.
 
 ---
 
-**T1 — P0. Que el usuario revise y decida sobre los diffs sin comitear.**
+**T1 — P0. Que el usuario revise y decida sobre los diffs sin comitear. ✅ HECHO 2026-08-31.**
 
-Es el cuello de botella real: ~1.200 líneas verificadas y en verde llevan
-dos días esperando. NO comitees tú: el usuario exige aprobación explícita
-SUYA, diff por diff. La aprobación de otra sesión no vale.
+Revisado con el usuario grupo por grupo y commiteado en cuatro
+(`f9f2777` / `0a69db5` / `76d4e86` / `4477365`), aprobados uno a uno, sobre
+`ec6f686`; push forzado a `origin/main` reemplazando el bundle sin revisar
+`9dbc616`. Ver el "UPDATE 2026-08-31" al principio del archivo.
 
-Reparto sugerido, para que pueda revisarlo por partes en vez de como un
-muro:
+Pendiente de T1, para la próxima sesión:
 
-1. Tope de ración + recorte de paquete (`plan-generator.js`,
-   `dish-selector.js`, y el golden-master) — el bug de la patata que
-   reportó él mismo.
-2. Autocompletado de "no me gusta" (`ingredient-suggest.js` nuevo,
-   `index.html`, `app.js`, CSS, tests). **Que pruebe él las flechas del
-   teclado**: es lo único que no se pudo verificar, porque el navegador de
-   la herramienta no entrega pulsaciones reales.
-3. Cocina + pesos de sesgo (`dish-cuisine.js` nuevo, `dish-selector.js`,
-   `preferences.js`, `settings.js`, `calculator.js`, `render.js`).
-4. Recetas + ingredientes (`dish-instructions.js` nuevo,
-   `ingredient-nutrition.js`, `packaging.js`, `prices/mercadona.js`).
-
-Y aparte, `PythonProject` (14 archivos, sin remote, nada puede escaparse).
+- **Que el usuario pruebe las flechas del teclado** en el autocompletado de
+  "no me gusta" (ya cableado en `4477365`): es lo único que no se pudo
+  verificar, porque el navegador de la herramienta no entrega pulsaciones
+  reales.
+- `PythonProject` (14 archivos, sin remote) sigue **sin commitear** — no se
+  tocó en esta sesión, se revisa aparte cuando el usuario quiera.
 
 ---
 
@@ -6091,7 +6127,8 @@ sus pasos — y los macros salen calculados de roles resueltos, no inventados.
 
 **T5 — P4. Desplegar.** Producción sigue sirviendo una build anterior a todo
 esto. `npx wrangler pages deploy . --project-name=offline-nutrition-helper`.
-**Solo con permiso explícito del usuario**, y solo después de T1.
+**Solo con permiso explícito del usuario.** T1 ya está hecho (2026-08-31),
+así que esto queda desbloqueado — pero el permiso sigue siendo por vez.
 
 ---
 

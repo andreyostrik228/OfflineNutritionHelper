@@ -1,6 +1,6 @@
 # Nutrition Planner — Project Context
 
-## Dónde vive esto y qué hay nuevo (2026-08-27)
+## Dónde vive esto y qué hay nuevo (2026-08-27, commiteado 2026-08-31)
 
 **Ruta buena:** `C:\Users\andre\Desktop\Offline Nutrition Helper\nutrition-planner`.
 La antigua `nutrition-planner-fase2` ya no existe.
@@ -14,8 +14,14 @@ Cuidado con DOS carpetas del Escritorio que NO son el repo:
   archivos que `index.html` necesita, sin tests ni docs ni git). Se
   regenera, no se edita.
 
-El repo bueno es el único con git: HEAD `ec6f686`, 372 tests en verde.
+El repo bueno es el único con git: HEAD `4477365`, 372 tests en verde.
 Comprueba con `git log -1` antes de fiarte de una carpeta.
+
+Lo de esta tanda se commiteó el 2026-08-31 en cuatro commits revisados uno
+a uno con el usuario (`f9f2777` cordura de porciones · `0a69db5` módulo de
+autocompletado · `76d4e86` sesgo de cocina + peso de caducidad · `4477365`
+instrucciones/equipo/ingredientes/UI/docs), sobre `ec6f686`, push forzado a
+`origin/main`. Detalle en `STATE.md` → "UPDATE 2026-08-31".
 
 Archivos nuevos de esta tanda, todos **aditivos** — si faltan, la app se
 comporta exactamente como antes, que es el patrón que ya se usó con
