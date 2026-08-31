@@ -2146,6 +2146,224 @@ var DISH_INSTRUCTIONS = {
       "Saca la bandeja, añade el brócoli en ramilletes con un poco más de aceite y sal, remueve todo y hornea otros 12 minutos. Si el brócoli entra al principio, se quema y amarga antes de que el pollo esté hecho.",
       "El pollo está listo cuando al abrir el trozo más gordo el jugo sale claro, no rosa."
     ]
+  },
+
+  // ── Tanda 2026-08-31 (b) (166 → 182 platos) ──────────────────────────
+  // Segunda tanda. A partir de aquí el catálogo restante es en gran parte
+  // permutaciones de "proteína + grano cocido + verdura" cuya técnica ya
+  // está escrita en un plato hermano. Estos 16 son los que aún enseñaban
+  // algo propio: la coliflor que se hace puré en un minuto, el pimiento y
+  // sus venas amargas, la regla del bacalao salado, la lata de caballa
+  // que ya está cocida, las legumbres de bote que no se remueven, el
+  // muslo (carne oscura) frente a la pechuga, el jamón curado que NO se
+  // cocina, el huevo frito con aceite por encima en vez de vuelta.
+
+  "Garbanzos con arroz y coliflor": {
+    difficulty: 2,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "La coliflor pasa de cruda a puré en un minuto, y de más se hace babosa y huele a azufre. Se cuece poco o se asa.",
+      "Separa la coliflor en ramilletes pequeños. Cuécela 5 minutos en agua hirviendo con sal y escúrrela EN CUANTO el cuchillo entre con algo de resistencia, no cuando entre solo.",
+      "Escurre y enjuaga los garbanzos de bote hasta que el agua salga clara.",
+      "Calienta una sartén con una cucharada de aceite a fuego medio-alto. Saltea la coliflor 3 minutos para que coja algún tostado, que es donde está el sabor.",
+      "Añade los garbanzos y un cucharón del agua de cocción, y deja 3 minutos a fuego medio para que se junten.",
+      "Sirve sobre el arroz caliente con sal y pimienta. Un poco de pimentón le va muy bien."
+    ]
+  },
+
+  "Pavo con quinoa y pimientos": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Al pimiento quítale el tallo, ábrelo y ARRANCA TODAS LAS SEMILLAS Y LAS VENAS BLANCAS del interior: esa parte blanca amarga. Córtalo en tiras.",
+      "Corta el pavo en tiras finas, sécalo y sálalo.",
+      "Calienta una sartén con una cucharada de aceite a fuego alto. Echa los pimientos y saltéalos 6 minutos sin moverlos mucho, hasta que se ablanden y les salgan manchas oscuras. Esas manchas son sabor, no están quemados.",
+      "Aparta los pimientos a un lado, echa el pavo en el hueco y hazlo 4 minutos hasta que pierda el rosa. El pavo es seco: en cuanto está, fuera.",
+      "Mezcla el pavo con los pimientos 1 minuto y apaga.",
+      "Sirve sobre la quinoa caliente. Sal al final, prueba primero."
+    ]
+  },
+
+  "Bacalao con garbanzos y espinacas": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "IMPORTANTE: si tu bacalao es salado (en tacos, muy blanco y duro), tiene que estar ya DESALADO: 24 a 36 horas en la nevera cubierto de agua, cambiándola tres veces. Sin desalar es incomible. El bacalao fresco o congelado sin sal se usa directo.",
+      "Seca el bacalao y quítale las espinas que notes pasando el dedo.",
+      "Calienta una sartén con una cucharada de aceite a fuego MEDIO, no fuerte: el bacalao se hace suave o se pone estropajoso.",
+      "Ponlo con la piel hacia abajo 4 minutos, y luego 2 minutos por el otro lado. Está hecho cuando se abre en lascas grandes al empujar con el tenedor.",
+      "Sácalo. En la misma sartén echa los garbanzos escurridos y enjuagados con medio vaso de agua, 3 minutos, y luego las espinacas hasta que bajen.",
+      "Sirve los garbanzos de base y el bacalao encima, en lascas. Sal con cuidado: el bacalao, aun desalado, todavía sala."
+    ]
+  },
+
+  "Caballa con pasta y espinacas": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "La caballa en lata YA ESTÁ COCINADA. No se fríe: solo se desmiga en trozos con el tenedor. Escúrrela un poco del aceite. Las espinas que veas son blandas y se comen.",
+      "Calienta la pasta ya cocida en un cazo o sartén con un chorrito de agua, 1 minuto.",
+      "Fuera del fuego, añade las espinacas frescas y remueve: el calor de la pasta las baja en 30 segundos, sin cocinarlas aparte.",
+      "Añade la caballa desmigada y mezcla con suavidad para no hacerla papilla.",
+      "Un chorro de limón, pimienta y un hilo de aceite crudo.",
+      "La caballa es fuerte de sabor y no necesita mucho más. Prueba de sal: la lata ya lleva."
+    ]
+  },
+
+  "Lentejas con arroz integral y zanahoria": {
+    difficulty: 1,
+    equipment: ["olla"],
+    steps: [
+      "Escurre las lentejas de bote y enjuágalas en un colador hasta que el agua salga clara. El caldo del bote es espeso y sabe a lata.",
+      "Pela la zanahoria y córtala en dados pequeños. Cuécela 8 minutos en un cazo con un dedo de agua y una cucharada de aceite, hasta que esté tierna.",
+      "Añade las lentejas y calienta 3 minutos a fuego suave. REMUEVE LO JUSTO: las de bote ya están cocidas y se deshacen en puré si las trabajas mucho.",
+      "Fuera del fuego, añade un chorrito de vinagre: un punto ácido que levanta el plato entero.",
+      "Calienta el arroz integral aparte con un poco de agua, tapado, 1 minuto.",
+      "Sirve las lentejas sobre el arroz. Sal y pimienta al final."
+    ]
+  },
+
+  "Muslo de pollo con quinoa y zanahoria": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "El muslo es carne oscura: más jugosa y difícil de secar que la pechuga, pero necesita más rato porque es más gruesa y tiene tejido que ablandar.",
+      "Seca los muslos y sálalos. Si tienen piel, empieza con la piel hacia abajo.",
+      "Calienta una sartén con una cucharadita de aceite a fuego medio. Pon los muslos y déjalos 6 o 7 minutos por el lado de la piel, sin moverlos, hasta que la piel esté dorada y crujiente y haya soltado su grasa.",
+      "Dales la vuelta y 5 minutos más. Están hechos cuando al pinchar la parte más gruesa el jugo sale claro, no rosado, y la carne cede.",
+      "Pela la zanahoria, córtala en rodajas y cuécela 6 minutos en agua con sal.",
+      "Sirve los muslos sobre la quinoa caliente con la zanahoria, y riega con la grasa dorada de la sartén."
+    ]
+  },
+
+  "Claras con espinacas y queso": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Las espinacas frescas sueltan mucha agua. Si van directas a las claras, el revuelto queda aguado.",
+      "Ponlas en la sartén con una gota de aceite a fuego medio SIN nada más y remueve: en 1 o 2 minutos bajan y sueltan el agua. Sube el fuego un momento para que esa agua se evapore.",
+      "Bate las claras con una pizca de sal.",
+      "Baja el fuego a medio-bajo, echa las claras sobre las espinacas y remueve despacio con la espátula, llevando el borde cuajado hacia el centro.",
+      "Cuando estén casi cuajadas pero aún brillantes, apaga y esparce el queso en trozos por encima: se funde con el calor que queda.",
+      "Sirve enseguida. Las claras se pasan de tiernas a gomosas en segundos."
+    ]
+  },
+
+  "Sandwich integral de pavo y queso": {
+    difficulty: 1,
+    equipment: ["ninguno"],
+    steps: [
+      "El enemigo de un sándwich es el pan mojado. Todo lo que sigue es para evitarlo.",
+      "Unta las dos rebanadas por dentro con una capa muy fina de aceite o de queso batido: hace de barrera y el pan no se empapa.",
+      "Pon el queso pegado al pan: sella la miga.",
+      "El pavo en lonchas va en el centro. El tomate en rodajas, ESCURRIDO sobre un papel de cocina, también en el centro, nunca tocando el pan.",
+      "Cierra, aprieta con la palma unos segundos y córtalo en diagonal: se coge y se come mejor.",
+      "Cómelo pronto. Si es para llevar, envuélvelo bien y añade el tomate justo antes de comer."
+    ]
+  },
+
+  "Poke bowl de tempeh con arroz y aguacate": {
+    difficulty: 2,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "El tempeh crudo amarga. Cuécelo primero: 10 minutos en un cazo con agua hirviendo cubriéndolo. Le quita el amargor y lo deja listo para dorar.",
+      "Escúrrelo, sécalo y córtalo en dados de dos centímetros.",
+      "Dóralos en una sartén con una cucharada de aceite a fuego medio-alto 5 minutos, dándoles vueltas para que cojan color por varias caras. Si tienes salsa de soja, un chorrito al final que se pegue.",
+      "Corta el aguacate: ábrelo, quita el hueso y saca la carne con una cuchara pegada a la piel. Córtalo en láminas SIN aplastarlo.",
+      "Pela y corta el pepino en medias lunas finas.",
+      "Monta el bol: arroz de base templado o a temperatura ambiente, y encima el tempeh, el aguacate y el pepino en montones separados. Es un plato frío sobre base templada, no un salteado."
+    ]
+  },
+
+  "Pollo con fideos y brócoli": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Si los fideos vienen ya cocidos, suéltalos: ponlos en un colador y pásales agua caliente por encima mientras los separas con los dedos. Apelmazados se rompen al saltear.",
+      "Corta el muslo de pollo en tiras, sécalo y sálalo.",
+      "Cuece el brócoli en ramilletes 3 minutos en agua con sal, que quede firme: va a terminar en la sartén.",
+      "Dora el pollo en una sartén grande o wok con una cucharada de aceite a fuego ALTO, 5 minutos, hasta que no quede rosa.",
+      "Añade el brócoli escurrido y saltea 2 minutos; luego los fideos con un chorrito de agua o de salsa de soja.",
+      "Saltea todo junto 1 o 2 minutos, moviendo la sartén para mezclar sin romper los fideos. Sirve enseguida."
+    ]
+  },
+
+  "Huevos con pan integral y brócoli": {
+    difficulty: 2,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Cuece el brócoli en ramilletes 4 minutos en agua hirviendo con sal y escúrrelo.",
+      "Para el huevo frito: calienta una sartén pequeña con una cucharada de aceite a fuego medio-alto hasta que una gota de agua chisporrotee.",
+      "Casca el huevo en una taza y deslízalo en la sartén desde cerca, para que no salpique.",
+      "NO LO TOQUES. Con una cuchara, ve echando el aceite caliente de la sartén por encima de la clara: cuaja la parte de arriba sin darle la vuelta y la yema queda líquida.",
+      "Está listo en 2 minutos, cuando la clara está firme y los bordes dorados y con puntilla. Sácalo con la espátula escurriendo el aceite.",
+      "Tuesta el pan y sirve el huevo encima con el brócoli al lado. Sal sobre la clara, no sobre la yema."
+    ]
+  },
+
+  "Atún con pasta y champiñones": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "El atún de lata ya está cocido: no se cocina, se añade al final. Escúrrelo bien.",
+      "Limpia los champiñones con papel húmedo y córtalos en láminas.",
+      "Saltéalos en una sartén con una cucharada de aceite a fuego fuerte 5 minutos, hasta que suelten el agua, se evapore y queden dorados. Sin ese punto saben a nada.",
+      "Calienta la pasta ya cocida en la misma sartén con dos cucharadas de agua, removiendo 1 minuto.",
+      "Apaga el fuego y añade el atún desmigado, mezclando con suavidad para que no se haga polvo.",
+      "Pimienta, un hilo de aceite crudo y, si tienes, una pizca de guindilla u orégano. Prueba de sal: el atún ya lleva."
+    ]
+  },
+
+  "Jamón serrano con cuscús y champiñones": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "El jamón serrano es curado, NO se cocina: en la sartén se encoge, se endurece y suelta toda su sal. Va crudo, al final, encima del plato.",
+      "Limpia los champiñones con papel húmedo y córtalos en láminas.",
+      "Saltéalos en una sartén con una cucharada de aceite a fuego fuerte 5 minutos, hasta que suelten el agua, se evapore y se doren.",
+      "Calienta el cuscús: un chorrito de agua caliente, tapado 2 minutos, y ahuécalo con un tenedor.",
+      "Mezcla el cuscús con los champiñones y una pizca de pimienta.",
+      "Reparte las lonchas de jamón por encima, sin trocearlas mucho. El calor del cuscús las atempera lo justo. No añadas sal: el jamón la pone toda."
+    ]
+  },
+
+  "Yogur griego con granola y kiwi": {
+    difficulty: 1,
+    equipment: ["ninguno"],
+    steps: [
+      "Pela el kiwi con una cuchara: clava la punta entre la piel y la carne y ve girando la fruta. Sale entero y limpio, sin desperdiciar.",
+      "Córtalo en rodajas.",
+      "Pon el yogur en un bol.",
+      "AÑADE LA GRANOLA JUSTO ANTES DE COMER, no antes: en contacto con el yogur se reblandece en minutos y pierde lo crujiente.",
+      "Reparte el kiwi por encima.",
+      "Si lo quieres más dulce, un hilo de miel; el kiwi ya aporta acidez."
+    ]
+  },
+
+  "Tortitas de arroz con mantequilla de cacahuete": {
+    difficulty: 1,
+    equipment: ["ninguno"],
+    steps: [
+      "La tortita de arroz se parte si aprietas: es aire prensado. Todo esto es para no romperla.",
+      "La mantequilla de cacahuete tiene que estar a temperatura ambiente, blanda. Si está dura de la nevera, mete la cuchara 10 segundos en agua caliente.",
+      "Deja caer una cucharada en el centro de la tortita y EXTIÉNDELA DEL CENTRO HACIA FUERA con el dorso de la cuchara, la tortita apoyada en la mano abierta, sin presionar.",
+      "Corta el plátano en rodajas finas y colócalas encima; el peso ligero no la rompe.",
+      "Come sobre un plato: al morder suelta trozos.",
+      "Dos tortitas hacen un desayuno; una sola se queda corta."
+    ]
+  },
+
+  "Alubias con cuscús y verduras salteadas": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Escurre y enjuaga las alubias de bote. Son AÚN MÁS FRÁGILES que las lentejas: casi no hay que removerlas o se hacen crema.",
+      "Saltea las verduras congeladas en una sartén con una cucharada de aceite a fuego fuerte 6 minutos, hasta que suelten el agua y se evapore.",
+      "Baja el fuego a medio, añade las alubias y dos cucharadas de agua, y calienta 2 minutos moviendo la sartén en vez de remover con cuchara.",
+      "Calienta el cuscús aparte: agua caliente por encima, tapado 2 minutos.",
+      "Ahueca el cuscús con un tenedor, nunca con cuchara, y mézclalo con las alubias y las verduras con cuidado.",
+      "Sal, pimienta y un hilo de aceite crudo. Un poco de pimentón le sienta bien."
+    ]
   }
 };
 
