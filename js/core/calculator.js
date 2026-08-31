@@ -48,7 +48,11 @@ function readForm() {
     // Sin `store` (2026-08-25): el selector de tienda se retiró de la UI
     // y sanitizeInputs() (plan-generator.js) ya cae en DEFAULT_STORE_ID
     // cuando data.store viene undefined -- el motor no cambia.
-    taste:    document.getElementById("taste").value
+    taste:    document.getElementById("taste").value,
+    // Estilo de cocina (2026-08-26). Opcional a propósito: si el <select>
+    // no existiera (una versión vieja del HTML cacheada, por ejemplo),
+    // "mixta" significa "sin sesgo" y el motor se comporta como antes.
+    cuisine:  (document.getElementById("cuisine") || {}).value || "mixta"
   };
 }
 

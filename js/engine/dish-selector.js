@@ -140,6 +140,38 @@ var MIN_PORTION_SCALE = 0.35;
  * altos, que antes quedaban estructuralmente muy por debajo del objetivo
  * (ver auditoría: gaps de 600-1400 kcal en perfiles de volumen).
  */
+/**
+ * Peso del sesgo de cocina. Medido, no elegido a ojo (80 planes x 3
+ * repeticiones por peso, comida española sobre el total de tomas):
+ *
+ *   peso     españolas   error kcal   violaciones
+ *      0        5,1%        2,8%          2
+ *   1000       10,2%        3,2%          3
+ *   1500       13,5%        3,0%          0     <- elegido
+ *   2500       16,8%        3,0%          7
+ *   4000       26,9%        2,4%          9
+ *
+ * 1500 porque es donde el efecto ya es claro (5,1% -> 13,5%, dos veces y
+ * media) sin coste: el error de kcal no se mueve y las violaciones no
+ * suben. A partir de 2500 sí suben, y el trato deja de compensar.
+ *
+ * ⚠️ EL TECHO LO PONE EL CATÁLOGO, NO ESTE NÚMERO. Solo 25 de 334 platos
+ * son españoles (7,5%), y 9 son "Jamón serrano con algo". Ni con un peso
+ * enorme puede la app sentirse española: para eso hay que ESCRIBIR platos
+ * españoles. Subir esto en busca de más no funcionará, solo romperá
+ * macros.
+ */
+var CUISINE_BIAS_WEIGHT = 1500;
+
+/**
+ * Peso del empujón por caducidad. Ver la nota larga en
+ * scoreDishForSelection para la medición y para la conclusión anterior
+ * que esto corrige. En la rama `tight` se usa a un cuarto, por el mismo
+ * motivo que el sesgo de cocina: allí la escala entera es cinco veces
+ * menor.
+ */
+var EXPIRY_BIAS_WEIGHT = 2500;
+
 var MAX_PORTION_SCALE = 1.5;
 
 /**
@@ -203,6 +235,14 @@ function filterDishesByTimeTaste(category, maxPrep, taste, relax) {
       }
       if (matchesDislike(dish.name, dislikes)) return false;
     }
+
+    // Equipo y dificultad (2026-08-26). Preferencias BLANDAS igual que
+    // dislikes: un plato sin instrucciones no se filtra nunca, y durante
+    // el piloto eso son 316 de 334. Van también en el filtro de
+    // candidatos, no en la puntuación -- "no tengo horno" no es algo que
+    // se pueda compensar con que el plato sea barato.
+    if (typeof canCookWithEquipment === "function" && !canCookWithEquipment(dish)) return false;
+    if (typeof isWithinDifficulty === "function" && !isWithinDifficulty(dish)) return false;
 
     return true;
   });
@@ -461,58 +501,77 @@ function scoreDishForSelection(dish, usedState, ctx) {
   var usagePpeBucket = Math.round(proteinPerEuro(dish, ctx.storeId) / 2) * 2; // informativo/desempate, ver arriba
   var macroFit = macroFitScore(dish, ctx.target, impact.scaleFactor);
 
-  // Caducidad (2026-08-25): premia gastar despensa que está a punto de
-  // estropearse. Es un EMPUJÓN, nunca una restricción -- queda muy por
-  // debajo de macroFit a propósito. Un plan que se salta el presupuesto o
-  // descuadra los macros "para salvar una zanahoria" sería peor que tirar
-  // la zanahoria, y rompería la regla del proyecto de que las
-  // restricciones duras (presupuesto, tolerancia de macros) mandan.
+  // Caducidad (2026-08-25, CORREGIDO 2026-08-26): premia gastar despensa
+  // que está a punto de estropearse. Es un EMPUJÓN, nunca una
+  // restricción: las restricciones duras (presupuesto, tolerancia de
+  // macros) siguen mandando.
   //
-  // ⚠️ MEDIDO Y **NO EFECTIVO TODAVÍA**. Hay que ser honesto con esto en
-  // vez de dejar un comentario que sugiera que funciona:
+  // ── Corrección de una conclusión anterior EQUIVOCADA ─────────────────
+  // Aquí había escrito que un término blando NO PUEDE funcionar en este
+  // motor, porque `macroFit * 100` da puntuaciones del orden de 10.000 y
+  // cualquier peso lo bastante pequeño para ser "un empujón" es demasiado
+  // pequeño para mover nada. La MEDICIÓN que lo sostenía era correcta
+  // (peso 60 es inerte); la INFERENCIA no. Se generalizó desde un solo
+  // peso, y "inerte a 60" no implica "inerte a 2500".
   //
-  //   - Separación MEDIANA entre dos platos consecutivos del ranking
-  //     (110 candidatos de "comida", `Math.random` fijado): ~15 puntos.
-  //     Rango del top-10: ~579.
-  //   - Peso 12 (primer intento): máximo 12 puntos, por debajo de la
-  //     separación mediana. Inerte.
-  //   - Peso 60 (actual): máximo 60, ~4 separaciones medianas. Mejora la
-  //     dirección pero SIGUE sin ser medible.
+  // Vuelto a medir con despensa DELIBERADAMENTE MIXTA (proteínas, cereales
+  // y verduras: una despensa solo de verdura confunde la medida, porque
+  // los platos con mucha verdura llevan poca proteína y pierden en
+  // macroFit por un motivo que no tiene nada que ver con la caducidad).
+  // 80 planes por peso; se compara la urgencia media de los platos
+  // ELEGIDOS contra la media del catálogo -- que es la prueba que la
+  // conclusión anterior no llegó a pasar:
   //
-  // Prueba decisiva (n=400 slots, 10 ingredientes en despensa marcados
-  // urgentes): la urgencia media de los platos ELEGIDOS es 0.2167 frente
-  // a 0.2198 de media del catálogo -- una diferencia de -0.24 errores
-  // estándar, o sea ninguna. El generador NO está prefiriendo lo que
-  // caduca.
+  //   peso    urgencia elegidos vs catálogo    error kcal   violaciones
+  //     60          -2,6 SE  (inerte)             3,2%           0
+  //   1000          -0,5 SE  (empate)             3,1%           0
+  //   2500          +4,2 SE  (funciona)           3,2%           1
+  //   5000          +9,2 SE                       2,3%           1
+  //   9000         +17,4 SE                       2,3%           2
   //
-  // Causa: `macroFit * 100` produce puntuaciones del orden de 10.000, y la
-  // lotería selecciona sobre esa escala. Cualquier término lo bastante
-  // pequeño para seguir siendo "un empujón y no una restricción" es
-  // demasiado pequeño para mover la selección. Hacerlo efectivo exigiría
-  // que compitiera con el ajuste de macros, que es justo lo que el diseño
-  // prohíbe.
+  // El error de kcal NO se mueve en todo el rango, y las violaciones
+  // tampoco. El motivo que se daba para no subir el peso -- "competiría
+  // con el ajuste de macros" -- resultó ser falso.
   //
-  // El término se deja porque es correcto en su lógica, está probado y no
-  // hace daño (con despensa sin fechas vale 0 exacto). Pero la caducidad
-  // hoy es una función de la DESPENSA -- ver qué corre prisa y cocinarlo --
-  // no del generador. Si se quiere que influya de verdad, el camino no es
-  // subir este peso sino sesgar el POOL de candidatos (meter en él los
-  // platos que gastan stock urgente), que es un cambio de semántica y
-  // necesita decisión de producto.
+  // 2500 es la elección conservadora: el efecto ya es claro y el término
+  // sigue siendo un empujón. Con una urgencia típica de ~0,2 aporta unos
+  // 500 puntos, bastante por debajo del sesgo de cocina (1500).
   //
-  // `expiry.js` es opcional, como el resto de módulos no críticos: si no
+  // Necesita MÁS peso que el sesgo de cocina y no es incoherente: la
+  // urgencia es un valor continuo de 0 a 1 que casi siempre ronda 0,2,
+  // mientras que la cocina es un 1500 plano cuando acierta.
+  //
+  // LO CADUCADO SIGUE VALIENDO 0 A CUALQUIER PESO: EXPIRY_TIER_WEIGHT
+  // (expiry.js) da `caducado: 0`, así que el término entero es 0 y ningún
+  // peso puede empujar a nadie hacia comida en mal estado. Hay un test.
+  //
+  // `expiry.js` es opcional como el resto de módulos no críticos: si no
   // está cargado el término vale 0 y el motor puntúa exactamente como
   // antes -- de ahí que los golden-master no se muevan.
   var expiry = (typeof dishExpiryUrgency === "function" && ctx.pantryState)
     ? dishExpiryUrgency(dish.items, ctx.pantryState, ctx.todayISO)
     : 0;
 
+  // Sesgo de cocina (2026-08-26). SESGO, no filtro: quien prefiere comida
+  // española sigue viendo pasta, solo la ve menos. Sin preferencia, o con
+  // un plato `neutra`, vale 0 exacto y el motor puntúa como antes -- por
+  // eso los golden-master no se mueven.
+  //
+  // En la rama `tight` va a un cuarto de peso: cuando el presupuesto
+  // aprieta, la puntuación entera se mueve en una escala cinco veces menor
+  // (macroFit x20 en vez de x100), así que el mismo número sería aquí
+  // cinco veces más fuerte y dejaría de ser un sesgo.
+  var cuisineBias = 0;
+  if (typeof getDishCuisine === "function" && ctx.cuisinePref && ctx.cuisinePref !== "mixta") {
+    if (getDishCuisine(dish.name) === ctx.cuisinePref) cuisineBias = CUISINE_BIAS_WEIGHT;
+  }
+
   if (ctx.tight) {
-    return macroFit * 20 + purchasePpeBucket * 40 + usagePpeBucket * 0.5 + div + expiry * 15;
+    return macroFit * 20 + purchasePpeBucket * 40 + usagePpeBucket * 0.5 + div + expiry * 15 + cuisineBias * 0.25;
   }
 
   var allocation = allocationScore(impact.marginalCost, ctx.targetSpend, ctx.maxCost);
-  return macroFit * 100 + allocation * 30 + div * 10 + purchasePpeBucket * 3 + usagePpeBucket * 0.5 + expiry * 60;
+  return macroFit * 100 + allocation * 30 + div * 10 + purchasePpeBucket * 3 + usagePpeBucket * 0.5 + expiry * EXPIRY_BIAS_WEIGHT + cuisineBias;
 }
 
 /**
@@ -680,6 +739,11 @@ function pickDish(category, data, usedState, tier, maxCost, target, storeId, tar
     return estimateScaledPurchaseImpact(dish, target, storeId, committedGrams, pantryState).marginalCost <= maxCost + 0.005;
   });
 
+  // Se lee UNA vez por selección, no por plato: getCuisinePreference()
+  // toca localStorage a través de getSettings(), y puntuamos cientos de
+  // candidatos por toma.
+  var cuisinePref = (typeof getCuisinePreference === "function") ? getCuisinePreference() : "mixta";
+
   if (affordable.length > 0) {
     var minPoolCost = Math.min.apply(null, affordable.map(function (d) {
       return estimateScaledPurchaseImpact(d, target, storeId, committedGrams, pantryState).marginalCost;
@@ -691,7 +755,8 @@ function pickDish(category, data, usedState, tier, maxCost, target, storeId, tar
       storeId: storeId,
       committedGrams: committedGrams,
       pantryState: pantryState,
-      tight: isBudgetTight(maxCost, spendTarget, minPoolCost)
+      tight: isBudgetTight(maxCost, spendTarget, minPoolCost),
+      cuisinePref: cuisinePref
     };
     var ranked = rankDishesByBudgetMode(affordable, usedState, scoreCtx);
     return finalizePick(pickWeightedByScore(ranked), target, storeId, usedState, false, null);
@@ -721,7 +786,8 @@ function pickDish(category, data, usedState, tier, maxCost, target, storeId, tar
       storeId: storeId,
       committedGrams: committedGrams,
       pantryState: pantryState,
-      tight: isBudgetTight(maxCost, spendTarget, minFitCost)
+      tight: isBudgetTight(maxCost, spendTarget, minFitCost),
+      cuisinePref: cuisinePref
     };
     var fittingDishes = fitting.map(function (p) { return p.dish; }); // ya viene ordenado por coste de compra marginal asc.
     var chosenDish = fallbackCtx.tight

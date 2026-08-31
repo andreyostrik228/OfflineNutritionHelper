@@ -236,6 +236,23 @@ function run(t) {
     assert.ok(score <= 1, "debe estar acotado a 1, dio " + score);
   });
 
+  t.test("lo caducado vale 0 SEA CUAL SEA el peso del empujon", function () {
+    var s = sandbox();
+    // Guardia de seguridad, no de rendimiento. El peso subio de 60 a 2500
+    // el 2026-08-26 tras medir que a 60 era inerte; esta prueba fija que
+    // subirlo NO puede empujar a nadie hacia comida en mal estado, porque
+    // el termino es 0 antes de multiplicarse por nada.
+    var items = [{ name: "Zanahoria", g: 100 }];
+    var caducada = { zanahoria: { grams: 200, expiresAt: "2026-08-01" } };
+    var urgencia = s.dishExpiryUrgency(items, caducada, "2026-08-26");
+
+    assert.strictEqual(urgencia, 0, "un ingrediente caducado no puede sumar urgencia");
+    // 0 x cualquier peso sigue siendo 0: la propiedad se mantiene sola.
+    [60, 2500, 9000, 1e6].forEach(function (peso) {
+      assert.strictEqual(urgencia * peso, 0, "con peso " + peso + " deberia seguir siendo 0");
+    });
+  });
+
   t.test("lo CADUCADO no puntua -- no se empuja a comer comida en mal estado", function () {
     var s = sandbox();
     var items = [{ name: "Zanahoria", g: 100 }];
