@@ -21,14 +21,19 @@
  * selección. Aquí no: si este archivo falta o un plato no está, el plato
  * se comporta exactamente igual que hoy.
  *
- * ── Estado: PILOTO ──────────────────────────────────────────────────────
- * 17 platos de 334. Elegidos para cubrir el MECANISMO (los seis tokens de
- * equipo, los tres niveles de dificultad, las cuatro categorías, de 1 a 15
- * minutos), no por ser "los más conocidos" -- eso es un juicio de curación
- * cultural y lo decide el usuario, no este archivo.
+ * ── Estado: 333 de 334 (2026-08-31) ────────────────────────────────────
+ * Completo salvo "Merluza al ajillo con verduras", que necesita ajo y ese
+ * rol sigue sin resolver (ver STATE.md, T2). getDishInstructions devuelve
+ * null para ese plato y se renderiza sin pasos, igual que antes.
  *
- * (Decía "18" y eran 17: el recuento se había hecho contando apariciones
- * de `steps:`, y una de ellas está en el JSDoc de getDishInstructions.)
+ * Se escribió en ocho tandas (commits `af96985`..`26fd6af`). El piloto
+ * inicial (17 platos) se eligió para cubrir el MECANISMO -- los seis
+ * tokens de equipo, los tres niveles de dificultad, las cuatro
+ * categorías. Las tandas siguientes se ordenaron por VARIEDAD DE TÉCNICA
+ * (cada receta enseña algo que no se deduce de otra) hasta agotar lo
+ * distinto; el resto del catálogo son permutaciones "proteína + grano +
+ * verdura" y sus recetas reutilizan a propósito los mismos bloques, más
+ * cortas, pero siguen llevando cantidades, tiempos y una señal de "hecho".
  *
  * ── Cómo se escriben los pasos ──────────────────────────────────────────
  * Redacción ORIGINAL, nunca copiada de webs ni libros de cocina: las

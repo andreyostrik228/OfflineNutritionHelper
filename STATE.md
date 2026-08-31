@@ -190,9 +190,13 @@
 > app se sienta española hay que ESCRIBIR platos españoles; subir el peso
 > solo rompe macros.
 >
-> **Recetas** (`js/data/dish-instructions.js`): **142 de 334 (43%)**, cinco
-> lotes, **722 pasos, media 5,1 por plato**. Quedan **192, unos 8 lotes**
-> de 25.
+> **Recetas** (`js/data/dish-instructions.js`): **333 de 334** al 2026-08-31
+> (ocho tandas, commits `af96985`..`26fd6af`). Falta solo "Merluza al
+> ajillo con verduras" -- necesita ajo, rol sin resolver (T2). Las tandas
+> 1-2 se eligieron por variedad de técnica; a partir de ahí el catálogo son
+> permutaciones "proteína + grano + verdura" y las recetas reutilizan los
+> mismos bloques, más cortas, pero con cantidades, tiempos y señal de
+> "hecho".
 >
 > El principio es lo importante y hay que conservarlo: **está escrito para
 > alguien que no ha cocinado NUNCA**. Lo que lo hace funcionar no son las
@@ -5922,8 +5926,10 @@ instrucción**.
 dependen los golden-master, y meterles texto de cocina arriesga mover
 resultados del motor por un cambio que no tiene nada que ver.
 
-**92 de 334 (28%)**, tres tandas, 463 pasos, media 5,0. Quedan 242, unas
-diez tandas más. **Esto NO está casi terminado.**
+**333 de 334** al 2026-08-31 (ocho tandas, `af96985`..`26fd6af`). Cuando se
+escribió este párrafo iban 92; el detalle en la sección "Recetas" del
+bloque EMPIEZA AQUÍ y en T3. Falta solo "Merluza al ajillo con verduras"
+(necesita ajo, T2).
 
 Se escriben para alguien que **NUNCA ha cocinado**. Esa es toda la idea, y
 un test obliga a que los pasos lleven cantidades o tiempos concretos — pero
@@ -6100,14 +6106,15 @@ revisión ANTES de escribir nada en `ingredient-nutrition.js`.
 
 ---
 
-**T3 — P2. Seguir escribiendo recetas.** 142 de 334 (43%). Quedan 192, unas
-ocho tandas de 25.
+**T3 — P2. Seguir escribiendo recetas. ✅ HECHO 2026-08-31 (333 de 334).**
 
-Elegir por VARIEDAD DE TÉCNICA, no por orden de lista. Escribir para quien
-NUNCA ha cocinado, anticipando el fallo concreto (ver los ejemplos de la
-sección 5). Redacción original siempre, nunca copiada de webs de recetas.
-Nada que necesite cebolla o ajo hasta que T2 esté hecho. Reportar cada dos
-tandas para que la calidad no derive sin que nadie lo vea.
+Ocho tandas, commits `af96985`..`26fd6af`. Falta solo "Merluza al ajillo
+con verduras" (necesita ajo, ver T2). Tandas 1-2 elegidas por variedad de
+técnica; el resto son permutaciones "proteína + grano + verdura" y sus
+recetas reutilizan los mismos bloques a propósito, más cortas, pero con
+cantidad, tiempo y señal de "hecho" en cada paso. Redacción original,
+ninguna con cebolla ni ajo. Distribución de dificultad final: 170 de
+nivel 1, 156 de nivel 2, 7 de nivel 3.
 
 ---
 

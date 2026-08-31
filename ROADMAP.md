@@ -38,11 +38,12 @@ de `STATE.md`. `PythonProject` (14 archivos) sigue sin commitear, aparte.
    ver el caso "Oil, oat" en `STATE.md` — 1 de cada 9 emparejamientos
    automáticos fue catastrófico y pasó todos los controles automáticos.
 
-3. **P2 — seguir escribiendo recetas.** 142 de 334 (43%), quedan 192, unos
-   8 lotes de 25. Elegir cada lote por **variedad de técnica**, no por orden
-   de lista. El principio irrenunciable: escribir para quien no ha cocinado
-   nunca, con líneas que anticipen cómo se falla, no solo cantidades y
-   tiempos.
+3. ~~**P2 — seguir escribiendo recetas.**~~ **HECHO 2026-08-31** — 333 de
+   334 (`af96985`..`26fd6af`); falta solo "Merluza al ajillo con verduras"
+   (necesita ajo, ver punto 2). Lotes 1-2 por variedad de técnica; el resto
+   son permutaciones "proteína + grano + verdura" con recetas más cortas
+   que reutilizan los mismos bloques, siempre con cantidad, tiempo y señal
+   de "hecho".
 
 4. **P3 — escribir platos españoles.** Este es el arreglo de verdad para
    "quiero más comida española", y no tiene alternativa: solo 25 de 334

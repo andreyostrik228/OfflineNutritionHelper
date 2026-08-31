@@ -29,7 +29,7 @@ comporta exactamente como antes, que es el patrón que ya se usó con
 
 | archivo | qué es |
 | --- | --- |
-| `js/data/dish-instructions.js` | pasos de cocina, equipo y dificultad. 142 de 334 platos |
+| `js/data/dish-instructions.js` | pasos de cocina, equipo y dificultad. 333 de 334 platos (2026-08-31; falta "Merluza al ajillo", necesita ajo) |
 | `js/data/dish-cuisine.js` | a qué cocina pertenece cada uno de los 334 platos |
 | `js/ui/ingredient-suggest.js` | autocompletado del campo "no me gusta" |
 
