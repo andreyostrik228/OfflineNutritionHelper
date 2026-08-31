@@ -1824,6 +1824,28 @@ button:focus-visible {
   color: var(--ink-faint);
 }
 
+/* Alérgenos de la etiqueta de Mercadona -- informativo, no una alarma.
+   "Contiene" en tono arcilla; "puede contener" más tenue. */
+.nocook-item__allergens {
+  margin-top: 4px;
+  font-size: 10.5px;
+  line-height: 1.35;
+  color: var(--clay-deep);
+}
+
+.nocook-item__allergens-may {
+  color: var(--ink-faint);
+}
+
+.nocook-disclaimer {
+  margin: 0 0 12px;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--ink-soft);
+  border-left: 2px solid var(--clay-wash);
+  padding-left: 10px;
+}
+
 .nocook-level {
   display: inline-block;
   font-size: 9px;

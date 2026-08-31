@@ -652,6 +652,10 @@
      PythonProject/scripts/export_product_storage.py). Tiene prioridad
      sobre shelf-life.js, que es estimación nuestra. -->
 <script src="js/data/product-storage.js"></script>
+<!-- Alergenos declarados en la etiqueta de Mercadona (generado por
+     scratchpad/gen_allergens.js). Solo para MOSTRAR en las tarjetas de
+     "sin cocinar" -- no es un filtro, ver js/core/allergens.js. -->
+<script src="js/data/product-allergens.js"></script>
 <script src="js/core/utils.js"></script>
 <script src="js/core/pricing.js"></script>
 <script src="js/core/nutrition.js"></script>
@@ -666,6 +670,10 @@
      son una restriccion de seguridad y viviran en su propio archivo, a
      proposito -- ver la cabecera de preferences.js. -->
 <script src="js/core/preferences.js"></script>
+<!-- allergens.js: MOSTRAR alergenos de etiqueta, nunca filtrar. Aparte de
+     preferences.js a proposito (ver cabecera de ambos). Despues de
+     product-allergens.js (usa PRODUCT_ALLERGENS) y utils.js (escapeHtml). -->
+<script src="js/core/allergens.js"></script>
 <script src="js/core/pantry.js"></script>
 <script src="js/core/budget.js"></script>
 <script src="js/core/calculator.js"></script>

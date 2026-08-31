@@ -83,7 +83,17 @@ function runNoCookGenerator(storeId) {
   if (noCookCount) noCookCount.textContent = plan.poolSize;
   if (noCookStatus) noCookStatus.textContent = "Plan sin cocinar generado.";
 
-  noCookResults.innerHTML = plan.slots.map(renderNoCookSlot).join("");
+  // Aviso honesto sobre la línea de alérgenos de cada producto: solo se
+  // muestra cuando la etiqueta de Mercadona lo declara, y que NO aparezca
+  // no quiere decir que el producto esté libre de ese alérgeno. Se
+  // enseña solo si el módulo de alérgenos está cargado.
+  var allergenNote = (typeof renderAllergenLine === "function")
+    ? '<p class="nocook-disclaimer">Los alérgenos que se muestran vienen de la ' +
+      'etiqueta de Mercadona. Que no aparezcan <strong>no</strong> significa ' +
+      'que el producto no los lleve — comprueba siempre el envase.</p>'
+    : "";
+
+  noCookResults.innerHTML = allergenNote + plan.slots.map(renderNoCookSlot).join("");
   lastNoCookSlots = plan.slots;
 }
 
@@ -132,6 +142,11 @@ function renderNoCookItem(item) {
 
   var findBtn = typeof renderProductFindBtn === "function" ? renderProductFindBtn(item) : "";
 
+  // Alérgenos de la etiqueta de Mercadona (js/core/allergens.js). Solo
+  // informativo: "" cuando el producto no está en la tabla, sin afirmar
+  // nada. NO filtra el plan -- ver la cabecera de allergens.js.
+  var allergenLine = typeof renderAllergenLine === "function" ? renderAllergenLine(item) : "";
+
   return (
     '<div class="nocook-item">' +
       levelBadge +
@@ -140,6 +155,7 @@ function renderNoCookItem(item) {
       '<div class="nocook-item__qty">' + item.quantity + " " + escapeHtml(item.unit) + "</div>" +
       macrosLine +
       '<div class="nocook-item__package">' + packageLine + "</div>" +
+      allergenLine +
     "</div>"
   );
 }

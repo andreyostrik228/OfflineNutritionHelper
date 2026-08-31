@@ -6226,15 +6226,39 @@ pulsaciones reales).
 
 ---
 
-**T6 — pendiente menor, si aparece hueco.** Alergias (`js/core/allergens.js`
-aparte, NUNCA fusionado con "no me gusta"): sin datos EXCLUYE, al revés que
-la preferencia. El catálogo del frontend no lleva alérgenos hoy; la vía es
-un archivo de búsqueda aditivo generado desde Python, como
-`product-storage.js`, sin regenerar `real-products.js` (que se mantiene a
-mano). El modo de cocina "sin cocinar" sí se puede cubrir de verdad; el
-motor de PLATOS no, porque trabaja con 81 roles genéricos sin unión a SKUs
-— y decir "esta parte no está cubierta" es mejor que un filtro a medias que
-parece protección.
+**T6 — alérgenos. HECHO 2026-09-01 como ETIQUETAS, no como filtro.**
+
+El plan original era un filtro duro fail-closed (sin datos EXCLUYE). Se
+midió sobre el catálogo real de Mercadona antes de construirlo y **no es
+viable**: el campo `allergens` de la API (texto libre, 1.692 productos con
+texto real de 4.374) declara lo que un producto CONTIENE, casi nunca de
+qué está libre. De los ~1.865 productos con nutrición, solo 82 se declaran
+"sin gluten" y 9 "sin lácteos". Un fail-closed dejaría 9 productos para
+quien evita la leche: función rota. Deducirlo de la lista de ingredientes
+es la inferencia coherente-pero-insegura que este proyecto no hace, y no
+ve la contaminación cruzada.
+
+Lo que se hizo (el usuario eligió "etiquetas, sin filtro"):
+
+- `scratchpad/gen_allergens.js` parsea el texto libre → claves EU-14
+  (`contains` / `may`), descartando "Libre de …" (su ausencia no informa)
+  y los códigos basura de 2 letras (`gb.`, `sh.`, `x99.`). Genera
+  `js/data/product-allergens.js` (1.409 productos del catálogo Mercadona,
+  ~75 KB). Un `export_product_allergens.py` en PythonProject queda
+  pendiente para regenerarlo en condiciones (hoy sale de un Node one-off
+  que lee `products.db.json` en solo lectura).
+- `js/core/allergens.js`: `getProductAllergens()`, `formatAllergenSummary()`,
+  `renderAllergenLine()`. NO filtra nada, NO participa en generar planes.
+  Sin dato = `null` / `""`, nunca una afirmación de "seguro".
+- `render-no-cook.js`: línea "Contiene: … · Puede contener: …" bajo cada
+  producto de "sin cocinar" cuando la etiqueta lo trae, más un aviso fijo
+  arriba ("que no aparezcan no significa que no los lleve"). El motor de
+  PLATOS no se toca (roles genéricos sin unión a SKU, no hay etiqueta).
+- `tests/allergens.test.js` (13 tests), con la anti-regresión clave:
+  `no-cook-generator.js` no menciona la API de alérgenos y un producto
+  "Contiene gluten" sigue siendo elegible. 397 tests en verde.
+
+Pusheado, **NO re-desplegado** todavía.
 
 ---
 
