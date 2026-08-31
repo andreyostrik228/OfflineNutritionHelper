@@ -3300,6 +3300,242 @@ var DISH_INSTRUCTIONS = {
       "Calienta el arroz con un chorrito de agua, tapado 1 minuto.",
       "Mezcla todo. Un chorrito de vinagre levanta las lentejas. Sal y pimienta."
     ]
+  },
+
+  // ── Tanda 2026-08-31 (f) (264 → 285 platos) ──────────────────────────
+  // Últimas permutaciones de cena (proteína + grano + verdura). Mismos
+  // bloques. "Merluza al ajillo con verduras" se queda SIN instrucciones:
+  // necesita ajo y ese rol sigue sin resolver (T2).
+
+  "Pavo picado con cuscús y calabacín": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Calabacín en dados de un centímetro, salteado con una cucharada de aceite y sal a fuego fuerte 5 minutos hasta dorar.",
+      "Extiende el pavo picado en la sartén SIN tocarlo 1 minuto; rómpelo y saltea 4 minutos. En cuanto pierde el rosa, ya está: pasado queda seco.",
+      "Cuscús: agua caliente por encima, tapado 2 minutos, ahueca con TENEDOR.",
+      "Mezcla cuscús, pavo y calabacín. Sal, pimienta, pimentón."
+    ]
+  },
+
+  "Pavo picado con patatas y brócoli": {
+    difficulty: 2,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Brócoli en ramilletes, 4 minutos en agua con sal; escúrrelo cuando el tallo resista.",
+      "Patata cocida en rodajas, dorada en una sartén con una cucharada de aceite 3 minutos por lado. Sácala.",
+      "Pavo picado en la misma sartén SIN tocarlo 1 minuto; rómpelo y saltea 4 minutos. En cuanto pierde el rosa, fuera.",
+      "Mezcla con la patata y el brócoli. Sal, pimienta, un poco de tomate frito da jugosidad."
+    ]
+  },
+
+  "Pavo con cuscús y champiñones": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Champiñones en láminas (papel, no agua), a fuego fuerte 5 minutos hasta que suelten y reevaporen el agua. Sácalos.",
+      "Pavo en tiras finas, seco y salado. Misma sartén, fuego medio-alto, 4 minutos hasta que pierda el rosa. En cuanto está, fuera: es seco.",
+      "Cuscús: agua caliente, tapado 2 minutos, tenedor.",
+      "Mezcla cuscús, pavo y champiñones. Pimienta y aceite crudo."
+    ]
+  },
+
+  "Pavo con patatas y zanahoria": {
+    difficulty: 2,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Zanahoria en rodajas, 8 minutos en agua con sal.",
+      "Patata cocida en rodajas, dorada en una sartén 3 minutos por lado. Sácala.",
+      "Pavo en tiras finas, seco y salado, en la misma sartén 4 minutos hasta que pierda el rosa. Fuera enseguida.",
+      "Sirve pavo, patata y zanahoria. Sal, pimienta, un hilo de aceite crudo."
+    ]
+  },
+
+  "Carne picada con patatas y coliflor": {
+    difficulty: 2,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Coliflor en ramilletes pequeños, 5 minutos en agua con sal; escúrrela en cuanto ceda, pasa a puré en nada.",
+      "Patata cocida en rodajas, dorada 3 minutos por lado. Sácala.",
+      "Carne picada en la misma sartén a fuego alto SIN remover 1 minuto; rómpela y saltea 5 minutos. Si suelta agua, sube el fuego hasta que se evapore.",
+      "Mezcla con la patata y la coliflor. Sal, pimienta, pimentón."
+    ]
+  },
+
+  "Ternera con patatas y pimientos": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Pimiento sin las venas blancas (amargan) en tiras, a fuego fuerte 6 minutos hasta manchas oscuras. Sácalo.",
+      "Patata cocida en rodajas, dorada 3 minutos por lado. Sácala.",
+      "Corta la ternera en tiras FINAS y CONTRA LA FIBRA (cruza las líneas o queda dura), seca y salada. Fuego máximo, 2 minutos. No más.",
+      "Mezcla con patata y pimiento. Pimienta."
+    ]
+  },
+
+  "Ternera con arroz y espinacas": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Corta la ternera en tiras FINAS y CONTRA LA FIBRA, seca y salada.",
+      "Sartén a fuego MÁXIMO con una cucharada de aceite. Ternera en una sola capa, 2 minutos. Pasada de ahí se seca.",
+      "Echa las espinacas, bajan en 30 segundos con el calor.",
+      "Mezcla con el arroz caliente. Sal y pimienta."
+    ]
+  },
+
+  "Solomillo de ternera con pasta y calabacín": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Calabacín en medias lunas, salteado con una cucharada de aceite y sal a fuego medio-alto 5 minutos hasta dorar. Sácalo.",
+      "Saca el solomillo 15 minutos antes, sécalo y sálalo. Fuego ALTO, 2 minutos por lado (3 cm).",
+      "REPOSA la carne 5 minutos antes de cortar, o el jugo se va al plato. Córtala contra la fibra.",
+      "Mezcla la pasta ya cocida con el calabacín y dos cucharadas de agua; sirve con el solomillo en lonchas."
+    ]
+  },
+
+  "Lomo de cerdo con arroz y zanahoria": {
+    difficulty: 2,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Zanahoria en rodajas, 8 minutos en agua con sal.",
+      "Filetes de lomo de un dedo, secos y salados. Sartén a fuego medio-alto, 3 minutos + 2 minutos.",
+      "Retíralo cuando el centro pase de rosa a pálido: es muy magro, del todo blanco queda seco.",
+      "Calienta el arroz (chorrito de agua, tapado 1 minuto), sirve con la zanahoria y el cerdo. Pimienta."
+    ]
+  },
+
+  "Lomo de cerdo con pasta y champiñones": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Champiñones en láminas (papel, no agua), a fuego fuerte 5 minutos hasta que suelten y reevaporen el agua. Sácalos.",
+      "Filetes de lomo de un dedo, secos y salados. Misma sartén, 3 minutos + 2 minutos. Fuera cuando el centro pasa de rosa a pálido.",
+      "Devuelve los champiñones, añade la pasta ya cocida con dos cucharadas de agua, mezcla 1 minuto.",
+      "Trocea el cerdo encima. Pimienta y aceite crudo."
+    ]
+  },
+
+  "Conejo con pasta y verduras salteadas": {
+    difficulty: 3,
+    equipment: ["olla"],
+    steps: [
+      "El conejo es muy magro y con huesos finos: hecho rápido queda como suela. Trocéalo, sécalo y sálalo.",
+      "Dóralo en una olla ancha con dos cucharadas de aceite a fuego fuerte, por tandas, 6 minutos.",
+      "Fuego al mínimo, medio vaso de agua, tapa, 35 minutos. Se separa del hueso = hecho. OJO CON LAS ESPINAS FINAS.",
+      "Saltea las verduras congeladas 5 minutos aparte, mézclalas con la pasta ya cocida y sirve con el conejo y su jugo."
+    ]
+  },
+
+  "Conejo con quinoa y coliflor": {
+    difficulty: 3,
+    equipment: ["olla"],
+    steps: [
+      "Trocea el conejo, sécalo y sálalo. Muy magro: dorado y luego fuego bajo tapado, o queda como suela.",
+      "Dóralo en una olla con dos cucharadas de aceite a fuego fuerte, por tandas, 6 minutos. Fuego al mínimo, medio vaso de agua, tapa, 35 minutos.",
+      "Se separa del hueso = hecho. Ojo con las espinas finas.",
+      "Coliflor en ramilletes pequeños, 5 minutos en agua con sal; escúrrela en cuanto ceda. Mézclala con la quinoa caliente y sirve con el conejo."
+    ]
+  },
+
+  "Jamón serrano con pasta y espinacas": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "El jamón serrano es curado, NO se cocina: va crudo al final, encima. Salteado se endurece y suelta toda su sal.",
+      "Echa las espinacas en una sartén con una cucharadita de aceite, 1 minuto hasta que bajen.",
+      "Añade la pasta ya cocida con dos cucharadas de agua y mezcla 1 minuto.",
+      "Sirve y reparte el jamón por encima sin trocearlo mucho. NO añadas sal: la pone toda el jamón. Aceite crudo y pimienta."
+    ]
+  },
+
+  "Jamón serrano con quinoa y pimientos": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Pimiento sin venas blancas en tiras, a fuego fuerte 6 minutos hasta manchas oscuras.",
+      "Calienta la quinoa y ahuécala con un tenedor; mézclala con el pimiento.",
+      "El jamón serrano va crudo, NO se cocina. Repártelo por encima en lonchas sin trocear.",
+      "NO añadas sal: la pone toda el jamón. Un hilo de aceite crudo y pimienta."
+    ]
+  },
+
+  "Lentejas con pasta y espinacas": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Escurre y enjuaga las lentejas de bote hasta que el agua salga clara.",
+      "Echa las espinacas en una sartén con una cucharadita de aceite, 1 minuto hasta que bajen.",
+      "Añade las lentejas y calienta 3 minutos a fuego suave, REMOVIENDO LO JUSTO o se hacen puré. Luego la pasta con dos cucharadas de agua.",
+      "Un chorrito de vinagre levanta las lentejas. Sal, pimienta, aceite crudo."
+    ]
+  },
+
+  "Alubias con pasta y brócoli": {
+    difficulty: 1,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Brócoli en ramilletes, 4 minutos en agua con sal; escúrrelo cuando el tallo resista.",
+      "Escurre y enjuaga las alubias de bote. Son MUY FRÁGILES: casi no se remueven o se hacen crema.",
+      "Caliéntalas en una sartén con una cucharada de aceite y dos cucharadas de agua, 2 minutos, moviendo la sartén; añade la pasta ya cocida y mezcla con cuidado.",
+      "Incorpora el brócoli. Sal, pimienta, pimentón, aceite crudo."
+    ]
+  },
+
+  "Alubias con quinoa y calabacín": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Calabacín en dados de un centímetro, salteado con una cucharada de aceite y sal a fuego fuerte 5 minutos hasta dorar.",
+      "Escurre y enjuaga las alubias de bote. Añádelas con dos cucharadas de agua, 2 minutos, moviendo la sartén en vez de remover: son frágiles.",
+      "Mezcla con la quinoa caliente (ahuécala con tenedor).",
+      "Sal, pimienta, pimentón y un hilo de aceite crudo."
+    ]
+  },
+
+  "Tofu con pasta y zanahoria": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "PRENSA el tofu 15 minutos con un peso encima. Dados, sal.",
+      "Zanahoria en rodajas finas, 6 minutos en agua con sal.",
+      "Dora el tofu en una sartén con una cucharada de aceite a fuego medio-alto, sin tocarlo 4 minutos hasta que tenga costra, luego 3 minutos más.",
+      "Mezcla la pasta ya cocida con la zanahoria, el tofu y dos cucharadas de agua. Soja o sal, pimienta."
+    ]
+  },
+
+  "Tofu con quinoa y champiñones": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Prensa el tofu 15 minutos con un peso encima. Dados, sal.",
+      "Champiñones en láminas (papel, no agua), a fuego fuerte 5 minutos hasta que suelten y reevaporen el agua. Sácalos.",
+      "Tofu en la misma sartén, sin tocarlo 4 minutos hasta costra, vuelta 3 minutos.",
+      "Mezcla con los champiñones y la quinoa caliente. Soja o sal, pimienta."
+    ]
+  },
+
+  "Tempeh con quinoa y verduras salteadas": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Cuece el tempeh 10 minutos en agua hirviendo cubriéndolo (le quita el amargor). Sécalo, dados.",
+      "Verduras congeladas directas a fuego fuerte con una cucharada de aceite, 5 minutos hasta que evaporen su agua. Sácalas.",
+      "Dora el tempeh en la misma sartén 5 minutos, con un chorrito de soja al final.",
+      "Mezcla con las verduras y la quinoa caliente. Pimienta."
+    ]
+  },
+
+  "Tempeh con trigo sarraceno y coliflor": {
+    difficulty: 2,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Cuece el tempeh 10 minutos en agua hirviendo cubriéndolo. Sécalo, dados.",
+      "Coliflor en ramilletes pequeños, 5 minutos en agua con sal; escúrrela en cuanto ceda.",
+      "Dora el tempeh en una sartén con una cucharada de aceite 5 minutos, con un chorrito de soja al final.",
+      "Calienta el trigo sarraceno y sepáralo con un tenedor; mézclalo con el tempeh y la coliflor. Pimienta."
+    ]
   }
 };
 
