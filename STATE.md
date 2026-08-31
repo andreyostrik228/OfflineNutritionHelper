@@ -46,6 +46,53 @@
 > descripción literal de USDA. Golden-masters recapturados (los datos
 > cambian, no el algoritmo); los 7 tests de contrato intactos.
 >
+> ### ⏩ UPDATE 2026-09-01 — T4, T5 y tres tareas nuevas (A/B/C) hechas
+>
+> **T4** (`6f072a6`): 14 platos españoles nuevos — tortilla de patatas,
+> pollo al ajillo (×2), pisto, lentejas/garbanzos guisados, bacalao con
+> tomate, merluza a la plancha / en salsa verde, huevos a la flamenca, sopa
+> de ajo, ensaladilla, champiñones al ajillo, gazpacho. `dishes.js`
+> 334→348; `DISH_CUISINE_ESPANOLA` 25→39. kcal/macros/coste = SUMA real de
+> los ingredientes (roles resueltos, nada inventado); cada uno con pasos.
+> Baselines de recuento de roles 81→84 en 3 tests; golden-master seed=7
+> recapturado.
+>
+> **T5** (deployment `8c225c95`): desplegado a producción con
+> `npx wrangler pages deploy <dir_montado>` — dir montado = `index.html` +
+> `assets/` + `js/` (sin tests/docs/db). Vivo en
+> `offline-nutrition-helper.pages.dev`, verificado. Cloudflare Pages es
+> direct-upload, sin integración git.
+>
+> **Tres tareas nuevas del usuario (2026-09-01), pusheadas a `origin/main`,
+> NO re-desplegadas todavía:**
+>
+> - **A — grupos de "no me gusta"** (`2a6d10b` + `45f5bc3`): nuevo
+>   `js/data/dislike-groups.js`. Escribir p. ej. "pescado" en *alimentos
+>   que no te gustan* ofrece arriba un botón en negrita **"Todos: pescado"**
+>   (mete el grupo entero) y debajo cada producto/rol que casa.
+>   `expandDislikeTerms()` en `matchesDislike()` expande el token de grupo a
+>   los stems de sus miembros. 9 grupos (pescado, marisco, lácteos [sin
+>   mantequilla], frutos secos, carne, cerdo, huevo, gluten [sin
+>   avena/arroz], legumbres). `caballa` con la `a` final para que "Cola de
+>   caballo" no case. Sigue siendo preferencia BLANDA (pasarse de ancho, ok).
+> - **B — botón de foto por producto** (`dfb8339`): botón 📷 pequeño junto a
+>   cada nombre de producto (items sin cocinar y tarjetas verificadas) →
+>   `mercadonaProductUrl(product)` = `tienda.mercadona.es/product/<id>` (id
+>   numérico, sufijo `.1`/`.2` recortado) o si no `search-results?query=`.
+>   Solo Mercadona, abre en pestaña nueva. Helper `renderProductFindBtn()`
+>   en `render.js`.
+> - **C — reroll por toma en el plan generado** (`ee054be`): cada tarjeta de
+>   toma en "Tu plan de hoy" tiene un botón "↻ Cambiar" que re-tira solo esa
+>   toma (snacks incluidos). Nuevo
+>   `regeneratePlanMeal(meals, mealKey, dayOptions, storeId, pantryState)`
+>   en `plan-generator.js` — el gemelo en memoria de `regenerateSingleMeal()`
+>   (entry guardada). `handleSwapPlanMeal` + `rerenderCurrentPlan` en
+>   `app.js`. "Mis planes" ya tenía su equivalente
+>   (`data-action="regenerate-single-meal"`, `render-pantry.js`).
+>
+> HEAD ahora `ee054be`, **384 tests en verde**. Solo T6 (alergias) queda de
+> la lista original.
+>
 > ### 0. ¿Estás en la carpeta correcta?
 >
 > El proyecto **se movió**. La ruta buena, y la única con git y tests, es:
@@ -59,9 +106,9 @@
 > bueno: es una foto vieja, no el proyecto. Si `git status` falla o
 > `node tests/run-tests.js` no existe, estás en la copia equivocada.
 >
-> Estado del repo real: **HEAD `4477365`, 372 tests en verde** (era
-> `ec6f686` antes de los cuatro commits del 2026-08-31 — ver el UPDATE de
-> arriba).
+> Estado del repo real: **HEAD `ee054be`, 384 tests en verde** (ver los dos
+> UPDATE de arriba: `4477365` tras T1, luego T2/T3/T4/T5 y las tareas
+> A/B/C).
 >
 > ### 1. YA COMMITEADO (2026-08-31), y "sin comitear" nunca fue garantía
 >
@@ -5829,8 +5876,8 @@ Este repo vive ahora en `Desktop\Offline Nutrition Helper\nutrition-planner`.
 La ruta antigua `Desktop\nutrition-planner-fase2\nutrition-planner` **ya no
 existe**; cualquier documento que la cite está obsoleto. Y hay una **copia
 MUERTA en `Desktop\nutrition-planner`** sin git y sin nada de este trabajo,
-que se abre por error con facilidad. El bueno tiene git, HEAD `4477365`
-(2026-08-31) y 372 tests en verde. Comprueba con `git log -1` antes de
+que se abre por error con facilidad. El bueno tiene git, HEAD `ee054be`
+(2026-09-01) y 384 tests en verde. Comprueba con `git log -1` antes de
 fiarte de una carpeta.
 
 ### 1. YA COMITEADO (2026-08-31) — y "sin comitear" nunca fue garantía
@@ -6134,24 +6181,48 @@ nivel 1, 156 de nivel 2, 7 de nivel 3.
 
 ---
 
-**T4 — P3. Escribir platos españoles nuevos.** Este es el arreglo de verdad
-a "que la app se sienta española", no subir `CUISINE_BIAS_WEIGHT`.
+**T4 — P3. Escribir platos españoles nuevos. ✅ HECHO 2026-08-31 (`6f072a6`).**
 
-Solo hay 25 platos españoles de 334, y 9 son "jamón serrano con algo". El
-techo real es ~0,7 tomas españolas al día por mucho que se suba el peso.
-
-BLOQUEADO por T2 en su mayor parte: tortilla de patatas, pollo al ajillo,
-pisto, gazpacho y lentejas guisadas necesitan cebolla o ajo. Construibles ya
-con solo aceite: merluza a la plancha, ensaladilla. Un plato nuevo necesita
-name/category/kcal/protein/carbs/fat/cost/prep/mainProt/taste/items **y**
-sus pasos — y los macros salen calculados de roles resueltos, no inventados.
+14 platos nuevos — tortilla de patatas, pollo al ajillo (×2), pisto,
+lentejas/garbanzos guisados, bacalao con tomate, merluza a la plancha / en
+salsa verde, huevos a la flamenca, sopa de ajo, ensaladilla, champiñones al
+ajillo, gazpacho. `dishes.js` 334→348; `DISH_CUISINE_ESPANOLA` 25→39. Cada
+kcal/macro/coste es la SUMA real de los ingredientes (roles resueltos en
+T2), no inventada; cada plato con pasos. Baselines de recuento de roles
+81→84 en 3 tests; golden-master seed=7 recapturado.
 
 ---
 
-**T5 — P4. Desplegar.** Producción sigue sirviendo una build anterior a todo
-esto. `npx wrangler pages deploy . --project-name=offline-nutrition-helper`.
-**Solo con permiso explícito del usuario.** T1 ya está hecho (2026-08-31),
-así que esto queda desbloqueado — pero el permiso sigue siendo por vez.
+**T5 — P4. Desplegar. ✅ HECHO 2026-08-31 (deployment `8c225c95`).**
+
+`npx wrangler pages deploy <dir_montado>` con dir montado = `index.html` +
+`assets/` + `js/` (sin tests/docs/db), `--project-name
+offline-nutrition-helper --branch main`. Vivo en
+`offline-nutrition-helper.pages.dev`, verificado. **Las tareas A/B/C
+(2026-09-01) están en `origin/main` pero AÚN NO re-desplegadas** — el
+permiso de despliegue sigue siendo por vez.
+
+---
+
+**Tareas A/B/C — P3, pedidas por el usuario el 2026-09-01. ✅ HECHAS,
+pusheadas, sin re-desplegar.**
+
+- **A** (`2a6d10b` + `45f5bc3`): grupos en "no me gusta". `js/data/dislike-groups.js`
+  nuevo; botón "Todos: <grupo>" arriba de las sugerencias + miembros
+  debajo; `expandDislikeTerms()` en `matchesDislike()`. 9 grupos. Sigue
+  siendo preferencia blanda.
+- **B** (`dfb8339`): botón 📷 por producto → página de Mercadona del `id`
+  (`tienda.mercadona.es/product/<id>`), o búsqueda si el id no es numérico.
+  Solo Mercadona. `renderProductFindBtn()` en `render.js`.
+- **C** (`ee054be`): botón "↻ Cambiar" en cada tarjeta de toma del plan
+  generado — re-tira solo esa toma. `regeneratePlanMeal()` en
+  `plan-generator.js` (gemelo en memoria de `regenerateSingleMeal()`);
+  `handleSwapPlanMeal` + `rerenderCurrentPlan` en `app.js`. "Mis planes" ya
+  tenía el suyo.
+
+Pendiente: el usuario debe probar a mano las flechas del teclado del
+autocompletado de "no me gusta" (el navegador de la herramienta no entrega
+pulsaciones reales).
 
 ---
 
