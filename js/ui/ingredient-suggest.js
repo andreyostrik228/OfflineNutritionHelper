@@ -128,6 +128,7 @@ function matchDislikeSuggestions(term, already) {
   });
 
   var groupEntry = null;
+  var groupStems = null;
   if (typeof DISLIKE_GROUPS !== "undefined" && needle.length >= 2) {
     Object.keys(DISLIKE_GROUPS).forEach(function (key) {
       if (groupEntry || taken[key]) return;
@@ -135,23 +136,31 @@ function matchDislikeSuggestions(term, already) {
       // el término tecleado es prefijo de la clave o de la etiqueta
       if (key.indexOf(needle) === 0 || normalizePreferenceText(label).indexOf(needle) === 0) {
         groupEntry = { label: "Todos: " + label, value: label, kind: "group" };
+        groupStems = DISLIKE_GROUPS[key];
       }
     });
   }
 
   var starts = [];
   var contains = [];
+  var groupMembers = [];
 
   getDislikeSuggestNames().forEach(function (name) {
     var hay = normalizePreferenceText(name);
     if (taken[hay]) return;
 
     var at = hay.indexOf(needle);
-    if (at === 0) starts.push(name);
-    else if (at > 0) contains.push(name);
+    if (at === 0) { starts.push(name); return; }
+    if (at > 0) { contains.push(name); return; }
+
+    // Miembros del grupo: "pescado" no es subcadena de "Merluza", pero
+    // Merluza sí es del grupo pescado -> se lista debajo del botón "Todos".
+    if (groupStems && groupStems.some(function (s) { return hay.indexOf(s) !== -1; })) {
+      groupMembers.push(name);
+    }
   });
 
-  var itemEntries = starts.concat(contains).map(function (name) {
+  var itemEntries = starts.concat(contains).concat(groupMembers).map(function (name) {
     return { label: name, value: name, kind: "item" };
   });
 

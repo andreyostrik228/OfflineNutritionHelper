@@ -49,10 +49,14 @@ var DISLIKE_GROUPS = {
     "zamburi", "marisco",
   ],
   "lacteos": [
-    "leche", "yogur", "queso", "quesito", "requeson", "nata", "mantequilla",
+    // OJO: "mantequilla" a secas NO va aquí -- casaría con "Mantequilla de
+    // cacahuete", que no es lácteo. La mantequilla real aparece poco como
+    // ingrediente suelto; si hace falta, "mantequilla hacendado" u otro
+    // stem más específico.
+    "leche", "yogur", "queso", "quesito", "requeson", "nata",
     "kefir", "cuajada", "skyr", "mozzarella", "ricotta", "natillas",
     "cottage", "mascarpone", "burgos", "feta", "parmesano", "cheddar",
-    "gouda", "brie", "cuajo",
+    "gouda", "brie",
   ],
   "frutos secos": [
     "almendra", "nuez", "nueces", "avellana", "anacardo", "pistacho",

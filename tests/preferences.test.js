@@ -392,13 +392,19 @@ function run(t) {
 
   // ── Grupos de "no me gusta" (js/data/dislike-groups.js) ──────────────
 
-  t.test("escribir 'pescado' ofrece la entrada de grupo la PRIMERA, con value 'pescado'", function () {
+  t.test("escribir 'pescado' ofrece la entrada de grupo la PRIMERA y debajo cada pescado del catálogo", function () {
     var s = sandbox();
     var hits = s.matchDislikeSuggestions("pescado");
-    assert.ok(hits.length > 0);
+    assert.ok(hits.length > 1, "grupo + miembros");
     assert.strictEqual(hits[0].kind, "group");
     assert.strictEqual(hits[0].value, "pescado");
     assert.ok(hits[0].label.indexOf("Todos") === 0, "la etiqueta debe dejar claro que es 'todos': " + hits[0].label);
+    // "pescado" no es subcadena de "Merluza", pero Merluza es del grupo:
+    // debe aparecer igualmente como ítem debajo del botón.
+    var itemValues = hits.slice(1).map(function (h) { return h.value; });
+    assert.ok(itemValues.indexOf("Merluza") !== -1, "esperaba Merluza entre: " + itemValues.join(", "));
+    assert.ok(itemValues.some(function (v) { return v.indexOf("Atún") === 0; }), "esperaba atún: " + itemValues.join(", "));
+    assert.ok(hits.slice(1).every(function (h) { return h.kind === "item"; }));
   });
 
   t.test("un token de grupo en la lista de dislikes filtra TODOS sus miembros", function () {
