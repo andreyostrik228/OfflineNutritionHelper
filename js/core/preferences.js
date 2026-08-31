@@ -64,6 +64,12 @@ function normalizePreferenceText(text) {
  * menos que quedarse corto -- exactamente al revés que en alergias, donde
  * un falso negativo es el que hace daño.
  *
+ * Grupos (2026-09-01): un token como "pescado" o "lácteos" se expande a
+ * sus miembros (`expandDislikeTerms`, js/data/dislike-groups.js) antes de
+ * casar, así que "pescado" tapa merluza/atún/salmón/... de una vez. Si ese
+ * archivo no está cargado, expandDislikeTerms devuelve la lista tal cual y
+ * el comportamiento es el de antes.
+ *
  * @param {string} name - nombre de producto o de ingrediente
  * @param {string[]} dislikes
  * @returns {boolean}
@@ -74,8 +80,10 @@ function matchesDislike(name, dislikes) {
   var haystack = normalizePreferenceText(name);
   if (!haystack) return false;
 
-  for (var i = 0; i < dislikes.length; i++) {
-    var needle = normalizePreferenceText(dislikes[i]);
+  var terms = (typeof expandDislikeTerms === "function") ? expandDislikeTerms(dislikes) : dislikes;
+
+  for (var i = 0; i < terms.length; i++) {
+    var needle = normalizePreferenceText(terms[i]);
     if (!needle) continue;
     if (haystack.indexOf(needle) !== -1) return true;
   }

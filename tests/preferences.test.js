@@ -29,6 +29,7 @@ function sandbox() {
     projPath("js/data/real-products.js"),
     projPath("js/data/no-cook-classifier.js"),
     projPath("js/core/pricing.js"),
+    projPath("js/data/dislike-groups.js"),
     projPath("js/core/preferences.js"),
     projPath("js/engine/no-cook-generator.js"),
     projPath("js/data/dish-cuisine.js"),
@@ -333,13 +334,17 @@ function run(t) {
   // Solo la LÓGICA pura (trocear el texto y elegir candidatos). El DOM se
   // verifica en el navegador, no aquí.
 
+  // matchDislikeSuggestions devuelve objetos { label, value, kind } desde
+  // 2026-09-01 (entrada de grupo). Los tests comparan .value.
+  function values(hits) { return hits.map(function (h) { return h.value; }); }
+
   t.test("sugiere por prefijo: 'lente' -> lentejas (el caso que pidió el usuario)", function () {
     var s = sandbox();
     var hits = s.matchDislikeSuggestions("lente");
     assert.ok(hits.length > 0, "no sugirió nada para 'lente'");
     assert.ok(
-      hits.some(function (n) { return n.toLowerCase().indexOf("lentejas") !== -1; }),
-      "esperaba lentejas entre: " + hits.join(", ")
+      values(hits).some(function (v) { return v.toLowerCase().indexOf("lentejas") !== -1; }),
+      "esperaba lentejas entre: " + values(hits).join(", ")
     );
   });
 
@@ -351,8 +356,8 @@ function run(t) {
      ["salmon", "salmón"], ["atun", "atún"], ["jamon", "jamón"]].forEach(function (pair) {
       var hits = s.matchDislikeSuggestions(pair[0]);
       assert.ok(
-        hits.some(function (n) { return n.toLowerCase().indexOf(pair[1]) !== -1; }),
-        "escribir '" + pair[0] + "' debería ofrecer '" + pair[1] + "'; ofreció: " + hits.join(", ")
+        values(hits).some(function (v) { return v.toLowerCase().indexOf(pair[1]) !== -1; }),
+        "escribir '" + pair[0] + "' debería ofrecer '" + pair[1] + "'; ofreció: " + values(hits).join(", ")
       );
     });
   });
@@ -371,8 +376,8 @@ function run(t) {
     var s = sandbox();
     var all = s.matchDislikeSuggestions("platano");
     assert.ok(all.length > 0);
-    var again = s.matchDislikeSuggestions("platano", all);
-    assert.strictEqual(again.length, 0, "repitió una entrada ya escrita: " + again.join(", "));
+    var again = s.matchDislikeSuggestions("platano", values(all));
+    assert.strictEqual(again.length, 0, "repitió una entrada ya escrita: " + values(again).join(", "));
   });
 
   t.test("un término vacío no sugiere nada (no se abre la lista al poner una coma)", function () {
@@ -383,6 +388,55 @@ function run(t) {
     assert.strictEqual(s.matchDislikeSuggestions("").length, 0);
     assert.strictEqual(s.matchDislikeSuggestions("   ").length, 0);
     assert.strictEqual(s.matchDislikeSuggestions(s.splitDislikesInput("cebolla, ").term).length, 0);
+  });
+
+  // ── Grupos de "no me gusta" (js/data/dislike-groups.js) ──────────────
+
+  t.test("escribir 'pescado' ofrece la entrada de grupo la PRIMERA, con value 'pescado'", function () {
+    var s = sandbox();
+    var hits = s.matchDislikeSuggestions("pescado");
+    assert.ok(hits.length > 0);
+    assert.strictEqual(hits[0].kind, "group");
+    assert.strictEqual(hits[0].value, "pescado");
+    assert.ok(hits[0].label.indexOf("Todos") === 0, "la etiqueta debe dejar claro que es 'todos': " + hits[0].label);
+  });
+
+  t.test("un token de grupo en la lista de dislikes filtra TODOS sus miembros", function () {
+    var s = sandbox();
+    // "pescado" no es el nombre de ningún ingrediente, pero como grupo debe
+    // tapar merluza, atún, salmón, bacalao...
+    assert.strictEqual(s.matchesDislike("Merluza a rodajas", ["pescado"]), true);
+    assert.strictEqual(s.matchesDislike("Atún claro al natural Hacendado", ["pescado"]), true);
+    assert.strictEqual(s.matchesDislike("Filetes de caballa del sur en tomate Hacendado", ["pescado"]), true);
+    // "Cola de caballo" (infusión) NO cae en pescado -- stem es "caballa".
+    assert.strictEqual(s.matchesDislike("Infusión Cola de caballo Hacendado", ["pescado"]), false);
+    // Lo que no es del grupo, no se toca.
+    assert.strictEqual(s.matchesDislike("Yogur griego natural", ["pescado"]), false);
+  });
+
+  t.test("filterDislikedProducts con 'lácteos' quita leche/yogur/queso y deja el resto", function () {
+    var s = sandbox();
+    var pool = [
+      { name: "Leche semidesnatada Hacendado" },
+      { name: "Yogur natural azucarado Hacendado" },
+      { name: "Queso rallado Hacendado" },
+      { name: "Merluza a rodajas" },
+      { name: "Arroz redondo Hacendado" },
+    ];
+    var kept = s.filterDislikedProducts(pool, ["lácteos"]).map(function (p) { return p.name; });
+    assert.deepStrictEqual(kept.sort(), ["Arroz redondo Hacendado", "Merluza a rodajas"]);
+  });
+
+  t.test("si el grupo ya está en la lista, no se vuelve a ofrecer", function () {
+    var s = sandbox();
+    var hits = s.matchDislikeSuggestions("pesc", ["pescado"]);
+    assert.ok(hits.every(function (h) { return h.kind !== "group"; }), "el grupo pescado ya estaba escrito");
+  });
+
+  t.test("un solo carácter no dispara la entrada de grupo (evita ruido)", function () {
+    var s = sandbox();
+    var hits = s.matchDislikeSuggestions("p");
+    assert.ok(hits.every(function (h) { return h.kind !== "group"; }));
   });
 
 }

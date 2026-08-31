@@ -443,6 +443,20 @@ body {
   color: var(--green-deep);
 }
 
+/* Entrada de grupo ("Todos: pescado") -- va la primera, se distingue del
+   resto: negrita, con icono, y una línea debajo que la separa de los
+   ingredientes sueltos. */
+.suggest-list__item--group {
+  font-weight: 700;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 2px;
+  padding-bottom: 9px;
+}
+
+.suggest-list__item--group::before {
+  content: "\1F6AB\00A0";
+}
+
 .field.full {
   grid-column: 1 / -1;
 }

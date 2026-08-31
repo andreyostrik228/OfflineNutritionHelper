@@ -104,9 +104,18 @@ function splitDislikesInput(value) {
  * Los que EMPIEZAN por el término van primero ("lente" -> "Lentejas"
  * antes que "Crema de lentejas"), que es lo que uno espera al teclear.
  *
+ * GRUPOS (2026-09-01): si lo tecleado es prefijo de un grupo
+ * (`DISLIKE_GROUPS`, js/data/dislike-groups.js), se antepone una entrada
+ * de grupo -- "Todos: pescado" -- que al aceptarse inserta el token
+ * "pescado", y matchesDislike() lo expande a merluza/atún/salmón/...
+ *
+ * Devuelve objetos `{ label, value, kind }`:
+ *   - kind "group": label "Todos: pescado", value "pescado"
+ *   - kind "item":  label === value === nombre de ingrediente
+ *
  * @param {string} term
  * @param {string[]} [already] - términos ya escritos, para no repetirlos
- * @returns {string[]}
+ * @returns {{label:string, value:string, kind:string}[]}
  */
 function matchDislikeSuggestions(term, already) {
   var needle = normalizePreferenceText(term);
@@ -117,6 +126,18 @@ function matchDislikeSuggestions(term, already) {
     var k = normalizePreferenceText(t);
     if (k) taken[k] = true;
   });
+
+  var groupEntry = null;
+  if (typeof DISLIKE_GROUPS !== "undefined" && needle.length >= 2) {
+    Object.keys(DISLIKE_GROUPS).forEach(function (key) {
+      if (groupEntry || taken[key]) return;
+      var label = (typeof DISLIKE_GROUP_LABELS !== "undefined" && DISLIKE_GROUP_LABELS[key]) || key;
+      // el término tecleado es prefijo de la clave o de la etiqueta
+      if (key.indexOf(needle) === 0 || normalizePreferenceText(label).indexOf(needle) === 0) {
+        groupEntry = { label: "Todos: " + label, value: label, kind: "group" };
+      }
+    });
+  }
 
   var starts = [];
   var contains = [];
@@ -130,7 +151,12 @@ function matchDislikeSuggestions(term, already) {
     else if (at > 0) contains.push(name);
   });
 
-  return starts.concat(contains).slice(0, DISLIKES_SUGGEST_LIMIT);
+  var itemEntries = starts.concat(contains).map(function (name) {
+    return { label: name, value: name, kind: "item" };
+  });
+
+  var all = groupEntry ? [groupEntry].concat(itemEntries) : itemEntries;
+  return all.slice(0, DISLIKES_SUGGEST_LIMIT);
 }
 
 /**
@@ -182,11 +208,12 @@ function initDislikesSuggest(inputEl) {
   }
 
   function paint() {
-    box.innerHTML = items.map(function (name, i) {
-      return '<li class="suggest-list__item' + (i === active ? " is-active" : "") + '"' +
+    box.innerHTML = items.map(function (item, i) {
+      var groupClass = item.kind === "group" ? " suggest-list__item--group" : "";
+      return '<li class="suggest-list__item' + groupClass + (i === active ? " is-active" : "") + '"' +
         ' role="option" id="dislikesSuggest-' + i + '"' +
         ' aria-selected="' + (i === active ? "true" : "false") + '"' +
-        ' data-index="' + i + '">' + escapeHtml(name) + "</li>";
+        ' data-index="' + i + '">' + escapeHtml(item.label) + "</li>";
     }).join("");
 
     box.hidden = !items.length;
@@ -205,9 +232,10 @@ function initDislikesSuggest(inputEl) {
   }
 
   /** Sustituye SOLO el término en curso; lo anterior se conserva tal cual. */
-  function accept(name) {
+  function accept(item) {
+    var value = (item && typeof item === "object") ? item.value : item;
     var parts = splitDislikesInput(inputEl.value);
-    inputEl.value = parts.prefix + name + ", ";
+    inputEl.value = parts.prefix + value + ", ";
     close();
     inputEl.focus();
   }
