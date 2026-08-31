@@ -182,6 +182,11 @@ document.addEventListener("DOMContentLoaded", function () {
   // (ver savePlanForToday(), pantry.js) para poder re-elegir UNA sola
   // toma más tarde respetando el mismo presupuesto/tiempo/sabor.
   var lastGeneratedDayOptions = null;
+  // profile/data/report del plan actual -- necesarios para re-pintar
+  // resumen/insights/avisos tras "Cambiar" una toma (swap-plan-meal).
+  var lastGeneratedProfile = null;
+  var lastGeneratedData = null;
+  var lastGeneratedReport = null;
 
   // Distinto de null SOLO entre "Cambiar el plan completo" (diálogo de
   // plan activo, ver "Gate en Generar plan..." en pantry.js) y la
@@ -252,10 +257,76 @@ document.addEventListener("DOMContentLoaded", function () {
     lastGeneratedMeals = null;
     lastGeneratedStore = null;
     lastGeneratedDayOptions = null;
+    lastGeneratedProfile = null;
+    lastGeneratedData = null;
+    lastGeneratedReport = null;
     pendingReplaceEntryId = null;
     if (planSavedNoticeEl) {
       planSavedNoticeEl.hidden = true;
       planSavedNoticeEl.innerHTML = "";
+    }
+  }
+
+  // ── "Cambiar" una sola toma del plan mostrado (sin confirmar) ────────
+  // El plan guardado tiene su propio botón equivalente en "Mis planes"
+  // (render-pantry.js, data-action="regenerate-single-meal"). Aquí es
+  // sobre el plan en memoria (lastGeneratedMeals), vía regeneratePlanMeal()
+  // (plan-generator.js), que re-elige SOLO esa toma respetando sus macros
+  // y el presupuesto que queda hoy.
+  function handleSwapPlanMeal(event) {
+    var btn = event.target.closest('button[data-action="swap-plan-meal"]');
+    if (!btn) return;
+    var mealKey = btn.dataset.mealKey;
+    if (!mealKey || !lastGeneratedMeals || !lastGeneratedDayOptions) return;
+    if (typeof regeneratePlanMeal !== "function") return;
+
+    btn.disabled = true;
+    var pantryState = (typeof getPantryState === "function") ? getPantryState() : null;
+    var res = regeneratePlanMeal(lastGeneratedMeals, mealKey, lastGeneratedDayOptions, lastGeneratedStore, pantryState);
+
+    if (!res || res.error || !res.meal) {
+      btn.disabled = false;
+      btn.textContent = "sin más opciones";
+      setTimeout(function () { btn.innerHTML = "↻ Cambiar"; }, 1600);
+      return;
+    }
+
+    var idx = -1;
+    for (var i = 0; i < lastGeneratedMeals.length; i++) {
+      if (lastGeneratedMeals[i].key === mealKey) { idx = i; break; }
+    }
+    if (idx === -1) { btn.disabled = false; return; }
+
+    // Conserva el horario de la toma: un cambio de plato no mueve la hora.
+    var old = lastGeneratedMeals[idx];
+    if (typeof old.time === "string") res.meal.time = old.time;
+    if (typeof old.timeMinutes === "number") res.meal.timeMinutes = old.timeMinutes;
+    lastGeneratedMeals[idx] = res.meal;
+
+    rerenderCurrentPlan();
+  }
+
+  /** Re-pinta el plan en memoria completo tras editar una toma. */
+  function rerenderCurrentPlan() {
+    if (!lastGeneratedMeals) return;
+    var total = (typeof sumMeals === "function")
+      ? sumMeals(lastGeneratedMeals)
+      : (lastGeneratedReport && lastGeneratedReport.total) || {};
+    var result = { meals: lastGeneratedMeals, total: total, report: lastGeneratedReport };
+
+    renderMeals(lastGeneratedMeals);
+    if (lastGeneratedProfile) renderSummary(lastGeneratedProfile, total);
+    safeInit("schedule-timeline-render", function () {
+      if (typeof renderScheduleTimeline === "function") renderScheduleTimeline(lastGeneratedMeals);
+    });
+    if (lastGeneratedProfile && lastGeneratedData) {
+      renderInsights(lastGeneratedProfile, result, lastGeneratedData);
+      renderWarnings(lastGeneratedProfile, result, lastGeneratedData);
+    }
+    if (typeof renderShoppingList === "function") {
+      safeInit("shopping-list-render", function () {
+        renderShoppingList(lastGeneratedMeals, lastGeneratedStore);
+      });
     }
   }
 
@@ -389,6 +460,9 @@ document.addEventListener("DOMContentLoaded", function () {
         lastGeneratedMeals = result.meals;
         lastGeneratedStore = result.report && result.report.store;
         lastGeneratedDayOptions = { budget: data.budget, cookTime: data.cookTime, taste: data.taste };
+        lastGeneratedProfile = profile;
+        lastGeneratedData = data;
+        lastGeneratedReport = result.report;
 
         // Guarda el perfil/formulario para la próxima visita (invitado:
         // este navegador; con sesión iniciada: también se empuja a la
@@ -518,6 +592,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   form.addEventListener("submit", handleSubmit);
   if (resetBtn) resetBtn.addEventListener("click", resetAll);
+  if (mealsContainer) mealsContainer.addEventListener("click", handleSwapPlanMeal);
 
   budgetModeRadios.forEach(function (radio) {
     radio.addEventListener("change", updateBudgetCustomVisibility);

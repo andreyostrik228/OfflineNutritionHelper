@@ -1020,6 +1020,35 @@ button:focus-visible {
   flex-shrink: 0;
 }
 
+.meal-head__right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* "Cambiar" -- re-elige SOLO esta toma. Discreto, no compite con el kcal. */
+.meal-swap-btn {
+  border: 1px solid var(--line);
+  background: var(--paper-raised);
+  color: var(--ink-soft);
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 4px 8px;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.meal-swap-btn:hover:not(:disabled),
+.meal-swap-btn:focus-visible {
+  color: var(--green-deep);
+  border-color: var(--green-deep);
+}
+
+.meal-swap-btn:disabled { opacity: 0.5; cursor: default; }
+
 .meal-body {
   padding: var(--space-5);
   color: var(--ink-soft);

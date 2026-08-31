@@ -210,6 +210,56 @@ function run(t) {
     ).purchaseCost;
     assert.ok(finalCost <= 25 + 0.01, "coste real del día tras 2 swaps (" + finalCost + ") no debería superar el presupuesto (25)");
   });
+
+  // ── regeneratePlanMeal(): plan RECIÉN generado, sin confirmar ────────
+  // Equivalente a regenerateSingleMeal() pero sobre result.meals (items
+  // con `grams`, no una entry con `requiredGrams`). Lo usa el botón
+  // "Cambiar" de las tarjetas del plan (app.js, swap-plan-meal).
+
+  t.test("regeneratePlanMeal(): devuelve un meal completo para la toma pedida, sin tocar meals", function () {
+    var s = freshEngineSandbox();
+    var profile = s.calculateProfile({ weight: 82, height: 178, age: 27, sex: "male", activity: 1.55, workouts: 4, goal: "recomp" });
+    var data = { budget: 22, cookTime: 30, taste: "mixed", store: "mercadona" };
+    var result = s.generateDietPlan(profile, data);
+    var before = JSON.parse(JSON.stringify(result.meals));
+
+    var regen = s.regeneratePlanMeal(result.meals, "lunch",
+      { budget: data.budget, cookTime: data.cookTime, taste: data.taste }, "mercadona", null);
+
+    assert.strictEqual(regen.error, undefined, "no debería fallar: " + regen.error);
+    assert.strictEqual(regen.meal.key, "lunch");
+    assert.ok(regen.meal.items.length > 0 && regen.meal.total && typeof regen.meal.dishName === "string");
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals)), before, "regeneratePlanMeal NO debe mutar el array de tomas");
+  });
+
+  t.test("regeneratePlanMeal(): la toma reemplazada + las otras 4 siguen dentro del presupuesto", function () {
+    var s = freshEngineSandbox();
+    var profile = s.calculateProfile({ weight: 82, height: 178, age: 27, sex: "male", activity: 1.55, workouts: 4, goal: "recomp" });
+    var data = { budget: 20, cookTime: 30, taste: "mixed", store: "mercadona" };
+    var result = s.generateDietPlan(profile, data);
+
+    var regen = s.regeneratePlanMeal(result.meals, "dinner",
+      { budget: 20, cookTime: 30, taste: "mixed" }, "mercadona", null);
+    assert.strictEqual(regen.error, undefined);
+
+    var merged = result.meals.map(function (m) { return m.key === "dinner" ? regen.meal : m; });
+    var cost = s.computeDayPurchaseCost(
+      merged.map(function (m) { return { items: m.items.map(function (it) { return { name: it.name, grams: it.grams }; }) }; }),
+      "mercadona", null
+    ).purchaseCost;
+    assert.ok(cost <= 20 + 0.01, "coste real del día tras el swap (" + cost + ") no debería superar el presupuesto (20)");
+  });
+
+  t.test("regeneratePlanMeal(): mealKey desconocido -> error, nunca lanza; sin dayOptions.budget usa Infinity", function () {
+    var s = freshEngineSandbox();
+    var profile = s.calculateProfile({ weight: 82, height: 178, age: 27, sex: "male", activity: 1.55, workouts: 4, goal: "recomp" });
+    var result = s.generateDietPlan(profile, { budget: 20, cookTime: 30, taste: "mixed", store: "mercadona" });
+
+    assert.strictEqual(s.regeneratePlanMeal(result.meals, "no-such-key", {}, "mercadona", null).error, "unknown_meal_key");
+    // sin budget: no revienta, resuelve una toma igualmente
+    var regen = s.regeneratePlanMeal(result.meals, "breakfast", {}, "mercadona", null);
+    assert.ok(regen.meal || regen.error === "no_alternative_found");
+  });
 }
 
 module.exports = { run: run };

@@ -1286,3 +1286,67 @@ function regenerateSingleMeal(entry, mealKey, pantryState) {
 
   return { error: "no_alternative_found" };
 }
+
+/**
+ * "Cambiar SOLO esta toma" en el plan RECIÉN GENERADO (todavía sin
+ * confirmar), a diferencia de regenerateSingleMeal() que opera sobre una
+ * entry ya guardada. Mismo criterio: se apunta a los macros que la toma ya
+ * tenía (`oldMeal.total`), se penaliza el plato actual en `usedState` (sin
+ * excluirlo del todo, es un "reroll") y se respeta el presupuesto real que
+ * queda hoy (budget − coste de compra de las otras 4 tomas). No muta
+ * `meals`: devuelve el `meal` nuevo y quien llama lo sustituye.
+ *
+ * @param {object[]} meals - result.meals de generateDietPlan() (items con `grams`)
+ * @param {string} mealKey - "breakfast"|"lunch"|"dinner"|"snack"|"snack2"
+ * @param {{budget:number, cookTime?:number, taste?:string}} dayOptions - lastGeneratedDayOptions (app.js)
+ * @param {string} [storeId]
+ * @param {object|null} [pantryState] - snapshot de getPantryState(), o null
+ * @returns {{ meal:object, tier:number }|{ error:string }}
+ */
+function regeneratePlanMeal(meals, mealKey, dayOptions, storeId, pantryState) {
+  var def = MEAL_DEFS.find(function (d) { return d.key === mealKey; });
+  if (!def) return { error: "unknown_meal_key" };
+  if (!Array.isArray(meals)) return { error: "meal_not_found" };
+
+  var oldMeal = meals.find(function (m) { return m.key === mealKey; });
+  if (!oldMeal || !oldMeal.total) return { error: "meal_not_found" };
+
+  var budget = (dayOptions && typeof dayOptions.budget === "number") ? dayOptions.budget : Infinity;
+  var store = storeId || DEFAULT_STORE_ID;
+
+  var usedState = { usedNames: [], usedProts: [], usedTastes: [] };
+  meals.forEach(function (m) {
+    if (typeof m.dishName === "string") usedState.usedNames.push(m.dishName);
+    if (typeof m.mainProt === "string") usedState.usedProts.push(m.mainProt);
+    if (typeof m.taste === "string")    usedState.usedTastes.push(m.taste);
+  });
+
+  var committedGrams = {};
+  var otherMealsForCost = meals
+    .filter(function (m) { return m.key !== mealKey; })
+    .map(function (m) {
+      return { items: (m.items || []).map(function (it) { return { name: it.name, grams: it.grams }; }) };
+    });
+  otherMealsForCost.forEach(function (m) { addItemsToPurchaseState(committedGrams, m.items); });
+
+  var mealCap = budget === Infinity
+    ? Infinity
+    : Math.max(0, round2(budget - computeDayPurchaseCost(otherMealsForCost, store, pantryState).purchaseCost));
+  var targetSpend = budget === Infinity ? mealCap : round2(budget * def.ratio);
+
+  var target = { kcal: oldMeal.total.kcal, protein: oldMeal.total.protein, carbs: oldMeal.total.carbs, fat: oldMeal.total.fat };
+  var data = {
+    cookTime: (dayOptions && typeof dayOptions.cookTime === "number") ? dayOptions.cookTime : 999,
+    taste:    (dayOptions && typeof dayOptions.taste === "string") ? dayOptions.taste : "mixed",
+    store:    store
+  };
+
+  for (var tier = 0; tier <= MAX_RELAXATION_TIER; tier++) {
+    var pick = pickDish(def.category, data, usedState, tier, mealCap, target, store, targetSpend, committedGrams, pantryState);
+    if (pick.dish) {
+      return { meal: buildMealFromDish(pick.dish, def.key, def.label, target, store, pick.scaleFactor), tier: tier };
+    }
+  }
+
+  return { error: "no_alternative_found" };
+}

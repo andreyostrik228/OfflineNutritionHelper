@@ -184,7 +184,12 @@ function renderMealCard(meal, total) {
           timeBadge +
           '<h3>' + escapeHtml(meal.label) + '</h3>' +
         '</div>' +
-        '<div class="meal-kcal">' + round0(total.kcal) + ' kcal</div>' +
+        '<div class="meal-head__right">' +
+          '<button type="button" class="meal-swap-btn" data-action="swap-plan-meal"' +
+            ' data-meal-key="' + escapeHtml(meal.key || "") + '"' +
+            ' title="Cambiar solo esta toma por otra">&#8635; Cambiar</button>' +
+          '<div class="meal-kcal">' + round0(total.kcal) + ' kcal</div>' +
+        '</div>' +
       '</div>' +
       '<div class="meal-body">' +
         cookNote +
