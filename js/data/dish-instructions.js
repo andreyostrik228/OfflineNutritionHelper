@@ -3807,6 +3807,252 @@ var DISH_INSTRUCTIONS = {
       "Pon el pavo en lonchas y el calabacín encima.",
       "Pimienta y un chorro de limón."
     ]
+  },
+
+  // ── Tanda 2026-08-31 (h) (309 → 333 platos) ──────────────────────────
+  // Snacks: casi todo lácteo + fruta/fruto seco, de montar. Cierra el
+  // catálogo salvo "Merluza al ajillo con verduras", que necesita ajo
+  // (rol sin resolver, T2). getDishInstructions devuelve null para ese y
+  // el plato se renderiza sin pasos, exactamente como antes.
+
+  "Batido proteico de yogur con plátano": {
+    difficulty: 1,
+    equipment: ["batidora"],
+    steps: [
+      "Echa el yogur y un chorro de agua o leche (unos 100 ml) en el vaso de la batidora, el líquido primero para que las cuchillas agarren.",
+      "Añade el plátano en trozos. Tapa SIEMPRE antes de encender.",
+      "Tritura 20 o 30 segundos hasta que quede fino. Si está muy espeso, más líquido y otro golpe de batidora. Bébelo recién hecho."
+    ]
+  },
+
+  "Batido de skyr con fruta y avena": {
+    difficulty: 1,
+    equipment: ["batidora"],
+    steps: [
+      "Líquido primero: el skyr y unos 120 ml de agua o leche en el vaso.",
+      "Añade el plátano en trozos y la avena. Tapa antes de encender.",
+      "Tritura 30 segundos, y si quedan grumos de avena otros 20: cruda tarda en deshacerse o queda arenosa. Bébelo al momento, reposado se hace pudin."
+    ]
+  },
+
+  "Skyr con miel y almendras": {
+    difficulty: 1,
+    equipment: ["ninguno"],
+    steps: [
+      "Pon el skyr en un bol y remuévelo para que quede cremoso.",
+      "Pica las almendras en trozos grandes.",
+      "Repártelas por encima y riega con un hilo de miel. Si la miel está muy dura, mete el bote 10 segundos en agua caliente y sale sola."
+    ]
+  },
+
+  "Pavo con tomatitos y queso": {
+    difficulty: 1,
+    equipment: ["ninguno"],
+    steps: [
+      "Lava los tomatitos y córtalos por la mitad.",
+      "Corta la mozzarella en dados o rásgala con las manos.",
+      "Enrolla o dobla las lonchas de pavo y móntalo todo en el plato con un hilo de aceite, sal y pimienta. Como una ensalada caprese rápida."
+    ]
+  },
+
+  "Mozzarella con tomate y pan": {
+    difficulty: 1,
+    equipment: ["ninguno"],
+    steps: [
+      "Lava el tomate y córtalo en rodajas de medio centímetro.",
+      "Escurre la mozzarella y córtala en rodajas parecidas.",
+      "Alterna tomate y mozzarella en el plato, con el pan al lado. Sal JUSTO ANTES DE COMER (antes, el tomate suelta agua), aceite y pimienta."
+    ]
+  },
+
+  "Atún con pepino y queso": {
+    difficulty: 1,
+    equipment: ["ninguno"],
+    steps: [
+      "Escurre bien el atún de lata.",
+      "Pela el pepino a tiras (dejando algo de piel) y córtalo en medias lunas.",
+      "Mezcla el atún con el queso fresco batido para que ligue, y sírvelo con el pepino al lado o encima. Pimienta y limón."
+    ]
+  },
+
+  "Cacahuetes tostados y naranja": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Si los cacahuetes son crudos, tuéstalos: sartén SIN aceite a fuego medio, moviéndolos a menudo 4 o 5 minutos, hasta que huelan a tostado y cojan algo de color. Se queman rápido, no los dejes solos. Si ya vienen tostados, sáltate esto.",
+      "Sácalos a un plato: en la sartén caliente siguen tostándose.",
+      "Pela la naranja y sepárala en gajos. Come los cacahuetes con la naranja."
+    ]
+  },
+
+  "Puñado de almendras y frutos rojos": {
+    difficulty: 1,
+    equipment: ["ninguno"],
+    steps: [
+      "Saca los frutos rojos del congelador 10 minutos antes: se descongelan solos y quedan jugosos.",
+      "Ponlos en un bol con las almendras al lado.",
+      "Un puñado de almendras son unos 20 gramos, más o menos lo que cabe en el hueco de la mano cerrada."
+    ]
+  },
+
+  "Queso fresco con frutos rojos": {
+    difficulty: 1,
+    equipment: ["ninguno"],
+    steps: [
+      "Saca los frutos rojos del congelador 10 minutos antes.",
+      "Pon el queso fresco batido en un bol.",
+      "Añade los frutos rojos con el jugo que hayan soltado. Un hilo de miel si lo quieres más dulce."
+    ]
+  },
+
+  "Tempeh con pepino y salsa": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "El tempeh crudo amarga: cuécelo 10 minutos en agua hirviendo cubriéndolo, escúrrelo y sécalo. Córtalo en dados.",
+      "Dóralo en una sartén con una cucharadita de aceite 5 minutos, con un chorrito de salsa de soja al final que se pegue.",
+      "Pela el pepino a tiras y córtalo en bastones. Come el tempeh templado con el pepino y la soja de mojar."
+    ]
+  },
+
+  "Edamame con tortitas de arroz": {
+    difficulty: 1,
+    equipment: ["olla"],
+    steps: [
+      "Cuece el edamame congelado 5 minutos en agua hirviendo con sal.",
+      "Escúrrelo. La vaina no se come: se aprieta con los dientes para sacar el grano y se tira.",
+      "Come los granos con las tortitas de arroz al lado. Sal en escamas sobre el edamame."
+    ]
+  },
+
+  "Skyr con fresas": {
+    difficulty: 1,
+    equipment: ["ninguno"],
+    steps: [
+      "Lava las fresas, quítales el rabito y córtalas en cuartos.",
+      "Pon el skyr en un bol y remuévelo para que quede cremoso.",
+      "Reparte las fresas. Están más dulces si las dejas 5 minutos con una pizca de miel antes."
+    ]
+  },
+
+  "Yogur griego con kiwi": {
+    difficulty: 1,
+    equipment: ["ninguno"],
+    steps: [
+      "Pela el kiwi con una cuchara: clava la punta entre la piel y la carne y gira la fruta.",
+      "Córtalo en rodajas.",
+      "Pon el yogur en un bol y reparte el kiwi por encima."
+    ]
+  },
+
+  "Yogur griego con almendras": {
+    difficulty: 1,
+    equipment: ["ninguno"],
+    steps: [
+      "Pica las almendras en trozos grandes: enteras cuesta comerlas con la cuchara.",
+      "Pon el yogur en un bol.",
+      "Reparte las almendras. Un hilo de miel si lo quieres más dulce."
+    ]
+  },
+
+  "Requesón con fresas": {
+    difficulty: 1,
+    equipment: ["ninguno"],
+    steps: [
+      "Lava las fresas, quítales el rabito y córtalas en cuartos.",
+      "Pon el requesón en un bol.",
+      "Reparte las fresas. Miel al gusto."
+    ]
+  },
+
+  "Requesón con almendras": {
+    difficulty: 1,
+    equipment: ["ninguno"],
+    steps: [
+      "Pica las almendras en trozos grandes.",
+      "Pon el requesón en un bol.",
+      "Reparte las almendras y un hilo de miel."
+    ]
+  },
+
+  "Requesón con nueces": {
+    difficulty: 1,
+    equipment: ["ninguno"],
+    steps: [
+      "Parte las nueces en trozos con los dedos o con el lado plano del cuchillo.",
+      "Pon el requesón en un bol.",
+      "Reparte las nueces. Un hilo de miel si lo quieres más dulce."
+    ]
+  },
+
+  "Queso fresco batido con almendras": {
+    difficulty: 1,
+    equipment: ["ninguno"],
+    steps: [
+      "Pica las almendras en trozos grandes.",
+      "Pon el queso fresco batido en un bol.",
+      "Reparte las almendras. Miel o canela por encima si te apetece."
+    ]
+  },
+
+  "Queso fresco batido con nueces": {
+    difficulty: 1,
+    equipment: ["ninguno"],
+    steps: [
+      "Parte las nueces en trozos con los dedos.",
+      "Pon el queso fresco batido en un bol.",
+      "Reparte las nueces y un hilo de miel."
+    ]
+  },
+
+  "Queso fresco batido con cacahuetes": {
+    difficulty: 1,
+    equipment: ["ninguno"],
+    steps: [
+      "Si los cacahuetes tienen sal, sacúdela un poco; si son crudos, mejor tostados (sartén sin aceite 4 minutos moviendo).",
+      "Pon el queso fresco batido en un bol.",
+      "Reparte los cacahuetes. Contrastan bien con un hilo de miel."
+    ]
+  },
+
+  "Atún con nueces": {
+    difficulty: 1,
+    equipment: ["ninguno"],
+    steps: [
+      "Escurre bien el atún de lata.",
+      "Parte las nueces en trozos.",
+      "Mézclalos y aliña con una cucharadita de aceite y unas gotas de limón. Pimienta."
+    ]
+  },
+
+  "Atún con cacahuetes": {
+    difficulty: 1,
+    equipment: ["ninguno"],
+    steps: [
+      "Escurre bien el atún de lata.",
+      "Mézclalo con los cacahuetes (mejor sin sal o sacudiéndola).",
+      "Unas gotas de limón y pimienta. Es un snack seco y proteico, no una ensalada."
+    ]
+  },
+
+  "Jamón serrano con cacahuetes": {
+    difficulty: 1,
+    equipment: ["ninguno"],
+    steps: [
+      "El jamón serrano va tal cual, sin cocinar.",
+      "Ponlo en el plato con los cacahuetes al lado.",
+      "Si los cacahuetes llevan sal, ten en cuenta que el jamón ya sala bastante: no necesitas más."
+    ]
+  },
+
+  "Jamón serrano con kiwi": {
+    difficulty: 1,
+    equipment: ["ninguno"],
+    steps: [
+      "Pela el kiwi con una cuchara (gira la fruta entre la piel y la carne) y córtalo en gajos.",
+      "Enrolla las lonchas de jamón serrano.",
+      "Come el jamón con el kiwi: lo dulce y ácido de la fruta corta lo salado del jamón, como el melón con jamón."
+    ]
   }
 };
 
