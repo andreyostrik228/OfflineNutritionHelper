@@ -134,7 +134,12 @@ var EXPECTED_NO_FIXED_PACKAGE = [
 // necesita re-auditarse (este test lo detectará solo si el CONTEO de roles
 // cambia; si el conteo se mantiene pero cambian los NOMBRES, lo detecta el
 // test de abajo igualmente vía la comparación exacta de conjuntos).
-var EXPECTED_TOTAL_INGREDIENT_ROLES = 81;
+// 2026-08-31: 81 -> 84. Los 14 platos españoles nuevos (T4) usan por
+// primera vez cebolla, ajo y aceite de oliva como roles de ingrediente.
+// Los tres resuelven CON envase en packaging.js (cebolla 150 g/unidad, ajo
+// 5 g/diente, aceite 916 g/botella), así que EXPECTED_NO_FIXED_PACKAGE no
+// cambia -- solo el conteo total.
+var EXPECTED_TOTAL_INGREDIENT_ROLES = 84;
 
 function run(t) {
   var sandbox = freshSandbox();

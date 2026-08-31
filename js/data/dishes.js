@@ -791,4 +791,39 @@ var DISH_DB = [
   { name:"Jamón serrano con kiwi", category:"snack", kcal:185, protein:18, carbs:16, fat:7, cost:1.60, prep:2, mainProt:"jamon", taste:"sweet",
     items:[{name:"Jamón serrano",g:50},{name:"Kiwi",g:100}] },
 
+  // ══════════════════════════════════════════════════════
+  //  PLATOS ESPAÑOLES  (14 platos, 2026-08-31)
+  //  Añadidos tras resolver cebolla/ajo/aceite de oliva (T2). kcal/macros/
+  //  coste son la SUMA de los valores reales de cada ingrediente (USDA/
+  //  Mercadona), no inventados -- ver PythonProject y ingredient-nutrition.js.
+  // ══════════════════════════════════════════════════════
+  { name:"Tortilla de patatas", category:"comida", kcal:552, protein:28.4, carbs:31.7, fat:34.2, cost:1.99, prep:35, mainProt:"huevo", taste:"savory",
+    items:[{name:"Huevos enteros",g:200},{name:"Patata cocida",g:220},{name:"Cebolla",g:70},{name:"Aceite de oliva",g:12}] },
+  { name:"Pollo al ajillo con patatas", category:"comida", kcal:437, protein:46.9, carbs:24.8, fat:15.6, cost:2.14, prep:25, mainProt:"pollo", taste:"savory",
+    items:[{name:"Pechuga de pollo",g:200},{name:"Patata cocida",g:180},{name:"Ajo",g:12},{name:"Aceite de oliva",g:12}] },
+  { name:"Pollo al ajillo con arroz", category:"comida", kcal:638, protein:50.8, carbs:53, fat:20.2, cost:1.69, prep:20, mainProt:"pollo", taste:"savory",
+    items:[{name:"Pechuga de pollo",g:200},{name:"Arroz blanco cocido",g:200},{name:"Ajo",g:12},{name:"Aceite de oliva",g:12}] },
+  { name:"Pisto con huevo", category:"comida", kcal:371, protein:17.3, carbs:20.8, fat:24.5, cost:1.55, prep:30, mainProt:"huevo", taste:"savory",
+    items:[{name:"Huevos enteros",g:100},{name:"Calabacín",g:120},{name:"Pimiento",g:100},{name:"Tomate",g:150},{name:"Cebolla",g:80},{name:"Aceite de oliva",g:12}] },
+  { name:"Lentejas guisadas con verduras", category:"comida", kcal:382, protein:22.9, carbs:41.3, fat:11.4, cost:0.69, prep:25, mainProt:"lentejas", taste:"savory",
+    items:[{name:"Lentejas cocidas",g:250},{name:"Zanahoria",g:60},{name:"Pimiento",g:50},{name:"Cebolla",g:60},{name:"Ajo",g:5},{name:"Aceite de oliva",g:10}] },
+  { name:"Garbanzos con espinacas", category:"comida", kcal:403, protein:19.4, carbs:38.1, fat:15.9, cost:1.09, prep:20, mainProt:"garbanzos", taste:"savory",
+    items:[{name:"Garbanzos cocidos",g:220},{name:"Espinacas",g:120},{name:"Cebolla",g:60},{name:"Ajo",g:6},{name:"Pan integral",g:20},{name:"Aceite de oliva",g:10}] },
+  { name:"Bacalao con tomate", category:"comida", kcal:365, protein:39.1, carbs:16.4, fat:14.3, cost:2.44, prep:25, mainProt:"bacalao", taste:"savory",
+    items:[{name:"Bacalao",g:200},{name:"Tomate",g:180},{name:"Pimiento",g:80},{name:"Cebolla",g:60},{name:"Ajo",g:6},{name:"Aceite de oliva",g:12}] },
+  { name:"Merluza a la plancha con ensalada", category:"cena", kcal:290, protein:38.8, carbs:5.4, fat:10.7, cost:2.80, prep:15, mainProt:"merluza", taste:"savory",
+    items:[{name:"Merluza",g:220},{name:"Tomate",g:100},{name:"Pepino",g:80},{name:"Aceite de oliva",g:10}] },
+  { name:"Merluza en salsa verde con espinacas", category:"cena", kcal:309, protein:40.3, carbs:3.3, fat:12.8, cost:2.74, prep:20, mainProt:"merluza", taste:"savory",
+    items:[{name:"Merluza",g:220},{name:"Espinacas",g:70},{name:"Ajo",g:8},{name:"Aceite de oliva",g:12}] },
+  { name:"Huevos a la flamenca", category:"cena", kcal:468, protein:31.7, carbs:14.7, fat:31.2, cost:2.23, prep:25, mainProt:"huevo", taste:"savory",
+    items:[{name:"Huevos enteros",g:150},{name:"Tomate",g:150},{name:"Pimiento",g:80},{name:"Cebolla",g:60},{name:"Jamón serrano",g:30},{name:"Aceite de oliva",g:10}] },
+  { name:"Sopa de ajo castellana", category:"cena", kcal:419, protein:19.6, carbs:29.4, fat:24, cost:0.96, prep:20, mainProt:"huevo", taste:"savory",
+    items:[{name:"Pan integral",g:60},{name:"Huevos enteros",g:100},{name:"Ajo",g:10},{name:"Aceite de oliva",g:12}] },
+  { name:"Ensaladilla de atún", category:"cena", kcal:392, protein:27, carbs:29.1, fat:17.5, cost:1.70, prep:20, mainProt:"atun", taste:"savory",
+    items:[{name:"Patata cocida",g:180},{name:"Zanahoria",g:60},{name:"Atún al natural",g:80},{name:"Maíz dulce",g:40},{name:"Huevos enteros",g:50},{name:"Aceite de oliva",g:10}] },
+  { name:"Champiñones al ajillo", category:"snack", kcal:144, protein:3.6, carbs:4.3, fat:10.1, cost:1.49, prep:10, mainProt:"champinones", taste:"savory",
+    items:[{name:"Champiñones",g:200},{name:"Ajo",g:8},{name:"Aceite de oliva",g:10}] },
+  { name:"Gazpacho con picatostes", category:"snack", kcal:251, protein:6.2, carbs:23.8, fat:13.4, cost:0.82, prep:10, mainProt:"tomate", taste:"savory",
+    items:[{name:"Tomate",g:250},{name:"Pepino",g:80},{name:"Pimiento",g:50},{name:"Ajo",g:4},{name:"Pan integral",g:25},{name:"Aceite de oliva",g:12}] },
+
 ];

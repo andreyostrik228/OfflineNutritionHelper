@@ -109,19 +109,25 @@ function run(t) {
 
   // ── Límite honesto de cobertura ───────────────────────────────────
 
-  t.test("LIMITACION CONOCIDA: dishes.js son 81 roles, no ingredientes finos", function () {
+  t.test("LIMITACION CONOCIDA: el filtro de dislikes trabaja sobre el NOMBRE del plato, no sobre items[]", function () {
     var s = sandbox();
     var roles = {};
     s.DISH_DB.forEach(function (d) {
       (d.items || []).forEach(function (i) { roles[i.name.toLowerCase()] = true; });
     });
-    // "cebolla" y "ajo" no existen como rol: el filtro de PLATOS no puede
-    // atraparlos por mucho que el usuario los escriba. Es una limitación de
-    // los datos, no del filtro, y se documenta aquí para que nadie la
-    // "arregle" creyendo que el matching falla.
-    var hayCebolla = Object.keys(roles).some(function (r) { return r.indexOf("cebolla") !== -1; });
-    assert.strictEqual(hayCebolla, false, "si esto falla, dishes.js gano un rol de cebolla: revisa la nota de la UI");
-    // En cambio los pescados concretos SI son roles.
+    // Desde 2026-08-31 (T4) cebolla y ajo SÍ existen como rol: los platos
+    // españoles nuevos los usan. Pero matchesDislike() compara contra el
+    // NOMBRE del plato, no contra sus ingredientes -- escribir "cebolla" en
+    // "no me gusta" NO filtra un "Pisto con huevo", porque su nombre no
+    // lleva "cebolla". Es una limitación de ALCANCE del filtro, no del
+    // matching, y se documenta aquí para que nadie la "arregle" creyendo
+    // que el matching falla.
+    assert.strictEqual(roles["cebolla"], true, "T4 añadió platos con rol de cebolla");
+    assert.strictEqual(roles["ajo"], true, "T4 añadió platos con rol de ajo");
+    var pisto = s.DISH_DB.find(function (d) { return d.name === "Pisto con huevo"; });
+    assert.ok(pisto && pisto.items.some(function (i) { return i.name.toLowerCase() === "cebolla"; }));
+    assert.strictEqual(s.matchesDislike(pisto.name, ["cebolla"]), false, "el filtro por nombre no ve la cebolla de los items");
+    // Los pescados concretos SI son roles (sin cambio).
     var haySalmon = Object.keys(roles).some(function (r) { return r.indexOf("salm") !== -1; });
     assert.strictEqual(haySalmon, true);
   });

@@ -4058,6 +4058,176 @@ var DISH_INSTRUCTIONS = {
       "Enrolla las lonchas de jamón serrano.",
       "Come el jamón con el kiwi: lo dulce y ácido de la fruta corta lo salado del jamón, como el melón con jamón."
     ]
+  },
+
+  // ── Platos españoles nuevos (2026-08-31) ─────────────────────────────
+  // Añadidos con T4, tras resolver cebolla/ajo/aceite en T2. El sofrito
+  // (cebolla/pimiento pochados despacio) y el ajo dorado a fuego bajo son
+  // la base de casi todos: el error típico es tener prisa o el fuego alto.
+
+  "Tortilla de patatas": {
+    difficulty: 3,
+    equipment: ["sarten"],
+    steps: [
+      "Corta la patata ya cocida en rodajas y sécala con papel: mojada, la tortilla no cuaja.",
+      "Pica la cebolla fina y póchala en una sartén con una cucharada de aceite a fuego medio-bajo 10 minutos, hasta que esté blanda y dorada. Sin prisa: ahí está el sabor.",
+      "Bate los huevos con sal en un bol GRANDE. Añade la patata y la cebolla escurrida, mezcla y DÉJALO REPOSAR 10 MINUTOS: ese reposo es lo que hace que sepa a tortilla y no a huevo con patata.",
+      "Calienta una sartén pequeña a fuego medio con una cucharada de aceite. Vuelca la mezcla, baja el fuego y deja 4 minutos, separando el borde con la espátula.",
+      "LA VUELTA: pon un plato plano más ancho que la sartén encima, sujétalo con la palma y gira las dos cosas de golpe y con decisión. La duda es lo que la rompe.",
+      "Desliza la tortilla de vuelta a la sartén y hazla 2 minutos más por el otro lado."
+    ]
+  },
+
+  "Pollo al ajillo con patatas": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Corta la pechuga en trozos de dos centímetros, sécalos y sálalos.",
+      "Lamina 4 o 5 dientes de ajo. Ponlos en una sartén con dos cucharadas de aceite a fuego MEDIO-BAJO y déjalos dorar despacio 2 minutos: con el aceite muy caliente el ajo se quema y amarga.",
+      "Sube a fuego fuerte, echa el pollo y saltéalo 6 minutos hasta que esté dorado y sin rosa por dentro.",
+      "Añade la patata cocida en dados y saltea 3 minutos más para que coja color y se mezcle con el ajo.",
+      "Un chorro de vino blanco o de agua para despegar el fondo de la sartén, 1 minuto. Perejil picado si tienes."
+    ]
+  },
+
+  "Pollo al ajillo con arroz": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Corta la pechuga en trozos, sécalos y sálalos.",
+      "Lamina 4 o 5 dientes de ajo y dóralos DESPACIO en dos cucharadas de aceite a fuego medio-bajo, 2 minutos, sin que se quemen.",
+      "Sube el fuego, echa el pollo y saltéalo 6 minutos hasta que no quede rosa.",
+      "Un chorro de vino blanco o agua para despegar el fondo, 1 minuto.",
+      "Calienta el arroz aparte con un chorrito de agua tapado 1 minuto y sírvelo con el pollo por encima, con todo su aceite."
+    ]
+  },
+
+  "Pisto con huevo": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Corta la cebolla, el pimiento y el calabacín en dados de un centímetro, cada verdura por separado.",
+      "En una sartén honda con dos cucharadas de aceite a fuego medio, pocha primero la cebolla 5 minutos, luego el pimiento 5 minutos, y por último el calabacín 5 minutos. En ese orden: cada uno tarda distinto.",
+      "Añade el tomate troceado y una pizca de sal, y deja 15 minutos a fuego medio-bajo, removiendo de vez en cuando, hasta que sea una salsa espesa sin líquido suelto.",
+      "Haz un hueco en el centro, casca el huevo dentro y tápalo 3 minutos, hasta que la clara cuaje y la yema quede blanda."
+    ]
+  },
+
+  "Lentejas guisadas con verduras": {
+    difficulty: 2,
+    equipment: ["olla"],
+    steps: [
+      "Escurre y enjuaga las lentejas de bote hasta que el agua salga clara.",
+      "Pica fina la cebolla, la zanahoria y el pimiento. Póchalos en una olla con una cucharada de aceite a fuego medio 8 minutos, hasta que la cebolla esté transparente.",
+      "Añade un diente de ajo picado y una cucharadita de pimentón, remueve 20 segundos FUERA del fuego (el pimentón se quema en nada) y vuelve al fuego.",
+      "Echa las lentejas y un vaso de agua, y deja 10 minutos a fuego suave para que cojan sabor. REMUEVE POCO o se deshacen.",
+      "Prueba de sal y añade un chorrito de vinagre al final: le da el punto."
+    ]
+  },
+
+  "Garbanzos con espinacas": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Escurre y enjuaga los garbanzos de bote.",
+      "Pica la cebolla fina y póchala en una sartén con una cucharada de aceite a fuego medio 6 minutos. Añade el ajo picado 30 segundos más.",
+      "Echa una cucharadita de pimentón y, enseguida, el pan integral desmigado y un vaso de agua: el pan espesa la salsa, es el truco del potaje.",
+      "Añade los garbanzos y deja 5 minutos a fuego suave.",
+      "Incorpora las espinacas y remueve hasta que bajen, 2 minutos. Sal y un chorrito de vinagre."
+    ]
+  },
+
+  "Bacalao con tomate": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Si el bacalao es salado, tiene que estar ya DESALADO (24-36 h en agua en la nevera, 3 cambios). Fresco o sin sal, directo. Sécalo.",
+      "Pica la cebolla y el pimiento y póchalos en una sartén con dos cucharadas de aceite a fuego medio 8 minutos. Añade el ajo picado 30 segundos.",
+      "Echa el tomate troceado y deja 12 minutos a fuego medio-bajo hasta que sea una salsa espesa.",
+      "Coloca los lomos de bacalao sobre la salsa, tapa y deja 8 minutos a fuego suave: se hace con el vapor de la salsa, no hay que darle la vuelta.",
+      "Está listo cuando se abre en lascas. Sal con cuidado."
+    ]
+  },
+
+  "Merluza a la plancha con ensalada": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Seca los lomos de merluza y sálalos.",
+      "Calienta una sartén o plancha a fuego medio-alto con una cucharadita de aceite. Haz la merluza 3 minutos por lado, UNA sola vuelta con cuidado: se deshace. Hecha cuando se separa en lascas.",
+      "Corta el tomate y el pepino en trozos y alíñalos con el resto del aceite, sal y un chorro de limón o vinagre.",
+      "Sirve la merluza con la ensalada al lado y limón por encima."
+    ]
+  },
+
+  "Merluza en salsa verde con espinacas": {
+    difficulty: 3,
+    equipment: ["sarten"],
+    steps: [
+      "Seca los lomos de merluza y sálalos.",
+      "Lamina el ajo y dóralo despacio en una sartén ancha con dos cucharadas de aceite a fuego medio-bajo, 2 minutos.",
+      "Aparta del fuego, añade una cucharadita de harina y remueve; vuelve al fuego con medio vaso de agua caliente, moviendo la SARTÉN en círculos (no con cuchara) hasta que ligue una salsa clara. Es cuestión de insistir.",
+      "Pon la merluza en la salsa y deja 4 minutos, moviendo la sartén de vez en cuando y regando el pescado con la salsa.",
+      "Añade las espinacas alrededor el último minuto, hasta que bajen. Perejil si tienes."
+    ]
+  },
+
+  "Huevos a la flamenca": {
+    difficulty: 2,
+    equipment: ["sarten", "horno"],
+    steps: [
+      "Pica la cebolla y el pimiento y póchalos en una sartén (si es apta para horno mejor, si no luego pasas a una fuente) con dos cucharadas de aceite a fuego medio 8 minutos.",
+      "Añade el tomate troceado y el jamón serrano en tiras, y deja 10 minutos hasta que sea una salsa espesa.",
+      "Enciende el horno a 200 grados. Haz dos huecos en la salsa y casca un huevo en cada uno.",
+      "Hornea 6 u 8 minutos, hasta que la clara cuaje y la yema quede blanda. Sin horno: tapa la sartén a fuego suave 4 minutos."
+    ]
+  },
+
+  "Sopa de ajo castellana": {
+    difficulty: 2,
+    equipment: ["olla"],
+    steps: [
+      "Lamina 3 o 4 dientes de ajo y dóralos en una olla con tres cucharadas de aceite a fuego medio-bajo, 2 minutos, sin quemarlos.",
+      "Añade el pan integral en trozos y remueve 1 minuto para que se empape del aceite.",
+      "Fuera del fuego, echa una cucharadita de pimentón y remueve rápido (se quema en segundos). Vuelve al fuego, añade tres vasos de agua caliente y sal.",
+      "Deja hervir 10 minutos a fuego suave.",
+      "Baja el fuego, casca los huevos dentro y deja 3 minutos: cuajan escalfados en la sopa. Sirve enseguida."
+    ]
+  },
+
+  "Ensaladilla de atún": {
+    difficulty: 1,
+    equipment: ["olla"],
+    steps: [
+      "Si la patata y la zanahoria no vienen ya cocidas, cuécelas en dados 12 minutos en agua con sal. Déjalas enfriar del todo: en caliente, la ensaladilla se estropea.",
+      "Cuece el huevo 10 minutos, pásalo a agua fría, pélalo y pícalo.",
+      "En un bol, mezcla la patata y la zanahoria en dados, el maíz escurrido, el atún escurrido y el huevo.",
+      "Aliña con el aceite, un chorro de vinagre y sal (o una cucharada de mayonesa si la tienes, que es lo clásico). Mezcla con suavidad.",
+      "Deja en la nevera 30 minutos antes de comer: mejora reposada y fría."
+    ]
+  },
+
+  "Champiñones al ajillo": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Limpia los champiñones con papel húmedo (no bajo el grifo, chupan agua) y córtalos en cuartos.",
+      "Lamina el ajo y ponlo en una sartén con dos cucharadas de aceite a fuego medio-bajo; en cuanto empiece a dorarse, sube el fuego y echa los champiñones.",
+      "Saltea 6 o 7 minutos a fuego fuerte: SUELTAN MUCHA AGUA, hay que esperar a que se evapore y empiecen a dorarse, o quedan hervidos.",
+      "Sal al final y perejil picado. Un chorro de limón si te gusta."
+    ]
+  },
+
+  "Gazpacho con picatostes": {
+    difficulty: 1,
+    equipment: ["batidora"],
+    steps: [
+      "Lava el tomate, el pepino y el pimiento y trocéalos. Quita las semillas y la parte blanca del pimiento (amarga).",
+      "Mete todo en el vaso de la batidora ANTES de encenderla, con el ajo, el pan integral en trozos, el aceite, un chorro de vinagre y sal.",
+      "Tapa y tritura 2 minutos, hasta que quede muy fino. Si lo quieres más suelto, un poco de agua fría.",
+      "Pruébalo: el gazpacho pide más sal y vinagre de lo que parece en frío. Cuélalo si lo quieres sin pieles.",
+      "A la nevera al menos 1 hora. Sírvelo muy frío con trozos de pan tostado (picatostes) por encima."
+    ]
   }
 };
 

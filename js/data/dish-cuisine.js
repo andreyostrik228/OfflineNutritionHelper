@@ -96,6 +96,21 @@ var DISH_CUISINE_ESPANOLA = [
   "Jamón serrano con cacahuetes",
   "Jamón serrano con manzana",
   "Jamón serrano con kiwi",
+  // Platos españoles nuevos (2026-08-31), tras resolver cebolla/ajo/aceite.
+  "Tortilla de patatas",
+  "Pollo al ajillo con patatas",
+  "Pollo al ajillo con arroz",
+  "Pisto con huevo",
+  "Lentejas guisadas con verduras",
+  "Garbanzos con espinacas",
+  "Bacalao con tomate",
+  "Merluza a la plancha con ensalada",
+  "Merluza en salsa verde con espinacas",
+  "Huevos a la flamenca",
+  "Sopa de ajo castellana",
+  "Ensaladilla de atún",
+  "Champiñones al ajillo",
+  "Gazpacho con picatostes",
 ];
 
 /**

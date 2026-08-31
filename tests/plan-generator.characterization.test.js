@@ -429,6 +429,15 @@ function run(t) {
   //            tierUsed 2/"adjusted" a 0/"perfect", 0 violaciones.
   //   seed=7:  3793.2 -> 3795.2 kcal (objetivo 3871: -2,0%), sin cambio de
   //            tier ni de estado.
+  // ── RECAPTURA 2026-08-31b: 14 platos españoles nuevos (T4) ───────────
+  // dishes.js pasa de 334 a 348 platos. El pool de la lotería crece, así
+  // que otra composición gana para seed=7. seed=42 NO se movió. Cambio en
+  // los DATOS (catálogo), no en el algoritmo; los 7 tests de contrato y el
+  // invariante de tolerancia de calorías (#6, sobre muchas semillas)
+  // siguen pasando.
+  //   seed=7: 3795.2 -> 3351.2 kcal, items [3,3,3,2,3] -> [3,4,4,2,2],
+  //           sigue "perfect"/tier 0, 0 violaciones, dentro de la
+  //           tolerancia del 15% del propio informe.
   t.test("golden-master (seed=42): recomposición/Equilibrado -- agregados exactos del resultado actual", function () {
     var s = freshEngineSandbox();
     seedRandomInContext(s, 42);
@@ -458,13 +467,13 @@ function run(t) {
     var result = s.generateDietPlan(built.profile, built.data);
 
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.key; }))), EXPECTED_MEAL_KEYS);
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 3, 3, 2, 3]);
-    assert.strictEqual(result.total.kcal, 3795.2000000000003);
-    assert.strictEqual(result.total.protein, 265.8);
-    assert.strictEqual(result.total.carbs, 506.1000000000001);
-    assert.strictEqual(result.total.fat, 80.89999999999999);
-    assert.strictEqual(result.total.cost, 13.69);
-    assert.strictEqual(result.total.purchaseCost, 23.77);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 4, 4, 2, 2]);
+    assert.strictEqual(result.total.kcal, 3351.2);
+    assert.strictEqual(result.total.protein, 260.90000000000003);
+    assert.strictEqual(result.total.carbs, 274.70000000000005);
+    assert.strictEqual(result.total.fat, 125.30000000000001);
+    assert.strictEqual(result.total.cost, 16.41);
+    assert.strictEqual(result.total.purchaseCost, 24.55);
     assert.strictEqual(result.report.status, "perfect");
     assert.strictEqual(result.report.tierUsed, 0);
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.report.violations)), []);

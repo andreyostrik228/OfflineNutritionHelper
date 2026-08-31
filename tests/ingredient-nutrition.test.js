@@ -338,12 +338,14 @@ function run(t) {
 
   // ── G) Cobertura: cuenta de roles resueltos/sin resolver coincide con la auditoría ─
 
-  t.test("G) INGREDIENT_NUTRITION cubre los 81 roles de dishes.js, 79 resueltos / 2 sin resolver (USDA FDC, 2026-08-31)", function () {
+  t.test("G) INGREDIENT_NUTRITION cubre los 84 roles de dishes.js, 82 resueltos / 2 sin resolver", function () {
     var s = freshEngineSandbox();
     var uniqueNames = {};
     s.DISH_DB.forEach(function (d) { (d.items || []).forEach(function (i) { uniqueNames[i.name] = true; }); });
     var names = Object.keys(uniqueNames);
-    assert.strictEqual(names.length, 81);
+    // 81 -> 84 el 2026-08-31: los platos españoles nuevos (T4) usan cebolla,
+    // ajo y aceite de oliva, ya resueltos desde USDA FDC (T2).
+    assert.strictEqual(names.length, 84);
 
     var resolvedCount = 0, unresolvedCount = 0;
     var unresolved = [];
@@ -351,11 +353,9 @@ function run(t) {
       var n = s.resolveIngredientNutrition(name);
       if (n.resolved) resolvedCount++; else { unresolvedCount++; unresolved.push(name); }
     });
-    // Antes 50/31; el 2026-08-31 se resolvieron 29 roles desde USDA FDC
-    // (los otros 2 de esa tanda, cebolla y ajo, no aparecen en dishes.js).
-    // Quedan sin resolver, a propósito: "Wrap proteico" (sin equivalente
-    // real) y "Lechuga: Pepino" (nombre corrupto en dishes.js).
-    assert.strictEqual(resolvedCount, 79);
+    // Sin resolver, a propósito: "Wrap proteico" (sin equivalente real) y
+    // "Lechuga: Pepino" (nombre corrupto en dishes.js).
+    assert.strictEqual(resolvedCount, 82);
     assert.strictEqual(unresolvedCount, 2);
     assert.deepStrictEqual(unresolved.sort(), ["Lechuga: Pepino", "Wrap proteico"]);
   });
