@@ -137,6 +137,39 @@ function renderMeals(meals) {
  * @param {object} total  – { kcal, protein, carbs, fat, cost }
  * @returns {string}
  */
+/**
+ * URL de la ficha de un producto en la tienda online de Mercadona, para
+ * ver su FOTO y reconocerlo en el súper. Los `id` del catálogo son
+ * numéricos (a veces con un sufijo de variante ".1"/".2" que la web
+ * ignora); si por lo que sea no lo son, cae en una búsqueda por nombre.
+ * @param {{id?:(string|number), name?:string, brand?:string}} product
+ * @returns {string}
+ */
+function mercadonaProductUrl(product) {
+  var id = product && product.id != null ? String(product.id) : "";
+  var base = id.replace(/\.\d+$/, "");
+  if (/^\d+$/.test(base)) return "https://tienda.mercadona.es/product/" + base;
+  var q = ((product && product.name) || "") + " " + ((product && product.brand) || "");
+  return "https://tienda.mercadona.es/search-results?query=" + encodeURIComponent(q.trim());
+}
+
+/**
+ * Botón pequeño y APARTE (no un enlace en el nombre) que abre esa ficha en
+ * una pestaña nueva. Es un `<a>` normal: no necesita JS ni handler, y la
+ * app sigue siendo offline -- solo navega cuando lo pulsas tú.
+ * @param {object} product
+ * @returns {string}
+ */
+function renderProductFindBtn(product) {
+  if (!product) return "";
+  var name = (product.name || "producto");
+  return '<a class="product-find-btn" target="_blank" rel="noopener noreferrer"' +
+    ' href="' + escapeHtml(mercadonaProductUrl(product)) + '"' +
+    ' title="Ver la foto y la ficha en Mercadona"' +
+    ' aria-label="Ver ' + escapeHtml(name) + ' en Mercadona">' +
+    '📷</a>';
+}
+
 function renderMealCard(meal, total) {
   // data-meal-key habilita el salto desde la franja de horario (ver
   // js/ui/render-schedule.js, scrollToMealCard) hasta esta tarjeta.

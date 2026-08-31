@@ -130,10 +130,12 @@ function renderNoCookItem(item) {
       "</div>"
     : "";
 
+  var findBtn = typeof renderProductFindBtn === "function" ? renderProductFindBtn(item) : "";
+
   return (
     '<div class="nocook-item">' +
       levelBadge +
-      '<div class="nocook-item__name">' + escapeHtml(item.name) + "</div>" +
+      '<div class="nocook-item__name">' + escapeHtml(item.name) + findBtn + "</div>" +
       (item.brand ? '<div class="nocook-item__brand">' + escapeHtml(item.brand) + "</div>" : "") +
       '<div class="nocook-item__qty">' + item.quantity + " " + escapeHtml(item.unit) + "</div>" +
       macrosLine +

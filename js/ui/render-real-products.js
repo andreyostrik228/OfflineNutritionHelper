@@ -190,10 +190,12 @@ function renderProductCard(p) {
     )
     : '<div class="verified-card__no-nutrition">Sin datos nutricionales</div>';
 
+  var findBtn = typeof renderProductFindBtn === "function" ? renderProductFindBtn(p) : "";
+
   return (
     '<div class="verified-card">' +
       '<div class="verified-card__head">' +
-        '<div class="verified-card__name">' + escapeHtml(p.name) + '</div>' +
+        '<div class="verified-card__name">' + escapeHtml(p.name) + findBtn + '</div>' +
         (p.brand ? '<div class="verified-card__brand">' + escapeHtml(p.brand) + '</div>' : '') +
       '</div>' +
       macrosBlock +

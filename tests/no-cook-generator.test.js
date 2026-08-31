@@ -52,7 +52,48 @@ function freshNoCookSandbox() {
   return sandbox;
 }
 
+function renderHelpersSandbox() {
+  return loadBrowserGlobals([
+    projPath("js/core/utils.js"),
+    projPath("js/core/meal-helpers.js"),
+    projPath("js/core/pricing.js"),
+    projPath("js/ui/render.js"),
+  ]);
+}
+
 function run(t) {
+
+  // ── Botón "ver foto en Mercadona" (render.js, 2026-09-01) ────────────
+  t.test("mercadonaProductUrl(): id numérico -> ficha del producto", function () {
+    var s = renderHelpersSandbox();
+    assert.strictEqual(s.mercadonaProductUrl({ id: "10005", name: "X" }),
+      "https://tienda.mercadona.es/product/10005");
+    assert.strictEqual(s.mercadonaProductUrl({ id: 42 }),
+      "https://tienda.mercadona.es/product/42");
+  });
+
+  t.test("mercadonaProductUrl(): sufijo de variante '.1'/'.2' se recorta", function () {
+    var s = renderHelpersSandbox();
+    assert.strictEqual(s.mercadonaProductUrl({ id: "12049.2", name: "Pan" }),
+      "https://tienda.mercadona.es/product/12049");
+  });
+
+  t.test("mercadonaProductUrl(): id no numérico -> búsqueda por nombre", function () {
+    var s = renderHelpersSandbox();
+    var url = s.mercadonaProductUrl({ id: "", name: "Merluza a rodajas", brand: "Hacendado" });
+    assert.ok(url.indexOf("https://tienda.mercadona.es/search-results?query=") === 0);
+    assert.ok(url.indexOf("Merluza") !== -1);
+  });
+
+  t.test("renderProductFindBtn(): <a> a pestaña nueva, con rel de seguridad, sin producto -> ''", function () {
+    var s = renderHelpersSandbox();
+    assert.strictEqual(s.renderProductFindBtn(null), "");
+    var html = s.renderProductFindBtn({ id: "10005", name: "Atún <claro>" });
+    assert.ok(html.indexOf('target="_blank"') !== -1);
+    assert.ok(html.indexOf('rel="noopener noreferrer"') !== -1);
+    assert.ok(html.indexOf('href="https://tienda.mercadona.es/product/10005"') !== -1);
+    assert.ok(html.indexOf("Atún &lt;claro&gt;") !== -1, "el nombre va escapado en aria-label");
+  });
 
   t.test("getNoCookEligiblePool(storeId): usa el catálogo de la tienda pedida, no el global", function () {
     var s = freshNoCookSandbox();
