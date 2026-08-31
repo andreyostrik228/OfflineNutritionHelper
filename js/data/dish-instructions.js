@@ -2364,6 +2364,300 @@ var DISH_INSTRUCTIONS = {
       "Ahueca el cuscús con un tenedor, nunca con cuchara, y mézclalo con las alubias y las verduras con cuidado.",
       "Sal, pimienta y un hilo de aceite crudo. Un poco de pimentón le sienta bien."
     ]
+  },
+
+  // ── Tanda 2026-08-31 (c) (182 → 207 platos) ──────────────────────────
+  // Pescado. A partir de aquí el catálogo son permutaciones: la técnica
+  // de cada proteína ya está escrita en un plato hermano, así que estos
+  // son más cortos y reutilizan las mismas frases a propósito. Siguen
+  // llevando cantidades, tiempos y una señal de "está hecho". Bloques
+  // que se repiten: salmón (piel abajo 4+2 min, láminas), merluza (una
+  // sola vuelta, se deshace), bacalao (aviso de desalado), lata (ya
+  // cocida, al final), coliflor (se pasa a puré en un minuto).
+
+  "Salmón con espinacas y pasta": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Seca los lomos de salmón y sálalos. Sartén a fuego medio-alto con una cucharadita de aceite.",
+      "Salmón con la piel hacia abajo 4 minutos sin moverlo, luego 2 minutos por el otro lado. Hecho cuando se abre en láminas y el centro ha pasado de rojo a rosa.",
+      "Sácalo. En la misma sartén, fuego bajo, echa las espinacas y remueve 1 minuto hasta que bajen.",
+      "Añade la pasta ya cocida con dos cucharadas de agua y mezcla 1 minuto.",
+      "Sirve la pasta con el salmón encima en trozos. Limón y pimienta."
+    ]
+  },
+
+  "Salmón horneado con quinoa y espinacas": {
+    difficulty: 2,
+    equipment: ["horno"],
+    steps: [
+      "Horno a 200 grados. Pon los lomos de salmón en una fuente sobre papel de hornear, con un hilo de aceite y sal.",
+      "Hornea 12 minutos para un lomo de dos dedos. Hecho cuando al apretar se abre en láminas.",
+      "Calienta la quinoa; si está apelmazada, un poco de agua y ahuécala con un tenedor.",
+      "Saltea las espinacas 1 minuto en una sartén con una gota de aceite, o escáldalas 30 segundos, hasta que bajen.",
+      "Mezcla la quinoa con las espinacas y pon el salmón encima. Limón al final."
+    ]
+  },
+
+  "Salmón con patatas y coliflor": {
+    difficulty: 2,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Coliflor en ramilletes pequeños, 5 minutos en agua hirviendo con sal; escúrrela EN CUANTO ceda, que pasa a puré en nada.",
+      "Corta la patata ya cocida en rodajas y dórala en una sartén con una cucharada de aceite 3 minutos por lado. Sácala.",
+      "En la misma sartén, salmón con la piel abajo 4 minutos, vuelta 2 minutos. Hecho cuando se abre en láminas.",
+      "Da a la coliflor un salteado rápido de 2 minutos en la grasa de la sartén para que coja tostado.",
+      "Sirve las patatas y la coliflor con el salmón encima. Sal y pimienta."
+    ]
+  },
+
+  "Salmón con quinoa y calabacín": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Calabacín en medias lunas de medio centímetro. Saltéalo en la sartén con una cucharada de aceite y sal a fuego medio-alto 5 minutos hasta dorar. Sácalo.",
+      "En la misma sartén, salmón con la piel abajo 4 minutos, vuelta 2 minutos. Hecho cuando se abre en láminas y el centro pasó de rojo a rosa.",
+      "Calienta la quinoa con un chorrito de agua y ahuécala con un tenedor.",
+      "Mezcla la quinoa con el calabacín y pon el salmón encima. Limón y pimienta."
+    ]
+  },
+
+  "Salmón con trigo sarraceno y brócoli": {
+    difficulty: 2,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Brócoli en ramilletes, 4 minutos en agua hirviendo con sal; escúrrelo cuando el cuchillo entre pero el tallo resista.",
+      "Seca los lomos de salmón y sálalos. Sartén a fuego medio-alto con una cucharadita de aceite: piel abajo 4 minutos, vuelta 2 minutos.",
+      "Calienta el trigo sarraceno (tiene sabor a nuez); sepáralo con un tenedor, no lo machaques.",
+      "Sirve el trigo sarraceno de base con el brócoli y el salmón encima. Limón al final."
+    ]
+  },
+
+  "Merluza con quinoa y tomate": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Seca los lomos de merluza y sálalos. Es un pescado que se DESHACE: una sola vuelta y con cuidado.",
+      "Sartén a fuego medio con una cucharada de aceite. Merluza 3 minutos por lado. Hecha cuando está opaca y se separa en lascas.",
+      "Sácala. Echa el tomate en dados en la sartén, 5 minutos a fuego medio hasta salsa espesa, aplastándolo.",
+      "Calienta la quinoa y ahuécala con un tenedor.",
+      "Sirve la quinoa con la salsa de tomate y la merluza encima. Sal al final."
+    ]
+  },
+
+  "Merluza con patatas y pimientos": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Pimiento sin las venas blancas (amargan), en tiras. Saltéalo a fuego fuerte 6 minutos hasta que le salgan manchas oscuras. Sácalo.",
+      "Patata cocida en rodajas, dorada en la sartén 3 minutos por lado. Sácala.",
+      "Merluza seca y salada, a fuego medio 3 minutos por lado, UNA sola vuelta con cuidado. Hecha cuando se separa en lascas.",
+      "Sirve las patatas y los pimientos con la merluza encima. Limón y sal."
+    ]
+  },
+
+  "Merluza con quinoa y champiñones": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Champiñones en láminas (límpialos con papel, no bajo el grifo). Saltéalos a fuego fuerte 5 minutos hasta que suelten el agua y se vuelva a evaporar. Sácalos.",
+      "Merluza seca y salada, a fuego medio con una cucharada de aceite, 3 minutos por lado. Una sola vuelta: se deshace. Lascas = hecha.",
+      "Calienta la quinoa y ahuécala con un tenedor; mézclala con los champiñones.",
+      "Pon la merluza encima. Pimienta y limón."
+    ]
+  },
+
+  "Merluza con trigo sarraceno y zanahoria": {
+    difficulty: 2,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Zanahoria en rodajas finas, 6 minutos en agua hirviendo con sal.",
+      "Merluza seca y salada, sartén a fuego medio con una cucharada de aceite, 3 minutos por lado. Una sola vuelta con cuidado. Lascas = hecha.",
+      "Calienta el trigo sarraceno y sepáralo con un tenedor.",
+      "Sirve el trigo sarraceno con la zanahoria y la merluza encima. Sal y limón."
+    ]
+  },
+
+  "Bacalao con espinacas y arroz": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Si tu bacalao es salado, tiene que estar ya DESALADO (24-36 h en agua en la nevera, cambiándola 3 veces). El fresco o congelado sin sal, directo.",
+      "Seca el bacalao. Sartén a fuego MEDIO (no fuerte, o se pone estropajoso) con una cucharada de aceite: piel abajo 4 minutos, vuelta 2 minutos. Lascas grandes = hecho.",
+      "Sácalo. Echa las espinacas en la sartén, 1 minuto hasta que bajen.",
+      "Calienta el arroz con un chorrito de agua, tapado 1 minuto.",
+      "Sirve el arroz con las espinacas y el bacalao en lascas. Sal con cuidado: aun desalado, sala."
+    ]
+  },
+
+  "Bacalao con arroz y brócoli": {
+    difficulty: 2,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Bacalao salado = ya desalado (24-36 h, 3 cambios de agua). Fresco o sin sal, directo.",
+      "Brócoli en ramilletes, 4 minutos en agua con sal; escúrrelo cuando el tallo aún resista.",
+      "Bacalao seco, sartén a fuego medio con una cucharada de aceite, piel abajo 4 minutos + 2 minutos. Lascas = hecho.",
+      "Sirve el arroz caliente con el brócoli y el bacalao encima. Un hilo de aceite crudo y pimienta."
+    ]
+  },
+
+  "Bacalao con patatas y calabacín": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Bacalao salado = ya desalado. Fresco o sin sal, directo.",
+      "Calabacín en medias lunas de medio centímetro y patata cocida en rodajas: dóralos juntos en la sartén con una cucharada de aceite y sal, 5 minutos. Sácalos.",
+      "Bacalao seco, fuego medio, piel abajo 4 minutos + 2 minutos. Suave o se pone estropajoso. Lascas = hecho.",
+      "Sirve las patatas y el calabacín con el bacalao encima. Sal con cuidado."
+    ]
+  },
+
+  "Bacalao con trigo sarraceno y coliflor": {
+    difficulty: 2,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Bacalao salado = ya desalado (24-36 h). Fresco o sin sal, directo.",
+      "Coliflor en ramilletes pequeños, 5 minutos en agua con sal; escúrrela en cuanto ceda.",
+      "Bacalao seco, fuego medio con una cucharada de aceite, piel abajo 4 minutos + 2 minutos. Lascas = hecho.",
+      "Calienta el trigo sarraceno y sepáralo con un tenedor; mézclalo con la coliflor.",
+      "Pon el bacalao encima en lascas. Pimienta."
+    ]
+  },
+
+  "Bacalao con arroz integral y verduras salteadas": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Bacalao salado = ya desalado. Fresco o sin sal, directo.",
+      "Verduras congeladas directas a fuego fuerte con una cucharada de aceite, 5 minutos hasta que evaporen su agua. Sácalas.",
+      "Bacalao seco, fuego medio, piel abajo 4 minutos + 2 minutos. Suave. Lascas = hecho.",
+      "Calienta el arroz integral con un chorrito de agua, tapado 1 minuto; mézclalo con las verduras.",
+      "Pon el bacalao encima. Sal con cuidado, aun desalado sala."
+    ]
+  },
+
+  "Lubina con pasta y brócoli": {
+    difficulty: 2,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Brócoli en ramilletes, 4 minutos en agua con sal; escúrrelo cuando el tallo resista.",
+      "Seca los lomos de lubina y sálalos. Si tienen piel, dos cortes superficiales para que no se encoja.",
+      "Sartén a fuego medio-alto con una cucharada de aceite. Lubina con la PIEL ABAJO, aprieta 10 segundos con la espátula para que no se curve; 4 minutos así, 1 minuto por el otro lado.",
+      "Calienta la pasta con dos cucharadas de agua; mézclala con el brócoli.",
+      "Pon la lubina encima. Limón y aceite crudo."
+    ]
+  },
+
+  "Lubina con cuscús y verduras salteadas": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Verduras congeladas directas a fuego fuerte 5 minutos hasta que evaporen su agua. Sácalas.",
+      "Lubina seca y salada, con dos cortes en la piel. Piel abajo, aprieta 10 segundos, 4 minutos; vuelta 1 minuto.",
+      "Cuscús: agua caliente por encima, tapado 2 minutos, ahueca con TENEDOR nunca cuchara.",
+      "Mezcla el cuscús con las verduras y pon la lubina encima. Limón."
+    ]
+  },
+
+  "Lubina con patatas y coliflor": {
+    difficulty: 2,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Coliflor en ramilletes pequeños, 5 minutos en agua con sal; escúrrela en cuanto ceda.",
+      "Patata cocida en rodajas, dorada en la sartén 3 minutos por lado. Sácala.",
+      "Lubina seca y salada, piel abajo con la espátula apretando 10 segundos, 4 minutos; vuelta 1 minuto.",
+      "Sirve las patatas y la coliflor con la lubina encima. Sal y limón."
+    ]
+  },
+
+  "Rape con trigo sarraceno y zanahoria": {
+    difficulty: 2,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "El rape es FIRME y grueso: necesita más tiempo del que parece. Córtalo en medallones de 3 centímetros y sálalo.",
+      "Zanahoria en rodajas finas, 6 minutos en agua con sal.",
+      "Sartén a fuego medio-alto con una cucharada de aceite. Rape 3 o 4 minutos por lado. Hecho cuando está BLANCO HASTA EL CENTRO (ábrelo con el cuchillo), no cuando cambia la superficie.",
+      "Calienta el trigo sarraceno y sepáralo con un tenedor; mézclalo con la zanahoria.",
+      "Pon el rape encima. Pimienta y limón."
+    ]
+  },
+
+  "Rape con cuscús y espinacas": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Rape en medallones de 3 centímetros, salado. Firme y grueso, tarda por dentro.",
+      "Sartén a fuego medio-alto con una cucharada de aceite. 3 o 4 minutos por lado. Ábrelo: blanco hasta el centro = hecho.",
+      "Sácalo. Echa las espinacas en la sartén, 1 minuto hasta que bajen.",
+      "Cuscús: agua caliente, tapado 2 minutos, ahueca con tenedor. Mézclalo con las espinacas.",
+      "Pon el rape encima. Limón."
+    ]
+  },
+
+  "Rape con patatas y pimientos": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Pimiento sin venas blancas en tiras, salteado a fuego fuerte 6 minutos hasta manchas oscuras. Sácalo.",
+      "Patata cocida en rodajas, dorada 3 minutos por lado. Sácala.",
+      "Rape en medallones de 3 cm, 3 o 4 minutos por lado. Blanco hasta el centro (ábrelo) = hecho.",
+      "Sirve las patatas y los pimientos con el rape encima. Sal y limón."
+    ]
+  },
+
+  "Pasta con sardinas y tomate": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Las sardinas de lata YA ESTÁN cocidas: se escurren y se desmigan, van al final. La espina es blanda y se come.",
+      "Echa el tomate en dados en una sartén con una cucharada de aceite, 6 minutos a fuego medio hasta salsa espesa.",
+      "Calienta la pasta ya cocida en la sartén con dos cucharadas de agua, mezclando con el tomate 1 minuto.",
+      "Apaga y añade las sardinas desmigadas, con suavidad. Pimienta, limón y aceite crudo."
+    ]
+  },
+
+  "Sardinas con tomate y arroz": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Sardinas de lata: escúrrelas y desmígalas, van al final. Espina blanda, se come.",
+      "Tomate en dados, 6 minutos en una sartén con aceite hasta salsa espesa.",
+      "Calienta el arroz con un chorrito de agua, tapado 1 minuto; mézclalo con el tomate.",
+      "Añade las sardinas por encima en trozos. Limón y pimienta."
+    ]
+  },
+
+  "Sardinas con arroz y coliflor": {
+    difficulty: 1,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Coliflor en ramilletes pequeños, 5 minutos en agua con sal; escúrrela en cuanto ceda.",
+      "Saltéala 3 minutos en una sartén con una cucharada de aceite para que coja tostado.",
+      "Calienta el arroz con un chorrito de agua; mézclalo con la coliflor.",
+      "Escurre las sardinas de lata, desmígalas y repártelas por encima. Limón, pimienta, aceite crudo."
+    ]
+  },
+
+  "Sardinas con pasta y verduras salteadas": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Verduras congeladas directas a fuego fuerte con una cucharada de aceite, 5 minutos hasta que evaporen su agua.",
+      "Calienta la pasta ya cocida en la sartén con dos cucharadas de agua, mezclando con las verduras 1 minuto.",
+      "Apaga y añade las sardinas de lata escurridas y desmigadas, con suavidad.",
+      "Limón, pimienta y un hilo de aceite crudo."
+    ]
+  },
+
+  "Sardinas con arroz integral y brócoli": {
+    difficulty: 1,
+    equipment: ["olla"],
+    steps: [
+      "Brócoli en ramilletes, 4 minutos en agua con sal; escúrrelo cuando el tallo resista.",
+      "Calienta el arroz integral con un chorrito de agua, tapado 1 minuto (viene seco).",
+      "Mezcla el arroz con el brócoli.",
+      "Escurre y desmiga las sardinas de lata y repártelas por encima. Limón y aceite crudo."
+    ]
   }
 };
 
