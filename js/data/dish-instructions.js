@@ -3536,6 +3536,277 @@ var DISH_INSTRUCTIONS = {
       "Dora el tempeh en una sartén con una cucharada de aceite 5 minutos, con un chorrito de soja al final.",
       "Calienta el trigo sarraceno y sepáralo con un tenedor; mézclalo con el tempeh y la coliflor. Pimienta."
     ]
+  },
+
+  // ── Tanda 2026-08-31 (g) (285 → 309 platos) ──────────────────────────
+  // Desayunos. Los de tazón (yogur/skyr/requesón/queso batido) son de
+  // montar, con un solo consejo cada uno: los copos y la granola JUSTO
+  // antes de comer o se reblandecen, la avena cruda necesita reposo o
+  // queda arenosa, los frutos rojos congelados fuera 10 min sueltan jugo
+  // que endulza. Y los de huevo, tostada y pan con embutido.
+
+  "Skyr con piña y frutos secos": {
+    difficulty: 1,
+    equipment: ["ninguno"],
+    steps: [
+      "Pon el skyr en un bol y remueve un poco para que quede cremoso.",
+      "Si la piña es de lata, escúrrela bien del almíbar; si es fresca, córtala en dados pequeños quitando el corazón, que es duro.",
+      "Pica las nueces en trozos grandes con el lado plano del cuchillo o con los dedos: enteras cuesta repartirlas.",
+      "Monta el skyr, la piña y las nueces. La piña ya es dulce; no necesita más."
+    ]
+  },
+
+  "Bowl proteico de skyr con almendras": {
+    difficulty: 1,
+    equipment: ["ninguno"],
+    steps: [
+      "Saca los frutos rojos del congelador 10 minutos antes: se descongelan solos y sueltan un jugo que endulza el skyr.",
+      "Pon el skyr en un bol y remuévelo hasta que quede cremoso.",
+      "Pica las almendras en trozos grandes.",
+      "Añade los frutos rojos con su jugo y las almendras. Un hilo de miel si lo quieres más dulce."
+    ]
+  },
+
+  "Queso fresco batido con copos y naranja": {
+    difficulty: 1,
+    equipment: ["ninguno"],
+    steps: [
+      "Pela la naranja a lo vivo: corta los dos extremos, apóyala y ve quitando la piel de arriba abajo con el cuchillo, incluida la parte blanca (amarga). Córtala en rodajas.",
+      "Pon el queso fresco batido en un bol.",
+      "AÑADE LA GRANOLA JUSTO ANTES DE COMER: en contacto con el líquido se reblandece en minutos.",
+      "Reparte la naranja por encima."
+    ]
+  },
+
+  "Yogur griego con avena y plátano": {
+    difficulty: 1,
+    equipment: ["ninguno"],
+    steps: [
+      "Pon el yogur en un bol y añade la avena. DÉJALO REPOSAR 5 O 10 MINUTOS (o toda la noche en la nevera): la avena cruda recién echada queda arenosa; con el reposo se ablanda y espesa el yogur.",
+      "Corta el plátano en rodajas.",
+      "Repártelo por encima al servir.",
+      "Un hilo de miel si lo quieres más dulce."
+    ]
+  },
+
+  "Yogur griego con copos de maíz y frutos rojos": {
+    difficulty: 1,
+    equipment: ["ninguno"],
+    steps: [
+      "Saca los frutos rojos del congelador 10 minutos antes: sueltan un jugo que endulza.",
+      "Pon el yogur en un bol.",
+      "Añade los frutos rojos con su jugo.",
+      "LOS COPOS DE MAÍZ, JUSTO ANTES DE COMER: en el yogur se reblandecen enseguida y pierden lo crujiente."
+    ]
+  },
+
+  "Skyr con granola y manzana": {
+    difficulty: 1,
+    equipment: ["ninguno"],
+    steps: [
+      "Lava la manzana, quítale el corazón y córtala en dados pequeños. No hace falta pelarla: la piel tiene fibra.",
+      "Pon el skyr en un bol y remuévelo para que quede cremoso.",
+      "Reparte la manzana.",
+      "La granola, por encima y JUSTO ANTES DE COMER, para que llegue crujiente."
+    ]
+  },
+
+  "Skyr con copos de maíz y fresas": {
+    difficulty: 1,
+    equipment: ["ninguno"],
+    steps: [
+      "Lava las fresas, quítales el rabito y córtalas en cuartos.",
+      "Pon el skyr en un bol.",
+      "Reparte las fresas.",
+      "Los copos de maíz por encima al final: en el skyr se ablandan en un par de minutos."
+    ]
+  },
+
+  "Queso fresco batido con copos de maíz y kiwi": {
+    difficulty: 1,
+    equipment: ["ninguno"],
+    steps: [
+      "Pela el kiwi con una cuchara: clava la punta entre la piel y la carne y gira la fruta. Sale entero y limpio.",
+      "Córtalo en rodajas.",
+      "Pon el queso fresco batido en un bol y reparte el kiwi.",
+      "Los copos de maíz, al final y justo antes de comer."
+    ]
+  },
+
+  "Queso fresco batido con avena y frutos rojos": {
+    difficulty: 1,
+    equipment: ["ninguno"],
+    steps: [
+      "Mezcla el queso fresco batido con la avena en un bol y déjalo reposar 5 o 10 minutos: la avena cruda recién echada queda arenosa.",
+      "Saca los frutos rojos del congelador 10 minutos antes.",
+      "Añádelos con su jugo por encima.",
+      "Un hilo de miel si lo quieres más dulce."
+    ]
+  },
+
+  "Queso fresco batido con granola y manzana": {
+    difficulty: 1,
+    equipment: ["ninguno"],
+    steps: [
+      "Lava la manzana, quítale el corazón y córtala en dados pequeños con la piel.",
+      "Pon el queso fresco batido en un bol y reparte la manzana.",
+      "La granola, por encima y JUSTO ANTES DE COMER.",
+      "Miel al gusto."
+    ]
+  },
+
+  "Requesón con avena y fresas": {
+    difficulty: 1,
+    equipment: ["ninguno"],
+    steps: [
+      "Mezcla el requesón con la avena en un bol y deja reposar 5 o 10 minutos para que la avena se ablande.",
+      "Lava las fresas, quítales el rabito y córtalas en cuartos.",
+      "Repártelas por encima.",
+      "Miel si lo quieres más dulce."
+    ]
+  },
+
+  "Requesón con granola y plátano": {
+    difficulty: 1,
+    equipment: ["ninguno"],
+    steps: [
+      "Pon el requesón en un bol.",
+      "Corta el plátano en rodajas y repártelo.",
+      "La granola, por encima y justo antes de comer, para que llegue crujiente.",
+      "Un hilo de miel si te gusta más dulce."
+    ]
+  },
+
+  "Requesón con copos de maíz y kiwi": {
+    difficulty: 1,
+    equipment: ["ninguno"],
+    steps: [
+      "Pela el kiwi con una cuchara (gira la fruta entre la piel y la carne) y córtalo en rodajas.",
+      "Pon el requesón en un bol y reparte el kiwi.",
+      "Los copos de maíz al final, justo antes de comer.",
+      "Miel al gusto."
+    ]
+  },
+
+  "Porridge de avena con nueces y canela": {
+    difficulty: 1,
+    equipment: ["olla"],
+    steps: [
+      "Pon la avena en un cazo con la leche (unas 2,5 veces el volumen de la avena) y una pizca de sal.",
+      "Lleva a fuego medio removiendo, y cuando empiece a hervir baja el fuego. 4 o 5 minutos removiendo a menudo, hasta que espese como unas gachas.",
+      "Fuera del fuego, añade la canela y remueve. Sigue espesando al reposar: si lo quieres más suelto, un chorrito más de leche.",
+      "Pica las nueces y repártelas por encima con un hilo de miel."
+    ]
+  },
+
+  "Revuelto de huevos con jamón y pan": {
+    difficulty: 2,
+    equipment: ["sarten", "tostadora"],
+    steps: [
+      "Bate los huevos con una pizca de sal. Corta el jamón cocido en tiras.",
+      "Sartén a fuego MEDIO-BAJO con una nuez de mantequilla o una gota de aceite. Echa el jamón 30 segundos y luego los huevos.",
+      "Remueve despacio y constante con una espátula, llevando el huevo cuajado del borde al centro. Fuego bajo: a fuego fuerte se hace gomoso y seco.",
+      "APÁGALO Y SÁCALO CUANDO TODAVÍA PAREZCA UN POCO LÍQUIDO: termina de cuajar con su calor en el plato. Sirve con el pan tostado."
+    ]
+  },
+
+  "Huevos con pan de molde y espinacas": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Echa las espinacas en la sartén con una gota de aceite a fuego medio, sin nada más, y remueve hasta que bajen y suelten el agua; sube el fuego para evaporarla. Sácalas.",
+      "Para el huevo frito: sube el aceite (una cucharada) a fuego medio-alto hasta que una gota de agua chisporrotee.",
+      "Casca el huevo en una taza y deslízalo en la sartén. NO LO TOQUES; con una cuchara, echa el aceite caliente por encima de la clara para que cuaje sin darle la vuelta. 2 minutos, yema líquida.",
+      "Tuesta el pan, ponle las espinacas y el huevo encima. Sal sobre la clara, no sobre la yema."
+    ]
+  },
+
+  "Claras de huevo con pan de centeno y verduras salteadas": {
+    difficulty: 2,
+    equipment: ["sarten", "tostadora"],
+    steps: [
+      "Verduras congeladas directas a fuego fuerte con una cucharadita de aceite, 5 minutos hasta que suelten el agua y se evapore. Si no, las claras quedan aguadas.",
+      "Bate las claras con una pizca de sal. Cuajan rápido y gomosas: fuego medio-bajo.",
+      "Echa las claras sobre las verduras y remueve despacio, del borde al centro.",
+      "Apaga cuando aún brillen y parezcan poco hechas. Sirve sobre el pan de centeno tostado."
+    ]
+  },
+
+  "Pan integral con atún y queso fresco": {
+    difficulty: 1,
+    equipment: ["ninguno"],
+    steps: [
+      "Escurre bien el atún de lata: aprieta la tapa contra el pescado sobre el fregadero hasta que deje de caer líquido. Si no, el pan se empapa.",
+      "Mézclalo en un bol con el queso fresco batido hasta que se pueda untar.",
+      "Tuesta el pan si quieres, o úsalo tal cual.",
+      "Unta la mezcla, pimienta y un chorro de limón."
+    ]
+  },
+
+  "Tostadas con salmón y queso fresco": {
+    difficulty: 1,
+    equipment: ["tostadora"],
+    steps: [
+      "Tuesta el pan.",
+      "Unta cada tostada con una capa de queso fresco batido.",
+      "Reparte el salmón por encima. Si es salmón ahumado, va tal cual; si es cocido, desmígalo y quítale la piel.",
+      "Pimienta, unas gotas de limón y eneldo si tienes."
+    ]
+  },
+
+  "Pan tostado con hummus y tomate": {
+    difficulty: 1,
+    equipment: ["tostadora"],
+    steps: [
+      "Tuesta el pan.",
+      "Unta una capa generosa de hummus.",
+      "Corta el tomate en rodajas finas, escúrrelas un momento en papel de cocina y ponlas encima. Sin escurrir, el pan se ablanda.",
+      "Sal en escamas, un hilo de aceite y pimienta."
+    ]
+  },
+
+  "Jamón serrano con pan de centeno y verduras salteadas": {
+    difficulty: 1,
+    equipment: ["sarten", "tostadora"],
+    steps: [
+      "Verduras congeladas directas a fuego fuerte con una cucharadita de aceite, 5 minutos hasta que suelten el agua y se evapore.",
+      "Tuesta el pan de centeno.",
+      "El jamón serrano va crudo, NO se cocina.",
+      "Monta: pan tostado, las verduras salteadas encima y el jamón por encima sin trocear. NO añadas sal: la pone el jamón."
+    ]
+  },
+
+  "Jamón serrano con pan integral y champiñones": {
+    difficulty: 1,
+    equipment: ["sarten", "tostadora"],
+    steps: [
+      "Champiñones en láminas (límpialos con papel, no bajo el grifo). A fuego fuerte con una cucharadita de aceite 5 minutos, hasta que suelten el agua y se evapore.",
+      "Tuesta el pan.",
+      "Pon los champiñones sobre el pan y el jamón serrano crudo por encima.",
+      "Pimienta. NO añadas sal: la pone el jamón."
+    ]
+  },
+
+  "Pavo con pan integral y champiñones": {
+    difficulty: 1,
+    equipment: ["sarten", "tostadora"],
+    steps: [
+      "Champiñones en láminas (papel, no agua), a fuego fuerte con una cucharadita de aceite 5 minutos hasta que suelten y se evapore el agua.",
+      "Tuesta el pan.",
+      "Pon el pavo en lonchas sobre el pan y los champiñones calientes encima.",
+      "Pimienta y un hilo de aceite crudo. Sal al gusto (el pavo loncheado ya lleva algo)."
+    ]
+  },
+
+  "Pavo con pan de molde y calabacín": {
+    difficulty: 1,
+    equipment: ["sarten", "tostadora"],
+    steps: [
+      "Calabacín en rodajas finas, salteado en una sartén con una cucharadita de aceite y sal a fuego medio-alto 4 minutos hasta dorar.",
+      "Tuesta el pan de molde.",
+      "Pon el pavo en lonchas y el calabacín encima.",
+      "Pimienta y un chorro de limón."
+    ]
   }
 };
 
