@@ -2963,6 +2963,343 @@ var DISH_INSTRUCTIONS = {
       "Cuscús: agua caliente, tapado 2 minutos, tenedor. Mézclalo con los pimientos.",
       "Trocea el pollo y sírvelo encima con su jugo."
     ]
+  },
+
+  // ── Tanda 2026-08-31 (e) (234 → 264 platos) ──────────────────────────
+  // Latas, marisco cocido, legumbres de bote, tofu y tempeh, y los
+  // montados (wrap, bocadillo). Bloques repetidos: lata (ya cocida, al
+  // final, no se fríe), marisco cocido (45 s a 1 min o goma), legumbre de
+  // bote (enjuagar, calentar suave, REMOVER LO JUSTO, vinagre al final),
+  // tofu (PRENSAR 15 min, no tocar 4 min), tempeh (hervir 10 min contra
+  // el amargor), pan que no se moja (barrera de grasa, tomate al centro).
+
+  "Wrap de salmón con aguacate y espinacas": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Seca los lomos de salmón y sálalos. Sartén a fuego medio-alto con una cucharadita de aceite: piel abajo 4 minutos, vuelta 2 minutos. Se abre en láminas = hecho.",
+      "Desmenúzalo en trozos grandes quitando la piel.",
+      "Calienta el wrap 10 segundos por lado en la sartén o en el microondas: frío se raja al doblarlo.",
+      "Machaca el aguacate con sal, úntalo por el centro dejando 3 cm de borde. Pon las espinacas crudas y el salmón sin pasarte de relleno, dobla los lados y enrolla apretando."
+    ]
+  },
+
+  "Macarrones con atún y verduras": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Verduras congeladas directas a fuego fuerte con una cucharada de aceite, 5 minutos hasta que evaporen su agua.",
+      "Calienta los macarrones ya cocidos en la sartén con dos cucharadas de agua, mezclando con las verduras 1 minuto.",
+      "Apaga y añade el atún de lata escurrido, sin remover mucho para que no se haga polvo.",
+      "Pimienta, un hilo de aceite crudo y tomate frito si quieres jugosidad."
+    ]
+  },
+
+  "Bocadillo de pavo con queso y verduras": {
+    difficulty: 1,
+    equipment: ["ninguno"],
+    steps: [
+      "El enemigo del bocadillo es el pan mojado. Abre el pan y unta las dos caras con una capa fina de aceite: hace de barrera.",
+      "Pon el queso pegado al pan por los dos lados: sella la miga.",
+      "El pavo en lonchas en el centro. El tomate en rodajas ESCURRIDO en papel de cocina, también en el centro, nunca tocando el pan.",
+      "Cierra, aprieta con la palma unos segundos y cómelo pronto."
+    ]
+  },
+
+  "Atún con arroz y zanahoria": {
+    difficulty: 1,
+    equipment: ["olla"],
+    steps: [
+      "Zanahoria en rodajas finas, 7 minutos en agua hirviendo con sal.",
+      "Calienta el arroz con un chorrito de agua, tapado 1 minuto; mézclalo con la zanahoria.",
+      "Escurre bien el atún y repártelo por encima en trozos, sin remover mucho.",
+      "Aceite, un chorro de vinagre o limón y sal. Frío también vale, de ensalada de arroz."
+    ]
+  },
+
+  "Caballa con quinoa y pimientos": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Pimiento sin las venas blancas (amargan) en tiras, salteado a fuego fuerte 6 minutos hasta manchas oscuras.",
+      "Calienta la quinoa y ahuécala con un tenedor; mézclala con el pimiento.",
+      "Escurre la caballa de lata y desmígala por encima. Ya está cocida, va al final; no la frías.",
+      "Limón y pimienta. La caballa ya sala, prueba antes."
+    ]
+  },
+
+  "Gambas con quinoa y verduras salteadas": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Verduras congeladas directas a fuego fuerte 5 minutos hasta que evaporen su agua.",
+      "Las gambas YA ESTÁN COCIDAS: 45 segundos en la sartén solo para templarlas, ni un segundo más o se vuelven gomas.",
+      "Calienta la quinoa y ahuécala con un tenedor; mézclala con las verduras.",
+      "Pon las gambas encima. Limón y sal con cuidado, ya llevan."
+    ]
+  },
+
+  "Gambas con trigo sarraceno y coliflor": {
+    difficulty: 1,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Coliflor en ramilletes pequeños, 5 minutos en agua con sal; escúrrela en cuanto ceda, pasa a puré en nada.",
+      "Calienta el trigo sarraceno y sepáralo con un tenedor; mézclalo con la coliflor.",
+      "Gambas cocidas: 45 segundos en la sartén con una cucharadita de aceite solo para templar. Más = goma.",
+      "Pon las gambas encima. Limón, pimienta."
+    ]
+  },
+
+  "Langostinos con trigo sarraceno y pimientos": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Pimiento sin venas blancas en tiras, salteado a fuego fuerte 6 minutos hasta manchas oscuras.",
+      "Pela los langostinos cocidos si vienen con cáscara (cabeza, patas, cuerpo), con las manos.",
+      "Échalos a la sartén 1 minuto solo para templar. Ya están cocidos; recocerlos los vuelve correosos.",
+      "Calienta el trigo sarraceno, sepáralo con tenedor y mézclalo con el pimiento. Langostinos encima. Limón."
+    ]
+  },
+
+  "Garbanzos con trigo sarraceno y calabacín": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Calabacín en dados de un centímetro, salteado con una cucharada de aceite y sal a fuego medio-alto 5 minutos hasta dorar.",
+      "Escurre y enjuaga los garbanzos de bote hasta que el agua salga clara. Añádelos a la sartén con medio vaso de agua, 3 minutos. Ya están tiernos: solo cogen sabor.",
+      "Calienta el trigo sarraceno y sepáralo con un tenedor; mézclalo con todo.",
+      "Sal, pimienta y pimentón. Un hilo de aceite crudo."
+    ]
+  },
+
+  "Garbanzos con arroz integral y brócoli": {
+    difficulty: 1,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Brócoli en ramilletes, 4 minutos en agua con sal; escúrrelo cuando el tallo resista.",
+      "Escurre y enjuaga los garbanzos de bote. Caliéntalos en una sartén con una cucharada de aceite y medio vaso de agua, 3 minutos, removiendo poco para no deshacerlos.",
+      "Calienta el arroz integral (chorrito de agua, tapado 1 minuto).",
+      "Mezcla arroz, garbanzos y brócoli. Sal, pimienta, pimentón, aceite crudo."
+    ]
+  },
+
+  "Lentejas con cuscús y champiñones": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Champiñones en láminas (papel, no agua), a fuego fuerte 5 minutos hasta que suelten y reevaporen el agua.",
+      "Escurre y enjuaga las lentejas de bote hasta que el agua salga clara. Añádelas a la sartén y calienta 3 minutos a fuego suave, REMOVIENDO LO JUSTO o se hacen puré.",
+      "Cuscús: agua caliente por encima, tapado 2 minutos, ahueca con TENEDOR.",
+      "Mezcla todo con cuidado. Un chorrito de vinagre al final levanta las lentejas. Sal y pimienta."
+    ]
+  },
+
+  "Alubias con arroz integral y coliflor": {
+    difficulty: 1,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Coliflor en ramilletes pequeños, 5 minutos en agua con sal; escúrrela en cuanto ceda.",
+      "Escurre y enjuaga las alubias de bote. Son MUY FRÁGILES: casi no se remueven o se hacen crema.",
+      "Caliéntalas en una sartén con una cucharada de aceite y dos cucharadas de agua, 2 minutos, moviendo la sartén en vez de remover.",
+      "Mezcla con el arroz integral caliente y la coliflor. Sal, pimienta, pimentón, aceite crudo."
+    ]
+  },
+
+  "Tofu con cuscús y espinacas": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "PRENSA el tofu 15 minutos con un plato con peso encima: está lleno de agua y sin esto no dora y salpica.",
+      "Córtalo en dados, sálalos. Sartén a fuego medio-alto con una cucharada de aceite; NO LOS TOQUES 4 minutos hasta que tengan costra, luego 3 minutos más dándoles vueltas.",
+      "Echa las espinacas en la sartén, 1 minuto hasta que bajen.",
+      "Cuscús: agua caliente, tapado 2 minutos, tenedor. Mézclalo con el tofu y las espinacas. Soja o sal."
+    ]
+  },
+
+  "Tofu con patatas y pimientos": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Prensa el tofu 15 minutos con un peso encima. Dados, sal.",
+      "Pimiento sin venas blancas en tiras, salteado a fuego fuerte 6 minutos hasta manchas oscuras. Sácalo.",
+      "Patata cocida en rodajas, dorada 3 minutos por lado. Sácala.",
+      "Tofu en la misma sartén, sin tocarlo 4 minutos hasta costra, vuelta 3 minutos. Mezcla con patata y pimiento. Soja o sal, pimentón."
+    ]
+  },
+
+  "Tempeh con cuscús y brócoli": {
+    difficulty: 2,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "El tempeh crudo amarga. Cuécelo 10 minutos en agua hirviendo cubriéndolo. Escúrrelo y sécalo.",
+      "Córtalo en dados y dóralos en una sartén con una cucharada de aceite a fuego medio-alto 5 minutos. Chorrito de soja al final que se pegue.",
+      "Brócoli en ramilletes, 4 minutos en agua con sal.",
+      "Cuscús: agua caliente, tapado 2 minutos, tenedor. Mezcla todo. Pimienta."
+    ]
+  },
+
+  "Tempeh con patatas y calabacín": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Cuece el tempeh 10 minutos en agua hirviendo cubriéndolo (le quita el amargor). Sécalo, dados.",
+      "Calabacín en medias lunas y patata cocida en rodajas: dóralos juntos con una cucharada de aceite y sal, 5 minutos. Sácalos.",
+      "Dora el tempeh en la misma sartén 5 minutos, con un chorrito de soja al final.",
+      "Mezcla con la patata y el calabacín. Pimienta."
+    ]
+  },
+
+  "Skyr con sardinas y tostadas": {
+    difficulty: 1,
+    equipment: ["tostadora"],
+    steps: [
+      "Es una combinación tipo pan escandinavo: sardinas sobre pan, y el skyr untado de base.",
+      "Tuesta el pan.",
+      "Escurre las sardinas de lata y quítales la espina central tirando con los dedos si te molesta (es blanda, se come).",
+      "Unta el pan con una capa fina de skyr, pon las sardinas encima y unas rodajas de tomate. Pimienta y un chorro de limón."
+    ]
+  },
+
+  "Tortilla de claras con atún y tomate": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Escurre el atún de lata. El tomate en dados pequeños, y quítale parte del jugo apretándolo en un colador: si no, la tortilla queda aguada.",
+      "Bate las claras con una pizca de sal. Cuajan más rápido y más gomosas que el huevo entero: fuego medio, no fuerte.",
+      "Gota de aceite en la sartén, vuelca las claras y, cuando el borde cuaje, reparte el atún y el tomate por una mitad.",
+      "Dobla la otra mitad encima, 30 segundos más y al plato. Sácala cuando el centro aún parezca poco hecho."
+    ]
+  },
+
+  "Claras revueltas con pavo y espinacas": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Echa las espinacas en la sartén con una gota de aceite a fuego medio, sin nada más, y remueve hasta que bajen y suelten el agua; sube el fuego para que se evapore.",
+      "Añade el pavo en lonchas cortado en tiras, 1 minuto solo para templarlo.",
+      "Baja el fuego a medio-bajo, echa las claras batidas con una pizca de sal y remueve despacio, llevando el borde cuajado al centro.",
+      "Apaga cuando aún brillen y parezcan poco hechas: siguen cuajando en el plato. Pimienta."
+    ]
+  },
+
+  "Tofu estofado con arroz y verduras": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "PRENSA el tofu 15 minutos con un peso encima. Córtalo en dados y sálalos.",
+      "Dóralos en una sartén con una cucharada de aceite a fuego medio-alto, sin tocarlos 4 minutos hasta que tengan costra, luego 3 minutos más.",
+      "Añade las verduras congeladas y saltea 4 minutos. Luego medio vaso de agua con una cucharada de tomate frito o de soja, y deja que el tofu la ABSORBA 4 minutos, moviendo la sartén, no la cuchara.",
+      "Sirve sobre el arroz caliente."
+    ]
+  },
+
+  "Caballa con patata y brócoli": {
+    difficulty: 1,
+    equipment: ["olla"],
+    steps: [
+      "La caballa de lata YA ESTÁ cocida: escúrrela del aceite y desmígala, va al final. No se fríe.",
+      "Brócoli en ramilletes, 4 minutos en agua con sal; escúrrelo cuando el tallo resista.",
+      "Corta la patata cocida en dados y caliéntala con el brócoli el último minuto, o en el microondas.",
+      "Mezcla patata y brócoli, reparte la caballa por encima. Limón, pimienta, aceite crudo."
+    ]
+  },
+
+  "Caballa con arroz integral y zanahoria": {
+    difficulty: 1,
+    equipment: ["olla"],
+    steps: [
+      "Zanahoria en rodajas finas, 7 minutos en agua con sal.",
+      "Calienta el arroz integral con un chorrito de agua, tapado 1 minuto.",
+      "Mezcla el arroz con la zanahoria.",
+      "Escurre la caballa de lata, desmígala y repártela por encima. Fuerte de sabor: solo limón y pimienta."
+    ]
+  },
+
+  "Caballa con cuscús y champiñones": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Champiñones en láminas (papel, no agua), a fuego fuerte 5 minutos hasta que suelten y reevaporen el agua.",
+      "Cuscús: agua caliente por encima, tapado 2 minutos, ahueca con TENEDOR.",
+      "Mezcla el cuscús con los champiñones.",
+      "Escurre la caballa de lata y desmígala por encima. No la frías, ya está hecha. Limón, pimienta."
+    ]
+  },
+
+  "Gambas con patatas y calabacín": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Calabacín en medias lunas y patata cocida en rodajas: dóralos juntos con una cucharada de aceite y sal, 5 minutos.",
+      "Aparta a un lado. Echa las gambas cocidas en el hueco, 45 segundos solo para templar. Recocidas = gomas.",
+      "Mezcla todo 30 segundos y sirve. Limón y pimienta."
+    ]
+  },
+
+  "Langostinos con patatas y champiñones": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Champiñones en láminas (papel, no agua), a fuego fuerte 5 minutos hasta que suelten y reevaporen el agua.",
+      "Patata cocida en rodajas, dorada 3 minutos por lado en la misma sartén.",
+      "Langostinos cocidos pelados, 1 minuto solo para templar. Recocidos = correosos.",
+      "Mezcla y sirve. Limón, pimienta, aceite crudo."
+    ]
+  },
+
+  "Langostinos con arroz y zanahoria": {
+    difficulty: 1,
+    equipment: ["olla"],
+    steps: [
+      "Zanahoria en rodajas finas, 7 minutos en agua con sal.",
+      "Calienta el arroz con un chorrito de agua, tapado 1 minuto; mézclalo con la zanahoria.",
+      "Langostinos cocidos pelados, templados 1 minuto en una sartén con una cucharadita de aceite. No más.",
+      "Ponlos encima. Limón y sal con cuidado."
+    ]
+  },
+
+  "Atún con trigo sarraceno y pimientos": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Pimiento sin venas blancas en tiras, salteado a fuego fuerte 6 minutos hasta manchas oscuras.",
+      "Calienta el trigo sarraceno y sepáralo con un tenedor; mézclalo con el pimiento.",
+      "Escurre bien el atún de lata y añádelo al final en trozos, sin deshacerlo.",
+      "Aceite crudo, pimienta y limón. El atún ya lleva sal."
+    ]
+  },
+
+  "Atún con arroz integral y espinacas": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Saltea las espinacas 1 minuto en una sartén con una gota de aceite, hasta que bajen.",
+      "Calienta el arroz integral con un chorrito de agua, tapado 1 minuto; mézclalo con las espinacas.",
+      "Escurre el atún de lata y añádelo al final en trozos.",
+      "Aceite, limón y pimienta."
+    ]
+  },
+
+  "Garbanzos con pasta y verduras salteadas": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Verduras congeladas directas a fuego fuerte con una cucharada de aceite, 5 minutos hasta que evaporen su agua.",
+      "Escurre y enjuaga los garbanzos de bote. Añádelos a la sartén, 2 minutos, removiendo poco para no deshacerlos.",
+      "Añade la pasta ya cocida con dos cucharadas de agua y mezcla 1 minuto.",
+      "Sal, pimienta, pimentón y un hilo de aceite crudo."
+    ]
+  },
+
+  "Lentejas con arroz y pimientos": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Pimiento sin venas blancas en tiras, salteado a fuego fuerte 6 minutos hasta manchas oscuras.",
+      "Escurre y enjuaga las lentejas de bote hasta que el agua salga clara. Añádelas a la sartén y calienta 3 minutos a fuego suave, REMOVIENDO LO JUSTO o se hacen puré.",
+      "Calienta el arroz con un chorrito de agua, tapado 1 minuto.",
+      "Mezcla todo. Un chorrito de vinagre levanta las lentejas. Sal y pimienta."
+    ]
   }
 };
 
