@@ -163,7 +163,7 @@ at runtime.
 | --- | --- | --- |
 | UI entry | `index.html`, `js/app.js` | Form, orchestration, DOM event handling, startup isolation (`safeInit`) |
 | Nutrition core | `js/core/calculator.js`, `js/core/meal-helpers.js` | Target calculation and meal arithmetic |
-| Ingredient nutrition | `js/core/nutrition.js` | Real per-ingredient kcal/protein/carbs/fat when verified (50/81 roles), dish-total remainder for the rest — never mass-share allocation (2026-08-13d); unresolved-row kcal derived by Atwater from its own protein/carbs/fat remainder, never independently clamped (2026-08-13e) |
+| Ingredient nutrition | `js/core/nutrition.js` | Real per-ingredient kcal/protein/carbs/fat when verified (**79/81 roles as of 2026-08-31** — Mercadona products + 31 from USDA FoodData Central), dish-total remainder for the last 2 (`Wrap proteico`, corrupt `Lechuga: Pepino`) — never mass-share allocation (2026-08-13d); unresolved-row kcal derived by Atwater from its own protein/carbs/fat remainder, never independently clamped (2026-08-13e) |
 | Pricing | `js/core/pricing.js` | Ingredient/dish pricing, package resolution, usageCost vs. purchaseCost |
 | Budget | `js/core/budget.js` | Day-level aggregate purchase cost, pantry-aware — shared by the generator and the shopping list |
 | Pantry | `js/core/pantry.js` | Despensa domain logic — storage, stock CRUD, the 3-stage lifecycle |

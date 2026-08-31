@@ -22,21 +22,16 @@ de `STATE.md`. `PythonProject` (14 archivos) sigue sin commitear, aparte.
    pruebe a mano las flechas del teclado del autocompletado de "no me
    gusta", lo único no verificable desde la herramienta.
 
-2. **P1 — API key de USDA FoodData Central** (gratis, un minuto, sin
-   tarjeta, en fdc.nal.usda.gov/api-key-signup.html). Desbloquea de una vez
-   cebolla, ajo **y los 31 roles de ingrediente sin resolver**, que hoy
-   degradan la precisión nutricional de TODA la app, no solo de los platos
-   nuevos. `DEMO_KEY` corta a los ~9 usos. La clave va en config y no se
-   commitea nunca. **El asistente no se da de alta él**: crear cuentas a
-   nombre del usuario queda fuera de lo que hace.
-
-   Cuando llegue: parar de escribir recetas y hacer esto primero. Reglas no
-   negociables al integrarlo — todo valor entra como `generic_reference`
-   con `needs_review` siempre y sin auto-aceptación; se guardan `fdcId` y la
-   descripción literal de USDA; `SOURCE_ID = "usda_fdc"` desde el primer
-   día; y el mapeo español→inglés se escribe A MANO. El motivo está medido:
-   ver el caso "Oil, oat" en `STATE.md` — 1 de cada 9 emparejamientos
-   automáticos fue catastrófico y pasó todos los controles automáticos.
+2. ~~**P1 — API key de USDA FoodData Central.**~~ **HECHO 2026-08-31** — el
+   usuario consiguió la clave; se resolvieron 31 roles (cebolla, ajo,
+   plátano, brócoli, salmón, tempeh, avena, granos cocidos, latas de
+   pescado, marisco cocido...). 26 con match exacto, 5 con proxy y `note`.
+   Todos como `generic_reference` / `needsReview:true` con `fdcId` +
+   descripción literal; energía por `unitName=="KCAL"`; mapeo ES→EN a mano;
+   `avena` re-consultada para no coger "Oil, oat". Sin resolver a propósito:
+   `wrap proteico` y `lechuga pepino` (nombre corrupto). Golden-masters
+   recapturados, 7 tests de contrato intactos. La clave no se commitea.
+   Desbloquea el punto 4 (platos españoles).
 
 3. ~~**P2 — seguir escribiendo recetas.**~~ **HECHO 2026-08-31** — 333 de
    334 (`af96985`..`26fd6af`); falta solo "Merluza al ajillo con verduras"

@@ -34,6 +34,18 @@
 > Todo lo que sigue debajo describe el estado ANTERIOR a esos cuatro
 > commits; se conserva por el detalle de las mediciones.
 >
+> **También hecho el 2026-08-31, después:** T3 (recetas) completo, 333/334
+> platos con pasos (8 tandas, `af96985`..`26fd6af`; falta solo "Merluza al
+> ajillo", necesita ajo). Y **T2**: el usuario consiguió la clave de USDA
+> FoodData Central y se resolvieron **31 roles de ingrediente** (cebolla,
+> ajo, plátano, brócoli, salmón, tempeh, avena, pasta/arroz/cuscús/trigo
+> sarraceno cocidos, etc.). De los 81 roles usados en `dishes.js` quedan
+> **2 sin resolver a propósito**: "Wrap proteico" (sin equivalente real en
+> catálogo/OFF/USDA) y "Lechuga: Pepino" (nombre corrupto en `dishes.js`).
+> Todo entró como `generic_reference` / `needsReview:true` con `fdcId` y la
+> descripción literal de USDA. Golden-masters recapturados (los datos
+> cambian, no el algoritmo); los 7 tests de contrato intactos.
+>
 > ### 0. ¿Estás en la carpeta correcta?
 >
 > El proyecto **se movió**. La ruta buena, y la única con git y tests, es:
@@ -230,12 +242,12 @@
 > poder rehacer o rechazar la derivación. El argumento válido es
 > **composicional**, no de coherencia — ver punto 3.
 >
-> `cebolla` y `ajo` están **BLOQUEADOS en nutrición** (`resolved:false`):
-> los 5 productos crudos del catálogo no traen datos, y el único que sí los
-> trae ("Cebollas rojas") declara 93 kcal frente a 18 por Atwater. **Precio
-> y envase sí son reales** (cebolla 0,24 €/100 g, ajo 0,74 €/100 g; 150 g
-> por cebolla, 5 g por diente). Dos partes de tres bien hechas, y la tercera
-> dice "no se sabe" en vez de inventar.
+> `cebolla` y `ajo` estuvieron **bloqueados en nutrición** (`resolved:false`)
+> hasta el 2026-08-31: los 5 productos crudos del catálogo no traen datos, y
+> el único que sí los trae ("Cebollas rojas") declara 93 kcal frente a 18
+> por Atwater. **RESUELTOS 2026-08-31 desde USDA FDC** (cebolla "Onions,
+> raw" 40 kcal; ajo "Garlic, raw" 149 kcal), junto a los otros 29. Precio y
+> envase ya eran reales (cebolla 0,24 €/100 g, ajo 0,74 €/100 g).
 >
 > ### 5. BEDCA está muerto; USDA funciona
 >
@@ -252,19 +264,19 @@
 > la misma consulta. Hay que seleccionar por `unitName == "KCAL"`, nunca por
 > posición.
 >
-> ### 6. BLOQUEADO ESPERANDO AL USUARIO
+> ### 6. USDA FDC — HECHO 2026-08-31 (era: bloqueado esperando al usuario)
 >
-> Una **API key gratuita de USDA FoodData Central**
-> (fdc.nal.usda.gov/api-key-signup.html, un minuto, sin tarjeta) desbloquea
-> de golpe cebolla, ajo **y los 31 roles sin resolver** que hoy degradan la
-> precisión nutricional de toda la app. `DEMO_KEY` corta a los ~9 usos (429
-> en el 10º). Va en config y **no se commitea jamás**. Alternativa sin
-> clave: ir a goteo a ~9/hora, unas 4 horas para los 33 roles.
+> El usuario consiguió la API key gratuita de USDA FoodData Central
+> (fdc.nal.usda.gov/api-key-signup.html). Se resolvieron **31 roles** (26
+> con match exacto, 5 con proxy y `note` de salvedad — copos de maíz,
+> granola, mermelada light, skyr, frutos rojos). La clave va en config /
+> variable de entorno y **no se commitea jamás**; el script de consulta y
+> el `fdc_results.json` de procedencia quedaron en scratchpad, no en el
+> repo. `wrap proteico` sigue sin resolver: una tortilla normal de USDA
+> (306 kcal, 49 g carbs) duplicaría sus carbohidratos reales.
 >
 > **El asistente no debe darse de alta él**: crear cuentas en servicios a
 > nombre del usuario queda fuera de lo que hace, lo pida quien lo pida.
->
-> Cuando llegue la clave, parar de escribir recetas y hacer USDA primero.
 > Todo valor de tabla de composición entra como `generic_reference`, con
 > `needs_review` SIEMPRE, sin auto-aceptación nunca, guardando `fdcId` y la
 > descripción literal al lado para que un "Oil, oat" se vea de un vistazo.
@@ -6015,14 +6027,17 @@ Tres veces en un solo día, por caminos distintos:
 lo hace.** Por eso el tier 4 (`generic_reference`, siempre `needs_review`,
 nunca auto-aceptado) es un requisito medido, no burocracia.
 
-### 9. BLOQUEADO ESPERANDO AL USUARIO
+### 9. USDA FDC — HECHO 2026-08-31 (era: bloqueado esperando al usuario)
 
-Una **clave gratuita de USDA FoodData Central**
-(`fdc.nal.usda.gov/api-key-signup.html`, un minuto, sin tarjeta) desbloquea
-de golpe cebolla, ajo **y los 31 roles sin resolver** (brócoli, plátano,
-salmón, pepino, calabacín...), que hoy degradan la nutrición en toda la
-app. Va en config y **nunca se comitea**. Alternativa sin registro: gotear
-a ~9/hora, unas 4 horas para 33 roles.
+El usuario consiguió la clave de USDA FoodData Central y se resolvieron
+**31 roles** (cebolla, ajo, brócoli, plátano, salmón, pepino, calabacín,
+tempeh, avena, pasta/arroz/cuscús/trigo sarraceno cocidos, latas de
+pescado, marisco cocido...). 26 con match exacto, 5 con proxy y `note` de
+salvedad. Todos como `generic_reference` / `needsReview:true` con `fdcId` y
+descripción literal de USDA. De los 81 roles de `dishes.js` quedan 2 sin
+resolver a propósito: "Wrap proteico" y "Lechuga: Pepino" (nombre corrupto).
+Golden-masters recapturados; los 7 tests de contrato intactos. La clave va
+en config / entorno y **nunca se comitea**.
 
 ### 10. ENTREGABLES EN EL ESCRITORIO (2026-08-26)
 
@@ -6084,25 +6099,26 @@ Pendiente de T1, para la próxima sesión:
 
 ---
 
-**T2 — P1. La clave de USDA, si el usuario la consigue.**
+**T2 — P1. La clave de USDA. ✅ HECHO 2026-08-31.**
 
-`fdc.nal.usda.gov/api-key-signup.html` — gratis, un minuto, sin tarjeta.
-**No te des de alta tú**: crear cuentas a su nombre queda fuera. Si prefiere
-no registrarse, se puede gotear con `DEMO_KEY` a ~9/hora, unas 4 horas para
-33 roles.
+El usuario consiguió la clave. Se resolvieron **31 roles** desde USDA
+FoodData Central (SR Legacy): 26 con match exacto de descripción, 5 con
+proxy documentado en `note` (copos de maíz, granola, mermelada light,
+skyr, frutos rojos). Mapeo español→inglés escrito a mano; energía
+seleccionada por `unitName == "KCAL"` (nunca por posición); `avena`
+re-consultada a propósito porque la búsqueda ingenua devuelve "Oil, oat"
+(884 kcal). Todo entró como `generic_reference` / `needsReview:true` con
+`fdcId` + `fdcDescription`. La tabla completa se revisó con el usuario
+ANTES de escribir en `ingredient-nutrition.js`.
 
-En cuanto la tenga, PARAR de escribir recetas y hacer esto: desbloquea de
-golpe cebolla, ajo **y los 31 roles sin resolver**, que hoy degradan la
-nutrición en TODA la app.
+Sin resolver a propósito: `wrap proteico` (una tortilla normal de USDA
+duplicaría sus carbohidratos) y `lechuga pepino` (nombre corrupto en
+`dishes.js`). Golden-masters recapturados (cambian los datos, no el
+algoritmo); los 7 tests de contrato intactos. La clave, el script de
+consulta y el JSON de procedencia NO están en el repo.
 
-Reglas no negociables al integrarlo (medidas, no opinión — ver sección 7):
-todo valor entra como `generic_reference`, siempre `needs_review`, nunca
-auto-aceptado; se guardan `fdcId` y la descripción literal de USDA para que
-un "Oil, oat" se vea a simple vista; `SOURCE_ID = "usda_fdc"` desde el
-primer día para que un fallo de USDA no silencie una búsqueda de OFF; y el
-mapeo español→inglés se escribe A MANO (traducir automáticamente es cómo
-"Pepino" acaba siendo pepinillo en vinagre). Trae la tabla completa a
-revisión ANTES de escribir nada en `ingredient-nutrition.js`.
+Desbloquea T4 (tortilla de patatas, pollo al ajillo, pisto, gazpacho,
+lentejas guisadas) y permite escribir los pasos de "Merluza al ajillo".
 
 ---
 

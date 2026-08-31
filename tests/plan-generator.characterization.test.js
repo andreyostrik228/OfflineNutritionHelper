@@ -418,6 +418,17 @@ function run(t) {
   // de arroz para llegar a las calorías.
   //
   // Los 7 tests de invariantes #1-7 NO se tocaron y siguen pasando.
+  // ── RECAPTURA 2026-08-31: nutrición real por ingrediente (USDA FDC) ───
+  // 31 roles pasaron de sin resolver a resueltos con valores de USDA
+  // FoodData Central (cebolla, ajo, plátano, brócoli, salmón, tempeh,
+  // avena, pasta/arroz/cuscús/trigo sarraceno cocidos, etc.). Cambian los
+  // macros por ingrediente -> cambia scaleFactor en buildMealFromDish ->
+  // otra composición gana la lotería para la misma semilla. Cambio en los
+  // DATOS, no en el algoritmo; los 7 tests de contrato NO se tocaron.
+  //   seed=42: 2822.1 -> 2884.1 kcal (objetivo 2822: +2,2%), y pasa de
+  //            tierUsed 2/"adjusted" a 0/"perfect", 0 violaciones.
+  //   seed=7:  3793.2 -> 3795.2 kcal (objetivo 3871: -2,0%), sin cambio de
+  //            tier ni de estado.
   t.test("golden-master (seed=42): recomposición/Equilibrado -- agregados exactos del resultado actual", function () {
     var s = freshEngineSandbox();
     seedRandomInContext(s, 42);
@@ -428,15 +439,15 @@ function run(t) {
     // (realm distinto) antes de comparar contra literales del host -- ver
     // comentario del test #1 más arriba para el motivo completo.
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.key; }))), EXPECTED_MEAL_KEYS);
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 4, 2, 3, 2]);
-    assert.strictEqual(result.total.kcal, 2822.1);
-    assert.strictEqual(result.total.protein, 239.30000000000004);
-    assert.strictEqual(result.total.carbs, 313.6);
-    assert.strictEqual(result.total.fat, 54.30000000000001);
-    assert.strictEqual(result.total.cost, 11.47);
-    assert.strictEqual(result.total.purchaseCost, 18.7);
-    assert.strictEqual(result.report.status, "adjusted");
-    assert.strictEqual(result.report.tierUsed, 2);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 3, 3, 3, 2]);
+    assert.strictEqual(result.total.kcal, 2884.1);
+    assert.strictEqual(result.total.protein, 231.79999999999998);
+    assert.strictEqual(result.total.carbs, 379.09999999999997);
+    assert.strictEqual(result.total.fat, 37.6);
+    assert.strictEqual(result.total.cost, 10.22);
+    assert.strictEqual(result.total.purchaseCost, 19.03);
+    assert.strictEqual(result.report.status, "perfect");
+    assert.strictEqual(result.report.tierUsed, 0);
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.report.violations)), []);
   });
 
@@ -448,11 +459,11 @@ function run(t) {
 
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.key; }))), EXPECTED_MEAL_KEYS);
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 3, 3, 2, 3]);
-    assert.strictEqual(result.total.kcal, 3793.2);
-    assert.strictEqual(result.total.protein, 268.99999999999994);
-    assert.strictEqual(result.total.carbs, 486.00000000000006);
-    assert.strictEqual(result.total.fat, 87.89999999999999);
-    assert.strictEqual(result.total.cost, 14.25);
+    assert.strictEqual(result.total.kcal, 3795.2000000000003);
+    assert.strictEqual(result.total.protein, 265.8);
+    assert.strictEqual(result.total.carbs, 506.1000000000001);
+    assert.strictEqual(result.total.fat, 80.89999999999999);
+    assert.strictEqual(result.total.cost, 13.69);
     assert.strictEqual(result.total.purchaseCost, 23.77);
     assert.strictEqual(result.report.status, "perfect");
     assert.strictEqual(result.report.tierUsed, 0);
