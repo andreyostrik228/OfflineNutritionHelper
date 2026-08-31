@@ -25,11 +25,14 @@ function sandbox() {
   return loadBrowserGlobals([
     projPath("js/core/utils.js"),
     projPath("js/data/dishes.js"),
+    projPath("js/data/dish-instructions.js"),
     projPath("js/data/real-products.js"),
     projPath("js/data/no-cook-classifier.js"),
     projPath("js/core/pricing.js"),
     projPath("js/core/preferences.js"),
-    projPath("js/engine/no-cook-generator.js")
+    projPath("js/engine/no-cook-generator.js"),
+    projPath("js/data/dish-cuisine.js"),
+    projPath("js/ui/ingredient-suggest.js")
   ]);
 }
 
@@ -154,6 +157,226 @@ function run(t) {
       s.SETTINGS_LIST_FIELDS.indexOf("allergens"), -1,
       "las alergias son una restriccion DURA: no pueden compartir el camino blando de dislikes"
     );
+  });
+
+
+  // ── Pasos / equipo / dificultad (2026-08-26) ──────────────────────
+  // Nacen de un fallo real: una usuaria no pudo cocinar con la app. Los
+  // platos no son complejos (3 ingredientes, 15 min de mediana) -- lo que
+  // faltaba era CÓMO hacerlos.
+
+  t.test("EL INVARIANTE: un plato SIN instrucciones se comporta igual que antes", function () {
+    var s = sandbox();
+    // Antes esto exigia ademas "mas de 300 platos sin instrucciones", como
+    // guardia de que el piloto seguia siendo pequeno. Se ha quitado a
+    // proposito el 2026-08-26: la fase 2 existe precisamente para que ese
+    // numero BAJE, asi que la asercion se volvia falsa segun avanzaba el
+    // trabajo previsto. El invariante de verdad -- el que protegen los
+    // golden-master -- nunca fue el recuento, sino que un plato sin
+    // instrucciones no cambie de comportamiento. Eso es lo que se prueba.
+    var sinInstrucciones = s.DISH_DB.filter(function (d) {
+      return !s.getDishInstructions(d.name);
+    });
+    assert.ok(sinInstrucciones.length > 0, "deberia quedar algun plato sin instrucciones que probar");
+
+    var d = sinInstrucciones[0];
+    // Ni el equipo ni la dificultad pueden filtrarlo, digan lo que digan
+    // los ajustes del usuario.
+    assert.strictEqual(s.canCookWithEquipment(d, []), true);
+    assert.strictEqual(s.canCookWithEquipment(d, ["microondas"]), true);
+    assert.strictEqual(s.isWithinDifficulty(d, 1), true, "sin dato de dificultad NO se filtra");
+  });
+
+  t.test("los platos del piloto declaran equipo y dificultad validos", function () {
+    var s = sandbox();
+    var vocab = s.EQUIPMENT_TOKENS;
+    var conInstrucciones = s.DISH_DB.filter(function (d) { return s.getDishInstructions(d.name); });
+    assert.ok(conInstrucciones.length >= 15, "deberia haber instrucciones que validar");
+
+    conInstrucciones.forEach(function (d) {
+      var info = s.getDishInstructions(d.name);
+      assert.ok(Array.isArray(info.steps) && info.steps.length >= 3, d.name + ": necesita pasos de verdad");
+      assert.ok(info.difficulty >= 1 && info.difficulty <= 3, d.name + ": dificultad fuera de rango");
+      assert.ok(Array.isArray(info.equipment) && info.equipment.length, d.name + ": sin equipo declarado");
+      info.equipment.forEach(function (tok) {
+        assert.ok(vocab.indexOf(tok) !== -1, d.name + ": '" + tok + "' no esta en el vocabulario cerrado");
+      });
+    });
+  });
+
+  t.test("TODO plato del catalogo tiene una cocina del vocabulario cerrado", function () {
+    var s = sandbox();
+    // Cubre los 334, no solo los del piloto: dish-cuisine.js existe
+    // precisamente para no depender de que se hayan escrito los pasos.
+    s.DISH_DB.forEach(function (d) {
+      var c = s.getDishCuisine(d.name);
+      assert.ok(
+        s.CUISINE_TOKENS.indexOf(c) !== -1,
+        d.name + ": cuisine '" + c + "' no esta en " + s.CUISINE_TOKENS.join("/")
+      );
+    });
+  });
+
+  t.test("un plato desconocido es 'neutra', nunca undefined ni un error", function () {
+    var s = sandbox();
+    // Regla de fallo por defecto: sin dato, el sesgo no toca el plato.
+    assert.strictEqual(s.getDishCuisine("Plato que no existe"), "neutra");
+    assert.strictEqual(s.getDishCuisine(""), "neutra");
+    assert.strictEqual(s.getDishCuisine(null), "neutra");
+  });
+
+  t.test("la cocina se decide por IDENTIDAD, no por ingredientes", function () {
+    var s = sandbox();
+    // La regla que separa este archivo de una lista de ingredientes. Si
+    // alguien vuelve a marcar por ingrediente, esto rompe.
+    assert.strictEqual(s.getDishCuisine("Skyr con kiwi"), "neutra",
+      "el skyr es un producto de super, no hace islandes al plato");
+    assert.strictEqual(s.getDishCuisine("Gambas con quinoa y verduras salteadas"), "neutra",
+      "las gambas son un ingrediente, no una nacionalidad");
+    assert.strictEqual(s.getDishCuisine("Tortilla espanola con ensalada".replace("espanola", "española")), "espanola",
+      "esto SI es identidad de plato");
+    assert.strictEqual(s.getDishCuisine("Pollo tikka masala con arroz integral"), "internacional");
+  });
+
+  t.test("sin preferencia de cocina el sesgo es EXACTAMENTE 0 (golden-masters intactos)", function () {
+    var s = sandbox();
+    // El defecto no debe cambiar nada para quien no ha pedido nada. Si
+    // esto se rompiera, los golden-master del generador se moverian.
+    assert.strictEqual(s.getCuisinePreference(), "mixta");
+  });
+
+  t.test("la cocina es una PREFERENCIA: no filtra nada por si sola", function () {
+    var s = sandbox();
+    // Guardia de diseno. Si alguien convierte el sesgo en filtro, estas
+    // funciones empezaran a excluir platos por su cocina y esto rompera.
+    var espanol = s.DISH_DB.filter(function (d) {
+      return s.getDishCuisine(d.name) === "espanola";
+    })[0];
+    var internacional = s.DISH_DB.filter(function (d) {
+      return s.getDishCuisine(d.name) === "internacional";
+    })[0];
+
+    assert.ok(espanol && internacional, "el piloto necesita ambas cocinas para esta prueba");
+    // Ninguna via de preferencias debe descartar un plato por su cocina.
+    assert.strictEqual(s.canCookWithEquipment(internacional, []), true);
+    assert.strictEqual(s.isWithinDifficulty(internacional, 0), true);
+    assert.strictEqual(s.matchesDislike(internacional.name, []), false);
+  });
+
+  t.test("los pasos son para principiantes: llevan cantidades o tiempos concretos", function () {
+    var s = sandbox();
+    // "Cuece la pasta" es justo la instruccion que fallo. Cada plato que
+    // requiere coccion debe decir CUANTO o COMO saber que esta listo.
+    var conFuego = ["Porridge de avena con plátano y miel", "Pasta con atún y tomate",
+                    "Tortilla francesa con tostadas integrales"];
+    conFuego.forEach(function (name) {
+      var info = s.getDishInstructions(name);
+      assert.ok(info, name + " deberia estar en el piloto");
+      var texto = info.steps.join(" ");
+      assert.ok(/\d/.test(texto), name + ": sin una sola cifra concreta no sirve a un principiante");
+      assert.ok(
+        /minuto|segundos|hasta que|cuando/i.test(texto),
+        name + ": debe decir cuanto tiempo o como saber que esta listo"
+      );
+    });
+  });
+
+  t.test("'ninguno' nunca se filtra por equipo -- es la respuesta a 'no tengo cacharros'", function () {
+    var s = sandbox();
+    var sinCacharros = s.DISH_DB.filter(function (d) {
+      var i = s.getDishInstructions(d.name);
+      return i && i.equipment.length === 1 && i.equipment[0] === "ninguno";
+    });
+    assert.ok(sinCacharros.length >= 5, "el piloto necesita varios platos sin equipo");
+    sinCacharros.forEach(function (d) {
+      // Ni siquiera con una lista de equipo que no incluye nada relevante.
+      assert.strictEqual(s.canCookWithEquipment(d, ["horno"]), true, d.name);
+    });
+  });
+
+  t.test("falta UNA sola pieza de equipo y el plato no se puede cocinar", function () {
+    var s = sandbox();
+    // "Tortilla francesa" necesita sarten Y tostadora.
+    var d = s.DISH_DB.find(function (x) { return x.name === "Tortilla francesa con tostadas integrales"; });
+    assert.ok(d);
+    assert.strictEqual(s.canCookWithEquipment(d, ["sarten", "tostadora"]), true, "con las dos, si");
+    assert.strictEqual(s.canCookWithEquipment(d, ["sarten"]), false, "falta la tostadora");
+    assert.strictEqual(s.canCookWithEquipment(d, ["tostadora"]), false, "falta la sarten");
+  });
+
+  t.test("la dificultad filtra por nivel, y sin limite no filtra nada", function () {
+    var s = sandbox();
+    var facil = s.DISH_DB.find(function (x) { return x.name === "Almendras y manzana"; });
+    var dificil = s.DISH_DB.find(function (x) { return x.name === "Tostadas con aguacate y huevo escalfado"; });
+    assert.strictEqual(s.getDishInstructions(dificil.name).difficulty, 3);
+
+    assert.strictEqual(s.isWithinDifficulty(facil, 1), true);
+    assert.strictEqual(s.isWithinDifficulty(dificil, 1), false, "avanzado fuera si pides solo facil");
+    assert.strictEqual(s.isWithinDifficulty(dificil, 3), true);
+    assert.strictEqual(s.isWithinDifficulty(dificil, 0), true, "sin limite configurado no se filtra");
+  });
+
+  t.test("sin ajustes de equipo el usuario no pierde platos en silencio", function () {
+    var s = sandbox();
+    var dificil = s.DISH_DB.find(function (x) { return x.name === "Tostadas con aguacate y huevo escalfado"; });
+    // Lista vacia = "no me filtres", no "no tengo nada".
+    assert.strictEqual(s.canCookWithEquipment(dificil, []), true);
+  });
+
+  // ── Sugerencias del campo "no me gusta" (js/ui/ingredient-suggest.js) ───
+  // Solo la LÓGICA pura (trocear el texto y elegir candidatos). El DOM se
+  // verifica en el navegador, no aquí.
+
+  t.test("sugiere por prefijo: 'lente' -> lentejas (el caso que pidió el usuario)", function () {
+    var s = sandbox();
+    var hits = s.matchDislikeSuggestions("lente");
+    assert.ok(hits.length > 0, "no sugirió nada para 'lente'");
+    assert.ok(
+      hits.some(function (n) { return n.toLowerCase().indexOf("lentejas") !== -1; }),
+      "esperaba lentejas entre: " + hits.join(", ")
+    );
+  });
+
+  t.test("las sugerencias son insensibles a acentos, igual que matchesDislike()", function () {
+    var s = sandbox();
+    // Este es el motivo entero de no usar <datalist> nativo: sin esto,
+    // 13 de los 81 ingredientes serían inalcanzables escribiendo sin tilde.
+    [["platano", "plátano"], ["brocoli", "brócoli"], ["pina", "piña"],
+     ["salmon", "salmón"], ["atun", "atún"], ["jamon", "jamón"]].forEach(function (pair) {
+      var hits = s.matchDislikeSuggestions(pair[0]);
+      assert.ok(
+        hits.some(function (n) { return n.toLowerCase().indexOf(pair[1]) !== -1; }),
+        "escribir '" + pair[0] + "' debería ofrecer '" + pair[1] + "'; ofreció: " + hits.join(", ")
+      );
+    });
+  });
+
+  t.test("sugerir sobre el ÚLTIMO término no toca lo ya escrito", function () {
+    var s = sandbox();
+    var parts = s.splitDislikesInput("cebolla, queso azul, lente");
+    assert.strictEqual(parts.term, "lente");
+    assert.strictEqual(parts.prefix, "cebolla, queso azul, ");
+    // Reconstruir como hace accept(): lo anterior sobrevive intacto.
+    assert.strictEqual(parts.prefix + "Lentejas cocidas" + ", ",
+                       "cebolla, queso azul, Lentejas cocidas, ");
+  });
+
+  t.test("no vuelve a sugerir algo que ya está en la lista", function () {
+    var s = sandbox();
+    var all = s.matchDislikeSuggestions("platano");
+    assert.ok(all.length > 0);
+    var again = s.matchDislikeSuggestions("platano", all);
+    assert.strictEqual(again.length, 0, "repitió una entrada ya escrita: " + again.join(", "));
+  });
+
+  t.test("un término vacío no sugiere nada (no se abre la lista al poner una coma)", function () {
+    var s = sandbox();
+    // .length y no deepStrictEqual([]): los arrays creados dentro del
+    // sandbox vm son de otro realm y nunca son reference-equal con un
+    // literal del host (mismo motivo documentado en shopping-cost.test.js).
+    assert.strictEqual(s.matchDislikeSuggestions("").length, 0);
+    assert.strictEqual(s.matchDislikeSuggestions("   ").length, 0);
+    assert.strictEqual(s.matchDislikeSuggestions(s.splitDislikesInput("cebolla, ").term).length, 0);
   });
 
 }

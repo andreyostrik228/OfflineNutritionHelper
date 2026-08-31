@@ -306,6 +306,28 @@
               </select>
             </div>
 
+            <!-- ══ COCINA (2026-08-26) ════════════════════════════════════
+                 SESGA, no filtra. El usuario pidió "mixto, pero comida
+                 española más": quitarle la pasta sería hacer lo contrario
+                 de lo que pidió. Elegir española hace que lo español salga
+                 unas 2,5 veces más (5,8% -> 12,8% de las tomas, medido),
+                 y lo internacional SIGUE saliendo.
+
+                 El techo lo pone el catálogo: solo 25 de 334 platos son
+                 españoles. Ver js/data/dish-cuisine.js. ══ -->
+            <div class="field full">
+              <label for="cuisine">Estilo de cocina</label>
+              <select id="cuisine">
+                <option value="mixta" selected>Mixta &mdash; sin preferencia</option>
+                <option value="espanola">M&aacute;s espa&ntilde;ola</option>
+                <option value="internacional">M&aacute;s internacional</option>
+              </select>
+              <p class="field-hint">
+                Es una <strong>preferencia, no un filtro</strong>: lo que elijas
+                sale m&aacute;s a menudo, pero el resto sigue apareciendo.
+              </p>
+            </div>
+
             <!-- ══ NO ME GUSTA (2026-08-26) ══════════════════════════════
                  PREFERENCIA blanda, no una restriccion de seguridad. El
                  texto es deliberadamente modesto sobre lo que hace: filtra
@@ -610,6 +632,11 @@
 
 <script src="js/data/supabase-config.js"></script>
 <script src="js/data/dishes.js"></script>
+<!-- dish-instructions.js: pasos/equipo/dificultad, ADITIVO y opcional.
+     Un plato sin entrada aqui se comporta exactamente como antes -- por
+     eso dishes.js no se toca y los golden-master no se mueven. -->
+<script src="js/data/dish-instructions.js"></script>
+<script src="js/data/dish-cuisine.js"></script>
 <script src="js/data/real-products.js"></script>
 <script src="js/data/real-products-alcampo.js"></script>
 <script src="js/data/real-products-carrefour.js"></script>
@@ -659,6 +686,7 @@
 <script src="js/ui/render-real-products.js"></script>
 <script src="js/ui/render-no-cook.js"></script>
 <script src="js/ui/render-auth.js"></script>
+<script src="js/ui/ingredient-suggest.js"></script>
 <script src="js/ui/animations.js"></script>
 <script src="js/app.js"></script>
 

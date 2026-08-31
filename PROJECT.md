@@ -1,5 +1,85 @@
 # Nutrition Planner — Project Context
 
+## Dónde vive esto y qué hay nuevo (2026-08-27)
+
+**Ruta buena:** `C:\Users\andre\Desktop\Offline Nutrition Helper\nutrition-planner`.
+La antigua `nutrition-planner-fase2` ya no existe.
+
+Cuidado con DOS carpetas del Escritorio que NO son el repo:
+
+- `Desktop\nutrition-planner` — copia VIEJA, sin git y sin nada de este
+  trabajo. Es la que se abre por error.
+- `Desktop\nutrition-planner-app` — no es una copia vieja: es el
+  ENTREGABLE generado el 2026-08-26 para mandar a terceros (solo los
+  archivos que `index.html` necesita, sin tests ni docs ni git). Se
+  regenera, no se edita.
+
+El repo bueno es el único con git: HEAD `ec6f686`, 372 tests en verde.
+Comprueba con `git log -1` antes de fiarte de una carpeta.
+
+Archivos nuevos de esta tanda, todos **aditivos** — si faltan, la app se
+comporta exactamente como antes, que es el patrón que ya se usó con
+`product-storage.js`:
+
+| archivo | qué es |
+| --- | --- |
+| `js/data/dish-instructions.js` | pasos de cocina, equipo y dificultad. 142 de 334 platos |
+| `js/data/dish-cuisine.js` | a qué cocina pertenece cada uno de los 334 platos |
+| `js/ui/ingredient-suggest.js` | autocompletado del campo "no me gusta" |
+
+Y tres constantes nuevas que gobiernan comportamiento del motor:
+
+| constante | dónde | valor |
+| --- | --- | --- |
+| `PORTION_CAP_MULTIPLIER` | `js/engine/plan-generator.js` | 2.5 |
+| `PACKAGE_TRIM_RATIO` | `js/engine/plan-generator.js` | 0.20 |
+| `CUISINE_BIAS_WEIGHT` | `js/engine/dish-selector.js` | 1500 |
+| `EXPIRY_BIAS_WEIGHT` | `js/engine/dish-selector.js` | 2500 |
+
+### Tres distinciones de diseño que no se deben fundir
+
+Parecen lo mismo y no lo son. Fundirlas es el error que este código está
+montado para hacer difícil:
+
+1. **Preferencia blanda vs. restricción dura.** "No me gusta" vive en
+   `js/core/preferences.js` y filtra; sin datos, no excluye nada. Las
+   alergias irán en un `js/core/allergens.js` aparte y son restricción de
+   seguridad: sin datos, EXCLUYEN. La regla de "sin datos" es la contraria
+   en cada caso, y por eso son dos archivos y no un campo `severidad`.
+
+2. **Sesgo vs. filtro.** La cocina SESGA la puntuación (lo español sale
+   más), nunca filtra: está medido que al preferir español lo internacional
+   también sube. El usuario pidió "mixto, pero española más" — un filtro
+   haría lo contrario de lo que pidió. Equipo y dificultad, en cambio, sí
+   son filtros de candidatos, nunca puntuación.
+
+3. **Identidad vs. ingredientes.** Un plato es de una cocina por lo que ES
+   o por una técnica con origen, jamás por llevar un ingrediente de allí.
+   "Skyr con kiwi" no es islandés. Aplicar esto en serio deja 274 de 334
+   platos en `neutra`, y ese es el resultado honesto.
+
+### La regla de datos que manda sobre todo lo demás
+
+**Nunca se escribe un valor nutricional inventado.** Todo kcal/proteína/
+carbos/grasa tiene que remontarse a un registro real y verificable. Cuando
+no se puede, el rol se queda `resolved:false` con el motivo escrito —
+`cebolla` y `ajo` están así ahora mismo, con precio y envase reales pero la
+nutrición diciendo "no se sabe". Un rol con números inventados es peor que
+un rol ausente.
+
+Corolario aprendido tres veces en un solo día, apuntado como regla:
+**la coherencia interna no defiende de nada**. Treinta productos de
+"cebolla" con nutrición perfectamente coherente eran patatas fritas y
+salsas; el aceite de avena de USDA pasa Atwater y el ratio kJ/kcal y trae
+un `fdcId` real. Lo único que defiende es comprobar qué ES la cosa. El
+detalle, con números, en el bloque "EMPIEZA AQUÍ" de `STATE.md`.
+
+
+> Todo lo que sigue a partir de aquí es de 2026-08-13 y ANTERIOR. Sigue
+> siendo válido como descripción del motor, pero no cubre nada de lo de
+> arriba. Para el estado real, `STATE.md` -> "Handoff 2026-08-26" (al final
+> del archivo), escrito para alguien sin contexto ninguno.
+
 Updated 2026-08-13. This file is the fast orientation doc — for full
 detail, history, and the "why" behind decisions, read `STATE.md` (engineering
 state, dated sections, session handoffs) and `ROADMAP.md` (architecture

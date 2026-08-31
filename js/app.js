@@ -473,6 +473,7 @@ document.addEventListener("DOMContentLoaded", function () {
     setVal("goal", settings.goal);
     setVal("cookTime", settings.cookTime);
     setVal("taste", settings.taste);
+    setVal("cuisine", settings.cuisine);
     setVal("wakeTime", settings.wakeTime);
     setVal("sleepTime", settings.sleepTime);
 
@@ -829,6 +830,16 @@ document.addEventListener("DOMContentLoaded", function () {
       });
     }
     if (noCookBtn) noCookBtn.addEventListener("click", handleNoCook);
+  });
+
+  // Sugerencias en "Alimentos que no te gustan". Dentro de safeInit() como
+  // el resto: si fallara, el campo sigue siendo un input de texto normal y
+  // el formulario entero no se cae por un autocompletado.
+  safeInit("dislikes-suggest-init", function () {
+    var dislikesInput = document.getElementById("dislikes");
+    if (dislikesInput && typeof initDislikesSuggest === "function") {
+      initDislikesSuggest(dislikesInput);
+    }
   });
 
 });

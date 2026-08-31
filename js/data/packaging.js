@@ -40,6 +40,12 @@
 var PACKAGING_INFO = {
 
   // ── 1. Ingredientes "de cucharada" ──────────────────────────────────────
+  // Aceite de oliva (2026-08-26): se mide a chorro y a cucharadas, nunca
+  // pesado. Gramos por cucharada = volumen x densidad (0,916 g/ml): una
+  // cucharada de 15 ml son 13,7 g y una cucharadita de 5 ml, 4,6 g. La
+  // botella de litro pesa 916 g, no 1000 -- misma conversión que en
+  // ingredient-nutrition.js y prices/mercadona.js.
+  "aceite de oliva":           { type: "spoonable", tablespoonG: 13.7, teaspoonG: 4.6, packageG: 916, packageLabel: "botella" },
   "miel":                      { type: "spoonable", tablespoonG: 21, teaspoonG: 7,  packageG: 350, packageLabel: "bote" },
   "mermelada light":           { type: "spoonable", tablespoonG: 20, teaspoonG: 7,  packageG: 340, packageLabel: "bote" },
   "mantequilla de cacahuete":  { type: "spoonable", tablespoonG: 16, teaspoonG: 5,  packageG: 350, packageLabel: "bote" },
@@ -52,6 +58,10 @@ var PACKAGING_INFO = {
   "aguacate":        { type: "perUnit", gramsPerUnit: 180, unitLabel: "aguacate" },
   "pepino":          { type: "perUnit", gramsPerUnit: 300, unitLabel: "pepino" },
   "tomate":          { type: "perUnit", gramsPerUnit: 120, unitLabel: "tomate" },
+  // Cebolla y ajo (2026-08-26): se compran por piezas, no pesados. Medias
+  // razonables como el resto de este bloque, no valores exactos.
+  "cebolla":         { type: "perUnit", gramsPerUnit: 150, unitLabel: "cebolla" },
+  "ajo":             { type: "perUnit", gramsPerUnit: 5,   unitLabel: "diente" },
   // Añadidos 2026-08-20d (known issue #7, ver tests/ingredient-packaging-
   // coverage.test.js) — mismo criterio y nivel de precisión (medias
   // razonables, no valores exactos) que el resto de este bloque.

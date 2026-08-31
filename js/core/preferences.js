@@ -30,6 +30,7 @@
  *   matchesDislike(name, dislikes)
  *   filterDislikedProducts(products, dislikes)
  *   getDislikes()
+ *   getCuisinePreference()
  * ─────────────────────────────────────────────────────────────────────────
  */
 
@@ -113,4 +114,110 @@ function getDislikes() {
   if (typeof getSettings !== "function") return [];
   var settings = getSettings();
   return Array.isArray(settings.dislikes) ? settings.dislikes : [];
+}
+
+
+/**
+ * ── Equipo y dificultad (2026-08-26) ───────────────────────────────────
+ * Nacen del mismo feedback real que los pasos de cocina: "no tenía el
+ * equipo" y "eran difíciles". Son PREFERENCIAS BLANDAS, igual que
+ * dislikes, y por eso viven aquí y no en el futuro allergens.js: si un
+ * plato no declara equipo o dificultad, NO se filtra. Durante el piloto
+ * 316 de 334 platos están en ese caso, así que la regla "sin datos = no
+ * se toca" es lo único que mantiene la app usable.
+ */
+
+/**
+ * Equipo del que dispone el usuario. Lista vacía = "no me filtres por
+ * equipo", que es lo correcto por defecto: alguien que no ha configurado
+ * nada no debería perder platos en silencio.
+ * @returns {string[]}
+ */
+function getOwnedEquipment() {
+  if (typeof getSettings !== "function") return [];
+  var settings = getSettings();
+  return Array.isArray(settings.equipment) ? settings.equipment : [];
+}
+
+/**
+ * Dificultad máxima aceptada (1..3). 0/ausente = sin límite.
+ * @returns {number}
+ */
+function getMaxDifficulty() {
+  if (typeof getSettings !== "function") return 0;
+  var settings = getSettings();
+  var v = settings.maxDifficulty;
+  return (typeof v === "number" && v >= 1 && v <= 3) ? v : 0;
+}
+
+/**
+ * Cocina preferida: "espanola" | "internacional" | "mixta".
+ *
+ * ── Esto SESGA, no filtra. La diferencia importa ────────────────────────
+ * El usuario pidió "mixto, pero comida española más". Un filtro haría lo
+ * contrario de lo que pidió: le quitaría la pasta. Aquí solo se empuja la
+ * puntuación (ver scoreDishForSelection en dish-selector.js) para que lo
+ * español salga MÁS a menudo, no para que lo demás desaparezca.
+ *
+ * "mixta" (y cualquier valor desconocido, y no tener ajustes) = sin
+ * sesgo. Es el defecto correcto: quien no ha pedido nada no debe notar
+ * ningún cambio.
+ *
+ * @returns {"espanola"|"internacional"|"mixta"}
+ */
+function getCuisinePreference() {
+  if (typeof getSettings !== "function") return "mixta";
+  var v = getSettings().cuisine;
+  return (v === "espanola" || v === "internacional") ? v : "mixta";
+}
+
+/**
+ * ¿Puede el usuario cocinar este plato con lo que tiene?
+ *
+ * Reglas, en orden:
+ *   - plato sin instrucciones            -> SÍ (no sabemos, no filtramos)
+ *   - usuario sin equipo configurado     -> SÍ (no ha pedido filtrar)
+ *   - plato que solo necesita "ninguno"  -> SÍ SIEMPRE. Cuchillo y bol se
+ *     dan por supuestos; estos son justamente la respuesta a "no tengo
+ *     equipo" y nunca deben desaparecer del plan.
+ *   - resto                              -> hace falta TENER TODO lo que
+ *     el plato pide. Que falte una sola cosa lo hace incocinable.
+ *
+ * @param {object} dish
+ * @param {string[]} [owned]
+ * @returns {boolean}
+ */
+function canCookWithEquipment(dish, owned) {
+  if (!dish) return true;
+  if (typeof getDishInstructions !== "function") return true;
+
+  var info = getDishInstructions(dish.name);
+  if (!info || !Array.isArray(info.equipment) || !info.equipment.length) return true;
+
+  var have = Array.isArray(owned) ? owned : getOwnedEquipment();
+  if (!have.length) return true;
+
+  return info.equipment.every(function (token) {
+    return token === "ninguno" || have.indexOf(token) !== -1;
+  });
+}
+
+/**
+ * ¿Está el plato dentro del nivel de dificultad aceptado?
+ * Sin instrucciones o sin límite configurado: siempre sí.
+ * @param {object} dish
+ * @param {number} [maxLevel]
+ * @returns {boolean}
+ */
+function isWithinDifficulty(dish, maxLevel) {
+  if (!dish) return true;
+  if (typeof getDishInstructions !== "function") return true;
+
+  var limit = (typeof maxLevel === "number") ? maxLevel : getMaxDifficulty();
+  if (!limit) return true;
+
+  var info = getDishInstructions(dish.name);
+  if (!info || typeof info.difficulty !== "number") return true;
+
+  return info.difficulty <= limit;
 }

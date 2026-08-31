@@ -402,6 +402,47 @@ body {
   gap: 7px;
 }
 
+/* ── Autocompletado de "no me gusta" (js/ui/ingredient-suggest.js) ──────
+   El ancla rodea SOLO al input (la crea el JS), no el `.field` entero:
+   `.field` incluye también el <p class="field-hint">, y anclando ahí la
+   lista caía por debajo del texto de ayuda. */
+.suggest-anchor {
+  position: relative;
+  display: block;
+}
+
+.suggest-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  margin: 4px 0 0;
+  padding: 4px;
+  list-style: none;
+  max-height: 244px;
+  overflow-y: auto;
+  background: var(--paper-raised);
+  border: 1px solid var(--line-strong);
+  color: var(--ink);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.suggest-list__item {
+  padding: 8px 10px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 0.94rem;
+  line-height: 1.3;
+}
+
+.suggest-list__item:hover,
+.suggest-list__item.is-active {
+  background: var(--green-wash);
+  color: var(--green-deep);
+}
+
 .field.full {
   grid-column: 1 / -1;
 }
@@ -3281,3 +3322,63 @@ dialog.despensa-dialog[open] {
   from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+/* ── Pasos de elaboración en la tarjeta de comida (2026-08-26) ──────────
+   Plegado por defecto a propósito: la tarjeta ya es densa y los macros no
+   pueden quedar empujados fuera de pantalla por siete pasos de texto.
+   Ver renderCookingSteps() en js/ui/render.js. */
+.meal-steps {
+  margin-top: 10px;
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
+
+.meal-steps__summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  list-style: none;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink-muted);
+}
+
+.meal-steps__summary::-webkit-details-marker { display: none; }
+
+.meal-steps__toggle::before {
+  content: "▸ ";
+  display: inline-block;
+  transition: transform 0.15s ease;
+}
+
+.meal-steps[open] .meal-steps__toggle::before { content: "▾ "; }
+
+.meal-steps__badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+}
+
+/* Verde/ámbar/rojo suaves: informan del esfuerzo sin desanimar. */
+.meal-steps__badge--d1 { border-color: #2f6b3a; color: #2f6b3a; }
+.meal-steps__badge--d2 { border-color: #8a5200; color: #8a5200; }
+.meal-steps__badge--d3 { border-color: #b3261e; color: #b3261e; }
+
+.meal-steps__equipment {
+  margin: 8px 0 4px;
+  font-size: 12px;
+  color: var(--ink-muted);
+  font-style: italic;
+}
+
+.meal-steps__list {
+  margin: 6px 0 2px;
+  padding-left: 20px;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.meal-steps__list li { margin-bottom: 6px; }

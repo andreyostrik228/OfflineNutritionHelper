@@ -84,6 +84,15 @@ PRICE_CATALOGS.mercadona = {
     "bacalao":                      0.85,  // estimado (único resultado es ahumado en aceite)
     "batata":                       0.16,  // estimado (único resultado es porción lista microondas)
     "brocoli":                      0.16,  // estimado (0 resultados con BJU completo)
+    // Aceite de oliva (2026-08-26): 4,95 EUR el litro. OJO, el catálogo
+    // trae pricePer100g=0,495, que en realidad es por 100 ML. Un litro pesa
+    // 916 g, así que por 100 G son 4,95 / 9,16 = 0,54. Misma trampa de
+    // unidades que en la nutrición, ver ingredient-nutrition.js.
+    "aceite de oliva":              0.54,
+    // Cebolla y ajo (2026-08-26): el PRECIO sí es dato real y verificable,
+    // aunque su nutrición esté sin resolver (ver ingredient-nutrition.js).
+    "ajo":                          0.74,  // real: Ajos morados (250 g, 1,85 EUR)
+    "cebolla":                      0.24,  // real: Cebollas (1 kg, 2,40 EUR)  // real: Aceite de oliva virgen extra Hacendado (1 L)
     "caballa en lata":              1.08,  // real: Filetes de caballa del sur en tomate Hacendado
     "cacahuetes":                   0.41,  // real: Cacahuete tostado con sal Hacendado
     "carne picada 5% grasa":        0.84,  // real: Preparado de carne picada vacuno y cerdo

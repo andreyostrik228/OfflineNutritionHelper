@@ -159,10 +159,78 @@ function renderMealCard(meal, total) {
           meal.items.map(function (item) { return renderFoodRow(item, storeId); }).join("") +
         '</div>' +
         renderMealFooter(total, meal.prep) +
+        renderCookingSteps(meal) +
       '</div>' +
     '</div>'
   );
 }
+
+/**
+ * Pasos de elaboración, plegados dentro de un <details>.
+ *
+ * ── Por qué plegado y DEBAJO del footer ─────────────────────────────────
+ * La tarjeta ya es densa (ingredientes, precios, macros por fila, footer
+ * con el total). Siete pasos de texto desplegados por defecto empujarían
+ * los macros fuera de la pantalla en móvil, y los macros son la razón por
+ * la que existe esta app. Plegado: quien ya sabe cocinar no ve nada nuevo;
+ * quien no sabe, lo abre. Nativo `<details>`, sin JS, así que funciona
+ * igual con el teclado y con lector de pantalla.
+ *
+ * ── Por qué puede devolver cadena vacía ─────────────────────────────────
+ * Durante el piloto solo 18 de 334 platos tienen instrucciones. Un plato
+ * sin ellas se renderiza EXACTAMENTE como antes, sin hueco ni
+ * desplegable vacío.
+ *
+ * @param {object} meal
+ * @returns {string} HTML, o "" si el plato no tiene instrucciones
+ */
+function renderCookingSteps(meal) {
+  if (typeof getDishInstructions !== "function") return "";
+
+  var info = getDishInstructions(meal && meal.dishName);
+  if (!info || !Array.isArray(info.steps) || !info.steps.length) return "";
+
+  var difficultyLabel = { 1: "Fácil", 2: "Medio", 3: "Avanzado" }[info.difficulty] || "";
+
+  // "ninguno" se muestra como una afirmación útil, no como una carencia:
+  // es la respuesta directa a "no tengo el equipo".
+  var equipment = Array.isArray(info.equipment) ? info.equipment : [];
+  var equipmentLabel = (equipment.length === 1 && equipment[0] === "ninguno")
+    ? "Sin cacharros: solo cuchillo y bol"
+    : equipment.filter(function (e) { return e !== "ninguno"; })
+        .map(function (e) { return EQUIPMENT_LABELS[e] || e; })
+        .join(" · ");
+
+  return (
+    '<details class="meal-steps">' +
+      '<summary class="meal-steps__summary">' +
+        '<span class="meal-steps__toggle">Cómo se hace</span>' +
+        (difficultyLabel
+          ? '<span class="meal-steps__badge meal-steps__badge--d' + info.difficulty + '">' +
+              escapeHtml(difficultyLabel) + '</span>'
+          : "") +
+      '</summary>' +
+      (equipmentLabel
+        ? '<p class="meal-steps__equipment">' + escapeHtml(equipmentLabel) + '</p>'
+        : "") +
+      '<ol class="meal-steps__list">' +
+        info.steps.map(function (step) {
+          return '<li>' + escapeHtml(step) + '</li>';
+        }).join("") +
+      '</ol>' +
+    '</details>'
+  );
+}
+
+/** Etiquetas legibles del vocabulario cerrado de equipo. */
+var EQUIPMENT_LABELS = {
+  tostadora: "Tostadora",
+  microondas: "Microondas",
+  sarten: "Sartén",
+  olla: "Olla o cazo",
+  horno: "Horno",
+  batidora: "Batidora"
+};
 
 /**
  * Genera el HTML de una fila de ingrediente dentro de una tarjeta. Muestra,

@@ -36,10 +36,10 @@ var SETTINGS_STORAGE_KEY = "nutritionPlanner.settings.v1";
 // entorno sin navegador) -- mismo patrón que _pantryMemoryState en pantry.js.
 var _settingsMemoryState = null;
 
-var SETTINGS_NUMERIC_FIELDS = ["age", "weight", "height", "activity", "workouts", "budgetCustom", "cookTime"];
+var SETTINGS_NUMERIC_FIELDS = ["age", "weight", "height", "activity", "workouts", "budgetCustom", "cookTime", "maxDifficulty"];
 // "store" retirado 2026-08-25 junto con el selector de tienda. Un ajuste
 // guardado de antes simplemente se ignora al sanear -- no rompe nada.
-var SETTINGS_STRING_FIELDS  = ["sex", "goal", "budgetMode", "taste", "wakeTime", "sleepTime"];
+var SETTINGS_STRING_FIELDS  = ["sex", "goal", "budgetMode", "taste", "wakeTime", "sleepTime", "cuisine"];
 
 /**
  * Listas de exclusión del usuario. Son ARRAYS de texto, no cadenas, así
@@ -61,7 +61,7 @@ var SETTINGS_STRING_FIELDS  = ["sex", "goal", "budgetMode", "taste", "wakeTime",
  * convirtiéndolo en una puntuación, sin darse cuenta de lo que rompe.
  * Mientras sean dos campos distintos, ese error necesita ser deliberado.
  */
-var SETTINGS_LIST_FIELDS = ["dislikes"];
+var SETTINGS_LIST_FIELDS = ["dislikes", "equipment"];
 
 // Topes defensivos: el usuario escribe esto a mano y se sincroniza a la
 // nube, así que ni la lista ni una entrada suelta pueden crecer sin

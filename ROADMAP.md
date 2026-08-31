@@ -1,5 +1,67 @@
 # Nutrition Planner — Roadmap
 
+## Estado y prioridades al 2026-08-27 (leer antes que nada de lo de abajo)
+
+**La carpeta buena es `Desktop\Offline Nutrition Helper\nutrition-planner`.**
+`nutrition-planner-fase2` ya no existe; `Desktop\nutrition-planner-app` es
+una copia vieja sin git ni tests. HEAD `ec6f686`, 372 tests en verde, y
+**nada de lo de esta sesión está commiteado** — siete diffs esperan la
+aprobación del usuario, uno por uno. El detalle completo, con constantes y
+mediciones, está en el bloque "EMPIEZA AQUÍ" al principio de `STATE.md`.
+
+### Lo siguiente, en orden
+
+1. **P0 — que el usuario revise los siete diffs.** Es el cuello de botella
+   real: hay ~1.200 líneas de trabajo verificado y en verde esperando. Nada
+   más avanza hasta que se decida qué entra.
+
+2. **P1 — API key de USDA FoodData Central** (gratis, un minuto, sin
+   tarjeta, en fdc.nal.usda.gov/api-key-signup.html). Desbloquea de una vez
+   cebolla, ajo **y los 31 roles de ingrediente sin resolver**, que hoy
+   degradan la precisión nutricional de TODA la app, no solo de los platos
+   nuevos. `DEMO_KEY` corta a los ~9 usos. La clave va en config y no se
+   commitea nunca. **El asistente no se da de alta él**: crear cuentas a
+   nombre del usuario queda fuera de lo que hace.
+
+   Cuando llegue: parar de escribir recetas y hacer esto primero. Reglas no
+   negociables al integrarlo — todo valor entra como `generic_reference`
+   con `needs_review` siempre y sin auto-aceptación; se guardan `fdcId` y la
+   descripción literal de USDA; `SOURCE_ID = "usda_fdc"` desde el primer
+   día; y el mapeo español→inglés se escribe A MANO. El motivo está medido:
+   ver el caso "Oil, oat" en `STATE.md` — 1 de cada 9 emparejamientos
+   automáticos fue catastrófico y pasó todos los controles automáticos.
+
+3. **P2 — seguir escribiendo recetas.** 142 de 334 (43%), quedan 192, unos
+   8 lotes de 25. Elegir cada lote por **variedad de técnica**, no por orden
+   de lista. El principio irrenunciable: escribir para quien no ha cocinado
+   nunca, con líneas que anticipen cómo se falla, no solo cantidades y
+   tiempos.
+
+4. **P3 — escribir platos españoles.** Este es el arreglo de verdad para
+   "quiero más comida española", y no tiene alternativa: solo 25 de 334
+   platos son españoles, así que el sesgo de cocina ya está dando todo lo
+   que puede (~0,7 comidas españolas al día). **Subir `CUISINE_BIAS_WEIGHT`
+   no sirve**: el techo lo pone el catálogo. Bloqueados hasta que llegue
+   USDA, porque necesitan sofrito: tortilla de patatas, pollo al ajillo,
+   pisto, gazpacho, lentejas guisadas. Ya se pueden escribir sin cebolla ni
+   ajo: garbanzos con espinacas, merluza a la plancha, ensaladilla.
+
+5. **P4 — desplegar.** Producción sigue sirviendo la build anterior al
+   selector de tienda. `npx wrangler pages deploy .`, y **solo con permiso
+   explícito del usuario para esa vez concreta**. No hay integración git en
+   Cloudflare Pages: si no se ejecuta el comando, no se despliega nada.
+
+### Lo que NO hay que volver a intentar
+
+- **BEDCA**: no está caído a ratos, no contesta. El endpoint SOAP
+  documentado da 404 y el que usa su propia web devuelve HTTP 200 con cero
+  bytes en todas las variantes probadas. Usar USDA.
+- **Validar una conversión de unidades con Atwater**: es matemáticamente
+  imposible que funcione, porque Atwater es invariante de escala. Detalle y
+  demostración en `STATE.md`.
+- **Emparejar ingredientes por subcadena**: "cebolla" devuelve 30 productos
+  con nutrición coherente y ninguno es cebolla.
+
 ## Current status
 
 **Stage:** working prototype, updated 2026-08-25 — the nutrition-matching

@@ -37,6 +37,102 @@
  */
 
 var INGREDIENT_NUTRITION = {
+
+  // ── Cebolla y ajo (añadidos 2026-08-26) — SIN NUTRICIÓN A PROPÓSITO ──
+  // Se añaden como roles para poder ESCRIBIR platos españoles de verdad
+  // (una tortilla de patatas sin cebolla no es una tortilla de patatas),
+  // pero con `resolved:false`, igual que los otros 31 roles sin resolver.
+  // Precio y envase SÍ son reales, ver prices/mercadona.js y packaging.js:
+  // lo único que falta es la nutrición, y no se inventa.
+  //
+  // Buscado a fondo en el catálogo de Mercadona (2.769 productos) antes de
+  // rendirse. Los 5 productos CRUDOS -- Cebollas (x2), Cebollas tiernas,
+  // Cebollas dulces, Ajos morados, Ajo tierno -- no traen NINGÚN dato
+  // nutricional. El único crudo que sí trae ("Cebollas rojas") declara 93
+  // kcal con 1,1 P / 3,5 C / 0 G, o sea 18 kcal por Atwater: incoherente
+  // por 5,1x, y encima con needsReview=false. Es un dato roto, no un dato.
+  //
+  // ⚠️ TRAMPA, para quien lo intente otra vez: buscar "cebolla" o "ajo" por
+  // subcadena devuelve 30 productos con nutrición perfectamente coherente,
+  // y NINGUNO sirve -- son patatas fritas sabor cebolla, salsas, morcilla
+  // de cebolla, tortilla ya hecha, pan con ajo, ajos encurtidos. El role
+  // tiene que salir del producto CRUDO, no de algo que lo mencione.
+  //
+  // Es el mismo agujero que deja fuera a brócoli, calabacín, pepino y
+  // plátano: verdura fresca a granel, que en el súper no lleva etiqueta
+  // nutricional. La salida no es el catálogo de tienda sino una tabla de
+  // composición de alimentos (BEDCA/USDA), que está identificada como
+  // trabajo pendiente y sin hacer. Ojo con BEDCA: da la energía en kJ, no
+  // en kcal (factor 4,184) -- confundirlo inflaría todo por cuatro.
+  "cebolla": {
+    resolved: false,
+    reason: "sin_nutricion",
+    detail: "Los 5 productos crudos del catálogo (Cebollas x2, tiernas, dulces, Ajos aparte) no traen datos nutricionales. El único con datos, \"Cebollas rojas\", declara 93 kcal frente a 18 por Atwater (incoherente 5,1x). Pendiente de una tabla de composición (BEDCA/USDA).",
+    displayName: "Cebolla"
+  },
+
+  "ajo": {
+    resolved: false,
+    reason: "sin_nutricion",
+    detail: "\"Ajos morados\" y \"Ajo tierno\" no traen datos nutricionales. Los que sí los traen no son ajo crudo: \"Ajos aliñados\" es encurtido (36 kcal) y \"Ajo y Perejil\" es mezcla de hierbas secas (246 kcal). Pendiente de una tabla de composición (BEDCA/USDA).",
+    displayName: "Ajo"
+  },
+
+  // ── Aceite de oliva (añadido 2026-08-26) ─────────────────────────────
+  // Añadido porque la cocina española no existe sin él: sin este role no
+  // se puede escribir una tortilla de patatas, un pollo al ajillo ni un
+  // gazpacho con datos reales.
+  //
+  // ⚠️ CONVERTIDO DE POR 100 ML A POR 100 G. El registro de Mercadona
+  // ("Aceite de oliva virgen extra Hacendado", EAN 8402001001185) declara
+  // 822 kcal y 91 g de grasa, pero POR 100 ML -- como manda la etiqueta
+  // europea para líquidos. Este archivo es POR 100 G. Guardar 822 tal cual
+  // habría infravalorado el aceite un 9% en todos los platos.
+  //
+  // Conversión con la densidad del aceite de oliva, 0,916 g/ml:
+  //     kcal   822 / 0,916 = 897
+  //     grasa   91 / 0,916 = 99,3 g
+  //
+  // POR QUÉ SE SABE QUE HABÍA QUE CONVERTIR: el aceite es grasa
+  // prácticamente pura, así que su contenido graso por 100 g TIENE que
+  // rondar los 99-100 g. 91 g por 100 g dejaría un 9% de la botella siendo
+  // algo que no es grasa, y en un aceite no hay nada más: ni agua, ni
+  // proteína, ni azúcar. Es imposible. Leído como POR 100 ML sí cuadra,
+  // porque 100 ml de aceite pesan 91,6 g. Esa imposibilidad química es el
+  // argumento entero, y se basta solo.
+  //
+  // ⚠️ NO INTENTES CONFIRMAR ESTO CON ATWATER, no puede. Atwater es una
+  // relación LINEAL entre kcal y macros, así que dividir kcal y grasa por
+  // la misma densidad la deja intacta: el ajuste es 0,36% antes de
+  // convertir y 0,36% después, idéntico hasta el epsilon de la máquina, y
+  // sale igual dividiendo por 2, por 10 o por 1000. Atwater es invariante
+  // de escala y por tanto CIEGO a los errores de unidad: "pasa" siempre,
+  // con el dato bien y con el dato mal. Quien use este archivo como
+  // ejemplo y aplique la prueba de Atwater a otro líquido -- leche, un
+  // batido, una salsa -- la verá pasar y podrá acabar convirtiendo algo
+  // que no había que convertir. El criterio válido es el de composición
+  // (¿de qué está hecho esto?), nunca el de coherencia interna.
+  //
+  // (Es la otra cara de una limitación que ya nos mordió: Atwater tampoco
+  // ve el ETANOL, y por eso el control puso en cuarentena cervezas y vinos
+  // que estaban bien -- sus kcal vienen del alcohol, 7 kcal/g, que la
+  // fórmula proteína/carbos/grasa no mira. Misma ceguera, síntoma opuesto.)
+  //
+  // Es una DERIVACIÓN documentada, no un valor inventado: el registro de
+  // origen queda abajo entero para poder rehacerla o rechazarla.
+  "aceite de oliva": {
+    resolved: true,
+    kcal: 897,
+    protein: 0,
+    carbs: 0,
+    fat: 99.3,
+    productName: "Aceite de oliva virgen extra Hacendado",
+    ean: "8402001001185",
+    matchMethod: "name+conversion_densidad",
+    sourcePer100ml: { kcal: 822, protein: 0, carbs: 0, fat: 91 },
+    densityGPerMl: 0.916,
+    displayName: "Aceite de oliva"
+  },
   "aguacate": { resolved: false, reason: "otra", detail: "Único candidato con nutrición no nula (\"Aguacates\", id 3858) tiene macros implausibles para aguacate: carbs=0.83g/100g (un aguacate real ronda 6-9g/100g de carbohidratos por su fibra). El otro candidato (\"Aguacate\", id 3830) tiene kcal=null.", displayName: "Aguacate" },
   "almendras": { resolved: true, kcal: 628, protein: 23.3, carbs: 3, fat: 57, productName: "Almendra tostada Hacendado 0% sal añadida con piel", ean: "8480000340146", matchMethod: "exact_ean", displayName: "Almendras" },
   "alubias cocidas": { resolved: true, kcal: 83, protein: 5.8, carbs: 10.7, fat: 0.4, productName: "Alubia cocida blanca Hacendado", ean: "8480000260192", matchMethod: "exact_ean", displayName: "Alubias cocidas" },

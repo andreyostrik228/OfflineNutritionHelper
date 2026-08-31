@@ -1,5 +1,258 @@
 # Nutrition Planner — Engineering State
 
+> ## ⚠️ EMPIEZA AQUÍ — traspaso del 2026-08-26/27
+>
+> Escrito para alguien que llega SIN NINGÚN contexto previo. Si solo lees
+> una parte de este archivo, que sea esta.
+>
+> ### 0. ¿Estás en la carpeta correcta?
+>
+> El proyecto **se movió**. La ruta buena, y la única con git y tests, es:
+>
+>     C:\Users\andre\Desktop\Offline Nutrition Helper\nutrition-planner
+>
+> `Desktop\nutrition-planner-fase2\` **ya no existe**; cualquier documento
+> que la mencione está desactualizado en ese punto. Hay además una copia
+> parcial en `Desktop\nutrition-planner-app\` **sin `.git` y sin `tests/`**,
+> cuyo `dish-instructions.js` pesa 70.433 bytes frente a los 105.100 del
+> bueno: es una foto vieja, no el proyecto. Si `git status` falla o
+> `node tests/run-tests.js` no existe, estás en la copia equivocada.
+>
+> Estado del repo real: **HEAD `ec6f686`, 372 tests en verde**.
+>
+> ### 1. NADA ESTÁ COMMITEADO, y eso no es garantía de nada
+>
+> Todo el trabajo descrito abajo vive en el working tree: 15 archivos
+> modificados (+1.168/−62) y 3 nuevos (`js/data/dish-cuisine.js`,
+> `js/data/dish-instructions.js`, `js/ui/ingredient-suggest.js`). El
+> usuario aprueba **cada diff por separado** antes de commitear; hay siete
+> pendientes de su visto bueno:
+>
+> 1. cordura de porciones (bug de la patata) — `js/engine/plan-generator.js`
+> 2. autocompletado de "no me gusta" — `js/ui/ingredient-suggest.js`, `index.html`, CSS, `js/app.js`
+> 3. campo y vocabulario de cocina — `js/data/dish-cuisine.js`
+> 4. sesgo de cocina cableado — `js/engine/dish-selector.js`, `js/core/preferences.js`, `js/core/settings.js`, `js/core/calculator.js`, `index.html`
+> 5. peso de caducidad 60 → 2500 — `js/engine/dish-selector.js`
+> 6. aceite de oliva + cebolla + ajo — `ingredient-nutrition.js`, `packaging.js`, `prices/mercadona.js`
+> 7. recetas, lotes 1-5 — `js/data/dish-instructions.js`
+>
+> **AVISO IMPORTANTE:** dos veces algo commiteó Y PUSHEÓ un working tree sin
+> revisar, arrastrando archivos a medias de dos sesiones distintas, y nunca
+> se atribuyó a nadie: `8e1bd74` (2026-08-25 **13:41**) y `ec6f686`
+> (2026-08-26 **03:17**). No des por hecho que "lo dejé sin commitear"
+> signifique que seguirá así. Comprueba `git log` al empezar.
+>
+> ### 2. La regla que más cuesta aprender: COHERENTE ≠ CORRECTO
+>
+> Es la lección de la jornada y se ganó tres veces por caminos distintos:
+>
+> - buscar "cebolla" en el catálogo devuelve **30 productos con nutrición
+>   perfectamente coherente** y ninguno sirve: patatas fritas sabor cebolla,
+>   salsas, morcilla de cebolla, tortilla ya hecha, pan de ajo;
+> - el control de Atwater puso en **cuarentena cervezas y vinos que estaban
+>   bien**, porque sus calorías vienen del etanol (7 kcal/g) y la fórmula
+>   proteína/carbos/grasa no lo ve;
+> - USDA devolvió **"Oil, oat"** (aceite de avena, 884 kcal) para el rol
+>   `avena`, 2,3x de más, y habría afectado a todos los porridge.
+>
+> El caso "Oil, oat" es el que hay que recordar por su nombre, porque
+> **pasa todos los controles automáticos**: Atwater coherente (884 vs 900),
+> ratio kJ/kcal correcto (4,19) y un `fdcId` real. Lo detecta únicamente
+> una persona leyendo la descripción. Medido: **1 de cada 9 catastrófico**
+> al emparejar automáticamente.
+>
+> **Regla: la coherencia interna no defiende de nada. Solo defiende
+> comprobar qué ES realmente la cosa.**
+>
+> ### 3. Atwater NO valida conversiones de unidades
+>
+> Contraintuitivo, y ya provocó un razonamiento equivocado que hubo que
+> corregir. Atwater es una relación **lineal**, así que dividir kcal y
+> macros por el mismo factor la deja intacta: en el aceite de oliva la
+> concordancia es 0,36% ANTES y 0,36% DESPUÉS de convertir de 100 ml a
+> 100 g — idénticas hasta 2,22e-16, y sale lo mismo dividiendo por 2, por
+> 10 o por 1000. Es **invariante de escala** y por tanto ciega a este tipo
+> de error: "pasa" con el dato bien y con el dato mal.
+>
+> Lo que SÍ detecta un error de unidad es el **ratio kJ/kcal** (~4,18 si es
+> correcto, ~1,00 si te has traído los kJ), justo porque compara dos
+> magnitudes de escalas distintas.
+>
+> ### 4. Qué se hizo, con los números medidos
+>
+> **Bug de la patata** (real, reportado por el usuario: 1.020 g de patata y
+> dos bolsas de 1 kg). Dos defectos independientes: no existía NINGÚN tope
+> por ingrediente, y `Math.ceil` abría un paquete entero para usar un 2% de
+> él. Arreglado en `js/engine/plan-generator.js`:
+>
+> - `PORTION_CAP_MULTIPLIER = 2.5` — el tope es 2,5x la mayor ración
+>   **curada** de ese ingrediente en `dishes.js`, así que sale del dato y se
+>   reajusta solo si cambia el catálogo.
+> - `PACKAGE_TRIM_RATIO = 0.20` — si abrir otro paquete gastaría menos del
+>   20% de él, se recorta HASTA el borde del envase.
+> - **El orden es deliberado: capar → COMPENSAR → recortar.** La
+>   compensación no es opcional: sin ella el tope es un recorte a secas y
+>   14 de 60 planes acababan con violación `calories` (media −8,8% de las
+>   kcal objetivo). Con compensación: 2 de 60 y −3,6%. Las kcal se devuelven
+>   solo a ingredientes con holgura bajo su propio tope, así que compensar
+>   no puede reintroducir el bug.
+>
+> Medido sobre 60 planes sembrados, antes → después:
+>
+> | métrica | antes | después |
+> | --- | --- | --- |
+> | peor ración de un ingrediente en un día | 1.097 g | **625 g** |
+> | ingrediente-días de más de 500 g | 36/650 | 9/650 |
+> | violaciones de macros | 10 | 6 |
+> | paquetes abiertos usando <20% | 30 | **0** |
+> | coste de compra (60 planes) | 804,60 € | 799,22 € |
+>
+> El ahorro real es **5,38 €**, NO los ~27 € de una estimación previa que
+> quedó desfasada: la compensación vuelve a añadir gramos que cuestan
+> dinero. El valor de este arreglo es quitar el absurdo, no el dinero.
+>
+> **Caducidad y frescura** (`js/core/expiry.js`, `js/data/shelf-life.js`,
+> `js/data/product-storage.js`). Tres fuentes de fecha con prioridad
+> usuario > tienda > estimada, nunca mezcladas; lo estimado se pinta siempre
+> con "~" delante. Mercadona publica instrucciones de conservación REALES en
+> su API (2.386 productos, 609 con días-tras-apertura de verdad), extraídas
+> por `PythonProject/scripts/export_product_storage.py`. Los perecederos se
+> marcan a la MITAD de su vida útil (`FRESH_WINDOW_RATIO = 0.5`), generando
+> el tier `pasado`, ordenado POR DEBAJO de `pronto` para que no pueda
+> debilitar un aviso más urgente.
+>
+> **`EXPIRY_BIAS_WEIGHT = 2500`** (`js/engine/dish-selector.js`). Aquí había
+> una conclusión anterior FALSA, ya corregida en el propio código: un
+> comentario afirmaba que un término blando no podía funcionar nunca porque
+> `macroFit * 100` lo aplasta. La medición que lo sostenía era correcta —a
+> peso 60 es inerte— pero la inferencia no generalizaba. Vuelto a medir con
+> despensa deliberadamente MIXTA (una despensa solo de verdura confunde la
+> medida: los platos con mucha verdura pierden en macroFit por motivos que
+> nada tienen que ver con la caducidad):
+>
+> | peso | urgencia de los elegidos vs catálogo | error kcal | violaciones |
+> | --- | --- | --- | --- |
+> | 60 | −2,6 SE (inerte) | 3,2% | 0 |
+> | 1000 | −0,5 SE (empate) | 3,1% | 0 |
+> | **2500** | **+4,2 SE (funciona)** | 3,2% | 1 |
+> | 9000 | +17,4 SE | 2,3% | 2 |
+>
+> Lo caducado vale **0 a cualquier peso** (`EXPIRY_TIER_WEIGHT.caducado = 0`
+> en `expiry.js`): el término es 0 antes de multiplicarse por nada. Hay un
+> test que lo fija a 60, 2500, 9000 y 1e6.
+>
+> **Cocina** (`js/data/dish-cuisine.js`, los 334 platos). La regla es
+> **IDENTIDAD, no ingredientes**: un plato es español por lo que ES o por
+> una técnica con origen ("a la plancha", "al ajillo", "al pil-pil",
+> "bocadillo", "jamón serrano"), nunca por llevar algo de allí. "Skyr con
+> kiwi" no es un plato islandés y "Gambas con quinoa" no es uno español.
+> Reparto: **25 espanola / 35 internacional / 274 neutra**. Lo ausente es
+> `neutra`, y `neutra` significa "el sesgo no lo toca", nunca "penalizado".
+>
+> **`CUISINE_BIAS_WEIGHT = 1500`**. **Sesga, no filtra**, y está medido:
+> eligiendo "más española" las tomas españolas pasan de 5,8% a 12,8% **y
+> las internacionales SUBEN también**, de 7,0% a 10,3%. No desaparece nada.
+> **El techo lo pone el CATÁLOGO, no el peso**: con solo 25 platos
+> españoles el máximo son ~0,7 comidas españolas al día. Si se quiere que la
+> app se sienta española hay que ESCRIBIR platos españoles; subir el peso
+> solo rompe macros.
+>
+> **Recetas** (`js/data/dish-instructions.js`): **142 de 334 (43%)**, cinco
+> lotes, **722 pasos, media 5,1 por plato**. Quedan **192, unos 8 lotes**
+> de 25.
+>
+> El principio es lo importante y hay que conservarlo: **está escrito para
+> alguien que no ha cocinado NUNCA**. Lo que lo hace funcionar no son las
+> cantidades ni los tiempos —eso ya lo fija un test— sino las líneas que
+> anticipan CÓMO se falla:
+>
+> - "no lo toques 4 minutos" — mover el pollo antes impide que se forme la
+>   costra Y lo pega a la sartén;
+> - corta la ternera **a contraveta** o queda dura por mucho que la cocines;
+> - **hunde la batidora ANTES** de encenderla o salpica crema hirviendo;
+> - el cuscús **no se cuece**: se hidrata fuera del fuego y se separa con
+>   tenedor, nunca con cuchara, que lo apelmaza;
+> - saca el huevo revuelto **pareciendo poco hecho**: termina en el plato.
+>
+> Elige los lotes por **VARIEDAD DE TÉCNICA**, no por orden de lista: es
+> mejor criterio y adelanta los platos donde de verdad se falla. Vocabulario
+> de equipo CERRADO (`ninguno`/`sarten`/`olla`/`horno`/`tostadora`/
+> `batidora`/`microondas`); los platos `ninguno` son la respuesta literal a
+> "no tengo equipo". Ojo: `equipment` y `difficulty` SOLO existen para los
+> platos con entrada aquí, así que el filtro de equipo solo actúa sobre los
+> 142 escritos.
+>
+> **Ingredientes**: **84 roles** (antes 81), 51 resueltos.
+>
+> `aceite de oliva` **RESUELTO**, con una trampa de unidades que conviene no
+> repetir: el catálogo declaraba 91 g de grasa por 100 g, **químicamente
+> imposible** en un aceite (es grasa casi pura: tiene que rondar 99-100 g).
+> Los valores son **por 100 ML**. Convertido con densidad 0,916 g/ml a
+> **897 kcal / 99,3 g de grasa** (EAN 8402001001185). El registro original
+> se guarda dentro de la entrada (`sourcePer100ml`, `densityGPerMl`) para
+> poder rehacer o rechazar la derivación. El argumento válido es
+> **composicional**, no de coherencia — ver punto 3.
+>
+> `cebolla` y `ajo` están **BLOQUEADOS en nutrición** (`resolved:false`):
+> los 5 productos crudos del catálogo no traen datos, y el único que sí los
+> trae ("Cebollas rojas") declara 93 kcal frente a 18 por Atwater. **Precio
+> y envase sí son reales** (cebolla 0,24 €/100 g, ajo 0,74 €/100 g; 150 g
+> por cebolla, 5 g por diente). Dos partes de tres bien hechas, y la tercera
+> dice "no se sabe" en vez de inventar.
+>
+> ### 5. BEDCA está muerto; USDA funciona
+>
+> El endpoint SOAP que documenta todo el mundo da 404, y el que llama su
+> propia web (`/bdpub/procquery.php`) devuelve **HTTP 200 con CERO bytes**
+> con cuerpo XML, con formulario, con y sin sesión, con User-Agent de
+> navegador. No es que sea difícil: no contesta. La fuente es **USDA
+> FoodData Central** (SR Legacy), y de 9 roles probados 8 fueron correctos.
+>
+> Peligro de USDA a tener presente al escribir el parser: **`Energy` aparece
+> DOS veces por alimento y el orden CAMBIA dentro de la MISMA respuesta**
+> ("Onions, raw" da kcal primero; "Onions, welsh" da kJ primero). Un parser
+> que coja "el primer Energy" mezcla kcal y kJ, con 4,18x de diferencia, en
+> la misma consulta. Hay que seleccionar por `unitName == "KCAL"`, nunca por
+> posición.
+>
+> ### 6. BLOQUEADO ESPERANDO AL USUARIO
+>
+> Una **API key gratuita de USDA FoodData Central**
+> (fdc.nal.usda.gov/api-key-signup.html, un minuto, sin tarjeta) desbloquea
+> de golpe cebolla, ajo **y los 31 roles sin resolver** que hoy degradan la
+> precisión nutricional de toda la app. `DEMO_KEY` corta a los ~9 usos (429
+> en el 10º). Va en config y **no se commitea jamás**. Alternativa sin
+> clave: ir a goteo a ~9/hora, unas 4 horas para los 33 roles.
+>
+> **El asistente no debe darse de alta él**: crear cuentas en servicios a
+> nombre del usuario queda fuera de lo que hace, lo pida quien lo pida.
+>
+> Cuando llegue la clave, parar de escribir recetas y hacer USDA primero.
+> Todo valor de tabla de composición entra como `generic_reference`, con
+> `needs_review` SIEMPRE, sin auto-aceptación nunca, guardando `fdcId` y la
+> descripción literal al lado para que un "Oil, oat" se vea de un vistazo.
+> Provider con `SOURCE_ID = "usda_fdc"` desde el primer día, para que un
+> fallo de USDA no pueda suprimir una consulta a OFF — ese bug ya mordió dos
+> veces. El mapeo español→inglés se mantiene **a mano**: traducir
+> automáticamente es exactamente cómo "Pepino" acaba emparejado con
+> pepinillos en vinagre.
+>
+> ### 7. Entregables en el Escritorio
+>
+> - `nutrition-planner-app.zip` (805 KB) — carpeta completa + standalone
+> - `nutrition-planner-STANDALONE.html` (2,36 MB) — todo el CSS y los 44 JS
+>   embebidos; funciona desde cualquier sitio
+> - `nutrition-planner-DISENO.html` (148 KB) — solo diseño, cero scripts, un
+>   render congelado de un plan real para que un diseñador vea la UI de
+>   verdad
+>
+> **Modo de fallo ya visto:** el visor de zip de Windows extrae SOLO el
+> archivo al que haces doble clic, y por eso abrir `index.html` desde dentro
+> del zip mostraba una página sin estilos y con 0 platos. Hay que extraer la
+> carpeta entera, o usar el STANDALONE.
+>
+> ---
+
 Actualizado 2026-08-24. Lee esto junto con `PROJECT.md` y `ROADMAP.md` antes
 de empezar una sesión nueva (ver "Session handoff" al final — reemplaza al
 antiguo "Continuation checklist"). Para el sistema completo (este repo + el
@@ -5513,3 +5766,356 @@ nutricional — 2026-08-25" arriba, y
 
 Verificar con `git log -1` en AMBOS repos antes de asumir cuál es el
 HEAD real — esto es una foto fija, no una garantía.
+
+---
+
+## Handoff 2026-08-26 — leer ESTO primero si vienes sin contexto
+
+Escrito para una sesión con CERO memoria de ninguna conversación. Todo lo
+que sigue está medido, no recordado.
+
+### 0. LA RUTA DEL PROYECTO CAMBIÓ
+
+Este repo vive ahora en `Desktop\Offline Nutrition Helper\nutrition-planner`.
+La ruta antigua `Desktop\nutrition-planner-fase2\nutrition-planner` **ya no
+existe**; cualquier documento que la cite está obsoleto. Y hay una **copia
+MUERTA en `Desktop\nutrition-planner`** sin git y sin nada de este trabajo,
+que se abre por error con facilidad. El bueno tiene git, HEAD `ec6f686` y
+372 tests en verde. Comprueba con `git log -1` antes de fiarte de una carpeta.
+
+### 1. NADA ESTÁ COMITEADO — y "sin comitear" no es garantía
+
+Hay siete diffs lógicos en el working tree. Además, DOS VECES algo comiteó
+**y pusheó** un working tree sin revisar hacia las 3 de la mañana
+(`8e1bd74` y `ec6f686`), arrastrando en cada caso ficheros a medio hacer de
+DOS sesiones distintas, y nunca se atribuyó a nadie. No asumas que lo que
+dejes sin comitear seguirá sin comitear.
+
+El usuario exige aprobación explícita **suya** por cada diff. La aprobación
+de otra sesión NO sirve — la sesión de código rechazó correctamente la del
+orquestador por este motivo.
+
+### 2. EL BUG DE LA PATATA (reportado por el usuario) — ARREGLADO
+
+Un plan le pidió **1020 g de patata** y comprar DOS bolsas de 1 kg. Dos
+defectos independientes:
+
+- **No existía ningún tope por ingrediente.** En ningún sitio.
+- **Math.ceil sobre paquetes**: necesitar 1020 g de una bolsa de 1000 g
+  abría una segunda bolsa para usar el 2% de ella.
+
+Arreglado en `js/engine/plan-generator.js`:
+
+- `PORTION_CAP_MULTIPLIER = 2.5` — el tope es 2,5 x la mayor ración
+  **CURADA** de ese ingrediente en `dishes.js`. Derivado del dato, no
+  inventado, y se reajusta solo si cambia `dishes.js`. La patata queda en
+  625 g.
+- `PACKAGE_TRIM_RATIO = 0.20` — si pasarse del borde del paquete cuesta
+  menos del 20% del paquete, se RECORTA hacia abajo en vez de comprar otro.
+
+Medido sobre 60 planes: peor ingrediente-día 822 g -> 625 g; días por encima
+de 500 g 4,6% -> 0,7%; ~27 EUR ahorrados, a un coste de ~30 kcal por recorte
+(1,1% de un día de 2700 kcal, dentro de las tolerancias que el generador ya
+acepta).
+
+**Los dos interactúan**: un tope puede devolver un ingrediente por debajo
+del borde del paquete y hacer innecesario el recorte. El orden importa.
+
+### 3. CADUCIDAD Y FRESCURA
+
+`js/core/expiry.js`, `js/data/shelf-life.js`, `js/data/product-storage.js`.
+
+**Tres orígenes de fecha, jamás mezclados**, por prioridad: `user` (la del
+envase, escrita a mano) > `store` (días reales publicados por Mercadona) >
+`estimated` (nuestra tabla). Una estimación se pinta SIEMPRE con `~`
+delante. Es la misma regla que la nutrición: lo aproximado se etiqueta.
+
+**Mercadona publica instrucciones de conservación reales** en su API
+(`details.storage_instructions`), sin usar hasta ahora: 2.386 productos con
+sitio de conservación y **609 con días reales tras abrir**. Extraído por
+`PythonProject/scripts/export_product_storage.py`. Cubre el 77% del
+catálogo del frontend.
+
+**Ventana de frescura** (`FRESH_WINDOW_RATIO = 0.5`): los perecederos se
+avisan a la MITAD de su vida útil, no al final — "caduca en 2 días" es la
+señal equivocada para un plátano. Tramo nuevo `pasado`, ordenado POR DEBAJO
+de `pronto`, así que nunca debilita un aviso más urgente. Una zanahoria de
+28 días salta el día 15; un atún en lata a mitad de sus 730 días no.
+
+**`EXPIRY_BIAS_WEIGHT = 2500`** — y aquí hay una corrección importante:
+`dish-selector.js` llevaba una nota afirmando que este término NO podía
+funcionar porque `macroFit * 100` lo aplasta. **Esa nota era falsa.** La
+medición (inerte con peso 60) era correcta; la INFERENCIA ("cualquier
+empujón lo bastante pequeño es demasiado pequeño") no generalizaba. Con
+2500 el efecto es +4,2 errores estándar sobre la línea base del catálogo,
+con cero violaciones, y el error de kcal es plano del peso 0 al 3000.
+**Lo caducado puntúa 0 con CUALQUIER peso**, garantizado por un test a 60,
+2500, 9000 y 1e6.
+
+### 4. COCINA (sesgo, no filtro)
+
+`js/data/dish-cuisine.js`, los 334 platos. Regla de **IDENTIDAD, no de
+ingredientes**: "Skyr con kiwi" NO es un plato islandés. Reparto: 25
+espanola / 35 internacional / 274 neutra (ausente = neutra).
+
+`CUISINE_BIAS_WEIGHT = 1500`. **Sesga, no filtra**: elegir española lleva
+lo español del 5,8% al 12,8% de las tomas, y lo internacional TAMBIÉN sube
+(7,0% -> 10,3%). Nada queda suprimido.
+
+**EL TECHO ES EL CATÁLOGO, no el peso.** Solo 25 platos españoles existen,
+9 de ellos "jamón serrano con algo". El máximo real es ~0,7 tomas españolas
+al día. La solución es ESCRIBIR platos españoles, no subir el número.
+
+### 5. RECETAS — el motivo de todo esto
+
+La hermana del usuario probó la app y **no supo cocinar nada**: platos
+difíciles, sin el equipo necesario, y sin saber cómo se hacen. El dato que
+reencuadra el problema: los platos ya eran cortos (mediana 15 min, 3
+ingredientes). El hueco no era la dificultad, era que **no había ninguna
+instrucción**.
+
+`js/data/dish-instructions.js` — fichero APARTE a propósito, igual que
+`product-storage.js`: `dishes.js` son 334 entradas curadas de las que
+dependen los golden-master, y meterles texto de cocina arriesga mover
+resultados del motor por un cambio que no tiene nada que ver.
+
+**92 de 334 (28%)**, tres tandas, 463 pasos, media 5,0. Quedan 242, unas
+diez tandas más. **Esto NO está casi terminado.**
+
+Se escriben para alguien que **NUNCA ha cocinado**. Esa es toda la idea, y
+un test obliga a que los pasos lleven cantidades o tiempos concretos — pero
+lo que de verdad los hace útiles es que **anticipan el fallo**:
+
+- pollo: *"no lo toques 4 minutos"* — moverlo antes impide la costra Y lo
+  pega a la sartén
+- ternera: cortar **a contrafibra**, o queda dura cocines lo que cocines
+- huevos revueltos: sácalos cuando aún parezcan poco hechos
+- crema: **mete la batidora ANTES de encenderla**, o salpica sopa hirviendo
+- cuscús: no se hierve, se hidrata fuera del fuego y se separa con TENEDOR
+  (una cuchara lo apelmaza)
+- quinoa: hay que lavarla o sabe a jabón (saponinas)
+
+Elegir los platos por **VARIEDAD DE TÉCNICA**, no por orden de lista: cada
+uno debe enseñar algo que no se pueda deducir.
+
+Vocabulario CERRADO de equipo: ninguno / sarten / olla / horno / tostadora /
+batidora / microondas. Los de `ninguno` (31) son la respuesta literal a "no
+tengo cacharros" — y `equipment` solo existe donde hay entrada, así que el
+filtro estaba muerto hasta que hubo tandas.
+
+### 6. INGREDIENTES — 84 roles (antes 81)
+
+**No había CEBOLLA, ni AJO, ni ACEITE DE OLIVA.** No sin resolver:
+ausentes. La cocina española se construye sobre esos tres.
+
+**Aceite de oliva: RESUELTO**, y escondía una trampa de unidades. El
+catálogo decía 91 g de grasa por 100 g, que es **químicamente imposible**
+para un aceite: un aceite es grasa casi pura. Los valores son **por 100 ML**
+(como etiqueta la UE los líquidos). Convertido con densidad 0,916 g/ml:
+897 kcal y 99,3 g de grasa. Sin esto, todo plato español habría
+infravalorado el aceite un ~9% para siempre, con aspecto perfectamente
+plausible. El precio y el envase arrastraban la misma trampa: la botella
+"de 1 litro" pesa 916 g.
+
+**AVISO CRÍTICO Y CONTRAINTUITIVO: Atwater NO puede validar esa
+conversión.** Es invariante de escala. La concordancia es IDÉNTICA antes y
+después (0,36% en ambos casos, diferencia 2,22e-16), porque dividir kcal y
+grasa por el mismo factor conserva la relación. El único argumento válido
+es **composicional**: un aceite es grasa pura, luego ~99 g/100 g es
+forzoso. Quien "compruebe" una conversión de unidades con Atwater la verá
+pasar con datos correctos Y con datos incorrectos.
+
+**Cebolla y ajo: BLOQUEADOS en nutrición** (`resolved:false`). Precio y
+envase SÍ son reales. Los cinco productos crudos del catálogo no traen
+nutrición, y el único que la trae ("Cebollas rojas") declara 93 kcal contra
+18 por Atwater — dato roto, no dato.
+
+### 7. BEDCA ESTÁ MUERTO — USDA FUNCIONA, CON UNA TRAMPA
+
+BEDCA: el endpoint SOAP documentado da 404; el que llama su propia web
+devuelve **HTTP 200 con CERO BYTES**. No es difícil, es que no responde.
+
+USDA FoodData Central sí funciona: 8 de 9 correctos, registros SR Legacy
+con fdcId real.
+
+**EL NOVENO IMPORTA MÁS QUE LOS OCHO.** Para `avena` devolvió
+**"Oil, oat" — 884 kcal**. Es ACEITE de avena; la avena real son ~380. Lo
+habría puesto en cada porridge de la app, 2,3x de más. Y **pasa todos los
+controles automáticos**: coherente por Atwater, ratio kJ/kcal correcto,
+fdcId auténtico. Lo único que lo detecta es una persona leyendo
+"Oil, oat" y notando que no es avena. **1 de cada 9 catastrófico** al
+emparejar automáticamente.
+
+**Trampa de orden en USDA**: `Energy` aparece DOS VECES por alimento y el
+orden VARÍA DENTRO DE UNA MISMA RESPUESTA — "Onions, raw" da kcal primero,
+"Onions, welsh" da kJ primero. Un parser que coja "el primero" mezcla kJ y
+kcal (4,18x de diferencia) en la misma consulta. **Seleccionar por
+`unitName`, nunca por posición.**
+
+### 8. LA REGLA: COHERENTE PERO FALSO
+
+Tres veces en un solo día, por caminos distintos:
+
+1. Buscar "cebolla" devuelve **patatas fritas sabor cebolla** con nutrición
+   perfectamente coherente.
+2. Atwater puso en cuarentena **cervezas** correctas: el etanol son 7 kcal/g
+   y la fórmula P/C/F no lo ve.
+3. **"Oil, oat"**, arriba.
+
+**La coherencia interna no defiende de nada. Solo comprobar QUÉ ES la cosa
+lo hace.** Por eso el tier 4 (`generic_reference`, siempre `needs_review`,
+nunca auto-aceptado) es un requisito medido, no burocracia.
+
+### 9. BLOQUEADO ESPERANDO AL USUARIO
+
+Una **clave gratuita de USDA FoodData Central**
+(`fdc.nal.usda.gov/api-key-signup.html`, un minuto, sin tarjeta) desbloquea
+de golpe cebolla, ajo **y los 31 roles sin resolver** (brócoli, plátano,
+salmón, pepino, calabacín...), que hoy degradan la nutrición en toda la
+app. Va en config y **nunca se comitea**. Alternativa sin registro: gotear
+a ~9/hora, unas 4 horas para 33 roles.
+
+### 10. ENTREGABLES EN EL ESCRITORIO (2026-08-26)
+
+- `nutrition-planner-app.zip` — carpeta completa + standalone dentro
+- `nutrition-planner-STANDALONE.html` — CSS y los 44 JS embebidos; funciona
+  desde cualquier sitio, incluso dentro del zip
+- `nutrition-planner-DISENO.html` — solo diseño, CERO scripts, captura
+  congelada de un plan REAL para que un diseñador vea la UI de verdad y
+  edite el bloque `<style>`
+
+**Modo de fallo real**: el visor de zip de Windows extrae SOLO el fichero
+que abres, así que abrir `index.html` desde dentro del zip da una página sin
+estilos y con 0 platos. Hay que extraer primero, o usar el standalone.
+
+### 11. MÉTODO — lo que más ha valido en este proyecto
+
+**Medir antes y después, y contar lo que pasó de verdad.** Casos reales:
+un matcher por tokens de variante se midió, FALLÓ y se descartó; el término
+de caducidad se midió inerte y se documentó como resultado nulo en vez de
+venderse como funcionando; el orquestador reportó un "techo de 2045 kcal"
+que era su propio harness pasando el objetivo en el campo equivocado; la
+sesión de código estuvo a punto de publicar "el scorer evita lo que caduca"
+antes de ver que su despensa de prueba era toda verdura.
+
+**Cuando una medición contradice la intuición, sospecha del fixture antes
+que del código.**
+
+Verificar con `git log -1` en AMBOS repos antes de asumir cuál es el HEAD
+real — esto es una foto fija, no una garantía.
+
+### 12. TAREAS PARA LA PRÓXIMA SESIÓN — en orden
+
+Esto es lo que hay que hacer, no lo que ya se hizo. Si solo lees una
+sección de este handoff, que sea esta.
+
+**MODO DE TRABAJO**: el usuario suele llevar DOS chats — uno que orquesta
+(asigna, revisa, verifica) y otro que programa. Si te toca orquestar: das
+tareas y revisas, no editas archivos. Pregúntale cuál de los dos eres si no
+está claro. Los nombres de sesión rotan constantemente, así que resuelve el
+destinatario con `ListAgents`, nunca con un nombre recordado.
+
+---
+
+**T1 — P0. Que el usuario revise y decida sobre los diffs sin comitear.**
+
+Es el cuello de botella real: ~1.200 líneas verificadas y en verde llevan
+dos días esperando. NO comitees tú: el usuario exige aprobación explícita
+SUYA, diff por diff. La aprobación de otra sesión no vale.
+
+Reparto sugerido, para que pueda revisarlo por partes en vez de como un
+muro:
+
+1. Tope de ración + recorte de paquete (`plan-generator.js`,
+   `dish-selector.js`, y el golden-master) — el bug de la patata que
+   reportó él mismo.
+2. Autocompletado de "no me gusta" (`ingredient-suggest.js` nuevo,
+   `index.html`, `app.js`, CSS, tests). **Que pruebe él las flechas del
+   teclado**: es lo único que no se pudo verificar, porque el navegador de
+   la herramienta no entrega pulsaciones reales.
+3. Cocina + pesos de sesgo (`dish-cuisine.js` nuevo, `dish-selector.js`,
+   `preferences.js`, `settings.js`, `calculator.js`, `render.js`).
+4. Recetas + ingredientes (`dish-instructions.js` nuevo,
+   `ingredient-nutrition.js`, `packaging.js`, `prices/mercadona.js`).
+
+Y aparte, `PythonProject` (14 archivos, sin remote, nada puede escaparse).
+
+---
+
+**T2 — P1. La clave de USDA, si el usuario la consigue.**
+
+`fdc.nal.usda.gov/api-key-signup.html` — gratis, un minuto, sin tarjeta.
+**No te des de alta tú**: crear cuentas a su nombre queda fuera. Si prefiere
+no registrarse, se puede gotear con `DEMO_KEY` a ~9/hora, unas 4 horas para
+33 roles.
+
+En cuanto la tenga, PARAR de escribir recetas y hacer esto: desbloquea de
+golpe cebolla, ajo **y los 31 roles sin resolver**, que hoy degradan la
+nutrición en TODA la app.
+
+Reglas no negociables al integrarlo (medidas, no opinión — ver sección 7):
+todo valor entra como `generic_reference`, siempre `needs_review`, nunca
+auto-aceptado; se guardan `fdcId` y la descripción literal de USDA para que
+un "Oil, oat" se vea a simple vista; `SOURCE_ID = "usda_fdc"` desde el
+primer día para que un fallo de USDA no silencie una búsqueda de OFF; y el
+mapeo español→inglés se escribe A MANO (traducir automáticamente es cómo
+"Pepino" acaba siendo pepinillo en vinagre). Trae la tabla completa a
+revisión ANTES de escribir nada en `ingredient-nutrition.js`.
+
+---
+
+**T3 — P2. Seguir escribiendo recetas.** 142 de 334 (43%). Quedan 192, unas
+ocho tandas de 25.
+
+Elegir por VARIEDAD DE TÉCNICA, no por orden de lista. Escribir para quien
+NUNCA ha cocinado, anticipando el fallo concreto (ver los ejemplos de la
+sección 5). Redacción original siempre, nunca copiada de webs de recetas.
+Nada que necesite cebolla o ajo hasta que T2 esté hecho. Reportar cada dos
+tandas para que la calidad no derive sin que nadie lo vea.
+
+---
+
+**T4 — P3. Escribir platos españoles nuevos.** Este es el arreglo de verdad
+a "que la app se sienta española", no subir `CUISINE_BIAS_WEIGHT`.
+
+Solo hay 25 platos españoles de 334, y 9 son "jamón serrano con algo". El
+techo real es ~0,7 tomas españolas al día por mucho que se suba el peso.
+
+BLOQUEADO por T2 en su mayor parte: tortilla de patatas, pollo al ajillo,
+pisto, gazpacho y lentejas guisadas necesitan cebolla o ajo. Construibles ya
+con solo aceite: merluza a la plancha, ensaladilla. Un plato nuevo necesita
+name/category/kcal/protein/carbs/fat/cost/prep/mainProt/taste/items **y**
+sus pasos — y los macros salen calculados de roles resueltos, no inventados.
+
+---
+
+**T5 — P4. Desplegar.** Producción sigue sirviendo una build anterior a todo
+esto. `npx wrangler pages deploy . --project-name=offline-nutrition-helper`.
+**Solo con permiso explícito del usuario**, y solo después de T1.
+
+---
+
+**T6 — pendiente menor, si aparece hueco.** Alergias (`js/core/allergens.js`
+aparte, NUNCA fusionado con "no me gusta"): sin datos EXCLUYE, al revés que
+la preferencia. El catálogo del frontend no lleva alérgenos hoy; la vía es
+un archivo de búsqueda aditivo generado desde Python, como
+`product-storage.js`, sin regenerar `real-products.js` (que se mantiene a
+mano). El modo de cocina "sin cocinar" sí se puede cubrir de verdad; el
+motor de PLATOS no, porque trabaja con 81 roles genéricos sin unión a SKUs
+— y decir "esta parte no está cubierta" es mejor que un filtro a medias que
+parece protección.
+
+---
+
+**LO QUE NO HAY QUE HACER**
+
+- No comitear ni pushear sin aprobación explícita del usuario para ESE diff.
+- No desplegar sin permiso.
+- No ejecutar `main.py` de PythonProject (reescribe los 4.374 productos de
+  Mercadona) sin permiso.
+- No reintentar Carrefour: bloqueado por Cloudflare dos veces, incluida una
+  tras esperar un día entero. Es un bloqueo real, no un bug que arreglar.
+- No subir `CUISINE_BIAS_WEIGHT` para conseguir más comida española: el
+  techo es el catálogo (ver T4).
+- No fiarte de la coherencia interna de un dato como prueba de que es
+  correcto (ver sección 8).
