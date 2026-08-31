@@ -2658,6 +2658,311 @@ var DISH_INSTRUCTIONS = {
       "Mezcla el arroz con el brócoli.",
       "Escurre y desmiga las sardinas de lata y repártelas por encima. Limón y aceite crudo."
     ]
+  },
+
+  // ── Tanda 2026-08-31 (d) (207 → 235 platos) ──────────────────────────
+  // Carne. Mismo criterio que la tanda de pescado: la técnica de cada
+  // corte ya está escrita, así que estos reutilizan los bloques a
+  // propósito. Frases que se repiten: ternera CONTRA LA FIBRA, solomillo
+  // que REPOSA 5 min, lomo de cerdo que se retira "de rosa a pálido",
+  // picada que se dora SIN remover el primer minuto, jamón serrano que NO
+  // se cocina, conejo dorado + 35 min tapado.
+
+  "Poke bowl de pollo con arroz y aguacate": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Corta la pechuga en dados, sécalos y sálalos. Sartén a fuego alto con una cucharada de aceite, 5 minutos, hasta que no queden rosas. Si tienes salsa de soja, un chorrito al final.",
+      "Pela la zanahoria y córtala en tiras finas o rállala en grueso: va cruda, aporta el punto crujiente.",
+      "Abre el aguacate, quita el hueso, saca la carne con una cuchara y córtalo en láminas SIN aplastarlo.",
+      "Monta el bol: arroz de base templado o a temperatura ambiente, y encima el pollo, el aguacate y la zanahoria en montones separados. Es un plato de contrastes, no un salteado."
+    ]
+  },
+
+  "Quinoa con verduras asadas y pollo": {
+    difficulty: 2,
+    equipment: ["horno"],
+    steps: [
+      "Horno a 200 grados. Extiende las verduras congeladas en una bandeja con una cucharada de aceite y sal, EN UNA SOLA CAPA. Amontonadas se cuecen al vapor y no se asan.",
+      "Corta la pechuga en trozos grandes, sécala, sálala y ponla en la misma bandeja.",
+      "Hornea 20 minutos, removiendo a la mitad. El pollo está hecho cuando al abrir el trozo más gordo el jugo sale claro.",
+      "Calienta la quinoa, ahuécala con un tenedor y mézclala con las verduras y el pollo, con todo el jugo de la bandeja."
+    ]
+  },
+
+  "Ensalada de pollo con aguacate y quinoa": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Corta la pechuga en tiras, sécalas y sálalas. Sartén a fuego medio-alto con una cucharada de aceite, 5 minutos, hasta que no queden rosas. Déjala templar.",
+      "Calienta la quinoa, ahuécala con un tenedor y déjala templar también: caliente, aguaría las espinacas.",
+      "Abre el aguacate y córtalo en dados sin aplastarlo.",
+      "Mezcla la quinoa, las espinacas crudas, el pollo y el aguacate con una cucharada de aceite, un chorro de limón y sal. Se come templada o fría."
+    ]
+  },
+
+  "Pavo con pasta integral y tomate": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Pon el agua de la pasta a hervir con una cucharada colmada de sal (si viene ya cocida, sáltatelo).",
+      "Corta el pavo en tiras finas, sécalo y sálalo. Es más seco que el pollo: fino y poco tiempo.",
+      "Dóralo en una sartén con una cucharada de aceite a fuego medio-alto 4 minutos, hasta que pierda el rosa. Retíralo.",
+      "Echa el tomate en dados en la misma sartén, 6 minutos hasta salsa espesa. Devuelve el pavo, mezcla con la pasta y una cucharada de su agua, y sirve."
+    ]
+  },
+
+  "Carne picada al wok con arroz": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Sartén o wok a fuego ALTO con una cucharada de aceite. Echa la carne picada y NO LA REMUEVAS el primer minuto para que se dore por debajo.",
+      "Rómpela en trozos y saltea 4 minutos. Si suelta agua, sube el fuego y espera a que se evapore: mientras haya agua, se cuece gris en vez de dorarse.",
+      "Aparta la carne a un lado, echa las verduras congeladas en el hueco y saltéalas 4 minutos a fuego fuerte.",
+      "Mezcla todo con el arroz caliente y un chorrito de salsa de soja o sal."
+    ]
+  },
+
+  "Cerdo con cuscús y zanahoria": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Zanahoria en rodajas finas, 7 minutos en agua hirviendo con sal.",
+      "Corta el lomo en filetes de un dedo, secos y salados. Sartén a fuego medio-alto con una cucharada de aceite, 3 minutos + 2 minutos.",
+      "Retira el cerdo cuando el centro pase de rosa a pálido, no del todo blanco: es muy magro y se seca. Termina en el plato con su calor.",
+      "Cuscús: agua caliente por encima, tapado 2 minutos, ahueca con TENEDOR. Mézclalo con la zanahoria y sirve con el cerdo."
+    ]
+  },
+
+  "Pollo con pasta y calabacín": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Calabacín en medias lunas de medio centímetro. Saltéalo con una cucharada de aceite y sal a fuego medio-alto 5 minutos hasta dorar. Sácalo.",
+      "Corta la pechuga en dados, secos y salados. En la misma sartén, fuego alto, 5 minutos hasta que no queden rosas.",
+      "Devuelve el calabacín, añade la pasta ya cocida con dos cucharadas de agua y mezcla 1 minuto.",
+      "Pimienta, un hilo de aceite crudo y queso rallado si tienes."
+    ]
+  },
+
+  "Muslo de pollo con pasta y champiñones": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Champiñones en láminas (papel, no agua), salteados a fuego fuerte 5 minutos hasta que suelten y reevaporen el agua. Sácalos.",
+      "Muslos secos y salados, piel abajo en la misma sartén 6 o 7 minutos sin mover hasta que la piel esté crujiente, vuelta 5 minutos. Jugo claro al pinchar = hecho.",
+      "Trocea el pollo, devuélvelo con los champiñones, añade la pasta con dos cucharadas de agua y mezcla 1 minuto.",
+      "Pimienta y el jugo dorado de la sartén por encima."
+    ]
+  },
+
+  "Pavo picado con quinoa y coliflor": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Coliflor en ramilletes pequeños, 5 minutos en agua con sal; escúrrela EN CUANTO ceda, pasa a puré en nada.",
+      "Extiende el pavo picado en una sartén a fuego alto SIN tocarlo 1 minuto. Rómpelo y saltea 4 minutos. En cuanto pierde el rosa, ya está: pasado queda seco y arenoso.",
+      "Añade la coliflor y saltea 2 minutos para que coja algo de tostado.",
+      "Mezcla con la quinoa caliente. Sal, pimienta, pimentón si tienes."
+    ]
+  },
+
+  "Carne picada con quinoa y calabacín": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Calabacín en dados de un centímetro, salteado con una cucharada de aceite y sal a fuego fuerte 5 minutos hasta dorar. Sácalo.",
+      "En la misma sartén, carne picada a fuego alto SIN remover 1 minuto; rómpela y saltea 5 minutos. Si suelta agua, sube el fuego hasta que se evapore.",
+      "Devuelve el calabacín, mezcla con la quinoa caliente.",
+      "Sal, pimienta y un poco de tomate frito si quieres jugosidad."
+    ]
+  },
+
+  "Carne picada con trigo sarraceno y brócoli": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Brócoli en ramilletes, 4 minutos en agua con sal; escúrrelo cuando el tallo resista.",
+      "Carne picada a fuego alto SIN remover 1 minuto; rómpela y saltea 5 minutos hasta que no quede rosa y el agua se evapore.",
+      "Añade el brócoli y el trigo sarraceno con un chorrito de agua, saltea 2 minutos. Separa el grano con tenedor.",
+      "Sal, pimienta y salsa de soja o un poco de tomate concentrado."
+    ]
+  },
+
+  "Ternera con trigo sarraceno y zanahoria": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Zanahoria en rodajas finas, 6 minutos en agua con sal.",
+      "Corta la ternera en tiras FINAS y CONTRA LA FIBRA (cruza las líneas de la carne, o queda dura). Sécala y sálala.",
+      "Sartén a fuego MÁXIMO con una cucharada de aceite. Ternera en una sola capa, 2 minutos. Pasada de ahí se seca y endurece.",
+      "Mezcla con el trigo sarraceno caliente (sepáralo con tenedor) y la zanahoria. Pimienta."
+    ]
+  },
+
+  "Ternera con arroz integral y champiñones": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Champiñones en láminas (papel, no agua), a fuego fuerte 5 minutos hasta que suelten y reevaporen el agua. Sácalos.",
+      "Ternera en tiras finas CONTRA LA FIBRA, seca y salada. Fuego máximo, 2 minutos en una sola capa. No más.",
+      "Devuelve los champiñones, mezcla con el arroz integral caliente (un chorrito de agua, tapado 1 minuto).",
+      "Pimienta y un hilo de aceite crudo."
+    ]
+  },
+
+  "Solomillo de ternera con trigo sarraceno y coliflor": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Coliflor en ramilletes pequeños, 5 minutos en agua con sal; escúrrela en cuanto ceda.",
+      "Saca el solomillo 15 minutos antes, sécalo y sálalo. Fuego ALTO, 2 minutos por lado para una pieza de 3 cm.",
+      "REPOSA la carne 5 minutos en un plato antes de cortar, o todo el jugo se va al plato. Córtala contra la fibra.",
+      "Saltea la coliflor 2 minutos en la sartén, mézclala con el trigo sarraceno (sepáralo con tenedor) y sirve con el solomillo en lonchas."
+    ]
+  },
+
+  "Solomillo de ternera con arroz integral y verduras salteadas": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Saca el solomillo 15 minutos antes, sécalo y sálalo.",
+      "Verduras congeladas directas a fuego fuerte con una cucharada de aceite, 5 minutos hasta que evaporen su agua. Sácalas.",
+      "Solomillo a fuego ALTO 2 minutos por lado (3 cm). REPOSA 5 minutos antes de cortar. Córtalo contra la fibra.",
+      "Calienta el arroz integral (chorrito de agua, tapado 1 minuto), mézclalo con las verduras y sirve con la carne."
+    ]
+  },
+
+  "Lomo de cerdo con arroz integral y espinacas": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Filetes de lomo de un dedo, secos y salados. Sartén a fuego medio-alto con una cucharada de aceite, 3 minutos + 2 minutos.",
+      "Retíralo cuando el centro pase de rosa a pálido: es muy magro, del todo blanco queda seco.",
+      "Echa las espinacas en la sartén, 1 minuto hasta que bajen.",
+      "Calienta el arroz integral (chorrito de agua, tapado 1 minuto), mézclalo con las espinacas y sirve con el cerdo. Pimienta."
+    ]
+  },
+
+  "Lomo de cerdo con cuscús y pimientos": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Pimiento sin las venas blancas (amargan), en tiras. Fuego fuerte 6 minutos hasta manchas oscuras. Sácalo.",
+      "Filetes de lomo de un dedo, secos y salados. Misma sartén, 3 minutos + 2 minutos. Fuera cuando el centro pasa de rosa a pálido.",
+      "Cuscús: agua caliente por encima, tapado 2 minutos, ahueca con TENEDOR.",
+      "Mezcla el cuscús con los pimientos y sirve con el cerdo. Pimienta."
+    ]
+  },
+
+  "Conejo con cuscús y calabacín": {
+    difficulty: 3,
+    equipment: ["olla"],
+    steps: [
+      "El conejo es muy magro y con huesos finos: hecho rápido queda como suela. Trocéalo, sécalo y sálalo.",
+      "Dóralo en una olla ancha con dos cucharadas de aceite a fuego fuerte, por tandas, 6 minutos.",
+      "Fuego al mínimo, medio vaso de agua, tapa, 35 minutos. Añade agua a media cocción si se seca. Se separa del hueso = hecho. OJO CON LAS ESPINAS FINAS.",
+      "Saltea el calabacín en dados 5 minutos aparte. Cuscús con agua caliente, tapado 2 minutos, tenedor. Sirve el conejo con su jugo."
+    ]
+  },
+
+  "Jamón serrano con patatas y zanahoria": {
+    difficulty: 1,
+    equipment: ["olla"],
+    steps: [
+      "El jamón serrano es curado, NO se cocina: va crudo al final, encima. Si lo salteas se endurece y suelta toda su sal.",
+      "Zanahoria en rodajas, 8 minutos en agua hirviendo con sal.",
+      "Corta la patata cocida en dados y saltéala con una cucharada de aceite 5 minutos hasta dorar, o caliéntala con la zanahoria el último minuto.",
+      "Sirve patata y zanahoria, reparte el jamón por encima sin trocearlo mucho. NO añadas sal: la pone toda el jamón. Un hilo de aceite crudo."
+    ]
+  },
+
+  "Pechuga de pollo al vapor con quinoa": {
+    difficulty: 2,
+    equipment: ["olla"],
+    steps: [
+      "Pon la pechuga entera en un colador metálico sobre una olla con dos dedos de agua hirviendo, sin que el agua la toque. Tapa.",
+      "12 minutos para una pechuga normal. Hecha cuando al cortar por el centro es blanca sin rastro de rosa. El vapor la deja jugosa sin dorarla.",
+      "Añade el brócoli en ramilletes al colador los últimos 5 minutos.",
+      "Calienta la quinoa, ahuécala con un tenedor. Sirve con la pechuga en lonchas y el brócoli. Sal, pimienta, limón y un hilo de aceite crudo (no se ha usado grasa hasta aquí)."
+    ]
+  },
+
+  "Pollo mediterráneo con cuscús y tomate": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Corta la pechuga en dados, secos y salados. Sartén a fuego alto con una cucharada de aceite, 5 minutos, hasta que no queden rosas. Con orégano si tienes.",
+      "Baja el fuego, echa el tomate en dados y deja 5 minutos hasta salsa espesa, aplastándolo.",
+      "Cuscús: agua caliente por encima, tapado 2 minutos, ahueca con TENEDOR.",
+      "Mezcla el cuscús con el pollo y el tomate. Aceite crudo y pimienta."
+    ]
+  },
+
+  "Ternera salteada con espinacas": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Corta la ternera en tiras FINAS y CONTRA LA FIBRA (cruza las líneas o queda dura), seca y salada.",
+      "Sartén a fuego MÁXIMO con una cucharada de aceite. Ternera en una sola capa, 2 minutos. Pasada de ahí se seca.",
+      "Añade el tomate en dados, 2 minutos, y luego las espinacas: bajan en 30 segundos con el calor.",
+      "Pimienta y sirve enseguida."
+    ]
+  },
+
+  "Carne picada con cuscús y zanahoria": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Zanahoria en dados pequeños, 8 minutos en agua con sal (o rallada, cruda, para textura).",
+      "Carne picada a fuego alto SIN remover 1 minuto; rómpela y saltea 5 minutos. Si suelta agua, súbelo hasta que se evapore o se cuece gris.",
+      "Cuscús: agua caliente, tapado 2 minutos, tenedor.",
+      "Mezcla cuscús, carne y zanahoria. Sal, pimienta, pimentón o comino si tienes."
+    ]
+  },
+
+  "Pavo al horno con quinoa y verduras": {
+    difficulty: 2,
+    equipment: ["horno"],
+    steps: [
+      "Horno a 200 grados. Pon la pechuga de pavo entera en una bandeja con las verduras congeladas alrededor, un hilo de aceite y sal.",
+      "Hornea 25 minutos. El pavo es seco: sácalo en cuanto el centro esté blanco al cortar, no lo pases.",
+      "Deja reposar el pavo 5 minutos antes de cortar en lonchas.",
+      "Calienta la quinoa, ahuécala con un tenedor y mézclala con las verduras y su jugo. Sirve con el pavo."
+    ]
+  },
+
+  "Pollo con cuscús y coliflor": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Coliflor en ramilletes pequeños, 5 minutos en agua con sal; escúrrela en cuanto ceda.",
+      "Corta la pechuga en dados, secos y salados. Sartén a fuego alto, 5 minutos, hasta que no queden rosas.",
+      "Añade la coliflor y saltea 2 minutos para que coja tostado.",
+      "Cuscús: agua caliente, tapado 2 minutos, tenedor. Mézclalo con todo. Pimentón y pimienta."
+    ]
+  },
+
+  "Muslo de pollo con arroz integral y espinacas": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Muslos secos y salados, piel abajo en una sartén con una cucharadita de aceite 6 o 7 minutos sin mover hasta que la piel esté crujiente, vuelta 5 minutos. Jugo claro = hecho.",
+      "Trocea el pollo, resérvalo. Echa las espinacas en la sartén, 1 minuto hasta que bajen.",
+      "Calienta el arroz integral (chorrito de agua, tapado 1 minuto), mézclalo con las espinacas.",
+      "Pon el pollo encima con el jugo dorado de la sartén."
+    ]
+  },
+
+  "Muslo de pollo con cuscús y pimientos": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Pimiento sin venas blancas en tiras, fuego fuerte 6 minutos hasta manchas oscuras. Sácalo.",
+      "Muslos secos y salados, piel abajo 6 o 7 minutos sin mover hasta piel crujiente, vuelta 5 minutos. Jugo claro = hecho.",
+      "Cuscús: agua caliente, tapado 2 minutos, tenedor. Mézclalo con los pimientos.",
+      "Trocea el pollo y sírvelo encima con su jugo."
+    ]
   }
 };
 
