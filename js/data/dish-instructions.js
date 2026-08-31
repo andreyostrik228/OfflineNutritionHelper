@@ -1825,6 +1825,327 @@ var DISH_INSTRUCTIONS = {
       "Sirve el arroz de base con el edamame y el huevo cortado por la mitad.",
       "Sal por encima. El edamame se come apretando la vaina con los dientes; la vaina se tira."
     ]
+  },
+
+  // ── Tanda 2026-08-31 (142 → 166 platos) ─────────────────────────────
+  // Elegidos por TÉCNICA que no se pueda deducir de otra receta ya
+  // escrita, no por orden de lista: marisco cocido que solo hay que
+  // templar, pescado firme vs. pescado que se deshace, carne magra y su
+  // reposo, salsas con azúcar que se queman, un grano nuevo (trigo
+  // sarraceno), el huevo duro sin cerco gris, la fruta congelada que
+  // atasca la batidora, el vaso de arroz que revienta en el microondas.
+  // Nada con cebolla ni ajo: esos roles siguen sin resolver (ver T2).
+
+  "Gambas con arroz y brócoli": {
+    difficulty: 1,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Cuece el brócoli en ramilletes 4 minutos en agua hirviendo con sal. Escúrrelo en cuanto el cuchillo entre pero el tallo aún resista.",
+      "Las gambas YA VIENEN COCIDAS: solo hay que templarlas. Ponlas en una sartén con una cucharadita de aceite a fuego medio.",
+      "Remueve 45 segundos, hasta que estén calientes al tacto, y ni un segundo más. Si las tienes 2 o 3 minutos \"para asegurar\", se encogen y quedan como gomas.",
+      "Aparta la sartén del fuego. Calienta el arroz aparte, en el microondas o con un chorrito de agua tapado en un cazo 1 minuto.",
+      "Monta el arroz de base, el brócoli al lado y las gambas por encima.",
+      "Un chorro de limón y prueba de sal antes de añadir más: las gambas cocidas ya llevan bastante."
+    ]
+  },
+
+  "Langostinos con arroz integral y espinacas": {
+    difficulty: 1,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Si los langostinos vienen con cáscara: arranca la cabeza, tira de las patitas y pela el cuerpo, con las manos y sobre un plato.",
+      "Ponlos en una sartén con una cucharadita de aceite a fuego medio SOLO para templarlos, 1 minuto. Ya están cocidos; recocerlos los vuelve correosos.",
+      "Sácalos a un plato. En la misma sartén, con el fuego apagado y el calor que queda, echa las espinacas y remueve: se hacen en 30 segundos con el vapor.",
+      "Calienta el arroz integral aparte con un chorrito de agua, tapado, 1 minuto: viene más seco que el blanco.",
+      "Mezcla el arroz con las espinacas y pon los langostinos encima.",
+      "Sal y un hilo de aceite crudo al final."
+    ]
+  },
+
+  "Solomillo de ternera con arroz y brócoli": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Saca la carne de la nevera 15 minutos antes: fría por dentro se cocina desigual.",
+      "Sécala muy bien con papel y sálala por las dos caras. Mojada no se dora, se cuece gris.",
+      "Calienta la sartén a fuego ALTO con una cucharada de aceite hasta que humee ligeramente. Marca el solomillo 2 minutos por cada lado sin moverlo, para una pieza de unos 3 cm.",
+      "PÁSALO A UN PLATO Y DÉJALO REPOSAR 5 MINUTOS antes de cortar. Si lo cortas recién salido, el jugo se va entero al plato y la carne queda seca. Este paso es la mitad del resultado.",
+      "Córtalo en lonchas contra la fibra: fíjate en las líneas que recorren la carne y corta cruzándolas.",
+      "Sirve con el arroz caliente y el brócoli cocido 4 minutos en agua con sal."
+    ]
+  },
+
+  "Cerdo a la plancha con arroz y brócoli": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Corta el lomo en filetes de un dedo de grosor, sécalos y sálalos.",
+      "Calienta la sartén a fuego medio-alto con una cucharada de aceite.",
+      "Haz los filetes 3 minutos por un lado sin tocarlos, hasta ver el borde dorado.",
+      "Dales la vuelta y 2 minutos más. EL LOMO ES MUY MAGRO Y SE SECA EN NADA: retíralo cuando el centro haya pasado de rosa a pálido, no cuando esté del todo blanco. Se termina de hacer con su calor en el plato.",
+      "Cuece el brócoli 4 minutos en agua hirviendo con sal.",
+      "Sirve con el arroz y el brócoli. Un poco de pimienta le va bien al cerdo."
+    ]
+  },
+
+  "Rape con quinoa y champiñones": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "El rape es un pescado FIRME y grueso: no se deshace como la merluza y necesita más tiempo del que parece.",
+      "Sécalo, córtalo en medallones de unos 3 cm si viene en cola, y sálalo.",
+      "Limpia los champiñones con papel húmedo (no bajo el grifo, chupan agua) y córtalos en láminas. Saltéalos en la sartén con una cucharada de aceite a fuego fuerte 4 minutos, hasta que suelten el agua y se vuelva a evaporar. Sácalos.",
+      "En la misma sartén, haz el rape a fuego medio-alto 3 o 4 minutos por lado.",
+      "ESTÁ HECHO CUANDO ESTÁ OPACO Y BLANCO HASTA EL CENTRO, no cuando la superficie cambia de color: por dentro tarda. Ábrelo con el cuchillo para comprobarlo.",
+      "Calienta la quinoa, mézclala con los champiñones y sirve el rape encima. Sal al final."
+    ]
+  },
+
+  "Lubina con quinoa y calabacín": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Seca los lomos de lubina y sálalos. Si tienen piel, hazle dos cortes superficiales con el cuchillo para que no se encoja.",
+      "Corta el calabacín en medias lunas de medio centímetro.",
+      "Calienta la sartén a fuego medio-alto con una cucharada de aceite.",
+      "Pon la lubina CON LA PIEL HACIA ABAJO y aprieta los lomos con la espátula 10 segundos para que no se curven. Déjala así 4 minutos, el 80% de la cocción: la piel queda crujiente y protege la carne.",
+      "Dale la vuelta solo 1 minuto y sácala. Si la mueves mucho, se rompe.",
+      "Saltea el calabacín en la misma sartén 4 minutos con sal, mézclalo con la quinoa caliente y pon la lubina encima."
+    ]
+  },
+
+  "Conejo con arroz integral y brócoli": {
+    difficulty: 3,
+    equipment: ["olla"],
+    steps: [
+      "El conejo es carne muy magra y con huesos finos: hecho rápido queda como suela. Va dorado y luego a fuego bajo y tapado.",
+      "Trocéalo por las junturas (el carnicero suele darlo ya troceado), sécalo y sálalo.",
+      "Dóralo en una olla ancha con dos cucharadas de aceite a fuego fuerte, por tandas para que no se amontone, hasta que tenga color por todos lados. Unos 6 minutos.",
+      "Baja el fuego al mínimo, añade medio vaso de agua, tapa y deja 35 minutos. A media cocción, si se ha quedado seco, añade otro poco de agua.",
+      "Está listo cuando la carne se separa del hueso sin esfuerzo. OJO CON LOS HUESOS FINOS al comer, sobre todo en las patas.",
+      "Cuece el brócoli 4 minutos aparte y calienta el arroz integral. Sirve el conejo con su jugo por encima."
+    ]
+  },
+
+  "Pollo en salsa de yogur con cuscús": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Corta la pechuga en tiras, sécalas y sálalas.",
+      "Dóralas en una sartén con una cucharada de aceite a fuego medio-alto 5 minutos, hasta que no queden rosas por dentro.",
+      "Añade las espinacas y remueve hasta que bajen, 1 minuto.",
+      "APAGA EL FUEGO. Espera un minuto a que la sartén pierda el hervor y entonces añade dos cucharadas colmadas de yogur natural, removiendo. El yogur se corta y se agruma si hierve; fuera del fuego queda una salsa cremosa.",
+      "Prueba de sal y añade pimienta, o un poco de pimentón si tienes.",
+      "Sirve sobre el cuscús caliente, que se ahueca con un tenedor, nunca con cuchara."
+    ]
+  },
+
+  "Pollo a la naranja con arroz integral": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Pela la zanahoria y córtala en rodajas finas. Cuécela 6 minutos en agua hirviendo con sal, tierna pero entera.",
+      "Corta la pechuga en dados, sécalos y sálalos.",
+      "Dóralos en una sartén con una cucharada de aceite a fuego alto 5 minutos, hasta que no queden rosas.",
+      "Baja a fuego medio. Exprime el zumo de una naranja en la sartén, con una cucharadita de miel si quieres. AÑADE EL ZUMO AL FINAL, NO AL PRINCIPIO: lleva azúcar y a fuego fuerte o mucho rato se quema y amarga.",
+      "Deja que borbotee 2 o 3 minutos hasta que espese y bañe el pollo con un brillo. Remueve para que no se pegue.",
+      "Añade la zanahoria escurrida, mezcla y sirve sobre el arroz integral caliente."
+    ]
+  },
+
+  "Garbanzos al curry con espinacas": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Escurre los garbanzos de bote y enjuágalos hasta que el agua salga clara. El líquido del bote sabe a lata.",
+      "Trocea el tomate en dados pequeños.",
+      "Calienta una sartén con una cucharada de aceite a fuego medio. Echa una cucharadita de curry en polvo y FRÍELO 30 SEGUNDOS EN EL ACEITE antes de añadir nada más: en crudo sabe a polvo, al freírse suelta el aroma. Esta versión rápida va sin sofrito.",
+      "Añade el tomate y deja 4 minutos, aplastándolo con la cuchara hasta que sea una salsa espesa.",
+      "Añade los garbanzos y medio vaso de agua, y deja 5 minutos a fuego medio-bajo. Los garbanzos de bote ya están tiernos: solo cogen sabor, no hay que cocerlos más.",
+      "Echa las espinacas, remueve hasta que bajen y prueba de sal."
+    ]
+  },
+
+  "Pavo con trigo sarraceno y espinacas": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "El trigo sarraceno es un grano con sabor a nuez, más terroso que el arroz. Viene cocido: solo se calienta.",
+      "Corta la pechuga de pavo en tiras finas, sécalas y sálalas. El pavo es más seco que el pollo: fino y poco tiempo.",
+      "Dóralo en una sartén con una cucharada de aceite a fuego medio-alto 4 minutos, hasta que pierda el rosa. Retíralo.",
+      "En la misma sartén echa las espinacas con una pizca de sal y remueve 1 minuto hasta que bajen.",
+      "Añade el trigo sarraceno con un chorrito de agua, calienta 2 minutos y SEPÁRALO CON UN TENEDOR, sin machacar: removido en caliente con cuchara se apelmaza.",
+      "Devuelve el pavo, mezcla todo y sirve. Pimienta al final."
+    ]
+  },
+
+  "Sardinas con cuscús y calabacín": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Corta el calabacín en dados de un centímetro.",
+      "Saltéalo en una sartén con una cucharada de aceite y sal a fuego medio-alto 5 minutos, hasta que se dore por algunas caras.",
+      "Calienta el cuscús: si es de sobre ya cocido, un chorrito de agua caliente por encima y tapado 2 minutos.",
+      "AHUÉCALO CON UN TENEDOR, NUNCA CON CUCHARA. La cuchara lo apelmaza en una masa; el tenedor lo deja suelto, que es la gracia del cuscús.",
+      "Abre la lata de sardinas, escúrrelas del aceite y, si te molesta, quítales la espina central tirando con los dedos (es blanda y se come).",
+      "Mezcla el cuscús con el calabacín, pon las sardinas encima en trozos y un chorro de limón."
+    ]
+  },
+
+  "Huevos rellenos de atún con ensalada": {
+    difficulty: 2,
+    equipment: ["olla"],
+    steps: [
+      "Pon los huevos en un cazo cubiertos de agua fría, dos dedos por encima. Llévalos a hervor y cuenta 10 minutos exactos desde que borbotea.",
+      "NADA MÁS APAGAR, pásalos a un bol con agua y hielo (o agua muy fría del grifo) 5 minutos. Esto corta la cocción: sin el agua fría, la yema coge un cerco gris verdoso y sabe a azufre.",
+      "Pélalos bajo un hilo de agua, empezando por el extremo gordo.",
+      "Córtalos por la mitad a lo largo y saca las yemas a un bol.",
+      "Aplasta las yemas con un tenedor y mézclalas con el atún escurrido y una cucharadita de aceite hasta que se pueda moldear. Rellena las claras con esa pasta.",
+      "Sirve sobre una cama de tomate y pepino en dados con sal y aceite."
+    ]
+  },
+
+  "Ensalada templada con atún y garbanzos": {
+    difficulty: 1,
+    equipment: ["olla"],
+    steps: [
+      "Escurre y enjuaga los garbanzos de bote hasta que el agua salga clara.",
+      "Caliéntalos 2 minutos en un cazo con un dedo de agua, o 1 minuto en el microondas. Solo templados, no hirviendo.",
+      "Escúrrelos y, EN CALIENTE, mézclalos con una cucharada de aceite, un chorro de vinagre y sal. Templados absorben el aliño; fríos lo repelen y queda todo en el fondo del bol.",
+      "Trocea el tomate en dados y añádelo.",
+      "Escurre el atún y añádelo en trozos grandes, mezclando con suavidad para que no se deshaga del todo.",
+      "Deja reposar 5 minutos antes de comer. Está mejor templada que recién hecha o que fría de nevera."
+    ]
+  },
+
+  "Pollo salteado con verduras y arroz": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Corta la pechuga en dados pequeños y del mismo tamaño, para que se hagan a la vez. Sécalos y sálalos.",
+      "Calienta la sartén a fuego ALTO con una cucharada de aceite hasta que brille.",
+      "Echa el pollo y saltéalo 5 minutos hasta que esté dorado y sin rosa. SÁCALO A UN PLATO.",
+      "En la misma sartén, aún a fuego fuerte, echa las verduras congeladas directamente sin descongelar y saltéalas 5 minutos, hasta que se evapore el agua que sueltan.",
+      "Devuelve el pollo con su jugo, remueve 1 minuto y apaga. Si dejas el pollo dentro todo el rato mientras se hacen las verduras, se reseca esperando.",
+      "Sirve sobre el arroz. Una cucharadita de salsa de soja en lugar de sal le va bien."
+    ]
+  },
+
+  "Pavo picado con pasta y verduras salteadas": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Calienta una sartén a fuego alto con una cucharada de aceite.",
+      "Echa el pavo picado y EXTIÉNDELO SIN TOCARLO el primer minuto, para que se dore por debajo en vez de cocerse gris.",
+      "Rómpelo en trozos con la cuchara y saltéalo 4 minutos. El pavo picado es aún más magro que el de vacuno: en cuanto pierde el rosa ya está; pasado, queda seco y arenoso.",
+      "Añade las verduras congeladas y saltea 5 minutos más, hasta que se evapore su agua.",
+      "Añade la pasta ya cocida con dos cucharadas de agua y remueve 1 minuto para que se junte todo.",
+      "Prueba de sal y añade pimienta. Un poco de tomate frito o concentrado da jugosidad si lo tienes."
+    ]
+  },
+
+  "Salmón teriyaki con arroz integral": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Seca los lomos de salmón con papel y sálalos poco: la salsa teriyaki sala mucho.",
+      "Calienta la sartén a fuego medio-alto con una cucharadita de aceite.",
+      "Haz el salmón con la piel hacia abajo 4 minutos sin moverlo, luego 2 minutos por el otro lado. Está hecho cuando al apretar se abre en láminas y el centro ha pasado de rojo intenso a rosa.",
+      "Saltea las verduras congeladas en un hueco de la sartén o aparte, 4 minutos.",
+      "BAJA EL FUEGO AL MÍNIMO y solo entonces pincela el salmón con una cucharada de salsa teriyaki, 30 segundos por cada lado para que se pegue y brille. Si echas la salsa al principio o a fuego fuerte, el azúcar se quema negro y amarga.",
+      "Sirve sobre el arroz integral caliente con las verduras al lado."
+    ]
+  },
+
+  "Batido de proteína con avena y plátano": {
+    difficulty: 1,
+    equipment: ["batidora"],
+    steps: [
+      "Echa PRIMERO el líquido en el vaso de la batidora: el skyr y un buen chorro de agua o leche, unos 150 ml. Con los líquidos abajo las cuchillas agarran; con la avena y el plátano abajo se quedan girando en el aire.",
+      "Añade el plátano en trozos, la avena y la mantequilla de cacahuete.",
+      "TAPA SIEMPRE ANTES DE ENCENDER, y sujeta la tapa con la mano la primera vez.",
+      "Tritura 30 segundos, para, y si quedan grumos de avena dale otros 20 segundos: cruda tarda en deshacerse y si no, queda arenosa.",
+      "Si está demasiado espeso para beber, añade agua de 20 en 20 ml y vuelve a triturar un momento.",
+      "Bébelo recién hecho: reposado, la avena sigue absorbiendo y se vuelve un pudin."
+    ]
+  },
+
+  "Batido de requesón con frutos rojos": {
+    difficulty: 1,
+    equipment: ["batidora"],
+    steps: [
+      "Echa el requesón y unos 150 ml de agua o leche en el vaso de la batidora, el líquido primero.",
+      "Añade los frutos rojos AÚN CONGELADOS.",
+      "Tapa antes de encender y tritura. Es normal que al principio se atasque: la fruta congelada forma un bloque.",
+      "SI SE QUEDA GIRANDO SIN TRITURAR: para, empuja la fruta hacia las cuchillas con una cuchara, añade un chorro más de líquido y vuelve a triturar. Insistir con la batidora atascada solo calienta el motor.",
+      "Tritura 40 segundos en total, hasta que no queden trozos.",
+      "Pruébalo: los frutos rojos son ácidos, y si lo quieres más dulce va bien media cucharadita de miel."
+    ]
+  },
+
+  "Atún con arroz y maíz dulce": {
+    difficulty: 1,
+    equipment: ["microondas"],
+    steps: [
+      "Si el arroz es de vaso o bolsa para microondas: HAZ UN CORTE O UN PINCHAZO EN EL FILM antes de meterlo. Sellado, el vapor lo hincha y revienta salpicando todo el microondas.",
+      "Caliéntalo 90 segundos a máxima potencia.",
+      "Sácalo con cuidado (el vaso quema), ahuécalo con un tenedor y déjalo tapado 1 minuto: termina de hacerse con su propio vapor.",
+      "Escurre el atún y el maíz dulce de sus latas.",
+      "Mezcla el arroz con el maíz y pon el atún por encima en trozos.",
+      "Aliña con una cucharada de aceite, un chorro de vinagre o limón y sal. Frío también está bueno, como ensalada de arroz."
+    ]
+  },
+
+  "Ternera con patata y espinacas": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Corta la ternera en tiras FINAS y CONTRA LA FIBRA: fíjate en las líneas que recorren la carne y corta cruzándolas. A favor de la fibra queda dura por bien que la hagas.",
+      "Sécala, sálala y déjala fuera de la nevera mientras preparas lo demás.",
+      "Corta la patata ya cocida en rodajas gruesas. Dórala en una sartén con una cucharada de aceite a fuego medio-alto 4 minutos por lado y sácala.",
+      "Sube el fuego al máximo. Echa la ternera en una sola capa y saltéala 2 minutos: en tiras finas se hace en nada y, pasada de ese punto, se seca y se endurece.",
+      "Añade las espinacas y una pizca de sal, y remueve 30 segundos: bajan solas con el calor de la carne y la sartén.",
+      "Sirve la ternera y las espinacas sobre las patatas. Pimienta al final."
+    ]
+  },
+
+  "Tortilla de claras con champiñones y tomate": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Las verduras congeladas y el tomate sueltan mucha agua. Si van directas a las claras, la tortilla queda un caldo.",
+      "Saltea las verduras congeladas en una sartén con una cucharadita de aceite a fuego fuerte 5 minutos, HASTA QUE SE EVAPORE TODA EL AGUA y empiecen a dorarse.",
+      "Añade el tomate en dados y deja 2 minutos más, hasta que también pierda el jugo. Saca todo a un plato.",
+      "Bate las claras con una pizca de sal. Cuajan más rápido y más gomosas que el huevo entero, así que fuego medio, no fuerte.",
+      "Echa una gota de aceite en la sartén, vuelca las claras y, cuando el borde cuaje, reparte las verduras por una mitad.",
+      "Dobla la otra mitad encima con la espátula, 30 segundos más y al plato. Sácala cuando el centro aún parezca poco hecho: de tierna a seca va un momento."
+    ]
+  },
+
+  "Wrap de desayuno con claras y aguacate": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Bate las claras con una pizca de sal.",
+      "Cuájalas en una sartén con una gota de aceite a fuego medio-bajo, removiendo despacio, y SÁCALAS CUANDO AÚN BRILLEN Y PAREZCAN POCO HECHAS: siguen cuajando con su calor y en el wrap acaban perfectas. Secas aquí, quedan gomosas.",
+      "Calienta la tortilla de trigo 10 segundos por lado en la sartén sin nada, o 10 segundos en el microondas. Fría se raja al doblarla; templada se enrolla sin romperse.",
+      "Machaca el aguacate con un tenedor y un poco de sal, y úntalo por el centro de la tortilla dejando 3 cm de borde libre.",
+      "Pon las claras sobre el aguacate SIN PASARTE DE RELLENO: un wrap demasiado lleno se abre por abajo al morderlo.",
+      "Dobla los dos lados cortos hacia dentro y enrolla desde el borde más cercano, apretando un poco. Córtalo en diagonal."
+    ]
+  },
+
+  "Pollo asado con patata y brócoli": {
+    difficulty: 2,
+    equipment: ["horno"],
+    steps: [
+      "Enciende el horno a 210 grados.",
+      "Corta la patata ya cocida en gajos y el pollo en trozos grandes. Que todo tenga un tamaño parecido para que se haga a la vez.",
+      "Extiéndelo en la bandeja EN UNA SOLA CAPA, sin que las piezas se toquen, con dos cucharadas de aceite y sal. Amontonado se cuece al vapor y sale pálido y blando en vez de dorado.",
+      "Hornea 15 minutos.",
+      "Saca la bandeja, añade el brócoli en ramilletes con un poco más de aceite y sal, remueve todo y hornea otros 12 minutos. Si el brócoli entra al principio, se quema y amarga antes de que el pollo esté hecho.",
+      "El pollo está listo cuando al abrir el trozo más gordo el jugo sale claro, no rosa."
+    ]
   }
 };
 
