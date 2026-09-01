@@ -51,7 +51,12 @@ var PACKAGING_INFO = {
   "mantequilla de cacahuete":  { type: "spoonable", tablespoonG: 16, teaspoonG: 5,  packageG: 350, packageLabel: "bote" },
 
   // ── 2. Se cuentan por unidad ─────────────────────────────────────────────
-  "huevos enteros": { type: "perUnit", gramsPerUnit: 63,  unitLabel: "huevo" },
+  // Los huevos NO se venden sueltos en Mercadona: el formato más pequeño es
+  // la media docena y el habitual la docena. "packUnits" fuerza a redondear
+  // a cartones enteros -- sin esto la lista de la compra decía "comprar 7
+  // huevos" (imposible) y cobraba 7 x el precio de un huevo en vez del
+  // cartón. Ver resolvePackageInfo() en pricing.js, rama perUnit.
+  "huevos enteros": { type: "perUnit", gramsPerUnit: 63,  unitLabel: "huevo", packUnits: 12, packLabel: "docena (12 huevos)" },
   "platano":         { type: "perUnit", gramsPerUnit: 120, unitLabel: "plátano" },
   "manzana":         { type: "perUnit", gramsPerUnit: 160, unitLabel: "manzana" },
   "naranja":         { type: "perUnit", gramsPerUnit: 200, unitLabel: "naranja" },

@@ -114,12 +114,34 @@ function filterDislikedProducts(products, dislikes) {
 }
 
 /**
- * Lista guardada del usuario. Vacía si settings.js no está cargado -- el
- * filtro entonces no quita nada, que es el fallo correcto para una
- * preferencia (a diferencia de una alergia, donde no saber debe excluir).
+ * Lista de "no me gusta" del usuario.
+ *
+ * Lee el campo #dislikes del formulario DIRECTAMENTE si está en pantalla, y
+ * solo cae en los ajustes guardados si no lo está (otro punto de entrada, o
+ * los tests). Es la misma razón que en getEatingPriority(): saveSettings()
+ * se llama DESPUÉS de generar el plan (js/app.js), así que en la primera
+ * generación tras escribir un "no me gusta" nuevo los ajustes todavía tienen
+ * la lista vieja -- leerlos ahí hacía que el plan trajera justamente lo que
+ * el usuario acababa de excluir ("plátano" y "brócoli" seguían saliendo
+ * hasta la segunda generación).
+ *
+ * Campo presente pero vacío = sin preferencias (al recargar, app.js vuelca
+ * settings.dislikes en el campo, así que "vacío" es de verdad vacío).
+ *
+ * Vacía si no hay ni campo ni settings.js -- el filtro entonces no quita
+ * nada, que es el fallo correcto para una preferencia (a diferencia de una
+ * alergia, donde no saber debe excluir).
  * @returns {string[]}
  */
 function getDislikes() {
+  if (typeof document !== "undefined" && document.getElementById) {
+    var el = document.getElementById("dislikes");
+    if (el && typeof el.value === "string") {
+      return el.value.split(",")
+        .map(function (part) { return part.trim(); })
+        .filter(Boolean);
+    }
+  }
   if (typeof getSettings !== "function") return [];
   var settings = getSettings();
   return Array.isArray(settings.dislikes) ? settings.dislikes : [];

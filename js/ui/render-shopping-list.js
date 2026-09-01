@@ -251,7 +251,11 @@ function renderShoppingRow(entry) {
     buyText = "Ya tienes suficiente en tu despensa";
   } else if (p.hasFixedPackage) {
     var label = p.packageLabel ? escapeHtml(p.packageLabel) : "envase";
-    buyText = "Comprar: " + p.packagesToBuy + " &times; " + label + " (" + round0(p.packageSizeG) + "g)";
+    // Si la etiqueta ya nombra un número de piezas ("docena (12 huevos)"),
+    // el "(756 g)" no le dice nada a quien compra -- se omite.
+    var withGrams = !/\d/.test(p.packageLabel || "");
+    buyText = "Comprar: " + p.packagesToBuy + " &times; " + label +
+      (withGrams ? " (" + round0(p.packageSizeG) + "g)" : "");
   } else {
     buyText = "Se compra al peso &mdash; sin envase fijo";
   }

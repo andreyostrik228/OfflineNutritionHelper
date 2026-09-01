@@ -315,8 +315,16 @@ function resolvePackageInfo(name, storeId) {
         // Se compra por unidad entera (huevo, pieza de fruta...): la
         // "unidad" hace las veces de envase — no puedes comprar media
         // pieza, así que se redondea igual que un paquete.
-        packageSizeG = info.gramsPerUnit;
-        packageLabel = info.unitLabel || null;
+        //
+        // packUnits: cuando el ingrediente SOLO se vende en un pack de
+        // varias piezas (huevos: la docena), el envase comprable es ese
+        // pack entero, no la pieza. La fruta de Mercadona sí se vende
+        // suelta, así que sin packUnits el comportamiento es el de antes.
+        var perPack = (typeof info.packUnits === "number" && info.packUnits > 1) ? info.packUnits : 1;
+        packageSizeG = info.gramsPerUnit * perPack;
+        packageLabel = perPack > 1
+          ? (info.packLabel || ((info.unitLabel || "unidad") + " x" + perPack))
+          : (info.unitLabel || null);
       }
     }
   }

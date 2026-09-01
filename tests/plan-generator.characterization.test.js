@@ -514,25 +514,27 @@ function run(t) {
     // (realm distinto) antes de comparar contra literales del host -- ver
     // comentario del test #1 más arriba para el motivo completo.
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.key; }))), EXPECTED_MEAL_KEYS);
-    // RECAPTURADO el 2026-09-01 al refrescar js/data/prices/mercadona.js
-    // contra el catálogo nuevo (33 de 47 precios "real:" habían cambiado).
-    // Con un generador aleatorio sembrado, mover un precio cambia una
-    // elección y a partir de ahí divergen TODAS las tiradas siguientes: el
-    // plan no es "el de antes un poco más caro", es otro plan.
+    // RECAPTURADO el 2026-09-01. Dos cambios de coste seguidos movieron
+    // esta tirada: (1) el refresco de js/data/prices/mercadona.js contra el
+    // catálogo nuevo, (2) los huevos pasaron a comprarse por docena entera
+    // (packUnits en packaging.js) en vez de "7 huevos sueltos". Con un
+    // generador sembrado, mover un precio cambia una elección y a partir de
+    // ahí divergen TODAS las tiradas siguientes: no es "el mismo plan un
+    // poco más caro", es otro plan.
     //
-    // Esta corrida concreta pasó de perfect/tier 0 a adjusted/tier 3, que
-    // parecía una regresión. NO lo es: medido con 150 ejecuciones por lado
-    // (5 perfiles x 30 semillas), la calidad sube ligeramente --
+    // Pasó de perfect/tier 0 a adjusted/tier 3, que parece una regresión.
+    // NO lo es: medido con 150 ejecuciones por lado (5 perfiles x 30
+    // semillas) tras el refresco de precios, la calidad sube ligeramente --
     // perfect 77->81, tier 0 86->100, violaciones 195->171, planes fuera de
     // presupuesto 4->2. Un golden-master es una muestra de UNA tirada; para
     // decir si algo ha empeorado hay que mirar la distribución.
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 2, 3, 1, 2]);
-    assert.strictEqual(result.total.kcal, 2790.8);
-    assert.strictEqual(result.total.protein, 196.40000000000003);
-    assert.strictEqual(result.total.carbs, 308.70000000000005);
-    assert.strictEqual(result.total.fat, 75.6);
-    assert.strictEqual(result.total.cost, 8.69);
-    assert.strictEqual(result.total.purchaseCost, 13.09);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [4, 2, 3, 1, 2]);
+    assert.strictEqual(result.total.kcal, 2638.3);
+    assert.strictEqual(result.total.protein, 181.8);
+    assert.strictEqual(result.total.carbs, 294.29999999999995);
+    assert.strictEqual(result.total.fat, 78.9);
+    assert.strictEqual(result.total.cost, 6.84);
+    assert.strictEqual(result.total.purchaseCost, 13.63);
     assert.strictEqual(result.report.status, "adjusted");
     assert.strictEqual(result.report.tierUsed, 3);
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.report.violations)), []);
@@ -545,15 +547,16 @@ function run(t) {
     var result = s.generateDietPlan(built.profile, built.data);
 
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.key; }))), EXPECTED_MEAL_KEYS);
-    // RECAPTURADO el 2026-09-01 con los precios nuevos -- ver el comentario
-    // largo del golden-master de seed=42. Esta corrida sigue en perfect/0.
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 3, 3, 2, 3]);
-    assert.strictEqual(result.total.kcal, 3768.8999999999996);
-    assert.strictEqual(result.total.protein, 194.49999999999997);
-    assert.strictEqual(result.total.carbs, 425.8);
-    assert.strictEqual(result.total.fat, 132);
-    assert.strictEqual(result.total.cost, 8.43);
-    assert.strictEqual(result.total.purchaseCost, 16.6);
+    // RECAPTURADO el 2026-09-01 con los precios nuevos + huevos por docena
+    // -- ver el comentario largo del golden-master de seed=42. Esta corrida
+    // sigue en perfect/0.
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 3, 3, 2, 2]);
+    assert.strictEqual(result.total.kcal, 3744.7000000000003);
+    assert.strictEqual(result.total.protein, 263.7);
+    assert.strictEqual(result.total.carbs, 412.7);
+    assert.strictEqual(result.total.fat, 113.3);
+    assert.strictEqual(result.total.cost, 11.22);
+    assert.strictEqual(result.total.purchaseCost, 19.52);
     assert.strictEqual(result.report.status, "perfect");
     assert.strictEqual(result.report.tierUsed, 0);
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.report.violations)), []);
