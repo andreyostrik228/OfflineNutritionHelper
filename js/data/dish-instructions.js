@@ -4228,7 +4228,189 @@ var DISH_INSTRUCTIONS = {
       "Pruébalo: el gazpacho pide más sal y vinagre de lo que parece en frío. Cuélalo si lo quieres sin pieles.",
       "A la nevera al menos 1 hora. Sírvelo muy frío con trozos de pan tostado (picatostes) por encima."
     ]
-  }
+  },
+
+  // ── Platos llanos: proteína + guarnición (2026-09-01) ────────────────
+  // Lo que come de verdad quien se cocina para la semana: una plancha y una
+  // olla. Sin marinados, sin salsas, sin nada que haya que comprar aparte.
+  // Los pasos son cortos a propósito: quien hace pollo con arroz no necesita
+  // que le cuenten quince cosas.
+
+  "Pollo con arroz": {
+    difficulty: 1,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Pon el arroz a hervir con el doble de agua y una pizca de sal: 15-18 minutos, hasta que se beba el agua.",
+      "Mientras, saca la pechuga de la nevera y sécala con papel. Si está muy gruesa, ábrela por la mitad a lo ancho para que se haga por dentro.",
+      "Sartén bien caliente, sal por las dos caras, 4-5 minutos por lado. Está lista cuando al apretarla suelta jugo transparente, no rosa.",
+      "Déjala reposar 2 minutos antes de cortarla y sírvela sobre el arroz."
+    ]
+  },
+
+  "Pollo con trigo sarraceno": {
+    difficulty: 1,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Enjuaga el trigo sarraceno bajo el grifo y hiérvelo 12-15 minutos con el doble de agua y sal, hasta que esté tierno pero entero.",
+      "Seca la pechuga con papel y sálala por las dos caras.",
+      "Sartén caliente sin miedo: 4-5 minutos por lado. No la muevas cada poco, se dora sola si la dejas quieta.",
+      "Escurre el sarraceno si le queda agua y sirve el pollo encima, cortado en tiras."
+    ]
+  },
+
+  "Pollo con pasta": {
+    difficulty: 1,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Pon la pasta en agua hirviendo con sal y cuécela el tiempo del paquete, un minuto menos si la quieres al dente.",
+      "Mientras hierve, seca la pechuga, sálala y hazla a la plancha 4-5 minutos por lado.",
+      "Guarda medio vaso del agua de la pasta antes de escurrirla: liga el plato sin necesidad de salsa.",
+      "Mezcla la pasta con el pollo cortado y un chorrito de esa agua."
+    ]
+  },
+
+  "Pollo con patatas": {
+    difficulty: 1,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Trocea las patatas en dados grandes y hiérvelas 15-20 minutos, hasta que un cuchillo entre sin esfuerzo.",
+      "Seca la pechuga, sálala y hazla a la plancha 4-5 minutos por lado.",
+      "Escurre bien las patatas y déjalas un minuto en la olla caliente para que se sequen: así no quedan aguadas.",
+      "Sirve el pollo cortado junto a las patatas."
+    ]
+  },
+
+  "Cerdo con arroz": {
+    difficulty: 1,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Arroz a hervir con el doble de agua y sal, 15-18 minutos.",
+      "Sala el lomo por las dos caras. El cerdo va más fino que el pollo: con 3-4 minutos por lado sobra.",
+      "No lo pases: cuando deja de estar rosa por fuera y suelta jugo claro, está.",
+      "Sirve el lomo sobre el arroz."
+    ]
+  },
+
+  "Pavo con arroz": {
+    difficulty: 1,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Pon el arroz a hervir con el doble de agua y sal, 15-18 minutos.",
+      "El pavo es más seco que el pollo: sécalo, sálalo y hazlo 3-4 minutos por lado, ni uno más.",
+      "Retíralo en cuanto pierda el rosa por dentro; si se pasa queda estropajoso.",
+      "Córtalo y sírvelo sobre el arroz."
+    ]
+  },
+
+  "Ternera con arroz": {
+    difficulty: 2,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Arroz a hervir con el doble de agua y sal, 15-18 minutos.",
+      "Saca la ternera de la nevera 15 minutos antes y sécala bien: fría o mojada no se dora, se cuece.",
+      "Sartén muy caliente, 2-3 minutos por lado para que quede jugosa por dentro.",
+      "Déjala reposar 3 minutos, córtala contra la fibra y sírvela con el arroz."
+    ]
+  },
+
+  "Huevos con arroz": {
+    difficulty: 1,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Pon el arroz a hervir con el doble de agua y sal, 15-18 minutos.",
+      "Bate los huevos con una pizca de sal.",
+      "Sartén a fuego medio-bajo: echa los huevos y remueve despacio hasta que cuajen pero sigan brillantes. El fuego fuerte los deja gomosos.",
+      "Sírvelos sobre el arroz recién escurrido."
+    ]
+  },
+
+  "Pollo con arroz integral": {
+    difficulty: 1,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "El integral tarda más: hiérvelo 25-30 minutos con el doble de agua y sal.",
+      "Cuando le queden 10 minutos, seca la pechuga, sálala y ponla en la sartén caliente.",
+      "4-5 minutos por lado, hasta que el jugo salga transparente.",
+      "Escurre el arroz y sirve el pollo cortado encima."
+    ]
+  },
+
+  "Pollo con trigo sarraceno y brócoli": {
+    difficulty: 1,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Enjuaga el sarraceno y hiérvelo 12-15 minutos con el doble de agua y sal.",
+      "En los últimos 5 minutos echa el brócoli en la misma olla: se hace con esa agua y no ensucias otra.",
+      "Mientras, plancha la pechuga seca y salada 4-5 minutos por lado.",
+      "Escurre todo junto y sirve con el pollo cortado por encima."
+    ]
+  },
+
+  "Cerdo con trigo sarraceno": {
+    difficulty: 1,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Enjuaga el sarraceno y hiérvelo 12-15 minutos con el doble de agua y sal.",
+      "Sala el lomo y hazlo a la plancha 3-4 minutos por lado.",
+      "Deja reposar la carne 2 minutos antes de cortarla: si la abres al momento pierde el jugo.",
+      "Sirve el cerdo sobre el sarraceno escurrido."
+    ]
+  },
+
+  "Pavo con patatas": {
+    difficulty: 1,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Patatas en dados grandes a hervir 15-20 minutos, hasta que entren con el cuchillo.",
+      "Seca el pavo, sálalo y hazlo 3-4 minutos por lado. Es muy magro: se pasa enseguida.",
+      "Escurre las patatas y déjalas un minuto en la olla caliente para que suelten el vapor.",
+      "Sirve el pavo cortado junto a las patatas."
+    ]
+  },
+
+  "Pollo con pasta y tomate": {
+    difficulty: 1,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Pasta en agua hirviendo con sal, el tiempo del paquete.",
+      "Trocea el tomate en dados mientras se hace.",
+      "Plancha la pechuga seca y salada 4-5 minutos por lado y córtala en tiras.",
+      "Mezcla la pasta escurrida con el tomate crudo y el pollo: el calor de la pasta basta para el tomate."
+    ]
+  },
+
+  "Muslo de pollo con arroz": {
+    difficulty: 1,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Arroz a hervir con el doble de agua y sal, 15-18 minutos.",
+      "El muslo tiene más grasa que la pechuga y aguanta mejor: sálalo y hazlo 6-7 minutos por lado a fuego medio.",
+      "Está cuando la carne se separa fácil y el jugo sale claro.",
+      "Sírvelo sobre el arroz."
+    ]
+  },
+
+  "Cerdo con pasta": {
+    difficulty: 1,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Pasta en agua hirviendo con sal, el tiempo del paquete.",
+      "Sala el lomo y hazlo a la plancha 3-4 minutos por lado.",
+      "Guarda medio vaso del agua de cocción antes de escurrir.",
+      "Mezcla la pasta con el cerdo cortado y un chorrito del agua reservada."
+    ]
+  },
+
+  "Huevos con patatas": {
+    difficulty: 1,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Patatas en dados a hervir 15-20 minutos, hasta que entren con el cuchillo.",
+      "Escúrrelas y déjalas secar un minuto en la olla caliente.",
+      "Bate los huevos con sal y cuájalos a fuego medio-bajo, removiendo despacio.",
+      "Échalos sobre las patatas y mezcla."
+    ]
+  },
 };
 
 /**

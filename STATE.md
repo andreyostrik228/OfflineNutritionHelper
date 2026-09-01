@@ -185,6 +185,39 @@
 > tramos—, no el algoritmo: en modo equilibrado la puntuación es idéntica).
 > **440 tests en verde.**
 >
+> ### ⏩ UPDATE 2026-09-01 (4) — 16 platos llanos: proteína + guarnición
+>
+> El usuario: "обычные, без выебонов" — pollo con arroz, pollo con гречка,
+> cerdo con pasta. Lo que come cualquiera que se cocina para la semana.
+>
+> El hueco era REAL y medible, no una impresión: de los 348 platos **no
+> había ni uno solo de comida/cena con dos ingredientes** (los 42 de dos
+> ingredientes eran TODOS snacks), y de los 13 platos con trigo sarraceno
+> ninguno llevaba pollo, cerdo ni pavo — faltaba justo la combinación más
+> clásica que existe. Sí había ya 25 platos con pechuga de pollo, pero
+> varios con nombre de carta ("teriyaki", "tikka masala", "poke bowl").
+>
+> Añadidos 16 (dishes.js 348→364), 8 de comida y 8 de cena, con nombres
+> llanos: Pollo con arroz / con trigo sarraceno / con pasta / con patatas /
+> con arroz integral / con pasta y tomate, Cerdo con arroz / con trigo
+> sarraceno / con pasta, Pavo con arroz / con patatas, Ternera con arroz,
+> Huevos con arroz / con patatas, Muslo de pollo con arroz, y Pollo con
+> trigo sarraceno y brócoli.
+>
+> Macros y coste SUMADOS de los ingredientes reales (script en scratchpad,
+> mismo método que los 14 platos españoles) — hay un test que lo verifica
+> plato a plato, así que no se pueden "arreglar" a mano sin que salte.
+> 349-605 kcal, 0,79-2,47 €. Los 16 con receta propia (sartén + olla, nada
+> más): 363 de 364 platos tienen ya instrucciones.
+>
+> Medido: aparecen sobre todo donde hacen falta — **37% de las tomas con
+> 8 € de presupuesto**, 21% con 12 €, 5% con 16 €. Son baratos y simples,
+> así que ganan cuando el dinero aprieta.
+>
+> Golden-masters recapturados (cambia el CATÁLOGO, no el algoritmo):
+> seed=42 elige "Cerdo con pasta", seed=7 "Pollo con trigo sarraceno".
+> **444 tests en verde.**
+>
 > ### 0. ¿Estás en la carpeta correcta?
 >
 > El proyecto **se movió**. La ruta buena, y la única con git y tests, es:

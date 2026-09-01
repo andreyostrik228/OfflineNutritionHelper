@@ -452,6 +452,17 @@ function run(t) {
   //   seed=7: 3795.2 -> 3351.2 kcal, items [3,3,3,2,3] -> [3,4,4,2,2],
   //           sigue "perfect"/tier 0, 0 violaciones, dentro de la
   //           tolerancia del 15% del propio informe.
+  // ── RECAPTURA 2026-09-01b: 16 platos llanos (proteína + guarnición) ──
+  // dishes.js 348 -> 364. Antes NO había ni un solo plato principal de dos
+  // ingredientes (los 42 que había eran todos snacks) ni gречka con carne:
+  // faltaba justo "pollo con arroz", que es lo que come medio mundo. Los
+  // nuevos entran de verdad en la selección -- seed=42 elige "Cerdo con
+  // pasta" y seed=7 "Pollo con trigo sarraceno".
+  //
+  //   seed=42: 2790.8 -> 2664.0 kcal, compra 13,11 -> 12,67 €, pasa a tier 1
+  //   seed=7:  3797.0 -> 3825.0 kcal, compra 19,49 -> 18,77 €, vuelve a tier 0 "perfect"
+  // Cambia el CATÁLOGO, no el algoritmo.
+
   // ── RECAPTURA 2026-09-01: tramos de presupuesto 8/12/16/20 ───────────
   // Los presets cambiaron de 15/20/28 a 8/12/16/20 (js/data/budget-presets.js),
   // así que estos dos perfiles se generan ahora con MENOS dinero: seed=42
@@ -476,15 +487,15 @@ function run(t) {
     // (realm distinto) antes de comparar contra literales del host -- ver
     // comentario del test #1 más arriba para el motivo completo.
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.key; }))), EXPECTED_MEAL_KEYS);
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 2, 3, 2, 2]);
-    assert.strictEqual(result.total.kcal, 2790.8);
-    assert.strictEqual(result.total.protein, 195.20000000000002);
-    assert.strictEqual(result.total.carbs, 294.99999999999994);
-    assert.strictEqual(result.total.fat, 83.7);
-    assert.strictEqual(result.total.cost, 8.7);
-    assert.strictEqual(result.total.purchaseCost, 13.11);
-    assert.strictEqual(result.report.status, "perfect");
-    assert.strictEqual(result.report.tierUsed, 0);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 2, 2, 2, 2]);
+    assert.strictEqual(result.total.kcal, 2664);
+    assert.strictEqual(result.total.protein, 155.89999999999998);
+    assert.strictEqual(result.total.carbs, 293);
+    assert.strictEqual(result.total.fat, 96.4);
+    assert.strictEqual(result.total.cost, 6.86);
+    assert.strictEqual(result.total.purchaseCost, 12.67);
+    assert.strictEqual(result.report.status, "adjusted");
+    assert.strictEqual(result.report.tierUsed, 1);
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.report.violations)), []);
   });
 
@@ -495,15 +506,15 @@ function run(t) {
     var result = s.generateDietPlan(built.profile, built.data);
 
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.key; }))), EXPECTED_MEAL_KEYS);
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 4, 3, 2, 3]);
-    assert.strictEqual(result.total.kcal, 3797);
-    assert.strictEqual(result.total.protein, 297.9);
-    assert.strictEqual(result.total.carbs, 442.70000000000005);
-    assert.strictEqual(result.total.fat, 88.2);
-    assert.strictEqual(result.total.cost, 12.07);
-    assert.strictEqual(result.total.purchaseCost, 19.49);
-    assert.strictEqual(result.report.status, "adjusted");
-    assert.strictEqual(result.report.tierUsed, 2);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 2, 3, 2, 2]);
+    assert.strictEqual(result.total.kcal, 3824.9999999999995);
+    assert.strictEqual(result.total.protein, 270.8);
+    assert.strictEqual(result.total.carbs, 397.69999999999993);
+    assert.strictEqual(result.total.fat, 123.10000000000001);
+    assert.strictEqual(result.total.cost, 11.36);
+    assert.strictEqual(result.total.purchaseCost, 18.77);
+    assert.strictEqual(result.report.status, "perfect");
+    assert.strictEqual(result.report.tierUsed, 0);
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.report.violations)), []);
   });
 }

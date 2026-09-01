@@ -486,6 +486,66 @@ function run(t) {
     var sources = s.collectProteinSources([legacyMeal]);
     assert.deepStrictEqual(JSON.parse(JSON.stringify(sources)), ["pollo"]);
   });
+
+  // ── Platos llanos: proteína + guarnición (2026-09-01) ────────────────
+  // El usuario los pidio asi: "обычные, без выебонов" -- pollo con arroz,
+  // pollo con gречka, cerdo con pasta. Antes NO habia ni un solo plato
+  // principal de dos ingredientes (los 42 que habia eran todos snacks).
+
+  t.test("existen platos principales de SOLO proteina + guarnicion", function () {
+    var s = freshEngineSandbox();
+    var twoItemMains = s.DISH_DB.filter(function (d) {
+      return (d.category === "comida" || d.category === "cena") && d.items.length === 2;
+    });
+    assert.ok(twoItemMains.length >= 10,
+      "deberia haber platos principales de 2 ingredientes; hay " + twoItemMains.length);
+  });
+
+  t.test("los clasicos de gimnasio existen por nombre llano", function () {
+    var s = freshEngineSandbox();
+    var names = s.DISH_DB.map(function (d) { return d.name; });
+    ["Pollo con arroz", "Pollo con trigo sarraceno", "Pollo con pasta",
+     "Cerdo con arroz", "Huevos con arroz", "Muslo de pollo con arroz"].forEach(function (n) {
+      assert.ok(names.indexOf(n) !== -1, "falta el plato llano: " + n);
+    });
+  });
+
+  t.test("hay gречka (trigo sarraceno) con pollo, cerdo o pavo", function () {
+    var s = freshEngineSandbox();
+    var buck = s.DISH_DB.filter(function (d) {
+      var hasBuck = d.items.some(function (i) { return /sarraceno/i.test(i.name); });
+      return hasBuck && /pollo|cerdo|pavo/i.test(d.mainProt || "");
+    });
+    assert.ok(buck.length >= 3,
+      "la combinacion mas clasica que hay; solo " + buck.length + " platos la usan");
+  });
+
+  t.test("REGLA: los macros de los platos llanos son la SUMA de sus ingredientes, no inventados", function () {
+    var s = freshEngineSandbox();
+    var PLAIN = ["Pollo con arroz", "Pollo con trigo sarraceno", "Pollo con pasta",
+      "Pollo con patatas", "Cerdo con arroz", "Pavo con arroz", "Ternera con arroz",
+      "Huevos con arroz", "Pollo con arroz integral", "Pollo con trigo sarraceno y br\u00f3coli",
+      "Cerdo con trigo sarraceno", "Pavo con patatas", "Pollo con pasta y tomate",
+      "Muslo de pollo con arroz", "Cerdo con pasta", "Huevos con patatas"];
+    var checked = 0;
+    PLAIN.forEach(function (name) {
+      var dish = s.DISH_DB.filter(function (d) { return d.name === name; })[0];
+      assert.ok(dish, "falta el plato: " + name);
+      var kcal = 0, protein = 0;
+      dish.items.forEach(function (it) {
+        var n = s.resolveIngredientNutrition(it.name);
+        assert.ok(n && n.kcal != null, name + ": ingrediente sin nutricion -> " + it.name);
+        kcal += n.kcal * it.g / 100;
+        protein += (n.protein || 0) * it.g / 100;
+      });
+      assert.ok(Math.abs(dish.kcal - kcal) <= 1,
+        name + ": kcal declaradas " + dish.kcal + " vs suma real " + Math.round(kcal));
+      assert.ok(Math.abs(dish.protein - protein) <= 0.2,
+        name + ": proteina declarada " + dish.protein + " vs suma real " + protein.toFixed(1));
+      checked++;
+    });
+    assert.strictEqual(checked, PLAIN.length);
+  });
 }
 
 module.exports = { run: run };
