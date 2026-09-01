@@ -564,7 +564,15 @@ document.addEventListener("DOMContentLoaded", function () {
         updateBudgetCustomVisibility();
       }
     }
-    setVal("budgetCustom", settings.budgetCustom);
+    // Solo se restaura si es un importe utilizable. Guardar 0 y volver a
+    // escribirlo dejaba el campo por debajo de su propio min="2" (ver
+    // updateBudgetCustomVisibility) -- mejor dejarlo vacío que inválido.
+    if (typeof settings.budgetCustom === "number" && settings.budgetCustom >= 2) {
+      setVal("budgetCustom", settings.budgetCustom);
+    } else if (budgetCustomInput) {
+      budgetCustomInput.value = "";
+    }
+    updateBudgetCustomVisibility();
   }
 
   // ── Botón: resetear ───────────────────────────────────────────────────
@@ -582,6 +590,15 @@ document.addEventListener("DOMContentLoaded", function () {
     var checked = document.querySelector('input[name="budgetMode"]:checked');
     var isCustom = !!checked && checked.value === "custom";
     if (budgetCustomField) budgetCustomField.hidden = !isCustom;
+
+    // Además de ocultarlo hay que DESACTIVARLO. Ocultar no exime de la
+    // validación nativa: el campo tiene min="2", y basta con que guarde un
+    // valor por debajo (el 0 que deja `Number("")` cuando se genera con un
+    // preset) para que `form.checkValidity()` sea false y el submit se
+    // cancele EN SILENCIO. Efecto real, reproducido en producción: eliges
+    // un preset, generas, recargas la página y el botón "Generar plan" deja
+    // de hacer nada, sin ningún mensaje. Un campo desactivado no se valida.
+    if (budgetCustomInput) budgetCustomInput.disabled = !isCustom;
   }
 
   // ══ CAMINO CRÍTICO: cablear el formulario ANTES de cualquier módulo
