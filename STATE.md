@@ -365,6 +365,34 @@
 > para el gesto. Verificado así: la página subió de 3966 a 2228, el
 > carrusel quedó a 70px y la primera tarjeta del día nuevo es el desayuno.
 >
+> ### ⏩ UPDATE 2026-09-01 (9) — 3 arreglos de UI del carrusel y la compra
+>
+> - **La barra "Desliza para ver los demás días" salía con UN solo día.**
+>   `renderDayDots()` ponía `bar.hidden = true`, pero `.days-carousel__bar`
+>   tiene `display: flex`, y un `display` en una regla de autor GANA al
+>   `display:none` que el navegador aplica a `[hidden]`. Arreglado con
+>   `.days-carousel__bar[hidden] { display: none; }`. **Trampa clásica: si
+>   pones `display` en un elemento que a veces lleva `hidden`, tienes que
+>   restaurar el `[hidden]` a mano.**
+> - **Foto por producto en la LISTA DE LA COMPRA**, igual que en "sin
+>   cocinar". Solo 12 de los 84 roles tienen un producto concreto asignado
+>   (`REAL_INGREDIENT_MATCHES`), y traen EAN pero no id: el id se busca en
+>   el catálogo por EAN. Los otros ~72 son roles genéricos ("Pechuga de
+>   pollo"), así que caen en la búsqueda de Mercadona -- que es la respuesta
+>   honesta: "esto es lo que buscas", no "este bote exacto". Medido en un
+>   plan real: 12 botones, 2 a ficha de producto y 10 a búsqueda.
+> - **"Cambiar" tapaba el nombre del plato con varios días** (las tarjetas
+>   son más estrechas dentro del carrusel). `.meal-head` ahora es
+>   `flex-wrap: wrap` con `.meal-head__title { flex: 1 1 60% }` y
+>   `.meal-head__right { margin-left: auto }`: cuando no caben en una fila,
+>   el bloque de la derecha baja a su propia línea y se pega a la derecha.
+>   En pantalla ancha sigue todo en una sola fila. Verificado a 375px: 0
+>   solapamientos y ningún título recortado.
+>
+> El zoom NO está bloqueado: el `<meta viewport>` sigue siendo
+> `width=device-width, initial-scale=1.0`, sin `user-scalable=no` ni
+> `maximum-scale`.
+>
 > ### 🛒 SOLO MERCADONA — decisión del usuario (2026-09-01)
 >
 > **Hasta que el usuario diga lo contrario, el producto trabaja SOLO con

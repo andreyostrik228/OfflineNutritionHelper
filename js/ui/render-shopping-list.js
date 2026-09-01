@@ -27,8 +27,10 @@
  *
  * Depende de:
  *   js/core/utils.js   (round0, round1, round2, escapeHtml)
- *   js/core/pricing.js (DEFAULT_STORE_ID)
+ *   js/core/pricing.js (DEFAULT_STORE_ID, normalizeIngredientKey)
  *   js/core/budget.js  (aggregateMealItems, computeDayPurchaseCost)
+ *   js/ui/render.js    (renderProductFindBtn) — opcional: sin él, la lista
+ *                      se pinta igual pero sin el botón de ver la foto
  *
  * Inicialización obligatoria:
  *   Llamar a initShoppingListRefs(refs) desde js/app.js antes de usar.
@@ -206,6 +208,38 @@ function renderShoppingList(meals, storeId, days) {
  * @param {{name:string, requiredGrams:number, usageCost:number, meals:string[], purchase:object}} entry
  * @returns {string}
  */
+/**
+ * Producto real al que apunta un ingrediente, para poder enseñar su ficha
+ * (y su foto) en Mercadona desde la lista de la compra.
+ *
+ * Solo 12 de los 84 roles de ingrediente tienen un producto concreto
+ * asignado (`REAL_INGREDIENT_MATCHES`), y esos traen EAN pero no id: el id
+ * se busca en el catálogo por EAN. Para los otros ~72 no existe UN producto
+ * -- son roles genéricos como "Pechuga de pollo" -- así que se devuelve
+ * solo el nombre y `mercadonaProductUrl()` cae en la búsqueda, que es la
+ * respuesta honesta: "esto es lo que buscas", no "este bote exacto".
+ *
+ * @param {string} ingredientName
+ * @returns {{id:(string|null), name:string, brand:(string|null)}}
+ */
+function resolveShoppingProduct(ingredientName) {
+  var out = { id: null, name: ingredientName, brand: null };
+  if (typeof REAL_INGREDIENT_MATCHES === "undefined" || typeof normalizeIngredientKey !== "function") return out;
+
+  var match = REAL_INGREDIENT_MATCHES[normalizeIngredientKey(ingredientName)];
+  if (!match) return out;
+
+  if (match.productName) out.name = match.productName;
+  if (match.brand) out.brand = match.brand;
+
+  if (match.ean && typeof REAL_PRODUCTS !== "undefined") {
+    for (var i = 0; i < REAL_PRODUCTS.length; i++) {
+      if (REAL_PRODUCTS[i].ean === match.ean) { out.id = REAL_PRODUCTS[i].id; break; }
+    }
+  }
+  return out;
+}
+
 function renderShoppingRow(entry) {
   var p = entry.purchase;
   var usedText = "Usado: " + round0(entry.requiredGrams) + " g";
@@ -233,7 +267,10 @@ function renderShoppingRow(entry) {
     '<li class="shopping-item">' +
       '<span class="shopping-item__check" aria-hidden="true"></span>' +
       '<div class="shopping-item__main">' +
-        '<div class="shopping-item__name">' + escapeHtml(entry.name) + '</div>' +
+        '<div class="shopping-item__name">' + escapeHtml(entry.name) +
+          (typeof renderProductFindBtn === "function"
+            ? renderProductFindBtn(resolveShoppingProduct(entry.name)) : "") +
+        '</div>' +
         '<div class="shopping-item__meta">' + escapeHtml(usedText) + '</div>' +
         pantryNote +
         '<div class="shopping-item__buy">' + buyText + '</div>' +

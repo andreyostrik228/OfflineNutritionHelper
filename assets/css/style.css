@@ -998,6 +998,21 @@ button:focus-visible {
   gap: 10px;
   align-items: baseline;
   background: var(--paper);
+  /* Con varios días las tarjetas son más estrechas y el botón "Cambiar"
+     se comía el nombre del plato. Al permitir el salto de línea, cuando no
+     caben en una fila el bloque de la derecha (Cambiar + kcal) baja a su
+     propia línea y `margin-left:auto` lo manda a la derecha: abajo y a la
+     derecha, sin tapar nada. En pantalla ancha sigue todo en una fila. */
+  flex-wrap: wrap;
+}
+
+.meal-head__title {
+  flex: 1 1 60%;
+  min-width: 0;
+}
+
+.meal-head__right {
+  margin-left: auto;
 }
 
 .meal-head h3 {
@@ -3622,6 +3637,12 @@ dialog.despensa-dialog[open] {
    reimplementado con eventos táctiles, así que hereda la inercia, el
    rebote y la accesibilidad del navegador. Con un solo día la pista se
    comporta como el grid de siempre (sin scroll, sin snap). */
+/* `display:flex` en un elemento GANA al `display:none` que el navegador
+   aplica a [hidden], así que la barra seguía viéndose con un solo día: se
+   leía "Desliza para ver los demás días" sin que hubiera más días. Hay que
+   devolverle la prioridad a mano. */
+.days-carousel__bar[hidden] { display: none; }
+
 .days-carousel__bar {
   display: flex;
   align-items: center;
