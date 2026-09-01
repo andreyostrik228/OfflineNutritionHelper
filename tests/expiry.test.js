@@ -403,7 +403,16 @@ function run(t) {
       meals, "mercadona", s.projectPantryState(caducadas, "2026-08-25")
     ).purchaseCost;
     assert.ok(proyectado > 0, "el stock caducado NO puede cubrir nada");
-    assert.strictEqual(proyectado, 1.7);
+
+    // Antes esto era `strictEqual(proyectado, 1.7)`, es decir, el precio de
+    // la zanahoria escrito a mano. Se rompía cada vez que se refrescaba el
+    // catálogo (0,17 -> 0,12 el 2026-09-01) sin que hubiera ningún fallo:
+    // ruido puro. Lo que de verdad afirma esta regresión es que el stock
+    // caducado se comporta EXACTAMENTE igual que no tener nada, y eso se
+    // puede comprobar sin nombrar ningún precio.
+    var sinDespensa = s.computeDayPurchaseCost(meals, "mercadona", {}).purchaseCost;
+    assert.strictEqual(proyectado, sinDespensa,
+      "caducado == despensa vacía: se paga la compra entera");
   });
 
   t.test("el stock fresco SIGUE descontando del coste", function () {

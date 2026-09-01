@@ -63,21 +63,27 @@ PRICE_CATALOGS.mercadona = {
   storeId:      "mercadona",
   storeName:    "Mercadona",
   currency:     "EUR",
-  referenceDate: "2026-07",
+  referenceDate: "2026-09",
   sourceNote:
-    "45/82 precios calculados desde un catálogo real de Mercadona " +
-    "(producto, precio y tabla nutricional propios). 37/82 siguen siendo " +
-    "estimaciones de referencia por falta de un producto representativo " +
-    "en el catálogo. Ver comentarios por línea. Sustituir por una fuente " +
+    "Refrescado el 2026-09-01 contra el catálogo recién scrapeado de la " +
+    "API de Mercadona: 38 de las 47 líneas 'real:' se re-derivaron " +
+    "automáticamente (mismo producto que nombra cada comentario, mismo " +
+    "factor de cocción), y 33 habían cambiado de precio. Las 9 restantes " +
+    "se dejaron INTACTAS a propósito: 6 son ingredientes 'cocidos' cuyo " +
+    "comentario no declara el factor de expansión (aplicar 1 habría puesto " +
+    "el precio del producto SECO donde va el cocido: 'arroz integral " +
+    "cocido' saltaba de 0,04 a 0,12) y 3 no tienen coincidencia clara de " +
+    "nombre. Las líneas 'estimado' no salieron de ningún producto, así que " +
+    "no hay nada que refrescar en ellas. Sustituir por una fuente " +
     "verificada en tiempo real antes de un uso con implicaciones " +
     "económicas reales para el usuario.",
 
   // €/100 g — ver nota de unidad arriba
   pricesPer100g: {
-    "aguacate":                     0.53,  // real: Aguacates
-    "almendras":                    1.45,  // real: Almendra natural Hacendado sin piel
-    "alubias cocidas":              0.11,  // real: Alubia blanca Hacendado (seca ×2.3 = cocida)
-    "arroz blanco cocido":          0.04,  // real: Arroz largo Hacendado (seco ×2.8 = cocido)
+    "aguacate":                     0.5,  // real: Aguacates
+    "almendras":                    1.15,  // real: Almendra natural Hacendado sin piel
+    "alubias cocidas":              0.1065,  // real: Alubia blanca Hacendado (seca ×2.3 = cocida)
+    "arroz blanco cocido":          0.0429,  // real: Arroz largo Hacendado (seco ×2.8 = cocido)
     "arroz integral cocido":        0.04,  // real: Arroz largo Hacendado (sin integral específico en catálogo)
     "atun al natural":              0.65,  // estimado (solo hay "en aceite"/"en escabeche", grasa distinta)
     "avena":                        0.11,  // estimado (sin avena sola con BJU completo)
@@ -92,12 +98,12 @@ PRICE_CATALOGS.mercadona = {
     // Cebolla y ajo (2026-08-26): el PRECIO sí es dato real y verificable,
     // aunque su nutrición esté sin resolver (ver ingredient-nutrition.js).
     "ajo":                          0.74,  // real: Ajos morados (250 g, 1,85 EUR)
-    "cebolla":                      0.24,  // real: Cebollas (1 kg, 2,40 EUR)  // real: Aceite de oliva virgen extra Hacendado (1 L)
-    "caballa en lata":              1.08,  // real: Filetes de caballa del sur en tomate Hacendado
-    "cacahuetes":                   0.41,  // real: Cacahuete tostado con sal Hacendado
-    "carne picada 5% grasa":        0.84,  // real: Preparado de carne picada vacuno y cerdo
-    "claras de huevo":              0.29,  // real: Claras de huevo líquidas pasteurizadas
-    "copos de maiz":                0.50,  // real: Cereales copos de maíz Corn Flakes Kellogg's
+    "cebolla":                      0.18,  // real: Cebollas (1 kg, 2,40 EUR)  // real: Aceite de oliva virgen extra Hacendado (1 L)
+    "caballa en lata":              1.0833,  // real: Filetes de caballa del sur en tomate Hacendado
+    "cacahuetes":                   0.4125,  // real: Cacahuete tostado con sal Hacendado
+    "carne picada 5% grasa":        0.8,  // real: Preparado de carne picada vacuno y cerdo
+    "claras de huevo":              0.285,  // real: Claras de huevo líquidas pasteurizadas
+    "copos de maiz":                0.6,  // real: Cereales copos de maíz Corn Flakes Kellogg's
     "cuscus cocido":                0.08,  // estimado (0 resultados)
     "edamame":                      0.45,  // estimado (0 resultados)
     "espinacas":                    0.18,  // estimado (único resultado es baby spinach premium en bolsa)
@@ -107,62 +113,62 @@ PRICE_CATALOGS.mercadona = {
     "huevos enteros":               0.56,  // real: Huevos de gallinas camperas (63g/huevo)
     "hummus":                       0.65,  // estimado (0 resultados)
     "jamon cocido extra":           0.77,  // real: Jamón cocido extra Hacendado finas lonchas
-    "leche semidesnatada":          0.14,  // real: Leche semidesnatada Hacendado
+    "leche semidesnatada":          0.084,  // real: Leche semidesnatada Hacendado
     "lechuga pepino":               0.15,  // estimado (lechuga por unidad, pepino sin resultados)
     "lentejas cocidas":             0.09,  // real: Lenteja Hacendado (seca ×2.3 = cocida)
-    "lomo de cerdo":                0.69,  // real: Filetes lomo de cerdo
+    "lomo de cerdo":                0.6299,  // real: Filetes lomo de cerdo
     "mantequilla de cacahuete":     1.00,  // estimado (0 resultados exactos fiables)
-    "manzana":                      0.20,  // real: Manzanas Golden
-    "maiz dulce":                   0.56,  // real: Maíz dulce Hacendado
-    "merluza":                      1.13,  // real: Merluza a rodajas
+    "manzana":                      0.22,  // real: Manzanas Golden
+    "maiz dulce":                   0.3444,  // real: Maíz dulce Hacendado
+    "merluza":                      1.1504,  // real: Merluza a rodajas
     "mermelada light":              0.45,  // estimado (no hay versión light específica)
     "miel":                         0.84,  // real: Miel de naranjo Hacendado
     "mozzarella light":             0.80,  // estimado (único resultado es mozzarella normal, no light)
     "muslo de pollo deshuesado":    0.35,  // estimado (0 resultados)
-    "naranja":                      0.20,  // real: Naranja de mesa
-    "nueces":                       1.30,  // real: Nuez natural Hacendado pelada
-    "pan de molde integral":        0.20,  // real: Pan de molde 100% integral Hacendado
-    "pan integral":                 0.43,  // real: Pan integral trigo 100%
-    "pasta cocida":                 0.07,  // real: Pasta tiburón Hacendado (seca ×2.3 = cocida)
+    "naranja":                      0.25,  // real: Naranja de mesa
+    "nueces":                       1.25,  // real: Nuez natural Hacendado pelada
+    "pan de molde integral":        0.1957,  // real: Pan de molde 100% integral Hacendado
+    "pan integral":                 0.4286,  // real: Pan integral trigo 100%
+    "pasta cocida":                 0.0696,  // real: Pasta tiburón Hacendado (seca ×2.3 = cocida)
     "patata cocida":                0.29,  // real: Patatas cocidas Hacendado (ya viene cocida)
-    "pavo loncheado":               0.76,  // real: Maxi pavo Hacendado finas lonchas
-    "pechuga de pavo":              0.87,  // real: Filetes pechuga de pavo
-    "pechuga de pollo":             0.73,  // real: Filetes pechuga de pollo
+    "pavo loncheado":               0.7625,  // real: Maxi pavo Hacendado finas lonchas
+    "pechuga de pavo":              0.8746,  // real: Filetes pechuga de pavo
+    "pechuga de pollo":             0.7304,  // real: Filetes pechuga de pollo
     "pepino":                       0.12,  // estimado (0 resultados)
-    "pina":                         0.26,  // real: Piña en su jugo Hacendado rodajas
+    "pina":                         0.2555,  // real: Piña en su jugo Hacendado rodajas
     "platano":                      0.12,  // estimado (único resultado es plátano macho, otra variedad)
     "queso fresco batido 0%":       0.20,  // estimado (0 resultados)
     "queso light":                  0.70,  // estimado (0 resultados)
     "quinoa cocida":                0.13,  // estimado (0 resultados)
-    "requeson":                     0.50,  // real: Requesón mezcla Hacendado
+    "requeson":                     0.5,  // real: Requesón mezcla Hacendado
     "salmon":                       0.95,  // estimado (único resultado es ahumado, no representativo)
-    "sardinas en lata":             0.88,  // real: Sardinas en aceite de oliva Hacendado
+    "sardinas en lata":             0.9402,  // real: Sardinas en aceite de oliva Hacendado
     "skyr natural":                 0.42,  // estimado (0 resultados)
     "tempeh":                       1.80,  // estimado (0 resultados)
     "ternera magra":                0.85,  // estimado (único resultado es callos, no representativo)
-    "tofu firme":                   0.47,  // real: Tofu firme Hacendado
-    "tomate":                       0.16,  // real: Tomate triturado Hacendado
+    "tofu firme":                   0.4375,  // real: Tofu firme Hacendado
+    "tomate":                       0.125,  // real: Tomate triturado Hacendado
     "tortillas de trigo":           0.40,  // estimado (único resultado "Wraps Texas", BJU distinto)
     "tortitas de arroz":            0.95,  // estimado (0 resultados de versión simple sin chocolate)
     "verduras congeladas salteado": 0.15,  // estimado (0 resultados)
     "wrap proteico":                0.75,  // estimado (0 resultados)
-    "yogur griego ligero":          0.21,  // real: Yogur griego natural ligero Hacendado
-    "zanahoria":                    0.17,  // real: Zanahorias
+    "yogur griego ligero":          0.1933,  // real: Yogur griego natural ligero Hacendado
+    "zanahoria":                    0.12,  // real: Zanahorias
 
     // Añadidos en la ampliación de DISH_DB (más variedad de ingredientes)
     "conejo":                       0.94,  // real: Medio conejo troceado
-    "jamon serrano":                2.50,  // real: Jamón serrano cortado a máquina
-    "solomillo de ternera":         4.14,  // real: Solomillo de vacuno
-    "lubina":                       2.35,  // real: Filete de lubina
+    "jamon serrano":                2.5,  // real: Jamón serrano cortado a máquina
+    "solomillo de ternera":         4.1404,  // real: Solomillo de vacuno
+    "lubina":                       2.25,  // real: Filete de lubina
     "rape":                         1.80,  // estimado (sin match real, pescado blanco similar a merluza/bacalao)
     "gamba cocida":                 2.32,  // real: Gamba cocida
     "langostino cocido":            1.10,  // real: Langostino cocido
     "pavo picado":                  0.90,  // estimado (sin match real, similar a otros picados de ave)
-    "champinones":                  0.69,  // real: Champiñón laminado Hacendado
+    "champinones":                  0.4,  // real: Champiñón laminado Hacendado
     "calabacin":                    0.20,  // estimado (verdura fresca genérica)
     "pimiento":                     0.25,  // estimado (verdura fresca genérica)
     "coliflor":                     0.20,  // estimado (verdura fresca genérica)
-    "queso curado":                 2.01,  // real: Queso curado DOP manchego de oveja Hacendado
+    "queso curado":                 2.0111,  // real: Queso curado DOP manchego de oveja Hacendado
     "pan de centeno":               0.35,  // estimado (similar a pan integral)
     "trigo sarraceno cocido":       0.15,  // estimado (similar a quinoa/cuscús, factor de cocción ya aplicado)
     "kiwi":                         0.35,  // estimado (fruta fresca genérica)
