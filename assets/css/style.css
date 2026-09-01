@@ -1363,6 +1363,22 @@ button:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
+/* Aviso "prepáralo la noche anterior" (platos makeAhead: overnight oats).
+   Solo sale en el día 2+ de un plan de varios días; tono ámbar suave para
+   que se lea como una precaución, no como la nota gris de "empieza a
+   cocinar a las...". */
+.meal-make-ahead {
+  margin-bottom: var(--space-3);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm, 6px);
+  background: var(--grain-wash);
+  color: var(--grain);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.meal-make-ahead strong { color: var(--grain); }
+
 /* Mismo badge, reutilizado en la cabecera de cada toma de "sin cocinar" */
 .nocook-slot__head {
   display: flex;

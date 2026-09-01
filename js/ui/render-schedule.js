@@ -197,20 +197,36 @@ function renderMealTimeBadge(meal) {
 }
 
 /**
- * Nota discreta "empieza a cocinar sobre las HH:MM" bajo el encabezado,
- * solo cuando la preparación es lo bastante larga como para importar (>=
- * 10 min) — evita ruido para platos casi listos. Usa
- * getCookStartTime(meal), ya lista en meal-schedule.js.
+ * Notas discretas bajo el encabezado de la tarjeta:
+ *   - "Prepáralo la noche anterior" si el plato es `makeAhead` (overnight
+ *     oats): solo aparece en el día 2+ de un plan de varios días, porque el
+ *     motor ya lo ha excluido del día 1 y de los planes de 1 día.
+ *   - "Empieza a cocinar sobre las HH:MM" cuando la preparación es larga
+ *     (>= 10 min) — evita ruido para platos casi listos.
  * @param {object} meal
  * @returns {string}
  */
 function renderMealCookNote(meal) {
-  if (!meal || (meal.prep || 0) < 10) return "";
-  if (typeof getCookStartTime !== "function") return "";
-  var cookStart = getCookStartTime(meal);
-  if (!cookStart) return "";
-  return (
-    '<div class="meal-cook-note">Empieza a cocinar sobre las <strong>' + escapeHtml(cookStart) +
-    '</strong> (' + (meal.prep || 0) + ' min)</div>'
-  );
+  if (!meal) return "";
+  var out = "";
+
+  if (typeof getDishInstructions === "function" && meal.dishName) {
+    var info = getDishInstructions(meal.dishName);
+    if (info && info.makeAhead === true) {
+      out +=
+        '<div class="meal-make-ahead">&#9200; <strong>Prepáralo la noche anterior</strong> ' +
+        '&mdash; necesita reposar en la nevera, no se hace al momento</div>';
+    }
+  }
+
+  if ((meal.prep || 0) >= 10 && typeof getCookStartTime === "function") {
+    var cookStart = getCookStartTime(meal);
+    if (cookStart) {
+      out +=
+        '<div class="meal-cook-note">Empieza a cocinar sobre las <strong>' + escapeHtml(cookStart) +
+        '</strong> (' + (meal.prep || 0) + ' min)</div>';
+    }
+  }
+
+  return out;
 }

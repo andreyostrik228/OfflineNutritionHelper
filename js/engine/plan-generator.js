@@ -1377,7 +1377,13 @@ function regeneratePlanMeal(meals, mealKey, dayOptions, storeId, pantryState) {
   var data = {
     cookTime: (dayOptions && typeof dayOptions.cookTime === "number") ? dayOptions.cookTime : 999,
     taste:    (dayOptions && typeof dayOptions.taste === "string") ? dayOptions.taste : "mixed",
-    store:    store
+    store:    store,
+    // Para que pickDish() aplique la regla de "makeAhead" también al
+    // re-elegir UNA toma: sin estos, un re-roll de desayuno del día 1
+    // podría traer overnight oats. Ausentes (llamador viejo) -> se comporta
+    // como día 1 de plan de 1 día, que es el lado seguro.
+    planDays: (dayOptions && typeof dayOptions.planDays === "number") ? dayOptions.planDays : 1,
+    dayIndex: (dayOptions && typeof dayOptions.dayIndex === "number") ? dayOptions.dayIndex : 0
   };
 
   for (var tier = 0; tier <= MAX_RELAXATION_TIER; tier++) {

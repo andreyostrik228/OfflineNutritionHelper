@@ -1244,6 +1244,11 @@ var DISH_INSTRUCTIONS = {
   "Overnight oats con yogur y manzana": {
     difficulty: 1,
     equipment: ["ninguno"],
+    // Necesita 6 h de nevera SÍ o SÍ: no se puede montar y comer el mismo
+    // rato. El motor lo trata aparte -- nunca en un plan de 1 día, nunca en
+    // el día 1 de un plan de varios, y con aviso "prepáralo la noche antes"
+    // cuando sí sale (ver isMakeAheadDish en preferences.js).
+    makeAhead: true,
     steps: [
       "Esto se prepara LA NOCHE ANTES, no es un desayuno para hacer con prisa por la mañana.",
       "Mezcla la avena con el yogur en un bote o un bol. Aquí la proporción es UNA de avena por DOS de yogur, la mitad de líquido que en un porridge caliente.",

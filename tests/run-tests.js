@@ -64,6 +64,7 @@ var suites = [
   "pantry.test",
   "expiry.test",
   "preferences.test",
+  "make-ahead.test",
   "pricing.test",
   "no-cook-classifier.test",
   "no-cook-generator.test",

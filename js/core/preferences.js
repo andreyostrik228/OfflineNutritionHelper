@@ -265,6 +265,28 @@ function canCookWithEquipment(dish, owned) {
 }
 
 /**
+ * ¿Este plato hay que dejarlo hecho CON ANTELACIÓN (la noche anterior)?
+ *
+ * Es un `makeAhead: true` en su entrada de dish-instructions.js — reservado
+ * para platos que necesitan horas de nevera/remojo y NO se pueden montar y
+ * comer en el momento (ej. "Overnight oats"). Un reposo opcional de 5-10
+ * min NO cuenta y no lleva el flag.
+ *
+ * El generador lo usa para: nunca ponerlo en un plan de 1 día, nunca en el
+ * DÍA 1 de un plan de varios (no lo pudiste dejar hecho la víspera), y
+ * marcarlo con un aviso cuando sí aparece (día 2+). Sin instrucciones o sin
+ * el flag: false.
+ *
+ * @param {object} dish
+ * @returns {boolean}
+ */
+function isMakeAheadDish(dish) {
+  if (!dish || !dish.name || typeof getDishInstructions !== "function") return false;
+  var info = getDishInstructions(dish.name);
+  return !!(info && info.makeAhead === true);
+}
+
+/**
  * ¿Está el plato dentro del nivel de dificultad aceptado?
  * Sin instrucciones o sin límite configurado: siempre sí.
  * @param {object} dish

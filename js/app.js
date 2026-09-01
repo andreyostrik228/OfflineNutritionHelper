@@ -296,7 +296,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
     btn.disabled = true;
     var pantryState = (typeof getPantryState === "function") ? getPantryState() : null;
-    var res = regeneratePlanMeal(dayMeals, mealKey, lastGeneratedDayOptions, lastGeneratedStore, pantryState);
+    // Se pasa qué día es para que un re-roll respete la misma regla que la
+    // generación: nada "de dejar hecho la noche antes" en el día 1 ni en un
+    // plan de 1 día (ver isMakeAheadDish / pickDish).
+    var swapOptions = Object.assign({}, lastGeneratedDayOptions, {
+      planDays: (lastGeneratedDays && lastGeneratedDays.length) || 1,
+      dayIndex: dayIndex
+    });
+    var res = regeneratePlanMeal(dayMeals, mealKey, swapOptions, lastGeneratedStore, pantryState);
 
     if (!res || res.error || !res.meal) {
       btn.disabled = false;
@@ -439,6 +446,14 @@ document.addEventListener("DOMContentLoaded", function () {
     setTimeout(function () {
       try {
         var profile = calculateProfile(data);
+
+        // planDays / dayIndex: los ve pickDish() (dish-selector.js) para
+        // decidir si un plato "de dejar hecho la noche antes" (overnight
+        // oats) puede salir. Nunca en el día 1 (no lo pudiste dejar hecho la
+        // víspera), nunca en un plan de 1 día. sanitizeInputs() los arrastra
+        // porque hace Object.assign({}, data, ...).
+        data.planDays = planDays;
+        data.dayIndex = 0;
         var result  = generateDietPlan(profile, data);
 
         // Horario: se calcula DESPUÉS de generar el plan, nunca dentro de
@@ -463,6 +478,7 @@ document.addEventListener("DOMContentLoaded", function () {
         // de lo que salió el día 1.
         var days = [result];
         for (var d = 1; d < planDays; d++) {
+          data.dayIndex = d;
           var extra = generateDietPlan(profile, data);
           safeInit("meal-schedule-day-" + d, function () {
             if (typeof computeMealSchedule === "function") {

@@ -204,9 +204,12 @@ function resolveTier(tier) {
  * @param {number} maxPrep  - minutos máximos de preparación (sin relajar)
  * @param {string} taste    - preferencia global "sweet"|"savory"|"mixed"
  * @param {object} relax    - entrada de RELAXATION_TIERS
+ * @param {boolean} [allowMakeAhead] - si NO es true, se descartan los platos
+ *   `makeAhead` (los que hay que dejar hechos la noche anterior). pickDish()
+ *   lo pone a true solo en el día 2+ de un plan de varios días.
  * @returns {object[]}
  */
-function filterDishesByTimeTaste(category, maxPrep, taste, relax) {
+function filterDishesByTimeTaste(category, maxPrep, taste, relax, allowMakeAhead) {
   var effectivePrep = isFinite(relax.prepAdd) ? maxPrep + relax.prepAdd : Infinity;
 
   var dislikes = (typeof getDislikes === "function") ? getDislikes() : [];
@@ -243,6 +246,15 @@ function filterDishesByTimeTaste(category, maxPrep, taste, relax) {
     // se pueda compensar con que el plato sea barato.
     if (typeof canCookWithEquipment === "function" && !canCookWithEquipment(dish)) return false;
     if (typeof isWithinDifficulty === "function" && !isWithinDifficulty(dish)) return false;
+
+    // Platos que hay que dejar hechos la noche anterior (overnight oats):
+    // fuera salvo que quien llama lo permita explícitamente (día 2+ de un
+    // plan de varios). Filtro DURO, sin caída al pool completo: en un plan
+    // de 1 día no hay ningún caso en que quieras uno, y desayuno tiene
+    // platos de sobra.
+    if (allowMakeAhead !== true && typeof isMakeAheadDish === "function" && isMakeAheadDish(dish)) {
+      return false;
+    }
 
     return true;
   });
@@ -753,7 +765,12 @@ function pickWeightedFromTop(ranked) {
  */
 function pickDish(category, data, usedState, tier, maxCost, target, storeId, targetSpend, committedGrams, pantryState) {
   var relax = resolveTier(tier);
-  var pool = filterDishesByTimeTaste(category, data.cookTime, data.taste, relax);
+  // Los platos "de dejar hecho la noche antes" (overnight oats) solo se
+  // permiten a partir del DÍA 2 de un plan de varios días: la víspera del
+  // día 1 el usuario todavía no tenía el plan. Sin planDays (>1) y sin
+  // dayIndex (>0) explícitos -> no se permiten.
+  var allowMakeAhead = (data && data.planDays > 1 && data.dayIndex > 0) === true;
+  var pool = filterDishesByTimeTaste(category, data.cookTime, data.taste, relax, allowMakeAhead);
 
   // No repetir un plato que YA sale hoy. Esto era solo una penalización de
   // puntuación (-10 en diversityScore), y una penalización se puede
