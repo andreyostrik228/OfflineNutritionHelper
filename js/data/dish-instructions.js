@@ -4411,6 +4411,21 @@ var DISH_INSTRUCTIONS = {
       "Échalos sobre las patatas y mezcla."
     ]
   },
+
+  // ── La ultima que faltaba (2026-09-01) ───────────────────────────────
+  // Estuvo sin pasos desde T3 porque el ajo no existia como rol; se
+  // resolvio en T2 (USDA) y ya se puede escribir de verdad.
+  "Merluza al ajillo con verduras": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Saca la merluza de la nevera 10 minutos antes y sécala bien con papel. El pescado mojado se cuece en su propia agua en vez de dorarse.",
+      "Dora un par de dientes de ajo laminados en la sartén a fuego medio, sin prisa: cuando empiecen a tomar color dorado claro, retíralos y resérvalos. Si se queman amargan todo el plato.",
+      "En esa misma sartén, pon la merluza con la piel hacia abajo y sal. 3-4 minutos sin tocarla, luego dale la vuelta y 2-3 minutos más.",
+      "Está lista cuando la carne pasa de translúcida a blanca y se separa en lascas al empujarla con el tenedor. Pasada queda seca, así que quédate corto antes que largo.",
+      "Saltea las verduras y el tomate en la misma sartén 4-5 minutos y sirve con el ajo reservado por encima."
+    ]
+  },
 };
 
 /**

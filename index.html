@@ -495,9 +495,26 @@
       <div class="shopping-panel__head">
         <div>
           <h2>Lista de la <em>compra</em></h2>
-          <span class="eyebrow">Todo lo que necesitas comprar para el plan de hoy</span>
+          <span class="eyebrow" id="shoppingEyebrow">Todo lo que necesitas comprar para el plan de hoy</span>
         </div>
         <div class="badge"><svg class="icon" width="14" height="14"><use href="#icon-cart"/></svg> <span id="shoppingCount">0</span> productos</div>
+      </div>
+
+      <!-- ══ Comprar para varios dias (2026-09-01) ═══════════════════════
+           Multiplica las CANTIDADES de este mismo plan por N dias antes de
+           calcular paquetes. No inventa menus distintos para cada dia: es
+           "compra de una vez lo de N dias de este plan", que es como se
+           cocina por tandas. El ahorro sale solo, porque un paquete de
+           arroz cubre varios dias y solo se paga una vez. ══ -->
+      <div class="shopping-days" id="shoppingDays" role="group" aria-label="Dias de compra">
+        <span class="shopping-days__label">Comprar para</span>
+        <button type="button" class="shopping-days__btn is-active" data-days="1">1 d&iacute;a</button>
+        <button type="button" class="shopping-days__btn" data-days="3">3 d&iacute;as</button>
+        <button type="button" class="shopping-days__btn" data-days="7">7 d&iacute;as</button>
+        <label class="shopping-days__custom">
+          <span class="visually-hidden">Otro n&uacute;mero de d&iacute;as</span>
+          <input type="number" id="shoppingDaysCustom" min="1" max="30" step="1" placeholder="otro" inputmode="numeric">
+        </label>
       </div>
       <div class="shopping-summary" id="shoppingSummary"></div>
       <ul class="shopping-list" id="shoppingListContainer"></ul>

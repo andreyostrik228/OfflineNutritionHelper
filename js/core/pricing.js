@@ -1,5 +1,22 @@
 /**
  * js/core/pricing.js
+ *
+ * ══ SOLO MERCADONA (decision del usuario, 2026-09-01) ══════════════════
+ * Aunque este archivo soporta VARIAS tiendas (PRICE_CATALOGS /
+ * REAL_PRODUCTS_CATALOGS / getRealProductsForStore), el producto trabaja
+ * SOLO con Mercadona hasta que el usuario diga lo contrario. No se anade
+ * un selector de tienda al UI ni se recomienda otra tienda al usuario.
+ *
+ * Y hoy no es solo una decision de producto, es que los datos no dan:
+ * medido el 2026-09-01, de Alcampo quedan 20 productos elegibles para
+ * "sin cocinar" y CERO con papel asignado, y el catalogo de Carrefour
+ * esta vacio (carrefour.db.json son 2 bytes). Ofrecer ese selector seria
+ * ofrecer dos opciones rotas.
+ *
+ * El soporte multi-tienda se deja en el codigo a proposito -- quitarlo y
+ * volver a ponerlo costaria mas que mantenerlo inerte -- pero DEFAULT_STORE_ID
+ * es la unica ruta real mientras esto siga aqui escrito.
+ * ═══════════════════════════════════════════════════════════════════════
  * ─────────────────────────────────────────────────────────────────────────
  * Motor de precios: resuelve cuánto cuesta un ingrediente o un plato en un
  * supermercado concreto, a partir de PRICE_CATALOGS (js/data/prices/*.js).

@@ -218,6 +218,68 @@
 > seed=42 elige "Cerdo con pasta", seed=7 "Pollo con trigo sarraceno".
 > **444 tests en verde.**
 >
+> ### ⏩ UPDATE 2026-09-01 (5) — compra para varios días y arreglos de ancho
+>
+> **Comprar para N días.** Selector 1/3/7/otro encima de la lista de la
+> compra: multiplica las CANTIDADES de este mismo plan por N antes de
+> agregar y calcular paquetes. No inventa un menú distinto por día a
+> propósito -- lo pedido era comprar de una vez para la semana, que es como
+> se cocina por tandas. El ahorro sale solo, sin lógica extra: un paquete
+> cubre varios días y se paga una vez, así que el coste POR DÍA baja al
+> subir N (medido: 14,85 € un día → 6,98 €/día a siete). Las tarjetas de
+> comida NO cambian: siguen mostrando la ración de un día, que es lo que se
+> cocina; multiplicar ahí sería mentir sobre el plato.
+>
+> **Dos desbordamientos horizontales reales, los dos por el mismo error:**
+> cancelar un hueco porcentual con un número fijo.
+> - `.next-meal-sticky` usaba `margin: 0 -4%`, pero los porcentajes de
+>   margen se resuelven contra el CONTENEDOR (92% del viewport), no contra
+>   el viewport: sobraban 1,2px por lado. Y peor: la barra vivía dentro del
+>   media query de 640px, así que al alejar el zoom en el móvil (que
+>   ensancha el viewport de maquetación) **desaparecía del todo**. Ahora
+>   tiene su propio media query hasta 900px y usa `calc(50% - 50vw)`, exacto
+>   a cualquier ancho.
+> - `.actions` tiraba de `margin: -16px` cuando el hueco real son 14,4px a
+>   360px: se salía de la pantalla. Aquí `calc(50% - 50vw)` NO vale (exige
+>   que el bloque contenedor esté centrado, y .actions cuelga de un `<form>`
+>   desplazado), así que se le quitó el sangrado: se queda dentro de su
+>   contenedor y no puede desbordar a ningún ancho.
+>
+> Medido a 375px con la emulación coherente: página con **0 de
+> desbordamiento y 0 elementos fuera**, frente a los 16px de desbordamiento
+> interno del contenedor que sigue teniendo producción.
+>
+> **Aviso sobre medir anchos con el navegador de la herramienta:** su
+> emulación se desincroniza tras varios `resize` seguidos (`innerWidth`
+> derivó 375 → 409 → 435 mientras `clientWidth` seguía en 375) y eso
+> inventa desbordamientos que no existen. Comprueba SIEMPRE
+> `clientWidth === innerWidth` antes de creerte una medición, y si no
+> cuadra, recarga.
+>
+> **Los 364 platos tienen ya receta** (faltaba "Merluza al ajillo con
+> verduras" desde T3, esperando al ajo que resolvió T2). El test del
+> invariante "un plato sin instrucciones no cambia de comportamiento" pasa
+> a fabricarse un plato de prueba en vez de buscar uno en el catálogo: si no,
+> se apagaba solo justo al completar las recetas.
+>
+> ### 🛒 SOLO MERCADONA — decisión del usuario (2026-09-01)
+>
+> **Hasta que el usuario diga lo contrario, el producto trabaja SOLO con
+> Mercadona.** No añadas un selector de tienda al UI, no recomiendes otra
+> tienda, no inviertas tiempo en Alcampo ni Carrefour.
+>
+> Además de ser una decisión de producto, hoy los datos no dan para otra
+> cosa (medido el 2026-09-01): de Alcampo quedan **20 productos elegibles
+> para "sin cocinar" y CERO con papel asignado**, y el catálogo de
+> Carrefour está **vacío** (`carrefour.db.json` son 2 bytes). Un selector
+> ofrecería dos opciones rotas.
+>
+> El soporte multi-tienda sigue en el código (`PRICE_CATALOGS`,
+> `REAL_PRODUCTS_CATALOGS`, `getRealProductsForStore`) porque quitarlo y
+> reponerlo costaría más que dejarlo inerte, pero `DEFAULT_STORE_ID` es la
+> única ruta real. La nota está también en la cabecera de
+> `js/core/pricing.js`, que es donde alguien la buscaría.
+>
 > ### 0. ¿Estás en la carpeta correcta?
 >
 > El proyecto **se movió**. La ruta buena, y la única con git y tests, es:

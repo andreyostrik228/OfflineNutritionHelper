@@ -712,6 +712,39 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   });
 
+  // ── Comprar para varios días (2026-09-01) ────────────────────────────
+  // Cambia SOLO la lista de la compra: las tarjetas de comida siguen
+  // mostrando la ración de un día, que es lo que se cocina. Multiplicar
+  // ahí también sería mentir sobre el plato.
+  safeInit("shopping-days-init", function () {
+    var group = document.getElementById("shoppingDays");
+    var custom = document.getElementById("shoppingDaysCustom");
+    if (!group) return;
+
+    function repaint(days, fromCustom) {
+      if (typeof renderShoppingList !== "function" || !lastGeneratedMeals) return;
+      renderShoppingList(lastGeneratedMeals, lastGeneratedStore, days);
+      var applied = (typeof getShoppingDays === "function") ? getShoppingDays() : days;
+      group.querySelectorAll(".shopping-days__btn").forEach(function (b) {
+        b.classList.toggle("is-active", !fromCustom && Number(b.dataset.days) === applied);
+      });
+      if (!fromCustom && custom) custom.value = "";
+    }
+
+    group.addEventListener("click", function (e) {
+      var btn = e.target.closest(".shopping-days__btn");
+      if (!btn) return;
+      repaint(Number(btn.dataset.days), false);
+    });
+
+    if (custom) {
+      custom.addEventListener("input", function () {
+        if (custom.value === "") return;
+        repaint(Number(custom.value), true);
+      });
+    }
+  });
+
   // ── Lista de la compra (aún vacía hasta generar un plan) ─────────────
   safeInit("shopping-list-init", function () {
     if (shoppingPanel && typeof initShoppingListRefs === "function") {
@@ -719,7 +752,8 @@ document.addEventListener("DOMContentLoaded", function () {
         shoppingPanel: shoppingPanel,
         shoppingSummaryEl: shoppingSummaryEl,
         shoppingCountEl: shoppingCountEl,
-        shoppingListContainer: shoppingListContainerEl
+        shoppingListContainer: shoppingListContainerEl,
+        shoppingEyebrowEl: document.getElementById("shoppingEyebrow")
       });
     }
   });

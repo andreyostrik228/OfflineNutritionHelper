@@ -181,12 +181,14 @@ function run(t) {
     // trabajo previsto. El invariante de verdad -- el que protegen los
     // golden-master -- nunca fue el recuento, sino que un plato sin
     // instrucciones no cambie de comportamiento. Eso es lo que se prueba.
-    var sinInstrucciones = s.DISH_DB.filter(function (d) {
-      return !s.getDishInstructions(d.name);
-    });
-    assert.ok(sinInstrucciones.length > 0, "deberia quedar algun plato sin instrucciones que probar");
-
-    var d = sinInstrucciones[0];
+    //
+    // 2026-09-01: desde que los 364 platos tienen receta, el catalogo ya no
+    // ofrece ningun ejemplo, asi que el plato de prueba se FABRICA. Es
+    // mejor asi: el invariante debe seguir vivo para el proximo plato que
+    // alguien anada sin pasos, y antes el test se apagaba solo justo cuando
+    // el catalogo se completaba -- que es cuando mas facil es olvidarlo.
+    var d = { name: "Plato inventado que no tiene receta", category: "cena", items: [] };
+    assert.strictEqual(s.getDishInstructions(d.name), null, "el plato de prueba no debe tener receta");
     // Ni el equipo ni la dificultad pueden filtrarlo, digan lo que digan
     // los ajustes del usuario.
     assert.strictEqual(s.canCookWithEquipment(d, []), true);

@@ -2952,64 +2952,6 @@ button:focus-visible {
     padding: 2px 7px;
   }
 
-  /* Solo aquí (mobile) se activa la barra sticky -- ver .next-meal-sticky
-     (display:none por defecto) más arriba. position:sticky respecto al
-     contenedor de scroll de la página (el body no tiene overflow propio
-     en este layout), así que se queda fija bajo el borde superior de la
-     ventana mientras el usuario recorre el formulario o los resultados. */
-  .next-meal-sticky:not([hidden]) {
-    display: block;
-    position: sticky;
-    top: 0;
-    z-index: 30;
-    /* .container es width:92% margin:0 auto -> 8% de margen TOTAL, 4% a
-       cada lado -- para cancelarlo exactamente hace falta -4% por lado,
-       no -8% (ese valor doblaba la compensación y sacaba la barra fuera
-       del viewport por los dos lados, un overflow horizontal real
-       detectado verificando en mobile). */
-    margin: 0 -4%;
-  }
-
-  .next-meal-sticky__btn {
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
-    width: 100%;
-    padding: 8px 8%;
-    border: none;
-    background: var(--green-deep);
-    color: var(--hero-ink);
-    font-family: var(--font-body);
-    cursor: pointer;
-    box-shadow: var(--shadow-sm);
-  }
-
-  .next-meal-sticky__eyebrow {
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--hero-ink-soft);
-    flex-shrink: 0;
-  }
-
-  .next-meal-sticky__time {
-    font-family: var(--font-mono);
-    font-weight: 700;
-    font-size: 14px;
-    font-variant-numeric: tabular-nums;
-    flex-shrink: 0;
-  }
-
-  .next-meal-sticky__label {
-    font-size: 12px;
-    font-weight: 600;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    text-align: left;
-  }
-
   /* Food rows: deliberately NO override here anymore. They used to be
      forced onto two stacked rows on phones (name on its own row, then a
      separate kcal/price row) — that was the single largest source of
@@ -3130,9 +3072,18 @@ button:focus-visible {
     position: sticky;
     bottom: 0;
     z-index: 10;
-    margin-left: -16px;
-    margin-right: -16px;
-    padding: var(--space-3) 16px calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
+    /* SIN sangrado a ancho completo (2026-09-01). Antes tiraba de
+       `margin: -16px` por lado para tocar los bordes de la pantalla, pero
+       el hueco real que deja `.container` es el 4% del viewport (14,4px a
+       360px): los 16px fijos se pasaban y la barra de botones se salía de
+       la pantalla -- desbordamiento horizontal medido a 360px.
+       `calc(50% - 50vw)` tampoco vale aquí: ese truco exige que el bloque
+       contenedor esté centrado en el viewport, y .actions cuelga de un
+       <form> desplazado (izquierda 14px, ancho 339 sobre 360), así que
+       dejaba la barra 4px fuera por la derecha.
+       La barra se queda dentro de su contenedor: sigue siendo sticky y
+       sigue leyéndose igual, y así NO puede desbordar a ningún ancho. */
+    padding: var(--space-3) 0 calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
     background: linear-gradient(180deg, transparent, var(--paper) 35%);
   }
 
@@ -3550,3 +3501,136 @@ dialog.despensa-dialog[open] {
 }
 
 .meal-steps__list li { margin-bottom: 6px; }
+
+/* ══ Barra "siguiente toma" (sticky) ═══════════════════════════════════
+   Vive en su PROPIO media query, no dentro del de 640px, y por dos motivos
+   medidos el 2026-09-01:
+
+   1. A 700px de ancho la barra desaparecía del todo (display:none), que es
+      justo lo que pasa al alejar el zoom en el móvil: el viewport de
+      maquetación se ensancha, se sale del media query de 640 y el usuario
+      se queda sin el único atajo a la siguiente comida. Ahora llega hasta
+      900px, que cubre el zoom alejado y las tablets en vertical.
+
+   2. El sangrado a ancho completo estaba mal calculado. Era `margin: 0 -4%`,
+      y los porcentajes de margen se resuelven contra el ancho del
+      CONTENEDOR, no del viewport: con .container a 92%, un -4% son 13,8px
+      cuando el hueco real a tapar es 15px (el 4% del viewport). Sobraban
+      1,2px por lado, y encima .container cambia de fórmula por encima de
+      640px (min(1280px,94%)), así que el número correcto era distinto en
+      cada tramo.
+
+      `calc(50% - 50vw)` sale exacto para CUALQUIER ancho de contenedor: el
+      borde izquierdo cae siempre en 0 y la barra mide 100vw. Solo se usa
+      por debajo de 900px, donde las barras de scroll son superpuestas y
+      100vw no provoca desbordamiento horizontal. */
+@media (max-width: 900px) {
+  .next-meal-sticky:not([hidden]) {
+    display: block;
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+  }
+
+  .next-meal-sticky__btn {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    width: 100%;
+    /* Antes 8% del ANCHO DEL BOTÓN: a 375px son 30px por lado, y crecía
+       con la pantalla hasta comerse la etiqueta. Un mínimo fijo con techo
+       relativo mantiene el texto legible en cualquier ancho. */
+    padding: 8px max(14px, 4vw);
+    border: none;
+    background: var(--green-deep);
+    color: var(--hero-ink);
+    font-family: var(--font-body);
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    box-sizing: border-box;
+  }
+
+  .next-meal-sticky__eyebrow {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--hero-ink-soft);
+    flex-shrink: 0;
+  }
+
+  .next-meal-sticky__time {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+  }
+
+  .next-meal-sticky__label {
+    font-size: 12px;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: left;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+}
+
+/* ══ Comprar para varios días ══════════════════════════════════════════
+   Selector encima de la lista de la compra. Envuelve en varias líneas a
+   propósito (flex-wrap): en móvil los cuatro controles no caben en una
+   sola fila y forzarlos sería justo el tipo de desbordamiento que se
+   arregló el 2026-09-01 en .actions y .next-meal-sticky. */
+.shopping-days {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: var(--space-4);
+}
+
+.shopping-days__label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-right: 2px;
+}
+
+.shopping-days__btn {
+  border: 1px solid var(--line-strong);
+  background: var(--paper-raised);
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.shopping-days__btn.is-active {
+  background: var(--green-deep);
+  border-color: var(--green-deep);
+  color: var(--hero-ink);
+}
+
+.shopping-days__btn:focus-visible {
+  outline: 2px solid var(--green-deep);
+  outline-offset: 2px;
+}
+
+.shopping-days__custom input {
+  width: 76px;
+  padding: 5px 8px;
+  font-size: 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--paper-raised);
+}

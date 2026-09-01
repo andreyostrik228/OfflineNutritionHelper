@@ -35,17 +35,19 @@
  *
  * Expone (globales):
  *   initShoppingListRefs(refs)
- *   renderShoppingList(meals, storeId)
+ *   renderShoppingList(meals, storeId, days)
+ *   getShoppingDays() / setShoppingDays(n)
  * ─────────────────────────────────────────────────────────────────────────
  */
 
-var shoppingPanel, shoppingSummaryEl, shoppingCountEl, shoppingListContainer;
+var shoppingPanel, shoppingSummaryEl, shoppingCountEl, shoppingListContainer, shoppingEyebrowEl;
 
 /**
  * Conecta los nodos DOM necesarios para este módulo.
  * @param {object} refs
  */
 function initShoppingListRefs(refs) {
+  shoppingEyebrowEl = refs.shoppingEyebrowEl || document.getElementById("shoppingEyebrow");
   shoppingPanel = refs.shoppingPanel;
   shoppingSummaryEl = refs.shoppingSummaryEl;
   shoppingCountEl = refs.shoppingCountEl;
@@ -64,6 +66,57 @@ function initShoppingListRefs(refs) {
  * @param {object[]} meals - salida de generateDietPlan().meals
  * @returns {{name:string, requiredGrams:number, usageCost:number, meals:string[]}[]}
  */
+// ── Compra para varios días (2026-09-01) ────────────────────────────────
+// Se multiplican los GRAMOS de este mismo plan por N días ANTES de agregar
+// y de calcular paquetes. Es deliberado que no invente un menú distinto por
+// día: lo que el usuario pidió es comprar de una vez para la semana, que es
+// como se cocina por tandas. Y el ahorro aparece solo, sin lógica extra: un
+// paquete de arroz de 500 g cubre varios días y se paga UNA vez, así que el
+// coste por día baja al subir N.
+var _shoppingDays = 1;
+
+/** @returns {number} días para los que se está calculando la compra */
+function getShoppingDays() { return _shoppingDays; }
+
+/**
+ * @param {number} n - 1..30; cualquier otra cosa se ignora (no se rompe la
+ *   lista por un valor raro escrito a mano en el campo "otro")
+ */
+function setShoppingDays(n) {
+  var v = Math.round(Number(n));
+  if (isFinite(v) && v >= 1 && v <= 30) _shoppingDays = v;
+  return _shoppingDays;
+}
+
+/**
+ * Copia las tomas con los gramos multiplicados por `days`. NO muta el plan:
+ * las tarjetas de comida siguen mostrando la ración de UN día, que es lo
+ * que se cocina; solo cambia lo que hay que comprar.
+ * @param {object[]} meals
+ * @param {number} days
+ * @returns {object[]}
+ */
+function scaleMealsForDays(meals, days) {
+  if (!Array.isArray(meals) || !(days > 1)) return meals || [];
+  return meals.map(function (meal) {
+    // Se COPIAN todos los campos del ítem y solo se escalan los que son
+    // cantidades. Quedarse con {name, grams} dejaba fuera `cost`, y
+    // aggregateIngredientUsage() lo usa para el "coste de uso": el resumen
+    // mostraba 0 € en cuanto se pedían 2 días o más. `label` de la toma
+    // hace falta por el mismo motivo (la lista de tomas de cada línea).
+    var copy = {};
+    for (var k in meal) { if (k !== "items") copy[k] = meal[k]; }
+    copy.items = (meal.items || []).map(function (it) {
+      var item = {};
+      for (var f in it) item[f] = it[f];
+      item.grams = (it.grams || 0) * days;
+      if (typeof it.cost === "number") item.cost = it.cost * days;
+      return item;
+    });
+    return copy;
+  });
+}
+
 function aggregateIngredientUsage(meals) {
   var base = aggregateMealItems(meals);
 
@@ -130,10 +183,12 @@ function buildShoppingItems(meals, storeId) {
  * @param {object[]} meals - salida de generateDietPlan().meals
  * @param {string} [storeId] - por defecto DEFAULT_STORE_ID (pricing.js)
  */
-function renderShoppingList(meals, storeId) {
+function renderShoppingList(meals, storeId, days) {
   if (!shoppingPanel || !shoppingListContainer) return;
 
-  var items = buildShoppingItems(meals || [], storeId);
+  if (days !== undefined) setShoppingDays(days);
+  var n = getShoppingDays();
+  var items = buildShoppingItems(scaleMealsForDays(meals || [], n), storeId);
 
   if (items.length === 0) {
     shoppingPanel.hidden = true;
@@ -148,10 +203,24 @@ function renderShoppingList(meals, storeId) {
   if (shoppingCountEl) shoppingCountEl.textContent = items.length;
 
   if (shoppingSummaryEl) {
+    // Con varios días se añade el coste POR DÍA, que es la cifra que hace
+    // ver el ahorro: los paquetes se pagan una vez y se reparten.
+    var perDay = n > 1
+      ? '<div class="shopping-summary__stat"><span>Por d&iacute;a</span><strong>&euro;' +
+        round2(totalPurchaseCost / n) + '</strong></div>'
+      : "";
     shoppingSummaryEl.innerHTML =
       '<div class="shopping-summary__stat"><span>Productos</span><strong>' + items.length + '</strong></div>' +
-      '<div class="shopping-summary__stat"><span>Coste de compra</span><strong>&euro;' + round2(totalPurchaseCost) + '</strong></div>' +
+      '<div class="shopping-summary__stat"><span>Coste de compra' + (n > 1 ? " (" + n + " días)" : "") +
+        '</span><strong>&euro;' + round2(totalPurchaseCost) + '</strong></div>' +
+      perDay +
       '<div class="shopping-summary__stat shopping-summary__stat--muted"><span>Coste de uso</span><strong>&euro;' + round2(totalUsageCost) + '</strong></div>';
+  }
+
+  if (shoppingEyebrowEl) {
+    shoppingEyebrowEl.textContent = n > 1
+      ? "Cantidades para " + n + " días del mismo plan"
+      : "Todo lo que necesitas comprar para el plan de hoy";
   }
 
   shoppingListContainer.innerHTML = items.map(renderShoppingRow).join("");
