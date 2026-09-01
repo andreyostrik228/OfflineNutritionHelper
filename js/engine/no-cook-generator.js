@@ -73,12 +73,25 @@ var NO_COOK_DEFAULT_CALORIES = 2100;
 var NO_COOK_KCAL_LOW = 0.92;
 var NO_COOK_KCAL_HIGH = 1.10;
 
-// Tope del TICKET (lo que se paga hoy en caja) como múltiplo del
-// presupuesto diario. Los envases duran varios días, así que el ticket
-// puede superar el presupuesto de un día -- pero no sin límite: sin este
-// tope, medir contra el coste consumido dejaba pasar un jamón de 22 EUR y
-// un plan llegó a 533 EUR de compra con un presupuesto de 14.
-var NO_COOK_TICKET_MULTIPLIER = 3;
+// ── El presupuesto es un TECHO DURO sobre el TICKET (2026-09-01) ────────
+// Antes se medía contra el coste CONSUMIDO (el valor de las raciones que
+// te comes hoy) y el ticket solo tenía un tope laxo de 3x. El resultado
+// era honesto pero inútil: el usuario decía 14 € y en caja pagaba 25.
+//
+// Ahora se comporta como el motor de platos, donde `mealCap`/
+// `remainingBudget` es "el ÚNICO techo real" sobre purchaseCost: si dices
+// 5 €, el ticket no pasa de 5 €. Lo que sobra de cada envase sigue yendo a
+// la despensa y abarata los días siguientes, pero eso ya no es una excusa
+// para pasarse hoy.
+//
+// La reutilización es la palanca que lo hace posible: volver a usar un
+// producto ya comprado cuesta 0 €, así que con presupuesto ajustado el
+// plan converge solo hacia pocos productos bien aprovechados.
+
+// Por debajo de este presupuesto diario se generan 3 tomas (desayuno,
+// comida, cena) en vez de 5: con poco dinero, gastarlo en dos snacks deja
+// las comidas principales flojas. Petición explícita del usuario.
+var NO_COOK_MIN_BUDGET_FOR_SNACKS = 8;
 
 // A partir de estos productos distintos en el día, los componentes
 // OPCIONALES de una plantilla dejan de abrir productos nuevos: se rellenan
@@ -130,6 +143,11 @@ function getNoCookEligiblePool(storeId) {
     // Ver ROLE_KCAL_CEILING en serving-sizes.js.
     if (serving && typeof isPlausibleForRole === "function"
         && !isPlausibleForRole(p, serving.role, serving.maxKcal)) continue;
+    // Sin tamaño de envase no se puede calcular ni ración ni coste: el
+    // precio que trae es basura. Un solo producto del catálogo está así,
+    // "Langostino cocido", con price 1084,05 EUR y size null (es el precio
+    // por kilo mal capturado). Fuera.
+    if (!serving || serving.packageG == null) continue;
     // Y descarta el registro que se contradice a sí mismo ("Pomelo",
     // 15 kcal con P10/C20/F10). Ver hasConsistentMacros en serving-sizes.js.
     if (typeof hasConsistentMacros === "function" && !hasConsistentMacros(p)) continue;
@@ -193,11 +211,11 @@ function buildNoCookItem(entry, servings, buysPackage) {
  *   1. un producto YA comprado hoy con ese papel — así el día usa 5-6
  *      productos bien aprovechados en vez de 10 a medio abrir;
  *   2. si no, uno nuevo que quepa en el presupuesto restante;
- *   3. si el presupuesto no deja ninguno, de los más baratos (mejor una
- *      comida completa algo cara que una toma coja).
+ *   3. si nada cabe en el presupuesto: null para un papel opcional, y el
+ *      envase más barato solo si el papel es `required` (allowOverrun).
  * @returns {{entry:object, reused:boolean}|null}
  */
-function pickForRole(role, pool, day, allowFresh) {
+function pickForRole(role, pool, day, allowFresh, allowOverrun, priorityOverride) {
   if (REUSABLE_ROLES.indexOf(role) !== -1) {
     // Sólo se reutiliza mientras quede envase: un paquete de tortillas de
     // 5 raciones da para 5 usos hoy, no para diez. Sin este tope el
@@ -207,7 +225,8 @@ function pickForRole(role, pool, day, allowFresh) {
       .filter(function (b) {
         return b && b.entry.serving.role === role
           && b.entry.serving.policy !== "fresh"
-          && b.servingsUsed < (b.entry.serving.servingsPerPackage || 1);
+          && b.servingsUsed < (b.entry.serving.servingsPerPackage || 1)
+          && !(day.avoidIds && day.avoidIds[b.entry.product.id]);
       });
     if (reusable.length) {
       return { entry: reusable[Math.floor(Math.random() * reusable.length)].entry, reused: true };
@@ -215,62 +234,134 @@ function pickForRole(role, pool, day, allowFresh) {
   }
 
   var candidates = [];
+  var avoided = [];
   for (var i = 0; i < pool.length; i++) {
     var e = pool[i];
     if (!e.serving || e.serving.role !== role) continue;
     if (day.bought[e.product.id]) continue;
     if (day.usedNames[e.product.name]) continue;
     if (!allowFresh && e.serving.policy === "fresh") continue;
+    // `avoidIds` son los productos que la toma traía ANTES de pulsar
+    // "Cambiar": el objetivo del botón es ofrecer algo DISTINTO (por
+    // ejemplo porque ese producto no está en tu Mercadona), así que se
+    // apartan. Se recuperan solo si sin ellos el papel no se puede llenar.
+    if (day.avoidIds && day.avoidIds[e.product.id]) { avoided.push(e); continue; }
     candidates.push(e);
   }
+  if (!candidates.length) candidates = avoided;
   if (!candidates.length) return null;
 
-  // El presupuesto se mide contra lo CONSUMIDO hoy, no contra el ticket.
-  // Un bote de queso de 2,05 € del que hoy te comes 1/6 te cuesta 0,34 €
-  // hoy; las otras 5 raciones alimentan días siguientes (van a la
-  // despensa). Cobrar el envase entero a un solo día hacía imposible
-  // cumplir cualquier presupuesto realista -- medido: 8% de los planes
-  // dentro de un tope de 14 €, con una compra media de 17,88 €.
-  // Dos condiciones, y hacen falta las dos:
-  //   - lo CONSUMIDO hoy cabe en el presupuesto diario;
-  //   - el TICKET de hoy no se dispara (ver NO_COOK_TICKET_MULTIPLIER).
-  var ticketCap = day.budget === Infinity ? Infinity : day.budget * NO_COOK_TICKET_MULTIPLIER;
+  // TECHO DURO: el envase tiene que caber en lo que queda del presupuesto.
+  // Reutilizar no pasa por aquí (cuesta 0 €), así que con poco dinero el
+  // plan se apoya en lo ya comprado en vez de abrir productos nuevos.
+  // `pendingSpend` son los envases ya elegidos en ESTA toma pero todavía
+  // sin contabilizar (se eligen todos los componentes y luego se confirman).
+  // Sin sumarlo, los 4 componentes de una plantilla comprobaban el techo
+  // contra el mismo `day.spent` viejo y entre los cuatro se lo saltaban:
+  // era la fuga que dejaba 154 de 200 planes por encima del presupuesto.
+  var committed = day.spent + (day.pendingSpend || 0);
+  // Se guarda dinero para las tomas que aún no se han construido. Comida y
+  // cena se montan primero y, sin esta reserva, se comían el presupuesto
+  // entero y el desayuno no tenía con qué: era la última fuente de planes
+  // por encima del techo.
+  var cap = day.budget - (day.reserve || 0);
   var affordable = candidates.filter(function (e) {
     if (typeof e.product.price !== "number") return true;
-    var perServing = (typeof costForGrams === "function")
-      ? costForGrams(e.product, e.serving.servingG) : e.product.price;
-    return (day.consumed + perServing) <= day.budget
-        && (day.spent + e.product.price) <= ticketCap;
+    return (committed + e.product.price) <= cap;
   });
-  var from = affordable.length ? affordable : candidates.slice().sort(function (a, b) {
-    return (a.product.price || 0) - (b.product.price || 0);
-  }).slice(0, 10);
 
-  // Abrir un envase que da para VARIAS raciones permite reutilizarlo en
-  // otras tomas del día; uno de una sola ración obliga a abrir otro
-  // producto más tarde. A igualdad de todo lo demás se prefiere el grande,
+  // Si NADA cabe, no se inventa dinero: solo un papel `required` justifica
+  // pasarse, y aun así se coge el envase más barato que existe. El exceso
+  // se reporta (budgetOverrun) en vez de esconderse.
+  var from = affordable;
+  if (!from.length) {
+    if (!allowOverrun) return null;
+    from = candidates.slice().sort(function (a, b) {
+      return (a.product.price || 0) - (b.product.price || 0);
+    }).slice(0, 3);
+  }
+
+  // En modo "barato" manda el precio, y se aplica ANTES que las
+  // preferencias blandas (si "marca propia" o "envase grande" fueran
+  // primero podrían dejar fuera justo la mejor opción).
+  //
+  // La métrica es COMIDA POR EURO (€ por 100 kcal del envase), no el precio
+  // del envase. Ordenar por precio a secas prefería un Pan Viena de 0,40 €
+  // que trae UNA ración frente a una barra de 1,19 € que trae nueve: el
+  // ticket bajaba pero el plan se quedaba en 1.747 kcal de 2.600 y encima
+  // dejaba 5,57 € del presupuesto sin usar. "Comer por 5 €" es comida por
+  // euro, no envases baratos.
+  var priority = priorityOverride || day.priority || "balanced";
+  if (priority === "cheap" && from.length > 3) {
+    var byValue = from.slice().sort(function (a, b) {
+      return costPer100Kcal(a) - costPer100Kcal(b);
+    });
+    from = byValue.slice(0, Math.max(3, Math.ceil(byValue.length / 4)));
+  }
+
+  // Productos que están en CUALQUIER Mercadona. El catálogo se capturó en
+  // una sola tienda y el usuario se encontró con "no disponible en tu código
+  // postal"; no hay dato de disponibilidad por tienda en ninguna parte del
+  // pipeline, así que la mejor aproximación honesta es la marca propia:
+  // Hacendado está en todas las tiendas y es el 77% del pool con papel.
+  var common = from.filter(function (e) {
+    return /hacendado/i.test(e.product.brand || "") || /hacendado/i.test(e.product.name || "");
+  });
+  if (common.length >= 3) from = common;
+
+  // Envases que dan para VARIAS raciones: permiten reutilizar más tarde,
   // que es lo que baja el número de productos distintos del día.
   var roomy = from.filter(function (e) { return (e.serving.servingsPerPackage || 1) >= 3; });
   if (roomy.length >= 3) from = roomy;
 
-  // Para el papel de proteína se elige entre el quinto más proteico: es el
-  // papel que sostiene el objetivo de proteína del día, y sin este sesgo el
-  // sorteo plano lo deja muy corto (medido: 66 g frente a 160 de objetivo).
-  //
-  // Apretar más NO compensa: medido sobre 200 planes, top-1/3 da 121 g,
-  // top-1/5 da 126 g y top-1/8 solo 128 g, a costa de repetir siempre los
-  // mismos tres productos. El techo no es el sesgo, es el catálogo: comida
-  // lista para comer rinde ~0,11 g de proteína por kcal. Un objetivo de
-  // 160 g a 2.600 kcal NO es alcanzable sin cocinar, y la UI lo dice en
-  // vez de fingir que lo cumple.
-  if (role === "protein" && from.length > 3) {
+  // ── El eje "prioridad" (2026-09-01) ─────────────────────────────────
+  // Precio y proteína están MEDIDOS como opuestos en este catálogo: elegir
+  // entre el 25% más barato baja el ticket de 24,71 € a 12,93 € y la
+  // proteína de 146 g a 107 g. No hay un ajuste que gane en los dos lados,
+  // así que lo elige el usuario en vez de decidirlo yo por él.
+  if (priority === "balanced" && from.length > 3) {
+    var byPrice = from.slice().sort(function (a, b) {
+      return (a.product.price || 0) - (b.product.price || 0);
+    });
+    from = byPrice.slice(0, Math.max(3, Math.ceil(byPrice.length / 2)));
+  }
+
+  // Sesgo de proteína, salvo en modo "barato" (ahí manda el precio). El
+  // techo no es el sesgo sino el catálogo: la comida lista para comer rinde
+  // ~0,11 g de proteína por kcal, así que 160 g a 2.600 kcal no se alcanza
+  // sin cocinar -- la UI lo dice en vez de fingir que lo cumple.
+  if (role === "protein" && priority !== "cheap" && from.length > 3) {
     var ranked = from.slice().sort(function (a, b) {
       return (b.product.protein || 0) - (a.product.protein || 0);
     });
-    from = ranked.slice(0, Math.max(3, Math.ceil(ranked.length / 5)));
+    var share = priority === "protein" ? 5 : 3;
+    from = ranked.slice(0, Math.max(3, Math.ceil(ranked.length / share)));
   }
 
-  return { entry: from[Math.floor(Math.random() * from.length)], reused: false };
+  // En modo "barato" el sorteo se sesga hacia el principio de la lista ya
+  // ordenada por precio (r^2 concentra la probabilidad en los primeros):
+  // un sorteo plano dentro del 25% más barato dejaba el ticket en 8,87 €
+  // de mediana cuando el suelo real de un día coherente es 4,40 €. Sigue
+  // habiendo variedad, pero lo barato sale mucho más a menudo.
+  var idx = (day.priority === "cheap")
+    ? Math.floor(Math.pow(Math.random(), 2) * from.length)
+    : Math.floor(Math.random() * from.length);
+  return { entry: from[Math.min(idx, from.length - 1)], reused: false };
+}
+
+/**
+ * Coste del ENVASE por cada 100 kcal que trae. Es la medida de "comida por
+ * euro": un envase caro que da para muchas raciones puede alimentar más
+ * barato que uno barato de una sola ración.
+ * @param {object} entry - entrada del pool
+ * @returns {number} EUR/100 kcal, o Infinity si no se puede calcular
+ */
+function costPer100Kcal(entry) {
+  var price = entry.product.price;
+  if (typeof price !== "number" || !entry.serving || !entry.serving.packageG) return Infinity;
+  var kcalInPackage = macrosForGrams(entry.product, entry.serving.packageG).kcal;
+  if (!(kcalInPackage > 0)) return Infinity;
+  return price / (kcalInPackage / 100);
 }
 
 function picksKcal(picks) {
@@ -368,6 +459,8 @@ function scaleToTarget(picks, target, targetProtein) {
  */
 function buildSlotFromTemplate(tpl, slotDef, targetKcal, pool, day, opts) {
   var allowSplitFresh = !!(opts && opts.allowSplitFresh);
+  var allowOverrun = !!(opts && opts.allowOverrun);
+  day.pendingSpend = 0;
   var isMain = slotDef.key === "lunch" || slotDef.key === "dinner";
   var picks = [];
 
@@ -393,19 +486,32 @@ function buildSlotFromTemplate(tpl, slotDef, targetKcal, pool, day, opts) {
     }
 
     // Sólo comida y cena pueden abrir un plato preparado.
-    var picked = pickForRole(comp.role, pool, day, isMain);
+    var picked = pickForRole(comp.role, pool, day, isMain,
+      !!comp.required && !!(opts && opts.allowOverrun),
+      opts && opts.priorityOverride);
     if (!picked) {
-      if (comp.required) return null;   // plantilla imposible: se descarta entera
+      if (comp.required) { day.pendingSpend = 0; return null; }   // plantilla imposible
       continue;
     }
     // Un extra opcional no justifica abrir el producto número ocho del día
     // (ver NO_COOK_SOFT_PRODUCT_CAP). Si no se puede reutilizar algo ya
     // comprado, se deja fuera y la comida sigue completa igualmente.
-    if (!comp.required && !picked.reused && day.order.length >= NO_COOK_SOFT_PRODUCT_CAP) continue;
+    //
+    // En modo "barato" el listón es total: un opcional SOLO entra si sale
+    // gratis (reutilizando un envase ya abierto). Comprar un producto más
+    // para un extra es justo lo que dispara el ticket.
+    if (!comp.required && !picked.reused) {
+      if (day.priority === "cheap") continue;
+      if (day.order.length >= NO_COOK_SOFT_PRODUCT_CAP) continue;
+    }
+    if (!picked.reused && !day.bought[picked.entry.product.id]
+        && typeof picked.entry.product.price === "number") {
+      day.pendingSpend = (day.pendingSpend || 0) + picked.entry.product.price;
+    }
     picks.push({ entry: picked.entry, comp: comp, servings: 1, fixed: false });
   }
 
-  if (!picks.length) return null;
+  if (!picks.length) { day.pendingSpend = 0; return null; }
 
   // 2) Política del envase "fresh": se consume ENTERO el mismo día. Si las
   //    raciones que encajan aquí llegan al envase, se come entero ahora;
@@ -431,14 +537,32 @@ function buildSlotFromTemplate(tpl, slotDef, targetKcal, pool, day, opts) {
 
   scaleToTarget(picks, targetKcal, opts && opts.targetProtein);
 
+  day.pendingSpend = 0;   // a partir de aquí manda `day.spent` de verdad
   var items = [];
   var total = emptyMacros();
   for (var c = 0; c < picks.length; c++) {
     var p2 = picks[c];
+    var perPack = p2.entry.serving.servingsPerPackage || 1;
+    var price = p2.entry.product.price;
+
+    // TECHO DURO también al ESCALAR. Aquí estaba la fuga real del
+    // presupuesto: subir a 3 raciones de un envase que trae 1 compra tres
+    // envases, y eso se sumaba a `day.spent` sin comprobar nada. El pick
+    // respetaba el techo y el escalado se lo saltaba -- 156 de 200 planes
+    // se pasaban con 14 € de tope. Se recorta a las raciones que el dinero
+    // que queda permite, nunca por debajo de una.
+    var existing = day.bought[p2.entry.product.id];
+    var alreadyUsed = existing ? existing.servingsUsed : 0;
+    var packsBefore = existing ? Math.max(1, Math.ceil(alreadyUsed / perPack)) : 0;
+    if (typeof price === "number" && price > 0 && day.budget !== Infinity && !allowOverrun) {
+      var affordablePacks = Math.floor((day.budget - day.spent) / price) + packsBefore;
+      var maxServings = Math.max(1, affordablePacks * perPack - alreadyUsed);
+      if (p2.servings > maxServings) p2.servings = maxServings;
+    }
+
     var buys = registerPurchase(day, p2.entry);
     var bought = day.bought[p2.entry.product.id];
-    var perPack = p2.entry.serving.servingsPerPackage || 1;
-    var packsBefore = Math.max(1, Math.ceil(bought.servingsUsed / perPack));
+    packsBefore = Math.max(1, packsBefore || 1);
     bought.servingsUsed += p2.servings;
     var packsAfter = Math.max(1, Math.ceil(bought.servingsUsed / perPack));
     // Gastar más raciones de las que trae un envase significa comprar OTRO
@@ -484,6 +608,28 @@ function pickTemplate(templates) {
 }
 
 /** Prueba plantillas hasta que una se monte entera. */
+/**
+ * Reserva estimada para las tomas que quedan por montar. Se apoya en el
+ * envase más barato del pool: con eso una toma posterior siempre puede al
+ * menos completar sus papeles obligatorios (y muchas veces ni gasta, porque
+ * reutiliza lo ya comprado, que es gratis).
+ */
+function budgetReserveFor(remainingSlots, pool, day) {
+  if (day.budget === Infinity || remainingSlots <= 0) return 0;
+  if (day.minPackagePrice == null) {
+    var min = Infinity;
+    for (var i = 0; i < pool.length; i++) {
+      var pr = pool[i].product.price;
+      if (typeof pr === "number" && pr > 0 && pr < min) min = pr;
+    }
+    day.minPackagePrice = isFinite(min) ? min : 0;
+  }
+  // Dos papeles obligatorios por toma como mucho; se limita a un tercio del
+  // presupuesto para no estrangular la comida y la cena.
+  var reserve = day.minPackagePrice * 2 * remainingSlots;
+  return Math.min(reserve, day.budget / 3);
+}
+
 function buildSlot(slotKey, targetKcal, pool, day, opts) {
   var slotDef = NO_COOK_SLOT_DEFS.filter(function (d) { return d.key === slotKey; })[0];
   var templates = (typeof templatesForSlot === "function") ? templatesForSlot(slotKey) : [];
@@ -492,12 +638,33 @@ function buildSlot(slotKey, targetKcal, pool, day, opts) {
     if (forced.length) templates = forced;
   }
 
-  var remaining = templates.slice();
-  while (remaining.length) {
-    var tpl = pickTemplate(remaining);
-    remaining = remaining.filter(function (t) { return t !== tpl; });
-    var result = buildSlotFromTemplate(tpl, slotDef, targetKcal, pool, day, opts);
-    if (result) return result;
+  // TRES pasadas, de más a menos exigente. El presupuesto es un techo duro,
+  // así que antes de saltárselo se renuncia a TODO lo demás:
+  //   1. todas las plantillas, con la prioridad elegida, dentro del techo;
+  //   2. igual, pero renunciando a la prioridad (se compra por precio):
+  //      preferir proteína cara no vale un ticket incumplido;
+  //   3. solo entonces, pasarse, y con el envase más barato que exista.
+  //
+  // Medido: con la pasada 2, los planes que se pasaban del presupuesto
+  // cayeron de 159/200 a una fracción, sin tocar el techo.
+  var PASSES = [
+    { allowOverrun: false, priorityOverride: null },
+    { allowOverrun: false, priorityOverride: "cheap" },
+    { allowOverrun: true,  priorityOverride: "cheap" },
+  ];
+  for (var pass = 0; pass < PASSES.length; pass++) {
+    var passOpts = {};
+    for (var k in opts) passOpts[k] = opts[k];
+    passOpts.allowOverrun = PASSES[pass].allowOverrun;
+    passOpts.priorityOverride = PASSES[pass].priorityOverride;
+
+    var remaining = templates.slice();
+    while (remaining.length) {
+      var tpl = pickTemplate(remaining);
+      remaining = remaining.filter(function (t) { return t !== tpl; });
+      var result = buildSlotFromTemplate(tpl, slotDef, targetKcal, pool, day, passOpts);
+      if (result) return result;
+    }
   }
   return { items: [], total: emptyMacros(), assembly: "", templateKey: null, templateLabel: null };
 }
@@ -528,15 +695,35 @@ function generateNoCookPlan(storeId, options) {
 
   var day = {
     bought: {}, order: [], usedNames: {},
-    spent: 0,       // ticket: envases completos que hay que comprar hoy
-    consumed: 0,    // valor de lo que realmente se come hoy (contra el presupuesto)
+    spent: 0,       // ticket: envases completos que hay que comprar hoy (TECHO)
+    consumed: 0,    // valor de lo que realmente se come hoy (informativo)
+    // "satiety" es el nombre nuevo (2026-09-01) de lo que aquí se llamaba
+    // "cheap": el mismo criterio, más comida por euro. Se aceptan los dos.
+    priority: (opts.priority === "cheap" || opts.priority === "satiety") ? "cheap"
+      : (opts.priority === "protein" ? "protein" : "balanced"),
     budget: (typeof opts.budget === "number" && opts.budget > 0) ? opts.budget : Infinity,
     freshPending: [],
   };
 
   var targetProtein = (typeof opts.protein === "number" && opts.protein > 0) ? opts.protein : 0;
+
+  // Con poco dinero, 3 tomas en vez de 5: repartir un presupuesto ajustado
+  // entre cinco tomas deja las principales flojas y encima obliga a abrir
+  // productos extra solo para los snacks. Petición explícita del usuario.
+  var slotKeys = (day.budget < NO_COOK_MIN_BUDGET_FOR_SNACKS)
+    ? ["breakfast", "lunch", "dinner"]
+    : ["breakfast", "lunch", "snack", "dinner", "snack2"];
+  var threeMealDay = slotKeys.length === 3;
+  // Tomas que NO son comida/cena: se construyen después y absorben lo que
+  // esas dos se hayan pasado (ver más abajo).
+  var restKeysAll = slotKeys.filter(function (k) { return k !== "lunch" && k !== "dinner"; });
+  // Las kcal del día no cambian: se reparten entre las tomas que haya, así
+  // que en modo 3 tomas cada una es más grande en vez de comer menos.
+  var ratioSum = slotKeys.reduce(function (a, k) {
+    return a + NO_COOK_SLOT_DEFS.filter(function (d) { return d.key === k; })[0].ratio;
+  }, 0);
   var ratioFor = function (key) {
-    return NO_COOK_SLOT_DEFS.filter(function (x) { return x.key === key; })[0].ratio;
+    return NO_COOK_SLOT_DEFS.filter(function (x) { return x.key === key; })[0].ratio / ratioSum;
   };
   var kcalFor = function (key) { return targetKcal * ratioFor(key); };
   var protFor = function (key) { return targetProtein * ratioFor(key); };
@@ -547,9 +734,11 @@ function generateNoCookPlan(storeId, options) {
   // plato preparado y repartirlo; si lo hace, la cena queda obligada a la
   // plantilla "principal" para terminárselo. La cena, al ser la última
   // toma principal del día, nunca reparte: lo que abre, se lo acaba.
+  day.reserve = budgetReserveFor(slotKeys.length - 1, pool, day);
   built.lunch = buildSlot("lunch", kcalFor("lunch"), pool, day, {
     allowSplitFresh: true, targetProtein: protFor("lunch"),
   });
+  day.reserve = budgetReserveFor(slotKeys.length - 2, pool, day);
   built.dinner = buildSlot("dinner", kcalFor("dinner"), pool, day, {
     allowSplitFresh: false,
     targetProtein: protFor("dinner"),
@@ -562,7 +751,7 @@ function generateNoCookPlan(storeId, options) {
   // ~1.050 kcal); si el resto del día siguiera apuntando a su ratio fijo,
   // el total se disparaba -- medido: máximos de 4.059 kcal sobre un
   // objetivo de 2.600. Así el exceso se absorbe en vez de acumularse.
-  var restKeys = ["breakfast", "snack", "snack2"];
+  var restKeys = restKeysAll;
   var restRatio = restKeys.reduce(function (a, k) { return a + ratioFor(k); }, 0);
   var usedKcal = built.lunch.total.kcal + built.dinner.total.kcal;
   var remainingKcal = Math.max(0, targetKcal - usedKcal);
@@ -608,7 +797,9 @@ function generateNoCookPlan(storeId, options) {
   });
 
   var total = emptyMacros();
-  var slots = NO_COOK_SLOT_DEFS.map(function (def) {
+  var slots = NO_COOK_SLOT_DEFS.filter(function (def) {
+    return slotKeys.indexOf(def.key) !== -1;
+  }).map(function (def) {
     var b = built[def.key];
     addMacros(total, b.total);
     return {
@@ -625,5 +816,109 @@ function generateNoCookPlan(storeId, options) {
     shoppingCost: Math.round(shoppingCost * 100) / 100,
     consumedCost: Math.round(day.consumed * 100) / 100,
     productCount: day.order.length,
+    budget: day.budget === Infinity ? null : day.budget,
+    // Se pasó del presupuesto: solo puede ocurrir cuando ni el envase más
+    // barato de un papel OBLIGATORIO cabía. Se dice, no se esconde.
+    budgetOverrun: (day.budget !== Infinity && shoppingCost > day.budget)
+      ? Math.round((shoppingCost - day.budget) * 100) / 100 : 0,
+    threeMealDay: threeMealDay,
+    priority: day.priority,
   };
+}
+
+/**
+ * "Cambiar SOLO esta toma" del plan sin cocinar, sin tocar las demás.
+ *
+ * El usuario lo pidió como su red de seguridad contra el problema de
+ * disponibilidad por tienda: no hay dato de qué hay en CADA Mercadona (no
+ * existe en el pipeline), así que si un producto no está en la suya, vuelve
+ * a tirar esa toma y con el sesgo hacia marca propia es muy improbable que
+ * la siguiente tampoco esté.
+ *
+ * A diferencia del motor de platos, aquí no se guarda el estado del día
+ * entre llamadas: se RECONSTRUYE a partir de las otras tomas (qué está
+ * comprado, cuántas raciones se han usado y cuánto se lleva gastado) para
+ * que la toma nueva reutilice lo ya comprado y siga respetando el
+ * presupuesto del día completo.
+ *
+ * @param {object} plan - plan devuelto por generateNoCookPlan()
+ * @param {string} slotKey
+ * @param {string} [storeId]
+ * @param {{calories?:number, protein?:number, budget?:number, priority?:string}} [options]
+ * @returns {{slot:object}|{error:string}}
+ */
+function regenerateNoCookSlot(plan, slotKey, storeId, options) {
+  if (!plan || !Array.isArray(plan.slots)) return { error: "no_plan" };
+  var slotDef = NO_COOK_SLOT_DEFS.filter(function (d) { return d.key === slotKey; })[0];
+  if (!slotDef) return { error: "unknown_slot_key" };
+  var idx = -1;
+  for (var i = 0; i < plan.slots.length; i++) if (plan.slots[i].key === slotKey) idx = i;
+  if (idx === -1) return { error: "slot_not_found" };
+
+  var opts = options || {};
+  var pool = getNoCookEligiblePool(storeId);
+  if (typeof filterDislikedProducts === "function" && typeof getDislikes === "function") {
+    pool = filterDislikedProducts(pool, getDislikes());
+  }
+  var byId = {};
+  for (var j = 0; j < pool.length; j++) byId[pool[j].product.id] = pool[j];
+
+  var day = {
+    bought: {}, order: [], usedNames: {}, spent: 0, consumed: 0,
+    // "satiety" es el nombre nuevo (2026-09-01) de lo que aquí se llamaba
+    // "cheap": el mismo criterio, más comida por euro. Se aceptan los dos.
+    priority: (opts.priority === "cheap" || opts.priority === "satiety") ? "cheap"
+      : (opts.priority === "protein" ? "protein" : "balanced"),
+    budget: (typeof opts.budget === "number" && opts.budget > 0) ? opts.budget : Infinity,
+    freshPending: [], reserve: 0, pendingSpend: 0,
+    avoidIds: {},
+  };
+
+  // Todo lo que había en ESTA toma se aparta: pulsar "Cambiar" tiene que
+  // dar otra cosa. Sin esto el reroll devolvía los mismos productos una y
+  // otra vez (solo cambiaba la plantilla), y entonces no sirve para lo que
+  // el usuario lo quiere: esquivar un producto que su tienda no tiene.
+  plan.slots[idx].items.forEach(function (it) { day.avoidIds[it.id] = true; });
+
+  // Estado del día a partir de las OTRAS tomas.
+  plan.slots.forEach(function (slot) {
+    if (slot.key === slotKey) return;
+    slot.items.forEach(function (it) {
+      var entry = byId[it.id];
+      if (!entry) return;
+      if (!day.bought[it.id]) {
+        day.bought[it.id] = { entry: entry, servingsUsed: 0 };
+        day.order.push(it.id);
+        day.usedNames[it.name] = true;
+      }
+      day.bought[it.id].servingsUsed += (it.servings || 1);
+    });
+  });
+  day.order.forEach(function (id) {
+    var b = day.bought[id];
+    var perPack = b.entry.serving.servingsPerPackage || 1;
+    var packs = Math.max(1, Math.ceil(b.servingsUsed / perPack));
+    if (typeof b.entry.product.price === "number") day.spent += b.entry.product.price * packs;
+  });
+
+  var targetKcal = (typeof opts.calories === "number" && opts.calories > 0)
+    ? opts.calories : NO_COOK_DEFAULT_CALORIES;
+  var ratioSum = plan.slots.reduce(function (a, s) {
+    var d = NO_COOK_SLOT_DEFS.filter(function (x) { return x.key === s.key; })[0];
+    return a + (d ? d.ratio : 0);
+  }, 0) || 1;
+  var share = slotDef.ratio / ratioSum;
+
+  var built = buildSlot(slotKey, targetKcal * share, pool, day, {
+    allowSplitFresh: false,
+    targetProtein: (opts.protein || 0) * share,
+  });
+  if (!built.items.length) return { error: "no_alternative_found" };
+
+  // El horario de la toma no cambia porque cambie el plato.
+  if (typeof plan.slots[idx].time === "string") built.time = plan.slots[idx].time;
+  if (typeof plan.slots[idx].timeMinutes === "number") built.timeMinutes = plan.slots[idx].timeMinutes;
+  built.key = slotKey;
+  built.label = slotDef.label;
+  return { slot: built };
 }

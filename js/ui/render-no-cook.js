@@ -15,7 +15,8 @@
  *
  * Expone (globales):
  *   initNoCookRefs(refs)
- *   runNoCookGenerator(storeId)  – genera un plan nuevo y lo pinta
+ *   runNoCookGenerator(storeId, options)  – genera un plan nuevo y lo pinta
+ *   paintNoCookPlan(plan)                 – re-pinta el plan guardado
  * ─────────────────────────────────────────────────────────────────────────
  */
 
@@ -33,6 +34,13 @@ var lastNoCookSlots = null;
 // tienda se generó para guardar la entrada con el store correcto (ver
 // saveNoCookPlanForToday, pantry.js).
 var lastNoCookStore = null;
+
+// Objetivos con los que se generó el plan actual -- necesarios para que
+// "Cambiar" re-tire una toma con el mismo presupuesto/prioridad.
+var lastNoCookOptions = null;
+// Plan completo tal cual lo devolvió el generador (totales, coste, avisos):
+// re-pintar tras cambiar una toma necesita recalcularlo entero.
+var lastNoCookPlan = null;
 
 var LEVEL_LABEL = {
   0: "Listo para comer",
@@ -52,6 +60,9 @@ function initNoCookRefs(refs) {
   noCookResults = refs.noCookResults;
   noCookCount = refs.noCookCount;
   noCookStatus = refs.noCookStatus;
+  // Delegación: las tarjetas se re-pintan enteras en cada cambio, así que
+  // el listener vive en el contenedor y no en cada botón.
+  if (noCookResults) noCookResults.addEventListener("click", handleSwapNoCookSlot);
 }
 
 /**
@@ -66,6 +77,7 @@ function runNoCookGenerator(storeId, options) {
 
   var plan = generateNoCookPlan(storeId, options);
   lastNoCookStore = storeId || null;
+  lastNoCookOptions = options || null;
 
   // Mismo cálculo de horario que el plan normal (js/core/meal-schedule.js)
   // — reutilizado, no reimplementado. Aislado con su propio try/catch (en
@@ -83,19 +95,92 @@ function runNoCookGenerator(storeId, options) {
   if (noCookCount) noCookCount.textContent = plan.poolSize;
   if (noCookStatus) noCookStatus.textContent = "Plan sin cocinar generado.";
 
-  // Aviso honesto sobre la línea de alérgenos de cada producto: solo se
-  // muestra cuando la etiqueta de Mercadona lo declara, y que NO aparezca
-  // no quiere decir que el producto esté libre de ese alérgeno. Se
-  // enseña solo si el módulo de alérgenos está cargado.
+  paintNoCookPlan(plan);
+}
+
+/**
+ * Pinta un plan completo y lo guarda para poder editarlo por tomas.
+ *
+ * El aviso de alérgenos se arma aquí (y no en runNoCookGenerator) porque
+ * también hay que re-pintarlo al cambiar una sola toma.
+ */
+function paintNoCookPlan(plan) {
   var allergenNote = (typeof renderAllergenLine === "function")
     ? '<p class="nocook-disclaimer">Los alérgenos que se muestran vienen de la ' +
       'etiqueta de Mercadona. Que no aparezcan <strong>no</strong> significa ' +
       'que el producto no los lleve — comprueba siempre el envase.</p>'
     : "";
-
   noCookResults.innerHTML =
     renderNoCookSummary(plan) + allergenNote + plan.slots.map(renderNoCookSlot).join("");
   lastNoCookSlots = plan.slots;
+  lastNoCookPlan = plan;
+}
+
+/**
+ * "Cambiar" una sola toma del plan sin cocinar. Es también la salida del
+ * usuario cuando un producto no está en SU Mercadona: no hay dato de
+ * disponibilidad por tienda en el pipeline, así que la respuesta honesta es
+ * volver a tirar esa toma.
+ */
+function handleSwapNoCookSlot(event) {
+  var btn = event.target.closest('button[data-action="swap-nocook-slot"]');
+  if (!btn) return;
+  var slotKey = btn.dataset.slotKey;
+  if (!slotKey || !lastNoCookPlan || typeof regenerateNoCookSlot !== "function") return;
+
+  btn.disabled = true;
+  var res = regenerateNoCookSlot(lastNoCookPlan, slotKey, lastNoCookStore, lastNoCookOptions || {});
+  if (!res || res.error || !res.slot) {
+    btn.disabled = false;
+    btn.textContent = "sin más opciones";
+    setTimeout(function () { btn.innerHTML = "&#8635; Cambiar"; }, 1600);
+    return;
+  }
+
+  var idx = -1;
+  for (var i = 0; i < lastNoCookPlan.slots.length; i++) {
+    if (lastNoCookPlan.slots[i].key === slotKey) idx = i;
+  }
+  if (idx === -1) { btn.disabled = false; return; }
+  lastNoCookPlan.slots[idx] = res.slot;
+
+  // Totales y coste del día cambian con la toma: se recalculan enteros en
+  // vez de parchear la tarjeta, que es como se cuelan las cifras viejas.
+  recomputeNoCookPlanTotals(lastNoCookPlan);
+  paintNoCookPlan(lastNoCookPlan);
+}
+
+/** Recalcula totales, coste y avisos del día tras editar una toma. */
+function recomputeNoCookPlanTotals(plan) {
+  var total = { kcal: 0, protein: 0, carbs: 0, fat: 0 };
+  var packs = {};
+  var consumed = 0;
+
+  plan.slots.forEach(function (slot) {
+    slot.items.forEach(function (it) {
+      total.kcal += it.kcal || 0; total.protein += it.protein || 0;
+      total.carbs += it.carbs || 0; total.fat += it.fat || 0;
+      if (!packs[it.id]) packs[it.id] = { servings: 0, perPack: it.servingsPerPackage || 1, price: it.price };
+      packs[it.id].servings += it.servings || 1;
+      if (typeof costForGrams === "function" && typeof it.price === "number" && it.grams) {
+        consumed += costForGrams({ price: it.price, size: it.size, sizeUnit: it.sizeUnit }, it.grams);
+      }
+    });
+  });
+
+  var shopping = 0, count = 0;
+  Object.keys(packs).forEach(function (id) {
+    var p = packs[id];
+    count++;
+    if (typeof p.price === "number") shopping += p.price * Math.max(1, Math.ceil(p.servings / p.perPack));
+  });
+
+  plan.total = total;
+  plan.shoppingCost = Math.round(shopping * 100) / 100;
+  plan.consumedCost = Math.round(consumed * 100) / 100;
+  plan.productCount = count;
+  plan.budgetOverrun = (plan.budget && shopping > plan.budget)
+    ? Math.round((shopping - plan.budget) * 100) / 100 : 0;
 }
 
 /**
@@ -127,20 +212,49 @@ function renderNoCookSummary(plan) {
   var proteinLine = round0(t.protein) + " g proteína"
     + (target.protein ? ' <span class="nocook-summary__target">de ' + round0(target.protein) + "</span>" : "");
 
+  // La cifra que manda es el TICKET: es lo que se paga hoy en caja y es lo
+  // que el presupuesto limita. Lo consumido va detrás, como referencia.
+  var costLine = "La compra son <strong>&euro;" + round2(plan.shoppingCost || 0) + "</strong>"
+    + (plan.budget ? ' <span class="nocook-summary__target">de ' + round2(plan.budget) + "</span>" : "")
+    + " en " + plan.productCount + " productos"
+    + " &middot; hoy te comes &euro;" + round2(plan.consumedCost || 0)
+    + " (el resto queda en la despensa)";
+
   var stats =
     '<div class="nocook-summary__row"><strong>' + kcalLine + "</strong></div>" +
     '<div class="nocook-summary__row">' + proteinLine + "</div>" +
-    '<div class="nocook-summary__row">Hoy comes <strong>&euro;' + round2(plan.consumedCost || 0) +
-      '</strong> &middot; la compra son <strong>&euro;' + round2(plan.shoppingCost || 0) +
-      "</strong> en " + plan.productCount +
-      " productos (lo que sobre queda en la despensa)</div>";
+    '<div class="nocook-summary__row">' + costLine + "</div>";
+
+  if (plan.threeMealDay) {
+    stats += '<div class="nocook-summary__row nocook-summary__note">' +
+      "Con este presupuesto el plan son <strong>3 tomas</strong> sin snacks: " +
+      "las calorías del día se reparten entre ellas en vez de gastar en picoteo.</div>";
+  }
 
   var warn = "";
+
+  // Pasarse del presupuesto solo ocurre cuando ni el envase más barato de
+  // un papel obligatorio cabía. Se dice con la cifra exacta.
+  if (plan.budgetOverrun > 0) {
+    // No sugerir "pon la prioridad en barato" si YA está en barato: es el
+    // consejo inútil clásico y hace que el aviso parezca automático.
+    var advice = (plan.priority === "cheap")
+      ? " Con este catálogo no se puede bajar más sin dejar una toma coja."
+      : " Prueba a subir el presupuesto, o pon la prioridad en &laquo;lo más barato posible&raquo;.";
+    warn += '<p class="nocook-summary__warn">Este plan se pasa <strong>&euro;' +
+      round2(plan.budgetOverrun) + "</strong> de tu presupuesto: con menos no salía " +
+      "una comida completa." + advice + "</p>";
+  }
+
   if (target.protein && t.protein < target.protein * 0.85) {
-    warn = '<p class="nocook-summary__warn">Este plan se queda en ' + round0(t.protein) +
+    warn += '<p class="nocook-summary__warn">Este plan se queda en ' + round0(t.protein) +
       " g de proteína, por debajo de tus " + round0(target.protein) + " g. " +
       "Sin cocinar es un techo real: los productos listos para comer rinden poca " +
-      "proteína por caloría. Para llegar más arriba hace falta cocinar.</p>";
+      "proteína por caloría" +
+      (plan.priority === "cheap"
+        ? ", y con la prioridad en «lo más barato» baja todavía más"
+        : "") +
+      ". Para llegar más arriba hace falta cocinar.</p>";
   }
 
   return '<div class="nocook-summary">' + stats + warn + "</div>";
@@ -162,6 +276,11 @@ function renderNoCookSlot(slot) {
   var kcal = (slot.total && slot.total.kcal)
     ? '<span class="nocook-slot__kcal">' + round0(slot.total.kcal) + " kcal</span>" : "";
 
+  var swapBtn = '<button type="button" class="meal-swap-btn" data-action="swap-nocook-slot"' +
+    ' data-slot-key="' + escapeHtml(slot.key || "") + '"' +
+    ' title="Cambiar solo esta toma (por ejemplo si un producto no está en tu tienda)">' +
+    "&#8635; Cambiar</button>";
+
   // Cómo se monta, en una línea. Es la diferencia entre una lista de la
   // compra y una comida: el usuario pidió "haz un sándwich y vete".
   var assembly = slot.assembly
@@ -170,7 +289,7 @@ function renderNoCookSlot(slot) {
   return (
     '<div class="nocook-slot">' +
       '<div class="nocook-slot__head">' + timeBadge + "<h3>" + escapeHtml(slot.label) + "</h3>" +
-        kind + kcal +
+        kind + kcal + swapBtn +
       "</div>" +
       assembly +
       '<div class="nocook-items">' +

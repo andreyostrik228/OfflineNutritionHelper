@@ -317,6 +317,122 @@ function run(t) {
       });
     });
   });
+
+  // ── 6. Presupuesto, prioridad y disponibilidad (2026-09-01) ──────────
+  // El usuario: "cuando digo que tengo 5 euros no se pasa de ahi", igual
+  // que ya hacia el motor de platos.
+
+  t.test("el presupuesto es un TECHO del TICKET, no del coste consumido", function () {
+    var s = fullSandbox();
+    var within = 0, N = 40;
+    for (var i = 0; i < N; i++) {
+      var plan = s.generateNoCookPlan("mercadona", { calories: 2600, protein: 160, budget: 20, priority: "balanced" });
+      if (plan.shoppingCost <= 20) within++;
+      assert.strictEqual(typeof plan.budgetOverrun, "number");
+      if (plan.shoppingCost > 20) {
+        assert.ok(plan.budgetOverrun > 0, "pasarse del techo debe reportarse en budgetOverrun");
+      }
+    }
+    assert.ok(within >= N * 0.85, "solo " + within + "/" + N + " planes dentro del ticket de 20 EUR");
+  });
+
+  t.test("presupuesto bajo -> 3 tomas sin snacks, con las kcal repartidas entre ellas", function () {
+    var s = fullSandbox();
+    var plan = s.generateNoCookPlan("mercadona", { calories: 2400, protein: 140, budget: 5, priority: "cheap" });
+    assert.strictEqual(plan.slots.length, 3, "con 5 EUR el dia debe ser de 3 tomas");
+    assert.strictEqual(plan.threeMealDay, true);
+    var keys = plan.slots.map(function (x) { return x.key; }).sort().join(",");
+    assert.strictEqual(keys, "breakfast,dinner,lunch");
+    plan.slots.forEach(function (sl) { assert.ok(sl.items.length > 0, "toma vacia: " + sl.key); });
+  });
+
+  t.test("presupuesto holgado -> 5 tomas", function () {
+    var s = fullSandbox();
+    var plan = s.generateNoCookPlan("mercadona", { calories: 2400, protein: 140, budget: 20 });
+    assert.strictEqual(plan.slots.length, 5);
+    assert.strictEqual(plan.threeMealDay, false);
+  });
+
+  t.test("prioridad 'barato' sale MAS BARATA que 'proteina', y con menos proteina", function () {
+    var s = fullSandbox();
+    var cheapT = 0, protT = 0, cheapP = 0, protP = 0, N = 25;
+    for (var i = 0; i < N; i++) {
+      var a = s.generateNoCookPlan("mercadona", { calories: 2600, protein: 160, budget: 25, priority: "cheap" });
+      var b = s.generateNoCookPlan("mercadona", { calories: 2600, protein: 160, budget: 25, priority: "protein" });
+      cheapT += a.shoppingCost; protT += b.shoppingCost;
+      cheapP += a.total.protein;  protP += b.total.protein;
+    }
+    assert.ok(cheapT < protT, "el ticket de 'barato' (" + (cheapT / N).toFixed(2) + ") debe ser menor que el de 'proteina' (" + (protT / N).toFixed(2) + ")");
+    assert.ok(cheapP < protP, "'proteina' debe dar mas proteina: " + (cheapP / N).toFixed(0) + " vs " + (protP / N).toFixed(0));
+  });
+
+  t.test("REGRESION: el producto sin tamano de envase (1084 EUR) no es elegible, su gemelo bueno si", function () {
+    var s = fullSandbox();
+    var pool = s.getNoCookEligiblePool("mercadona");
+    // El catalogo trae DOS "Langostino cocido": el id 83490 con
+    // price 1084,05 y size null (el precio por kilo mal capturado) y el id
+    // 87292, correcto, 6,60 EUR / 600 g. Se filtra por FALTA DE TAMANO, no
+    // por nombre -- filtrar por nombre se llevaria tambien el bueno.
+    assert.strictEqual(pool.some(function (e) { return e.product.id === "83490"; }), false,
+      "el registro sin size no puede ser elegible: no hay racion ni coste fiables");
+    assert.ok(pool.some(function (e) { return e.product.id === "87292"; }),
+      "el mismo producto bien capturado SI debe seguir disponible");
+    // y ningun elegible se queda sin tamano de envase
+    pool.forEach(function (e) {
+      assert.ok(e.serving && e.serving.packageG != null, e.product.name + " sin packageG");
+    });
+  });
+
+  t.test("se prefieren productos de marca propia (estan en cualquier Mercadona)", function () {
+    var s = fullSandbox();
+    var own = 0, all = 0;
+    for (var i = 0; i < 15; i++) {
+      var plan = s.generateNoCookPlan("mercadona", { calories: 2400, protein: 140, budget: 20 });
+      plan.slots.forEach(function (sl) {
+        sl.items.forEach(function (it) {
+          all++;
+          if (/hacendado/i.test(it.brand || "") || /hacendado/i.test(it.name || "")) own++;
+        });
+      });
+    }
+    assert.ok(own / all > 0.7, "solo " + Math.round(own / all * 100) + "% de marca propia; el sesgo de disponibilidad no funciona");
+  });
+
+  t.test("regenerateNoCookSlot(): cambia SOLO esa toma y ofrece productos DISTINTOS", function () {
+    var s = fullSandbox();
+    var opts = { calories: 2600, protein: 160, budget: 20, priority: "balanced" };
+    var plan = s.generateNoCookPlan("mercadona", opts);
+    var before = plan.slots.map(function (sl) {
+      return sl.items.map(function (i) { return i.id; }).join(",");
+    });
+    var oldDinner = plan.slots.filter(function (x) { return x.key === "dinner"; })[0];
+    var oldIds = oldDinner.items.map(function (i) { return i.id; });
+
+    var res = s.regenerateNoCookSlot(plan, "dinner", "mercadona", opts);
+    assert.strictEqual(res.error, undefined, "no deberia fallar: " + res.error);
+    assert.ok(res.slot.items.length > 0);
+    assert.strictEqual(res.slot.key, "dinner");
+
+    // El objetivo del boton es esquivar un producto que tu tienda no tiene:
+    // tiene que traer algo distinto, no barajar los mismos.
+    var newIds = res.slot.items.map(function (i) { return i.id; });
+    var shared = newIds.filter(function (id) { return oldIds.indexOf(id) !== -1; });
+    assert.ok(shared.length < newIds.length,
+      "el reroll devolvio exactamente los mismos productos: " + newIds.join(","));
+
+    // Las demas tomas no se tocan (regenerateNoCookSlot no muta el plan).
+    var after = plan.slots.map(function (sl) {
+      return sl.items.map(function (i) { return i.id; }).join(",");
+    });
+    assert.deepStrictEqual(after, before, "regenerateNoCookSlot no debe mutar el plan");
+  });
+
+  t.test("regenerateNoCookSlot(): clave desconocida -> error, nunca lanza", function () {
+    var s = fullSandbox();
+    var plan = s.generateNoCookPlan("mercadona", { calories: 2400 });
+    assert.strictEqual(s.regenerateNoCookSlot(plan, "no-such", "mercadona", {}).error, "unknown_slot_key");
+    assert.strictEqual(s.regenerateNoCookSlot(null, "dinner", "mercadona", {}).error, "no_plan");
+  });
 }
 
 module.exports = { run: run };
