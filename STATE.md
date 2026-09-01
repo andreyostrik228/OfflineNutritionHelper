@@ -93,6 +93,54 @@
 > HEAD ahora `ee054be`, **384 tests en verde**. Solo T6 (alergias) queda de
 > la lista original.
 >
+> ### ⏩ UPDATE 2026-09-01 (2) — "Sin cocinar" reescrito de cero
+>
+> El usuario rechazó los planes de "sin cocinar": productos al azar sin
+> forma de comida (una cena de ensalada + tortillas de trigo, sin relleno),
+> y envases que solo están buenos frescos (pizza) partidos en raciones
+> sueltas con el resto a la despensa. Diagnóstico: NADA modelaba una
+> ración, así que nada podía modelar una comida — y los macros en pantalla
+> eran los de POR 100 G (una pizza de 430 g decía "245 kcal", son 1.054).
+>
+> Reescrito (aún **sin commitear** al escribir esto):
+> - **`js/data/serving-sizes.js`** (nuevo): gramos/ración, raciones/envase y
+>   política `keeps`/`fresh` por familia de producto; `role` (carrier,
+>   protein, queso, veg, untable, principal, sopa, fruta, lacteo, cereal,
+>   dulce, salado) o `null`. Bebidas/café/azúcar = `null` → no entran en
+>   comidas (mata el bug "la Comida es un refresco y un Aquarius"). Dos
+>   guardas de datos: `isPlausibleForRole` (techo kcal por rol/hoja, caza
+>   el "Banana" de 528 kcal que son chips) y `hasConsistentMacros` (Atwater
+>   0,6–1,5, caza el "Pomelo" de 15 kcal con P10/C20/F10). Cazan cosas
+>   distintas a propósito.
+> - **`js/data/no-cook-templates.js`** (nuevo): 15 formas de comida. Un rol
+>   `required` que no se puede rellenar DESCARTA la plantilla → no hay
+>   bases sin relleno. Cada una con una línea de montaje sin cocina real.
+> - **`js/engine/no-cook-generator.js`** (reescrito): apunta a
+>   calorías/proteína/presupuesto (antes ninguno), escala raciones enteras
+>   arriba y abajo, reutiliza productos ya comprados, y los "fresh" se
+>   consumen ENTEROS el mismo día (una toma, o repartidos comida/cena;
+>   nunca a la despensa). Se probó partirlo en dos y salió peor (dependencia
+>   circular por orden de `<script>`) → se dejó en un archivo, ~620 líneas.
+> - **`render-no-cook.js`**: macros reales por ración, "2 raciones · 140 g",
+>   badge "Envase entero", total por toma, línea de montaje, y un resumen
+>   del día que AVISA cuando la proteína no llega (techo real: la comida
+>   lista rinde ~0,11 g/kcal, 160 g a 2.600 kcal no se alcanza sin cocinar).
+> - **`js/app.js`**: `readNoCookTargets()` pasa el perfil del formulario al
+>   generador (si está relleno; si no, objetivo por defecto).
+> - **`tests/no-cook-meals.test.js`** (nuevo, ~25 tests) con anti-regresión
+>   de los dos bugs. **421 tests en verde.**
+>
+> Medido sobre 300–400 planes: 0 tomas sin sustancia, 0 comidas sin
+> proteína/plato, 0 envases "fresh" a medias, ~86% de kcal dentro de ±10%,
+> coste consumido ~9,7 € (96% dentro de un tope de 14), 8 productos/día.
+>
+> **CLAUDE.md global**: la regla "≤500 líneas" pasó de dura a guía
+> (solo saltaba en archivos nuevos; `plan-generator.js` 1351,
+> `pantry.js` 1467, `app.js` 949 la ignoraban). Añadido `.gitattributes`
+> (`eol=crlf`) para no re-normalizar a mano cada edición, y `.gitignore`
+> para la basura de 0 bytes del hook de auto-commit (`error`, `media`,
+> `top`, ...).
+>
 > ### 0. ¿Estás en la carpeta correcta?
 >
 > El proyecto **se movió**. La ruta buena, y la única con git y tests, es:

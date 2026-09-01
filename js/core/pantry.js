@@ -1236,6 +1236,12 @@ function saveNoCookPlanForToday(slots, storeId) {
         return {
           id: item.id, name: item.name, brand: item.brand || null,
           quantity: item.quantity, unit: item.unit || null,
+          // Raciones y gramos REALES de lo que se come (2026-09-01): sin
+          // esto un plan guardado perdía la cantidad y solo conservaba una
+          // etiqueta ("1 ración"), que es justo lo que se arregló.
+          servings: typeof item.servings === "number" ? item.servings : null,
+          grams: typeof item.grams === "number" ? item.grams : null,
+          kcal: typeof item.kcal === "number" ? item.kcal : null,
           size: typeof item.size === "number" ? item.size : null,
           sizeUnit: item.sizeUnit || null,
           price: typeof item.price === "number" ? item.price : null

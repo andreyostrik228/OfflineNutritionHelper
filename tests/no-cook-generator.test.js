@@ -37,6 +37,8 @@ function makeProduct(id) {
 function freshNoCookSandbox() {
   var sandbox = loadBrowserGlobals([
     projPath("js/data/no-cook-classifier.js"),
+    projPath("js/data/serving-sizes.js"),
+    projPath("js/data/no-cook-templates.js"),
     projPath("js/engine/no-cook-generator.js"),
   ]);
 
@@ -97,19 +99,23 @@ function run(t) {
 
   t.test("getNoCookEligiblePool(storeId): usa el catálogo de la tienda pedida, no el global", function () {
     var s = freshNoCookSandbox();
-    var mercadonaIds = s.getNoCookEligiblePool("mercadona").map(function (e) { return e.product.id; });
-    var alcampoIds = s.getNoCookEligiblePool("alcampo").map(function (e) { return e.product.id; });
+    // Se comparan como CADENA, no con deepStrictEqual sobre el array: el
+    // pool se construye dentro del sandbox `vm`, así que su Array.prototype
+    // no es el de Node y deepStrictEqual falla por realm aunque el
+    // contenido sea idéntico. Lo que se quiere comprobar es el contenido.
+    var mercadonaIds = s.getNoCookEligiblePool("mercadona").map(function (e) { return e.product.id; }).sort().join(",");
+    var alcampoIds = s.getNoCookEligiblePool("alcampo").map(function (e) { return e.product.id; }).sort().join(",");
 
-    assert.deepStrictEqual(mercadonaIds.sort(), ["m1", "m2", "m3"]);
-    assert.deepStrictEqual(alcampoIds.sort(), ["a1", "a2", "a3"]);
+    assert.strictEqual(mercadonaIds, "m1,m2,m3");
+    assert.strictEqual(alcampoIds, "a1,a2,a3");
   });
 
   t.test("getNoCookEligiblePool: la caché es por tienda -- pedir una tienda no contamina el pool de otra ya cacheada", function () {
     var s = freshNoCookSandbox();
     s.getNoCookEligiblePool("mercadona");
-    var alcampoIds = s.getNoCookEligiblePool("alcampo").map(function (e) { return e.product.id; });
+    var alcampoIds = s.getNoCookEligiblePool("alcampo").map(function (e) { return e.product.id; }).sort().join(",");
 
-    assert.deepStrictEqual(alcampoIds.sort(), ["a1", "a2", "a3"]);
+    assert.strictEqual(alcampoIds, "a1,a2,a3");
   });
 
   t.test("getNoCookEligiblePool: llamadas repetidas con la misma tienda devuelven el mismo array cacheado", function () {
@@ -121,9 +127,9 @@ function run(t) {
 
   t.test("getNoCookEligiblePool: sin storeId cae en DEFAULT_STORE_ID", function () {
     var s = freshNoCookSandbox();
-    var withoutArg = s.getNoCookEligiblePool().map(function (e) { return e.product.id; }).sort();
-    var explicit = s.getNoCookEligiblePool("mercadona").map(function (e) { return e.product.id; }).sort();
-    assert.deepStrictEqual(withoutArg, explicit);
+    var withoutArg = s.getNoCookEligiblePool().map(function (e) { return e.product.id; }).sort().join(",");
+    var explicit = s.getNoCookEligiblePool("mercadona").map(function (e) { return e.product.id; }).sort().join(",");
+    assert.strictEqual(withoutArg, explicit);
   });
 
   t.test("generateNoCookPlan(storeId): los productos elegidos vienen de la tienda pedida", function () {

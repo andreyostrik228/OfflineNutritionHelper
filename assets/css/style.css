@@ -1837,6 +1837,83 @@ button:focus-visible {
   color: var(--ink-faint);
 }
 
+/* Resumen del día sin cocinar: lo que suma frente a lo que se pedía. */
+.nocook-summary {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper-raised);
+}
+
+.nocook-summary__row {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+.nocook-summary__row strong { color: var(--ink); }
+
+.nocook-summary__target {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--ink-faint);
+}
+
+.nocook-summary__warn {
+  margin: 8px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--clay-deep);
+}
+
+.nocook-slot__kind {
+  margin-left: 8px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.nocook-slot__kcal {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+/* Cómo se monta la comida, en una línea. */
+.nocook-slot__assembly {
+  margin: 6px 0 10px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink-soft);
+  border-left: 2px solid var(--green-deep);
+  padding-left: 10px;
+}
+
+.nocook-item__grams {
+  font-weight: 400;
+  color: var(--ink-faint);
+}
+
+/* Avisa de que esta toma se acaba el paquete (pizza y similares). */
+.nocook-item__whole {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--clay-wash);
+  color: var(--clay-deep);
+}
+
 .nocook-disclaimer {
   margin: 0 0 12px;
   font-size: 11.5px;

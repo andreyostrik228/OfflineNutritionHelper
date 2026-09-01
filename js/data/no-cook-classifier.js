@@ -159,6 +159,14 @@ var NOT_READY_PHRASES = ["para guisar", "para cocido", "para asar", "para freir"
 
 var READY_KEYWORDS_STAPLE = ["cocid"]; // "cocido"/"cocida" -> ya preparado
 
+// Productos frescos que SÍ están listos para comer pero que nadie se come
+// solos: son condimento o guarnición, no una pieza de fruta ni una ración
+// de verdura. Sin esto, la leaf "Cítricos" mete limones y limas en el pool
+// de fruta y el generador llegó a proponer "1 limón" como snack (visto en
+// un plan real). Se comprueban sobre el NOMBRE porque la taxonomía de
+// Mercadona los mete en la misma leaf que naranjas y mandarinas.
+var NOT_EATEN_ALONE = ["limon", "lima ", "limas", "perejil", "cilantro", "albahaca", "hierbabuena", "jengibre", "guindilla"];
+
 // ── Fallback por nombre (2026-08-24, selector de tienda) ────────────────
 // Todo lo de arriba está tasado contra la taxonomía de categorías
 // CURADA de Mercadona (category/leafCategory tal como los trae
@@ -273,6 +281,12 @@ function classifyNoCookProduct(product) {
   var leaf = product.leafCategory;
 
   if (NO_COOK_EXCLUDED_CATEGORIES.has(category)) return null;
+
+  // Condimentos y guarniciones que no son una ración de nada por sí solos
+  // (ver NOT_EATEN_ALONE). Antes de cualquier regla de leaf/category,
+  // porque el problema es justo que su leaf dice que son fruta o verdura.
+  var rawName = normalizeText(product.name);
+  if (NOT_EATEN_ALONE.some(function (kw) { return rawName.indexOf(kw) !== -1; })) return null;
 
   if (Object.prototype.hasOwnProperty.call(LEAF_RULES, leaf)) {
     return LEAF_RULES[leaf];

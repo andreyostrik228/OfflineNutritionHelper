@@ -67,6 +67,7 @@ var suites = [
   "pricing.test",
   "no-cook-classifier.test",
   "no-cook-generator.test",
+  "no-cook-meals.test",
   "allergens.test",
   "meal-schedule.test",
   "budget-purchase.test",

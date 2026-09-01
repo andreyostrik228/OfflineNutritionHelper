@@ -44,6 +44,8 @@ function noCookSandbox() {
     projPath("js/core/preferences.js"),
     projPath("js/data/product-allergens.js"),
     projPath("js/core/allergens.js"),
+    projPath("js/data/serving-sizes.js"),
+    projPath("js/data/no-cook-templates.js"),
     projPath("js/engine/no-cook-generator.js")
   ]);
 }
@@ -74,7 +76,7 @@ function run(t) {
   t.test("generateNoCookPlan() devuelve un plan completo con allergens.js cargado", function () {
     var s = noCookSandbox();
     var plan = s.generateNoCookPlan("mercadona");
-    assert.ok(plan && Array.isArray(plan.slots) && plan.slots.length === 4);
+    assert.ok(plan && Array.isArray(plan.slots) && plan.slots.length === 5);
     plan.slots.forEach(function (slot) {
       assert.ok(slot.items.length > 0, "cada toma debe traer productos: " + slot.key);
     });

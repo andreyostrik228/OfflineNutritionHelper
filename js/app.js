@@ -884,12 +884,41 @@ document.addEventListener("DOMContentLoaded", function () {
   // ── Plan "sin cocinar" (independiente del sistema de calorías) ───────
   // Generador independiente — no usa calculateProfile/generateDietPlan,
   // no valida el formulario, no toca el sistema de calorías/macros.
+  /**
+   * Objetivos para el plan sin cocinar, leídos del formulario si está
+   * relleno. Desde 2026-09-01 este modo SÍ apunta a calorías, proteína y
+   * presupuesto (antes no miraba ninguno de los tres, y un día generado
+   * podía salir por 47 €). Si el formulario está vacío o no valida, se
+   * devuelve null y el generador usa su objetivo por defecto: el botón
+   * "Sin cocinar" nunca ha exigido rellenar el formulario y sigue sin
+   * hacerlo.
+   * @returns {{calories:number, protein:number, budget:number}|null}
+   */
+  function readNoCookTargets() {
+    if (typeof readForm !== "function" || typeof calculateProfile !== "function") return null;
+    try {
+      var data = readForm();
+      if (typeof validateInput === "function" && validateInput(data)) return null;
+      if (typeof resolveBudget === "function") data.budget = resolveBudget(data);
+      var profile = calculateProfile(data);
+      if (!profile || !profile.calories) return null;
+      return {
+        calories: profile.calories,
+        protein: profile.protein,
+        budget: (typeof data.budget === "number" && isFinite(data.budget)) ? data.budget : undefined,
+      };
+    } catch (err) {
+      console.warn("[no-cook:targets] formulario no utilizable, se usa el objetivo por defecto:", err);
+      return null;
+    }
+  }
+
   function handleNoCook() {
     safeInit("no-cook-run", function () {
       if (typeof runNoCookGenerator !== "function") return;
       if (noCookPanel) noCookPanel.hidden = false;
       // Sin storeId: el generador cae en DEFAULT_STORE_ID (Mercadona).
-      runNoCookGenerator();
+      runNoCookGenerator(undefined, readNoCookTargets());
       if (noCookPanel && typeof noCookPanel.scrollIntoView === "function") {
         noCookPanel.scrollIntoView({ behavior: "smooth", block: "start" });
       }
