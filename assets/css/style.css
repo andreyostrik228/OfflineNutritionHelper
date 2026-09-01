@@ -3581,56 +3581,129 @@ dialog.despensa-dialog[open] {
   }
 }
 
-/* ══ Comprar para varios días ══════════════════════════════════════════
-   Selector encima de la lista de la compra. Envuelve en varias líneas a
-   propósito (flex-wrap): en móvil los cuatro controles no caben en una
-   sola fila y forzarlos sería justo el tipo de desbordamiento que se
-   arregló el 2026-09-01 en .actions y .next-meal-sticky. */
-.shopping-days {
+/* ══ Días de plan (arriba, junto a los botones) ═════════════════════════ */
+.plan-days-field { margin-top: var(--space-4); }
+
+.plan-days {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
   gap: 8px;
-  margin-bottom: var(--space-4);
 }
 
-.shopping-days__label {
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-  margin-right: 2px;
-}
-
-.shopping-days__btn {
+.plan-days__btn {
+  flex: 1 1 auto;
+  min-width: 0;
   border: 1px solid var(--line-strong);
   background: var(--paper-raised);
   color: var(--ink-soft);
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 600;
-  padding: 6px 12px;
-  border-radius: 999px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   white-space: nowrap;
 }
 
-.shopping-days__btn.is-active {
+.plan-days__btn.is-active {
   background: var(--green-deep);
   border-color: var(--green-deep);
   color: var(--hero-ink);
 }
 
-.shopping-days__btn:focus-visible {
-  outline: 2px solid var(--green-deep);
-  outline-offset: 2px;
+.plan-days__btn:focus-visible { outline: 2px solid var(--green-deep); outline-offset: 2px; }
+
+/* ══ Carrusel de días ══════════════════════════════════════════════════
+   Se desliza con scroll-snap NATIVO: el gesto es el del sistema, no uno
+   reimplementado con eventos táctiles, así que hereda la inercia, el
+   rebote y la accesibilidad del navegador. Con un solo día la pista se
+   comporta como el grid de siempre (sin scroll, sin snap). */
+.days-carousel__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
 }
 
-.shopping-days__custom input {
-  width: 76px;
-  padding: 5px 8px;
-  font-size: 12px;
-  border: 1px solid var(--line-strong);
-  border-radius: 999px;
-  background: var(--paper-raised);
+.days-carousel__hint {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink-faint);
+}
+
+/* La flecha se mueve sola: es la señal de que aquí SE PUEDE deslizar, que
+   es justo lo que hay que dejar claro. Se detiene si el usuario pide
+   menos movimiento. */
+.days-carousel__hint::after {
+  content: " 92";
+  display: inline-block;
+  animation: dayHintNudge 1.4s ease-in-out infinite;
+}
+
+@keyframes dayHintNudge {
+  0%, 100% { transform: translateX(0); }
+  50%      { transform: translateX(4px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .days-carousel__hint::after { animation: none; }
+}
+
+.days-carousel__dots {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.days-carousel__dot {
+  width: 7px;
+  height: 7px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--line-strong);
+  cursor: pointer;
+}
+
+.days-carousel__dot.is-active { background: var(--green-deep); }
+
+.days-carousel__track--multi {
+  display: flex;
+  gap: var(--space-4);
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  /* El margen negativo + padding deja ASOMAR el borde del día siguiente:
+     la pista sigue empezando alineada con el contenido, pero se ve que hay
+     algo más a la derecha. Es la segunda señal de que se puede deslizar,
+     además de la flecha. */
+  padding-right: 18%;
+}
+
+.days-carousel__track--multi::-webkit-scrollbar { display: none; }
+
+.days-carousel__track--multi .day-slide {
+  flex: 0 0 100%;
+  scroll-snap-align: start;
+  min-width: 0;
+}
+
+.day-slide__head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: var(--space-3);
+}
+
+.day-slide__n {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.day-slide__of {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink-faint);
 }

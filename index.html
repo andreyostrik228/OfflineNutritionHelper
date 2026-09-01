@@ -400,6 +400,21 @@
 
           </div>
 
+          <!-- ══ Cuantos dias de plan (2026-09-01) ═══════════════════════
+               Arriba, junto a los botones, porque decide QUE se genera --
+               no es una opcion de la lista de la compra. Cada dia es un
+               plan DISTINTO (se llama al generador una vez por dia), no el
+               mismo multiplicado: medido, 7 dias dan 31 platos distintos de
+               35 huecos. ══ -->
+          <div class="field full plan-days-field">
+            <span class="budget-group-label" id="planDaysLabel">Dias de plan</span>
+            <div class="plan-days" id="planDays" role="radiogroup" aria-labelledby="planDaysLabel">
+              <button type="button" class="plan-days__btn is-active" data-days="1" role="radio" aria-checked="true">1 d&iacute;a</button>
+              <button type="button" class="plan-days__btn" data-days="3" role="radio" aria-checked="false">3 d&iacute;as</button>
+              <button type="button" class="plan-days__btn" data-days="7" role="radio" aria-checked="false">7 d&iacute;as</button>
+            </div>
+          </div>
+
           <div class="actions">
             <button type="submit" class="btn-primary"><svg width="16" height="16"><use href="#icon-chef"/></svg> Generar plan</button>
             <button type="button" class="btn-secondary btn-nocook" id="noCookBtn"><svg width="16" height="16"><use href="#icon-bolt"/></svg> Sin cocinar</button>
@@ -473,13 +488,24 @@
 
         <div class="warning" id="warningBox" aria-live="polite"></div>
 
-        <div class="meals-grid" id="mealsContainer">
+        <!-- ══ Carrusel de dias ══════════════════════════════════════════
+             Un dia visible cada vez; se pasa deslizando (scroll-snap
+             nativo, asi el gesto es el del sistema y no uno reimplementado).
+             Con 1 solo dia la cabecera, los puntos y la pista se ocultan y
+             se ve exactamente como antes. ══ -->
+        <div class="days-carousel" id="daysCarousel">
+          <div class="days-carousel__bar" id="daysCarouselBar" hidden>
+            <span class="days-carousel__hint">Desliza para ver los dem&aacute;s d&iacute;as</span>
+            <div class="days-carousel__dots" id="daysDots"></div>
+          </div>
+          <div class="days-carousel__track" id="mealsContainer">
           <div class="meal-card meal-card--empty" data-empty>
             <div class="meal-body">
               <span class="empty-icon"><svg width="28" height="28"><use href="#icon-search"/></svg></span>
               <p><em>Esperando parámetros&hellip;</em></p>
               <p>Configura tus datos en el panel lateral y pulsa <strong>Generar plan</strong>.</p>
             </div>
+          </div>
           </div>
         </div>
 
@@ -500,22 +526,6 @@
         <div class="badge"><svg class="icon" width="14" height="14"><use href="#icon-cart"/></svg> <span id="shoppingCount">0</span> productos</div>
       </div>
 
-      <!-- ══ Comprar para varios dias (2026-09-01) ═══════════════════════
-           Multiplica las CANTIDADES de este mismo plan por N dias antes de
-           calcular paquetes. No inventa menus distintos para cada dia: es
-           "compra de una vez lo de N dias de este plan", que es como se
-           cocina por tandas. El ahorro sale solo, porque un paquete de
-           arroz cubre varios dias y solo se paga una vez. ══ -->
-      <div class="shopping-days" id="shoppingDays" role="group" aria-label="Dias de compra">
-        <span class="shopping-days__label">Comprar para</span>
-        <button type="button" class="shopping-days__btn is-active" data-days="1">1 d&iacute;a</button>
-        <button type="button" class="shopping-days__btn" data-days="3">3 d&iacute;as</button>
-        <button type="button" class="shopping-days__btn" data-days="7">7 d&iacute;as</button>
-        <label class="shopping-days__custom">
-          <span class="visually-hidden">Otro n&uacute;mero de d&iacute;as</span>
-          <input type="number" id="shoppingDaysCustom" min="1" max="30" step="1" placeholder="otro" inputmode="numeric">
-        </label>
-      </div>
       <div class="shopping-summary" id="shoppingSummary"></div>
       <ul class="shopping-list" id="shoppingListContainer"></ul>
 

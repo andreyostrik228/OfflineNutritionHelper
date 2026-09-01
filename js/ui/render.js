@@ -70,7 +70,8 @@
  * Expone (globales):
  *   initRenderRefs(refs)      – conecta las referencias DOM
  *   renderSummary(profile, total) – actualiza las 4 tarjetas de macros
- *   renderMeals(meals)            – construye las tarjetas de cada toma
+ *   renderMeals(meals)            – un solo día (envuelve a renderDayPlans)
+ *   renderDayPlans(days)          – N días como carrusel deslizable
  * ─────────────────────────────────────────────────────────────────────────
  */
 
@@ -125,9 +126,39 @@ function renderSummary(profile, total) {
  * @param {object[]} meals  – array de objetos meal (salida de generateDietPlan)
  */
 function renderMeals(meals) {
-  mealsContainer.innerHTML = meals.map(function (meal) {
-    var total = getMealTotals(meal);
-    return renderMealCard(meal, total);
+  renderDayPlans([{ meals: meals }]);
+}
+
+/**
+ * Pinta N días como diapositivas de un carrusel. Cada día es un plan
+ * DISTINTO (el generador se llama una vez por día), no el mismo
+ * multiplicado -- medido: 7 días dan 31 platos distintos de 35 huecos.
+ *
+ * Con un solo día se pinta una diapositiva sin cabecera ni puntos, así que
+ * la vista de siempre no cambia. Las tarjetas llevan `data-day` para que el
+ * botón "Cambiar" sepa a qué día pertenece la toma que re-tira.
+ *
+ * @param {{meals:object[]}[]} days
+ */
+function renderDayPlans(days) {
+  if (!mealsContainer) return;
+  var list = Array.isArray(days) ? days : [];
+  var multi = list.length > 1;
+
+  mealsContainer.classList.toggle("days-carousel__track--multi", multi);
+
+  mealsContainer.innerHTML = list.map(function (day, index) {
+    var cards = (day.meals || []).map(function (meal) {
+      return renderMealCard(meal, getMealTotals(meal), index);
+    }).join("");
+
+    var head = multi
+      ? '<div class="day-slide__head"><span class="day-slide__n">Día ' + (index + 1) +
+        '</span><span class="day-slide__of">de ' + list.length + "</span></div>"
+      : "";
+
+    return '<section class="day-slide" data-day="' + index + '">' + head +
+      '<div class="meals-grid">' + cards + "</div></section>";
   }).join("");
 }
 
@@ -170,7 +201,7 @@ function renderProductFindBtn(product) {
     '📷</a>';
 }
 
-function renderMealCard(meal, total) {
+function renderMealCard(meal, total, dayIndex) {
   // data-meal-key habilita el salto desde la franja de horario (ver
   // js/ui/render-schedule.js, scrollToMealCard) hasta esta tarjeta.
   var timeBadge = typeof renderMealTimeBadge === "function" ? renderMealTimeBadge(meal) : "";
@@ -187,6 +218,7 @@ function renderMealCard(meal, total) {
         '<div class="meal-head__right">' +
           '<button type="button" class="meal-swap-btn" data-action="swap-plan-meal"' +
             ' data-meal-key="' + escapeHtml(meal.key || "") + '"' +
+            ' data-day="' + (dayIndex || 0) + '"' +
             ' title="Cambiar solo esta toma por otra">&#8635; Cambiar</button>' +
           '<div class="meal-kcal">' + round0(total.kcal) + ' kcal</div>' +
         '</div>' +

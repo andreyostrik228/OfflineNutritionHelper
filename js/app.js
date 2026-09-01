@@ -184,6 +184,16 @@ document.addEventListener("DOMContentLoaded", function () {
   var lastGeneratedDayOptions = null;
   // profile/data/report del plan actual -- necesarios para re-pintar
   // resumen/insights/avisos tras "Cambiar" una toma (swap-plan-meal).
+  // Cuántos días pide el usuario (1/3/7). Declarado AQUÍ, con el resto del
+  // estado, y no junto a su listener: `var` se eleva pero su VALOR no, así
+  // que dejarlo abajo lo hacía `undefined` en runGeneration y el bucle de
+  // días no se ejecutaba nunca -- siempre salía un solo día.
+  var planDays = 1;
+
+  // Todos los días del plan actual (1..7). El día 1 es también
+  // `lastGeneratedMeals`, que es lo que confirma "Confirmar plan de hoy":
+  // se guarda HOY, no la semana entera.
+  var lastGeneratedDays = null;
   var lastGeneratedProfile = null;
   var lastGeneratedData = null;
   var lastGeneratedReport = null;
@@ -257,6 +267,7 @@ document.addEventListener("DOMContentLoaded", function () {
     lastGeneratedMeals = null;
     lastGeneratedStore = null;
     lastGeneratedDayOptions = null;
+    lastGeneratedDays = null;
     lastGeneratedProfile = null;
     lastGeneratedData = null;
     lastGeneratedReport = null;
@@ -277,12 +288,15 @@ document.addEventListener("DOMContentLoaded", function () {
     var btn = event.target.closest('button[data-action="swap-plan-meal"]');
     if (!btn) return;
     var mealKey = btn.dataset.mealKey;
-    if (!mealKey || !lastGeneratedMeals || !lastGeneratedDayOptions) return;
+    var dayIndex = Number(btn.dataset.day) || 0;
+    var dayMeals = (lastGeneratedDays && lastGeneratedDays[dayIndex])
+      ? lastGeneratedDays[dayIndex].meals : lastGeneratedMeals;
+    if (!mealKey || !dayMeals || !lastGeneratedDayOptions) return;
     if (typeof regeneratePlanMeal !== "function") return;
 
     btn.disabled = true;
     var pantryState = (typeof getPantryState === "function") ? getPantryState() : null;
-    var res = regeneratePlanMeal(lastGeneratedMeals, mealKey, lastGeneratedDayOptions, lastGeneratedStore, pantryState);
+    var res = regeneratePlanMeal(dayMeals, mealKey, lastGeneratedDayOptions, lastGeneratedStore, pantryState);
 
     if (!res || res.error || !res.meal) {
       btn.disabled = false;
@@ -292,16 +306,16 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     var idx = -1;
-    for (var i = 0; i < lastGeneratedMeals.length; i++) {
-      if (lastGeneratedMeals[i].key === mealKey) { idx = i; break; }
+    for (var i = 0; i < dayMeals.length; i++) {
+      if (dayMeals[i].key === mealKey) { idx = i; break; }
     }
     if (idx === -1) { btn.disabled = false; return; }
 
     // Conserva el horario de la toma: un cambio de plato no mueve la hora.
-    var old = lastGeneratedMeals[idx];
+    var old = dayMeals[idx];
     if (typeof old.time === "string") res.meal.time = old.time;
     if (typeof old.timeMinutes === "number") res.meal.timeMinutes = old.timeMinutes;
-    lastGeneratedMeals[idx] = res.meal;
+    dayMeals[idx] = res.meal;
 
     rerenderCurrentPlan();
   }
@@ -442,8 +456,28 @@ document.addEventListener("DOMContentLoaded", function () {
           }
         });
 
+        // Días 2..N. El primero ya está generado (`result`); los demás son
+        // llamadas nuevas al MISMO generador, así que cada uno sale con sus
+        // propios platos. No se comparte estado entre días a propósito: el
+        // presupuesto es diario, y mezclarlos haría que el día 5 dependiera
+        // de lo que salió el día 1.
+        var days = [result];
+        for (var d = 1; d < planDays; d++) {
+          var extra = generateDietPlan(profile, data);
+          safeInit("meal-schedule-day-" + d, function () {
+            if (typeof computeMealSchedule === "function") {
+              extra.meals = computeMealSchedule(extra.meals, readScheduleSettings());
+            }
+          });
+          days.push(extra);
+        }
+
+        // El resumen y los avisos siguen siendo del DÍA 1: son objetivos
+        // diarios (kcal, proteína), no semanales. Multiplicarlos por 7 sería
+        // otra cifra que no significa nada.
         renderSummary(profile, result.total);
-        renderMeals(result.meals);
+        renderDayPlans(days);
+        renderDayDots(days.length);
         safeInit("schedule-timeline-render", function () {
           if (typeof renderScheduleTimeline === "function") renderScheduleTimeline(result.meals);
         });
@@ -451,9 +485,14 @@ document.addEventListener("DOMContentLoaded", function () {
         renderWarnings(profile, result, data);
         if (typeof renderShoppingList === "function") {
           safeInit("shopping-list-render", function () {
-            renderShoppingList(result.meals, result.report && result.report.store);
+            // La compra SÍ es de todos los días juntos: se juntan las tomas
+            // de los N días y se agregan por ingrediente, así un paquete que
+            // cubre varios días se paga una vez.
+            var allMeals = days.reduce(function (acc, day) { return acc.concat(day.meals); }, []);
+            renderShoppingList(allMeals, result.report && result.report.store, days.length);
           });
         }
+        lastGeneratedDays = days;
 
         // Guardado para que "Confirmar plan de hoy" pueda actuar sobre
         // este plan concreto sin tener que regenerarlo.
@@ -716,33 +755,87 @@ document.addEventListener("DOMContentLoaded", function () {
   // Cambia SOLO la lista de la compra: las tarjetas de comida siguen
   // mostrando la ración de un día, que es lo que se cocina. Multiplicar
   // ahí también sería mentir sobre el plato.
-  safeInit("shopping-days-init", function () {
-    var group = document.getElementById("shoppingDays");
-    var custom = document.getElementById("shoppingDaysCustom");
+  // ── Días de plan (2026-09-01) ────────────────────────────────────────
+  // Vive ARRIBA, junto a los botones, porque decide QUÉ se genera. Antes
+  // estaba abajo, en la lista de la compra, y solo multiplicaba las
+  // cantidades del mismo día: eso no es una semana de menús, es la misma
+  // comida siete veces. Ahora se llama al generador una vez por día y cada
+  // uno sale distinto (medido: 7 días dan 31 platos distintos de 35).
+  safeInit("plan-days-init", function () {
+    var group = document.getElementById("planDays");
     if (!group) return;
-
-    function repaint(days, fromCustom) {
-      if (typeof renderShoppingList !== "function" || !lastGeneratedMeals) return;
-      renderShoppingList(lastGeneratedMeals, lastGeneratedStore, days);
-      var applied = (typeof getShoppingDays === "function") ? getShoppingDays() : days;
-      group.querySelectorAll(".shopping-days__btn").forEach(function (b) {
-        b.classList.toggle("is-active", !fromCustom && Number(b.dataset.days) === applied);
+    group.addEventListener("click", function (e) {
+      var btn = e.target.closest(".plan-days__btn");
+      if (!btn) return;
+      planDays = Number(btn.dataset.days) || 1;
+      group.querySelectorAll(".plan-days__btn").forEach(function (b) {
+        var on = b === btn;
+        b.classList.toggle("is-active", on);
+        b.setAttribute("aria-checked", on ? "true" : "false");
       });
-      if (!fromCustom && custom) custom.value = "";
+    });
+  });
+
+  // Puntos + botón por día. El deslizamiento en sí lo hace el navegador
+  // (scroll-snap en CSS): aquí solo se sincroniza el punto activo con lo
+  // que se está viendo, y se permite saltar pulsando un punto.
+  function renderDayDots(count) {
+    var bar = document.getElementById("daysCarouselBar");
+    var dots = document.getElementById("daysDots");
+    if (!bar || !dots) return;
+
+    if (count <= 1) { bar.hidden = true; dots.innerHTML = ""; return; }
+    bar.hidden = false;
+    var html = "";
+    for (var i = 0; i < count; i++) {
+      html += '<button type="button" class="days-carousel__dot' + (i === 0 ? " is-active" : "") +
+        '" data-go="' + i + '" aria-label="Día ' + (i + 1) + '"></button>';
+    }
+    dots.innerHTML = html;
+  }
+
+  safeInit("day-carousel-init", function () {
+    var track = mealsContainer;
+    var dots = document.getElementById("daysDots");
+    if (!track || !dots) return;
+
+    // Paso entre diapositivas: ancho de una + hueco. Se calcula así y no
+    // con `offsetLeft` porque offsetLeft es relativo al offsetParent, que
+    // aquí NO es la pista -- pulsar un punto no movía el carrusel.
+    function slideStep(slides) {
+      if (slides.length < 2) return 0;
+      var a = slides[0].getBoundingClientRect();
+      var b = slides[1].getBoundingClientRect();
+      return Math.max(1, b.left - a.left);
     }
 
-    group.addEventListener("click", function (e) {
-      var btn = e.target.closest(".shopping-days__btn");
-      if (!btn) return;
-      repaint(Number(btn.dataset.days), false);
+    function setActiveDot(i) {
+      dots.querySelectorAll(".days-carousel__dot").forEach(function (d, n) {
+        d.classList.toggle("is-active", n === i);
+      });
+    }
+
+    dots.addEventListener("click", function (e) {
+      var dot = e.target.closest(".days-carousel__dot");
+      if (!dot) return;
+      var i = Number(dot.dataset.go);
+      var slides = track.querySelectorAll(".day-slide");
+      track.scrollTo({ left: i * slideStep(slides), behavior: "smooth" });
+      // Se marca YA, sin esperar al evento `scroll`: con desplazamiento
+      // suave ese evento puede no llegar nunca con la posición final, y el
+      // punto se quedaba en el día 1 aunque el carrusel sí se moviera.
+      setActiveDot(i);
     });
 
-    if (custom) {
-      custom.addEventListener("input", function () {
-        if (custom.value === "") return;
-        repaint(Number(custom.value), true);
-      });
-    }
+    // El punto activo se deduce del scroll, no de quién pulsó: así también
+    // acierta cuando el usuario desliza con el dedo.
+    track.addEventListener("scroll", function () {
+      var slides = track.querySelectorAll(".day-slide");
+      if (slides.length < 2) return;
+      var step = slideStep(slides);
+      var i = step ? Math.round(track.scrollLeft / step) : 0;
+      setActiveDot(Math.min(i, slides.length - 1));
+    }, { passive: true });
   });
 
   // ── Lista de la compra (aún vacía hasta generar un plan) ─────────────

@@ -35,8 +35,8 @@
  *
  * Expone (globales):
  *   initShoppingListRefs(refs)
- *   renderShoppingList(meals, storeId, days)
- *   getShoppingDays() / setShoppingDays(n)
+ *   renderShoppingList(meals, storeId, days) - `meals` son ya las tomas de
+ *     TODOS los días; `days` solo etiqueta y calcula el coste por día
  * ─────────────────────────────────────────────────────────────────────────
  */
 
@@ -66,55 +66,24 @@ function initShoppingListRefs(refs) {
  * @param {object[]} meals - salida de generateDietPlan().meals
  * @returns {{name:string, requiredGrams:number, usageCost:number, meals:string[]}[]}
  */
-// ── Compra para varios días (2026-09-01) ────────────────────────────────
-// Se multiplican los GRAMOS de este mismo plan por N días ANTES de agregar
-// y de calcular paquetes. Es deliberado que no invente un menú distinto por
-// día: lo que el usuario pidió es comprar de una vez para la semana, que es
-// como se cocina por tandas. Y el ahorro aparece solo, sin lógica extra: un
-// paquete de arroz de 500 g cubre varios días y se paga UNA vez, así que el
-// coste por día baja al subir N.
+// ── Compra de varios días (2026-09-01) ──────────────────────────────────
+// `days` ya NO multiplica nada: se recibe la lista COMPLETA de tomas de los
+// N días, cada uno con sus propios platos, y se agrega por ingrediente como
+// siempre. El número solo sirve para etiquetar y para el coste por día.
+//
+// La primera versión sí multiplicaba las cantidades de un único día. Era lo
+// que el usuario NO quería: eso no es una semana de menús, es la misma
+// comida siete veces.
 var _shoppingDays = 1;
 
-/** @returns {number} días para los que se está calculando la compra */
+/** @returns {number} días que cubre la lista actual */
 function getShoppingDays() { return _shoppingDays; }
 
-/**
- * @param {number} n - 1..30; cualquier otra cosa se ignora (no se rompe la
- *   lista por un valor raro escrito a mano en el campo "otro")
- */
+/** @param {number} n */
 function setShoppingDays(n) {
   var v = Math.round(Number(n));
   if (isFinite(v) && v >= 1 && v <= 30) _shoppingDays = v;
   return _shoppingDays;
-}
-
-/**
- * Copia las tomas con los gramos multiplicados por `days`. NO muta el plan:
- * las tarjetas de comida siguen mostrando la ración de UN día, que es lo
- * que se cocina; solo cambia lo que hay que comprar.
- * @param {object[]} meals
- * @param {number} days
- * @returns {object[]}
- */
-function scaleMealsForDays(meals, days) {
-  if (!Array.isArray(meals) || !(days > 1)) return meals || [];
-  return meals.map(function (meal) {
-    // Se COPIAN todos los campos del ítem y solo se escalan los que son
-    // cantidades. Quedarse con {name, grams} dejaba fuera `cost`, y
-    // aggregateIngredientUsage() lo usa para el "coste de uso": el resumen
-    // mostraba 0 € en cuanto se pedían 2 días o más. `label` de la toma
-    // hace falta por el mismo motivo (la lista de tomas de cada línea).
-    var copy = {};
-    for (var k in meal) { if (k !== "items") copy[k] = meal[k]; }
-    copy.items = (meal.items || []).map(function (it) {
-      var item = {};
-      for (var f in it) item[f] = it[f];
-      item.grams = (it.grams || 0) * days;
-      if (typeof it.cost === "number") item.cost = it.cost * days;
-      return item;
-    });
-    return copy;
-  });
 }
 
 function aggregateIngredientUsage(meals) {
@@ -188,7 +157,7 @@ function renderShoppingList(meals, storeId, days) {
 
   if (days !== undefined) setShoppingDays(days);
   var n = getShoppingDays();
-  var items = buildShoppingItems(scaleMealsForDays(meals || [], n), storeId);
+  var items = buildShoppingItems(meals || [], storeId);
 
   if (items.length === 0) {
     shoppingPanel.hidden = true;

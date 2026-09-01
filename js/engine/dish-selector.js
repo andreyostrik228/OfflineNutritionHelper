@@ -754,6 +754,24 @@ function pickWeightedFromTop(ranked) {
 function pickDish(category, data, usedState, tier, maxCost, target, storeId, targetSpend, committedGrams, pantryState) {
   var relax = resolveTier(tier);
   var pool = filterDishesByTimeTaste(category, data.cookTime, data.taste, relax);
+
+  // No repetir un plato que YA sale hoy. Esto era solo una penalización de
+  // puntuación (-10 en diversityScore), y una penalización se puede
+  // perder: en la rama `tight` la diversidad pesa 1, así que 13 puntos no
+  // sobreviven a un macroFit x100. Resultado medido: el 14% de los planes
+  // repetía un plato dentro del mismo día, y casi siempre era el snack
+  // (snack y snack2 comparten categoría, así que compiten por los mismos
+  // platos). Con 7 días en pantalla a la vez, eso se ve enseguida.
+  //
+  // Se hace como FILTRO y no como peso porque es una regla, no una
+  // preferencia. Y se cae al pool completo si al quitarlos no queda nada:
+  // antes repetir que dejar la toma vacía.
+  if (usedState && usedState.usedNames && usedState.usedNames.length) {
+    var fresh = pool.filter(function (d) {
+      return usedState.usedNames.indexOf(d.name) === -1;
+    });
+    if (fresh.length) pool = fresh;
+  }
   var spendTarget = (typeof targetSpend === "number" && isFinite(targetSpend) && targetSpend > 0)
     ? targetSpend
     : maxCost;

@@ -452,6 +452,18 @@ function run(t) {
   //   seed=7: 3795.2 -> 3351.2 kcal, items [3,3,3,2,3] -> [3,4,4,2,2],
   //           sigue "perfect"/tier 0, 0 violaciones, dentro de la
   //           tolerancia del 15% del propio informe.
+  // ── RECAPTURA 2026-09-01c: no repetir plato dentro del mismo día ─────
+  // Cambia el ALGORITMO, no solo los datos (a diferencia de las dos
+  // recapturas anteriores): pickDish ahora FILTRA los platos que ya salen
+  // hoy en vez de solo penalizarlos. La penalización (-10 en
+  // diversityScore) se perdía en la rama `tight`, donde la diversidad pesa
+  // 1: el 14% de los planes repetía un plato, casi siempre el snack, porque
+  // snack y snack2 comparten categoría. Medido tras el filtro: 0 de 200 a
+  // 8 EUR y 0 de 200 a 16 EUR, con las kcal y el coste medios intactos.
+  //
+  //   seed=42: 2664.0 -> 2747.9 kcal, compra 12,67 -> 13,99 EUR, vuelve a tier 0
+  //   seed=7:  3825.0 -> 3756.2 kcal, compra 18,77 -> 19,50 EUR, sigue "perfect"
+
   // ── RECAPTURA 2026-09-01b: 16 platos llanos (proteína + guarnición) ──
   // dishes.js 348 -> 364. Antes NO había ni un solo plato principal de dos
   // ingredientes (los 42 que había eran todos snacks) ni gречka con carne:
@@ -477,6 +489,21 @@ function run(t) {
   //   seed=7:  3351.2 -> 3797.0 kcal, compra 19,49 €, pasa a tier 2 "adjusted"
   //            (con 20 € en vez de 28 hace falta relajar para llegar a 3.800)
   // Ninguno tiene violaciones: los dos planes siguen siendo válidos.
+  t.test("INVARIANTE: ningun plato se repite dentro del mismo dia", function () {
+    // snack y snack2 comparten categoria, asi que compiten por los mismos
+    // platos: era ahi donde se colaba el 14% de repeticiones.
+    runsByProfile.forEach(function (rp) {
+      rp.runs.forEach(function (result, i) {
+        var names = result.meals.map(function (m) { return m.dishName; });
+        var seen = {};
+        names.forEach(function (n) {
+          assert.ok(!seen[n], rp.def.name + " (run " + i + "): plato repetido en el mismo dia -> " + n);
+          seen[n] = true;
+        });
+      });
+    });
+  });
+
   t.test("golden-master (seed=42): recomposición/Equilibrado -- agregados exactos del resultado actual", function () {
     var s = freshEngineSandbox();
     seedRandomInContext(s, 42);
@@ -487,15 +514,15 @@ function run(t) {
     // (realm distinto) antes de comparar contra literales del host -- ver
     // comentario del test #1 más arriba para el motivo completo.
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.key; }))), EXPECTED_MEAL_KEYS);
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 2, 2, 2, 2]);
-    assert.strictEqual(result.total.kcal, 2664);
-    assert.strictEqual(result.total.protein, 155.89999999999998);
-    assert.strictEqual(result.total.carbs, 293);
-    assert.strictEqual(result.total.fat, 96.4);
-    assert.strictEqual(result.total.cost, 6.86);
-    assert.strictEqual(result.total.purchaseCost, 12.67);
-    assert.strictEqual(result.report.status, "adjusted");
-    assert.strictEqual(result.report.tierUsed, 1);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [4, 2, 3, 3, 2]);
+    assert.strictEqual(result.total.kcal, 2747.9);
+    assert.strictEqual(result.total.protein, 133.7);
+    assert.strictEqual(result.total.carbs, 299.3);
+    assert.strictEqual(result.total.fat, 101.89999999999999);
+    assert.strictEqual(result.total.cost, 6.62);
+    assert.strictEqual(result.total.purchaseCost, 13.99);
+    assert.strictEqual(result.report.status, "perfect");
+    assert.strictEqual(result.report.tierUsed, 0);
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.report.violations)), []);
   });
 
@@ -507,12 +534,12 @@ function run(t) {
 
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.key; }))), EXPECTED_MEAL_KEYS);
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 2, 3, 2, 2]);
-    assert.strictEqual(result.total.kcal, 3824.9999999999995);
-    assert.strictEqual(result.total.protein, 270.8);
-    assert.strictEqual(result.total.carbs, 397.69999999999993);
-    assert.strictEqual(result.total.fat, 123.10000000000001);
-    assert.strictEqual(result.total.cost, 11.36);
-    assert.strictEqual(result.total.purchaseCost, 18.77);
+    assert.strictEqual(result.total.kcal, 3756.2);
+    assert.strictEqual(result.total.protein, 279.9);
+    assert.strictEqual(result.total.carbs, 357.19999999999993);
+    assert.strictEqual(result.total.fat, 131.20000000000002);
+    assert.strictEqual(result.total.cost, 11.48);
+    assert.strictEqual(result.total.purchaseCost, 19.5);
     assert.strictEqual(result.report.status, "perfect");
     assert.strictEqual(result.report.tierUsed, 0);
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.report.violations)), []);

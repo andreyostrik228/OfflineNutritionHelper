@@ -262,6 +262,45 @@
 > a fabricarse un plato de prueba en vez de buscar uno en el catálogo: si no,
 > se apagaba solo justo al completar las recetas.
 >
+> ### ⏩ UPDATE 2026-09-01 (6) — planes de N días con carrusel
+>
+> La primera versión de "varios días" solo MULTIPLICABA las cantidades de un
+> mismo día. El usuario lo rechazó, con razón: eso no es una semana de
+> menús, es la misma comida siete veces. Rehecho:
+>
+> - El selector (1/3/7) sube ARRIBA, junto a los botones: decide QUÉ se
+>   genera, no cómo se presenta la compra. El de la lista de la compra se
+>   ha quitado.
+> - Se llama al generador UNA VEZ POR DÍA, así que cada día trae sus
+>   propios platos. No hizo falta tocar el motor: medido antes de escribir
+>   nada, 7 llamadas dan 31 platos distintos de 35 huecos.
+> - Un día visible cada vez, en un carrusel con `scroll-snap` NATIVO (el
+>   gesto es el del sistema, no uno reimplementado con eventos táctiles).
+>   Que se puede deslizar se ve por tres señales: la flecha animada, los
+>   puntos, y que el día siguiente ASOMA por la derecha (`padding-right`).
+> - Abajo, la lista de la compra de TODOS los días juntos, agregada por
+>   ingrediente: un paquete que cubre varios días se paga una vez.
+> - El resumen y los avisos siguen siendo del DÍA 1: son objetivos DIARIOS
+>   (kcal, proteína). Multiplicarlos por 7 sería una cifra sin significado.
+>
+> **Bug real que salió al ver 7 días juntos:** el 14% de los planes repetía
+> un plato dentro del MISMO día, casi siempre el snack (snack y snack2
+> comparten categoría). No repetir era solo una penalización de puntuación
+> (-10 en `diversityScore`), y una penalización se pierde: en la rama
+> `tight` la diversidad pesa 1, así que 13 puntos no sobreviven a un
+> `macroFit × 100`. Ahora `pickDish` FILTRA los platos ya usados hoy (con
+> caída al pool completo si al quitarlos no queda ninguno). Medido después:
+> 0 de 200 a 8 € y 0 de 200 a 16 €, con kcal y coste medios intactos.
+> Hay un test de invariante nuevo. Golden-masters recapturados: esta vez
+> cambia el ALGORITMO, no solo los datos.
+>
+> Detalle de implementación que costó encontrar: pulsar un punto no movía
+> el carrusel porque `slide.offsetLeft` es relativo al `offsetParent`, que
+> NO es la pista; se calcula el paso midiendo dos diapositivas. Y el punto
+> activo se marca YA al pulsar, sin esperar al evento `scroll`: con
+> desplazamiento suave ese evento puede no llegar nunca con la posición
+> final. **445 tests.**
+>
 > ### 🛒 SOLO MERCADONA — decisión del usuario (2026-09-01)
 >
 > **Hasta que el usuario diga lo contrario, el producto trabaja SOLO con
