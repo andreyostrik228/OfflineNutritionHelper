@@ -815,16 +815,107 @@ document.addEventListener("DOMContentLoaded", function () {
       });
     }
 
+    // ── Conservar la TOMA al cambiar de día (2026-09-01) ───────────────
+    // Si estás mirando el snack del día 1 y deslizas, quieres el snack del
+    // día 2, no volver al desayuno.
+    //
+    // Se conserva la CLAVE de la toma (breakfast/lunch/snack/...), no su
+    // posición ni los píxeles. Los píxeles no valen porque cada plato tiene
+    // distinto número de ingredientes y los días no miden lo mismo; y el
+    // índice tampoco, porque el horario reordena las tomas y la misma
+    // comida puede ser la 3ª un día y la 2ª otro (visto midiendo: "Comida"
+    // era índice 3 el día 1 y 2 el día 2). La clave es lo único estable.
+    var currentDay = 0;
+    var topMealKey = null;
+
+    // Línea de referencia para decidir "en qué toma estás". Debe coincidir
+    // con el `scroll-margin-top` de .meal-card, que es lo que usa
+    // scrollIntoView para dejar la tarjeta a esa misma altura.
+    var TOP_REF = 90;
+
+    function cardsOf(dayIndex) {
+      var slide = track.querySelectorAll(".day-slide")[dayIndex];
+      return slide ? slide.querySelectorAll(".meal-card") : [];
+    }
+
+    function rememberTopMeal() {
+      var cards = cardsOf(currentDay);
+      if (!cards.length) return;
+      var best = null;
+      for (var i = 0; i < cards.length; i++) {
+        if (cards[i].getBoundingClientRect().top <= TOP_REF) best = cards[i];
+      }
+      // Arriba del todo aún no hay ninguna tarjeta pasada: no se toca la
+      // última toma recordada, así el usuario no pierde el sitio por
+      // rebotar un poco en la cabecera.
+      if (best) topMealKey = best.getAttribute("data-meal-key") || null;
+    }
+
+    function alignToSameMeal(dayIndex) {
+      if (!topMealKey) return;
+      var slide = track.querySelectorAll(".day-slide")[dayIndex];
+      if (!slide) return;
+      var card = slide.querySelector('.meal-card[data-meal-key="' + topMealKey + '"]');
+      // Si esa toma no existe en el día nuevo (3 tomas en vez de 5 con
+      // presupuesto bajo), se queda donde está en vez de saltar a ciegas.
+      if (!card) return;
+      // scrollIntoView + `scroll-margin-top` (CSS) en vez de calcular la
+      // posición a mano. La aritmética con getBoundingClientRect dependía
+      // de CUÁNDO se midiera: salía 95px corta antes de un rAF y 125px
+      // larga después. El navegador lo calcula con la geometría real en el
+      // momento de la llamada y respeta el margen de anclaje.
+      card.scrollIntoView({ block: "start", behavior: "auto" });
+    }
+
+    // Mientras NO se cambia de día, se va anotando en qué toma está el
+    // usuario; ese índice es el que se reaplica al cambiar.
+    window.addEventListener("scroll", rememberTopMeal, { passive: true });
+
+    // El punto se marca EN CUANTO se detecta el día nuevo (respuesta
+    // inmediata), pero la realineación vertical espera a que el carrusel
+    // haya PARADO. Hacerla durante el desplazamiento fue el error: se medía
+    // una geometría que aún se movía y el resultado caía a varios cientos
+    // de píxeles, distinto en cada intento. Se usa `scrollend` donde existe
+    // y un pequeño retardo donde no.
+    var settleTimer = null;
+    var pendingDay = null;
+
+    function scheduleAlign(i) {
+      pendingDay = i;
+      if ("onscrollend" in window) return;   // lo dispara el evento nativo
+      if (settleTimer) clearTimeout(settleTimer);
+      settleTimer = setTimeout(function () { flushAlign(); }, 140);
+    }
+
+    function flushAlign() {
+      if (pendingDay === null) return;
+      var i = pendingDay;
+      pendingDay = null;
+      alignToSameMeal(i);
+    }
+
+    if ("onscrollend" in window) {
+      track.addEventListener("scrollend", flushAlign);
+    }
+
+    function goToDay(i) {
+      if (i === currentDay) return;
+      currentDay = i;
+      setActiveDot(i);
+      scheduleAlign(i);
+    }
+
     dots.addEventListener("click", function (e) {
       var dot = e.target.closest(".days-carousel__dot");
       if (!dot) return;
       var i = Number(dot.dataset.go);
       var slides = track.querySelectorAll(".day-slide");
+      rememberTopMeal();
       track.scrollTo({ left: i * slideStep(slides), behavior: "smooth" });
       // Se marca YA, sin esperar al evento `scroll`: con desplazamiento
       // suave ese evento puede no llegar nunca con la posición final, y el
       // punto se quedaba en el día 1 aunque el carrusel sí se moviera.
-      setActiveDot(i);
+      goToDay(i);
     });
 
     // El punto activo se deduce del scroll, no de quién pulsó: así también
@@ -834,7 +925,7 @@ document.addEventListener("DOMContentLoaded", function () {
       if (slides.length < 2) return;
       var step = slideStep(slides);
       var i = step ? Math.round(track.scrollLeft / step) : 0;
-      setActiveDot(Math.min(i, slides.length - 1));
+      goToDay(Math.min(i, slides.length - 1));
     }, { passive: true });
   });
 

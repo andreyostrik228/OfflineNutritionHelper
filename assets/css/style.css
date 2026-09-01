@@ -3686,6 +3686,11 @@ dialog.despensa-dialog[open] {
 .days-carousel__track--multi .day-slide {
   flex: 0 0 100%;
   scroll-snap-align: start;
+  /* IMÁN FUERTE: obliga a PARAR en cada día. Sin esto, `mandatory` solo
+     garantiza que se acabe en un punto de anclaje, pero un gesto rápido
+     puede saltarse tres o cuatro días de una vez -- que es justo lo que
+     pasaba. Con `always` cada deslizamiento avanza como mucho un día. */
+  scroll-snap-stop: always;
   min-width: 0;
 }
 
@@ -3707,3 +3712,9 @@ dialog.despensa-dialog[open] {
   font-weight: 600;
   color: var(--ink-faint);
 }
+
+/* Ancla de desplazamiento de las tarjetas de comida. Lo usa
+   scrollIntoView() al cambiar de día para dejar la MISMA toma a la misma
+   altura (ver alignToSameMeal en js/app.js). Debe coincidir con TOP_REF
+   allí; si cambia uno, cambia el otro. */
+.meal-card { scroll-margin-top: 90px; }

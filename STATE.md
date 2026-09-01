@@ -301,6 +301,41 @@
 > desplazamiento suave ese evento puede no llegar nunca con la posición
 > final. **445 tests.**
 >
+> ### ⏩ UPDATE 2026-09-01 (7) — imán del carrusel y conservar la toma
+>
+> Dos ajustes pedidos tras probar el carrusel en el móvil:
+>
+> - **Imán más fuerte.** `scroll-snap-type: x mandatory` garantiza acabar en
+>   un anclaje, pero un gesto rápido se saltaba tres o cuatro días. Añadido
+>   `scroll-snap-stop: always` a `.day-slide`: obliga a PARAR en cada día,
+>   así un deslizamiento avanza como mucho uno.
+> - **Conservar la toma al cambiar de día.** Si estás en el snack del día 1
+>   y deslizas, ahora sales en el snack del día 2, no en el desayuno. Se
+>   conserva la CLAVE de la toma (breakfast/lunch/snack/...), no los píxeles
+>   ni el índice: los píxeles no valen porque cada plato tiene distinto
+>   número de ingredientes, y el índice tampoco porque el horario reordena
+>   las tomas (medido: "Comida" era la 3ª el día 1 y la 2ª el día 2).
+>
+> **Lo que costó, por si se repite:** la realineación NO puede hacerse
+> dentro del manejador de `scroll` del carrusel. Ahí la geometría todavía se
+> está moviendo y el resultado caía distinto en cada intento (95px corto sin
+> `requestAnimationFrame`, 125px largo con él, cientos de píxeles con
+> `scrollIntoView`). Ahora se hace al PARAR: evento `scrollend` donde existe
+> y un retardo de 140ms donde no. El punto activo sí se marca al instante,
+> que es lo que da sensación de respuesta.
+>
+> El desplazamiento final lo calcula el navegador con
+> `scrollIntoView({block:"start"})` + `scroll-margin-top: 90px` en
+> `.meal-card`, en vez de aritmética con `getBoundingClientRect` — ese valor
+> depende de CUÁNDO se mida y era la fuente del problema. Si se cambia el
+> margen, hay que cambiar `TOP_REF` en app.js: van emparejados.
+>
+> **Aviso:** verificado con desplazamientos programados, no con un dedo
+> real. El navegador de la herramienta ya mintió dos veces hoy (emulación de
+> viewport y eventos `scroll` sintéticos), así que la precisión exacta del
+> anclaje está sin confirmar en un móvil de verdad; lo que sí se confirma es
+> que la toma correcta domina la pantalla y que nunca se vuelve al desayuno.
+>
 > ### 🛒 SOLO MERCADONA — decisión del usuario (2026-09-01)
 >
 > **Hasta que el usuario diga lo contrario, el producto trabaja SOLO con
