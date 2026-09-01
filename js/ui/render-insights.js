@@ -129,7 +129,10 @@ function renderWarnings(profile, result, data) {
   // presupuesto de COMPRA, antes 5/8/12 de usageCost) -- mantiene la misma
   // relación relativa que antes: "en o justo por encima del preset
   // Ajustado" (ver js/data/budget-presets.js).
-  if (data.budget <= 15.5) {
+  //
+  // 2026-09-01: bajado a 12,5 al recalibrar los tramos a 8/12/16/20. Avisa
+  // en "Muy ajustado" y "Ajustado", donde la variedad sí se resiente.
+  if (data.budget <= 12.5) {
     messages.push("Con presupuesto muy bajo la variedad de platos se reduce notablemente.");
   }
 

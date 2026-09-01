@@ -548,6 +548,7 @@ document.addEventListener("DOMContentLoaded", function () {
     setVal("cookTime", settings.cookTime);
     setVal("taste", settings.taste);
     setVal("cuisine", settings.cuisine);
+    setVal("priority", settings.priority);
     setVal("wakeTime", settings.wakeTime);
     setVal("sleepTime", settings.sleepTime);
 
@@ -680,12 +681,18 @@ document.addEventListener("DOMContentLoaded", function () {
     var presets = BUDGET_PRESETS[DEFAULT_BUDGET_PERIOD];
     if (!presets) return;
 
-    var smallEl  = document.getElementById("budgetSmallAmount");
-    var mediumEl = document.getElementById("budgetMediumAmount");
-    var highEl   = document.getElementById("budgetHighAmount");
-    if (smallEl  && presets.small)  smallEl.textContent  = "€" + presets.small.amount  + "/día";
-    if (mediumEl && presets.medium) mediumEl.textContent = "€" + presets.medium.amount + "/día";
-    if (highEl   && presets.high)   highEl.textContent   = "€" + presets.high.amount   + "/día";
+    // Un bucle en vez de tres variables sueltas: añadir un tramo nuevo
+    // (como "minimal" el 2026-09-01) no debe obligar a tocar esto.
+    [
+      ["minimal", "budgetMinimalAmount"],
+      ["small",   "budgetSmallAmount"],
+      ["medium",  "budgetMediumAmount"],
+      ["high",    "budgetHighAmount"],
+    ].forEach(function (pair) {
+      var el = document.getElementById(pair[1]);
+      var preset = presets[pair[0]];
+      if (el && preset) el.textContent = "€" + preset.amount + "/día";
+    });
   });
 
   // ── Lista de la compra (aún vacía hasta generar un plan) ─────────────
@@ -906,6 +913,7 @@ document.addEventListener("DOMContentLoaded", function () {
         calories: profile.calories,
         protein: profile.protein,
         budget: (typeof data.budget === "number" && isFinite(data.budget)) ? data.budget : undefined,
+        priority: data.priority,
       };
     } catch (err) {
       console.warn("[no-cook:targets] formulario no utilizable, se usa el objetivo por defecto:", err);

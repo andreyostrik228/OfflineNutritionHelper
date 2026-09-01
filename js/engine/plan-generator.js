@@ -216,6 +216,43 @@ var MEAL_DEFS = [
   { key: "snack2",    label: "Snack 2",  category: "snack",    ratio: 0.11 }
 ];
 
+// ── Días de 3 tomas con presupuesto bajo (2026-09-01) ──────────────────
+// Por debajo de este presupuesto el día se genera SIN snacks: desayuno,
+// comida y cena, con las calorías del día repartidas entre las tres.
+//
+// No es un ahorro: se midió y la compra sale prácticamente igual (7,22 €
+// frente a 7,04 € en el día más barato posible), porque con menos tomas
+// cada una es mayor y hace falta comprar más de cada cosa. Es una decisión
+// de CALIDAD, y es petición explícita del usuario: con poco dinero prefiere
+// tres comidas de verdad antes que cinco raciones pequeñas.
+//
+// Automático a propósito -- no hay casilla que marcar. El umbral queda
+// entre el tramo "Muy ajustado" (8 €, sin snacks) y "Ajustado" (12 €, con
+// snacks).
+var NO_SNACK_BUDGET_THRESHOLD = 10;
+
+/**
+ * Tomas del día según el presupuesto: las 5 de siempre, o 3 sin snacks
+ * cuando el dinero aprieta. Los ratios se renormalizan para que el día
+ * siga sumando el 100% de las calorías objetivo -- comer 3 veces no es
+ * comer menos, es repartir lo mismo en menos platos.
+ *
+ * @param {number} budget
+ * @returns {object[]} misma forma que MEAL_DEFS
+ */
+function mealDefsForBudget(budget) {
+  if (typeof budget !== "number" || !isFinite(budget) || budget >= NO_SNACK_BUDGET_THRESHOLD) {
+    return MEAL_DEFS;
+  }
+  var three = MEAL_DEFS.filter(function (d) {
+    return d.key === "breakfast" || d.key === "lunch" || d.key === "dinner";
+  });
+  var sum = three.reduce(function (a, d) { return a + d.ratio; }, 0);
+  return three.map(function (d) {
+    return { key: d.key, label: d.label, category: d.category, ratio: d.ratio / sum };
+  });
+}
+
 /**
  * Tolerancia usada únicamente para el rebalanceo interno (convergencia de
  * rebalancePlan). No decide qué nivel de relajación usar — eso lo decide
@@ -477,14 +514,16 @@ function attemptPlanAtTier(profile, data, tier, pantryState) {
   // 4 tomas), entonces CADA toma recibe un mealCap >= su propio mínimo
   // absoluto — así el mensaje de inviabilidad y el comportamiento real de
   // la cascada nunca se contradicen entre sí.
+  var mealDefs = mealDefsForBudget(data.budget);
+
   var minCostByCategory = {};
-  MEAL_DEFS.forEach(function (def) {
+  mealDefs.forEach(function (def) {
     minCostByCategory[def.category] = estimateAbsoluteMinPurchaseCost(def.category, store);
   });
 
   var remainingBudget = data.budget;
 
-  var meals = MEAL_DEFS.map(function (def, index) {
+  var meals = mealDefs.map(function (def, index) {
     var target = {
       kcal:    profile.calories * def.ratio,
       protein: profile.protein  * def.ratio,
@@ -492,7 +531,7 @@ function attemptPlanAtTier(profile, data, tier, pantryState) {
       fat:     profile.fats     * def.ratio
     };
 
-    var reserveForRest = MEAL_DEFS.slice(index + 1).reduce(function (sum, d) {
+    var reserveForRest = mealDefs.slice(index + 1).reduce(function (sum, d) {
       return sum + minCostByCategory[d.category];
     }, 0);
     // mealCap (techo duro de ESTA toma) sigue anclado a remainingBudget,
@@ -512,7 +551,7 @@ function attemptPlanAtTier(profile, data, tier, pantryState) {
     // que no lo agote una toma anterior por simple orden de llegada.
     var remainingMinCost = minCostByCategory[def.category] + reserveForRest;
     var remainingSlack = Math.max(0, round2(remainingBudget - remainingMinCost));
-    var remainingRatioSum = MEAL_DEFS.slice(index).reduce(function (sum, d) { return sum + d.ratio; }, 0);
+    var remainingRatioSum = mealDefs.slice(index).reduce(function (sum, d) { return sum + d.ratio; }, 0);
     var fairShareCap = round2(minCostByCategory[def.category] + remainingSlack * (def.ratio / remainingRatioSum));
     // blendedCap interpola entre hardCap (0% de recorte) y fairShareCap
     // (100%, el recorte proporcional completo) -- ver

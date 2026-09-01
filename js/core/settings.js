@@ -39,7 +39,7 @@ var _settingsMemoryState = null;
 var SETTINGS_NUMERIC_FIELDS = ["age", "weight", "height", "activity", "workouts", "budgetCustom", "cookTime", "maxDifficulty"];
 // "store" retirado 2026-08-25 junto con el selector de tienda. Un ajuste
 // guardado de antes simplemente se ignora al sanear -- no rompe nada.
-var SETTINGS_STRING_FIELDS  = ["sex", "goal", "budgetMode", "taste", "wakeTime", "sleepTime", "cuisine"];
+var SETTINGS_STRING_FIELDS  = ["sex", "goal", "budgetMode", "taste", "wakeTime", "sleepTime", "cuisine", "priority"];
 
 /**
  * Listas de exclusión del usuario. Son ARRAYS de texto, no cadenas, así

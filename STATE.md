@@ -141,6 +141,50 @@
 > para la basura de 0 bytes del hook de auto-commit (`error`, `media`,
 > `top`, ...).
 >
+> ### ⏩ UPDATE 2026-09-01 (3) — presupuestos, modos y "sin cocinar" con techo
+>
+> **"Sin cocinar":** el presupuesto pasa a ser un TECHO DURO del TICKET (antes
+> se medía contra el coste consumido y el ticket solo tenía un tope de 3x: se
+> pedían 14 € y en caja salían 25). Cuatro fugas encontradas y tapadas, la
+> principal: los componentes se ELIGEN todos y se confirman después, así que
+> los 4 comprobaban el techo contra el mismo `day.spent` viejo. Además, subir
+> raciones por encima de un envase compraba más envases sin comprobar nada.
+> Medido tras el arreglo: 14 €/barato 0 de 200 planes se pasan, 20 €/equilibrado
+> 0 de 200. Nuevo eje **prioridad** (saciante / equilibrado / proteína) medido
+> como opuesto: barato baja el ticket de 24,71 € a ~10 € y la proteína de 146 g
+> a ~99 g. Con presupuesto bajo, 3 tomas sin snacks. Botón **"↻ Cambiar"** por
+> toma, que además EXCLUYE los productos que ya tenía (si no, devolvía los
+> mismos barajados y no servía para esquivar algo que tu tienda no tiene).
+> Sesgo a marca propia Hacendado (77% → 97-100% de los items) como única
+> aproximación honesta a la disponibilidad por tienda: NO hay dato de código
+> postal en ningún punto del pipeline (los 4.374 productos tienen
+> `published: true` y ninguna marca de disponibilidad).
+>
+> **Plan de platos:** tramos recalibrados a **8 / 12 / 16 / 20** (antes
+> 15/20/28), "Cantidad exacta" intacta. Por debajo de 10 € el día se genera
+> automáticamente con **3 tomas** (`NO_SNACK_BUDGET_THRESHOLD`) — no es ahorro
+> (medido: 7,22 € frente a 7,04 €), es calidad: tres comidas de verdad en vez
+> de cinco raciones pequeñas. Nuevo objetivo **"Solo comer bien — sin objetivo"**
+> (mantenimiento con proteína 1,4 g/kg en vez de 2,0) y el mismo eje de
+> **prioridad** aplicado al motor de platos.
+>
+> **Suelo real medido (greedy y beam search coinciden, así que es el suelo):**
+> el día de 2.800 kcal más barato posible con la despensa vacía cuesta
+> **7,04 €** de compra y **4,73 €** de comida — la diferencia es el precio de
+> ABRIR el primer paquete de cada cosa (1 kg de zanahoria para 155 g). Escala
+> con las calorías: 5,14 € a 1.500 kcal, 7,87 € a 3.200. Por eso el tramo más
+> barato es 8 € y no 5: a 8 € el motor entrega el 94-96% de las calorías.
+> Se probó poner un aviso explicando las dos cifras y el usuario lo rechazó.
+>
+> Los modos separan MENOS en el plan de platos que en sin cocinar (0,64 € y
+> +10 g de proteína): allí se eligen productos sueltos, aquí platos ya
+> compuestos que deben cuadrar macros, así que `macroFit` domina. Barrido de
+> pesos hecho a mano; subirlos más volvía el orden errático.
+>
+> Golden-masters recapturados (cambian los DATOS —los importes de los
+> tramos—, no el algoritmo: en modo equilibrado la puntuación es idéntica).
+> **440 tests en verde.**
+>
 > ### 0. ¿Estás en la carpeta correcta?
 >
 > El proyecto **se movió**. La ruta buena, y la única con git y tests, es:

@@ -236,15 +236,22 @@
             <div class="field">
               <label for="goal">Objetivo</label>
               <select id="goal" required>
-                <option value="bulk">Volumen</option>
-                <option value="cut">Definición</option>
-                <option value="recomp">Recomposición</option>
+                <option value="bulk">Ganar m&uacute;sculo</option>
+                <option value="cut">Perder grasa</option>
+                <option value="recomp">Recomposici&oacute;n</option>
+                <option value="maintain">Solo comer bien &mdash; sin objetivo</option>
               </select>
             </div>
 
             <div class="field full">
               <span class="budget-group-label" id="budgetGroupLabel">Presupuesto diario</span>
               <div class="budget-modes" role="radiogroup" aria-labelledby="budgetGroupLabel">
+
+                <input type="radio" name="budgetMode" id="budgetModeMinimal" value="minimal" class="visually-hidden">
+                <label for="budgetModeMinimal" class="budget-chip">
+                  <span class="budget-chip__title">Muy ajustado</span>
+                  <span class="budget-chip__amount" id="budgetMinimalAmount">&ndash;</span>
+                </label>
 
                 <input type="radio" name="budgetMode" id="budgetModeSmall" value="small" class="visually-hidden">
                 <label for="budgetModeSmall" class="budget-chip">
@@ -325,6 +332,27 @@
               <p class="field-hint">
                 Es una <strong>preferencia, no un filtro</strong>: lo que elijas
                 sale m&aacute;s a menudo, pero el resto sigue apareciendo.
+              </p>
+            </div>
+
+            <!-- ══ Prioridad de la compra (2026-09-01) ═══════════════════
+                 Precio y proteina estan MEDIDOS como opuestos en el
+                 catalogo: elegir entre el 25% con mejor comida-por-euro
+                 baja el ticket de 24,71 EUR a ~10 EUR y la proteina de
+                 146 g a ~99 g. No hay un ajuste que gane en los dos lados,
+                 asi que lo elige el usuario. Afecta SOLO al modo "sin
+                 cocinar" hoy. ══ -->
+            <div class="field full">
+              <label for="priority">Qu&eacute; buscas al comer</label>
+              <select id="priority">
+                <option value="balanced" selected>Equilibrado</option>
+                <option value="satiety">Llenarme &mdash; m&aacute;s comida por euro</option>
+                <option value="protein">M&aacute;xima prote&iacute;na</option>
+              </select>
+              <p class="field-hint">
+                Es distinto del objetivo de arriba: aquel fija <strong>cu&aacute;ntas</strong>
+                calor&iacute;as, este con <strong>qu&eacute;</strong> se llenan. Se aplica a los dos
+                modos, con platos y sin cocinar.
               </p>
             </div>
 

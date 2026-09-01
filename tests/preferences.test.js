@@ -445,6 +445,34 @@ function run(t) {
     assert.ok(hits.every(function (h) { return h.kind !== "group"; }));
   });
 
+
+  // ── Eje "que buscas al comer" (2026-09-01) ───────────────────────────
+  // Es un eje DISTINTO de `goal`: goal fija cuantas calorias, esto con que
+  // se llenan. "Estoy definiendo y voy justo de dinero" tiene que poder
+  // decirse, y con un solo desplegable no se podria.
+
+  t.test("getEatingPriority(): por defecto 'balanced' (sin select ni ajustes)", function () {
+    var s = sandbox();
+    assert.strictEqual(s.getEatingPriority(), "balanced");
+  });
+
+  t.test("getEatingPriority(): 'cheap' (nombre viejo) se traduce a 'satiety'", function () {
+    var s = sandbox();
+    s.getSettings = function () { return { priority: "cheap" }; };
+    assert.strictEqual(s.getEatingPriority(), "satiety");
+  });
+
+  t.test("getEatingPriority(): acepta 'satiety' y 'protein', y rechaza cualquier otra cosa", function () {
+    var s = sandbox();
+    s.getSettings = function () { return { priority: "satiety" }; };
+    assert.strictEqual(s.getEatingPriority(), "satiety");
+    s.getSettings = function () { return { priority: "protein" }; };
+    assert.strictEqual(s.getEatingPriority(), "protein");
+    s.getSettings = function () { return { priority: "inventado" }; };
+    assert.strictEqual(s.getEatingPriority(), "balanced");
+    s.getSettings = function () { return {}; };
+    assert.strictEqual(s.getEatingPriority(), "balanced");
+  });
 }
 
 module.exports = { run: run };

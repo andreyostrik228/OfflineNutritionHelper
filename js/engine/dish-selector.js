@@ -566,12 +566,38 @@ function scoreDishForSelection(dish, usedState, ctx) {
     if (getDishCuisine(dish.name) === ctx.cuisinePref) cuisineBias = CUISINE_BIAS_WEIGHT;
   }
 
+  // ── Eje "qué busco al comer" (2026-09-01) ──────────────────────────
+  //   satiety  comida por euro: se premia el plato que más CALORÍAS aporta
+  //            por euro de compra marginal.
+  //   protein  se refuerza el término de proteína por euro que ya existía.
+  //   balanced no toca nada (los golden-master no se mueven).
+  //
+  // Los pesos (5 y 250) se barrieron a mano contra planes reales. El margen
+  // aquí es MUCHO menor que en el modo sin cocinar, y la razón es de fondo:
+  // allí se eligen productos sueltos, aquí platos ya compuestos que además
+  // tienen que cuadrar macros, así que `macroFit * 100` domina y solo deja
+  // mover el desempate. Medido a 16 € y 2.800 kcal: proteína 200 g frente a
+  // 184 g en equilibrado, y saciante ~0,3 € más barato. Subir más los pesos
+  // no mejoraba (a x10 el orden se volvía errático); si se quiere separar
+  // más los modos, el camino es el catálogo, no el peso.
+  var pri = ctx.eatingPriority || "balanced";
+  var kcalPerEuro = (dish.kcal * impact.scaleFactor) / Math.max(impact.marginalCost, 0.01);
+  var satietyBonus = (pri === "satiety") ? Math.min(kcalPerEuro, 2000) : 0;
+  var proteinBoost = (pri === "protein") ? purchasePpeBucket * 250 : 0;
+
   if (ctx.tight) {
-    return macroFit * 20 + purchasePpeBucket * 40 + usagePpeBucket * 0.5 + div + expiry * 15 + cuisineBias * 0.25;
+    return macroFit * 20 + purchasePpeBucket * 40 + usagePpeBucket * 0.5 + div
+      + expiry * 15 + cuisineBias * 0.25 + satietyBonus * 5 + proteinBoost;
   }
 
   var allocation = allocationScore(impact.marginalCost, ctx.targetSpend, ctx.maxCost);
-  return macroFit * 100 + allocation * 30 + div * 10 + purchasePpeBucket * 3 + usagePpeBucket * 0.5 + expiry * EXPIRY_BIAS_WEIGHT + cuisineBias;
+  // En modo saciante la asignación pesa MENOS: `allocationScore` premia
+  // gastar la cuota entera ("ahorro involuntario" se penaliza), que es justo
+  // lo contrario de lo que pide quien solo quiere llenarse barato.
+  var allocationWeight = (pri === "satiety") ? 8 : 30;
+  return macroFit * 100 + allocation * allocationWeight + div * 10 + purchasePpeBucket * 3
+    + usagePpeBucket * 0.5 + expiry * EXPIRY_BIAS_WEIGHT + cuisineBias
+    + satietyBonus * 5 + proteinBoost;
 }
 
 /**
@@ -743,6 +769,7 @@ function pickDish(category, data, usedState, tier, maxCost, target, storeId, tar
   // toca localStorage a través de getSettings(), y puntuamos cientos de
   // candidatos por toma.
   var cuisinePref = (typeof getCuisinePreference === "function") ? getCuisinePreference() : "mixta";
+  var eatingPriority = (typeof getEatingPriority === "function") ? getEatingPriority() : "balanced";
 
   if (affordable.length > 0) {
     var minPoolCost = Math.min.apply(null, affordable.map(function (d) {
@@ -756,7 +783,8 @@ function pickDish(category, data, usedState, tier, maxCost, target, storeId, tar
       committedGrams: committedGrams,
       pantryState: pantryState,
       tight: isBudgetTight(maxCost, spendTarget, minPoolCost),
-      cuisinePref: cuisinePref
+      cuisinePref: cuisinePref,
+      eatingPriority: eatingPriority
     };
     var ranked = rankDishesByBudgetMode(affordable, usedState, scoreCtx);
     return finalizePick(pickWeightedByScore(ranked), target, storeId, usedState, false, null);
@@ -787,7 +815,8 @@ function pickDish(category, data, usedState, tier, maxCost, target, storeId, tar
       committedGrams: committedGrams,
       pantryState: pantryState,
       tight: isBudgetTight(maxCost, spendTarget, minFitCost),
-      cuisinePref: cuisinePref
+      cuisinePref: cuisinePref,
+      eatingPriority: eatingPriority
     };
     var fittingDishes = fitting.map(function (p) { return p.dish; }); // ya viene ordenado por coste de compra marginal asc.
     var chosenDish = fallbackCtx.tight

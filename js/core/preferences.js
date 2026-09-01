@@ -31,6 +31,7 @@
  *   filterDislikedProducts(products, dislikes)
  *   getDislikes()
  *   getCuisinePreference()
+ *   getEatingPriority()
  * ─────────────────────────────────────────────────────────────────────────
  */
 
@@ -124,6 +125,37 @@ function getDislikes() {
   return Array.isArray(settings.dislikes) ? settings.dislikes : [];
 }
 
+
+/**
+ * Qué se busca al comer, más allá del objetivo de peso:
+ *
+ *   "satiety"  llenar el plato: la mayor cantidad de comida por euro.
+ *   "balanced" sin sesgo (por defecto, comportamiento de siempre).
+ *   "protein"  exprimir la proteína por euro.
+ *
+ * Es un eje DISTINTO de `goal` (volumen/definición/mantenimiento) a
+ * propósito: `goal` fija cuántas calorías, esto fija con qué se llenan.
+ * "Estoy definiendo y voy justo de dinero" es una combinación normal y con
+ * un solo desplegable no se podría decir.
+ *
+ * Se lee del <select> directamente y solo se cae en los ajustes guardados
+ * si no existe: los ajustes se persisten DESPUÉS de generar el plan, así
+ * que en la primera generación estarían obsoletos.
+ *
+ * @returns {"satiety"|"balanced"|"protein"}
+ */
+function getEatingPriority() {
+  var raw = null;
+  if (typeof document !== "undefined" && document.getElementById) {
+    var el = document.getElementById("priority");
+    if (el && el.value) raw = el.value;
+  }
+  if (!raw && typeof getSettings === "function") raw = getSettings().priority;
+  // "cheap" es el nombre viejo del modo saciante (2026-09-01): mismo
+  // criterio, comida por euro. Se acepta para no romper ajustes guardados.
+  if (raw === "cheap") return "satiety";
+  return (raw === "satiety" || raw === "protein") ? raw : "balanced";
+}
 
 /**
  * ── Equipo y dificultad (2026-08-26) ───────────────────────────────────

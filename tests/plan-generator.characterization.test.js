@@ -73,6 +73,20 @@ function freshEngineSandbox() {
 
 var EXPECTED_MEAL_KEYS = ["breakfast", "lunch", "dinner", "snack", "snack2"];
 
+// Con presupuesto bajo el día se genera SIN snacks a propósito
+// (NO_SNACK_BUDGET_THRESHOLD en plan-generator.js, 2026-09-01): tres
+// comidas de verdad en vez de cinco raciones pequeñas. No es un ahorro
+// (se midió: la compra sale igual), es una decisión de calidad pedida por
+// el usuario. El perfil "Presupuesto exacto muy ajustado" cae en esta rama.
+var EXPECTED_MEAL_KEYS_NO_SNACKS = ["breakfast", "lunch", "dinner"];
+var NO_SNACK_BUDGET = 10;
+
+/** Claves esperadas para un presupuesto dado. */
+function expectedKeysFor(budget) {
+  return (typeof budget === "number" && budget < NO_SNACK_BUDGET)
+    ? EXPECTED_MEAL_KEYS_NO_SNACKS : EXPECTED_MEAL_KEYS;
+}
+
 // ── Perfiles representativos ─────────────────────────────────────────────
 // Cubren los 3 objetivos (cut/recomp/bulk), los 3 presets de presupuesto +
 // cantidad exacta, y los extremos de tiempo de cocina. No son "los únicos"
@@ -146,7 +160,7 @@ function run(t) {
   });
 
   // ── 1. Estructura: siempre 5 comidas, claves correctas, en orden ────────
-  t.test("generateDietPlan devuelve siempre 5 comidas (breakfast/lunch/dinner/snack/snack2) en orden, en los 5 perfiles x " + ITERATIONS_PER_PROFILE + " corridas", function () {
+  t.test("generateDietPlan devuelve las tomas correctas (5, o 3 sin snacks con presupuesto bajo) en orden, en los 5 perfiles x " + ITERATIONS_PER_PROFILE + " corridas", function () {
     runsByProfile.forEach(function (rp) {
       rp.runs.forEach(function (result, i) {
         // result.meals es un array creado DENTRO del sandbox vm (realm
@@ -157,7 +171,7 @@ function run(t) {
         // creados dentro del sandbox...").
         var keys = JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.key; })));
         assert.deepStrictEqual(
-          keys, EXPECTED_MEAL_KEYS,
+          keys, expectedKeysFor(rp.data.budget),
           rp.def.name + " (run " + i + "): claves de comida inesperadas: " + keys.join(",")
         );
       });
@@ -438,6 +452,20 @@ function run(t) {
   //   seed=7: 3795.2 -> 3351.2 kcal, items [3,3,3,2,3] -> [3,4,4,2,2],
   //           sigue "perfect"/tier 0, 0 violaciones, dentro de la
   //           tolerancia del 15% del propio informe.
+  // ── RECAPTURA 2026-09-01: tramos de presupuesto 8/12/16/20 ───────────
+  // Los presets cambiaron de 15/20/28 a 8/12/16/20 (js/data/budget-presets.js),
+  // así que estos dos perfiles se generan ahora con MENOS dinero: seed=42
+  // pasa de 20 € a 16 € y seed=7 de 28 € a 20 €. Con menos presupuesto el
+  // motor elige otros platos -- es exactamente lo que debe pasar.
+  //
+  // Cambia el DATO de entrada, no el algoritmo: la puntuación en modo
+  // "equilibrado" (el de estos perfiles) es idéntica byte a byte, porque el
+  // nuevo eje de prioridad suma 0 salvo en "saciante"/"proteína".
+  //
+  //   seed=42: 2884.1 -> 2790.8 kcal, compra 19,03 € -> 13,11 €, sigue "perfect"
+  //   seed=7:  3351.2 -> 3797.0 kcal, compra 19,49 €, pasa a tier 2 "adjusted"
+  //            (con 20 € en vez de 28 hace falta relajar para llegar a 3.800)
+  // Ninguno tiene violaciones: los dos planes siguen siendo válidos.
   t.test("golden-master (seed=42): recomposición/Equilibrado -- agregados exactos del resultado actual", function () {
     var s = freshEngineSandbox();
     seedRandomInContext(s, 42);
@@ -448,13 +476,13 @@ function run(t) {
     // (realm distinto) antes de comparar contra literales del host -- ver
     // comentario del test #1 más arriba para el motivo completo.
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.key; }))), EXPECTED_MEAL_KEYS);
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 3, 3, 3, 2]);
-    assert.strictEqual(result.total.kcal, 2884.1);
-    assert.strictEqual(result.total.protein, 231.79999999999998);
-    assert.strictEqual(result.total.carbs, 379.09999999999997);
-    assert.strictEqual(result.total.fat, 37.6);
-    assert.strictEqual(result.total.cost, 10.22);
-    assert.strictEqual(result.total.purchaseCost, 19.03);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 2, 3, 2, 2]);
+    assert.strictEqual(result.total.kcal, 2790.8);
+    assert.strictEqual(result.total.protein, 195.20000000000002);
+    assert.strictEqual(result.total.carbs, 294.99999999999994);
+    assert.strictEqual(result.total.fat, 83.7);
+    assert.strictEqual(result.total.cost, 8.7);
+    assert.strictEqual(result.total.purchaseCost, 13.11);
     assert.strictEqual(result.report.status, "perfect");
     assert.strictEqual(result.report.tierUsed, 0);
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.report.violations)), []);
@@ -467,15 +495,15 @@ function run(t) {
     var result = s.generateDietPlan(built.profile, built.data);
 
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.key; }))), EXPECTED_MEAL_KEYS);
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 4, 4, 2, 2]);
-    assert.strictEqual(result.total.kcal, 3351.2);
-    assert.strictEqual(result.total.protein, 260.90000000000003);
-    assert.strictEqual(result.total.carbs, 274.70000000000005);
-    assert.strictEqual(result.total.fat, 125.30000000000001);
-    assert.strictEqual(result.total.cost, 16.41);
-    assert.strictEqual(result.total.purchaseCost, 24.55);
-    assert.strictEqual(result.report.status, "perfect");
-    assert.strictEqual(result.report.tierUsed, 0);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 4, 3, 2, 3]);
+    assert.strictEqual(result.total.kcal, 3797);
+    assert.strictEqual(result.total.protein, 297.9);
+    assert.strictEqual(result.total.carbs, 442.70000000000005);
+    assert.strictEqual(result.total.fat, 88.2);
+    assert.strictEqual(result.total.cost, 12.07);
+    assert.strictEqual(result.total.purchaseCost, 19.49);
+    assert.strictEqual(result.report.status, "adjusted");
+    assert.strictEqual(result.report.tierUsed, 2);
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.report.violations)), []);
   });
 }

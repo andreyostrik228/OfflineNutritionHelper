@@ -52,7 +52,10 @@ function readForm() {
     // Estilo de cocina (2026-08-26). Opcional a propósito: si el <select>
     // no existiera (una versión vieja del HTML cacheada, por ejemplo),
     // "mixta" significa "sin sesgo" y el motor se comporta como antes.
-    cuisine:  (document.getElementById("cuisine") || {}).value || "mixta"
+    cuisine:  (document.getElementById("cuisine") || {}).value || "mixta",
+    // Prioridad de la compra (2026-09-01). Opcional igual que `cuisine`:
+    // si el <select> no existiera, "balanced" = comportamiento de antes.
+    priority: (document.getElementById("priority") || {}).value || "balanced"
   };
 }
 
@@ -154,14 +157,19 @@ function calculateProfile(data) {
     const deficit = 300 + Math.min(150, data.workouts * 15);
     targetCalories = tdeeBase - deficit;
   }
-  // "recomp" → mantenimiento (tdeeBase sin modificar)
+  // "recomp" y "maintain" → mantenimiento (tdeeBase sin modificar). Se
+  // diferencian solo en los macros: "maintain" es "solo comer bien", sin
+  // objetivo de composición corporal, así que no fuerza la proteína alta
+  // que sí tiene sentido cuando se busca músculo o definición.
 
   // 4. Macros
-  const proteinMultiplier = data.goal === "cut"   ? 2.2
-                          : data.goal === "recomp" ? 2.0
+  const proteinMultiplier = data.goal === "cut"     ? 2.2
+                          : data.goal === "recomp"  ? 2.0
+                          : data.goal === "maintain" ? 1.4
                           : 1.9;
   const fatMultiplier = data.goal === "bulk" ? 0.9
                       : data.goal === "cut"  ? 0.8
+                      : data.goal === "maintain" ? 0.95
                       : 0.85;
 
   const proteinTarget = round1(data.weight * proteinMultiplier);

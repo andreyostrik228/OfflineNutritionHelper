@@ -60,20 +60,39 @@ var DEFAULT_BUDGET_PERIOD = "day";
 
 var BUDGET_PRESETS = {
   day: {
+    // ── Tramo "Muy ajustado" (2026-09-01) ───────────────────────────────
+    // Calibrado contra el SUELO REAL del catálogo, no a ojo: se buscó por
+    // beam search el día de 2.800 kcal más barato posible con la despensa
+    // VACÍA y sale 7,04 € (greedy y beam coinciden, así que es el suelo de
+    // verdad). Por debajo de eso no hay plan completo posible: no es el
+    // precio de la comida, es el precio de ABRIR el primer paquete de cada
+    // cosa -- los mismos ingredientes, ya en la despensa, cuestan 4,73 €.
+    //
+    // El suelo baja con el objetivo calórico: 5,14 € a 1.500 kcal,
+    // 5,93 € a 2.000, 7,04 € a 2.800, 7,87 € a 3.200.
+    //
+    // 8 € deja un margen mínimo por encima del suelo y está MEDIDO: entrega
+    // el 94% de las calorías objetivo gastando 7,70 € de mediana (40 planes,
+    // perfil 80 kg/2.800 kcal). Con 5 € el generador solo alcanza el 45%.
+    minimal: {
+      label: "Muy ajustado",
+      amount: 8,
+      hint: "Lo más barato que da un día completo. Repite ingredientes a propósito y quita los snacks para concentrar el dinero en las comidas."
+    },
     small: {
       label: "Ajustado",
-      amount: 15,
+      amount: 12,
       hint: "Cubre lo esencial; el generador prioriza proteína por euro y puede recortar ración para no pasarse en caja."
     },
     medium: {
       label: "Equilibrado",
-      amount: 20,
+      amount: 16,
       hint: "Variedad razonable la mayoría de los días, sin sorpresas al pagar."
     },
     high: {
       label: "Amplio",
-      amount: 28,
-      hint: "Casi cualquier plato del catálogo, sin ajustes de presupuesto."
+      amount: 20,
+      hint: "Casi cualquier plato del catálogo, sin ajustes de presupuesto. Para más, usa «Cantidad exacta»."
     }
   }
 };
