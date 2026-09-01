@@ -514,29 +514,29 @@ function run(t) {
     // (realm distinto) antes de comparar contra literales del host -- ver
     // comentario del test #1 más arriba para el motivo completo.
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.key; }))), EXPECTED_MEAL_KEYS);
-    // RECAPTURADO el 2026-09-01. Dos cambios de coste seguidos movieron
-    // esta tirada: (1) el refresco de js/data/prices/mercadona.js contra el
-    // catálogo nuevo, (2) los huevos pasaron a comprarse por docena entera
-    // (packUnits en packaging.js) en vez de "7 huevos sueltos". Con un
-    // generador sembrado, mover un precio cambia una elección y a partir de
-    // ahí divergen TODAS las tiradas siguientes: no es "el mismo plan un
-    // poco más caro", es otro plan.
+    // RECAPTURADO el 2026-09-01 tras RECONSTRUIR js/data/prices/mercadona.js
+    // contra la API en vivo del almacén de Granada (18012, wh 3968): 56
+    // precios movidos -- al alza fresas 0,30->0,75, ternera 0,85->1,70,
+    // bacalao 0,85->1,97, salmón 0,95->1,35; a la baja huevos, aceite,
+    // copos de maíz, mantequilla de cacahuete, queso curado. Con un
+    // generador sembrado, cambiar UN precio cambia una elección y a partir
+    // de ahí divergen todas las tiradas: no es "el mismo plan más caro", es
+    // otro plan.
     //
-    // Pasó de perfect/tier 0 a adjusted/tier 3, que parece una regresión.
-    // NO lo es: medido con 150 ejecuciones por lado (5 perfiles x 30
-    // semillas) tras el refresco de precios, la calidad sube ligeramente --
-    // perfect 77->81, tier 0 86->100, violaciones 195->171, planes fuera de
-    // presupuesto 4->2. Un golden-master es una muestra de UNA tirada; para
-    // decir si algo ha empeorado hay que mirar la distribución.
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [4, 2, 3, 1, 2]);
-    assert.strictEqual(result.total.kcal, 2638.3);
-    assert.strictEqual(result.total.protein, 181.8);
-    assert.strictEqual(result.total.carbs, 294.29999999999995);
-    assert.strictEqual(result.total.fat, 78.9);
-    assert.strictEqual(result.total.cost, 6.84);
-    assert.strictEqual(result.total.purchaseCost, 13.63);
+    // Medido con 150 ejecuciones por lado (5 perfiles x 30 semillas) tras la
+    // reconstrucción, la calidad AGREGADA sube -- perfect 77->87,
+    // violaciones 170->158, compra media 11,79->11,65 (lo que sube se
+    // compensa con lo que baja). Un golden-master es UNA muestra; para decir
+    // si algo empeora hay que mirar la distribución.
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 2, 3, 2, 1]);
+    assert.strictEqual(result.total.kcal, 2788.4);
+    assert.strictEqual(result.total.protein, 206.4);
+    assert.strictEqual(result.total.carbs, 343.6);
+    assert.strictEqual(result.total.fat, 52.699999999999996);
+    assert.strictEqual(result.total.cost, 9.76);
+    assert.strictEqual(result.total.purchaseCost, 14.12);
     assert.strictEqual(result.report.status, "adjusted");
-    assert.strictEqual(result.report.tierUsed, 3);
+    assert.strictEqual(result.report.tierUsed, 2);
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.report.violations)), []);
   });
 
@@ -547,16 +547,18 @@ function run(t) {
     var result = s.generateDietPlan(built.profile, built.data);
 
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.key; }))), EXPECTED_MEAL_KEYS);
-    // RECAPTURADO el 2026-09-01 con los precios nuevos + huevos por docena
-    // -- ver el comentario largo del golden-master de seed=42. Esta corrida
-    // sigue en perfect/0.
+    // RECAPTURADO el 2026-09-01 tras reconstruir mercadona.js contra la API
+    // en vivo de Granada -- ver el comentario largo del golden-master de
+    // seed=42. Esta tirada (volumen alto, tope 20 EUR) sigue en perfect/0
+    // con los precios reales: la compra baja a 18,21 EUR porque el sorteo
+    // sembrado, tras la reconstrucción, cae en una combinación distinta.
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 3, 3, 2, 2]);
-    assert.strictEqual(result.total.kcal, 3744.7000000000003);
-    assert.strictEqual(result.total.protein, 263.7);
-    assert.strictEqual(result.total.carbs, 412.7);
-    assert.strictEqual(result.total.fat, 113.3);
-    assert.strictEqual(result.total.cost, 11.22);
-    assert.strictEqual(result.total.purchaseCost, 19.52);
+    assert.strictEqual(result.total.kcal, 3623.4999999999995);
+    assert.strictEqual(result.total.protein, 254.79999999999998);
+    assert.strictEqual(result.total.carbs, 334.6);
+    assert.strictEqual(result.total.fat, 136.89999999999998);
+    assert.strictEqual(result.total.cost, 11.02);
+    assert.strictEqual(result.total.purchaseCost, 18.21);
     assert.strictEqual(result.report.status, "perfect");
     assert.strictEqual(result.report.tierUsed, 0);
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.report.violations)), []);

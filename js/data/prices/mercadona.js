@@ -7,29 +7,26 @@
  * generador. Solo asocia nombres de ingrediente (tal y como aparecen en
  * dishes.js) con un precio de referencia por 100 g en este supermercado.
  *
- * ORIGEN DE ESTOS PRECIOS (actualizado tras ampliar DISH_DB con 130 platos
- * nuevos y 17 ingredientes nuevos):
- *   45 de los 82 ingredientes están calculados a partir de un catálogo real
- *   exportado de Mercadona (4374 productos, con precio y tabla nutricional
- *   propios de cada producto). Cada entrada marcada "// real: ..." indica
- *   el producto exacto usado como fuente y su precio/100g ya convertido:
- *     - Para legumbres/arroz/pasta secos que dishes.js mide en peso YA
- *       COCIDO, se aplicó un factor de cocción (arroz/pasta ×2.3-2.8,
- *       legumbres ×2.3) para que el precio por 100g sea el del producto
- *       COCIDO, no el seco.
- *     - Para huevos (vendidos por unidad), se asumió 63 g/huevo grande.
- *     - Se DESCARTARON deliberadamente coincidencias de nombre que no son
- *       nutricionalmente representativas del ingrediente genérico (p.ej.
- *       "salmón ahumado" para "salmon" [producto curado premium, no
- *       fresco], "plátano macho" para "platano" [variedad para cocinar,
- *       no el plátano dulce de mesa], "espinacas baby lavadas" para
- *       "espinacas" [formato premium en bolsa, precio no representativo]).
- *       En esos casos se conserva el precio estimado que ya existía.
+ * ORIGEN DE ESTOS PRECIOS (reconstruido el 2026-09-01 desde la API EN VIVO
+ * de Mercadona para el almacén de GRANADA — CP 18012, almacén wh 3968):
+ *   Cada ingrediente se mapeó A MANO a un producto real concreto (mirando
+ *   el catálogo, no por coincidencia de nombre — eso fue lo que metió
+ *   "champiñones = en conserva" una vez). El precio/100 g sale del
+ *   reference_price de ese producto:
+ *     - €/kg  -> /10                       = €/100 g
+ *     - €/L   -> /10  (/0,916 para aceite) = €/100 g
+ *     - huevos: precio de la docena / 12 / 63 g * 100  (huevo grande L)
+ *     - arroz/pasta/legumbres: dishes.js los pesa YA COCIDOS, así que se
+ *       compra el SECO y se divide por el factor de cocción (arroz/cuscús
+ *       ×2.8, pasta/legumbres ×2.3).
  *
- *   Los 37 ingredientes restantes siguen en precio ESTIMADO (marcados
- *   "// estimado") porque el catálogo real no tenía ningún producto que
- *   representase razonablemente el ingrediente genérico usado en
- *   dishes.js (0 resultados, o solo variantes no comparables).
+ *   Siguen en ESTIMADO ("// estimado") solo los que Mercadona no vende como
+ *   producto genérico razonable: skyr, tempeh, trigo sarraceno, tortillas
+ *   de trigo/wraps, pavo picado, atún al natural (peso escurrido), y un par
+ *   de claves combinadas de dishes.js ("lechuga pepino").
+ *
+ *   Nota: los precios de Granada son casi idénticos a los del almacén por
+ *   defecto de la API — Mercadona es bastante uniforme a nivel nacional.
  *
  * Para añadir otro supermercado en el futuro (Lidl, Carrefour, Aldi, DIA...):
  *   1. Copiar este archivo como js/data/prices/<tienda>.js
@@ -63,115 +60,112 @@ PRICE_CATALOGS.mercadona = {
   storeId:      "mercadona",
   storeName:    "Mercadona",
   currency:     "EUR",
-  referenceDate: "2026-09",
+  referenceDate: "2026-09-Granada",
   sourceNote:
-    "Refrescado el 2026-09-01 contra el catálogo recién scrapeado de la " +
-    "API de Mercadona: 38 de las 47 líneas 'real:' se re-derivaron " +
-    "automáticamente (mismo producto que nombra cada comentario, mismo " +
-    "factor de cocción), y 33 habían cambiado de precio. Las 9 restantes " +
-    "se dejaron INTACTAS a propósito: 6 son ingredientes 'cocidos' cuyo " +
-    "comentario no declara el factor de expansión (aplicar 1 habría puesto " +
-    "el precio del producto SECO donde va el cocido: 'arroz integral " +
-    "cocido' saltaba de 0,04 a 0,12) y 3 no tienen coincidencia clara de " +
-    "nombre. Las líneas 'estimado' no salieron de ningún producto, así que " +
-    "no hay nada que refrescar en ellas. Sustituir por una fuente " +
-    "verificada en tiempo real antes de un uso con implicaciones " +
-    "económicas reales para el usuario.",
+    "Reconstruido el 2026-09-01 contra el catalogo EN VIVO de la API de " +
+    "Mercadona para el almacen de GRANADA (codigo postal 18012, wh 3968). " +
+    "Cada ingrediente se mapeo a mano a un producto real y el precio/100 g " +
+    "sale de su reference_price (EUR/kg -> /10; huevos por docena -> /12/63 g; " +
+    "aceite EUR/L / 0,916). Arroz/pasta/legumbres se compran secos y se " +
+    "dividen por el factor de coccion porque dishes.js los pesa cocidos. " +
+    "Siguen ESTIMADOS los que Mercadona no vende como producto generico " +
+    "(skyr, tempeh, trigo sarraceno, wraps, pavo picado). Sustituir por una " +
+    "fuente en tiempo real antes de un uso con implicaciones economicas.",
 
   // €/100 g — ver nota de unidad arriba
   pricesPer100g: {
-    "aguacate":                     0.5,  // real: Aguacates
-    "almendras":                    1.15,  // real: Almendra natural Hacendado sin piel
-    "alubias cocidas":              0.1065,  // real: Alubia blanca Hacendado (seca ×2.3 = cocida)
-    "arroz blanco cocido":          0.0429,  // real: Arroz largo Hacendado (seco ×2.8 = cocido)
-    "arroz integral cocido":        0.04,  // real: Arroz largo Hacendado (sin integral específico en catálogo)
-    "atun al natural":              0.65,  // estimado (solo hay "en aceite"/"en escabeche", grasa distinta)
-    "avena":                        0.11,  // estimado (sin avena sola con BJU completo)
-    "bacalao":                      0.85,  // estimado (único resultado es ahumado en aceite)
-    "batata":                       0.16,  // estimado (único resultado es porción lista microondas)
-    "brocoli":                      0.16,  // estimado (0 resultados con BJU completo)
-    // Aceite de oliva (2026-08-26): 4,95 EUR el litro. OJO, el catálogo
-    // trae pricePer100g=0,495, que en realidad es por 100 ML. Un litro pesa
-    // 916 g, así que por 100 G son 4,95 / 9,16 = 0,54. Misma trampa de
-    // unidades que en la nutrición, ver ingredient-nutrition.js.
-    "aceite de oliva":              0.54,
+    "aguacate":                      0.5,  // real: Aguacate (Granada wh 3968)
+    "almendras":                     1.15,  // real: Almendra natural Hacendado (Granada wh 3968)
+    "alubias cocidas":               0.1065,  // real: Alubia blanca Hacendado (seca ×2.3 = cocida) (Granada wh 3968)
+    "arroz blanco cocido":           0.0429,  // real: Arroz largo Hacendado (seco ×2.8 = cocido) (Granada wh 3968)
+    "arroz integral cocido":         0.0589,  // real: Arroz integral largo Hacendado (seco ×2.8 = cocido) (Granada wh 3968)
+    "atun al natural":               0.9,  // estimado -- Atun claro al natural ~11,7 EUR/kg bruto; escurrido ~70%
+    "avena":                         0.1625,  // real: Copos de avena Brüggen (Granada wh 3968)
+    "bacalao":                       1.9734,  // real: Filetes de bacalao MareDeus ultracongelado (Granada wh 3968)
+    "batata":                        0.335,  // real: Batata (3,35 EUR/kg, fresca; peso cocido ~ crudo) (Granada wh 3968)
+    "brocoli":                       0.3,  // real: Brócoli (Granada wh 3968)
+    // Aceite de oliva 0,4º: 3,80 EUR/L la botella de 1 L (bajó bastante en
+    // 2026). El precio es por LITRO, no por kg: un litro pesa 916 g, así que
+    // por 100 G son 3,80 / 9,16 = 0,415. Misma trampa de unidades que en la
+    // nutrición, ver ingredient-nutrition.js.
+    "aceite de oliva":               0.4148,  // real: Aceite de oliva 0,4º Hacendado (3,80 EUR/L, botella 1 L; pesa 916 g) (Granada wh 3968)
     // Cebolla y ajo (2026-08-26): el PRECIO sí es dato real y verificable,
     // aunque su nutrición esté sin resolver (ver ingredient-nutrition.js).
-    "ajo":                          0.74,  // real: Ajos morados (250 g, 1,85 EUR)
-    "cebolla":                      0.18,  // real: Cebollas (1 kg, 2,40 EUR)  // real: Aceite de oliva virgen extra Hacendado (1 L)
-    "caballa en lata":              1.0833,  // real: Filetes de caballa del sur en tomate Hacendado
-    "cacahuetes":                   0.4125,  // real: Cacahuete tostado con sal Hacendado
-    "carne picada 5% grasa":        0.8,  // real: Preparado de carne picada vacuno y cerdo
-    "claras de huevo":              0.285,  // real: Claras de huevo líquidas pasteurizadas
-    "copos de maiz":                0.6,  // real: Cereales copos de maíz Corn Flakes Kellogg's
-    "cuscus cocido":                0.08,  // estimado (0 resultados)
-    "edamame":                      0.45,  // estimado (0 resultados)
-    "espinacas":                    0.18,  // estimado (único resultado es baby spinach premium en bolsa)
-    "frutos rojos congelados":      0.40,  // estimado (único resultado es infusión, no fruta)
-    "garbanzos cocidos":            0.25,  // real: Garbanzo cocido Hacendado (ya viene cocido)
-    "granola":                      0.60,  // real: Cereales y semillas granola Hacendado con frutos secos
-    "huevos enteros":               0.56,  // real: Huevos de gallinas camperas (63g/huevo)
-    "hummus":                       0.65,  // estimado (0 resultados)
-    "jamon cocido extra":           0.77,  // real: Jamón cocido extra Hacendado finas lonchas
-    "leche semidesnatada":          0.084,  // real: Leche semidesnatada Hacendado
-    "lechuga pepino":               0.15,  // estimado (lechuga por unidad, pepino sin resultados)
-    "lentejas cocidas":             0.09,  // real: Lenteja Hacendado (seca ×2.3 = cocida)
-    "lomo de cerdo":                0.6299,  // real: Filetes lomo de cerdo
-    "mantequilla de cacahuete":     1.00,  // estimado (0 resultados exactos fiables)
-    "manzana":                      0.22,  // real: Manzanas Golden
-    "maiz dulce":                   0.3444,  // real: Maíz dulce Hacendado
-    "merluza":                      1.1504,  // real: Merluza a rodajas
-    "mermelada light":              0.45,  // estimado (no hay versión light específica)
-    "miel":                         0.84,  // real: Miel de naranjo Hacendado
-    "mozzarella light":             0.80,  // estimado (único resultado es mozzarella normal, no light)
-    "muslo de pollo deshuesado":    0.35,  // estimado (0 resultados)
-    "naranja":                      0.25,  // real: Naranja de mesa
-    "nueces":                       1.25,  // real: Nuez natural Hacendado pelada
-    "pan de molde integral":        0.1957,  // real: Pan de molde 100% integral Hacendado
-    "pan integral":                 0.4286,  // real: Pan integral trigo 100%
-    "pasta cocida":                 0.0696,  // real: Pasta tiburón Hacendado (seca ×2.3 = cocida)
-    "patata cocida":                0.29,  // real: Patatas cocidas Hacendado (ya viene cocida)
-    "pavo loncheado":               0.7625,  // real: Maxi pavo Hacendado finas lonchas
-    "pechuga de pavo":              0.8746,  // real: Filetes pechuga de pavo
-    "pechuga de pollo":             0.7304,  // real: Filetes pechuga de pollo
-    "pepino":                       0.12,  // estimado (0 resultados)
-    "pina":                         0.2555,  // real: Piña en su jugo Hacendado rodajas
-    "platano":                      0.12,  // estimado (único resultado es plátano macho, otra variedad)
-    "queso fresco batido 0%":       0.20,  // estimado (0 resultados)
-    "queso light":                  0.70,  // estimado (0 resultados)
-    "quinoa cocida":                0.13,  // estimado (0 resultados)
-    "requeson":                     0.5,  // real: Requesón mezcla Hacendado
-    "salmon":                       0.95,  // estimado (único resultado es ahumado, no representativo)
-    "sardinas en lata":             0.9402,  // real: Sardinas en aceite de oliva Hacendado
-    "skyr natural":                 0.42,  // estimado (0 resultados)
-    "tempeh":                       1.80,  // estimado (0 resultados)
-    "ternera magra":                0.85,  // estimado (único resultado es callos, no representativo)
-    "tofu firme":                   0.4375,  // real: Tofu firme Hacendado
-    "tomate":                       0.125,  // real: Tomate triturado Hacendado
-    "tortillas de trigo":           0.40,  // estimado (único resultado "Wraps Texas", BJU distinto)
-    "tortitas de arroz":            0.95,  // estimado (0 resultados de versión simple sin chocolate)
-    "verduras congeladas salteado": 0.15,  // estimado (0 resultados)
-    "wrap proteico":                0.75,  // estimado (0 resultados)
-    "yogur griego ligero":          0.1933,  // real: Yogur griego natural ligero Hacendado
-    "zanahoria":                    0.12,  // real: Zanahorias
+    "ajo":                           0.74,  // real: Ajos morados (250 g, 1,85 EUR) (Granada wh 3968)
+    "cebolla":                       0.2,  // real: Cebollas (1 kg, 2,00 EUR) (Granada wh 3968)
+    "caballa en lata":               1.0833,  // real: Filetes de caballa del sur en tomate Hacendado (Granada wh 3968)
+    "cacahuetes":                    0.4125,  // real: Cacahuete tostado con sal Hacendado (Granada wh 3968)
+    "carne picada 5% grasa":         1.1,  // real: Preparado de carne picada vacuno (11 EUR/kg, 500 g) (Granada wh 3968)
+    "claras de huevo":               0.285,  // real: Claras de huevo líquidas pasteurizadas (2,85 EUR/L) (Granada wh 3968)
+    "copos de maiz":                 0.3,  // real: Corn Flakes Hacendado 0% azúcares (Granada wh 3968)
+    "cuscus cocido":                 0.0696,  // real: Cous cous mediano Hacendado (seco ×2.8 = cocido) (Granada wh 3968)
+    "edamame":                       0.35,  // real: Edamame soja verde Hacendado ultracongelada (Granada wh 3968)
+    "espinacas":                     0.26,  // real: Espinaca picada congelada (Granada wh 3968)
+    "frutos rojos congelados":       0.6334,  // real: Mix frutos rojos Hacendado ultracongeladas (Granada wh 3968)
+    "garbanzos cocidos":             0.2,  // real: Garbanzo cocido Hacendado (2,00 EUR/kg, ya cocido) (Granada wh 3968)
+    "granola":                       0.6,  // real: Cereales y semillas granola Hacendado con frutos secos (Granada wh 3968)
+    "huevos enteros":                0.4034,  // real: Huevos grandes L (3,05 EUR/docena, 63 g/huevo) (Granada wh 3968)
+    "hummus":                        0.4375,  // real: Hummus de garbanzos Hacendado receta clásica (Granada wh 3968)
+    "jamon cocido extra":            1,  // real: Jamón cocido extra Hacendado finas lonchas (Granada wh 3968)
+    "leche semidesnatada":           0.084,  // real: Leche semidesnatada Hacendado (0,84 EUR/L) (Granada wh 3968)
+    "lechuga pepino":                0.15,  // estimado -- clave combinada; lechuga por unidad
+    "lentejas cocidas":              0.0804,  // real: Lenteja pardina Hacendado (seca ×2.3 = cocida) (Granada wh 3968)
+    "lomo de cerdo":                 0.63,  // real: Filetes lomo de cerdo cabeza (Granada wh 3968)
+    "mantequilla de cacahuete":      0.53,  // real: Crema de cacahuete 100% Hacendado (Granada wh 3968)
+    "manzana":                       0.24,  // real: Manzana Golden (Granada wh 3968)
+    "maiz dulce":                    0.369,  // real: Maíz dulce Hacendado (3,69 EUR/kg) (Granada wh 3968)
+    "merluza":                       1.15,  // real: Merluza a rodajas (Granada wh 3968)
+    "mermelada light":               0.4211,  // real: Confitura de fresa Hacendado 0% azúcares añadidos (Granada wh 3968)
+    "miel":                          0.5,  // real: Miel de flores Hacendado (5 EUR/kg, tarro 1 kg) (Granada wh 3968)
+    "mozzarella light":              0.8,  // estimado -- solo mozzarella normal en catalogo
+    "muslo de pollo deshuesado":     0.555,  // real: Muslos de pollo deshuesados con piel (Granada wh 3968)
+    "naranja":                       0.25,  // real: Naranja de mesa (Granada wh 3968)
+    "nueces":                        1.25,  // real: Nuez natural Hacendado pelada (Granada wh 3968)
+    "pan de molde integral":         0.1957,  // real: Pan de molde 100% integral Hacendado (Granada wh 3968)
+    "pan integral":                  0.4286,  // real: Pan integral trigo 100% (Granada wh 3968)
+    "pasta cocida":                  0.05,  // real: Macarrón Hacendado (seco ×2.3 = cocido) (Granada wh 3968)
+    "patata cocida":                 0.19,  // real: Patata (1,90 EUR/kg fresca; peso cocido ~ crudo) (Granada wh 3968)
+    "pavo loncheado":                0.7625,  // real: Maxi pavo Hacendado finas lonchas (Granada wh 3968)
+    "pechuga de pavo":               0.875,  // real: Filetes pechuga de pavo (Granada wh 3968)
+    "pechuga de pollo":              0.73,  // real: Filetes pechuga de pollo (Granada wh 3968)
+    "pepino":                        0.15,  // real: Pepino (Granada wh 3968)
+    "pina":                          0.2,  // real: Piña fresca (no en almíbar) (Granada wh 3968)
+    "platano":                       0.23,  // real: Plátano de Canarias IGP (Granada wh 3968)
+    "queso fresco batido 0%":        0.22,  // real: Queso fresco batido desnatado 0% MG Hacendado (Granada wh 3968)
+    "queso light":                   0.7,  // estimado -- sin generico claro; entre lonchas fundido 0,42 y fresco light 0,88
+    "quinoa cocida":                 0.1963,  // real: Quinoa Hacendado (seca ×2.7 = cocida) (Granada wh 3968)
+    "requeson":                      0.5,  // real: Requesón mezcla Hacendado (Granada wh 3968)
+    "salmon":                        1.35,  // real: Filete de salmón rosado ultracongelado (Granada wh 3968)
+    "sardinas en lata":              0.9402,  // real: Sardinas en aceite de oliva Hacendado (Granada wh 3968)
+    "skyr natural":                  0.28,  // estimado -- sin skyr; Postre lacteo natural +Proteinas 10 g 0% MG (2,80 EUR/kg)
+    "tempeh":                        1.8,  // estimado -- sin producto
+    "ternera magra":                 1.7,  // real: Filetes de vacuno añojo 18 / tacos guisar 16,2 EUR/kg (media) (Granada wh 3968)
+    "tofu firme":                    0.6364,  // real: Tofu firme Hacendado (Granada wh 3968)
+    "tomate":                        0.125,  // real: Tomate triturado Hacendado (1,25 EUR/kg, brick 800 g) (Granada wh 3968)
+    "tortillas de trigo":            0.4,  // estimado -- solo 'Wraps', BJU distinto
+    "tortitas de arroz":             0.8871,  // real: Tortitas de arroz Hacendado (Granada wh 3968)
+    "verduras congeladas salteado":  0.3,  // estimado -- mezcla de verdura ultracongelada ~3 EUR/kg
+    "wrap proteico":                 0.75,  // estimado -- sin producto
+    "yogur griego ligero":           0.1934,  // real: Yogur griego natural ligero Hacendado (Granada wh 3968)
+    "zanahoria":                     0.12,  // real: Zanahorias 1 kg (Granada wh 3968)
 
     // Añadidos en la ampliación de DISH_DB (más variedad de ingredientes)
-    "conejo":                       0.94,  // real: Medio conejo troceado
-    "jamon serrano":                2.5,  // real: Jamón serrano cortado a máquina
-    "solomillo de ternera":         4.1404,  // real: Solomillo de vacuno
-    "lubina":                       2.25,  // real: Filete de lubina
-    "rape":                         1.80,  // estimado (sin match real, pescado blanco similar a merluza/bacalao)
-    "gamba cocida":                 2.32,  // real: Gamba cocida
-    "langostino cocido":            1.10,  // real: Langostino cocido
-    "pavo picado":                  0.90,  // estimado (sin match real, similar a otros picados de ave)
-    "champinones":                  0.4,  // real: Champiñón laminado Hacendado
-    "calabacin":                    0.20,  // estimado (verdura fresca genérica)
-    "pimiento":                     0.25,  // estimado (verdura fresca genérica)
-    "coliflor":                     0.20,  // estimado (verdura fresca genérica)
-    "queso curado":                 2.0111,  // real: Queso curado DOP manchego de oveja Hacendado
-    "pan de centeno":               0.35,  // estimado (similar a pan integral)
-    "trigo sarraceno cocido":       0.15,  // estimado (similar a quinoa/cuscús, factor de cocción ya aplicado)
-    "kiwi":                         0.35,  // estimado (fruta fresca genérica)
-    "fresas":                       0.30   // estimado (fruta fresca genérica)
+    "conejo":                        0.94,  // real: Medio conejo troceado (Granada wh 3968)
+    "jamon serrano":                 2.5,  // real: Jamón serrano cortado a máquina (Granada wh 3968)
+    "solomillo de ternera":          4.07,  // real: Solomillo de vacuno añojo (Granada wh 3968)
+    "lubina":                        2.25,  // real: Filete de lubina (Granada wh 3968)
+    "rape":                          1.85,  // real: Cola de rape del Cabo ultracongelada (Granada wh 3968)
+    "gamba cocida":                  2.7667,  // real: Gamba blanca cocida Hacendado (Granada wh 3968)
+    "langostino cocido":             1.075,  // real: Langostino cocido (10,75 EUR/kg) (Granada wh 3968)
+    "pavo picado":                   0.79,  // estimado -- sin pavo picado; Preparado de carne picada pollo (7,90 EUR/kg)
+    "champinones":                   0.52,  // real: Champiñones blancos (Granada wh 3968)
+    "calabacin":                     0.19,  // real: Calabacín verde (Granada wh 3968)
+    "pimiento":                      0.25,  // real: Pimiento rojo (Granada wh 3968)
+    "coliflor":                      0.25,  // real: Coliflor (Granada wh 3968)
+    "queso curado":                  1.11,  // real: Queso curado mezcla Hacendado (11,08 EUR/kg; generico, no DOP manchego) (Granada wh 3968)
+    "pan de centeno":                0.34,  // real: Hogaza de centeno 50% (Granada wh 3968)
+    "trigo sarraceno cocido":        0.2,  // estimado -- Mercadona no vende trigo sarraceno; analogo quinoa seca ÷2.7
+    "kiwi":                          0.465,  // real: Kiwi verde (Granada wh 3968)
+    "fresas":                        0.75,  // real: Fresas (Granada wh 3968)
   }
 };
