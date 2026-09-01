@@ -582,6 +582,7 @@ function buildSlotFromTemplate(tpl, slotDef, targetKcal, pool, day, opts) {
   return {
     items: items, total: total, assembly: tpl.assembly,
     templateKey: tpl.key, templateLabel: tpl.label,
+    makeAhead: tpl.makeAhead === true,
   };
 }
 
@@ -632,7 +633,13 @@ function budgetReserveFor(remainingSlots, pool, day) {
 
 function buildSlot(slotKey, targetKcal, pool, day, opts) {
   var slotDef = NO_COOK_SLOT_DEFS.filter(function (d) { return d.key === slotKey; })[0];
-  var templates = (typeof templatesForSlot === "function") ? templatesForSlot(slotKey) : [];
+  // allowMakeAhead: las plantillas "de la noche antes" (avena remojada)
+  // solo entran en el día 2+ de un plan de varios días. El modo sin cocinar
+  // hoy es de 1 día, así que opts.allowMakeAhead nunca llega true y quedan
+  // siempre fuera -- misma regla que los platos makeAhead del modo cocinado.
+  var templates = (typeof templatesForSlot === "function")
+    ? templatesForSlot(slotKey, opts && opts.allowMakeAhead === true)
+    : [];
   if (opts && opts.forceTemplateKey) {
     var forced = templates.filter(function (t) { return t.key === opts.forceTemplateKey; });
     if (forced.length) templates = forced;
@@ -666,7 +673,7 @@ function buildSlot(slotKey, targetKcal, pool, day, opts) {
       if (result) return result;
     }
   }
-  return { items: [], total: emptyMacros(), assembly: "", templateKey: null, templateLabel: null };
+  return { items: [], total: emptyMacros(), assembly: "", templateKey: null, templateLabel: null, makeAhead: false };
 }
 
 
@@ -805,6 +812,7 @@ function generateNoCookPlan(storeId, options) {
     return {
       key: def.key, label: def.label, items: b.items, total: b.total,
       assembly: b.assembly, templateKey: b.templateKey, templateLabel: b.templateLabel,
+      makeAhead: b.makeAhead === true,
     };
   });
 
@@ -912,6 +920,9 @@ function regenerateNoCookSlot(plan, slotKey, storeId, options) {
   var built = buildSlot(slotKey, targetKcal * share, pool, day, {
     allowSplitFresh: false,
     targetProtein: (opts.protein || 0) * share,
+    // Un re-roll respeta la misma regla que la generación: nada "de la
+    // noche antes" salvo día 2+ de un plan de varios días.
+    allowMakeAhead: opts.allowMakeAhead === true,
   });
   if (!built.items.length) return { error: "no_alternative_found" };
 

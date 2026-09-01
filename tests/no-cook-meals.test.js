@@ -185,6 +185,57 @@ function run(t) {
     });
   });
 
+  // ── "De la noche antes" (avena remojada), 2026-09-02 ─────────────────
+  // Misma regla que los platos makeAhead del modo cocinado: nunca en un
+  // plan de 1 día ni en el día 1 de uno de varios. El modo sin cocinar hoy
+  // es de 1 día, así que estas plantillas quedan SIEMPRE fuera.
+
+  t.test("templatesForSlot: la plantilla makeAhead NO sale sin allowMakeAhead, SÍ con él", function () {
+    var s = servingSandbox();
+    var withoutFlag = s.templatesForSlot("breakfast").map(function (t) { return t.key; });
+    var withFlag = s.templatesForSlot("breakfast", true).map(function (t) { return t.key; });
+    assert.strictEqual(withoutFlag.indexOf("desayuno_remojado"), -1,
+      "avena remojada no debería ofrecerse por defecto");
+    assert.ok(withFlag.indexOf("desayuno_remojado") !== -1,
+      "con allowMakeAhead=true sí debería estar");
+    assert.strictEqual(withFlag.length - withoutFlag.length, 1,
+      "exactamente una plantilla de diferencia");
+  });
+
+  t.test("existe exactamente una plantilla makeAhead y es un desayuno", function () {
+    var s = servingSandbox();
+    var ma = s.NO_COOK_TEMPLATES.filter(function (t) { return t.makeAhead === true; });
+    assert.strictEqual(ma.length, 1);
+    // slots viene del realm del vm -> comparar por valor, no por referencia.
+    assert.strictEqual(JSON.stringify(ma[0].slots), JSON.stringify(["breakfast"]));
+    assert.ok(/noche antes/i.test(ma[0].assembly), "el montaje debe decir 'la noche antes'");
+  });
+
+  t.test("generateNoCookPlan (1 día, sin allowMakeAhead): ninguna toma es makeAhead", function () {
+    var s = fullSandbox();
+    for (var i = 0; i < 60; i++) {
+      var plan = s.generateNoCookPlan(undefined, { calories: 2200, protein: 130, budget: 16 });
+      plan.slots.forEach(function (slot) {
+        assert.notStrictEqual(slot.templateKey, "desayuno_remojado",
+          "avena remojada salió en un plan de 1 día");
+        assert.notStrictEqual(slot.makeAhead, true);
+      });
+    }
+  });
+
+  t.test("regenerateNoCookSlot: un re-roll tampoco trae la plantilla makeAhead", function () {
+    var s = fullSandbox();
+    var plan = s.generateNoCookPlan(undefined, { calories: 2200, protein: 130, budget: 16 });
+    for (var i = 0; i < 25; i++) {
+      var res = s.regenerateNoCookSlot(plan, "breakfast", undefined, { calories: 2200, protein: 130, budget: 16 });
+      if (res && res.slot) {
+        assert.notStrictEqual(res.slot.templateKey, "desayuno_remojado");
+        assert.notStrictEqual(res.slot.makeAhead, true);
+        plan.slots[0] = res.slot;
+      }
+    }
+  });
+
   // ── 4. El caso concreto del usuario ──────────────────────────────────
 
   t.test("la pizza real del catálogo: 2 raciones por envase y policy 'fresh'", function () {

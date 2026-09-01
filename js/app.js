@@ -1131,6 +1131,11 @@ document.addEventListener("DOMContentLoaded", function () {
         protein: profile.protein,
         budget: (typeof data.budget === "number" && isFinite(data.budget)) ? data.budget : undefined,
         priority: data.priority,
+        // El modo sin cocinar es de 1 DÍA: las plantillas "de la noche
+        // antes" (avena remojada) nunca se pueden dejar hechas la víspera,
+        // así que se excluyen siempre. Explícito para el día que haya
+        // planes de varios días sin cocinar.
+        allowMakeAhead: false,
       };
     } catch (err) {
       console.warn("[no-cook:targets] formulario no utilizable, se usa el objetivo por defecto:", err);

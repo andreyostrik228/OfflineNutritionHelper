@@ -281,6 +281,14 @@ function renderNoCookSlot(slot) {
     ' title="Cambiar solo esta toma (por ejemplo si un producto no está en tu tienda)">' +
     "&#8635; Cambiar</button>";
 
+  // Aviso "de la noche antes" (plantillas makeAhead: avena remojada). Mismo
+  // trato que en el modo cocinado -- solo puede salir en el día 2+ de un
+  // plan de varios días, así que hoy no aparece nunca.
+  var makeAheadNote = slot.makeAhead
+    ? '<div class="meal-make-ahead">&#9200; <strong>Prepáralo la noche anterior</strong> ' +
+      '&mdash; necesita reposar en la nevera, no se hace al momento</div>'
+    : "";
+
   // Cómo se monta, en una línea. Es la diferencia entre una lista de la
   // compra y una comida: el usuario pidió "haz un sándwich y vete".
   var assembly = slot.assembly
@@ -291,6 +299,7 @@ function renderNoCookSlot(slot) {
       '<div class="nocook-slot__head">' + timeBadge + "<h3>" + escapeHtml(slot.label) + "</h3>" +
         kind + kcal + swapBtn +
       "</div>" +
+      makeAheadNote +
       assembly +
       '<div class="nocook-items">' +
         slot.items.map(renderNoCookItem).join("") +

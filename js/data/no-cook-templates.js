@@ -26,6 +26,13 @@
  *   maxServings tope de raciones por componente en una toma, para que
  *               escalar hacia el objetivo de calorías no acabe en "4
  *               raciones de chorizo".
+ *   makeAhead   (opcional) hay que dejarlo hecho la NOCHE ANTES — no se
+ *               monta y se come al momento (avena remojada). Misma regla que
+ *               los platos makeAhead del modo cocinado: nunca en un plan de
+ *               1 día, nunca en el día 1 de uno de varios, y con aviso
+ *               cuando sale. Hoy el modo sin cocinar es de 1 día, así que
+ *               estas plantillas quedan SIEMPRE fuera; el mecanismo está
+ *               listo para cuando haya planes de varios días sin cocinar.
  *
  * Los papeles (`role`) los asigna js/data/serving-sizes.js. Un producto sin
  * rol (bebidas, café, azúcar) no puede rellenar ningún hueco y por tanto
@@ -180,6 +187,24 @@ var NO_COOK_TEMPLATES = [
     assembly: "Abre el yogur, añade la fruta y espolvorea los cereales por encima.",
   },
 
+  {
+    // Avena remojada: los copos crudos en lácteo frío quedan arenosos, hay
+    // que dejarlos ablandar. makeAhead -> nunca en el día 1, aviso cuando
+    // sale (ver la nota de `makeAhead` en la cabecera). Mientras el modo sin
+    // cocinar sea de 1 día, esta plantilla no se usa nunca.
+    key: "desayuno_remojado",
+    label: "Avena remojada",
+    slots: ["breakfast"],
+    weight: 2,
+    makeAhead: true,
+    components: [
+      { role: "cereal", required: true, maxServings: 3 },
+      { role: "lacteo", required: true, maxServings: 3 },
+      { role: "fruta", required: false, maxServings: 2 },
+    ],
+    assembly: "LA NOCHE ANTES: mezcla los copos de avena con el yogur o la leche en un bote y déjalo en la nevera. Por la mañana remueve y añade la fruta.",
+  },
+
   // ── Snacks ───────────────────────────────────────────────────────────
 
   {
@@ -245,12 +270,20 @@ var NO_COOK_TEMPLATES = [
 
 /**
  * Plantillas que pueden montar una toma concreta.
+ *
  * @param {string} slotKey - "breakfast"|"lunch"|"dinner"|"snack"|"snack2"
+ * @param {boolean} [allowMakeAhead] - si NO es true, se descartan las
+ *   plantillas `makeAhead` (avena remojada): no se pueden dejar hechas la
+ *   noche antes del día 1. El generador lo pone a true solo en el día 2+ de
+ *   un plan de varios días (hoy el modo sin cocinar es de 1 día -> siempre
+ *   false).
  * @returns {object[]}
  */
-function templatesForSlot(slotKey) {
+function templatesForSlot(slotKey, allowMakeAhead) {
   return NO_COOK_TEMPLATES.filter(function (tpl) {
-    return tpl.slots.indexOf(slotKey) !== -1;
+    if (tpl.slots.indexOf(slotKey) === -1) return false;
+    if (tpl.makeAhead === true && allowMakeAhead !== true) return false;
+    return true;
   });
 }
 
