@@ -2,7 +2,11 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- user-scalable=no + maximum-scale=1: el usuario pidio expresamente que
+     NO se pueda hacer zoom (2026-09-01). Nota honesta: esto tambien impide
+     ampliar a quien lo necesite por vista, que es la razon por la que suele
+     desaconsejarse; se hace porque se ha pedido, no por descuido. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="description" content="Planificador de dieta offline para musculación. Calcula macros con Mifflin-St Jeor y genera platos reales adaptados a tu objetivo, presupuesto y tiempo de cocina.">
   <title>Nutrition Planner — Mercadona</title>
   <link rel="icon" type="image/svg+xml" href="assets/img/icon.svg">
