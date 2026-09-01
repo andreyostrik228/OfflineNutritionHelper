@@ -3542,7 +3542,12 @@ dialog.despensa-dialog[open] {
     /* Antes 8% del ANCHO DEL BOTÓN: a 375px son 30px por lado, y crecía
        con la pantalla hasta comerse la etiqueta. Un mínimo fijo con techo
        relativo mantiene el texto legible en cualquier ancho. */
-    padding: 8px max(14px, 4vw);
+    /* Más alta y con letra mayor (2026-09-01). Con el zoom alejado al
+       máximo la barra quedaba diminuta al lado del resto de la página:
+       9/12/14px cuando los campos del formulario se ven enormes. Ahora
+       escala con el ancho (clamp) y tiene altura de objetivo táctil. */
+    padding: 12px max(14px, 4vw);
+    min-height: 52px;
     border: none;
     background: var(--green-deep);
     color: var(--hero-ink);
@@ -3553,7 +3558,7 @@ dialog.despensa-dialog[open] {
   }
 
   .next-meal-sticky__eyebrow {
-    font-size: 9px;
+    font-size: clamp(10px, 2.6vw, 13px);
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -3564,13 +3569,13 @@ dialog.despensa-dialog[open] {
   .next-meal-sticky__time {
     font-family: var(--font-mono);
     font-weight: 700;
-    font-size: 14px;
+    font-size: clamp(15px, 4vw, 20px);
     font-variant-numeric: tabular-nums;
     flex-shrink: 0;
   }
 
   .next-meal-sticky__label {
-    font-size: 12px;
+    font-size: clamp(13px, 3.4vw, 17px);
     font-weight: 600;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -3713,8 +3718,3 @@ dialog.despensa-dialog[open] {
   color: var(--ink-faint);
 }
 
-/* Ancla de desplazamiento de las tarjetas de comida. Lo usa
-   scrollIntoView() al cambiar de día para dejar la MISMA toma a la misma
-   altura (ver alignToSameMeal en js/app.js). Debe coincidir con TOP_REF
-   allí; si cambia uno, cambia el otro. */
-.meal-card { scroll-margin-top: 90px; }

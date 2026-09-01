@@ -336,6 +336,35 @@
 > anclaje está sin confirmar en un móvil de verdad; lo que sí se confirma es
 > que la toma correcta domina la pantalla y que nunca se vuelve al desayuno.
 >
+> ### ⏩ UPDATE 2026-09-01 (8) — barra "siguiente" más grande y subir al cambiar de día
+>
+> - **La barra sticky era diminuta con el zoom alejado al máximo.** Tenía
+>   tamaños fijos (9/14/12px) mientras el resto de la página se ve enorme a
+>   ese zoom. Ahora escalan con `clamp()` (10-13 / 15-20 / 13-17px) y la
+>   barra tiene `min-height: 52px`, altura de objetivo táctil. Medido a
+>   865px de ancho: la hora sale a 20px frente a los 12px de los chips del
+>   formulario.
+> - **Al cambiar de día se sube arriba, al desayuno.** El intento anterior
+>   de conservar la TOMA (snack → snack) no era fiable: la realineación
+>   depende de cuándo se mida la geometría y caía distinto cada vez. El
+>   usuario dio las dos salidas razonables (subir al desayuno, o que todos
+>   los días se desplacen juntos) y pidió la más fácil. Subir arriba es la
+>   fácil Y la predecible; el desplazamiento compartido exigiría que todos
+>   los días midieran lo mismo, y no lo miden. Se ha borrado todo el
+>   andamiaje de `topMealKey` / `alignToSameMeal` / `scroll-margin-top`.
+> - Se arman **los dos** disparadores: `scrollend` y un temporizador de
+>   160ms. `flushAlign` es idempotente, gana el que llegue antes. Depender
+>   solo de `scrollend` dejaba el día nuevo a media página.
+>
+> **⚠️ LÍMITE DEL NAVEGADOR DE LA HERRAMIENTA, comprobado hoy:** un
+> `element.scrollTo()` programado **NO dispara el evento `scroll`** que
+> reciben los listeners. Los dots parecían funcionar en pruebas anteriores
+> solo porque yo despachaba `new Event("scroll")` a mano. Consecuencia
+> práctica: el carrusel NO se puede verificar de verdad desde aquí; hay que
+> despachar el evento a mano para probar la lógica y confiar en el móvil
+> para el gesto. Verificado así: la página subió de 3966 a 2228, el
+> carrusel quedó a 70px y la primera tarjeta del día nuevo es el desayuno.
+>
 > ### 🛒 SOLO MERCADONA — decisión del usuario (2026-09-01)
 >
 > **Hasta que el usuario diga lo contrario, el producto trabaja SOLO con
