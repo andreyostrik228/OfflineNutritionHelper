@@ -12,3 +12,29 @@ ruvector.db
 # Archivos del sistema operativo
 .DS_Store
 Thumbs.db
+
+# Basura de 0 bytes del hook SessionStart de claude-flow (2026-09-01)
+# ---------------------------------------------------------------------------
+# El hook de auto-commit parte cadenas de comandos y crea ficheros VACÍOS con
+# el nombre de los fragmentos. Como además hace `git add -A` y `git push`, sin
+# ignorarlos acaban publicados.
+#
+# Esto NO arregla el hook, solo contiene su basura. La lista es explícita a
+# propósito: un comodín amplio (por ejemplo "cualquier nombre con un carácter
+# raro") escondería en silencio un archivo legítimo el día que haga falta uno,
+# y un fallo así no se nota hasta que algo no se despliega.
+#
+# Todos los ficheros de esta lista deben ser de 0 bytes. Si alguno aparece con
+# contenido, es que ese nombre lo está usando algo de verdad: quítalo de aquí.
+/error
+/and
+/both
+/estimated
+/media
+/top
+/packsBefore
+/existing.servingsPerPackage
+/limite
+/ratio
+/del
+/*.diff.tmp

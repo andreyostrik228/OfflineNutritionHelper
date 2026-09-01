@@ -1,0 +1,22 @@
+# Finales de línea (2026-09-01)
+# ---------------------------------------------------------------------------
+# Todo el repo está en CRLF. Sin este archivo, cada edición hecha por una
+# herramienta que escribe LF dejaba el fichero con finales mezclados y había
+# que re-normalizarlo a mano después de CADA tanda de cambios (en una sola
+# sesión eso fueron ~10 pasadas manuales). Con `eol=crlf` git normaliza en
+# checkout y al hacer commit, y el problema desaparece de raíz.
+#
+# El repo ya era CRLF de punta a punta, así que esto no genera un diff
+# masivo de reformateo: solo fija lo que ya se cumplía por costumbre.
+* text=auto eol=crlf
+
+# Binarios: nunca tocar sus bytes.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.pdf  binary
+*.woff binary
+*.woff2 binary
+*.db   binary
