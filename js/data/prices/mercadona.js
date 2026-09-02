@@ -100,7 +100,7 @@ PRICE_CATALOGS.mercadona = {
     "copos de maiz":                 0.3,  // real: Corn Flakes Hacendado 0% azúcares (Granada wh 3968)
     "cuscus cocido":                 0.0696,  // real: Cous cous mediano Hacendado (seco ×2.8 = cocido) (Granada wh 3968)
     "edamame":                       0.35,  // real: Edamame soja verde Hacendado ultracongelada (Granada wh 3968)
-    "espinacas":                     0.26,  // real: Espinaca picada congelada (Granada wh 3968)
+    "espinacas":                     0.26,  // real: Espinaca picada en porciones Hacendado ultracongelada (Granada wh 3968)
     "frutos rojos congelados":       0.6334,  // real: Mix frutos rojos Hacendado ultracongeladas (Granada wh 3968)
     "garbanzos cocidos":             0.2,  // real: Garbanzo cocido Hacendado (2,00 EUR/kg, ya cocido) (Granada wh 3968)
     "granola":                       0.6,  // real: Cereales y semillas granola Hacendado con frutos secos (Granada wh 3968)

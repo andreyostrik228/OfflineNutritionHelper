@@ -52,6 +52,7 @@ function freshSandbox() {
     projPath("js/data/dishes.js"),
     projPath("js/data/packaging.js"),
     projPath("js/data/real-ingredient-matches.js"),
+    projPath("js/data/product-links.js"),
     projPath("js/data/prices/mercadona.js"),
     projPath("js/core/utils.js"),
     projPath("js/core/pricing.js")
@@ -235,6 +236,54 @@ function run(t) {
       if (diff > 0.03) {
         off.push(name + ": la app cobra " + pkg.packagePrice + " EUR por el envase (" +
           Math.round(pkg.packageSizeG) + " g) y en la tienda vale " + REAL_SHELF_PRICE[name]);
+      }
+    });
+    assert.deepStrictEqual(off, [], off.join(" | "));
+  });
+
+  // ── El enlace tiene que llevar al producto que se está cobrando ──────
+  // Añadido 2026-09-02: al pasar las legumbres del saco seco al bote, el
+  // precio cambió y product-links.js se quedó apuntando al saco. El usuario
+  // ya se había quejado justo de eso ("cuando entro por el enlace, ahí hay
+  // otra cosa, otro gramaje").
+  //
+  // product-links.js se GENERA desde el comentario "// real: ..." de cada
+  // precio, así que basta comprobar que el nombre del producto enlazado
+  // sigue apareciendo en ese comentario. Si alguien cambia un precio y no
+  // regenera los enlaces, esto falla en el acto.
+  t.test("cada enlace de producto apunta al mismo producto del que sale su precio", function () {
+    var fs = require("fs");
+    var s = freshSandbox();
+    if (typeof s.INGREDIENT_PRODUCT_LINKS === "undefined") {
+      assert.fail("product-links.js no está cargado en el sandbox");
+    }
+    var priceText = fs.readFileSync(projPath("js/data/prices/mercadona.js"), "utf8");
+
+    var norm = function (x) {
+      return String(x || "").toLowerCase()
+        .normalize("NFD").replace(/[̀-ͯ]/g, "")
+        .replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+    };
+    // rol -> comentario de su línea de precio
+    var SPLIT_LINES = new RegExp(String.fromCharCode(13) + '?' + String.fromCharCode(10));
+    var commentFor = {};
+    priceText.split(SPLIT_LINES).forEach(function (line) {
+      var m = line.match(/^\s*"([^"]+)":\s*[0-9.]+,\s*\/\/\s*(.+)$/);
+      if (m) commentFor[m[1]] = norm(m[2]);
+    });
+
+    var off = [];
+    Object.keys(s.INGREDIENT_PRODUCT_LINKS).forEach(function (role) {
+      var linked = norm(s.INGREDIENT_PRODUCT_LINKS[role].name);
+      var comment = commentFor[role];
+      if (!comment) { off.push(role + ": enlazado pero sin línea de precio"); return; }
+      // Basta con que las palabras significativas del producto enlazado
+      // estén en el comentario: los alias abrevian ("Zanahorias 1 kg").
+      var words = linked.split(" ").filter(function (w) { return w.length > 3; });
+      var shared = words.filter(function (w) { return comment.indexOf(w) !== -1; });
+      if (!words.length || shared.length / words.length < 0.5) {
+        off.push(role + ": el enlace va a \"" + s.INGREDIENT_PRODUCT_LINKS[role].name +
+          "\" pero el precio sale de \"" + comment.slice(0, 46) + "\"");
       }
     });
     assert.deepStrictEqual(off, [], off.join(" | "));
