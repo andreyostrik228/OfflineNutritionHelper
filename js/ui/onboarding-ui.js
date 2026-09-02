@@ -560,6 +560,49 @@ function _obShow() {
  * piso más abajo. La lección es que ese test no basta si la interfaz
  * decide por su cuenta.
  */
+/**
+ * Llama a `alCerrarse` cuando el <dialog> deje de estar abierto.
+ *
+ * ── Por qué NO se escucha el evento `close` ─────────────────────────────
+ * Porque no siempre llega. Medido en el navegador de pruebas contra la
+ * página desplegada: el diálogo se cerraba de verdad (`open` pasaba a
+ * false) y el contador de eventos `close` se quedaba en cero. Con la
+ * transición colgada de ese evento, quien se registraba y cerraba el
+ * diálogo volvía a la pantalla de la cuenta en vez de pasar a las
+ * preguntas -- que es exactamente lo que el usuario describió.
+ *
+ * Observar el atributo `open` no depende de que el navegador dispare
+ * nada: si el diálogo está cerrado, está cerrado. El temporizador de
+ * respaldo cubre el caso de que ni el observador exista.
+ *
+ * @param {HTMLElement} dialogo
+ * @param {function} alCerrarse — se llama UNA sola vez
+ */
+function _obAlCerrarse(dialogo, alCerrarse) {
+  var yaLlamado = false;
+  function continuar() {
+    if (yaLlamado) return;
+    yaLlamado = true;
+    if (observador) observador.disconnect();
+    if (respaldo) window.clearInterval(respaldo);
+    alCerrarse();
+  }
+
+  var observador = null;
+  if (typeof MutationObserver === "function") {
+    observador = new MutationObserver(function () {
+      if (!dialogo.open) continuar();
+    });
+    observador.observe(dialogo, { attributes: true, attributeFilter: ["open"] });
+  }
+
+  // Respaldo por si no hay MutationObserver, o si algún día el diálogo se
+  // cierra de una forma que no toque el atributo.
+  var respaldo = window.setInterval(function () {
+    if (!dialogo.open) continuar();
+  }, 300);
+}
+
 function _obAfterAccountChoice() {
   // Se vuelve a MIRAR si hay perfil en vez de usar el valor con el que
   // arrancó la página: quien acaba de entrar en una cuenta que ya tenía
@@ -664,17 +707,11 @@ function _obWire() {
       openAuthDialog(mode);
 
       var dialogo = document.getElementById("authDialog");
-      if (!dialogo || typeof dialogo.addEventListener !== "function") {
+      if (!dialogo) {
         _obAfterAccountChoice();
         return;
       }
-      // `close` salta tanto al entrar como al cerrar sin hacer nada, que
-      // es justo lo que hace falta: en ambos casos toca continuar, y con
-      // la sesión (si la hay) ya resuelta.
-      dialogo.addEventListener("close", function alContinuar() {
-        dialogo.removeEventListener("close", alContinuar);
-        _obAfterAccountChoice();
-      });
+      _obAlCerrarse(dialogo, _obAfterAccountChoice);
     };
   }
 
