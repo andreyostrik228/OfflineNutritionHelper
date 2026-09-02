@@ -184,7 +184,7 @@ function run(t) {
   t.test("aceptadas las condiciones y sin perfil, toca la anécdota", function () {
     var s = freshSandbox();
     var st = { termsVersion: "1.0", termsAcceptedAt: "2026-09-02T00:00:00Z" };
-    assert.strictEqual(s.nextOnboardingStep(st, { currentVersion: "1.0" }), "intake");
+    assert.strictEqual(s.nextOnboardingStep(st, { currentVersion: "1.0", hasAccount: true }), "intake");
   });
 
   t.test("el recorrido guiado espera a que haya un plan que señalar", function () {
@@ -193,9 +193,9 @@ function run(t) {
       termsVersion: "1.0", termsAcceptedAt: "2026-09-02T00:00:00Z",
       intakeDoneAt: "2026-09-02T00:01:00Z"
     };
-    assert.strictEqual(s.nextOnboardingStep(st, { currentVersion: "1.0", hasPlan: false }), "done",
+    assert.strictEqual(s.nextOnboardingStep(st, { currentVersion: "1.0", hasAccount: true, hasPlan: false }), "done",
       "sin plan no hay nada que señalar; no se estorba al usuario");
-    assert.strictEqual(s.nextOnboardingStep(st, { currentVersion: "1.0", hasPlan: true }), "tour");
+    assert.strictEqual(s.nextOnboardingStep(st, { currentVersion: "1.0", hasAccount: true, hasPlan: true }), "tour");
   });
 
   t.test("terminado todo, la aplicación se queda limpia", function () {
@@ -204,7 +204,7 @@ function run(t) {
       termsVersion: "1.0", termsAcceptedAt: "2026-09-02T00:00:00Z",
       intakeDoneAt: "2026-09-02T00:01:00Z", tourDoneAt: "2026-09-02T00:02:00Z"
     };
-    assert.strictEqual(s.nextOnboardingStep(st, { currentVersion: "1.0", hasPlan: true }), "done");
+    assert.strictEqual(s.nextOnboardingStep(st, { currentVersion: "1.0", hasAccount: true, hasPlan: true }), "done");
   });
 
   // ── EL USUARIO QUE YA EXISTÍA ───────────────────────────────────────
@@ -212,13 +212,56 @@ function run(t) {
   // perfil guardado (el propio autor, entre otros). Son los dos tests que
   // de verdad importan de todo el archivo.
 
-  t.test("a quien ya tiene perfil NO se le hace repetir la anécdota", function () {
+  t.test("con cuenta, a quien ya tiene perfil NO se le hace repetir la anécdota", function () {
     var s = freshSandbox();
     var st = { termsVersion: "1.0", termsAcceptedAt: "2026-09-02T00:00:00Z" };
     assert.strictEqual(
-      s.nextOnboardingStep(st, { currentVersion: "1.0", hasProfile: true, hasPlan: false }),
+      s.nextOnboardingStep(st, { currentVersion: "1.0", hasAccount: true, hasProfile: true, hasPlan: false }),
       "done",
       "ya contestó esas preguntas: repetírselas sería castigarle por llegar antes");
+  });
+
+  // ── SIN CUENTA se pregunta SIEMPRE (decisión del dueño, 2026-09-02) ──
+  // Cambia la regla de arriba a propósito: la bienvenida vuelve en cada
+  // visita mientras no haya cuenta, y con ella la anécdota. Es fricción
+  // buscada -- "если кто-то не хочет его создавать то пусть постоянно
+  // кликает на не создавать аккаунт" -- y por eso está fijada con un test
+  // en vez de quedar como un efecto secundario que alguien "arregle".
+  t.test("sin cuenta, la bienvenida vuelve aunque ya se contestara todo", function () {
+    var s = freshSandbox();
+    var todoHecho = {
+      termsVersion: "1.0", termsAcceptedAt: "2026-09-02T00:00:00Z",
+      intakeDoneAt: "2026-09-02T00:01:00Z", tourDoneAt: "2026-09-02T00:02:00Z",
+      accountChoice: "skipped"
+    };
+    assert.strictEqual(
+      s.nextOnboardingStep(todoHecho, { currentVersion: "1.0", hasAccount: false, hasProfile: true, hasPlan: true }),
+      "welcome",
+      "sin cuenta se le vuelve a ofrecer, por muchas veces que ya la haya rechazado");
+  });
+
+  t.test("crear la cuenta es lo que hace que la bienvenida deje de salir", function () {
+    var s = freshSandbox();
+    var st = {
+      termsVersion: "1.0", termsAcceptedAt: "2026-09-02T00:00:00Z",
+      intakeDoneAt: "2026-09-02T00:01:00Z", tourDoneAt: "2026-09-02T00:02:00Z"
+    };
+    assert.strictEqual(s.nextOnboardingStep(st, { currentVersion: "1.0", hasAccount: false }), "welcome");
+    assert.strictEqual(s.nextOnboardingStep(st, { currentVersion: "1.0", hasAccount: true }), "done",
+      "con cuenta, la aplicación se abre limpia: ese es el premio");
+  });
+
+  // Y al revés: borrar la cuenta devuelve al usuario al principio, que es
+  // lo que el usuario esperaba y no ocurría.
+  t.test("borrar la cuenta devuelve la bienvenida", function () {
+    var s = freshSandbox();
+    var st = {
+      termsVersion: "1.0", termsAcceptedAt: "2026-09-02T00:00:00Z",
+      intakeDoneAt: "2026-09-02T00:01:00Z", accountChoice: "created"
+    };
+    assert.strictEqual(s.nextOnboardingStep(st, { currentVersion: "1.0", hasAccount: true }), "done");
+    // tras el borrado ya no hay sesión:
+    assert.strictEqual(s.nextOnboardingStep(st, { currentVersion: "1.0", hasAccount: false }), "welcome");
   });
 
   t.test("a quien ya tiene perfil SÍ se le piden las condiciones (son nuevas)", function () {
@@ -532,7 +575,7 @@ function run(t) {
     assert.strictEqual(hasProfile, true);
     var estado = { termsVersion: "1.0", termsAcceptedAt: "2026-09-02T00:00:00Z" };
     assert.strictEqual(
-      s.nextOnboardingStep(estado, { currentVersion: "1.0", hasProfile: hasProfile }),
+      s.nextOnboardingStep(estado, { currentVersion: "1.0", hasAccount: true, hasProfile: hasProfile }),
       "done",
       "tras contestar, una recarga no puede devolverle a la pregunta 1");
   });

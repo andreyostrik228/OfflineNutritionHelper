@@ -51,6 +51,10 @@ var authGoogleBtn, authEmailForm, authEmailInput, authPasswordInput, authErrorEl
     authSubmitBtn, authSwitchPrompt, authSwitchModeBtn, authUnavailableBox, authAvailableBox;
 var authConflictDialogEl, authConflictKeepCloudBtn, authConflictMergeBtn, authConflictKeepLocalBtn;
 var authDeleteAccountBtn, authDeleteDialogEl, authDeleteConfirmBtn, authDeleteCancelBtn, authDeleteErrorEl;
+var authDeleteConfirmInput;
+// La palabra que hay que teclear para poder borrar. En mayúsculas y sin
+// acentos a propósito: tiene que poder escribirse en cualquier teclado.
+var AUTH_DELETE_WORD = "BORRAR";
 
 var authOnDataReconciled; // callback de app.js -- ver cabecera del archivo
 var _authMode = "login"; // 'login' | 'register'
@@ -95,6 +99,7 @@ function initAuthRefs(refs) {
   authDeleteConfirmBtn = refs.authDeleteConfirmBtn;
   authDeleteCancelBtn  = refs.authDeleteCancelBtn;
   authDeleteErrorEl    = refs.authDeleteErrorEl;
+  authDeleteConfirmInput = refs.authDeleteConfirmInput;
 
   authOnDataReconciled = typeof refs.onDataReconciled === "function" ? refs.onDataReconciled : function () {};
 
@@ -118,6 +123,7 @@ function initAuthRefs(refs) {
   if (authDeleteAccountBtn) authDeleteAccountBtn.addEventListener("click", openDeleteAccountDialog);
   if (authDeleteCancelBtn)  authDeleteCancelBtn.addEventListener("click", closeDeleteAccountDialog);
   if (authDeleteConfirmBtn) authDeleteConfirmBtn.addEventListener("click", handleDeleteAccountConfirm);
+  if (authDeleteConfirmInput) authDeleteConfirmInput.addEventListener("input", syncDeleteGate);
 
   if (authConflictKeepCloudBtn) authConflictKeepCloudBtn.addEventListener("click", function () { handleConflictChoice("cloud"); });
   if (authConflictMergeBtn)     authConflictMergeBtn.addEventListener("click", function () { handleConflictChoice("merge"); });
@@ -143,9 +149,19 @@ function handleAuthStateChange(event, user) {
 
   if (!user) {
     _reconciledForUserId = null;
-    if (event === "SIGNED_OUT" && typeof onAuthSignOut === "function") {
-      onAuthSignOut();
-      authOnDataReconciled();
+    if (event === "SIGNED_OUT") {
+      if (typeof onAuthSignOut === "function") {
+        onAuthSignOut();
+        authOnDataReconciled();
+      }
+      // Sin cuenta, la bienvenida vuelve (ver nextOnboardingStep). Aquí y
+      // no solo en la siguiente carga: al borrar la cuenta el usuario se
+      // quedaba mirando la aplicación como si nada hubiera pasado, cuando
+      // acababa de dejar de tener cuenta y de perder su perfil. Que
+      // reaparezca es la confirmación visible de que ha ocurrido.
+      if (typeof initOnboarding === "function") {
+        initOnboarding({ hasProfile: false });
+      }
     }
     return;
   }
@@ -211,15 +227,32 @@ function openDeleteAccountDialog() {
   if (authUserMenu) authUserMenu.hidden = true;
   if (!authDeleteDialogEl) return;
   if (authDeleteErrorEl) authDeleteErrorEl.hidden = true;
+  if (authDeleteConfirmInput) authDeleteConfirmInput.value = "";
   if (authDeleteConfirmBtn) {
-    authDeleteConfirmBtn.disabled = false;
-    authDeleteConfirmBtn.textContent = "Sí, borrar mi cuenta";
+    authDeleteConfirmBtn.textContent = "Borrar mi cuenta para siempre";
   }
+  syncDeleteGate();
   if (typeof authDeleteDialogEl.showModal === "function") {
     authDeleteDialogEl.showModal();
   } else {
     authDeleteDialogEl.setAttribute("open", "");
   }
+}
+
+/**
+ * El botón de borrar solo se enciende cuando la palabra está escrita.
+ *
+ * Dos toques seguidos eran pocos para lo único irreversible que hay aquí:
+ * el "sí" caía casi donde estaba el botón del menú, así que se podía
+ * llegar al final sin leer una línea. Teclear obliga a detenerse, y de
+ * paso hace imposible borrar la cuenta con un toque accidental en el
+ * bolsillo.
+ */
+function syncDeleteGate() {
+  if (!authDeleteConfirmBtn) return;
+  var escrito = authDeleteConfirmInput ? String(authDeleteConfirmInput.value || "") : "";
+  var vale = escrito.trim().toUpperCase() === AUTH_DELETE_WORD;
+  authDeleteConfirmBtn.disabled = !vale;
 }
 
 function closeDeleteAccountDialog() {
@@ -233,6 +266,14 @@ function closeDeleteAccountDialog() {
 
 function handleDeleteAccountConfirm() {
   if (typeof deleteOwnAccount !== "function") return;
+
+  // Se vuelve a comprobar aquí, no solo en el `disabled` del botón: un
+  // atributo se puede quitar desde la consola, y esto no tiene deshacer.
+  var escrito = authDeleteConfirmInput ? String(authDeleteConfirmInput.value || "") : "";
+  if (escrito.trim().toUpperCase() !== AUTH_DELETE_WORD) {
+    syncDeleteGate();
+    return;
+  }
 
   // Se bloquea el botón antes de empezar: un doble clic mandaría dos
   // borrados, y el segundo llegaría cuando la sesión ya no existe --

@@ -23,6 +23,13 @@
  * caros: enseñarle la anecdota a quien ya la rellenó, o dar por aceptadas
  * unas condiciones que cambiaron.
  *
+ * ── Sin cuenta, la bienvenida sale SIEMPRE (2026-09-02) ────────────────
+ * A quien no tiene cuenta se le vuelve a ofrecer en cada visita, y la
+ * anécdota se repite. Es una decisión del dueño del proyecto, no una
+ * consecuencia accidental: quiere que crear la cuenta sea el camino
+ * cómodo. Ver `nextOnboardingStep`, donde está escrito el porqué y el
+ * precio que tiene.
+ *
  * ── La decisión menos obvia: el usuario que ya existía ──────────────────
  * Esta pantalla llega a una aplicación que ya tiene usuarios con su perfil
  * guardado. Arrastrarlos por un cuestionario que ya contestaron sería
@@ -235,7 +242,8 @@ function needsTermsAcceptance(state, currentVersion) {
  * antes sería apuntar a huecos vacíos.
  *
  * @param {object} state
- * @param {{ hasProfile?: boolean, hasPlan?: boolean, currentVersion?: string }} ctx
+ * @param {{ hasAccount?: boolean, hasProfile?: boolean, hasPlan?: boolean,
+ *           currentVersion?: string }} ctx
  * @returns {string}
  */
 function nextOnboardingStep(state, ctx) {
@@ -248,6 +256,22 @@ function nextOnboardingStep(state, ctx) {
   if (needsTermsAcceptance(s, version)) {
     return "welcome";
   }
+
+  // ── SIN CUENTA, SE PREGUNTA SIEMPRE (decisión del usuario, 2026-09-02) ─
+  // Antes bastaba con contestar una vez: quien ya tenía perfil no volvía a
+  // ver nada. El dueño del proyecto lo cambió a propósito -- a quien no
+  // crea cuenta se le vuelve a ofrecer en cada visita, y si no la quiere,
+  // que la rechace otra vez: "если кто-то не хочет его создавать то пусть
+  // постоянно кликает на не создавать аккаунт".
+  //
+  // Es fricción deliberada, no un descuido, y tiene un precio real: un
+  // invitado que use esto a diario pasa por la bienvenida cada día. Se
+  // suaviza precargando cada respuesta con lo que ya contestó, así son
+  // siete toques y no siete decisiones.
+  if (!c.hasAccount) {
+    return "welcome";
+  }
+
   if (!s.intakeDoneAt && !c.hasProfile) {
     return "intake";
   }

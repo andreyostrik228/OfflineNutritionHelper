@@ -4626,3 +4626,35 @@ body.is-onboarding {
     padding-bottom: var(--space-8);
   }
 }
+
+/* La puerta de escritura del borrado de cuenta. */
+.delete-dialog__gate {
+  display: block;
+  margin-top: var(--space-5);
+  font-size: 0.88rem;
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--ink-soft);
+}
+
+.delete-dialog__input {
+  width: 100%;
+  margin-top: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--paper-raised);
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+}
+
+.delete-dialog__input:focus {
+  outline: none;
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px var(--danger-wash);
+}

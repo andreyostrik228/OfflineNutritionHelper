@@ -350,13 +350,24 @@
           Lo que tengas guardado en <strong>este navegador</strong> no se toca:
           podr&aacute;s seguir usando la aplicaci&oacute;n sin cuenta, igual que antes de crearla.
         </p>
+        <!-- Escribir la palabra para poder borrar. Dos toques seguidos son
+             pocos para algo que no tiene vuelta atr&aacute;s: con el bot&oacute;n justo
+             donde estaba el del men&uacute;, se puede llegar hasta el final sin
+             haber le&iacute;do una sola l&iacute;nea. Teclear obliga a parar. -->
+        <label class="delete-dialog__gate" for="authDeleteConfirmInput">
+          Para confirmar, escribe <strong>BORRAR</strong> aqu&iacute;:
+        </label>
+        <input type="text" id="authDeleteConfirmInput" class="delete-dialog__input"
+               autocomplete="off" autocapitalize="characters" spellcheck="false"
+               placeholder="BORRAR">
+
         <p class="auth-dialog__error" id="authDeleteError" hidden></p>
         <div class="delete-dialog__actions">
           <button type="button" class="auth-dialog__switch-btn" id="authDeleteCancelBtn">
             No, volver
           </button>
-          <button type="button" class="delete-dialog__confirm" id="authDeleteConfirmBtn">
-            S&iacute;, borrar mi cuenta
+          <button type="button" class="delete-dialog__confirm" id="authDeleteConfirmBtn" disabled>
+            Borrar mi cuenta para siempre
           </button>
         </div>
       </div>

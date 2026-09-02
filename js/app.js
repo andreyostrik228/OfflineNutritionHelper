@@ -175,6 +175,7 @@ document.addEventListener("DOMContentLoaded", function () {
   var authDeleteConfirmBtn = document.getElementById("authDeleteConfirmBtn");
   var authDeleteCancelBtn  = document.getElementById("authDeleteCancelBtn");
   var authDeleteErrorEl    = document.getElementById("authDeleteError");
+  var authDeleteConfirmInput = document.getElementById("authDeleteConfirmInput");
 
   // El plan actualmente mostrado — necesario para que "Confirmar plan de
   // hoy" sepa sobre qué comidas actuar sin regenerar nada. Una vez
@@ -759,6 +760,7 @@ document.addEventListener("DOMContentLoaded", function () {
         authDeleteConfirmBtn: authDeleteConfirmBtn,
         authDeleteCancelBtn: authDeleteCancelBtn,
         authDeleteErrorEl: authDeleteErrorEl,
+        authDeleteConfirmInput: authDeleteConfirmInput,
         onDataReconciled: handleAuthDataReconciled
       });
     }

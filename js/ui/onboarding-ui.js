@@ -569,9 +569,14 @@ function _obAfterAccountChoice() {
 
   var next = "intake";
   if (typeof nextOnboardingStep === "function" && typeof getOnboardingState === "function") {
-    next = nextOnboardingStep(getOnboardingState(), { hasProfile: hasProfile });
+    next = nextOnboardingStep(getOnboardingState(), {
+      hasProfile: hasProfile, hasAccount: _obHayCuenta()
+    });
   }
-  if (next === "intake") {
+  // Sin cuenta se pasa a la anécdota aunque ya esté contestada: es la
+  // regla que pidió el dueño del proyecto (ver nextOnboardingStep). Las
+  // respuestas vienen precargadas, así que son toques, no decisiones.
+  if (next === "intake" || (next === "welcome" && !_obHayCuenta())) {
     _obGoToIntake();
     return;
   }
@@ -583,6 +588,17 @@ function _obAfterAccountChoice() {
  * valor por defecto razonable. Mirar solo si existe el objeto de ajustes
  * no valdría: se crea en cuanto se toca cualquier campo.
  */
+/** ¿Constan ya unas condiciones aceptadas, de esta misma versión? */
+function e_yaAcepto(state) {
+  if (typeof needsTermsAcceptance !== "function") return false;
+  var version = (typeof LEGAL_VERSION === "string") ? LEGAL_VERSION : "";
+  return !needsTermsAcceptance(state, version);
+}
+
+function _obHayCuenta() {
+  return typeof getCurrentUser === "function" && !!getCurrentUser();
+}
+
 function _obTieneperfilGuardado() {
   if (typeof getSettings !== "function") return false;
   var s = getSettings() || {};
@@ -694,11 +710,17 @@ function initOnboarding(opts) {
 
   var state = typeof getOnboardingState === "function" ? getOnboardingState() : {};
   var step = typeof nextOnboardingStep === "function"
-    ? nextOnboardingStep(state, { hasProfile: !!o.hasProfile })
+    ? nextOnboardingStep(state, { hasProfile: !!o.hasProfile, hasAccount: _obHayCuenta() })
     : "done";
 
   if (step === "welcome") {
     _obRenderSummary();
+    // Si ya aceptó las condiciones en una visita anterior, la casilla sale
+    // marcada: se le vuelve a ofrecer la cuenta, no se le vuelve a pedir
+    // que acepte algo que ya aceptó.
+    if (e_yaAcepto(state) && _onboardingEls.accept) {
+      _onboardingEls.accept.checked = true;
+    }
     _obSyncTermsGate();
     _obShowStep("welcome");
     _obShow();
