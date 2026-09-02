@@ -109,11 +109,11 @@ function renderCurrentSearch() {
  */
 function handleRealProductsSearch(query) {
   var products = getActiveRealProducts();
-  if (verifiedCount) verifiedCount.textContent = products.length;
-
   var trimmed = query.trim();
 
   if (!trimmed) {
+    // Sin búsqueda, el contador es el tamaño del catálogo.
+    if (verifiedCount) verifiedCount.textContent = products.length;
     renderRealProducts(products.slice(0, MAX_RENDERED_PRODUCTS), "");
     return;
   }
@@ -124,6 +124,13 @@ function handleRealProductsSearch(query) {
     var haystack = normalizeSearchText((p.name || "") + " " + (p.brand || ""));
     return haystack.indexOf(needle) !== -1;
   });
+
+  // Con búsqueda activa, el contador cuenta lo ENCONTRADO. Antes siempre
+  // decía el total del catálogo: buscar "guisantes" pintaba 3 tarjetas con
+  // un "3749 productos" al lado, que es el único número que se ve junto al
+  // buscador. El aviso "Mostrando N de M" solo aparece al pasar de 90, así
+  // que por debajo de ese tope no había forma de saber cuántos había.
+  if (verifiedCount) verifiedCount.textContent = matches.length;
 
   renderRealProducts(matches.slice(0, MAX_RENDERED_PRODUCTS), trimmed, matches.length);
 }
@@ -164,8 +171,8 @@ function renderRealProducts(products, query, totalMatches) {
 /**
  * Genera el HTML de una tarjeta de producto real.
  *
- * El catálogo ahora prioriza VARIEDAD (2769 productos alimentarios reales)
- * por encima de tener nutrición completa (solo ~1877 de esos la tienen).
+ * El catálogo ahora prioriza VARIEDAD (3749 productos al 2026-09-03) por
+ * encima de tener nutrición completa (2396 de esos la tienen).
  * Por eso la fila de macros solo se pinta cuando hay datos — nada de una
  * fila de guiones "—/—/—/—" repetida en la mayoría de tarjetas. La
  * insignia de confianza también es honesta sobre qué se sabe de verdad de
