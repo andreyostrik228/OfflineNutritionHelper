@@ -141,7 +141,7 @@ var DISH_CUISINE_INTERNACIONAL = [
   "Spaghetti boloñesa ligera",
   "Poke bowl de salmón con arroz y aguacate",
   "Ensalada mediterránea con garbanzos",
-  "Hummus con wrap proteico y verduras",
+  "Wrap de hummus con verduras",
   "Pollo tikka masala con arroz integral",
   "Hamburguesa de pavo con ensalada",
   "Shakshuka ligera con tostadas",

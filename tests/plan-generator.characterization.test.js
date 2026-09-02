@@ -159,6 +159,40 @@ function run(t) {
     return { def: p, profile: built.profile, data: built.data, runs: runs };
   });
 
+  // ── 0. Integridad del plato: se sirve LO QUE DICE LA RECETA ──────────
+  // Añadido 2026-09-02 tras encontrar que el plan servía platos a los que
+  // les faltaba un ingrediente propio. Dos sitios BORRABAN ingredientes
+  // cuando quedaban por debajo de un umbral: enforcePurchaseBudgetCap
+  // (plan-generator.js) y removeLeastUsefulItem (meal-helpers.js). Los dos
+  // elegían "el peor" por proteína/coste, criterio con el que una verdura
+  // pierde SIEMPRE -- no tiene proteína y sí cuesta abrir una bolsa.
+  //
+  // Medido antes del arreglo, sobre 1.000 tomas: al 5,7% le faltaba un
+  // ingrediente, y en 52 casos era justo el del nombre del plato ("Huevo
+  // duro con zanahoria" sin zanahoria, "Jamón serrano con manzana" sin
+  // manzana). Después: 0. Ahora los dos sitios solo REDUCEN, con suelo, y
+  // el recorte de presupuesto además DESHACE cualquier recorte que no
+  // abarate la compra de verdad.
+  t.test("ninguna toma pierde un ingrediente de su receta (los dos recortes reducen, nunca borran)", function () {
+    var missing = [];
+    runsByProfile.forEach(function (rp) {
+      rp.runs.forEach(function (result, i) {
+        result.meals.forEach(function (meal) {
+          var dish = sandbox.DISH_DB.filter(function (d) { return d.name === meal.dishName; })[0];
+          if (!dish) return;
+          dish.items.forEach(function (ing) {
+            var served = (meal.items || []).filter(function (x) { return x.name === ing.name; })[0];
+            if (!served || !(served.grams > 0)) {
+              missing.push(rp.def.name + " (run " + i + ") " + dish.name + " -> sin " + ing.name);
+            }
+          });
+        });
+      });
+    });
+    assert.deepStrictEqual(missing.slice(0, 6), [],
+      missing.length + " toma(s) servidas sin un ingrediente de su propia receta");
+  });
+
   // ── 1. Estructura: siempre 5 comidas, claves correctas, en orden ────────
   t.test("generateDietPlan devuelve las tomas correctas (5, o 3 sin snacks con presupuesto bajo) en orden, en los 5 perfiles x " + ITERATIONS_PER_PROFILE + " corridas", function () {
     runsByProfile.forEach(function (rp) {
@@ -514,29 +548,27 @@ function run(t) {
     // (realm distinto) antes de comparar contra literales del host -- ver
     // comentario del test #1 más arriba para el motivo completo.
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.key; }))), EXPECTED_MEAL_KEYS);
-    // RECAPTURADO el 2026-09-01 tras RECONSTRUIR js/data/prices/mercadona.js
-    // contra la API en vivo del almacén de Granada (18012, wh 3968): 56
-    // precios movidos -- al alza fresas 0,30->0,75, ternera 0,85->1,70,
-    // bacalao 0,85->1,97, salmón 0,95->1,35; a la baja huevos, aceite,
-    // copos de maíz, mantequilla de cacahuete, queso curado. Con un
-    // generador sembrado, cambiar UN precio cambia una elección y a partir
-    // de ahí divergen todas las tiradas: no es "el mismo plan más caro", es
-    // otro plan.
+    // RECAPTURADO el 2026-09-02, al recalcular los macros DECLARADOS de los
+    // 364 platos como la suma real de sus ingredientes (ver la REGLA en
+    // tests/ingredient-nutrition.test.js). El motor escala la ración con
+    // `dish.kcal`; mientras ese número era otro que la suma de la receta,
+    // escalaba mal a propósito.
     //
-    // Medido con 150 ejecuciones por lado (5 perfiles x 30 semillas) tras la
-    // reconstrucción, la calidad AGREGADA sube -- perfect 77->87,
-    // violaciones 170->158, compra media 11,79->11,65 (lo que sube se
-    // compensa con lo que baja). Un golden-master es UNA muestra; para decir
-    // si algo empeora hay que mirar la distribución.
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 2, 3, 2, 1]);
-    assert.strictEqual(result.total.kcal, 2788.4);
-    assert.strictEqual(result.total.protein, 206.4);
-    assert.strictEqual(result.total.carbs, 343.6);
-    assert.strictEqual(result.total.fat, 52.699999999999996);
-    assert.strictEqual(result.total.cost, 9.76);
-    assert.strictEqual(result.total.purchaseCost, 14.12);
+    // Es la cuarta recaptura del día: cada cambio de precio o de nutrición
+    // remezcla el sorteo sembrado. Lo que importa NO es esta tirada sino la
+    // distribución, medida con 150 planes por lado: "perfect" 76 -> 99,
+    // |error| de kcal 183 -> 147, planes a más de 300 kcal del objetivo
+    // 39 -> 31, |error| de proteína 44,0 -> 38,6 g, compra media
+    // 11,94 -> 11,78 EUR, ninguno fuera de presupuesto ni antes ni después.
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 3, 3, 2, 2]);
+    assert.strictEqual(result.total.kcal, 2848.7999999999997);
+    assert.strictEqual(result.total.protein, 160.40000000000003);
+    assert.strictEqual(result.total.carbs, 377.09999999999997);
+    assert.strictEqual(result.total.fat, 74.4);
+    assert.strictEqual(result.total.cost, 9.36);
+    assert.strictEqual(result.total.purchaseCost, 13.62);
     assert.strictEqual(result.report.status, "adjusted");
-    assert.strictEqual(result.report.tierUsed, 2);
+    assert.strictEqual(result.report.tierUsed, 1);
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.report.violations)), []);
   });
 
@@ -547,18 +579,19 @@ function run(t) {
     var result = s.generateDietPlan(built.profile, built.data);
 
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.key; }))), EXPECTED_MEAL_KEYS);
-    // RECAPTURADO el 2026-09-01 tras reconstruir mercadona.js contra la API
-    // en vivo de Granada -- ver el comentario largo del golden-master de
-    // seed=42. Esta tirada (volumen alto, tope 20 EUR) sigue en perfect/0
-    // con los precios reales: la compra baja a 18,21 EUR porque el sorteo
-    // sembrado, tras la reconstrucción, cae en una combinación distinta.
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 3, 3, 2, 2]);
-    assert.strictEqual(result.total.kcal, 3623.4999999999995);
-    assert.strictEqual(result.total.protein, 254.79999999999998);
-    assert.strictEqual(result.total.carbs, 334.6);
-    assert.strictEqual(result.total.fat, 136.89999999999998);
-    assert.strictEqual(result.total.cost, 11.02);
-    assert.strictEqual(result.total.purchaseCost, 18.21);
+    // RECAPTURADO el 2026-09-02 con los macros de los platos recalculados y
+    // con el recorte de presupuesto arreglado (ya no borra ingredientes ni
+    // hace recortes que no abaratan nada) -- ver el comentario largo del
+    // golden-master de seed=42. Esta tirada sigue en perfect/0 y sirve
+    // 3.830 kcal frente a un objetivo de 3.871: 41 kcal de desvío, donde
+    // antes eran cientos.
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [4, 4, 3, 3, 2]);
+    assert.strictEqual(result.total.kcal, 3830.3999999999996);
+    assert.strictEqual(result.total.protein, 208.70000000000005);
+    assert.strictEqual(result.total.carbs, 476.7);
+    assert.strictEqual(result.total.fat, 118.39999999999999);
+    assert.strictEqual(result.total.cost, 9.13);
+    assert.strictEqual(result.total.purchaseCost, 17.93);
     assert.strictEqual(result.report.status, "perfect");
     assert.strictEqual(result.report.tierUsed, 0);
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.report.violations)), []);

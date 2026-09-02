@@ -23,11 +23,15 @@
  *
  * ── 2026-08-31: 29 roles resueltos desde USDA FoodData Central ──────────
  * Plátano, brócoli, mermelada light (y 26 más) pasaron de 'estimated' a
- * dato real. Los tests de "el ingrediente sin resolver hereda / se recorta
- * / deriva su kcal por Atwater" se movieron a los platos con "Wrap
- * proteico", el único rol de dishes.js que sigue sin resolver a propósito
- * (junto al nombre corrupto "Lechuga: Pepino"). El modelo de remanente es
- * el mismo; solo cambió qué ingrediente lo ejercita.
+ * dato real.
+ *
+ * ── 2026-09-02: CERO ingredientes sin resolver ──────────────────────────
+ * Se cerraron los dos últimos: "Lechuga: Pepino" (nombre CORRUPTO en
+ * dishes.js, dos alimentos pegados con ":") y "Wrap proteico" (producto que
+ * Mercadona no vende, así que mandaba a comprar algo inexistente). El
+ * modelo de remanente sigue vivo y probado, pero ya con un ingrediente
+ * SINTÉTICO: un test que depende de que el catálogo tenga un hueco se rompe
+ * justo cuando los datos mejoran.
  * ─────────────────────────────────────────────────────────────────────────
  */
 
@@ -97,16 +101,17 @@ function run(t) {
     assert.strictEqual(n.fat, 1.8);
   });
 
-  t.test("resolveIngredientNutrition: ingrediente sin resolver devuelve resolved:false con motivo, nunca un número inventado", function () {
+  t.test("resolveIngredientNutrition: ingrediente sin datos devuelve resolved:false, nunca un número inventado", function () {
     var s = freshEngineSandbox();
-    // "Plátano" se resolvió el 2026-08-31 desde USDA FDC. "Wrap proteico"
-    // sigue sin resolver a propósito: ni el catálogo ni OFF ni USDA tienen
-    // un registro de tortilla alta en proteína y baja en carbohidratos.
-    var n = s.resolveIngredientNutrition("Wrap proteico");
+    // Desde 2026-09-02 NINGÚN ingrediente real de dishes.js está sin
+    // resolver, así que este mecanismo se prueba con un nombre inventado.
+    // Es mejor test que el anterior: antes dependía de que el catálogo
+    // siguiera teniendo un hueco ("Wrap proteico"), o sea, se rompía
+    // justamente cuando los datos MEJORABAN.
+    var n = s.resolveIngredientNutrition("Ingrediente que no existe 12345");
     assert.strictEqual(n.resolved, false);
-    assert.strictEqual(n.reason, "no_existe_equivalente");
-    assert.ok(typeof n.detail === "string" && n.detail.length > 0);
-    assert.strictEqual(Object.prototype.hasOwnProperty.call(n, "kcal"), false);
+    assert.strictEqual(Object.prototype.hasOwnProperty.call(n, "kcal"), false,
+      "sin dato no se devuelve ningún kcal, ni siquiera 0");
   });
 
   // ── A) Regresión específica: Cacahuetes + Plátano ────────────────────────
@@ -137,50 +142,71 @@ function run(t) {
   // ejercita ahora "Wrap proteico" (rol sin equivalente en catálogo/OFF/
   // USDA), en "Hummus con wrap proteico y verduras".
 
-  t.test("A/wrap) Hummus con wrap proteico y verduras: el ingrediente sin resolver recibe SOLO el remanente (total menos lo real), nunca hereda macros ajenos", function () {
+  // ── A/sintético) El mecanismo del REMANENTE ──────────────────────────
+  // Estos tres usaban "Wrap proteico" y "Lechuga: Pepino", los dos únicos
+  // ingredientes que quedaban sin resolver. Desde 2026-09-02 no queda
+  // ninguno (el wrap no lo vende Mercadona -> los platos usan tortillas de
+  // trigo; la clave corrupta se arregló en dishes.js), así que el mecanismo
+  // se ejercita con un ingrediente INVENTADO. El código sigue vivo y hay
+  // que protegerlo: en cuanto entre un plato con un ingrediente nuevo sin
+  // datos, este es el camino que se recorre.
+
+  /** Plato sintético: un ingrediente con datos reales + uno sin datos. */
+  function dishWithUnknown(overrides) {
+    var base = {
+      name: "Plato sintético de prueba",
+      category: "comida", prep: 10, mainProt: "pollo", taste: "savory",
+      kcal: 500, protein: 40, carbs: 50, fat: 10,
+      items: [
+        { name: "Pechuga de pollo", g: 100 },
+        { name: "Ingrediente sin datos XYZ", g: 80 }
+      ]
+    };
+    Object.keys(overrides || {}).forEach(function (k) { base[k] = overrides[k]; });
+    return base;
+  }
+
+  t.test("A/sintético) el ingrediente sin resolver recibe SOLO el remanente, nunca hereda macros ajenos", function () {
     var s = freshEngineSandbox();
-    var dish = s.DISH_DB.find(function (d) { return d.name === "Hummus con wrap proteico y verduras"; });
-    assert.ok(dish, "el plato real debe seguir existiendo en dishes.js");
+    var dish = dishWithUnknown();
     var nutrition = s.computeDishIngredientNutrition(dish, 1);
-    var wrap = findItem(nutrition, "Wrap proteico");
+    var unknown = findItem(nutrition, "Ingrediente sin datos XYZ");
+    var pollo = findItem(nutrition, "Pechuga de pollo");
 
-    assert.strictEqual(wrap.nutritionSource, "estimated");
+    assert.strictEqual(unknown.nutritionSource, "estimated");
+    assert.strictEqual(pollo.nutritionSource, "real");
 
-    var real = nutrition.filter(function (r) { return r.nutritionSource === "real"; });
-    var realProtein = real.reduce(function (a, r) { return a + r.protein; }, 0);
-    var realFat = real.reduce(function (a, r) { return a + r.fat; }, 0);
-
-    // proteína del wrap == total hand-curated - suma real, exacta.
-    assert.ok(Math.abs(wrap.protein - (dish.protein - realProtein)) < 1e-6,
+    // El desconocido se lleva EXACTAMENTE lo que falta, ni un gramo del pollo.
+    assert.ok(Math.abs(unknown.protein - (dish.protein - pollo.protein)) < 1e-6,
       "la proteína del ingrediente sin resolver debe ser EXACTAMENTE el remanente");
-
-    // la grasa real ya supera el total del plato -> remanente recortado a 0,
-    // nunca negativo, nunca restado del ingrediente real para cuadrar.
-    assert.ok(realFat > dish.fat, "premisa: lo real ya supera la grasa total del plato");
-    assert.strictEqual(wrap.fat, 0);
-    assert.ok(wrap.fat >= 0);
+    assert.ok(Math.abs(unknown.carbs - (dish.carbs - pollo.carbs)) < 1e-6);
   });
 
-  t.test("A/wrap) Hummus con wrap proteico y verduras: protein/carbs suman el total hand-curated; el kcal del ingrediente sin resolver se deriva por Atwater, no de dish.kcal", function () {
+  t.test("A/sintético) el remanente se recorta a 0, nunca sale negativo", function () {
     var s = freshEngineSandbox();
-    var dish = s.DISH_DB.find(function (d) { return d.name === "Hummus con wrap proteico y verduras"; });
+    // Total declarado MENOR que lo que ya aporta el ingrediente real:
+    // el remanente sería negativo si no se recortara.
+    var dish = dishWithUnknown({ protein: 1, fat: 0.1, carbs: 0.1, kcal: 10 });
     var nutrition = s.computeDishIngredientNutrition(dish, 1);
-    var sum = nutrition.reduce(function (acc, r) {
-      acc.protein += r.protein; acc.carbs += r.carbs;
-      return acc;
-    }, { protein: 0, carbs: 0 });
+    var unknown = findItem(nutrition, "Ingrediente sin datos XYZ");
+    var pollo = findItem(nutrition, "Pechuga de pollo");
 
-    // protein/carbs no se recortan aquí (solo la grasa) -> suman EXACTAMENTE
-    // el total hand-curated: el total sigue siendo la suma de los ingredientes.
-    assert.ok(Math.abs(sum.protein - dish.protein) < 0.01);
-    assert.ok(Math.abs(sum.carbs - dish.carbs) < 0.01);
+    assert.ok(pollo.protein > dish.protein, "premisa: lo real ya supera el total del plato");
+    ["kcal", "protein", "carbs", "fat"].forEach(function (k) {
+      assert.ok(unknown[k] >= 0, k + " nunca puede ser negativo");
+      assert.ok(isFinite(unknown[k]) && !isNaN(unknown[k]));
+    });
+    assert.strictEqual(unknown.protein, 0);
+  });
 
-    // kcal de la fila 'estimated' (2026-08-13e): Atwater de SU PROPIO
-    // protein/carbs/fat, nunca una cuota de dish.kcal.
-    var wrap = findItem(nutrition, "Wrap proteico");
-    var wrapAtwater = wrap.protein * 4 + wrap.carbs * 4 + wrap.fat * 9;
-    assert.ok(Math.abs(wrap.kcal - wrapAtwater) < 0.01,
-      "el kcal del ingrediente sin resolver debe ser EXACTAMENTE Atwater de su propio protein/carbs/fat");
+  t.test("A/sintético) el kcal de la fila 'estimated' sale de Atwater de SUS propios macros, no de una cuota de dish.kcal", function () {
+    var s = freshEngineSandbox();
+    var dish = dishWithUnknown();
+    var nutrition = s.computeDishIngredientNutrition(dish, 1);
+    var unknown = findItem(nutrition, "Ingrediente sin datos XYZ");
+    var atwater = unknown.protein * 4 + unknown.carbs * 4 + unknown.fat * 9;
+    assert.ok(Math.abs(unknown.kcal - atwater) < 0.01,
+      "kcal del ingrediente sin resolver = Atwater de su propio protein/carbs/fat");
   });
 
   // ── B) Regresión específica: Pollo + Arroz (los carbohidratos del arroz
@@ -196,7 +222,7 @@ function run(t) {
     var arroz = findItem(nutrition, "Arroz blanco cocido");
 
     assert.strictEqual(pollo.nutritionSource, "real");
-    assert.strictEqual(arroz.nutritionSource, "real", "el arroz blanco cocido SÍ tiene dato real verificado (a diferencia del integral)");
+    assert.strictEqual(arroz.nutritionSource, "real", "el arroz blanco cocido SÍ tiene dato real verificado");
 
     // 0.5g carbs/100g x 200g = 1g -- la pechuga de pollo real casi no
     // tiene carbohidratos, muy por debajo de lo que el reparto antiguo por
@@ -207,32 +233,19 @@ function run(t) {
     var oldBuggyChickenCarbs = dish.carbs * (200 / (200 + 220 + 150)); // ~18.25g bajo el reparto antiguo por peso
     assert.ok(pollo.carbs < oldBuggyChickenCarbs / 5, "el bug antiguo habría asignado a la pechuga una fracción grande de los carbohidratos del arroz -- el modelo nuevo no");
 
-    // El arroz muestra SUS propios carbohidratos reales, sin diluir con el pollo.
-    assert.strictEqual(arroz.carbs, 24 * 220 / 100);
+    // El arroz muestra SUS propios carbohidratos reales, sin diluir con el
+    // pollo. 28,17 g/100 g desde 2026-09-02: antes se usaba la etiqueta de
+    // una bolsa de microondas CON ACEITE (24 g y 2,3 g de grasa) mientras el
+    // precio era de arroz seco a granel; ahora los dos archivos describen el
+    // mismo arroz hervido en casa.
+    assert.ok(Math.abs(arroz.carbs - 28.17 * 220 / 100) < 0.01);
   });
 
-  // "Brócoli" también se resolvió desde USDA el 2026-08-31. La propiedad
-  // "un ingrediente sin resolver nunca da un macro negativo" se comprueba
-  // ahora sobre "Wrap de salmón con aguacate y espinacas", donde la
-  // proteína real (salmón) ya cubre el total del plato y el remanente del
-  // wrap se recorta a 0.
-  t.test("B/wrap) Wrap de salmón con aguacate y espinacas: el ingrediente sin resolver nunca da un macro negativo aunque lo real ya supere el total del plato", function () {
-    var s = freshEngineSandbox();
-    var dish = s.DISH_DB.find(function (d) { return d.name === "Wrap de salmón con aguacate y espinacas"; });
-    var nutrition = s.computeDishIngredientNutrition(dish, 1);
-    var wrap = findItem(nutrition, "Wrap proteico");
-
-    assert.strictEqual(wrap.nutritionSource, "estimated");
-    ["kcal", "protein", "carbs", "fat"].forEach(function (k) {
-      assert.ok(wrap[k] >= 0, "wrap." + k + " nunca debe ser negativo, incluso si los ingredientes reales ya superan el total estimado a mano");
-      assert.ok(isFinite(wrap[k]) && !isNaN(wrap[k]));
-    });
-
-    var realProtein = nutrition.filter(function (r) { return r.nutritionSource === "real"; })
-                               .reduce(function (a, r) { return a + r.protein; }, 0);
-    assert.ok(realProtein >= dish.protein - 0.5, "premisa: lo real ya cubre casi toda la proteína del plato");
-    assert.strictEqual(wrap.protein, 0);
-  });
+  // El test "B/wrap) el ingrediente sin resolver nunca da un macro negativo"
+  // vivía aquí, apoyado en "Wrap de salmón con aguacate y espinacas". Desde
+  // 2026-09-02 ese plato usa tortillas de trigo (resueltas), así que la
+  // propiedad se comprueba en "A/sintético) el remanente se recorta a 0",
+  // más arriba, sin depender de que un plato real tenga un hueco de datos.
 
   // ── C) nutritionSource correcto en varios tipos de plato ─────────────────
 
@@ -338,26 +351,26 @@ function run(t) {
 
   // ── G) Cobertura: cuenta de roles resueltos/sin resolver coincide con la auditoría ─
 
-  t.test("G) INGREDIENT_NUTRITION cubre los 84 roles de dishes.js, 82 resueltos / 2 sin resolver", function () {
+  t.test("G) INGREDIENT_NUTRITION cubre TODOS los roles de dishes.js, sin ninguno sin resolver", function () {
     var s = freshEngineSandbox();
     var uniqueNames = {};
     s.DISH_DB.forEach(function (d) { (d.items || []).forEach(function (i) { uniqueNames[i.name] = true; }); });
     var names = Object.keys(uniqueNames);
-    // 81 -> 84 el 2026-08-31: los platos españoles nuevos (T4) usan cebolla,
-    // ajo y aceite de oliva, ya resueltos desde USDA FDC (T2).
-    assert.strictEqual(names.length, 84);
+    // 81 -> 84 el 2026-08-31 (platos españoles: cebolla, ajo, aceite).
+    // 84 -> 83 el 2026-09-02: desaparecen "Lechuga: Pepino" (nombre corrupto,
+    // ahora "Lechuga") y "Wrap proteico" (Mercadona no lo vende: los 3
+    // platos usan "Tortillas de trigo"), y entra "Lechuga".
+    assert.strictEqual(names.length, 83);
 
-    var resolvedCount = 0, unresolvedCount = 0;
     var unresolved = [];
     names.forEach(function (name) {
-      var n = s.resolveIngredientNutrition(name);
-      if (n.resolved) resolvedCount++; else { unresolvedCount++; unresolved.push(name); }
+      if (!s.resolveIngredientNutrition(name).resolved) unresolved.push(name);
     });
-    // Sin resolver, a propósito: "Wrap proteico" (sin equivalente real) y
-    // "Lechuga: Pepino" (nombre corrupto en dishes.js).
-    assert.strictEqual(resolvedCount, 82);
-    assert.strictEqual(unresolvedCount, 2);
-    assert.deepStrictEqual(unresolved.sort(), ["Lechuga: Pepino", "Wrap proteico"]);
+    // CERO sin resolver desde 2026-09-02. No es una casualidad que haya que
+    // mantener: mientras se cumpla, ningún plato reparte "remanente" y los
+    // macros mostrados son la suma de datos reales, uno por uno.
+    assert.deepStrictEqual(unresolved, [],
+      "roles sin nutrición resuelta: " + unresolved.join(", "));
   });
 
   // ── H) Consistencia interna (Atwater): kcal nunca contradice protein/carbs/fat ─
@@ -387,21 +400,21 @@ function run(t) {
 
   // El caso original era "Mermelada light" en "Tostadas con ricotta y
   // mermelada" (bug 2026-08-13e: kcal en 0 con carbohidratos positivos).
-  // "Mermelada light" se resolvió desde USDA el 2026-08-31; la propiedad
-  // "una fila estimated con carbos positivos NUNCA tiene kcal en 0" se
-  // comprueba ahora sobre "Wrap proteico" en el wrap de salmón, donde su
-  // único macro no recortado son los carbohidratos.
+  // Se resolvió desde USDA el 2026-08-31 y, desde 2026-09-02, NINGÚN
+  // ingrediente real está sin resolver -- así que la propiedad se comprueba
+  // con un plato sintético, que además la expone de forma más directa.
   t.test("H) una fila 'estimated' con carbohidratos positivos deriva su kcal por Atwater, nunca 0 (bug corregido 2026-08-13e)", function () {
     var s = freshEngineSandbox();
-    var dish = s.DISH_DB.find(function (d) { return d.name === "Wrap de salmón con aguacate y espinacas"; });
-    assert.ok(dish, "el plato real debe seguir existiendo en dishes.js");
+    // Total con MUCHOS carbohidratos y poca proteína/grasa: el remanente
+    // del ingrediente sin datos es casi todo carbohidrato.
+    var dish = dishWithUnknown({ protein: 25, carbs: 90, fat: 2, kcal: 999 });
     var nutrition = s.computeDishIngredientNutrition(dish, 1);
-    var wrap = findItem(nutrition, "Wrap proteico");
+    var unknown = findItem(nutrition, "Ingrediente sin datos XYZ");
 
-    assert.strictEqual(wrap.nutritionSource, "estimated");
-    assert.ok(wrap.carbs > 0, "el wrap debe tener un remanente positivo de carbohidratos en este plato");
-    assert.ok(wrap.kcal > 0, "con carbohidratos positivos, el kcal YA NO puede quedarse en 0");
-    assert.ok(Math.abs(wrap.kcal - (wrap.protein * 4 + wrap.carbs * 4 + wrap.fat * 9)) < 0.01);
+    assert.strictEqual(unknown.nutritionSource, "estimated");
+    assert.ok(unknown.carbs > 0, "premisa: remanente positivo de carbohidratos");
+    assert.ok(unknown.kcal > 0, "con carbohidratos positivos, el kcal YA NO puede quedarse en 0");
+    assert.ok(Math.abs(unknown.kcal - (unknown.protein * 4 + unknown.carbs * 4 + unknown.fat * 9)) < 0.01);
   });
 
   t.test("H) items 'real' conservan su kcal verificado tal cual, NUNCA recalculado por Atwater (el dato real no tiene por qué cuadrar exactamente con 4/4/9)", function () {
@@ -520,31 +533,63 @@ function run(t) {
       "la combinacion mas clasica que hay; solo " + buck.length + " platos la usan");
   });
 
-  t.test("REGLA: los macros de los platos llanos son la SUMA de sus ingredientes, no inventados", function () {
+  // ── REGLA: los macros DECLARADOS son la suma de los ingredientes ────
+  // Hasta 2026-09-02 esto solo se exigía a los 16 "platos llanos". Medido
+  // entonces: 144 de los 364 se desviaban más de un 15% en kcal, hasta
+  // ±340. No era cosmético -- el motor ESCALA la ración con `dish.kcal`
+  // (rawScale = target.kcal / dish.kcal), puntúa `macroFit` con
+  // dish.kcal/dish.protein y ordena por `proteinPerEuro` con dish.protein,
+  // pero MUESTRA la suma de los ingredientes. Con los dos números
+  // distintos, el planificador optimizaba una comida y enseñaba otra: un
+  // plato que declaraba 370 kcal y en realidad eran 709 se escalaba HACIA
+  // ARRIBA para llegar al objetivo, y servía casi el doble de lo pedido.
+  //
+  // Recalculados los 364 (340 cambiaron de kcal). Medido antes/después con
+  // 150 planes por lado: planes "perfect" 76 -> 99, |error| de kcal
+  // 183 -> 147, planes a más de 300 kcal del objetivo 39 -> 31, |error| de
+  // proteína 44,0 -> 38,6 g, compra media 11,94 -> 11,78 EUR.
+  t.test("REGLA: los macros declarados de los 364 platos son la SUMA de sus ingredientes, no un número escrito a mano", function () {
     var s = freshEngineSandbox();
-    var PLAIN = ["Pollo con arroz", "Pollo con trigo sarraceno", "Pollo con pasta",
-      "Pollo con patatas", "Cerdo con arroz", "Pavo con arroz", "Ternera con arroz",
-      "Huevos con arroz", "Pollo con arroz integral", "Pollo con trigo sarraceno y br\u00f3coli",
-      "Cerdo con trigo sarraceno", "Pavo con patatas", "Pollo con pasta y tomate",
-      "Muslo de pollo con arroz", "Cerdo con pasta", "Huevos con patatas"];
-    var checked = 0;
-    PLAIN.forEach(function (name) {
-      var dish = s.DISH_DB.filter(function (d) { return d.name === name; })[0];
-      assert.ok(dish, "falta el plato: " + name);
-      var kcal = 0, protein = 0;
-      dish.items.forEach(function (it) {
-        var n = s.resolveIngredientNutrition(it.name);
-        assert.ok(n && n.kcal != null, name + ": ingrediente sin nutricion -> " + it.name);
-        kcal += n.kcal * it.g / 100;
-        protein += (n.protein || 0) * it.g / 100;
+    var off = [];
+    s.DISH_DB.forEach(function (dish) {
+      var nutrition = s.computeDishIngredientNutrition(dish, 1);
+      var sum = { kcal: 0, protein: 0, carbs: 0, fat: 0 };
+      nutrition.forEach(function (n) {
+        sum.kcal += n.kcal; sum.protein += n.protein;
+        sum.carbs += n.carbs; sum.fat += n.fat;
       });
-      assert.ok(Math.abs(dish.kcal - kcal) <= 1,
-        name + ": kcal declaradas " + dish.kcal + " vs suma real " + Math.round(kcal));
-      assert.ok(Math.abs(dish.protein - protein) <= 0.2,
-        name + ": proteina declarada " + dish.protein + " vs suma real " + protein.toFixed(1));
-      checked++;
+      // Se compara con la suma REDONDEADA como está escrita en el archivo
+      // (kcal a entero, macros a un decimal), no con una tolerancia: con
+      // tolerancia, un valor justo en la frontera (26,2 declarado vs 26,15
+      // sumado) falla o pasa según el error de coma flotante. Así la
+      // aserción es exacta y dice lo que de verdad se exige.
+      if (dish.kcal !== Math.round(sum.kcal)) {
+        off.push(dish.name + ": kcal " + dish.kcal + " vs suma " + sum.kcal.toFixed(2));
+      }
+      ["protein", "carbs", "fat"].forEach(function (k) {
+        var rounded = Math.round(sum[k] * 10) / 10;
+        if (dish[k] !== rounded) {
+          off.push(dish.name + ": " + k + " " + dish[k] + " vs suma " + rounded);
+        }
+      });
     });
-    assert.strictEqual(checked, PLAIN.length);
+    assert.deepStrictEqual(off.slice(0, 8), [],
+      off.length + " plato(s) con macros declarados que no son la suma de sus ingredientes");
+  });
+
+  t.test("REGLA: el coste declarado de cada plato es el precio real de sus ingredientes", function () {
+    var s = freshEngineSandbox();
+    var off = [];
+    s.DISH_DB.forEach(function (dish) {
+      var real = Math.round(s.priceDishAtStore(dish, "mercadona").cost * 100) / 100;
+      if (dish.cost !== real) {
+        off.push(dish.name + ": cost " + dish.cost + " vs real " + real);
+      }
+    });
+    // `dish.cost` ya no se usa para calcular nada (el coste sale siempre de
+    // priceDishAtStore, ver la cabecera de dish-selector.js), pero un campo
+    // que miente acaba usándose por error: se mantiene sincronizado.
+    assert.deepStrictEqual(off.slice(0, 8), [], off.length + " plato(s) con coste desactualizado");
   });
 }
 

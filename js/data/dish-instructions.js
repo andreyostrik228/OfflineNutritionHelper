@@ -142,7 +142,7 @@ var DISH_INSTRUCTIONS = {
     ]
   },
 
-  "Hummus con wrap proteico y verduras": {
+  "Wrap de hummus con verduras": {
     difficulty: 1,
     equipment: ["ninguno"],
     steps: [

@@ -912,10 +912,29 @@ function getCuratedPortionCaps() {
  * por la despensa (purchaseCost=0 para ese ingrediente) nunca se recorta
  * por presupuesto: quitarlo no ahorraría nada.
  *
- * Converge siempre: en el peor caso el plan queda vacío y el coste de
- * compra es 0. Tope de 40 iteraciones (más que las 30 del recorte
- * anterior porque cada paso ahora puede "gastarse" sin cruzar un umbral
- * de paquete) como red de seguridad, no como mecanismo esperado.
+ * ── NUNCA borra un ingrediente de la receta (2026-09-02) ────────────────
+ * Antes, cuando un ítem bajaba de 25 g se ELIMINABA del plato. Combinado
+ * con el criterio de arriba eso tenía una consecuencia sistemática que
+ * nadie había medido: una verdura no aporta proteína y sí tiene coste de
+ * compra (por 28 g de zanahoria hay que abrir una bolsa de 1 kg), así que
+ * su ratio es ~0 y era SIEMPRE la peor -- la recortaban una y otra vez
+ * hasta borrarla, mientras el arroz, con algo de proteína y casi gratis,
+ * no se tocaba jamás.
+ *
+ * Medido sobre 1.000 tomas: al 5,7% le faltaba un ingrediente de su propia
+ * receta, y en 52 casos el plato se servía sin lo que lleva EN EL NOMBRE
+ * ("Huevo duro con zanahoria" sin zanahoria, "Jamón serrano con manzana"
+ * sin manzana). Las víctimas eran justo las esperables: zanahoria,
+ * aguacate, tomate, frutos rojos, espinacas, pepino, brócoli, pimiento.
+ * Y no hacía falta: solo 1 de 200 planes tenía violación de presupuesto,
+ * o sea que el recorte iba mucho más lejos de lo necesario.
+ *
+ * Ahora hay un suelo (MIN_TRIMMED_GRAMS): un ítem que ya está en el suelo
+ * no se recorta más, se pasa al siguiente peor. Si NINGUNO se puede
+ * recortar, el bucle para y el exceso se reporta como violación `budget`
+ * -- misma filosofía que compensateCappedCalories: mejor un plan que
+ * admite que no cabe que uno que finge cabiendo porque le ha quitado la
+ * verdura al plato.
  *
  * @param {object[]} meals
  * @param {number}   budget
@@ -923,9 +942,23 @@ function getCuratedPortionCaps() {
  * @param {object|null} pantryState
  * @returns {{ total: object, purchase: object, trims: number }}
  */
+
+/**
+ * Por debajo de esto un ingrediente deja de ser una ración y pasa a ser
+ * una guarnición simbólica, así que no se recorta más. El código anterior
+ * ya trataba 25 g como "demasiado poco para molestarse" (era su umbral
+ * para borrar); 15 g es deliberadamente más conservador, para no dejar
+ * fuera cosas que en la receta ya son pequeñas de por sí (miel, aceite).
+ */
+var MIN_TRIMMED_GRAMS = 15;
+
 function enforcePurchaseBudgetCap(meals, budget, storeId, pantryState) {
   var purchase = computeDayPurchaseCost(meals, storeId, pantryState);
   var trims = 0;
+  var TRIM_FACTOR = 0.75;
+  // Ítems que ya se ha comprobado que recortar NO abarata la compra: se
+  // dejan en paz en las vueltas siguientes en vez de volver a probarlos.
+  var useless = [];
 
   while (purchase.purchaseCost > budget + 0.01 && trims < 40) {
     var costByIngredient = {};
@@ -937,6 +970,9 @@ function enforcePurchaseBudgetCap(meals, budget, storeId, pantryState) {
     meals.forEach(function (meal) {
       meal.items.forEach(function (item) {
         if (item.grams <= 0) return;
+        // Recortar esto lo dejaría en nada: ya ha dado lo que podía dar.
+        if (item.grams * TRIM_FACTOR < MIN_TRIMMED_GRAMS) return;
+        if (useless.indexOf(item) !== -1) return;
         var ingredientPurchaseCost = costByIngredient[normalizeIngredientKey(item.name)] || 0;
         if (ingredientPurchaseCost <= 0) return; // ya cubierto por despensa (o sin coste) -- recortarlo no ahorra nada
         var ratio = item.protein / ingredientPurchaseCost;
@@ -944,24 +980,53 @@ function enforcePurchaseBudgetCap(meals, budget, storeId, pantryState) {
       });
     });
 
-    if (!worstItem) break; // nada cuyo recorte pueda bajar el coste de compra real
+    // Nada recortable: ni queda holgura ni se va a inventar borrando
+    // ingredientes. El exceso lo reporta verifyPlanFeasibility.
+    if (!worstItem) break;
 
-    if (worstItem.grams > 25) {
-      var f = 0.75;
-      worstItem.grams   = round1(worstItem.grams   * f);
-      worstItem.kcal    = round1(worstItem.kcal    * f);
-      worstItem.protein = round1(worstItem.protein * f);
-      worstItem.carbs   = round1(worstItem.carbs   * f);
-      worstItem.fat     = round1(worstItem.fat     * f);
-      worstItem.cost    = round2(worstItem.cost    * f);
-    } else {
-      worstMeal.items.splice(worstMeal.items.indexOf(worstItem), 1);
-    }
+    // ── Recorta, y DESHACE si no ha servido de nada ────────────────────
+    // El ratio compara la proteína de UN ítem contra el coste del
+    // ingrediente en TODO EL DÍA, así que un ingrediente repartido en dos
+    // tomas hace que la toma pequeña parezca siempre la peor -- y
+    // recortarla no baja la compra ni un céntimo, porque la toma grande
+    // sigue necesitando los mismos paquetes. Sin esta comprobación el
+    // bucle destrozaba el plan sin ahorrar: medido, un desayuno de
+    // "Pan con atún y tomate" quedaba en 15 g de atún y 16 g de tomate
+    // mientras la cena seguía comprando las mismas latas, y el día acababa
+    // 1.019 kcal por debajo del objetivo SIN salirse del presupuesto.
+    var before = {
+      grams: worstItem.grams, kcal: worstItem.kcal, protein: worstItem.protein,
+      carbs: worstItem.carbs, fat: worstItem.fat, cost: worstItem.cost
+    };
+    var costBefore = purchase.purchaseCost;
 
+    worstItem.grams   = round1(worstItem.grams   * TRIM_FACTOR);
+    worstItem.kcal    = round1(worstItem.kcal    * TRIM_FACTOR);
+    worstItem.protein = round1(worstItem.protein * TRIM_FACTOR);
+    worstItem.carbs   = round1(worstItem.carbs   * TRIM_FACTOR);
+    worstItem.fat     = round1(worstItem.fat     * TRIM_FACTOR);
+    worstItem.cost    = round2(worstItem.cost    * TRIM_FACTOR);
     worstMeal.total = getMealTotals(worstMeal);
     worstMeal.spent = round2(spentMeal(worstMeal));
+
+    var after = computeDayPurchaseCost(meals, storeId, pantryState);
+    if (after.purchaseCost >= costBefore - 0.005) {
+      // No ha abaratado nada: se revierte y no se vuelve a intentar.
+      worstItem.grams = before.grams; worstItem.kcal = before.kcal;
+      worstItem.protein = before.protein; worstItem.carbs = before.carbs;
+      worstItem.fat = before.fat; worstItem.cost = before.cost;
+      worstMeal.total = getMealTotals(worstMeal);
+      worstMeal.spent = round2(spentMeal(worstMeal));
+      useless.push(worstItem);
+      continue;
+    }
+
+    purchase = after;
     trims++;
-    purchase = computeDayPurchaseCost(meals, storeId, pantryState);
+    // Un recorte que SÍ ha servido mueve los bordes de envase de todo el
+    // día: lo que antes no ahorraba nada puede ahorrarlo ahora, así que la
+    // lista de descartados deja de ser válida.
+    useless.length = 0;
   }
 
   return { total: sumMeals(meals), purchase: purchase, trims: trims };

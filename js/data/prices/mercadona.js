@@ -23,7 +23,7 @@
  *   Siguen en ESTIMADO ("// estimado") solo los que Mercadona no vende como
  *   producto genérico razonable: skyr, tempeh, trigo sarraceno, tortillas
  *   de trigo/wraps, pavo picado, atún al natural (peso escurrido), y un par
- *   de claves combinadas de dishes.js ("lechuga pepino").
+ *   de claves combinadas de dishes.js.
  *
  *   Nota: los precios de Granada son casi idénticos a los del almacén por
  *   defecto de la API — Mercadona es bastante uniforme a nivel nacional.
@@ -69,7 +69,7 @@ PRICE_CATALOGS.mercadona = {
     "aceite EUR/L / 0,916). Arroz/pasta/legumbres se compran secos y se " +
     "dividen por el factor de coccion porque dishes.js los pesa cocidos. " +
     "Siguen ESTIMADOS los que Mercadona no vende como producto generico " +
-    "(skyr, tempeh, trigo sarraceno, wraps, pavo picado). Sustituir por una " +
+    "(skyr, tempeh, trigo sarraceno, pavo picado). Sustituir por una " +
     "fuente en tiempo real antes de un uso con implicaciones economicas.",
 
   // €/100 g — ver nota de unidad arriba
@@ -108,7 +108,7 @@ PRICE_CATALOGS.mercadona = {
     "hummus":                        0.4375,  // real: Hummus de garbanzos Hacendado receta clásica (Granada wh 3968)
     "jamon cocido extra":            1,  // real: Jamón cocido extra Hacendado finas lonchas (Granada wh 3968)
     "leche semidesnatada":           0.084,  // real: Leche semidesnatada Hacendado (0,84 EUR/L) (Granada wh 3968)
-    "lechuga pepino":                0.15,  // estimado -- clave combinada; lechuga por unidad
+    "lechuga":                       0.38,  // real: Lechuga iceberg cortada y lavada (3,80 EUR/kg, bolsa 250 g) (Granada wh 3968)
     "lentejas cocidas":              0.0804,  // real: Lenteja pardina Hacendado (seca ×2.3 = cocida) (Granada wh 3968)
     "lomo de cerdo":                 0.63,  // real: Filetes lomo de cerdo cabeza (Granada wh 3968)
     "mantequilla de cacahuete":      0.53,  // real: Crema de cacahuete 100% Hacendado (Granada wh 3968)
@@ -132,7 +132,7 @@ PRICE_CATALOGS.mercadona = {
     "pina":                          0.2,  // real: Piña fresca (no en almíbar) (Granada wh 3968)
     "platano":                       0.23,  // real: Plátano de Canarias IGP (Granada wh 3968)
     "queso fresco batido 0%":        0.22,  // real: Queso fresco batido desnatado 0% MG Hacendado (Granada wh 3968)
-    "queso light":                   0.7,  // estimado -- sin generico claro; entre lonchas fundido 0,42 y fresco light 0,88
+    "queso light":                   0.967,  // real: Queso lonchas cremoso light de vaca Hacendado (9,67 EUR/kg) (Granada wh 3968)
     "quinoa cocida":                 0.1963,  // real: Quinoa Hacendado (seca ×2.7 = cocida) (Granada wh 3968)
     "requeson":                      0.5,  // real: Requesón mezcla Hacendado (Granada wh 3968)
     "salmon":                        1.35,  // real: Filete de salmón rosado ultracongelado (Granada wh 3968)
@@ -141,11 +141,16 @@ PRICE_CATALOGS.mercadona = {
     "tempeh":                        1.8,  // estimado -- sin producto
     "ternera magra":                 1.7,  // real: Filetes de vacuno añojo 18 / tacos guisar 16,2 EUR/kg (media) (Granada wh 3968)
     "tofu firme":                    0.6364,  // real: Tofu firme Hacendado (Granada wh 3968)
-    "tomate":                        0.125,  // real: Tomate triturado Hacendado (1,25 EUR/kg, brick 800 g) (Granada wh 3968)
-    "tortillas de trigo":            0.4,  // estimado -- solo 'Wraps', BJU distinto
+    // Tomate FRESCO, no triturado (2026-09-02). El comentario venía diciendo
+    // "Tomate triturado" desde antes, pero las recetas piden tomate de
+    // ensalada: "Tostadas con queso fresco y tomate", "Wrap de pollo con
+    // lechuga y tomate", y las instrucciones hablan de lavarlo y cortarlo en
+    // rodajas 36 veces frente a 5 que mencionan triturado. La nutrición del
+    // rol ya era de tomate fresco: ahora los dos archivos coinciden.
+    "tomate":                        0.2,  // real: Tomate pera (2,00 EUR/kg) (Granada wh 3968)
+    "tortillas de trigo":            0.3195,  // real: Tortillas de trigo Hacendado (3,195 EUR/kg, paquete 360 g) (Granada wh 3968)
     "tortitas de arroz":             0.8871,  // real: Tortitas de arroz Hacendado (Granada wh 3968)
     "verduras congeladas salteado":  0.3,  // estimado -- mezcla de verdura ultracongelada ~3 EUR/kg
-    "wrap proteico":                 0.75,  // estimado -- sin producto
     "yogur griego ligero":           0.1934,  // real: Yogur griego natural ligero Hacendado (Granada wh 3968)
     "zanahoria":                     0.12,  // real: Zanahorias 1 kg (Granada wh 3968)
 

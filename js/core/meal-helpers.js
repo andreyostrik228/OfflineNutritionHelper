@@ -72,19 +72,37 @@ function mergeDuplicateFoods(meal) {
 }
 
 /**
- * Reduce o elimina el item menos eficiente de un meal.
- * Criterio: menor ratio (macros útiles / coste + aportación calórica).
- * Si el item tiene >30 g, lo reduce al 75%. Si tiene ≤30 g, lo elimina.
+ * Reduce el item menos eficiente de un meal (sobran calorías respecto al
+ * objetivo). Criterio: menor ratio (macros útiles / coste + aportación
+ * calórica).
+ *
+ * ── NUNCA lo elimina (2026-09-02) ───────────────────────────────────────
+ * Antes, un item de ≤30 g se BORRABA del plato. Junto con el mismo patrón
+ * en enforcePurchaseBudgetCap (ver su cabecera), eso hacía que los platos
+ * se sirvieran sin ingredientes de su propia receta: medido sobre 1.000
+ * tomas, al 5,7% le faltaba alguno, y en 52 casos era el que da nombre al
+ * plato ("Huevo duro con zanahoria" servido sin zanahoria). Quien pierde
+ * siempre es la verdura: poca proteína, pocas kcal, así que siempre es "la
+ * menos útil".
+ *
+ * Ahora solo se reduce, con un suelo. Si el peor ya está en el suelo se
+ * busca el siguiente; si ninguno se puede reducir no se hace nada y el
+ * exceso de calorías lo reporta el verificador, que es lo honesto.
  *
  * @param {object} meal
  */
+var MIN_ITEM_GRAMS = 15;
+
 function removeLeastUsefulItem(meal) {
   if (!meal || !meal.items || meal.items.length === 0) return;
 
-  let worstIndex = 0;
+  const TRIM = 0.75;
+  let worstIndex = -1;
   let worstScore = Infinity;
 
   meal.items.forEach(function (item, index) {
+    // Reducirlo lo dejaría en una cantidad simbólica: ya no es candidato.
+    if (item.grams * TRIM < MIN_ITEM_GRAMS) return;
     const efficiency = (item.protein * 2 + item.carbs * 0.5 + item.fat * 0.3)
                        / Math.max(item.cost, 0.05);
     const score = efficiency + item.kcal * 0.02;
@@ -94,18 +112,15 @@ function removeLeastUsefulItem(meal) {
     }
   });
 
+  if (worstIndex === -1) return; // nada que reducir sin vaciar el plato
+
   const item = meal.items[worstIndex];
-  if (item.grams > 30) {
-    const f = 0.75;
-    item.grams   = round1(item.grams   * f);
-    item.kcal    = round1(item.kcal    * f);
-    item.protein = round1(item.protein * f);
-    item.carbs   = round1(item.carbs   * f);
-    item.fat     = round1(item.fat     * f);
-    item.cost    = round2(item.cost    * f);
-  } else {
-    meal.items.splice(worstIndex, 1);
-  }
+  item.grams   = round1(item.grams   * TRIM);
+  item.kcal    = round1(item.kcal    * TRIM);
+  item.protein = round1(item.protein * TRIM);
+  item.carbs   = round1(item.carbs   * TRIM);
+  item.fat     = round1(item.fat     * TRIM);
+  item.cost    = round2(item.cost    * TRIM);
 }
 
 /**

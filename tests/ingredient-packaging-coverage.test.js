@@ -92,7 +92,7 @@ function extractUniqueIngredientNames(dishDb) {
 // deshuesado, Pechuga de pavo, Rape, Salmón, Solomillo de ternera, Ternera
 // magra, Conejo (10-11 casos, coherentes con el diseño). El resto --
 // Calabacín, Carne picada 5% grasa, Champiñones, Coliflor, Fresas, Gamba
-// cocida, Jamón serrano, Kiwi, Langostino cocido, "Lechuga: Pepino", Pan de
+// cocida, Jamón serrano, Kiwi, Langostino cocido, Pan de
 // centeno, Pavo picado, Pimiento, Trigo sarraceno cocido -- son fruta que
 // se compra por unidad (como plátano/manzana, que SÍ tienen entrada
 // perUnit), productos empaquetados (pan, cereales cocidos) o congelados en
@@ -108,17 +108,17 @@ function extractUniqueIngredientNames(dishDb) {
 // 2026-08-20d") -- Calabacín/Kiwi/Pimiento (perUnit) y Carne picada 5%
 // grasa/Champiñones/Coliflor/Fresas/Gamba cocida/Jamón serrano/Langostino
 // cocido/Pan de centeno/Pavo picado/Trigo sarraceno cocido (fixedPackage).
-// Quedan sin cubrir, a propósito: los 11 de carne/pescado fresco (comprado
-// al peso real, ver clasificación 4 en la cabecera de packaging.js) y
-// "Lechuga: Pepino" -- NO es un hueco de packaging.js, es un nombre de
-// ingrediente CORRUPTO en dishes.js (dos ingredientes concatenados con
-// ":", known issue documentado desde 2026-08-03, sin corregir todavía) --
-// darle una entrada de envase a esa clave tal cual sería tapar el síntoma
+// Quedan sin cubrir, a propósito: solo los de carne/pescado fresco, que se
+// compran al peso real (clasificación 4 en la cabecera de packaging.js).
+// 2026-09-02: "Lechuga: Pepino" YA NO ESTÁ. Era un nombre de ingrediente
+// CORRUPTO en dishes.js (dos alimentos concatenados con ":", known issue
+// desde 2026-08-03). Se corrigió en origen -- el plato usa "Lechuga", que
+// sí tiene envase (bolsa de 250 g) y nutrición propia -- en vez de darle
+// una entrada de envase a la clave corrupta, que habría tapado el síntoma
 // equivocado.
 var EXPECTED_NO_FIXED_PACKAGE = [
   "Bacalao",
   "Conejo",
-  "Lechuga: Pepino",
   "Lomo de cerdo",
   "Lubina",
   "Merluza",
@@ -137,9 +137,11 @@ var EXPECTED_NO_FIXED_PACKAGE = [
 // 2026-08-31: 81 -> 84. Los 14 platos españoles nuevos (T4) usan por
 // primera vez cebolla, ajo y aceite de oliva como roles de ingrediente.
 // Los tres resuelven CON envase en packaging.js (cebolla 150 g/unidad, ajo
-// 5 g/diente, aceite 916 g/botella), así que EXPECTED_NO_FIXED_PACKAGE no
-// cambia -- solo el conteo total.
-var EXPECTED_TOTAL_INGREDIENT_ROLES = 84;
+// 5 g/diente, aceite 916 g/botella).
+// 2026-09-02: 84 -> 83. Salen "Lechuga: Pepino" (nombre corrupto) y "Wrap
+// proteico" (producto que Mercadona no vende: los 3 platos pasan a
+// "Tortillas de trigo"); entra "Lechuga", con envase propio.
+var EXPECTED_TOTAL_INGREDIENT_ROLES = 83;
 
 function run(t) {
   var sandbox = freshSandbox();
