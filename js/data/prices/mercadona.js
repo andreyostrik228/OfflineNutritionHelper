@@ -136,6 +136,8 @@ PRICE_CATALOGS.mercadona = {
     "quinoa cocida":                 0.1963,  // real: Quinoa Hacendado (seca ×2.7 = cocida) (Granada wh 3968)
     "requeson":                      0.5,  // real: Requesón mezcla Hacendado (Granada wh 3968)
     "salmon":                        1.35,  // real: Filete de salmón rosado ultracongelado (Granada wh 3968)
+    "salchichas":                    0.475,  // real: Salchichas cocidas bocata Hacendado (4,75 EUR/kg, paquete 400 g) (Granada wh 3968)
+    "pan blanco":                    0.2,  // real: Barra de pan (2,00 EUR/kg, barra de 250 g) (Granada wh 3968)
     "sardinas en lata":              0.9402,  // real: Sardinas en aceite de oliva Hacendado (Granada wh 3968)
     "skyr natural":                  0.28,  // estimado -- sin skyr; Postre lacteo natural +Proteinas 10 g 0% MG (2,80 EUR/kg)
     "tempeh":                        1.8,  // estimado -- sin producto

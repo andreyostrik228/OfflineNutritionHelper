@@ -360,7 +360,9 @@ function run(t) {
     // 84 -> 83 el 2026-09-02: desaparecen "Lechuga: Pepino" (nombre corrupto,
     // ahora "Lechuga") y "Wrap proteico" (Mercadona no lo vende: los 3
     // platos usan "Tortillas de trigo"), y entra "Lechuga".
-    assert.strictEqual(names.length, 83);
+    // 83 -> 85 el mismo día: "Salchichas" y "Pan blanco", con los 10 platos
+    // baratos que pidió el usuario.
+    assert.strictEqual(names.length, 85);
 
     var unresolved = [];
     names.forEach(function (name) {

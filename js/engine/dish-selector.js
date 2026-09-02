@@ -598,6 +598,23 @@ function scoreDishForSelection(dish, usedState, ctx) {
   var proteinBoost = (pri === "protein") ? purchasePpeBucket * 250 : 0;
 
   if (ctx.tight) {
+    // RESULTADO NULO, anotado para que nadie lo vuelva a intentar
+    // (2026-09-02): se probó añadir aquí un premio explícito por kcal/€
+    // MARGINAL, con la idea de que "aprovecha el paquete que ya has
+    // abierto" redujera el sobrante. No mueve nada. Barrido de pesos
+    // 0/5/20/60 a 8 €, 50 planes cada uno: sobrante 30/34/32/31%, uso del
+    // envase 62/57/63/62% -- ruido, sin tendencia.
+    //
+    // El motivo es que el incentivo YA está saturado: `purchasePpeBucket`
+    // es proteína / coste marginal, y el coste marginal de seguir tirando
+    // de un envase abierto tiende a 0, así que ese término (x40) se dispara
+    // solo. Añadir kcal/€ encima no cambia el orden de nada.
+    //
+    // El sobrante que queda NO es de puntuación, es de tamaño de envase:
+    // un día no puede comerse un kilo de arroz. Medido, el mismo perfil a
+    // 8 €/día: a 1 día sobra el 33% y sale a 8,03 €/día; a 7 días sobra el
+    // 22% y sale a 6,95 €/día. La respuesta a "compré por 5 y comí por 5"
+    // es planificar varios días, no puntuar distinto.
     return macroFit * 20 + purchasePpeBucket * 40 + usagePpeBucket * 0.5 + div
       + expiry * 15 + cuisineBias * 0.25 + satietyBonus * 5 + proteinBoost;
   }

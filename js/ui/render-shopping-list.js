@@ -212,21 +212,38 @@ function renderShoppingList(meals, storeId, days) {
  * Producto real al que apunta un ingrediente, para poder enseñar su ficha
  * (y su foto) en Mercadona desde la lista de la compra.
  *
- * Solo 12 de los 84 roles de ingrediente tienen un producto concreto
- * asignado (`REAL_INGREDIENT_MATCHES`), y esos traen EAN pero no id: el id
- * se busca en el catálogo por EAN. Para los otros ~72 no existe UN producto
- * -- son roles genéricos como "Pechuga de pollo" -- así que se devuelve
- * solo el nombre y `mercadonaProductUrl()` cae en la búsqueda, que es la
- * respuesta honesta: "esto es lo que buscas", no "este bote exacto".
+ * Dos fuentes, en este orden:
+ *
+ *   1. INGREDIENT_PRODUCT_LINKS (js/data/product-links.js) — el producto
+ *      CONCRETO del que sale el precio de ese rol, elegido a mano al
+ *      reconstruir los precios contra la API de Mercadona. Trae id, así
+ *      que el botón abre la ficha exacta. Cubre 76 de los 83 roles.
+ *   2. REAL_INGREDIENT_MATCHES — los 12 emparejamientos verificados por
+ *      EAN de 2026-08. Traen EAN pero no id: se busca en el catálogo.
+ *      Se conserva como respaldo y porque además alimenta el PRECIO.
+ *
+ * Antes solo existía (2), así que 71 de 83 ingredientes abrían una
+ * BÚSQUEDA con muchos resultados y sin saber cuál era el bueno -- queja
+ * literal del usuario el 2026-09-02. Los roles cuyo precio es "estimado"
+ * siguen cayendo en la búsqueda a propósito: no salen de ningún producto
+ * concreto, y decir "este bote exacto" cuando no se sabe sería peor que
+ * decir "esto es lo que buscas".
  *
  * @param {string} ingredientName
  * @returns {{id:(string|null), name:string, brand:(string|null)}}
  */
 function resolveShoppingProduct(ingredientName) {
   var out = { id: null, name: ingredientName, brand: null };
-  if (typeof REAL_INGREDIENT_MATCHES === "undefined" || typeof normalizeIngredientKey !== "function") return out;
+  if (typeof normalizeIngredientKey !== "function") return out;
+  var key = normalizeIngredientKey(ingredientName);
 
-  var match = REAL_INGREDIENT_MATCHES[normalizeIngredientKey(ingredientName)];
+  if (typeof INGREDIENT_PRODUCT_LINKS !== "undefined" && INGREDIENT_PRODUCT_LINKS[key]) {
+    var link = INGREDIENT_PRODUCT_LINKS[key];
+    return { id: link.id, name: link.name || ingredientName, brand: null };
+  }
+
+  if (typeof REAL_INGREDIENT_MATCHES === "undefined") return out;
+  var match = REAL_INGREDIENT_MATCHES[key];
   if (!match) return out;
 
   if (match.productName) out.name = match.productName;

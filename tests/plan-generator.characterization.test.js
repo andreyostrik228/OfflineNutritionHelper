@@ -548,27 +548,23 @@ function run(t) {
     // (realm distinto) antes de comparar contra literales del host -- ver
     // comentario del test #1 más arriba para el motivo completo.
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.key; }))), EXPECTED_MEAL_KEYS);
-    // RECAPTURADO el 2026-09-02, al recalcular los macros DECLARADOS de los
-    // 364 platos como la suma real de sus ingredientes (ver la REGLA en
-    // tests/ingredient-nutrition.test.js). El motor escala la ración con
-    // `dish.kcal`; mientras ese número era otro que la suma de la receta,
-    // escalaba mal a propósito.
+    // RECAPTURADO el 2026-09-02 (2). Sobre lo anterior (macros de los platos
+    // recalculados y recorte de presupuesto arreglado) entran ahora 10
+    // platos baratos nuevos, con dos ingredientes que el catálogo no tenía:
+    // salchichas y pan blanco de barra. Al presupuesto más bajo pasan a ser
+    // el 14% de las tomas, así que el sorteo sembrado cambia.
     //
-    // Es la cuarta recaptura del día: cada cambio de precio o de nutrición
-    // remezcla el sorteo sembrado. Lo que importa NO es esta tirada sino la
-    // distribución, medida con 150 planes por lado: "perfect" 76 -> 99,
-    // |error| de kcal 183 -> 147, planes a más de 300 kcal del objetivo
-    // 39 -> 31, |error| de proteína 44,0 -> 38,6 g, compra media
-    // 11,94 -> 11,78 EUR, ninguno fuera de presupuesto ni antes ni después.
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 3, 3, 2, 2]);
-    assert.strictEqual(result.total.kcal, 2848.7999999999997);
-    assert.strictEqual(result.total.protein, 160.40000000000003);
-    assert.strictEqual(result.total.carbs, 377.09999999999997);
-    assert.strictEqual(result.total.fat, 74.4);
-    assert.strictEqual(result.total.cost, 9.36);
-    assert.strictEqual(result.total.purchaseCost, 13.62);
-    assert.strictEqual(result.report.status, "adjusted");
-    assert.strictEqual(result.report.tierUsed, 1);
+    // Esta tirada MEJORA: sube a perfect/tier 0 y sirve 2.937 kcal para un
+    // objetivo de 2.822.
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 4, 3, 2, 2]);
+    assert.strictEqual(result.total.kcal, 2937.1);
+    assert.strictEqual(result.total.protein, 156.7);
+    assert.strictEqual(result.total.carbs, 379.6);
+    assert.strictEqual(result.total.fat, 85.3);
+    assert.strictEqual(result.total.cost, 8.03);
+    assert.strictEqual(result.total.purchaseCost, 15.78);
+    assert.strictEqual(result.report.status, "perfect");
+    assert.strictEqual(result.report.tierUsed, 0);
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.report.violations)), []);
   });
 
@@ -579,19 +575,16 @@ function run(t) {
     var result = s.generateDietPlan(built.profile, built.data);
 
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.key; }))), EXPECTED_MEAL_KEYS);
-    // RECAPTURADO el 2026-09-02 con los macros de los platos recalculados y
-    // con el recorte de presupuesto arreglado (ya no borra ingredientes ni
-    // hace recortes que no abaratan nada) -- ver el comentario largo del
-    // golden-master de seed=42. Esta tirada sigue en perfect/0 y sirve
-    // 3.830 kcal frente a un objetivo de 3.871: 41 kcal de desvío, donde
-    // antes eran cientos.
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [4, 4, 3, 3, 2]);
-    assert.strictEqual(result.total.kcal, 3830.3999999999996);
-    assert.strictEqual(result.total.protein, 208.70000000000005);
-    assert.strictEqual(result.total.carbs, 476.7);
-    assert.strictEqual(result.total.fat, 118.39999999999999);
-    assert.strictEqual(result.total.cost, 9.13);
-    assert.strictEqual(result.total.purchaseCost, 17.93);
+    // RECAPTURADO el 2026-09-02 (2) -- ver el comentario del golden-master
+    // de seed=42. Sigue en perfect/0, sirviendo 3.832 kcal para un objetivo
+    // de 3.871.
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 2, 3, 3, 2]);
+    assert.strictEqual(result.total.kcal, 3832.3);
+    assert.strictEqual(result.total.protein, 247.7);
+    assert.strictEqual(result.total.carbs, 443.70000000000005);
+    assert.strictEqual(result.total.fat, 115);
+    assert.strictEqual(result.total.cost, 9.83);
+    assert.strictEqual(result.total.purchaseCost, 18.18);
     assert.strictEqual(result.report.status, "perfect");
     assert.strictEqual(result.report.tierUsed, 0);
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.report.violations)), []);

@@ -86,6 +86,8 @@ var PACKAGING_INFO = {
   "maiz dulce":                   { type: "fixedPackage", packageG: 285,  packageLabel: "lata" },
   "jamon cocido extra":           { type: "fixedPackage", packageG: 250,  packageLabel: "paquete" },
   "pan integral":                 { type: "fixedPackage", packageG: 460,  packageLabel: "barra" },
+  "pan blanco":                   { type: "fixedPackage", packageG: 250,  packageLabel: "barra" },
+  "salchichas":                   { type: "fixedPackage", packageG: 400,  packageLabel: "paquete" },
   "tortillas de trigo":           { type: "fixedPackage", packageG: 360,  packageLabel: "paquete" },
   "pan de molde integral":        { type: "fixedPackage", packageG: 460,  packageLabel: "paquete" },
   "frutos rojos congelados":      { type: "fixedPackage", packageG: 400,  packageLabel: "bolsa" },

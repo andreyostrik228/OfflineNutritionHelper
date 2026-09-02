@@ -860,4 +860,37 @@ var DISH_DB = [
   { name:"Huevos con patatas", category:"cena", kcal:485, protein:26.8, carbs:50.9, fat:20.2, cost:1.2,  prep:20, mainProt:"huevo", taste:"savory",
     items:[{name:"Huevos enteros",g:180},{name:"Patata cocida",g:250}] },
 
+  // ── Platos BARATOS de verdad (2026-09-02) ────────────────────────────
+  // Petición literal del usuario: "нужно найти самые дешёвые продукты но
+  // где много калорий... макароны с сосисками или хлеб и помидоры".
+  //
+  // El hueco era medible: el plato más eficiente del catálogo daba 654
+  // kcal por euro, y no había NI salchichas NI pan blanco de barra --
+  // dos de las cosas más baratas por caloría que vende Mercadona (4,75 y
+  // 2,00 EUR/kg). Estos diez llegan hasta 956 kcal/EUR.
+  //
+  // Macros y coste son la SUMA de los ingredientes reales, como manda la
+  // REGLA de tests/ingredient-nutrition.test.js -- calculados, no escritos
+  // a mano (scratchpad/gen_cheap_dishes.js).
+  { name:"Pasta con salchichas y tomate", category:"comida", kcal:683, protein:32.1, carbs:83.7, fat:23.1, cost:0.9, prep:15, mainProt:"salchicha", taste:"savory",
+    items:[{name:"Pasta cocida",g:260},{name:"Salchichas",g:120},{name:"Tomate",g:100}] },
+  { name:"Macarrones con salchichas", category:"cena", kcal:617, protein:29.5, carbs:71.9, fat:22.5, cost:0.69, prep:12, mainProt:"salchicha", taste:"savory",
+    items:[{name:"Pasta cocida",g:230},{name:"Salchichas",g:120}] },
+  { name:"Pan con tomate y aceite", category:"desayuno", kcal:412, protein:12.9, carbs:60.1, fat:12.9, cost:0.5, prep:5, mainProt:"pan", taste:"savory",
+    items:[{name:"Pan blanco",g:110},{name:"Tomate",g:120},{name:"Aceite de oliva",g:10}] },
+  { name:"Pan con tomate y queso", category:"desayuno", kcal:385, protein:21.1, carbs:54.9, fat:8.6, cost:0.74, prep:5, mainProt:"queso", taste:"savory",
+    items:[{name:"Pan blanco",g:100},{name:"Tomate",g:100},{name:"Queso light",g:35}] },
+  { name:"Arroz con huevo y tomate", category:"comida", kcal:563, protein:23.4, carbs:82, fat:14.4, cost:0.8, prep:20, mainProt:"huevo", taste:"savory",
+    items:[{name:"Arroz blanco cocido",g:280},{name:"Huevos enteros",g:120},{name:"Tomate",g:100}] },
+  { name:"Bocadillo de salchichas", category:"cena", kcal:618, protein:30.7, carbs:69.8, fat:23.7, cost:0.95, prep:8, mainProt:"salchicha", taste:"savory",
+    items:[{name:"Pan blanco",g:130},{name:"Salchichas",g:120},{name:"Tomate",g:60}] },
+  { name:"Salchichas con patatas", category:"cena", kcal:532, protein:22.7, carbs:60.9, fat:22.4, cost:1.19, prep:25, mainProt:"salchicha", taste:"savory",
+    items:[{name:"Salchichas",g:130},{name:"Patata cocida",g:300}] },
+  { name:"Fideos con salchichas y zanahoria", category:"comida", kcal:645, protein:29.9, carbs:81.9, fat:21.1, cost:0.75, prep:15, mainProt:"salchicha", taste:"savory",
+    items:[{name:"Pasta cocida",g:240},{name:"Salchichas",g:110},{name:"Zanahoria",g:90}] },
+  { name:"Pan con huevo duro y tomate", category:"desayuno", kcal:452, protein:25.2, carbs:54.4, fat:14.8, cost:0.8, prep:12, mainProt:"huevo", taste:"savory",
+    items:[{name:"Pan blanco",g:100},{name:"Huevos enteros",g:110},{name:"Tomate",g:80}] },
+  { name:"Arroz con salchichas y zanahoria", category:"comida", kcal:651, protein:24.9, carbs:86.6, fat:21.4, cost:0.8, prep:20, mainProt:"salchicha", taste:"savory",
+    items:[{name:"Arroz blanco cocido",g:280},{name:"Salchichas",g:120},{name:"Zanahoria",g:90}] },
+
 ];

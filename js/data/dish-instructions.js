@@ -4431,6 +4431,123 @@ var DISH_INSTRUCTIONS = {
       "Saltea las verduras y el tomate en la misma sartén 4-5 minutos y sirve con el ajo reservado por encima."
     ]
   },
+
+  // ── Platos baratos (2026-09-02) ───────────────────────────────────────
+  // Cocina de andar por casa: sartén, olla y poco más. Lo mismo que el
+  // resto del archivo -- cantidades, tiempos y una señal de que está listo.
+
+  "Pasta con salchichas y tomate": {
+    difficulty: 1,
+    equipment: ["olla", "sarten"],
+    steps: [
+      "Pon la pasta a cocer en agua con sal abundante, los minutos que diga el paquete menos uno: termina de hacerse en la sartén.",
+      "Mientras, corta las salchichas en rodajas de un dedo y dóralas en la sartén SIN aceite, 3-4 minutos: sueltan bastante grasa ellas solas. Que cojan color; crudas sueltan agua y el plato queda soso.",
+      "Añade el tomate en dados y deja que se deshaga 4-5 minutos a fuego medio, aplastándolo con la cuchara.",
+      "Escurre la pasta guardando medio vaso del agua de cocción y échala a la sartén.",
+      "Remueve un minuto con un chorrito de esa agua: el almidón liga la salsa y deja de resbalar sobre la pasta."
+    ]
+  },
+
+  "Macarrones con salchichas": {
+    difficulty: 1,
+    equipment: ["olla", "sarten"],
+    steps: [
+      "Cuece los macarrones en agua con sal el tiempo del paquete.",
+      "Corta las salchichas en rodajas y dóralas en la sartén a fuego medio-alto, 4 minutos, hasta que estén tostadas por fuera. No hace falta aceite: lo suelta la propia salchicha.",
+      "Escurre la pasta y échala a la sartén con las salchichas.",
+      "Saltea todo junto un par de minutos para que la pasta coja el sabor de la grasa de la sartén. Ese paso es la diferencia entre 'pasta con salchichas al lado' y un plato."
+    ]
+  },
+
+  "Pan con tomate y aceite": {
+    difficulty: 1,
+    equipment: ["tostadora"],
+    steps: [
+      "Corta el pan por la mitad a lo largo y tuéstalo hasta que esté dorado y firme. Blando no aguanta el tomate.",
+      "Parte el tomate por la mitad y frótalo contra la miga con fuerza, hasta que solo te quede la piel en la mano.",
+      "Riega con el aceite en hilo, de borde a borde, y sal por encima.",
+      "El orden importa: tomate primero, aceite después. Al revés el pan se impermeabiliza y el tomate resbala."
+    ]
+  },
+
+  "Pan con tomate y queso": {
+    difficulty: 1,
+    equipment: ["tostadora"],
+    steps: [
+      "Tuesta el pan abierto por la mitad.",
+      "Frota el tomate sobre la miga caliente hasta que quede empapada, y sal.",
+      "Pon las lonchas de queso encima del pan AÚN CALIENTE: se ablanda un poco y se pega, en vez de quedar tieso encima.",
+      "Si lo quieres fundido, 30 segundos de microondas bastan; más y el pan se pone correoso."
+    ]
+  },
+
+  "Arroz con huevo y tomate": {
+    difficulty: 1,
+    equipment: ["olla", "sarten"],
+    steps: [
+      "Pon los huevos a cocer en agua fría; desde que hierve, 10 minutos.",
+      "En otra olla, cuece el arroz en el doble de agua que arroz, con sal, hasta que se beba el agua (unos 15 minutos).",
+      "Pela los huevos bajo el grifo con agua fría: la cáscara sale de una pieza.",
+      "Corta el tomate en dados y mézclalo con el arroz caliente, con sal. El calor del arroz basta para que suelte su jugo, no hace falta sofreírlo.",
+      "Sirve con los huevos partidos por la mitad encima."
+    ]
+  },
+
+  "Bocadillo de salchichas": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Dora las salchichas enteras en la sartén a fuego medio, dándoles vueltas, 5-6 minutos.",
+      "Abre el pan por la mitad sin llegar a separarlo del todo.",
+      "Frota el tomate por dentro del pan, o córtalo en rodajas finas y repártelo.",
+      "Mete las salchichas y aprieta el bocadillo con la mano unos segundos: compactarlo evita que se salga todo al primer mordisco."
+    ]
+  },
+
+  "Salchichas con patatas": {
+    difficulty: 1,
+    equipment: ["olla", "sarten"],
+    steps: [
+      "Cuece las patatas peladas y en trozos grandes en agua con sal, 18-20 minutos, hasta que un cuchillo entre sin resistencia.",
+      "Escúrrelas y déjalas secar un minuto en la olla apagada: la patata seca se dora, la mojada se cuece otra vez.",
+      "Empieza dorando las salchichas en rodajas en la sartén, que sueltan grasa, y retíralas.",
+      "En esa grasa, dora las patatas a fuego fuerte sin moverlas mucho, hasta que tengan costra por varias caras, y devuelve las salchichas al final."
+    ]
+  },
+
+  "Fideos con salchichas y zanahoria": {
+    difficulty: 1,
+    equipment: ["olla", "sarten"],
+    steps: [
+      "Cuece los fideos en agua con sal; son finos, así que vigila desde el minuto 4.",
+      "Corta las salchichas en rodajas y ponlas en la sartén a fuego medio: sueltan grasa suficiente para lo demás.",
+      "Añade la zanahoria en rodajas finas y saltea 5 minutos: cuanto más fina, antes se hace.",
+      "Escurre los fideos, échalos a la sartén y saltea un minuto para mezclarlo todo."
+    ]
+  },
+
+  "Pan con huevo duro y tomate": {
+    difficulty: 1,
+    equipment: ["olla", "tostadora"],
+    steps: [
+      "Pon los huevos en agua fría, llévalos a hervir y cuenta 10 minutos desde que empieza a burbujear.",
+      "Pásalos a agua fría y pélalos ahí dentro: el agua se mete entre la cáscara y la clara y sale de una pieza.",
+      "Tuesta el pan y frota el tomate sobre la miga.",
+      "Corta los huevos en rodajas, repártelos por encima y sal."
+    ]
+  },
+
+  "Arroz con salchichas y zanahoria": {
+    difficulty: 1,
+    equipment: ["olla", "sarten"],
+    steps: [
+      "Cuece el arroz en el doble de agua que arroz, con sal, hasta que se beba el agua.",
+      "Pon las salchichas en rodajas en la sartén a fuego medio hasta que suelten grasa, 3 minutos.",
+      "Añade la zanahoria en rodajas finas y saltea 5 minutos en esa grasa.",
+      "Echa el arroz ya cocido a la sartén y saltéalo todo junto un par de minutos, removiendo, para que coja el sabor."
+    ]
+  },
+
 };
 
 /**

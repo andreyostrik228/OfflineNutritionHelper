@@ -217,6 +217,14 @@ var INGREDIENT_NUTRITION = {
   "rape": { resolved: true, kcal: 76, protein: 14.5, carbs: 0, fat: 1.52, source: "usda_fdc", tier: "generic_reference", needsReview: true, fdcId: 173676, fdcDescription: "Fish, monkfish, raw", displayName: "Rape" },
   "requeson": { resolved: true, kcal: 160, protein: 8.7, carbs: 5.4, fat: 11.6, productName: "Requesón mezcla Hacendado", ean: "8413556010324", matchMethod: "name", displayName: "Requesón" },
   "salmon": { resolved: true, kcal: 208, protein: 20.4, carbs: 0, fat: 13.4, source: "usda_fdc", tier: "generic_reference", needsReview: true, fdcId: 175167, fdcDescription: "Fish, salmon, Atlantic, farmed, raw", displayName: "Salmón" },
+  // Añadidos 2026-09-02 para poder escribir platos BARATOS de verdad
+  // (petición del usuario: "макароны с сосисками или хлеб и помидоры").
+  // El catálogo no tenía ni salchichas ni pan blanco de barra, que son dos
+  // de las cosas más baratas por caloría que vende Mercadona.
+  "salchichas": { resolved: true, kcal: 211, protein: 13.5, carbs: 0.7, fat: 17, productName: "Salchichas cocidas bocata Hacendado", ean: "8480000530325", matchMethod: "exact_ean", note: "Etiqueta verificada por EAN en OpenFoodFacts. Atwater 209,8 vs 211 declaradas.", displayName: "Salchichas" },
+
+  "pan blanco": { resolved: true, kcal: 272, protein: 10.75, carbs: 51.88, fat: 2.42, source: "usda_fdc", tier: "generic_reference", needsReview: true, fdcId: 172675, fdcDescription: "Bread, french or vienna (includes sourdough)", note: "Barra de pan normal. El rol 'pan integral' ya existía; este es el blanco, que cuesta la mitad (2,00 EUR/kg contra 4,29).", displayName: "Pan blanco" },
+
   "sardinas en lata": { resolved: true, kcal: 322, protein: 19, carbs: 0.6, fat: 27, productName: "Sardinillas reducidas en sal en aceite de oliva Hacendado", ean: "8480000182142", matchMethod: "exact_ean", displayName: "Sardinas en lata" },
   "skyr natural": { resolved: true, kcal: 59, protein: 10.2, carbs: 3.6, fat: 0.39, source: "usda_fdc", tier: "generic_reference", needsReview: true, fdcId: 170894, fdcDescription: "Yogurt, Greek, plain, nonfat (Includes foods for USDA's Food Distribution Program)", note: "USDA no tiene skyr; el skyr real ronda 63 kcal / 11 g proteína. Griego desnatado es el registro real más cercano.", displayName: "Skyr natural" },
   "solomillo de ternera": { resolved: true, kcal: 116, protein: 21, carbs: 0.5, fat: 3.3, productName: "Solomillo de vacuno", ean: "8436569263419", matchMethod: "name", displayName: "Solomillo de ternera" },

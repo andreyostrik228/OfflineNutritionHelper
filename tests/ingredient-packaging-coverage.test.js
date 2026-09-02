@@ -141,7 +141,12 @@ var EXPECTED_NO_FIXED_PACKAGE = [
 // 2026-09-02: 84 -> 83. Salen "Lechuga: Pepino" (nombre corrupto) y "Wrap
 // proteico" (producto que Mercadona no vende: los 3 platos pasan a
 // "Tortillas de trigo"); entra "Lechuga", con envase propio.
-var EXPECTED_TOTAL_INGREDIENT_ROLES = 83;
+// 2026-09-02 (2): 83 -> 85. Entran "Salchichas" y "Pan blanco" con los 10
+// platos baratos -- dos de los alimentos con más calorías por euro de
+// Mercadona, y el catálogo no tenía ninguno de los dos. Los dos resuelven
+// CON envase (paquete de 400 g y barra de 250 g), así que
+// EXPECTED_NO_FIXED_PACKAGE no cambia.
+var EXPECTED_TOTAL_INGREDIENT_ROLES = 85;
 
 function run(t) {
   var sandbox = freshSandbox();

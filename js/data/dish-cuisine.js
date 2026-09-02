@@ -111,6 +111,15 @@ var DISH_CUISINE_ESPANOLA = [
   "Ensaladilla de atún",
   "Champiñones al ajillo",
   "Gazpacho con picatostes",
+
+  // Baratos y de toda la vida (2026-09-02). "Pan con tomate" es el pa amb
+  // tomàquet de siempre; el resto son platos de olla y sartén de cocina
+  // española corriente. Los que llevan salchicha se dejan fuera: son
+  // baratos, pero no son cocina española.
+  "Pan con tomate y aceite",
+  "Pan con tomate y queso",
+  "Pan con huevo duro y tomate",
+  "Arroz con huevo y tomate",
 ];
 
 /**
