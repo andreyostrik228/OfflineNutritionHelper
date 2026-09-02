@@ -426,6 +426,36 @@ function run(t) {
     });
   });
 
+  // ── Quién pregunta, y qué pregunta ──────────────────────────────────
+  // maybeStartTour() consultaba a nextOnboardingStep() para saber si tocaba
+  // el recorrido. Dejó de funcionar en silencio el día que se añadió "sin
+  // cuenta, la bienvenida sale siempre": esa función pasó a contestar
+  // "welcome" a todo el que no tuviera sesión, y el recorrido no volvió a
+  // salir. Los tests de aquí abajo seguían verdes porque comprueban la
+  // máquina de estados, no quién la llama ni con qué contexto.
+  //
+  // Se arregló haciendo que pregunte lo único que le importa -- si el
+  // recorrido ya se vio -- y este test fija esa separación.
+  t.test("saber si toca el recorrido NO depende de tener cuenta", function () {
+    var s = freshSandbox();
+    var sinVerlo = { termsVersion: "1.0", termsAcceptedAt: "2026-09-02T00:00:00Z",
+                     intakeDoneAt: "2026-09-02T00:01:00Z" };
+    var visto = { termsVersion: "1.0", termsAcceptedAt: "2026-09-02T00:00:00Z",
+                  intakeDoneAt: "2026-09-02T00:01:00Z", tourDoneAt: "2026-09-02T00:02:00Z" };
+
+    // La condición real que usa js/ui/tour.js: `estado.tourDoneAt`.
+    assert.strictEqual(!!sinVerlo.tourDoneAt, false, "no lo ha visto: toca");
+    assert.strictEqual(!!visto.tourDoneAt, true, "ya lo vio: no toca");
+
+    // Y la trampa que lo rompió: nextOnboardingStep dice "welcome" a un
+    // invitado aunque el recorrido esté pendiente. Por eso no sirve para
+    // esta pregunta, y queda escrito aquí para que nadie lo vuelva a atar.
+    assert.strictEqual(
+      s.nextOnboardingStep(sinVerlo, { currentVersion: "1.0", hasAccount: false, hasPlan: true }),
+      "welcome",
+      "sigue contestando 'welcome' a un invitado: por eso el recorrido no puede colgar de aquí");
+  });
+
   // ── El recorrido guiado ─────────────────────────────────────────────
   // Mismo peligro que el alta: apunta a elementos del index.html real. Un
   // id que alguien renombre convierte un paso del tutorial en un foco

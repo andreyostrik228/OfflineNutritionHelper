@@ -262,9 +262,23 @@ function stopTour() {
  * nextOnboardingStep() devuelva "tour" (ver js/core/onboarding.js).
  */
 function maybeStartTour() {
-  if (typeof nextOnboardingStep !== "function" || typeof getOnboardingState !== "function") return;
-  var step = nextOnboardingStep(getOnboardingState(), { hasProfile: true, hasPlan: true });
-  if (step !== "tour") return;
+  if (typeof getOnboardingState !== "function") return;
+
+  // La pregunta aquí es estrecha: "¿ya ha visto el recorrido?". Y se
+  // responde mirando el estado, no pasando por nextOnboardingStep().
+  //
+  // Pasaba por ahí, y dejó de funcionar el día que se añadió la regla de
+  // "sin cuenta, la bienvenida sale siempre": esa función empezó a
+  // contestar "welcome" a todo el que no tuviera sesión, así que el
+  // recorrido no salía nunca -- ni con cuenta, porque maybeStartTour ni
+  // siquiera le pasaba `hasAccount`. Se descubrió generando un plan de
+  // verdad al revisar el alta entera; los tests no lo veían porque
+  // comprueban la máquina de estados, no quién la llama y con qué.
+  //
+  // La lección es la de siempre aquí: una función que decide "qué pantalla
+  // toca" no sirve para responder "¿toca esta otra cosa?".
+  var estado = getOnboardingState();
+  if (estado && estado.tourDoneAt) return;
   // Un respiro antes de empezar: el plan acaba de aparecer y merece verse
   // un segundo antes de que algo se ponga por encima.
   window.setTimeout(startTour, 700);
