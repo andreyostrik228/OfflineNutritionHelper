@@ -177,12 +177,22 @@ function handleAuthStateChange(event, user) {
     // ha restaurado al cargar la página", y preguntar ahí sacaría el
     // cuestionario en cada recarga a quien tiene cuenta -- justo lo que se
     // acaba de arreglar en sentido contrario.
-    if (event === "SIGNED_IN" && typeof startIntakeAfterSignIn === "function") {
-      startIntakeAfterSignIn();
-    } else if (typeof dismissWelcomeIfSignedIn === "function") {
-      // INITIAL_SESSION: la sesión ya existía. No se pregunta nada, pero
-      // si la bienvenida llegó a salir porque la respuesta tardó, se
-      // retira ahora que se sabe que hay cuenta.
+    // Se intenta en LOS DOS eventos, no solo en SIGNED_IN.
+    //
+    // Al volver de un inicio de sesión con Google, el primero que llega es
+    // INITIAL_SESSION -- la sesión ya viene hecha en la recarga -- y este
+    // bloque solo se ejecuta una vez por usuario, así que el SIGNED_IN
+    // posterior ya no entra. Colgarlo solo de SIGNED_IN dejaba fuera
+    // justo el camino de Google, que es por donde entra el usuario.
+    //
+    // Quién decide ahora es startIntakeAfterSignIn(): mira si consta que
+    // el usuario PIDIÓ entrar (una marca que sobrevive al redirect). Si no
+    // consta, esto es una sesión restaurada sin más y no se pregunta nada.
+    var haEmpezadoElCuestionario = false;
+    if (typeof startIntakeAfterSignIn === "function") {
+      haEmpezadoElCuestionario = startIntakeAfterSignIn() === true;
+    }
+    if (!haEmpezadoElCuestionario && typeof dismissWelcomeIfSignedIn === "function") {
       dismissWelcomeIfSignedIn();
     }
     if (typeof runReconciliation !== "function") return;

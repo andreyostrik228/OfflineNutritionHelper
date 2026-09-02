@@ -124,6 +124,10 @@ if (typeof document !== "undefined") {
 // una sesión que ya existía".
 var _obEsperandoEntrada = false;
 
+// Se pone cuando _obDecidirYPintar() ha llegado a una conclusión. Sirve
+// para que nadie tome decisiones sobre esta pantalla antes que ella.
+var _obYaDecidido = false;
+
 var _onboardingIndex = 0;
 var _onboardingEls = null;
 var _onboardingOnFinish = null;
@@ -857,6 +861,7 @@ function _obCuandoSeSepaLaSesion(luego) {
 
 function _obDecidirYPintar(o) {
   _obApunta("_obDecidirYPintar", "hayCuenta=" + _obHayCuenta());
+  _obYaDecidido = true;
   // Si el usuario ya está dentro (pulsó un botón mientras se esperaba a
   // saber si había sesión), esta decisión llega tarde y no manda: cerrarle
   // el cuestionario a media frase es peor que cualquier respuesta que
@@ -916,13 +921,35 @@ function _obDecidirYPintar(o) {
  * cabecera. Abrir ese diálogo es siempre una petición deliberada; una
  * sesión restaurada al cargar la página no lo es.
  */
+var _OB_INTENCION = "nutritionPlanner.pidiendoEntrar";
+
+/**
+ * Marca que el usuario ha pedido entrar, EN DISCO.
+ *
+ * En memoria no vale: entrar con Google se va de la página entera y
+ * vuelve, así que cualquier variable se pierde por el camino. Es
+ * exactamente lo que pasaba -- en la traza del usuario se ve
+ * `markSignInRequested` y, dos líneas después, el reloj empezando de cero
+ * porque la página se había recargado.
+ */
 function markSignInRequested() {
   _obApunta("markSignInRequested");
   _obEsperandoEntrada = true;
+  try { sessionStorage.setItem(_OB_INTENCION, "1"); } catch (err) {}
+}
+
+/** ¿Consta que el usuario pidió entrar? Se consume al leerla. */
+function _obConsumirIntencion() {
+  var enDisco = false;
+  try { enDisco = sessionStorage.getItem(_OB_INTENCION) === "1"; } catch (err) {}
+  var habia = _obEsperandoEntrada || enDisco;
+  _obEsperandoEntrada = false;
+  try { sessionStorage.removeItem(_OB_INTENCION); } catch (err) {}
+  return habia;
 }
 
 function startIntakeAfterSignIn() {
-  _obApunta("startIntakeAfterSignIn", "pedido=" + _obEsperandoEntrada);
+  
   // Solo si el usuario ACABA de pedir entrar desde esta pantalla.
   //
   // Supabase emite SIGNED_IN también al restaurar una sesión al cargar la
@@ -932,8 +959,9 @@ function startIntakeAfterSignIn() {
   //
   // El evento no distingue las dos cosas, así que la distinción la pone
   // quien sí la sabe: la interfaz, cuando abre el diálogo de acceso.
-  if (!_obEsperandoEntrada) return;
-  _obEsperandoEntrada = false;
+  var pedido = _obConsumirIntencion();
+  _obApunta("startIntakeAfterSignIn", "pedido=" + pedido);
+  if (!pedido) return false;
   if (!_obEl("onboarding")) return;
   if (!_onboardingEls) _obCacheEls();
   _obWire();
@@ -945,10 +973,14 @@ function startIntakeAfterSignIn() {
   var yaEnElCuestionario =
     (_onboardingEls.start && !_onboardingEls.start.hidden) ||
     (_onboardingEls.intake && !_onboardingEls.intake.hidden);
-  if (yaEnElCuestionario && !_onboardingEls.root.hidden) return;
+  if (yaEnElCuestionario && !_onboardingEls.root.hidden &&
+      _onboardingEls.root.classList.contains("is-open")) {
+    return true;
+  }
 
   _obGoToIntake();
   _obShow();
+  return true;
 }
 
 /**
@@ -963,9 +995,20 @@ function startIntakeAfterSignIn() {
  * cuanto se sabe.
  */
 function dismissWelcomeIfSignedIn() {
-  _obApunta("dismissWelcomeIfSignedIn");
+  _obApunta("dismissWelcomeIfSignedIn", "decidido=" + _obYaDecidido);
   if (!_onboardingEls || !_onboardingEls.root) return;
   if (_onboardingEls.root.hidden) return;
+
+  // Solo DESPUÉS de que se haya decidido qué enseñar.
+  //
+  // Antes se adelantaba, y en la vuelta de un inicio de sesión con Google
+  // eso era fatal: la página se recarga, la sección de bienvenida todavía
+  // no lleva el atributo `hidden` -- no lo lleva nunca, para que la
+  // pantalla se vea sin JavaScript -- y esta función lo leía como "está
+  // enseñándose la bienvenida" y lo cerraba todo. Se ve en la traza del
+  // usuario: INITIAL_SESSION, dismissWelcomeIfSignedIn, _obHide, y solo
+  // entonces _obDecidirYPintar, ya sin nada que decidir.
+  if (!_obYaDecidido) return;
   // Solo la pantalla de la cuenta: si está en las preguntas, se le deja
   // terminar.
   if (!_onboardingEls.welcome || _onboardingEls.welcome.hidden) return;
