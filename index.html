@@ -146,18 +146,27 @@
        propósito: si el JavaScript tardara o fallara, lo que se ve es el
        formulario normal, nunca una pantalla a medias.
 
-       Nace `hidden`, y solo js/ui/onboarding-ui.js decide enseñarlo. Un
-       usuario que ya pasó por aquí no llega a verlo parpadear.
+       Ya NO nace `hidden`. Lo esconde y lo enseña el CSS, según la marca
+       que el script del <head> pone en el <html> antes de pintar. Hacía
+       falta porque enseñarlo era trabajo de js/ui/onboarding-ui.js, y si
+       ese archivo no llegaba, no se ejecutaba o fallaba, el usuario se
+       quedaba con la aplicación escondida y la bienvenida tampoco: una
+       pantalla vacía, que es lo que el usuario reportó una y otra vez.
+       Ahora la pantalla aparece aunque no se ejecute ni una línea de
+       JavaScript de los módulos; el JavaScript solo le da comportamiento.
+
+       Quien ya pasó por aquí no lleva la marca, así que no lo ve ni
+       parpadear.
 
        Todo el contenido lo pinta el JavaScript desde js/data/legal.js y
        js/data/onboarding-steps.js -- aquí solo está el esqueleto, para
        que el texto legal y las preguntas vivan en un solo sitio.
        ══════════════════════════════════════════════════════════════════ -->
-  <div class="onboarding" id="onboarding" hidden>
+  <div class="onboarding" id="onboarding">
     <div class="onboarding__card" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
 
       <!-- Paso 1: bienvenida, cuenta y condiciones -->
-      <section class="onboarding__step" id="onboardingWelcome" hidden>
+      <section class="onboarding__step" id="onboardingWelcome">
         <div class="onboarding__brand">
           <span class="onboarding__brand-mark" aria-hidden="true">
             <svg width="20" height="20"><use href="#icon-chef"/></svg>

@@ -4524,6 +4524,40 @@ html.is-onboarding body > footer {
   display: none;
 }
 
+/* ── La bienvenida se ve SIN JavaScript ──────────────────────────────
+   Antes el overlay nacía con el atributo `hidden` y lo quitaba
+   js/ui/onboarding-ui.js. Eso ataba la única pantalla que el usuario
+   puede ver a que ese archivo llegara, se ejecutara y no fallara -- y
+   cuando no ocurría, la aplicación estaba escondida y la bienvenida
+   también: pantalla vacía.
+
+   Ahora manda el CSS. Por defecto el overlay no se muestra; se muestra
+   cuando el <html> lleva la marca que pone el script del <head>, que va
+   antes que cualquier otra cosa. El `.hidden` sigue funcionando para que
+   el JavaScript pueda cerrarlo (`[hidden]` gana por especificidad más
+   abajo). */
+.onboarding {
+  display: none;
+}
+
+html.esperando-bienvenida .onboarding:not([hidden]),
+html.is-onboarding .onboarding:not([hidden]) {
+  display: flex;
+}
+
+/* Mientras se desvanece al cerrarse, el overlay sigue en pantalla aunque
+   el <html> ya no lleve ninguna marca -- si no, desaparecería de golpe en
+   vez de fundirse. */
+.onboarding.is-leaving:not([hidden]) {
+  display: flex;
+}
+
+/* Y el paso de bienvenida es el que se ve por defecto: los otros dos
+   nacen `hidden` en el HTML, como antes. */
+.onboarding__step[hidden] {
+  display: none;
+}
+
 /* Y el fondo, para que ese instante sea el color de la bienvenida y no
    el blanco del navegador. */
 html.esperando-bienvenida,
