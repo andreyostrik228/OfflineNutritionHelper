@@ -833,6 +833,50 @@ function _obDecidirYPintar(o) {
 }
 
 /**
+ * Lleva a las preguntas después de que aparezca una sesión, venga de donde
+ * venga.
+ *
+ * Antes esto colgaba SOLO de los botones de la pantalla de bienvenida: si
+ * la sesión llegaba por otro camino -- el botón de la cabecera, una vuelta
+ * de Google, una sesión que se restaura -- no había nadie escuchando y la
+ * aplicación se abría sin preguntar nada. El usuario lo describió exacto:
+ * "просто заходит на обычный сайт сразу без вопросов, и там стандартные
+ * ответы".
+ *
+ * Colgarlo del HECHO (hay sesión nueva) en vez de del GESTO (se pulsó tal
+ * botón) es lo que hace que el comportamiento sea el mismo por todos los
+ * caminos.
+ */
+function startIntakeAfterSignIn() {
+  if (!_obEl("onboarding")) return;
+  if (!_onboardingEls) _obCacheEls();
+  _obWire();
+  _obGoToIntake();
+  _obShow();
+}
+
+/**
+ * Si la bienvenida está delante ofreciendo cuenta y resulta que YA hay
+ * sesión, sobra: se quita.
+ *
+ * Pasa cuando la sesión se resuelve tarde. La bienvenida espera hasta dos
+ * segundos a saber si hay cuenta y, si no le contestan, decide que no la
+ * hay -- es lo correcto, porque dejar a alguien mirando un fondo liso es
+ * peor. Pero si la respuesta llega justo después, el usuario se queda
+ * mirando "inicia sesión" con la sesión ya iniciada. Esto lo corrige en
+ * cuanto se sabe.
+ */
+function dismissWelcomeIfSignedIn() {
+  if (!_onboardingEls || !_onboardingEls.root) return;
+  if (_onboardingEls.root.hidden) return;
+  // Solo la pantalla de la cuenta: si está en las preguntas, se le deja
+  // terminar.
+  if (!_onboardingEls.welcome || _onboardingEls.welcome.hidden) return;
+  if (!_obHayCuenta()) return;
+  _obHide();
+}
+
+/**
  * Vuelve a lanzar el alta desde el principio -- para el enlace de "ver la
  * introducción otra vez". No borra los datos del usuario, solo el registro
  * de que ya la vio.

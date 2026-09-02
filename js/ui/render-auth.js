@@ -169,6 +169,22 @@ function handleAuthStateChange(event, user) {
   if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && _reconciledForUserId !== user.id) {
     _reconciledForUserId = user.id;
     closeAuthDialog();
+    // Se ACABA de iniciar sesión: toca el cuestionario, sin importar por
+    // dónde haya entrado (bienvenida, botón de la cabecera, vuelta de
+    // Google...). Ver startIntakeAfterSignIn() en js/ui/onboarding-ui.js.
+    //
+    // SIGNED_IN y no INITIAL_SESSION: el segundo es "ya había sesión y se
+    // ha restaurado al cargar la página", y preguntar ahí sacaría el
+    // cuestionario en cada recarga a quien tiene cuenta -- justo lo que se
+    // acaba de arreglar en sentido contrario.
+    if (event === "SIGNED_IN" && typeof startIntakeAfterSignIn === "function") {
+      startIntakeAfterSignIn();
+    } else if (typeof dismissWelcomeIfSignedIn === "function") {
+      // INITIAL_SESSION: la sesión ya existía. No se pregunta nada, pero
+      // si la bienvenida llegó a salir porque la respuesta tardó, se
+      // retira ahora que se sabe que hay cuenta.
+      dismissWelcomeIfSignedIn();
+    }
     if (typeof runReconciliation !== "function") return;
     runReconciliation().then(function (result) {
       if (result.status === "conflict") {
