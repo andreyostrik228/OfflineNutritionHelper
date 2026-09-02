@@ -265,6 +265,52 @@ function run(t) {
     assert.ok(msg.indexOf("todavía no están disponibles") !== -1);
   });
 
+  // ── "No hay sesión" NO es lo mismo que "todavía no lo sé" ───────────
+  // getCurrentUser() devuelve null en las dos situaciones. Confundirlas
+  // costó un fallo que el usuario vio enseguida: la pantalla de
+  // bienvenida decide si enseñarse mirando si hay cuenta, lo preguntaba
+  // en el arranque -- antes de que Supabase hubiera contestado -- y a
+  // quien tenía la sesión iniciada le pedía iniciar sesión en cada
+  // recarga. No era intermitente: la carrera la perdía siempre el mismo.
+
+  t.test("isAuthSessionResolved() es false hasta que llega el primer evento", function () {
+    var s = freshAuthSandbox();
+    var fake = createFakeSupabaseAuthClient();
+    s.getSupabaseClient = function () { return fake.client; };
+
+    // Suscribirse no basta: hay que ESPERAR al evento.
+    s.onAuthStateChange(function () {});
+    assert.strictEqual(s.isAuthSessionResolved(), false,
+      "antes del primer evento no se sabe nada");
+    assert.strictEqual(s.getCurrentUser(), null,
+      "y getCurrentUser() da null, que es justo lo que confunde");
+
+    fake.triggerAuthEvent("INITIAL_SESSION", null);
+    assert.strictEqual(s.isAuthSessionResolved(), true,
+      "tras el primer evento ya se sabe: en este caso, que no hay sesión");
+  });
+
+  t.test("isAuthSessionResolved() distingue sesión ausente de sesión presente", function () {
+    var s = freshAuthSandbox();
+    var fake = createFakeSupabaseAuthClient();
+    s.getSupabaseClient = function () { return fake.client; };
+    s.onAuthStateChange(function () {});
+
+    fake.triggerAuthEvent("INITIAL_SESSION", { user: { id: "u1", email: "a@b.c" } });
+    assert.strictEqual(s.isAuthSessionResolved(), true);
+    assert.strictEqual(s.getCurrentUser().id, "u1");
+  });
+
+  // Sin Supabase configurado no hay nada que esperar: la respuesta
+  // definitiva es "no hay sesión" y se sabe desde el primer instante. Si
+  // esto devolviera false, la bienvenida se quedaría esperando un evento
+  // que no va a llegar nunca.
+  t.test("sin cuentas configuradas, la sesión se considera resuelta al instante", function () {
+    var s = freshAuthSandbox();
+    s.getSupabaseClient = function () { return null; };
+    assert.strictEqual(s.isAuthSessionResolved(), true);
+  });
+
   t.test("authErrorMessage(): un error desconocido cae en un mensaje genérico, nunca expone el mensaje crudo del SDK", function () {
     var s = freshAuthSandbox();
     var msg = s.authErrorMessage({ message: "some_internal_supabase_code_xyz" });

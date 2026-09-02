@@ -736,6 +736,60 @@ function initOnboarding(opts) {
   _obWire();
   _onboardingOnFinish = typeof o.onFinish === "function" ? o.onFinish : null;
 
+  // ── No decidir mientras no se sepa si hay sesión ────────────────────
+  // getCurrentUser() no vale al arrancar: se rellena cuando Supabase
+  // emite su primer evento, y eso llega DESPUÉS de DOMContentLoaded. Al
+  // preguntarlo aquí sin más, la respuesta era siempre "no hay cuenta", y
+  // un usuario con la sesión iniciada se encontraba la pantalla de
+  // "inicia sesión" cada vez que recargaba. No era intermitente: pasaba
+  // siempre, porque la carrera la perdía siempre el mismo.
+  //
+  // "sin cuenta" y "todavía no lo sé" son cosas distintas y hay que
+  // tratarlas distinto: ante la duda se espera, que es lo único honesto.
+  // Mientras se espera, la aplicación sigue tapada por la marca del
+  // <head>, así que no se ve nada a medias; y si el evento no llegara
+  // nunca, el temporizador decide igualmente.
+  if (_obSesionDesconocida()) {
+    _obCuandoSeSepaLaSesion(function () { _obDecidirYPintar(o); });
+    return;
+  }
+  _obDecidirYPintar(o);
+}
+
+/**
+ * ¿Están las cuentas disponibles pero todavía no sabemos si hay sesión?
+ */
+function _obSesionDesconocida() {
+  if (typeof isAuthSessionResolved !== "function") return false;
+  return !isAuthSessionResolved();
+}
+
+/**
+ * Llama a `luego` en cuanto llegue el primer evento de sesión, o pasado un
+ * tiempo prudencial si no llega. Una sola vez.
+ */
+function _obCuandoSeSepaLaSesion(luego) {
+  var yaFue = false;
+  var cancelar = null;
+
+  function seguir() {
+    if (yaFue) return;
+    yaFue = true;
+    if (typeof cancelar === "function") cancelar();
+    if (espera) window.clearTimeout(espera);
+    luego();
+  }
+
+  if (typeof onAuthStateChange === "function") {
+    cancelar = onAuthStateChange(function () { seguir(); });
+  }
+  // Si Supabase no contesta, se decide igual: mejor enseñar la bienvenida
+  // de más que dejar al usuario esperando delante de un fondo liso.
+  var espera = window.setTimeout(seguir, 2000);
+
+}
+
+function _obDecidirYPintar(o) {
   var state = typeof getOnboardingState === "function" ? getOnboardingState() : {};
   var step = typeof nextOnboardingStep === "function"
     ? nextOnboardingStep(state, { hasProfile: !!o.hasProfile, hasAccount: _obHayCuenta() })

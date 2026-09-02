@@ -21,7 +21,8 @@
  *   js/core/supabase-client.js (getSupabaseClient)
  *
  * Expone (globales):
- *   isAuthAvailable()                 → boolean
+ *   isAuthAvailable()
+ *   isAuthSessionResolved()                 → boolean
  *   getCurrentUser()                  → user | null (último conocido, síncrono)
  *   onAuthStateChange(listener)       → función para darse de baja
  *   signUpWithEmail(email, password)  → Promise<{user, error}>
@@ -34,6 +35,7 @@
 
 var _authListeners = [];
 var _authCurrentUser = null;
+var _authResolved = false;
 var _authSubscribed = false;
 
 /**
@@ -45,6 +47,11 @@ var _authSubscribed = false;
  */
 function _notifyAuthListeners(event, session) {
   _authCurrentUser = (session && session.user) ? session.user : null;
+  // A partir del primer evento ya se SABE si hay sesión o no. Antes, la
+  // ausencia de usuario solo significaba "todavía no ha contestado
+  // Supabase" -- y confundir las dos cosas hacía que a un usuario con la
+  // sesión iniciada se le pidiera iniciar sesión en cada recarga.
+  _authResolved = true;
   _authListeners.forEach(function (fn) {
     try {
       fn(event, _authCurrentUser);
@@ -67,6 +74,23 @@ function _ensureSubscribed() {
   client.auth.onAuthStateChange(function (event, session) {
     _notifyAuthListeners(event, session);
   });
+}
+
+/**
+ * ¿Se sabe ya si hay sesión?
+ *
+ * `getCurrentUser()` devuelve null en dos situaciones que no se parecen
+ * en nada: "no hay sesión" y "Supabase todavía no ha contestado". Quien
+ * tenga que decidir algo importante con eso -- por ejemplo si enseñar la
+ * pantalla de bienvenida -- necesita poder distinguirlas.
+ *
+ * @returns {boolean} false hasta que llega el primer evento de auth.
+ */
+function isAuthSessionResolved() {
+  // Sin cuentas configuradas no hay nada que esperar: la respuesta
+  // definitiva es "no hay sesión", y se sabe desde el principio.
+  if (!isAuthAvailable()) return true;
+  return _authResolved;
 }
 
 function isAuthAvailable() {
