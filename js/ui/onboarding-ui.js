@@ -54,71 +54,6 @@ if (typeof window !== "undefined" && typeof window.setTimeout === "function") {
   }, 3000);
 }
 
-// ══ TRAZA TEMPORAL ════════════════════════════════════════════════════
-// Encendida para todos y PERSISTENTE entre recargas.
-//
-// Existe porque llevo nueve intentos y en todos he estado simulando lo que
-// hace Supabase: inventándome qué eventos manda y en qué orden. En el
-// móvil del usuario nunca se ha mirado la secuencia real, y ahí está la
-// única diferencia que queda entre su aparato y el mío.
-//
-// Guarda en sessionStorage para que una recarga -- o una vuelta de un
-// redirect de Google -- no se lleve por delante justo lo que hay que ver.
-// SE QUITA EN CUANTO SE SEPA LA CAUSA.
-var _obTrazaClave = "nutritionPlanner.traza.tmp";
-var _obTrazaLineas = (function () {
-  try { return JSON.parse(sessionStorage.getItem(_obTrazaClave) || "[]"); }
-  catch (err) { return []; }
-})();
-
-function _obApunta(que, detalle) {
-  var linea = Math.round(performance.now()) + "ms  " + que + (detalle ? "  " + detalle : "");
-  _obTrazaLineas.push(linea);
-  try { sessionStorage.setItem(_obTrazaClave, JSON.stringify(_obTrazaLineas.slice(-60))); } catch (err) {}
-  _obPintaTraza();
-}
-// Puente para que auth.js pueda apuntar sin depender de este archivo.
-if (typeof window !== "undefined") window.__traza = _obApunta;
-
-function _obPintaTraza() {
-  if (!document.body) return;
-  var caja = document.getElementById("obDiagPanel");
-  if (!caja) {
-    caja = document.createElement("div");
-    caja.id = "obDiagPanel";
-    caja.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:99999;" +
-      "max-height:40vh;overflow:auto;background:rgba(33,26,20,0.95);color:#f7f1e5;" +
-      "font:11px/1.4 monospace;padding:6px 62px 6px 6px;white-space:pre-wrap;";
-    var cerrar = document.createElement("button");
-    cerrar.type = "button";
-    cerrar.textContent = "x";
-    cerrar.style.cssText = "position:fixed;top:2px;right:2px;z-index:100000;width:28px;height:28px;" +
-      "border:0;border-radius:4px;background:#bd4e28;color:#fff;font:bold 15px monospace;";
-    cerrar.addEventListener("click", function () { caja.remove(); cerrar.remove(); limpiar.remove(); });
-    var limpiar = document.createElement("button");
-    limpiar.type = "button";
-    limpiar.textContent = "0";
-    limpiar.title = "vaciar";
-    limpiar.style.cssText = "position:fixed;top:2px;right:34px;z-index:100000;width:28px;height:28px;" +
-      "border:0;border-radius:4px;background:#5c5045;color:#fff;font:bold 15px monospace;";
-    limpiar.addEventListener("click", function () {
-      _obTrazaLineas = [];
-      try { sessionStorage.removeItem(_obTrazaClave); } catch (e) {}
-      caja.textContent = "";
-    });
-    document.body.appendChild(caja);
-    document.body.appendChild(cerrar);
-    document.body.appendChild(limpiar);
-  }
-  caja.textContent = _obTrazaLineas.join(String.fromCharCode(10));
-  caja.scrollTop = caja.scrollHeight;
-}
-if (typeof document !== "undefined") {
-  document.addEventListener("DOMContentLoaded", function () {
-    _obApunta("--- CARGA DE PAGINA ---");
-  });
-}
-
 // Se pone al abrir el diálogo de acceso y se consume al entrar: es lo que
 // separa "este usuario acaba de pedir entrar" de "Supabase ha restaurado
 // una sesión que ya existía".
@@ -175,7 +110,6 @@ function _obCacheEls() {
  * cuestionario se esfumaba a media frase.
  */
 function _obShowStep(name) {
-  _obApunta("_obShowStep", name);
   var e = _onboardingEls;
   if (e && e.root) e.root.classList.add("is-open");
   [["welcome", e.welcome], ["start", e.start], ["intake", e.intake]].forEach(function (pair) {
@@ -499,7 +433,6 @@ function _obValidateNumber(step, raw) {
 }
 
 function _obNext() {
-  _obApunta("_obNext", "indice=" + _onboardingIndex);
   var steps = _obSteps();
   var step = steps[_onboardingIndex];
   var e = _onboardingEls;
@@ -554,7 +487,6 @@ function _obBack() {
 }
 
 function _obFinishIntake() {
-  _obApunta("_obFinishIntake", "indice=" + _onboardingIndex);
   if (typeof completeIntake === "function") {
     completeIntake();
   }
@@ -587,7 +519,6 @@ function _obRevealApp() {
 }
 
 function _obHide() {
-  _obApunta("_obHide  <<< ESCONDE", (new Error()).stack.split(String.fromCharCode(10)).slice(1,4).join(" | "));
   _obRevealApp();
   var root = _onboardingEls && _onboardingEls.root;
   if (!root) return;
@@ -606,7 +537,6 @@ function _obHide() {
 function _obShow() {
   var root = _onboardingEls && _onboardingEls.root;
   if (!root) return;
-  _obApunta("_obShow");
   // `is-open` es el ÚNICO interruptor de esta pantalla (ver style.css).
   root.classList.add("is-open");
 
@@ -671,7 +601,6 @@ function _obShow() {
  * contestó, así que son siete toques, no siete decisiones.
  */
 function _obAfterAccountChoice() {
-  _obApunta("_obAfterAccountChoice");
   _obGoToIntake();
 }
 
@@ -860,7 +789,6 @@ function _obCuandoSeSepaLaSesion(luego) {
 }
 
 function _obDecidirYPintar(o) {
-  _obApunta("_obDecidirYPintar", "hayCuenta=" + _obHayCuenta());
   _obYaDecidido = true;
   // Si el usuario ya está dentro (pulsó un botón mientras se esperaba a
   // saber si había sesión), esta decisión llega tarde y no manda: cerrarle
@@ -933,7 +861,6 @@ var _OB_INTENCION = "nutritionPlanner.pidiendoEntrar";
  * porque la página se había recargado.
  */
 function markSignInRequested() {
-  _obApunta("markSignInRequested");
   _obEsperandoEntrada = true;
   try { sessionStorage.setItem(_OB_INTENCION, "1"); } catch (err) {}
 }
@@ -960,7 +887,6 @@ function startIntakeAfterSignIn() {
   // El evento no distingue las dos cosas, así que la distinción la pone
   // quien sí la sabe: la interfaz, cuando abre el diálogo de acceso.
   var pedido = _obConsumirIntencion();
-  _obApunta("startIntakeAfterSignIn", "pedido=" + pedido);
   if (!pedido) return false;
   if (!_obEl("onboarding")) return;
   if (!_onboardingEls) _obCacheEls();
@@ -995,7 +921,6 @@ function startIntakeAfterSignIn() {
  * cuanto se sabe.
  */
 function dismissWelcomeIfSignedIn() {
-  _obApunta("dismissWelcomeIfSignedIn", "decidido=" + _obYaDecidido);
   if (!_onboardingEls || !_onboardingEls.root) return;
   if (_onboardingEls.root.hidden) return;
 

@@ -46,16 +46,6 @@ var _authSubscribed = false;
  * @param {object|null} session
  */
 function _notifyAuthListeners(event, session) {
-  // TRAZA TEMPORAL: apunta el evento CRUDO de Supabase antes de tocarlo.
-  // Es el único dato que nunca he tenido -- todo lo demás lo he estado
-  // simulando, inventándome qué manda Supabase y cuándo. Se quita en
-  // cuanto se sepa la causa. Ver _obTraza en js/ui/onboarding-ui.js.
-  try {
-    if (typeof window !== "undefined" && typeof window.__traza === "function") {
-      window.__traza("SUPABASE " + event, (session && session.user) ? "con usuario" : "SIN usuario");
-    }
-  } catch (err) { /* la traza jamás puede romper la sesión */ }
-
   _authCurrentUser = (session && session.user) ? session.user : null;
   // A partir del primer evento ya se SABE si hay sesión o no. Antes, la
   // ausencia de usuario solo significaba "todavía no ha contestado
