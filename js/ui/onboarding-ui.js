@@ -558,49 +558,6 @@ function _obShow() {
  * decide por su cuenta.
  */
 /**
- * Llama a `alCerrarse` cuando el <dialog> deje de estar abierto.
- *
- * ── Por qué NO se escucha el evento `close` ─────────────────────────────
- * Porque no siempre llega. Medido en el navegador de pruebas contra la
- * página desplegada: el diálogo se cerraba de verdad (`open` pasaba a
- * false) y el contador de eventos `close` se quedaba en cero. Con la
- * transición colgada de ese evento, quien se registraba y cerraba el
- * diálogo volvía a la pantalla de la cuenta en vez de pasar a las
- * preguntas -- que es exactamente lo que el usuario describió.
- *
- * Observar el atributo `open` no depende de que el navegador dispare
- * nada: si el diálogo está cerrado, está cerrado. El temporizador de
- * respaldo cubre el caso de que ni el observador exista.
- *
- * @param {HTMLElement} dialogo
- * @param {function} alCerrarse — se llama UNA sola vez
- */
-function _obAlCerrarse(dialogo, alCerrarse) {
-  var yaLlamado = false;
-  function continuar() {
-    if (yaLlamado) return;
-    yaLlamado = true;
-    if (observador) observador.disconnect();
-    if (respaldo) window.clearInterval(respaldo);
-    alCerrarse();
-  }
-
-  var observador = null;
-  if (typeof MutationObserver === "function") {
-    observador = new MutationObserver(function () {
-      if (!dialogo.open) continuar();
-    });
-    observador.observe(dialogo, { attributes: true, attributeFilter: ["open"] });
-  }
-
-  // Respaldo por si no hay MutationObserver, o si algún día el diálogo se
-  // cierra de una forma que no toque el atributo.
-  var respaldo = window.setInterval(function () {
-    if (!dialogo.open) continuar();
-  }, 300);
-}
-
-/**
  * Qué hacer después de la pantalla de cuenta: SIEMPRE las preguntas.
  *
  * ── Por qué "siempre" y no "si hacen falta" ─────────────────────────────
@@ -702,21 +659,26 @@ function _obWire() {
   // desde la primera pregunta. Además, al iniciar sesión la aplicación
   // reconcilia el perfil con la nube, y esa reconciliación reescribía el
   // formulario por debajo mientras el usuario lo estaba rellenando.
+  // Los tres botones hacen LO MISMO: pasar a las preguntas en el acto.
+  // Los dos de cuenta, además, abren el diálogo de acceso por encima.
+  //
+  // Antes esperaban a que el diálogo se cerrara para avanzar, y esa espera
+  // es lo que fallaba: el evento `close` no siempre llega, la sesión
+  // aparece cuando quiere, y cada camino (email, Google, cerrar sin hacer
+  // nada) cerraba el diálogo de una forma distinta. "Continuar sin cuenta"
+  // era el único que funcionaba siempre, y era justamente el único que no
+  // esperaba a nada. Lo dijo el usuario: "ты не можешь сделать также как и
+  // с sin cuenta? потому что только эта кнопка нормально работает".
+  //
+  // Sin espera no hay nada que se pueda perder: las preguntas quedan
+  // detrás del diálogo, y al cerrarlo -- entre o no entre -- ya están ahí.
   function _obConCuenta(choice, mode) {
     return function () {
       _obAcceptAnd(choice);
-      if (typeof openAuthDialog !== "function") {
-        _obAfterAccountChoice();
-        return;
+      _obAfterAccountChoice();
+      if (typeof openAuthDialog === "function") {
+        openAuthDialog(mode);
       }
-      openAuthDialog(mode);
-
-      var dialogo = document.getElementById("authDialog");
-      if (!dialogo) {
-        _obAfterAccountChoice();
-        return;
-      }
-      _obAlCerrarse(dialogo, _obAfterAccountChoice);
     };
   }
 
@@ -851,6 +813,16 @@ function startIntakeAfterSignIn() {
   if (!_obEl("onboarding")) return;
   if (!_onboardingEls) _obCacheEls();
   _obWire();
+
+  // Si ya está en el cuestionario, NO se toca. Ahora el diálogo de acceso
+  // se abre POR ENCIMA de las preguntas, así que iniciar sesión en mitad
+  // de ellas es lo normal -- y reiniciarlo aquí devolvería al usuario a la
+  // pregunta 1 borrándole lo que llevara contestado.
+  var yaEnElCuestionario =
+    (_onboardingEls.start && !_onboardingEls.start.hidden) ||
+    (_onboardingEls.intake && !_onboardingEls.intake.hidden);
+  if (yaEnElCuestionario && !_onboardingEls.root.hidden) return;
+
   _obGoToIntake();
   _obShow();
 }
