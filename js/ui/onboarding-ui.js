@@ -54,6 +54,42 @@ if (typeof window !== "undefined" && typeof window.setTimeout === "function") {
   }, 3000);
 }
 
+// ══ MODO DIAGNÓSTICO (temporal) ═══════════════════════════════════════
+// Se enciende con ?diag=1 en la URL y no hace absolutamente nada sin él.
+//
+// Existe porque llevo ocho intentos persiguiendo una pantalla que "aparece
+// y desaparece" en el móvil del usuario y que aquí no se reproduce nunca.
+// Cada intento ha sido una hipótesis mía; esto, en cambio, apunta lo que
+// PASA de verdad y lo enseña en pantalla, que es lo único que va a zanjar
+// la discusión. Se quita en cuanto se sepa la causa.
+var _obDiag = (function () {
+  try {
+    return typeof location !== "undefined" && /[?&]diag=1/.test(location.search);
+  } catch (err) { return false; }
+})();
+var _obDiagLineas = [];
+
+function _obApunta(que, detalle) {
+  if (!_obDiag) return;
+  var t = Math.round(performance.now());
+  _obDiagLineas.push(t + "ms  " + que + (detalle ? "  " + detalle : ""));
+  _obPintaDiag();
+}
+
+function _obPintaDiag() {
+  var caja = document.getElementById("obDiagPanel");
+  if (!caja) {
+    caja = document.createElement("div");
+    caja.id = "obDiagPanel";
+    caja.style.cssText = "position:fixed;left:0;right:0;bottom:0;z-index:99999;" +
+      "max-height:45vh;overflow:auto;background:#211a14;color:#f7f1e5;" +
+      "font:11px/1.45 monospace;padding:8px;white-space:pre-wrap;";
+    document.body.appendChild(caja);
+  }
+  caja.textContent = _obDiagLineas.join(String.fromCharCode(10));
+  caja.scrollTop = caja.scrollHeight;
+}
+
 var _onboardingIndex = 0;
 var _onboardingEls = null;
 var _onboardingOnFinish = null;
@@ -101,6 +137,7 @@ function _obCacheEls() {
  * cuestionario se esfumaba a media frase.
  */
 function _obShowStep(name) {
+  _obApunta("_obShowStep", name);
   var e = _onboardingEls;
   if (e && e.root) e.root.classList.add("is-open");
   [["welcome", e.welcome], ["start", e.start], ["intake", e.intake]].forEach(function (pair) {
@@ -424,6 +461,7 @@ function _obValidateNumber(step, raw) {
 }
 
 function _obNext() {
+  _obApunta("_obNext", "indice=" + _onboardingIndex);
   var steps = _obSteps();
   var step = steps[_onboardingIndex];
   var e = _onboardingEls;
@@ -478,6 +516,7 @@ function _obBack() {
 }
 
 function _obFinishIntake() {
+  _obApunta("_obFinishIntake  (indice=" + _onboardingIndex + ")");
   if (typeof completeIntake === "function") {
     completeIntake();
   }
@@ -510,6 +549,7 @@ function _obRevealApp() {
 }
 
 function _obHide() {
+  _obApunta("_obHide  <-- ESCONDE", (new Error()).stack.split(String.fromCharCode(10)).slice(1,4).join(" << "));
   _obRevealApp();
   var root = _onboardingEls && _onboardingEls.root;
   if (!root) return;
@@ -528,6 +568,7 @@ function _obHide() {
 function _obShow() {
   var root = _onboardingEls && _onboardingEls.root;
   if (!root) return;
+  _obApunta("_obShow");
   // `is-open` es el ÚNICO interruptor de esta pantalla (ver style.css).
   root.classList.add("is-open");
 
@@ -779,6 +820,7 @@ function _obCuandoSeSepaLaSesion(luego) {
 }
 
 function _obDecidirYPintar(o) {
+  _obApunta("_obDecidirYPintar", "hayCuenta=" + _obHayCuenta());
   // Si el usuario ya está dentro (pulsó un botón mientras se esperaba a
   // saber si había sesión), esta decisión llega tarde y no manda: cerrarle
   // el cuestionario a media frase es peor que cualquier respuesta que
@@ -833,6 +875,7 @@ function _obDecidirYPintar(o) {
  * caminos.
  */
 function startIntakeAfterSignIn() {
+  _obApunta("startIntakeAfterSignIn");
   if (!_obEl("onboarding")) return;
   if (!_onboardingEls) _obCacheEls();
   _obWire();
@@ -862,6 +905,7 @@ function startIntakeAfterSignIn() {
  * cuanto se sabe.
  */
 function dismissWelcomeIfSignedIn() {
+  _obApunta("dismissWelcomeIfSignedIn");
   if (!_onboardingEls || !_onboardingEls.root) return;
   if (_onboardingEls.root.hidden) return;
   // Solo la pantalla de la cuenta: si está en las preguntas, se le deja
