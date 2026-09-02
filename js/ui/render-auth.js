@@ -335,6 +335,10 @@ function handleDeleteAccountConfirm() {
  */
 function openAuthDialog(mode) {
   if (!authDialogEl) return;
+  // Abrir esto es siempre una petición deliberada de entrar. Sirve para
+  // que el alta sepa distinguirla de una sesión que Supabase restaura
+  // sola al cargar la página -- las dos llegan como SIGNED_IN.
+  if (typeof markSignInRequested === "function") markSignInRequested();
   setAuthMode(mode === "register" ? "register" : "login");
   clearAuthFeedback();
   if (typeof authDialogEl.showModal === "function") {
