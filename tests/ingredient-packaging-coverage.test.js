@@ -123,19 +123,19 @@ function extractUniqueIngredientNames(dishDb) {
 // tamaño cae donde caen las otras once carnes y pescados frescos: se
 // compra al peso. Es lo COHERENTE -- era la única carne fresca con un
 // envase fijo, y encima heredado de un dato de agosto.
+// 2026-09-02 (6): de 12 a 3. El usuario comprobó el cerdo en la tienda y
+// no cuadraba: la app cobraba el precio de UN corte concreto y, al no tener
+// envase, cobraba solo los gramos usados. Pero el lomo viene en bandeja
+// cerrada de ~638 g -- nadie compra 150 g.
+//
+// Los que quedan son los tres que Mercadona vende DE VERDAD a granel, y el
+// criterio no es una opinión: su ficha deja `unit_size` a null, o sea que
+// no hay unidad de venta. Los otros nueve sí la tienen y pasaron a
+// fixedPackage con el peso MEDIO de los cortes que promedian su precio.
 var EXPECTED_NO_FIXED_PACKAGE = [
   "Bacalao",
-  "Conejo",
-  "Lomo de cerdo",
-  "Lubina",
-  "Merluza",
-  "Muslo de pollo deshuesado",
-  "Pechuga de pavo",
-  "Pechuga de pollo",
   "Rape",
-  "Salmón",
-  "Solomillo de ternera",
-  "Ternera magra"
+  "Salmón"
 ].sort();
 
 // Línea base del tamaño del dataset -- si esto cambia, la lista de arriba
@@ -371,6 +371,65 @@ function run(t) {
           " (" + ESPERADO[rol][1] + ")");
       }
     });
+    assert.deepStrictEqual(off, [], off.join(" | "));
+  });
+
+  // ── Precio medio => peso medio (regla del usuario, 2026-09-02) ───────
+  // "Для всех таких продуктов, у которых указана средняя цена, используем
+  // именно средний вес." Es decir: si el precio de un rol es la media de
+  // varios cortes, el envase tiene que ser la media de ESOS MISMOS cortes,
+  // no un número suelto. Si no, precio y peso hablan de cosas distintas y
+  // vuelve a pasar lo del cerdo -- pagar el corte barato y llevarse otra
+  // bandeja.
+  //
+  // El comentario del precio lleva las dos cifras escritas ("media de 5
+  // cortes: 6,86 EUR/kg; bandeja media 638 g"), así que aquí se comprueba
+  // que el fichero de precios y el de envases dicen lo mismo. El
+  // comentario deja de ser decoración y pasa a ser el contrato, igual que
+  // ya pasó con "// real:" y los enlaces.
+  t.test("los roles con precio MEDIO llevan el peso medio de esos mismos cortes", function () {
+    var fs = require("fs");
+    var s = freshSandbox();
+    var priceText = fs.readFileSync(projPath("js/data/prices/mercadona.js"), "utf8");
+    var SPLIT = new RegExp(String.fromCharCode(13) + "?" + String.fromCharCode(10));
+
+    var off = [], revisados = 0;
+    priceText.split(SPLIT).forEach(function (line) {
+      var m = line.match(/^\s*"([^"]+)":\s*([0-9.]+),\s*\/\/\s*real:\s*(.+)$/);
+      if (!m) return;
+      var role = m[1], per100 = parseFloat(m[2]), comment = m[3];
+
+      var media = comment.match(/media de (\d+) cortes:\s*([\d,]+)\s*EUR\/kg/);
+      var bandeja = comment.match(/bandeja(?: media)? (\d+) g/);
+      var granel = /se vende a granel/.test(comment);
+      if (!media && !bandeja && !granel) return;
+      revisados++;
+
+      var pkg = s.resolvePackageInfo(role, "mercadona");
+
+      if (media) {
+        var declarado = parseFloat(media[2].replace(",", "."));
+        if (Math.abs(per100 * 10 - declarado) > 0.005) {
+          off.push(role + ": cobra " + (per100 * 10).toFixed(3) +
+            " EUR/kg pero su comentario declara una media de " + declarado);
+        }
+      }
+      if (granel) {
+        if (pkg && pkg.packageSizeG != null) {
+          off.push(role + ": el comentario dice que se vende a granel, pero tiene envase de " +
+            pkg.packageSizeG + " g");
+        }
+      } else if (bandeja) {
+        var g = parseInt(bandeja[1], 10);
+        if (!pkg || pkg.packageSizeG == null) {
+          off.push(role + ": su precio declara bandeja de " + g + " g y no tiene entrada de envase");
+        } else if (Math.round(pkg.packageSizeG) !== g) {
+          off.push(role + ": envase de " + pkg.packageSizeG + " g, pero su precio declara " + g + " g");
+        }
+      }
+    });
+
+    assert.ok(revisados >= 12, "esperaba al menos 12 roles con media/granel declarados; hay " + revisados);
     assert.deepStrictEqual(off, [], off.join(" | "));
   });
 

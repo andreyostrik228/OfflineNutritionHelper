@@ -582,13 +582,26 @@ function run(t) {
     // porque ya no puede tirar de los platos inexistentes. Se apunta tal
     // cual en vez de disimularlo: `violations` sigue vacío y el tope duro
     // de presupuesto nunca se toca.
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 2, 2, 2, 2]);
-    assert.strictEqual(result.total.kcal, 2809.1000000000004);
-    assert.strictEqual(result.total.protein, 199.2);
-    assert.strictEqual(result.total.carbs, 322.8999999999999);
-    assert.strictEqual(result.total.fat, 78.39999999999999);
-    assert.strictEqual(result.total.cost, 8.44);
-    assert.strictEqual(result.total.purchaseCost, 14.96);
+    // ── RECAPTURADO el 2026-09-02 (6): carne y pescado por su MEDIA ────
+    // El usuario abrió la ficha del cerdo en la tienda y no cuadraba: la
+    // app cobraba el precio de UN corte ("Filetes lomo de cerdo cabeza",
+    // 6,30 EUR/kg) como si fuera "el" cerdo, y al no tener envase cobraba
+    // solo los gramos usados. Ahora nueve roles de carne/pescado usan el
+    // precio MEDIO de sus cortes reales y el peso MEDIO de la bandeja.
+    //
+    // Este día mejora en lo que importa: 2809,1 -> 2821,9 kcal sobre un
+    // objetivo de 2822 (queda a 0,1 kcal) y la compra baja de 14,96 a
+    // 14,21 EUR. La proteína cae de 199,2 a 151,9 g -- por debajo del
+    // objetivo de 156 por primera vez, aunque dentro de tolerancia
+    // (`violations` sigue vacío): con la bandeja entera, la carne sale
+    // cara y el motor la cambia por huevos, sardinas y salchichas.
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 3, 2, 2, 2]);
+    assert.strictEqual(result.total.kcal, 2821.9);
+    assert.strictEqual(result.total.protein, 151.9);
+    assert.strictEqual(result.total.carbs, 325.59999999999997);
+    assert.strictEqual(result.total.fat, 100.3);
+    assert.strictEqual(result.total.cost, 5.47);
+    assert.strictEqual(result.total.purchaseCost, 14.21);
     assert.strictEqual(result.report.status, "adjusted");
     assert.strictEqual(result.report.tierUsed, 1);
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.report.violations)), []);
@@ -614,16 +627,34 @@ function run(t) {
     // cae 38 g porque el día que gana la lotería ahora es de garbanzos y
     // frutos secos en vez de carne, pero sigue sobre el objetivo y
     // `violations` sigue vacío.
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 3, 3, 2, 2]);
-    assert.strictEqual(result.total.kcal, 3871.0999999999995);
-    assert.strictEqual(result.total.protein, 185.3);
-    assert.strictEqual(result.total.carbs, 418.1);
-    assert.strictEqual(result.total.fat, 152.10000000000002);
-    assert.strictEqual(result.total.cost, 9.15);
-    assert.strictEqual(result.total.purchaseCost, 19.34);
-    assert.strictEqual(result.report.status, "adjusted");
-    assert.strictEqual(result.report.tierUsed, 2);
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.report.violations)), []);
+    // ── RECAPTURADO el 2026-09-02 (6) -- ver seed=42 ───────────────────
+    // Este es el caso incómodo y se apunta tal cual: el plan SE PASA del
+    // presupuesto, 20,54 EUR sobre 20, y baja a minimal/tier 4.
+    //
+    // No es que el motor mienta: declara la violación "budget" con su
+    // exceededBy, que es exactamente el contrato que exigen
+    // budget-purchase.test.js y budget-mode.test.js ("si se pasa, que lo
+    // diga"). Lo que se rompe no es una promesa, es la suerte de esta
+    // semilla.
+    //
+    // La causa es el GRANULADO DE ENVASE, no el precio de la carne: este
+    // día no lleva ni un gramo de carne de bandeja. Son cinco tomas con
+    // cinco básicos distintos (avena, lentejas, garbanzos, edamame,
+    // yogur) y por tanto cinco paquetes enteros -- 6,82 EUR de comida
+    // usada dentro de 20,54 EUR de compra. Medido en 150 generaciones,
+    // pasa en el 4% de los días de 20 EUR (antes, 1%).
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [4, 3, 3, 2, 2]);
+    assert.strictEqual(result.total.kcal, 3831.2);
+    assert.strictEqual(result.total.protein, 188.60000000000002);
+    assert.strictEqual(result.total.carbs, 623.2);
+    assert.strictEqual(result.total.fat, 51.7);
+    assert.strictEqual(result.total.cost, 6.82);
+    assert.strictEqual(result.total.purchaseCost, 20.54);
+    assert.strictEqual(result.report.status, "minimal");
+    assert.strictEqual(result.report.tierUsed, 4);
+    assert.deepStrictEqual(
+      JSON.parse(JSON.stringify(result.report.violations)),
+      [{ type: "budget", exceededBy: 0.54, purchaseCost: 20.54, usageCost: 6.82 }]);
   });
 }
 

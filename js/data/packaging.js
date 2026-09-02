@@ -28,10 +28,17 @@
  *      paquete de 500g y usas parte. packageG es el tamaño más común en
  *      Mercadona/Hacendado, no un dato exacto de SKU.
  *
- *   4. (sin entrada aquí) — carne/pescado fresco (se compra al peso real,
- *      mostrar gramos ya es realista) y algún ingrediente resuelto por
- *      otra vía (`js/data/real-ingredient-matches.js`, ver
- *      `resolvePackageInfo()` en pricing.js para la cascada completa).
+ *   4. (sin entrada aquí) — lo que se vende A GRANEL (bacalao, rape y
+ *      salmón congelados: la API deja `unit_size` a null, se coge lo que
+ *      se quiera) y algún ingrediente resuelto por otra vía
+ *      (`js/data/real-ingredient-matches.js`, ver `resolvePackageInfo()`
+ *      en pricing.js para la cascada completa).
+ *
+ *      Hasta el 2026-09-02 esta clase se llamaba "carne/pescado fresco" y
+ *      se los llevaba a TODOS, con el argumento de que "se compra al peso
+ *      real". Solo vale para lo de granel: el lomo de cerdo viene en
+ *      bandeja cerrada y no puedes comprar 150 g. Los que sí tienen
+ *      unidad de venta pasaron a la clase 3 (ver el bloque 4b abajo).
  *
  * Consumido por: js/ui/render.js (renderFoodRow)
  * ─────────────────────────────────────────────────────────────────────────
@@ -159,7 +166,12 @@ var PACKAGING_INFO = {
   // clasificación 4 de la cabecera). "Pechuga de pollo" NO está en esta
   // lista pese a ser también carne fresca -- resuelve por otra vía
   // (real-ingredient-matches.js, sizeG:500), confirmado con
-  // resolvePackageInfo() real, no por asunción. "Lechuga: Pepino" también
+  // resolvePackageInfo() real, no por asunción.
+  //
+  // OBSOLETO desde el 2026-09-02: de esa lista solo siguen sin envase
+  // bacalao, rape y salmón, que son los tres que Mercadona vende a granel.
+  // Los demás tienen bandeja y están en el bloque 4b de más abajo. El
+  // párrafo se deja porque explica de dónde venía la decisión anterior. "Lechuga: Pepino" también
   // queda sin envase -- pero es un nombre de ingrediente CORRUPTO en
   // dishes.js (dos ingredientes concatenados con ":", known issue
   // documentado desde 2026-08-03, sin corregir), no un hueco de
@@ -167,4 +179,29 @@ var PACKAGING_INFO = {
   // clave que ni siquiera debería existir tal cual. Línea base exacta,
   // auditada ejecutando resolvePackageInfo() real (no una suposición):
   // tests/ingredient-packaging-coverage.test.js.
+  // ── 4b. Carne y pescado EN BANDEJA (2026-09-02) ──────────────────────
+  // Hasta hoy toda la carne y el pescado fresco caian en la clase 4 (sin
+  // entrada), con el argumento de que "se compra al peso real". Eso solo
+  // es cierto de lo que se vende A GRANEL. El lomo de cerdo viene en una
+  // bandeja cerrada de ~638 g: nadie compra 150 g, compra la bandeja y le
+  // sobra. Sin envase el planificador cobraba solo la parte usada y el
+  // usuario se encontraba otro precio en la tienda.
+  //
+  // El criterio no es una opinion: si la API de Mercadona declara
+  // unit_size, hay una unidad de venta y por tanto envase; si lo deja a
+  // null (bacalao, rape y salmon congelados) se vende a granel y se queda
+  // sin entrada, que es lo correcto.
+  //
+  // packageG es la MEDIA de los cortes que promedia el precio, para que
+  // peso y precio hablen del mismo conjunto de productos. Los miembros de
+  // cada media estan escritos en el comentario de prices/mercadona.js.
+  "conejo":                      { type: "fixedPackage", packageG: 980, packageLabel: "bandeja (media de 2 cortes)" },  // media de 2 cortes reales, 9 EUR/kg
+  "lomo de cerdo":               { type: "fixedPackage", packageG: 638, packageLabel: "bandeja (media de 5 cortes)" },  // media de 5 cortes reales, 6,86 EUR/kg
+  "lubina":                      { type: "fixedPackage", packageG: 440, packageLabel: "bandeja (media de 5 cortes)" },  // media de 5 cortes reales, 9,95 EUR/kg
+  "merluza":                     { type: "fixedPackage", packageG: 994, packageLabel: "bandeja (media de 6 cortes)" },  // media de 6 cortes reales, 11,5 EUR/kg
+  "muslo de pollo deshuesado":   { type: "fixedPackage", packageG: 568, packageLabel: "bandeja (media de 4 cortes)" },  // media de 4 cortes reales, 7,263 EUR/kg
+  "pechuga de pavo":             { type: "fixedPackage", packageG: 590, packageLabel: "bandeja" },  // Filetes pechuga de pavo, 8,75 EUR/kg
+  "pechuga de pollo":            { type: "fixedPackage", packageG: 558, packageLabel: "bandeja (media de 4 cortes)" },  // media de 4 cortes reales, 7,975 EUR/kg
+  "solomillo de ternera":        { type: "fixedPackage", packageG: 300, packageLabel: "bandeja" },  // Solomillo de vacuno añojo para plancha, 40,7 EUR/kg
+  "ternera magra":               { type: "fixedPackage", packageG: 533, packageLabel: "bandeja (media de 3 cortes)" },  // media de 3 cortes reales, 17,467 EUR/kg
 };
