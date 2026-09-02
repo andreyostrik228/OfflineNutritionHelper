@@ -306,8 +306,23 @@ function _obRenderStep() {
 
 /**
  * Escribe la respuesta en el control real y dispara `change`, que es lo
- * que hace que el resto de la aplicación se entere (guardado de ajustes,
- * recálculo de los importes del presupuesto...).
+ * que hace que el resto de la aplicación se entere (recálculo de los
+ * importes del presupuesto...).
+ *
+ * ── Y la GUARDA, en el acto ─────────────────────────────────────────────
+ * Esto faltaba, y costó un fallo que el usuario notó enseguida: la
+ * aplicación solo guardaba el perfil al generar un plan, así que las siete
+ * respuestas vivían únicamente en el formulario en pantalla. Bastaba con
+ * que la página se recargara -- y entrar con Google recarga la página
+ * entera, porque vuelve de un redirect -- para que todo lo contestado
+ * desapareciera y el cuestionario volviera a empezar desde la primera
+ * pregunta. Su descripción fue exacta: "окно пропадает на чуть-чуть но
+ * потом снова появляется".
+ *
+ * Guardar respuesta a respuesta también arregla la causa de fondo:
+ * `hasProfile` se calcula leyendo los ajustes guardados, así que hasta que
+ * no se guardaba nada, para la aplicación este usuario nunca había
+ * contestado.
  */
 function _obWriteAnswer(step, value) {
   if (step.field === "budgetMode") {
@@ -316,13 +331,54 @@ function _obWriteAnswer(step, value) {
       radio.checked = true;
       radio.dispatchEvent(new Event("change", { bubbles: true }));
     }
-    return;
+  } else {
+    var el = _obEl(step.field);
+    if (!el) return;
+    el.value = value;
+    el.dispatchEvent(new Event("change", { bubbles: true }));
+    el.dispatchEvent(new Event("input", { bubbles: true }));
   }
-  var el = _obEl(step.field);
-  if (!el) return;
-  el.value = value;
-  el.dispatchEvent(new Event("change", { bubbles: true }));
-  el.dispatchEvent(new Event("input", { bubbles: true }));
+  _obPersistAnswer(step, value);
+}
+
+/**
+ * Le da al valor el TIPO que settings.js espera para esa clave.
+ *
+ * Hace falta porque una pregunta de opciones devuelve siempre texto (es
+ * lo que vale un `value` de HTML), y sanitizeSettings() exige
+ * `typeof === "number"` para los campos numéricos: descarta el resto sin
+ * decir nada. El nivel de actividad es el único paso que es a la vez de
+ * opciones y numérico, y se perdía por eso -- comprobado en producción,
+ * `activity` no aparecía entre los ajustes guardados mientras los otros
+ * seis sí.
+ */
+function _obCoerceForSettings(field, value) {
+  var numericos = (typeof SETTINGS_NUMERIC_FIELDS !== "undefined") ? SETTINGS_NUMERIC_FIELDS : [];
+  if (numericos.indexOf(field) === -1) return value;
+  var n = (typeof value === "number") ? value : parseFloat(String(value).replace(",", "."));
+  return isFinite(n) ? n : value;
+}
+
+/**
+ * Mete la respuesta en los ajustes guardados sin tocar el resto. Las
+ * claves de ONBOARDING_STEPS.field coinciden a propósito con las que usa
+ * settings.js (`sex`, `age`, ..., `budgetMode`), así que no hace falta
+ * traducir nada -- y si algún día dejaran de coincidir, el valor se
+ * descartaría al sanear en vez de corromper el perfil.
+ */
+function _obPersistAnswer(step, value) {
+  if (typeof saveSettings !== "function" || typeof getSettings !== "function") return;
+  var actual = getSettings() || {};
+  var merged = {};
+  Object.keys(actual).forEach(function (k) { merged[k] = actual[k]; });
+  merged[step.field] = _obCoerceForSettings(step.field, value);
+  saveSettings(merged);
+
+  // Con sesión iniciada, además a la nube: si no, al entrar desde otro
+  // dispositivo el perfil recién contestado no estaría.
+  if (typeof pushSettingsToCloud === "function") {
+    try { pushSettingsToCloud(); } catch (err) { /* la copia local ya está */ }
+  }
 }
 
 /**
@@ -358,6 +414,26 @@ function _obNext() {
       return;
     }
     _obWriteAnswer(step, parseFloat(String(input.value).replace(",", ".")));
+  }
+
+  // Una pregunta de opciones tiene que estar CONTESTADA para avanzar.
+  //
+  // Sin esto, el presupuesto se colaba sin elegir: pulsar "Terminar"
+  // cerraba el cuestionario dejando el formulario sin ningún tramo
+  // marcado, y el botón de generar respondía "Elige un presupuesto".
+  // Para el usuario, "Terminar" simplemente no hacía nada. Los otros seis
+  // pasos no lo enseñaban porque el formulario ya trae un valor por
+  // defecto para todos ellos; el presupuesto es el único que nace vacío.
+  if (step.kind === "choice") {
+    var elegido = _obEl("onboardingAnswer") &&
+                  _obEl("onboardingAnswer").querySelector(".is-selected");
+    if (!elegido) {
+      if (e.error) {
+        e.error.textContent = "Elige una opción para continuar.";
+        e.error.hidden = false;
+      }
+      return;
+    }
   }
 
   if (_onboardingIndex >= steps.length - 1) {
@@ -416,15 +492,32 @@ function _obShow() {
  * decide por su cuenta.
  */
 function _obAfterAccountChoice() {
+  // Se vuelve a MIRAR si hay perfil en vez de usar el valor con el que
+  // arrancó la página: quien acaba de entrar en una cuenta que ya tenía
+  // datos los ha recibido de la nube hace un instante, y preguntarle otra
+  // vez su peso y su altura sería no haberse enterado de nada.
+  var hasProfile = _onboardingHasProfile || _obTieneperfilGuardado();
+
   var next = "intake";
   if (typeof nextOnboardingStep === "function" && typeof getOnboardingState === "function") {
-    next = nextOnboardingStep(getOnboardingState(), { hasProfile: _onboardingHasProfile });
+    next = nextOnboardingStep(getOnboardingState(), { hasProfile: hasProfile });
   }
   if (next === "intake") {
     _obGoToIntake();
     return;
   }
   _obHide();
+}
+
+/**
+ * "Ya tiene perfil" = hay guardadas las tres medidas que no tienen un
+ * valor por defecto razonable. Mirar solo si existe el objeto de ajustes
+ * no valdría: se crea en cuanto se toca cualquier campo.
+ */
+function _obTieneperfilGuardado() {
+  if (typeof getSettings !== "function") return false;
+  var s = getSettings() || {};
+  return !!(s.age && s.weight && s.height);
 }
 
 /** Pasa de la bienvenida al botón único, y de ahí a las preguntas. */
@@ -451,24 +544,42 @@ function _obWire() {
   // existe (js/ui/render-auth.js) en vez de duplicar el formulario. El
   // alta continúa por debajo: si la cuenta se crea, el usuario vuelve
   // aquí y sigue con sus datos; si se lo piensa, tampoco pierde el sitio.
-  if (e.createBtn) {
-    e.createBtn.addEventListener("click", function () {
-      _obAcceptAnd("created");
-      if (typeof openAuthDialog === "function") {
-        openAuthDialog("register");
+  // Crear cuenta / iniciar sesión reutilizan el diálogo de acceso que ya
+  // existe (js/ui/render-auth.js) en vez de duplicar el formulario.
+  //
+  // Y se ESPERA a que ese diálogo se cierre antes de seguir. Antes se
+  // pasaba a las preguntas en el acto, con el diálogo de acceso encima:
+  // quien entraba con Google se iba de la página a mitad del
+  // cuestionario y, al volver del redirect, se lo encontraba otra vez
+  // desde la primera pregunta. Además, al iniciar sesión la aplicación
+  // reconcilia el perfil con la nube, y esa reconciliación reescribía el
+  // formulario por debajo mientras el usuario lo estaba rellenando.
+  function _obConCuenta(choice, mode) {
+    return function () {
+      _obAcceptAnd(choice);
+      if (typeof openAuthDialog !== "function") {
+        _obAfterAccountChoice();
+        return;
       }
-      _obAfterAccountChoice();
-    });
-  }
-  if (e.signInBtn) {
-    e.signInBtn.addEventListener("click", function () {
-      _obAcceptAnd("signed-in");
-      if (typeof openAuthDialog === "function") {
-        openAuthDialog("login");
+      openAuthDialog(mode);
+
+      var dialogo = document.getElementById("authDialog");
+      if (!dialogo || typeof dialogo.addEventListener !== "function") {
+        _obAfterAccountChoice();
+        return;
       }
-      _obAfterAccountChoice();
-    });
+      // `close` salta tanto al entrar como al cerrar sin hacer nada, que
+      // es justo lo que hace falta: en ambos casos toca continuar, y con
+      // la sesión (si la hay) ya resuelta.
+      dialogo.addEventListener("close", function alContinuar() {
+        dialogo.removeEventListener("close", alContinuar);
+        _obAfterAccountChoice();
+      });
+    };
   }
+
+  if (e.createBtn) e.createBtn.addEventListener("click", _obConCuenta("created", "register"));
+  if (e.signInBtn) e.signInBtn.addEventListener("click", _obConCuenta("signed-in", "login"));
 
   if (e.startBtn) {
     e.startBtn.addEventListener("click", function () {

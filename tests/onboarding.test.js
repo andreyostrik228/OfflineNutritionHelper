@@ -30,7 +30,8 @@ function freshSandbox() {
     projPath("js/data/legal.js"),
     projPath("js/data/onboarding-steps.js"),
     projPath("js/data/tour-steps.js"),
-    projPath("js/core/onboarding.js")
+    projPath("js/core/onboarding.js"),
+    projPath("js/core/settings.js")
   ]);
 }
 
@@ -440,6 +441,127 @@ function run(t) {
     ["pantry", "nocook", "days", "shopping"].forEach(function (need) {
       assert.ok(ids.indexOf(need) !== -1, "el recorrido no enseña: " + need);
     });
+  });
+
+  // ── Las respuestas TIENEN que poder guardarse ───────────────────────
+  // El fallo que lo motivó: el cuestionario escribía las siete respuestas
+  // solo en el formulario en pantalla. La aplicación guardaba el perfil
+  // únicamente al generar un plan, así que bastaba con que la página se
+  // recargara -- y entrar con Google recarga, porque vuelve de un
+  // redirect -- para perderlo todo y volver a empezar por la pregunta 1.
+  //
+  // Ahora cada respuesta se guarda en el acto con saveSettings(), lo que
+  // solo funciona si la clave del paso es una que settings.js reconoce:
+  // sanitizeSettings() descarta lo que no conoce, y lo haría en silencio.
+
+  t.test("cada campo del alta es una clave que settings.js sabe guardar", function () {
+    var s = freshSandbox();
+    var conocidas = [].concat(s.SETTINGS_NUMERIC_FIELDS, s.SETTINGS_STRING_FIELDS);
+    var huerfanas = s.ONBOARDING_STEPS
+      .filter(function (step) { return conocidas.indexOf(step.field) === -1; })
+      .map(function (step) { return step.id + " -> " + step.field; });
+    assert.deepStrictEqual(plain(huerfanas), [],
+      "settings.js descartaría estas respuestas al sanear, sin avisar: " + huerfanas.join(", "));
+  });
+
+  // El test de arriba comprueba el NOMBRE de la clave. No basta: el valor
+  // también tiene que llegar con el TIPO correcto. Una pregunta de
+  // opciones devuelve siempre texto (es lo que vale un `value` de HTML) y
+  // sanitizeSettings() descarta en silencio un campo numérico que llegue
+  // como cadena. Pasó de verdad con el nivel de actividad: se perdía en
+  // producción mientras los otros seis pasos se guardaban bien.
+  t.test("una respuesta de opciones a un campo NUMÉRICO se guarda como número", function () {
+    var s = freshSandbox();
+    s.localStorage = createFakeLocalStorage();
+
+    var numericos = s.SETTINGS_NUMERIC_FIELDS;
+    var deOpciones = s.ONBOARDING_STEPS.filter(function (step) {
+      return step.kind === "choice" && numericos.indexOf(step.field) !== -1;
+    });
+    assert.ok(deOpciones.length >= 1,
+      "si ya no hay ningún paso de opciones numérico, este test sobra");
+
+    deOpciones.forEach(function (step) {
+      // Tal cual sale del HTML: una cadena.
+      var comoTexto = step.options[0].value;
+      assert.strictEqual(typeof comoTexto, "string");
+
+      // Guardado sin convertir -> settings.js lo tira.
+      s.saveSettings({ age: 30, weight: 70, height: 175 });
+      var sinConvertir = {};
+      var base = s.getSettings();
+      Object.keys(base).forEach(function (k) { sinConvertir[k] = base[k]; });
+      sinConvertir[step.field] = comoTexto;
+      s.saveSettings(sinConvertir);
+      assert.strictEqual(s.getSettings()[step.field], undefined,
+        "settings.js debería seguir rechazando un número en forma de texto");
+
+      // Convertido -> se guarda.
+      var convertido = {};
+      Object.keys(base).forEach(function (k) { convertido[k] = base[k]; });
+      convertido[step.field] = parseFloat(comoTexto);
+      s.saveSettings(convertido);
+      assert.strictEqual(s.getSettings()[step.field], parseFloat(comoTexto),
+        "el alta tiene que convertir " + step.field + " antes de guardarlo");
+    });
+  });
+
+  t.test("guardar las respuestas del alta reconstruye un perfil completo", function () {
+    var s = freshSandbox();
+    s.localStorage = createFakeLocalStorage();
+
+    // Simula el alta entera: cada paso guarda su respuesta.
+    var respuestas = { sex: "female", age: 31, weight: 64.5, height: 170,
+                       activity: 1.725, goal: "cut", budgetMode: "small" };
+    s.ONBOARDING_STEPS.forEach(function (step) {
+      var actual = s.getSettings() || {};
+      var merged = {};
+      Object.keys(actual).forEach(function (k) { merged[k] = actual[k]; });
+      merged[step.field] = respuestas[step.field];
+      s.saveSettings(merged);
+    });
+
+    var guardado = s.getSettings();
+    Object.keys(respuestas).forEach(function (k) {
+      assert.strictEqual(guardado[k], respuestas[k], "se perdió al guardar: " + k);
+    });
+
+    // Y lo que de verdad importa: con eso, la aplicación ya sabe que este
+    // usuario contestó, así que no le vuelve a enseñar el cuestionario.
+    var hasProfile = !!(guardado.age && guardado.weight && guardado.height);
+    assert.strictEqual(hasProfile, true);
+    var estado = { termsVersion: "1.0", termsAcceptedAt: "2026-09-02T00:00:00Z" };
+    assert.strictEqual(
+      s.nextOnboardingStep(estado, { currentVersion: "1.0", hasProfile: hasProfile }),
+      "done",
+      "tras contestar, una recarga no puede devolverle a la pregunta 1");
+  });
+
+  // El presupuesto es el ÚNICO paso que puede quedarse sin contestar, y por
+  // eso "Terminar" se podía pulsar dejándolo vacío: después, el botón de
+  // generar respondía "Elige un presupuesto" y para el usuario "Terminar
+  // no hacía nada".
+  //
+  // La razón está en el TIPO de control, no en el HTML: un <select> y un
+  // <input value="..."> siempre tienen un valor -- aunque nadie los toque,
+  // el navegador da el primero. Un grupo de radios sin `checked` no tiene
+  // ninguno. Si algún día otro paso pasa a ser radios, hereda el mismo
+  // problema y este test lo dice.
+  t.test("solo el presupuesto puede quedarse sin contestar (es el único grupo de radios)", function () {
+    var s = freshSandbox();
+    var html = readIndexHtml();
+
+    var puedenQuedarVacios = s.ONBOARDING_STEPS.filter(function (step) {
+      var esGrupoDeRadios = html.indexOf('name="' + step.field + '"') !== -1 &&
+                            html.indexOf('id="' + step.field + '"') === -1;
+      if (!esGrupoDeRadios) return false;
+      // ...y ninguno de sus radios viene marcado de fábrica.
+      var marcado = new RegExp('name="' + step.field + '"[^>]*checked').test(html);
+      return !marcado;
+    }).map(function (step) { return step.id; });
+
+    assert.deepStrictEqual(plain(puedenQuedarVacios), ["budget"],
+      "cambió qué pasos pueden quedarse vacíos: revisar la validación de _obNext()");
   });
 }
 
