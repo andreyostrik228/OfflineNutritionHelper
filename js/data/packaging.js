@@ -107,14 +107,40 @@ var PACKAGING_INFO = {
   "sardinas en lata":             { type: "fixedPackage", packageG: 120,  packageLabel: "lata" },
   "caballa en lata":              { type: "fixedPackage", packageG: 125,  packageLabel: "lata" },
   "tempeh":                       { type: "fixedPackage", packageG: 200,  packageLabel: "paquete" },
-  "arroz blanco cocido":          { type: "fixedPackage", packageG: 500,  packageLabel: "paquete (en crudo)" },
-  "arroz integral cocido":        { type: "fixedPackage", packageG: 500,  packageLabel: "paquete (en crudo)" },
-  "pasta cocida":                 { type: "fixedPackage", packageG: 500,  packageLabel: "paquete (en crudo)" },
-  "cuscus cocido":                { type: "fixedPackage", packageG: 500,  packageLabel: "paquete (en crudo)" },
-  "quinoa cocida":                { type: "fixedPackage", packageG: 500,  packageLabel: "paquete (en crudo)" },
-  "garbanzos cocidos":            { type: "fixedPackage", packageG: 400,  packageLabel: "tarrina (cocido)" },
-  "lentejas cocidas":             { type: "fixedPackage", packageG: 400,  packageLabel: "tarrina (cocido)" },
-  "alubias cocidas":              { type: "fixedPackage", packageG: 400,  packageLabel: "tarrina (cocido)" },
+  // ⚠️ EL TAMAÑO VA EN GRAMOS **COCIDOS**, igual que el precio (2026-09-02)
+  //
+  // Estos roles se miden COCIDOS en dishes.js y su precio en
+  // prices/mercadona.js es €/100 g COCIDO (paquete seco ÷ factor de
+  // cocción). El tamaño de envase tenía que estar en la MISMA unidad y no
+  // lo estaba: decía 500 g con la etiqueta "paquete (en crudo)" -- o sea,
+  // gramos CRUDOS -- pero resolvePurchaseCost lo compara contra gramos
+  // COCIDOS. Resultado que reportó el usuario: "comprar 650 g de arroz,
+  // gastarás 0,42 €", cuando 650 g cocidos son 232 g de arroz seco y en la
+  // tienda eso es UN paquete de 1 kg a 1,20 €. El plan inventaba paquetes
+  // de medio kilo de arroz ya cocido, que no existen.
+  //
+  // Es la misma clase de error que el aceite guardado por 100 ml y usado
+  // como por 100 g (ver ingredient-nutrition.js): dos archivos correctos
+  // por separado, midiendo en unidades distintas.
+  //
+  // Comprobación: precio/100 g × estos gramos = el precio REAL del paquete
+  // en la tienda, al céntimo. Arroz 0,0429×2800/100 = 1,20 €; pasta
+  // 0,05×2300/100 = 1,15 €; quinoa 0,1963×1350/100 = 2,65 €. Si algún día
+  // no cuadra, es que el precio o el factor están mal.
+  "arroz blanco cocido":          { type: "fixedPackage", packageG: 2800, packageLabel: "paquete de 1 kg (rinde 2,8 kg cocido)" },
+  "arroz integral cocido":        { type: "fixedPackage", packageG: 2800, packageLabel: "paquete de 1 kg (rinde 2,8 kg cocido)" },
+  "pasta cocida":                 { type: "fixedPackage", packageG: 2300, packageLabel: "paquete de 1 kg (rinde 2,3 kg cocido)" },
+  "cuscus cocido":                { type: "fixedPackage", packageG: 2800, packageLabel: "paquete de 1 kg (rinde 2,8 kg cocido)" },
+  "quinoa cocida":                { type: "fixedPackage", packageG: 1350, packageLabel: "paquete de 500 g (rinde 1,35 kg cocido)" },
+  // Las legumbres NO siguen esa regla: las recetas dicen literalmente "de
+  // bote" ("enjuaga los garbanzos de bote hasta que el agua salga clara"),
+  // así que se compran YA COCIDAS y el envase son los 400 g ESCURRIDOS que
+  // declara Mercadona -- su reference_price de estos botes va por peso
+  // escurrido, comprobado: 0,80 €/0,400 kg = 2,00 €/kg, el mismo número que
+  // publica la ficha.
+  "garbanzos cocidos":            { type: "fixedPackage", packageG: 400,  packageLabel: "bote (peso escurrido)" },
+  "lentejas cocidas":             { type: "fixedPackage", packageG: 400,  packageLabel: "bote (peso escurrido)" },
+  "alubias cocidas":              { type: "fixedPackage", packageG: 400,  packageLabel: "bote (peso escurrido)" },
   "tofu firme":                   { type: "fixedPackage", packageG: 250,  packageLabel: "paquete" },
   "skyr natural":                 { type: "fixedPackage", packageG: 450,  packageLabel: "tarrina" },
   "yogur griego ligero":          { type: "fixedPackage", packageG: 400,  packageLabel: "pack (4 x 100g)" },
@@ -134,7 +160,7 @@ var PACKAGING_INFO = {
   "langostino cocido":            { type: "fixedPackage", packageG: 400,  packageLabel: "bolsa (congelada)" },
   "jamon serrano":                { type: "fixedPackage", packageG: 100,  packageLabel: "paquete (loncheado)" },
   "pan de centeno":               { type: "fixedPackage", packageG: 460,  packageLabel: "barra" },
-  "trigo sarraceno cocido":       { type: "fixedPackage", packageG: 500,  packageLabel: "paquete (en crudo)" }
+  "trigo sarraceno cocido":       { type: "fixedPackage", packageG: 1250, packageLabel: "paquete de 500 g (rinde 1,25 kg cocido)" }
 
   // El resto -- carne/pescado fresco que se compra al peso real (Bacalao,
   // Conejo, Lomo de cerdo, Lubina, Merluza, Muslo de pollo deshuesado,

@@ -189,15 +189,34 @@ function resolveIngredientPrice(name, storeId) {
   var store = PRICE_CATALOGS[storeId] || PRICE_CATALOGS[DEFAULT_STORE_ID];
   var key = normalizeIngredientKey(name);
 
+  // ── El catálogo de la tienda manda (2026-09-02) ───────────────────────
+  // Hasta hoy, los 12 REAL_INGREDIENT_MATCHES iban PRIMERO. Tenía sentido
+  // cuando el catálogo de precios era mayoritariamente estimado: un
+  // producto verificado por EAN valía más que una estimación.
+  //
+  // Ya no. prices/mercadona.js se reconstruyó entero contra la API en vivo
+  // (commit 8acbbf6), producto a producto y elegido a mano, así que esos
+  // 12 dejaron de ser "el dato bueno" y pasaron a ser el dato VIEJO -- y
+  // encima pisaban al nuevo sin que se notara. Medido:
+  //     lentejas cocidas   0,357 frente a 0,0804   x4,4
+  //     quinoa cocida      0,56  frente a 0,1963   x2,9
+  //     alubias cocidas    0,20  frente a 0,1065   x1,9
+  // La quinoa es el caso claro: el match apuntaba a una bolsa YA COCIDA de
+  // 250 g, tres veces más cara que comprar quinoa seca, que es lo que la
+  // receta manda hacer.
+  //
+  // REAL_INGREDIENT_MATCHES sigue vivo para lo que sí aporta: nombre y
+  // tamaño reales del producto en la ficha de compra. Solo deja de decidir
+  // el PRECIO, y pasa a cubrir únicamente lo que el catálogo no tenga.
+  if (store && store.pricesPer100g && typeof store.pricesPer100g[key] === "number") {
+    return { pricePer100g: store.pricesPer100g[key], source: "catalog", group: null };
+  }
+
   if (typeof REAL_INGREDIENT_MATCHES !== "undefined") {
     var realMatch = REAL_INGREDIENT_MATCHES[key];
     if (realMatch && realMatch.priceIsUsable !== false && typeof realMatch.pricePer100g === "number") {
       return { pricePer100g: realMatch.pricePer100g, source: "real_product", group: null };
     }
-  }
-
-  if (store && store.pricesPer100g && typeof store.pricesPer100g[key] === "number") {
-    return { pricePer100g: store.pricesPer100g[key], source: "catalog", group: null };
   }
 
   for (var i = 0; i < CATEGORY_FALLBACK_RULES.length; i++) {

@@ -116,6 +116,12 @@ function extractUniqueIngredientNames(dishDb) {
 // sí tiene envase (bolsa de 250 g) y nutrición propia -- en vez de darle
 // una entrada de envase a la clave corrupta, que habría tapado el síntoma
 // equivocado.
+// 2026-09-02: entra "Pechuga de pollo". Su tamaño de envase venía de
+// REAL_INGREDIENT_MATCHES, que ya no decide el precio (ver la cascada en
+// pricing.js: el catálogo reconstruido contra la API manda). Sin ese
+// tamaño cae donde caen las otras once carnes y pescados frescos: se
+// compra al peso. Es lo COHERENTE -- era la única carne fresca con un
+// envase fijo, y encima heredado de un dato de agosto.
 var EXPECTED_NO_FIXED_PACKAGE = [
   "Bacalao",
   "Conejo",
@@ -124,6 +130,7 @@ var EXPECTED_NO_FIXED_PACKAGE = [
   "Merluza",
   "Muslo de pollo deshuesado",
   "Pechuga de pavo",
+  "Pechuga de pollo",
   "Rape",
   "Salmón",
   "Solomillo de ternera",
@@ -190,6 +197,47 @@ function run(t) {
       "        Si CRECIÓ: un plato/ingrediente nuevo no tiene cobertura de packaging.js (mismo patrón que causó el hueco original).\n" +
       "        Si SE REDUJO: alguien resolvió/cubrió alguno de estos -- actualizar EXPECTED_NO_FIXED_PACKAGE a propósito."
     );
+  });
+
+  // ── El envase tiene que costar lo que cuesta en la tienda ────────────
+  // Añadido 2026-09-02 por un fallo que reportó el usuario: "me dice que
+  // compre 650 g de arroz y que gastaré 0,42 €, y el paquete vale 1,20".
+  // El precio del rol va por gramo COCIDO y el tamaño de envase estaba en
+  // gramos CRUDOS, así que el plan se inventaba paquetes de medio kilo de
+  // arroz ya cocido, que no existen.
+  //
+  // La comprobación es que precio/100 g × tamaño del envase dé el precio
+  // REAL del producto en la estantería. Si alguien vuelve a mezclar
+  // unidades, este número deja de cuadrar inmediatamente.
+  t.test("el precio del envase que calcula la app coincide con el precio real del producto en Mercadona", function () {
+    var s = freshSandbox();
+    // rol -> lo que cuesta de verdad ese paquete en la tienda (Granada,
+    // 2026-09-02), verificado uno a uno contra la API.
+    var REAL_SHELF_PRICE = {
+      "Arroz blanco cocido":    1.20,  // Arroz largo Hacendado, 1 kg
+      "Arroz integral cocido":  1.65,  // Arroz integral largo Hacendado, 1 kg
+      "Pasta cocida":           1.15,  // Macarrón Hacendado, 1 kg
+      "Cuscús cocido":          1.95,  // Cous cous mediano Hacendado, 1 kg
+      "Quinoa cocida":          2.65,  // Quinoa Hacendado, 500 g
+      "Lentejas cocidas":       0.90,  // Lenteja cocida Hacendado, bote
+      "Alubias cocidas":        0.75,  // Alubia cocida blanca Hacendado, bote
+      "Garbanzos cocidos":      0.80,  // Garbanzo cocido Hacendado, bote
+      "Salchichas":             1.90,  // Salchichas cocidas bocata Hacendado, 400 g
+      "Pan blanco":             0.50,  // Barra de pan, 250 g
+      "Tortillas de trigo":     1.15,  // Tortillas de trigo Hacendado, 360 g
+      "Huevos enteros":         3.05   // Huevos grandes L, docena
+    };
+    var off = [];
+    Object.keys(REAL_SHELF_PRICE).forEach(function (name) {
+      var pkg = s.resolvePackageInfo(name, "mercadona");
+      if (!pkg || !pkg.packageSizeG) { off.push(name + ": sin envase"); return; }
+      var diff = Math.abs(pkg.packagePrice - REAL_SHELF_PRICE[name]);
+      if (diff > 0.03) {
+        off.push(name + ": la app cobra " + pkg.packagePrice + " EUR por el envase (" +
+          Math.round(pkg.packageSizeG) + " g) y en la tienda vale " + REAL_SHELF_PRICE[name]);
+      }
+    });
+    assert.deepStrictEqual(off, [], off.join(" | "));
   });
 }
 

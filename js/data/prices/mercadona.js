@@ -76,7 +76,7 @@ PRICE_CATALOGS.mercadona = {
   pricesPer100g: {
     "aguacate":                      0.5,  // real: Aguacate (Granada wh 3968)
     "almendras":                     1.15,  // real: Almendra natural Hacendado (Granada wh 3968)
-    "alubias cocidas":               0.1065,  // real: Alubia blanca Hacendado (seca ×2.3 = cocida) (Granada wh 3968)
+    "alubias cocidas":               0.1875,  // real: Alubia cocida blanca Hacendado, BOTE (1,875 EUR/kg escurrido) (Granada wh 3968)
     "arroz blanco cocido":           0.0429,  // real: Arroz largo Hacendado (seco ×2.8 = cocido) (Granada wh 3968)
     "arroz integral cocido":         0.0589,  // real: Arroz integral largo Hacendado (seco ×2.8 = cocido) (Granada wh 3968)
     "atun al natural":               0.9,  // estimado -- Atun claro al natural ~11,7 EUR/kg bruto; escurrido ~70%
@@ -109,7 +109,7 @@ PRICE_CATALOGS.mercadona = {
     "jamon cocido extra":            1,  // real: Jamón cocido extra Hacendado finas lonchas (Granada wh 3968)
     "leche semidesnatada":           0.084,  // real: Leche semidesnatada Hacendado (0,84 EUR/L) (Granada wh 3968)
     "lechuga":                       0.38,  // real: Lechuga iceberg cortada y lavada (3,80 EUR/kg, bolsa 250 g) (Granada wh 3968)
-    "lentejas cocidas":              0.0804,  // real: Lenteja pardina Hacendado (seca ×2.3 = cocida) (Granada wh 3968)
+    "lentejas cocidas":              0.225,  // real: Lenteja cocida Hacendado, BOTE (2,25 EUR/kg escurrido) (Granada wh 3968)
     "lomo de cerdo":                 0.63,  // real: Filetes lomo de cerdo cabeza (Granada wh 3968)
     "mantequilla de cacahuete":      0.53,  // real: Crema de cacahuete 100% Hacendado (Granada wh 3968)
     "manzana":                       0.24,  // real: Manzana Golden (Granada wh 3968)

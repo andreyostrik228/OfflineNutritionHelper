@@ -528,7 +528,14 @@ function run(t) {
     // platos: era ahi donde se colaba el 14% de repeticiones.
     runsByProfile.forEach(function (rp) {
       rp.runs.forEach(function (result, i) {
-        var names = result.meals.map(function (m) { return m.dishName; });
+        // "Opción no disponible" NO es un plato repetido: es el marcador de
+        // que a esa toma no se le encontró NADA. Que aparezca dos veces
+        // significa que el presupuesto no da para dos tomas, no que el
+        // selector haya repetido. Se excluye del invariante (2026-09-02:
+        // salió al corregir los precios, cuando el perfil de 2,50 EUR/día
+        // dejó de poder montar ni media comida -- que es la verdad).
+        var names = result.meals.map(function (m) { return m.dishName; })
+          .filter(function (n) { return n !== "Opción no disponible"; });
         var seen = {};
         names.forEach(function (n) {
           assert.ok(!seen[n], rp.def.name + " (run " + i + "): plato repetido en el mismo dia -> " + n);
@@ -548,21 +555,27 @@ function run(t) {
     // (realm distinto) antes de comparar contra literales del host -- ver
     // comentario del test #1 más arriba para el motivo completo.
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.key; }))), EXPECTED_MEAL_KEYS);
-    // RECAPTURADO el 2026-09-02 (2). Sobre lo anterior (macros de los platos
-    // recalculados y recorte de presupuesto arreglado) entran ahora 10
-    // platos baratos nuevos, con dos ingredientes que el catálogo no tenía:
-    // salchichas y pan blanco de barra. Al presupuesto más bajo pasan a ser
-    // el 14% de las tomas, así que el sorteo sembrado cambia.
-    //
-    // Esta tirada MEJORA: sube a perfect/tier 0 y sirve 2.937 kcal para un
-    // objetivo de 2.822.
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 4, 3, 2, 2]);
-    assert.strictEqual(result.total.kcal, 2937.1);
-    assert.strictEqual(result.total.protein, 156.7);
-    assert.strictEqual(result.total.carbs, 379.6);
-    assert.strictEqual(result.total.fat, 85.3);
-    assert.strictEqual(result.total.cost, 8.03);
-    assert.strictEqual(result.total.purchaseCost, 15.78);
+    // RECAPTURADO el 2026-09-02 (3), al arreglar DOS errores de precio que
+    // reportó el usuario ("me dice 650 g de arroz por 0,42 € y el paquete
+    // vale 1,20"):
+    //   a) el TAMAÑO de envase de arroz/pasta/cuscús/quinoa estaba en
+    //      gramos CRUDOS mientras el precio va por gramo COCIDO, así que el
+    //      plan inventaba paquetes de medio kilo de arroz ya cocido.
+    //   b) los 12 REAL_INGREDIENT_MATCHES de agosto pisaban el catálogo
+    //      reconstruido contra la API (lentejas x4,4 más caras, quinoa
+    //      x2,9).
+    // Ahora un día suelto cuesta un poco MÁS porque se paga el paquete de
+    // verdad (7,92 -> 8,21 € en el tramo más bajo), y en cambio 7 días
+    // salen más BARATOS y con menos sobra (6,87 €/día, 18% frente al 22%):
+    // el kilo de arroz por fin se reparte entre los días en vez de
+    // "comprarse" entero cada día.
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 3, 2, 2, 2]);
+    assert.strictEqual(result.total.kcal, 2822.0999999999995);
+    assert.strictEqual(result.total.protein, 175.1);
+    assert.strictEqual(result.total.carbs, 303.3);
+    assert.strictEqual(result.total.fat, 92.1);
+    assert.strictEqual(result.total.cost, 7.08);
+    assert.strictEqual(result.total.purchaseCost, 15.37);
     assert.strictEqual(result.report.status, "perfect");
     assert.strictEqual(result.report.tierUsed, 0);
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.report.violations)), []);
@@ -575,18 +588,19 @@ function run(t) {
     var result = s.generateDietPlan(built.profile, built.data);
 
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.key; }))), EXPECTED_MEAL_KEYS);
-    // RECAPTURADO el 2026-09-02 (2) -- ver el comentario del golden-master
-    // de seed=42. Sigue en perfect/0, sirviendo 3.832 kcal para un objetivo
-    // de 3.871.
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 2, 3, 3, 2]);
-    assert.strictEqual(result.total.kcal, 3832.3);
-    assert.strictEqual(result.total.protein, 247.7);
-    assert.strictEqual(result.total.carbs, 443.70000000000005);
-    assert.strictEqual(result.total.fat, 115);
-    assert.strictEqual(result.total.cost, 9.83);
-    assert.strictEqual(result.total.purchaseCost, 18.18);
-    assert.strictEqual(result.report.status, "perfect");
-    assert.strictEqual(result.report.tierUsed, 0);
+    // RECAPTURADO el 2026-09-02 (3) -- ver el comentario del golden-master
+    // de seed=42. Esta tirada baja a adjusted/tier 2: con los precios
+    // corregidos, un día de volumen (3.871 kcal) dentro de 20 € va más
+    // justo que antes, que es la verdad y no un empeoramiento del motor.
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 3, 3, 2, 2]);
+    assert.strictEqual(result.total.kcal, 4034.7);
+    assert.strictEqual(result.total.protein, 176.1);
+    assert.strictEqual(result.total.carbs, 404.9000000000001);
+    assert.strictEqual(result.total.fat, 188.80000000000004);
+    assert.strictEqual(result.total.cost, 8.08);
+    assert.strictEqual(result.total.purchaseCost, 18.78);
+    assert.strictEqual(result.report.status, "adjusted");
+    assert.strictEqual(result.report.tierUsed, 2);
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.report.violations)), []);
   });
 }
