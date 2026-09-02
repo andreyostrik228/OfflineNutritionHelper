@@ -485,6 +485,58 @@ function run(t) {
     assert.strictEqual(s.regenerateNoCookSlot(null, "dinner", "mercadona", {}).error, "no_plan");
   });
 
+  // ── El catálogo es de COMIDA (2026-09-03) ────────────────────────────
+  //
+  // El usuario encontró un CEPILLO DE DIENTES buscando en el panel de
+  // productos. Estaba en "Cuidado facial y corporal", que nunca se excluyó
+  // del export. Se fue esa categoría entera y dos más, más la puericultura
+  // de "Bebé" y las velas de cumpleaños de repostería: 755 productos, de
+  // los cuales UNO tenía kcal. Ver scripts/export_mercadona_products.py.
+
+  t.test("el catálogo no trae categorías que no son comida", function () {
+    var s = fullSandbox();
+    var prohibidas = [
+      "Limpieza y hogar", "Maquillaje", "Mascotas",
+      "Cuidado facial y corporal", "Cuidado del cabello",
+      "Fitoterapia y parafarmacia"
+    ];
+    var coladas = s.REAL_PRODUCTS.filter(function (p) {
+      return prohibidas.indexOf(p.category) !== -1;
+    });
+    assert.strictEqual(coladas.length, 0,
+      "no-comida en el catálogo: " + coladas.slice(0, 5).map(function (p) {
+        return p.name + " (" + p.category + ")";
+      }).join(" | "));
+  });
+
+  t.test("ni objetos no comestibles escondidos en categorías de comida", function () {
+    var s = fullSandbox();
+    // Comprobación por NOMBRE a propósito, independiente de la taxonomía:
+    // si Mercadona reorganiza sus categorías, el corte por categoría puede
+    // dejar de tapar el agujero y esto seguiría avisando. Es exactamente
+    // como se coló el cepillo de dientes.
+    var noComestible = /\b(cepillo|pa[ñn]al|champ[uú]|desodorante|preservativo|toallita|chupete|biber[oó]n|colonia|maquillaje|vela de|velas de)\b/i;
+    var coladas = s.REAL_PRODUCTS.filter(function (p) {
+      return noComestible.test(p.name || "");
+    });
+    assert.strictEqual(coladas.length, 0,
+      "objetos no comestibles en el catálogo: " + coladas.slice(0, 5).map(function (p) {
+        return p.name + " (" + p.category + " / " + p.leafCategory + ")";
+      }).join(" | "));
+  });
+
+  t.test("pero la comida de bebé SÍ se queda", function () {
+    var s = fullSandbox();
+    // El corte de "Bebé" es por HOJA, no por categoría, justamente para no
+    // tirar los tarritos con los pañales. Si alguien lo simplifica a
+    // excluir la categoría entera, esto salta.
+    var beb = s.REAL_PRODUCTS.filter(function (p) { return p.category === "Bebé"; });
+    assert.ok(beb.length >= 20,
+      "quedan " + beb.length + " productos de Bebé; se esperaba la comida (tarritos, papillas, leches)");
+    assert.ok(beb.every(function (p) { return (p.leafCategory || "").indexOf("Pañal") === -1; }),
+      "se han colado pañales");
+  });
+
   // ── Congelados: en el catálogo, pero NUNCA en este modo (2026-09-02) ──
   //
   // Los congelados entraron en real-products.js para poder buscarlos en el
