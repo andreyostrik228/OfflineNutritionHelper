@@ -555,29 +555,42 @@ function run(t) {
     // (realm distinto) antes de comparar contra literales del host -- ver
     // comentario del test #1 más arriba para el motivo completo.
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.key; }))), EXPECTED_MEAL_KEYS);
-    // RECAPTURADO el 2026-09-02 (3), al arreglar DOS errores de precio que
-    // reportó el usuario ("me dice 650 g de arroz por 0,42 € y el paquete
-    // vale 1,20"):
-    //   a) el TAMAÑO de envase de arroz/pasta/cuscús/quinoa estaba en
-    //      gramos CRUDOS mientras el precio va por gramo COCIDO, así que el
-    //      plan inventaba paquetes de medio kilo de arroz ya cocido.
-    //   b) los 12 REAL_INGREDIENT_MATCHES de agosto pisaban el catálogo
-    //      reconstruido contra la API (lentejas x4,4 más caras, quinoa
-    //      x2,9).
-    // Ahora un día suelto cuesta un poco MÁS porque se paga el paquete de
-    // verdad (7,92 -> 8,21 € en el tramo más bajo), y en cambio 7 días
-    // salen más BARATOS y con menos sobra (6,87 €/día, 18% frente al 22%):
-    // el kilo de arroz por fin se reparte entre los días en vez de
-    // "comprarse" entero cada día.
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 3, 2, 2, 2]);
-    assert.strictEqual(result.total.kcal, 2822.0999999999995);
-    assert.strictEqual(result.total.protein, 175.1);
-    assert.strictEqual(result.total.carbs, 303.3);
-    assert.strictEqual(result.total.fat, 92.1);
-    assert.strictEqual(result.total.cost, 7.08);
-    assert.strictEqual(result.total.purchaseCost, 15.37);
-    assert.strictEqual(result.report.status, "perfect");
-    assert.strictEqual(result.report.tierUsed, 0);
+    // RECAPTURADO el 2026-09-02 (4), con los datos que el USUARIO comprobó
+    // uno a uno en la tienda: abrió la ficha de los 85 ingredientes y anotó
+    // el precio y el peso reales. 49 pesos de envase y 9 precios corregidos.
+    //
+    // Los pesos eran lo que más fallaba, y casi siempre en la misma
+    // dirección: el envase modelado era una porción imaginaria en vez del
+    // formato que se vende. Una coliflor son 1,04 kg, no 500 g; un
+    // calabacín 403 g, no 200; el ajo se compra en malla de 250 g, no por
+    // dientes de 5 g; la piña entera pesa 1,83 kg. Y las latas van por peso
+    // ESCURRIDO (sardinas 2 x 84 g, atún 6 x 60 g), que es lo que se come.
+    //
+    // ── RECAPTURADO OTRA VEZ el 2026-09-02 (5): los 3 fantasmas ─────────
+    // Salen del catálogo trigo sarraceno, tempeh y picada de pavo, que
+    // Mercadona NO VENDE (comprobado hoja a hoja), y entra "Carne picada
+    // mixta". Son 27 platos renombrados, así que la lotería ponderada
+    // reparte distinto para la MISMA semilla -- el caso de siempre: el
+    // cambio es deliberado y en los DATOS, no en el algoritmo.
+    //
+    // Es mejor plan que el anterior, no peor:
+    //   kcal      2795.1 -> 2809.1  (objetivo 2822: -0,95% -> -0,46%)
+    //   compra    15,91 -> 14,96 EUR (tope 16, sigue por debajo)
+    //   proteína  186,9 -> 199,2 g   (objetivo 156, de sobra)
+    // Lo que empeora es la ETIQUETA: perfect/tier 0 -> adjusted/tier 1. El
+    // motor necesita un escalón más de relajación para cuadrar el día
+    // porque ya no puede tirar de los platos inexistentes. Se apunta tal
+    // cual en vez de disimularlo: `violations` sigue vacío y el tope duro
+    // de presupuesto nunca se toca.
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 2, 2, 2, 2]);
+    assert.strictEqual(result.total.kcal, 2809.1000000000004);
+    assert.strictEqual(result.total.protein, 199.2);
+    assert.strictEqual(result.total.carbs, 322.8999999999999);
+    assert.strictEqual(result.total.fat, 78.39999999999999);
+    assert.strictEqual(result.total.cost, 8.44);
+    assert.strictEqual(result.total.purchaseCost, 14.96);
+    assert.strictEqual(result.report.status, "adjusted");
+    assert.strictEqual(result.report.tierUsed, 1);
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.report.violations)), []);
   });
 
@@ -588,17 +601,26 @@ function run(t) {
     var result = s.generateDietPlan(built.profile, built.data);
 
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.key; }))), EXPECTED_MEAL_KEYS);
-    // RECAPTURADO el 2026-09-02 (3) -- ver el comentario del golden-master
-    // de seed=42. Esta tirada baja a adjusted/tier 2: con los precios
-    // corregidos, un día de volumen (3.871 kcal) dentro de 20 € va más
-    // justo que antes, que es la verdad y no un empeoramiento del motor.
+    // RECAPTURADO el 2026-09-02 (4) -- ver el comentario del golden-master
+    // de seed=42. Baja a adjusted/tier 1: con los envases reales, un día de
+    // volumen dentro de 20 EUR va más justo. Es la verdad, no una regresión.
+    //
+    // RECAPTURADO OTRA VEZ el 2026-09-02 (5), misma causa que seed=42: los
+    // 27 platos renombrados al quitar sarraceno/tempeh/pavo picado.
+    //   kcal      3863 -> 3871,1  (objetivo 3871: -0,21% -> CLAVADO)
+    //   compra    18,46 -> 19,34 EUR (tope 20, sigue por debajo)
+    //   proteína  223,6 -> 185,3 g   (objetivo 171, sigue por encima)
+    // Sube a tier 2 por lo mismo que seed=42 y se anota igual. La proteína
+    // cae 38 g porque el día que gana la lotería ahora es de garbanzos y
+    // frutos secos en vez de carne, pero sigue sobre el objetivo y
+    // `violations` sigue vacío.
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 3, 3, 2, 2]);
-    assert.strictEqual(result.total.kcal, 4034.7);
-    assert.strictEqual(result.total.protein, 176.1);
-    assert.strictEqual(result.total.carbs, 404.9000000000001);
-    assert.strictEqual(result.total.fat, 188.80000000000004);
-    assert.strictEqual(result.total.cost, 8.08);
-    assert.strictEqual(result.total.purchaseCost, 18.78);
+    assert.strictEqual(result.total.kcal, 3871.0999999999995);
+    assert.strictEqual(result.total.protein, 185.3);
+    assert.strictEqual(result.total.carbs, 418.1);
+    assert.strictEqual(result.total.fat, 152.10000000000002);
+    assert.strictEqual(result.total.cost, 9.15);
+    assert.strictEqual(result.total.purchaseCost, 19.34);
     assert.strictEqual(result.report.status, "adjusted");
     assert.strictEqual(result.report.tierUsed, 2);
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.report.violations)), []);

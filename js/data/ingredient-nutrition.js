@@ -129,6 +129,12 @@ var INGREDIENT_NUTRITION = {
   "caballa en lata": { resolved: true, kcal: 156, protein: 23.2, carbs: 0, fat: 6.3, source: "usda_fdc", tier: "generic_reference", needsReview: true, fdcId: 175121, fdcDescription: "Fish, mackerel, jack, canned, drained solids", displayName: "Caballa en lata" },
   "cacahuetes": { resolved: true, kcal: 618, protein: 24, carbs: 13, fat: 50.4, productName: "Cacahuete tostado Hacendado 0% sal añadida", ean: "8480000340313", matchMethod: "exact_ean", displayName: "Cacahuetes" },
   "calabacin": { resolved: true, kcal: 17, protein: 1.21, carbs: 3.11, fat: 0.32, source: "usda_fdc", tier: "generic_reference", needsReview: true, fdcId: 169291, fdcDescription: "Squash, summer, zucchini, includes skin, raw", displayName: "Calabacín" },
+  // Añadido 2026-09-02: Mercadona NO vende picada de pavo (comprobado en
+  // todo el catálogo: solo vacuno, cerdo, vacuno+cerdo y pollo), así que
+  // los 4 platos que la pedían y los 7 de tempeh --que tampoco existe--
+  // pasan a esta, que es la que eligió el usuario.
+  "carne picada mixta": { resolved: true, kcal: 171, protein: 17, carbs: 1, fat: 12, productName: "Preparado de carne picada vacuno y cerdo", ean: "8421610034537", matchMethod: "exact_ean", note: "Etiqueta verificada por EAN en OpenFoodFacts. Atwater 180 vs 171 declaradas (5%, dentro de lo normal en carne picada).", displayName: "Carne picada mixta" },
+
   "carne picada 5% grasa": { resolved: true, kcal: 137, protein: 21.4, carbs: 0, fat: 5, source: "usda_fdc", tier: "generic_reference", needsReview: true, fdcId: 171790, fdcDescription: "Beef, ground, 95% lean meat / 5% fat, raw", displayName: "Carne picada 5% grasa" },
   "champinones": { resolved: true, kcal: 21, protein: 1.56, carbs: 0.83, fat: 0.06, productName: "Champiñones laminados Hacendado", ean: "8480000166180", matchMethod: "name", displayName: "Champiñones" },
   "claras de huevo": { resolved: true, kcal: 50, protein: 11, carbs: 0.5, fat: 0.1, productName: "Claras de huevo líquidas pasteurizadas", ean: "8411384009855", matchMethod: "name", displayName: "Claras de huevo" },
@@ -190,7 +196,6 @@ var INGREDIENT_NUTRITION = {
   // arroz: cada archivo describía un producto distinto.
   "patata cocida": { resolved: true, kcal: 86, protein: 1.71, carbs: 20.01, fat: 0.1, source: "usda_fdc", tier: "generic_reference", needsReview: true, fdcId: 170440, fdcDescription: "Potatoes, boiled, cooked without skin, flesh, without salt", note: "Por 100 g YA COCIDA, como mide dishes.js.", displayName: "Patata cocida" },
   "pavo loncheado": { resolved: true, kcal: 53.3, protein: 12.8, carbs: 6.8, fat: 0.5, productName: "Maxi pavo Hacendado finas lonchas", ean: "8480000224309", matchMethod: "legacy", displayName: "Pavo loncheado" },
-  "pavo picado": { resolved: true, kcal: 148, protein: 19.7, carbs: 0, fat: 7.66, source: "usda_fdc", tier: "generic_reference", needsReview: true, fdcId: 171505, fdcDescription: "Turkey, ground, raw", displayName: "Pavo picado" },
   "pechuga de pavo": { resolved: true, kcal: 113, protein: 23.8, carbs: 0, fat: 2, productName: "Filetes pechuga de pavo", ean: "2105100027945", matchMethod: "name", displayName: "Pechuga de pavo" },
   "pechuga de pollo": { resolved: true, kcal: 108, protein: 22, carbs: 0.5, fat: 1.8, productName: "Pechugas enteras de pollo", ean: "2105100037241", matchMethod: "exact_ean", displayName: "Pechuga de pollo" },
   "pepino": { resolved: true, kcal: 15, protein: 0.65, carbs: 3.63, fat: 0.11, source: "usda_fdc", tier: "generic_reference", needsReview: true, fdcId: 168409, fdcDescription: "Cucumber, with peel, raw", displayName: "Pepino" },
@@ -228,13 +233,11 @@ var INGREDIENT_NUTRITION = {
   "sardinas en lata": { resolved: true, kcal: 322, protein: 19, carbs: 0.6, fat: 27, productName: "Sardinillas reducidas en sal en aceite de oliva Hacendado", ean: "8480000182142", matchMethod: "exact_ean", displayName: "Sardinas en lata" },
   "skyr natural": { resolved: true, kcal: 59, protein: 10.2, carbs: 3.6, fat: 0.39, source: "usda_fdc", tier: "generic_reference", needsReview: true, fdcId: 170894, fdcDescription: "Yogurt, Greek, plain, nonfat (Includes foods for USDA's Food Distribution Program)", note: "USDA no tiene skyr; el skyr real ronda 63 kcal / 11 g proteína. Griego desnatado es el registro real más cercano.", displayName: "Skyr natural" },
   "solomillo de ternera": { resolved: true, kcal: 116, protein: 21, carbs: 0.5, fat: 3.3, productName: "Solomillo de vacuno", ean: "8436569263419", matchMethod: "name", displayName: "Solomillo de ternera" },
-  "tempeh": { resolved: true, kcal: 192, protein: 20.3, carbs: 7.64, fat: 10.8, source: "usda_fdc", tier: "generic_reference", needsReview: true, fdcId: 174272, fdcDescription: "Tempeh", displayName: "Tempeh" },
   "ternera magra": { resolved: true, kcal: 122, protein: 23, carbs: 0.5, fat: 3.5, productName: "Filetes de vacuno añojo para plancha", ean: "8436569263464", matchMethod: "name", displayName: "Ternera magra" },
   "tofu firme": { resolved: true, kcal: 110, protein: 11.1, carbs: 0.9, fat: 6.9, productName: "Tofu firme Hacendado", ean: "8410789140118", matchMethod: "name", displayName: "Tofu firme" },
   "tomate": { resolved: true, kcal: 19.3, protein: 0.86, carbs: 2.49, fat: 0.26, productName: "Tomates", ean: "5600084699715", matchMethod: "name", displayName: "Tomate" },
   "tortillas de trigo": { resolved: true, kcal: 294.44, protein: 8.4, carbs: 50, fat: 5.8, productName: "Tortillas de trigo Hacendado", ean: "8480000808592", matchMethod: "exact_ean", displayName: "Tortillas de trigo" },
   "tortitas de arroz": { resolved: true, kcal: 363, protein: 8.5, carbs: 75, fat: 2.8, productName: "Tortitas de arroz Hacendado", ean: "8480000140135", matchMethod: "name", displayName: "Tortitas de arroz" },
-  "trigo sarraceno cocido": { resolved: true, kcal: 92, protein: 3.38, carbs: 19.9, fat: 0.62, source: "usda_fdc", tier: "generic_reference", needsReview: true, fdcId: 170686, fdcDescription: "Buckwheat groats, roasted, cooked", note: "Valor por 100 g COCIDO.", displayName: "Trigo sarraceno cocido" },
   "verduras congeladas salteado": { resolved: true, kcal: 65, protein: 2.86, carbs: 13.1, fat: 0.15, source: "usda_fdc", tier: "generic_reference", needsReview: true, fdcId: 170472, fdcDescription: "Vegetables, mixed, frozen, cooked, boiled, drained, without salt", note: "Mezcla de verdura congelada hervida; el aceite del salteado va aparte en la receta.", displayName: "Verduras congeladas salteado" },
   // 2026-09-02: el rol "wrap proteico" ya no existe. La auditor\u00eda anterior
   // lo dej\u00f3 sin resolver porque NINGUNA fuente (cat\u00e1logo, OFF, USDA) tiene

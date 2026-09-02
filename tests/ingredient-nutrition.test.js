@@ -362,7 +362,10 @@ function run(t) {
     // platos usan "Tortillas de trigo"), y entra "Lechuga".
     // 83 -> 85 el mismo día: "Salchichas" y "Pan blanco", con los 10 platos
     // baratos que pidió el usuario.
-    assert.strictEqual(names.length, 85);
+    // 85 -> 83: salen "Trigo sarraceno cocido", "Tempeh" y "Pavo picado"
+    // (Mercadona no vende ninguno de los tres, comprobado en el catálogo
+    // entero) y entra "Carne picada mixta", que los sustituye.
+    assert.strictEqual(names.length, 83);
 
     var unresolved = [];
     names.forEach(function (name) {
@@ -519,20 +522,49 @@ function run(t) {
   t.test("los clasicos de gimnasio existen por nombre llano", function () {
     var s = freshEngineSandbox();
     var names = s.DISH_DB.map(function (d) { return d.name; });
-    ["Pollo con arroz", "Pollo con trigo sarraceno", "Pollo con pasta",
+    // "Pollo con trigo sarraceno" salio de esta lista el 2026-09-02: ver el
+    // test de abajo. Entra "Pollo con quinoa", que es en lo que se
+    // convirtio.
+    ["Pollo con arroz", "Pollo con quinoa", "Pollo con pasta",
      "Cerdo con arroz", "Huevos con arroz", "Muslo de pollo con arroz"].forEach(function (n) {
       assert.ok(names.indexOf(n) !== -1, "falta el plato llano: " + n);
     });
   });
 
-  t.test("hay gречka (trigo sarraceno) con pollo, cerdo o pavo", function () {
+  // ── La gречka se fue, y no por gusto (2026-09-02) ────────────────────
+  // Este test exigia platos de trigo sarraceno porque el usuario los habia
+  // pedido. Luego comprobo el catalogo producto a producto y resulta que
+  // MERCADONA NO VENDE TRIGO SARRACENO: cero resultados para "sarraceno" y
+  // cero para "alforfon" en las 151 hojas del catalogo. Los 16 platos
+  // mandaban a comprar algo inexistente, igual que hacia "Wrap proteico".
+  //
+  // Decision suya: arroz cuando el plato ya es barato, quinoa cuando la
+  // proteina es cara ("киноа если денег больше и рис если меньше"). Lo que
+  // se protege ahora es la propiedad que de verdad importaba: que la
+  // combinacion llana "carne + grano" siga existiendo, sea cual sea el
+  // grano.
+  t.test("sigue habiendo carne con grano en platos llanos (era el papel de la gречka)", function () {
     var s = freshEngineSandbox();
-    var buck = s.DISH_DB.filter(function (d) {
-      var hasBuck = d.items.some(function (i) { return /sarraceno/i.test(i.name); });
-      return hasBuck && /pollo|cerdo|pavo/i.test(d.mainProt || "");
+    var GRANOS = /arroz|quinoa|pasta|cuscus|cuscús/i;
+    var llanos = s.DISH_DB.filter(function (d) {
+      return d.items.length === 2 &&
+        /pollo|cerdo|pavo|ternera/i.test(d.mainProt || "") &&
+        d.items.some(function (i) { return GRANOS.test(i.name); });
     });
-    assert.ok(buck.length >= 3,
-      "la combinacion mas clasica que hay; solo " + buck.length + " platos la usan");
+    assert.ok(llanos.length >= 6,
+      "carne + grano en dos ingredientes; solo hay " + llanos.length);
+  });
+
+  t.test("ningun plato pide trigo sarraceno, tempeh ni picada de pavo: Mercadona no los vende", function () {
+    var s = freshEngineSandbox();
+    var FANTASMA = /sarraceno|tempeh|pavo picado/i;
+    var malos = [];
+    s.DISH_DB.forEach(function (d) {
+      d.items.forEach(function (i) {
+        if (FANTASMA.test(i.name)) malos.push(d.name + " -> " + i.name);
+      });
+    });
+    assert.deepStrictEqual(malos, [], malos.join(" | "));
   });
 
   // ── REGLA: los macros DECLARADOS son la suma de los ingredientes ────

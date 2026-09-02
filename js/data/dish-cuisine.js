@@ -161,7 +161,7 @@ var DISH_CUISINE_INTERNACIONAL = [
   "Pan tostado con hummus y tomate",
   "Porridge de avena con nueces y canela",
   "Salmón teriyaki con arroz integral",
-  "Poke bowl de tempeh con arroz y aguacate",
+  "Poke bowl de tofu con arroz y aguacate",
   "Wrap de salmón con aguacate y espinacas",
   "Garbanzos al curry con espinacas",
 ];

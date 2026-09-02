@@ -154,7 +154,9 @@ var EXPECTED_NO_FIXED_PACKAGE = [
 // Mercadona, y el catálogo no tenía ninguno de los dos. Los dos resuelven
 // CON envase (paquete de 400 g y barra de 250 g), así que
 // EXPECTED_NO_FIXED_PACKAGE no cambia.
-var EXPECTED_TOTAL_INGREDIENT_ROLES = 85;
+// 2026-09-02 (2): 85 -> 83. Salen trigo sarraceno, tempeh y picada de
+// pavo -- Mercadona no vende ninguno -- y entra "Carne picada mixta".
+var EXPECTED_TOTAL_INGREDIENT_ROLES = 83;
 
 function run(t) {
   var sandbox = freshSandbox();
@@ -251,6 +253,21 @@ function run(t) {
   // precio, así que basta comprobar que el nombre del producto enlazado
   // sigue apareciendo en ese comentario. Si alguien cambia un precio y no
   // regenera los enlaces, esto falla en el acto.
+  //
+  // ── ENDURECIDO el 2026-09-02 (5): el solapamiento de palabras no basta ─
+  // Este test estaba en verde mientras DOS enlaces iban al producto
+  // equivocado, porque solo exigía compartir la mitad de las palabras
+  // largas:
+  //   · "carne picada 5% grasa" cobra 10,80 EUR/kg (bandeja de 1 kg) y
+  //     enlazaba a la bandeja de 500 g a 11,00 -- mismas palabras, otro
+  //     producto y otro gramaje.
+  //   · "huevos enteros" cobra la DOCENA a 3,05 y enlazaba a la media
+  //     docena a 3,60 -- el nombre del catálogo es idéntico en las dos.
+  // Las palabras no distinguen formatos, y el formato es justo lo que el
+  // usuario ve al abrir la ficha. Ahora se exige el nombre EXACTO, que es
+  // la misma regla que usa el generador (corta el comentario en el primer
+  // paréntesis), con una lista explícita de los roles cuyo comentario
+  // abrevia a propósito.
   t.test("cada enlace de producto apunta al mismo producto del que sale su precio", function () {
     var fs = require("fs");
     var s = freshSandbox();
@@ -266,27 +283,112 @@ function run(t) {
     };
     // rol -> comentario de su línea de precio
     var SPLIT_LINES = new RegExp(String.fromCharCode(13) + '?' + String.fromCharCode(10));
-    var commentFor = {};
+    var commentFor = {}, rawCommentFor = {};
     priceText.split(SPLIT_LINES).forEach(function (line) {
       var m = line.match(/^\s*"([^"]+)":\s*[0-9.]+,\s*\/\/\s*(.+)$/);
-      if (m) commentFor[m[1]] = norm(m[2]);
+      if (m) { commentFor[m[1]] = norm(m[2]); rawCommentFor[m[1]] = m[2]; }
     });
+
+    // Roles cuyo comentario de precio abrevia o parafrasea el nombre del
+    // catálogo. Se escribieron a mano al reconstruir los precios y se
+    // comprobaron uno a uno contra el volcado de Granada; van aquí para que
+    // la comprobación de los otros 70+ pueda ser EXACTA en vez de difusa.
+    var ABREVIA = {
+      "copos de maiz": 1, "espinacas": 1, "pina": 1, "salmon": 1,
+      "ternera magra": 1, "zanahoria": 1, "solomillo de ternera": 1,
+      "rape": 1, "lentejas cocidas": 1, "alubias cocidas": 1
+    };
 
     var off = [];
     Object.keys(s.INGREDIENT_PRODUCT_LINKS).forEach(function (role) {
-      var linked = norm(s.INGREDIENT_PRODUCT_LINKS[role].name);
+      var linkedRaw = s.INGREDIENT_PRODUCT_LINKS[role].name;
+      var linked = norm(linkedRaw);
       var comment = commentFor[role];
       if (!comment) { off.push(role + ": enlazado pero sin línea de precio"); return; }
-      // Basta con que las palabras significativas del producto enlazado
-      // estén en el comentario: los alias abrevian ("Zanahorias 1 kg").
-      var words = linked.split(" ").filter(function (w) { return w.length > 3; });
-      var shared = words.filter(function (w) { return comment.indexOf(w) !== -1; });
-      if (!words.length || shared.length / words.length < 0.5) {
-        off.push(role + ": el enlace va a \"" + s.INGREDIENT_PRODUCT_LINKS[role].name +
-          "\" pero el precio sale de \"" + comment.slice(0, 46) + "\"");
+      // Misma regla de corte que gen_product_links.js: el nombre del
+      // producto va PRIMERO y termina en el primer paréntesis.
+      var declared = norm(String(commentFor[role + "__raw"] || rawCommentFor[role] || "")
+        .replace(/^real:\s*/i, "").replace(/\s*\(.*$/, ""));
+      if (ABREVIA[role]) {
+        // Aquí sí vale el solapamiento: el comentario no es el nombre.
+        var words = linked.split(" ").filter(function (w) { return w.length > 3; });
+        var shared = words.filter(function (w) { return comment.indexOf(w) !== -1; });
+        if (!words.length || shared.length / words.length < 0.5) {
+          off.push(role + " (abreviado): el enlace va a \"" + linkedRaw +
+            "\" pero el precio sale de \"" + comment.slice(0, 46) + "\"");
+        }
+        return;
+      }
+      if (declared !== linked) {
+        off.push(role + ": el enlace va a \"" + linkedRaw +
+          "\" y el comentario del precio dice \"" + declared + "\"");
       }
     });
     assert.deepStrictEqual(off, [], off.join(" | "));
+  });
+
+  // ── Los 16 roles cuyo NOMBRE de catálogo está repetido ───────────────
+  // Cuando dos productos se llaman igual, ninguna comprobación por texto
+  // puede distinguirlos: "Huevos grandes L" es a la vez la docena a 3,05 y
+  // la media docena a 3,60. El test de arriba estaba en verde con el
+  // enlace en la media docena. Lo único que los separa es el id, así que
+  // aquí se fija el id, con el formato que lo justifica al lado.
+  //
+  // Cada uno se eligió comprobando que el precio Y el gramaje que modela
+  // la app coinciden con esa ficha (las diferencias aparentes son las
+  // conversiones declaradas: peso escurrido en los botes, densidad del
+  // aceite, rendimiento al cocer de la pasta).
+  //
+  // Si se vuelve a volcar el catálogo y un id se mueve, esto falla y hay
+  // que volver a elegir A MANO -- que es lo correcto: es la decisión de
+  // qué formato compra el usuario, no algo que deba adivinar un script.
+  t.test("los productos con nombre repetido apuntan al formato correcto", function () {
+    var s = freshSandbox();
+    var ESPERADO = {
+      "aceite de oliva":       ["4240",  "botella de 1 L, no la garrafa de 5 L"],
+      "alubias cocidas":       ["26019", "bote grande (570 g), no el pequeño"],
+      "carne picada 5% grasa": ["3454",  "bandeja de 1 kg a 10,80, no la de 500 g a 11,00"],
+      "carne picada mixta":    ["3453",  "bandeja de 1 kg a 8,00, no la de 500 g a 8,20"],
+      "cebolla":               ["69089", "malla de 1 kg, no la de 2 kg"],
+      "claras de huevo":       ["31312", "botella de 1 L, no la de 300 ml"],
+      "garbanzos cocidos":     ["26029", "bote grande (570 g), no el pequeño"],
+      "huevos enteros":        ["31504", "DOCENA a 3,05, no la media docena a 3,60"],
+      "langostino cocido":     ["87292", "bandeja de 600 g con precio cerrado"],
+      "leche semidesnatada":   ["10382", "brick suelto de 1 L, no el pack de 6"],
+      "lentejas cocidas":      ["26030", "bote grande (570 g), no el pequeño"],
+      "maiz dulce":            ["16712", "pack de 3 latas, no el de 3 pequeñas"],
+      "miel":                  ["15436", "tarro de 1 kg, no el de 500 g"],
+      "pasta cocida":          ["6250",  "paquete de 1 kg a 1,15, no el de 500 g a 1,60"],
+      "queso curado":          ["50968", "cuña grande; el rol no se usa en dishes.js"],
+      "zanahoria":             ["69586", "bolsa de 1 kg, no la de 500 g"]
+    };
+    var off = [];
+    Object.keys(ESPERADO).forEach(function (rol) {
+      var link = s.INGREDIENT_PRODUCT_LINKS[rol];
+      if (!link) { off.push(rol + ": sin enlace"); return; }
+      if (link.id !== ESPERADO[rol][0]) {
+        off.push(rol + ": id " + link.id + ", se esperaba " + ESPERADO[rol][0] +
+          " (" + ESPERADO[rol][1] + ")");
+      }
+    });
+    assert.deepStrictEqual(off, [], off.join(" | "));
+  });
+
+  // ── Ningún rol se queda sin enlace ───────────────────────────────────
+  // El botón 📷 sin id abre una búsqueda con muchos resultados, que es
+  // exactamente la queja que originó product-links.js. Cinco roles la
+  // recuperaron sin avisar el 2026-09-02, al reescribir sus comentarios de
+  // precio con el formato equivocado.
+  t.test("todos los roles de dishes.js tienen enlace directo a su producto", function () {
+    var s = freshSandbox();
+    var roles = {};
+    s.DISH_DB.forEach(function (d) {
+      d.items.forEach(function (i) { roles[s.normalizeIngredientKey(i.name)] = i.name; });
+    });
+    var sin = Object.keys(roles).filter(function (k) {
+      return !s.INGREDIENT_PRODUCT_LINKS[k];
+    }).map(function (k) { return roles[k]; });
+    assert.deepStrictEqual(sin, [], "sin enlace: " + sin.join(", "));
   });
 }
 

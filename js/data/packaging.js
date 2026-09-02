@@ -46,67 +46,60 @@ var PACKAGING_INFO = {
   // botella de litro pesa 916 g, no 1000 -- misma conversión que en
   // ingredient-nutrition.js y prices/mercadona.js.
   "aceite de oliva":           { type: "spoonable", tablespoonG: 13.7, teaspoonG: 4.6, packageG: 916, packageLabel: "botella" },
-  "miel":                      { type: "spoonable", tablespoonG: 21, teaspoonG: 7,  packageG: 350, packageLabel: "bote" },
-  "mermelada light":           { type: "spoonable", tablespoonG: 20, teaspoonG: 7,  packageG: 340, packageLabel: "bote" },
-  "mantequilla de cacahuete":  { type: "spoonable", tablespoonG: 16, teaspoonG: 5,  packageG: 350, packageLabel: "bote" },
-
-  // ── 2. Se cuentan por unidad ─────────────────────────────────────────────
+  "miel":                      { type: "fixedPackage", packageG: 1000, packageLabel: "tarro" },  // Tarro 1 kg | 5,00 EUR/kg
+  "mermelada light":           { type: "fixedPackage", packageG: 380, packageLabel: "tarro" },  // Tarro 380 g | 4,211 EUR/kg
+  "mantequilla de cacahuete":  { type: "fixedPackage", packageG: 500, packageLabel: "tarro" },  // Tarro 500 g | 5,30 EUR/kg
   // Los huevos NO se venden sueltos en Mercadona: el formato más pequeño es
   // la media docena y el habitual la docena. "packUnits" fuerza a redondear
   // a cartones enteros -- sin esto la lista de la compra decía "comprar 7
   // huevos" (imposible) y cobraba 7 x el precio de un huevo en vez del
   // cartón. Ver resolvePackageInfo() en pricing.js, rama perUnit.
   "huevos enteros": { type: "perUnit", gramsPerUnit: 63,  unitLabel: "huevo", packUnits: 12, packLabel: "docena (12 huevos)" },
-  "platano":         { type: "perUnit", gramsPerUnit: 120, unitLabel: "plátano" },
-  "manzana":         { type: "perUnit", gramsPerUnit: 160, unitLabel: "manzana" },
-  "naranja":         { type: "perUnit", gramsPerUnit: 200, unitLabel: "naranja" },
-  "aguacate":        { type: "perUnit", gramsPerUnit: 180, unitLabel: "aguacate" },
-  "pepino":          { type: "perUnit", gramsPerUnit: 300, unitLabel: "pepino" },
-  "tomate":          { type: "perUnit", gramsPerUnit: 120, unitLabel: "tomate" },
-  // Cebolla y ajo (2026-08-26): se compran por piezas, no pesados. Medias
+  "platano":         { type: "fixedPackage", packageG: 154, packageLabel: "plátano" },  // Pieza 154 g aprox.
+  "manzana":         { type: "fixedPackage", packageG: 190, packageLabel: "manzana" },  // Pieza 190 g aprox.
+  "naranja":         { type: "fixedPackage", packageG: 285, packageLabel: "naranja" },  // Pieza 285 g aprox.
+  "aguacate":        { type: "fixedPackage", packageG: 200, packageLabel: "aguacate" },  // Pieza 200 g aprox.
+  "pepino":          { type: "fixedPackage", packageG: 204, packageLabel: "pepino" },  // Pieza 204 g aprox.
+  "tomate":          { type: "fixedPackage", packageG: 125, packageLabel: "tomate" },  // Pieza 125 g aprox.
   // razonables como el resto de este bloque, no valores exactos.
   "cebolla":         { type: "perUnit", gramsPerUnit: 150, unitLabel: "cebolla" },
-  "ajo":             { type: "perUnit", gramsPerUnit: 5,   unitLabel: "diente" },
-  // Añadidos 2026-08-20d (known issue #7, ver tests/ingredient-packaging-
+  "ajo":             { type: "fixedPackage", packageG: 250, packageLabel: "malla" },  // Malla 250 g | 7,40 EUR/kg -- se compra la malla, no el diente
   // coverage.test.js) — mismo criterio y nivel de precisión (medias
   // razonables, no valores exactos) que el resto de este bloque.
-  "calabacin":       { type: "perUnit", gramsPerUnit: 200, unitLabel: "calabacín" },
-  "kiwi":            { type: "perUnit", gramsPerUnit: 80,  unitLabel: "kiwi" },
-  "pimiento":        { type: "perUnit", gramsPerUnit: 150, unitLabel: "pimiento" },
-
-  // ── 3. Envase fijo — compra el paquete, usa una parte ───────────────────
-  "almendras":                    { type: "fixedPackage", packageG: 200,  packageLabel: "bolsa" },
-  "nueces":                       { type: "fixedPackage", packageG: 200,  packageLabel: "bolsa" },
-  "cacahuetes":                   { type: "fixedPackage", packageG: 250,  packageLabel: "bolsa" },
-  "queso light":                  { type: "fixedPackage", packageG: 200,  packageLabel: "paquete" },
-  "tortitas de arroz":            { type: "fixedPackage", packageG: 130,  packageLabel: "paquete" },
+  "calabacin":       { type: "fixedPackage", packageG: 403, packageLabel: "calabacín" },  // Pieza 403 g aprox.
+  "kiwi":            { type: "fixedPackage", packageG: 109, packageLabel: "kiwi" },  // Pieza 109 g aprox.
+  "pimiento":        { type: "fixedPackage", packageG: 200, packageLabel: "pimiento" },  // Pieza 200 g aprox.
+  "almendras":                    { type: "fixedPackage", packageG: 200, packageLabel: "paquete" },  // Paquete 200 g | 11,50 EUR/kg
+  "nueces":                       { type: "fixedPackage", packageG: 200, packageLabel: "paquete" },  // Paquete 200 g | 12,50 EUR/kg
+  "cacahuetes":                   { type: "fixedPackage", packageG: 400, packageLabel: "paquete" },  // Paquete 400 g | 4,125 EUR/kg
+  "queso light":                  { type: "fixedPackage", packageG: 300, packageLabel: "paquete de 12 lonchas" },  // Paquete 12 lonchas (300 g)
+  "tortitas de arroz":            { type: "fixedPackage", packageG: 124, packageLabel: "paquete" },  // Paquete 4 packs (124 g) | 8,871 EUR/kg
   "copos de maiz":                { type: "fixedPackage", packageG: 500,  packageLabel: "caja" },
   "granola":                      { type: "fixedPackage", packageG: 400,  packageLabel: "bolsa" },
-  "avena":                        { type: "fixedPackage", packageG: 1000, packageLabel: "bolsa" },
-  "maiz dulce":                   { type: "fixedPackage", packageG: 285,  packageLabel: "lata" },
+  "avena":                        { type: "fixedPackage", packageG: 800, packageLabel: "caja" },  // Caja 800 g | 1,625 EUR/kg
+  "maiz dulce":                   { type: "fixedPackage", packageG: 420, packageLabel: "pack de 3 (escurrido)" },  // 3 latas x 150 g (140 g escurrido cada una)
   "jamon cocido extra":           { type: "fixedPackage", packageG: 250,  packageLabel: "paquete" },
-  "pan integral":                 { type: "fixedPackage", packageG: 460,  packageLabel: "barra" },
+  "pan integral":                 { type: "fixedPackage", packageG: 350, packageLabel: "barra" },  // Barra 350 g
   "pan blanco":                   { type: "fixedPackage", packageG: 250,  packageLabel: "barra" },
-  "salchichas":                   { type: "fixedPackage", packageG: 400,  packageLabel: "paquete" },
+  "salchichas":                   { type: "fixedPackage", packageG: 400, packageLabel: "pack de 2" },  // 2 paquetes x 200 g | 4,75 EUR/kg
   "tortillas de trigo":           { type: "fixedPackage", packageG: 360,  packageLabel: "paquete" },
   "pan de molde integral":        { type: "fixedPackage", packageG: 460,  packageLabel: "paquete" },
-  "frutos rojos congelados":      { type: "fixedPackage", packageG: 400,  packageLabel: "bolsa" },
-  "mozzarella light":             { type: "fixedPackage", packageG: 200,  packageLabel: "paquete" },
-  "pavo loncheado":               { type: "fixedPackage", packageG: 200,  packageLabel: "paquete" },
-  "espinacas":                    { type: "fixedPackage", packageG: 300,  packageLabel: "bolsa" },
-  "lechuga":                      { type: "fixedPackage", packageG: 250,  packageLabel: "bolsa" },
+  "frutos rojos congelados":      { type: "fixedPackage", packageG: 300, packageLabel: "bolsa" },  // Paquete 300 g | 6,334 EUR/kg
+  "mozzarella light":             { type: "fixedPackage", packageG: 125, packageLabel: "bola (peso escurrido)" },  // Paquete 250 g (125 g escurrido)
+  "pavo loncheado":               { type: "fixedPackage", packageG: 400, packageLabel: "paquete" },  // Paquete 400 g | 7,625 EUR/kg
+  "espinacas":                    { type: "fixedPackage", packageG: 500, packageLabel: "paquete" },  // Paquete 500 g | 2,60 EUR/kg
+  "lechuga":                      { type: "fixedPackage", packageG: 250, packageLabel: "bolsa" },  // Paquete 250 g | 3,80 EUR/kg
   "zanahoria":                    { type: "fixedPackage", packageG: 1000, packageLabel: "bolsa" },
-  "hummus":                       { type: "fixedPackage", packageG: 200,  packageLabel: "tarrina" },
-  "pina":                         { type: "fixedPackage", packageG: 220,  packageLabel: "lata" },
-  "verduras congeladas salteado": { type: "fixedPackage", packageG: 1000, packageLabel: "bolsa" },
-  "edamame":                      { type: "fixedPackage", packageG: 400,  packageLabel: "bolsa" },
-  "queso fresco batido 0%":       { type: "fixedPackage", packageG: 400,  packageLabel: "tarrina" },
-  "atun al natural":              { type: "fixedPackage", packageG: 52,   packageLabel: "lata (pack de 3)" },
-  "brocoli":                      { type: "fixedPackage", packageG: 500,  packageLabel: "bolsa (congelado)" },
-  "requeson":                     { type: "fixedPackage", packageG: 250,  packageLabel: "tarrina" },
-  "sardinas en lata":             { type: "fixedPackage", packageG: 120,  packageLabel: "lata" },
-  "caballa en lata":              { type: "fixedPackage", packageG: 125,  packageLabel: "lata" },
-  "tempeh":                       { type: "fixedPackage", packageG: 200,  packageLabel: "paquete" },
+  "hummus":                       { type: "fixedPackage", packageG: 240, packageLabel: "tarrina" },  // Tarrina 240 g | 4,375 EUR/kg
+  "pina":                         { type: "fixedPackage", packageG: 1830, packageLabel: "piña" },  // Pieza 1,83 kg aprox.
+  "verduras congeladas salteado": { type: "fixedPackage", packageG: 600, packageLabel: "bolsa" },  // Salteado de verduras Hacendado ultracongelado, 600 g
+  "edamame":                      { type: "fixedPackage", packageG: 500, packageLabel: "bolsa" },  // Paquete 500 g | 3,50 EUR/kg
+  "queso fresco batido 0%":       { type: "fixedPackage", packageG: 500, packageLabel: "tarrina" },  // Tarrina 500 g
+  "atun al natural":              { type: "fixedPackage", packageG: 360, packageLabel: "pack de 6 (escurrido)" },  // 6 latas x 80 g (60 g escurrido cada una)
+  "brocoli":                      { type: "fixedPackage", packageG: 420, packageLabel: "brócoli" },  // Pieza 420 g aprox.
+  "requeson":                     { type: "fixedPackage", packageG: 200, packageLabel: "tarrina" },  // Tarrina 200 g | 5,00 EUR/kg
+  "sardinas en lata":             { type: "fixedPackage", packageG: 168, packageLabel: "pack de 2 (escurrido)" },  // 2 latas x 117 g (84 g escurrido cada una)
+  "caballa en lata":              { type: "fixedPackage", packageG: 164, packageLabel: "pack de 2 (escurrido)" },  // 2 latas x 120 g (82 g escurrido cada una)
   // ⚠️ EL TAMAÑO VA EN GRAMOS **COCIDOS**, igual que el precio (2026-09-02)
   //
   // Estos roles se miden COCIDOS en dishes.js y su precio en
@@ -141,26 +134,23 @@ var PACKAGING_INFO = {
   "garbanzos cocidos":            { type: "fixedPackage", packageG: 400,  packageLabel: "bote (peso escurrido)" },
   "lentejas cocidas":             { type: "fixedPackage", packageG: 400,  packageLabel: "bote (peso escurrido)" },
   "alubias cocidas":              { type: "fixedPackage", packageG: 400,  packageLabel: "bote (peso escurrido)" },
-  "tofu firme":                   { type: "fixedPackage", packageG: 250,  packageLabel: "paquete" },
+  "tofu firme":                   { type: "fixedPackage", packageG: 275, packageLabel: "paquete (escurrido)" },  // Paquete 400 g (275 g escurrido)
   "skyr natural":                 { type: "fixedPackage", packageG: 450,  packageLabel: "tarrina" },
-  "yogur griego ligero":          { type: "fixedPackage", packageG: 400,  packageLabel: "pack (4 x 100g)" },
+  "yogur griego ligero":          { type: "fixedPackage", packageG: 750, packageLabel: "pack de 6" },  // 6 ud. x 125 g | 1,934 EUR/kg
   "leche semidesnatada":          { type: "fixedPackage", packageG: 1000, packageLabel: "brick" },
-  "claras de huevo":              { type: "fixedPackage", packageG: 500,  packageLabel: "brick" },
+  "claras de huevo":              { type: "fixedPackage", packageG: 1000, packageLabel: "botella" },  // Botella 1 L | 2,85 EUR/L
   "patata cocida":                { type: "fixedPackage", packageG: 1000, packageLabel: "bolsa (cocida al vacío)" },
-  "batata":                       { type: "fixedPackage", packageG: 1000, packageLabel: "bolsa" },
-
-  // Añadidos 2026-08-20d (known issue #7) -- mismo criterio: tamaño más
+  "batata":                       { type: "fixedPackage", packageG: 424, packageLabel: "batata" },  // Pieza 424 g aprox.
   // común en Mercadona/Hacendado, no un dato exacto de SKU.
-  "carne picada 5% grasa":        { type: "fixedPackage", packageG: 400,  packageLabel: "bandeja" },
-  "pavo picado":                  { type: "fixedPackage", packageG: 400,  packageLabel: "bandeja" },
-  "champinones":                  { type: "fixedPackage", packageG: 250,  packageLabel: "bandeja" },
-  "coliflor":                     { type: "fixedPackage", packageG: 500,  packageLabel: "bolsa (congelada)" },
-  "fresas":                       { type: "fixedPackage", packageG: 400,  packageLabel: "tarrina" },
-  "gamba cocida":                 { type: "fixedPackage", packageG: 200,  packageLabel: "bolsa (congelada)" },
-  "langostino cocido":            { type: "fixedPackage", packageG: 400,  packageLabel: "bolsa (congelada)" },
-  "jamon serrano":                { type: "fixedPackage", packageG: 100,  packageLabel: "paquete (loncheado)" },
-  "pan de centeno":               { type: "fixedPackage", packageG: 460,  packageLabel: "barra" },
-  "trigo sarraceno cocido":       { type: "fixedPackage", packageG: 1250, packageLabel: "paquete de 500 g (rinde 1,25 kg cocido)" }
+  "carne picada mixta":           { type: "fixedPackage", packageG: 1000, packageLabel: "bandeja" },  // Bandeja 1 kg | 8,00 EUR/kg
+  "carne picada 5% grasa":        { type: "fixedPackage", packageG: 1000, packageLabel: "bandeja" },  // Bandeja 1 kg | 10,80 EUR/kg
+  "champinones":                  { type: "fixedPackage", packageG: 300, packageLabel: "bandeja" },  // Bandeja 300 g
+  "coliflor":                     { type: "fixedPackage", packageG: 1040, packageLabel: "coliflor" },  // Pieza 1,04 kg aprox.
+  "fresas":                       { type: "fixedPackage", packageG: 470, packageLabel: "bandeja" },  // Bandeja 470 g aprox.
+  "gamba cocida":                 { type: "fixedPackage", packageG: 300, packageLabel: "bandeja" },  // Bandeja 300 g | 27,667 EUR/kg
+  "langostino cocido":            { type: "fixedPackage", packageG: 600, packageLabel: "bandeja" },  // Bandeja 600 g aprox. | 10,75 EUR/kg
+  "jamon serrano":                { type: "fixedPackage", packageG: 190, packageLabel: "paquete" },  // Paquete 190 g aprox.
+  "pan de centeno":               { type: "fixedPackage", packageG: 500, packageLabel: "hogaza" },  // 1 ud. (500 g) | 3,40 EUR/kg
 
   // El resto -- carne/pescado fresco que se compra al peso real (Bacalao,
   // Conejo, Lomo de cerdo, Lubina, Merluza, Muslo de pollo deshuesado,

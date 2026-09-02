@@ -76,13 +76,13 @@ PRICE_CATALOGS.mercadona = {
   pricesPer100g: {
     "aguacate":                      0.5,  // real: Aguacate (Granada wh 3968)
     "almendras":                     1.15,  // real: Almendra natural Hacendado (Granada wh 3968)
-    "alubias cocidas":               0.1875,  // real: Alubia cocida blanca Hacendado, BOTE (1,875 EUR/kg escurrido) (Granada wh 3968)
+    "alubias cocidas":               0.1875,  // real: Alubia cocida blanca Hacendado (bote, 1,875 EUR/kg escurrido) (Granada wh 3968)
     "arroz blanco cocido":           0.0429,  // real: Arroz largo Hacendado (seco ×2.8 = cocido) (Granada wh 3968)
     "arroz integral cocido":         0.0589,  // real: Arroz integral largo Hacendado (seco ×2.8 = cocido) (Granada wh 3968)
-    "atun al natural":               0.9,  // estimado -- Atun claro al natural ~11,7 EUR/kg bruto; escurrido ~70%
+    "atun al natural":               1.1667,  // real: Atún claro al natural Hacendado (pack de 6, 11,667 EUR/kg escurrido) (Granada wh 3968)
     "avena":                         0.1625,  // real: Copos de avena Brüggen (Granada wh 3968)
     "bacalao":                       1.9734,  // real: Filetes de bacalao MareDeus ultracongelado (Granada wh 3968)
-    "batata":                        0.335,  // real: Batata (3,35 EUR/kg, fresca; peso cocido ~ crudo) (Granada wh 3968)
+    "batata":                        0.255,  // real: Batata (2,55 EUR/kg) (Granada wh 3968)
     "brocoli":                       0.3,  // real: Brócoli (Granada wh 3968)
     // Aceite de oliva 0,4º: 3,80 EUR/L la botella de 1 L (bajó bastante en
     // 2026). El precio es por LITRO, no por kg: un litro pesa 916 g, así que
@@ -93,9 +93,10 @@ PRICE_CATALOGS.mercadona = {
     // aunque su nutrición esté sin resolver (ver ingredient-nutrition.js).
     "ajo":                           0.74,  // real: Ajos morados (250 g, 1,85 EUR) (Granada wh 3968)
     "cebolla":                       0.2,  // real: Cebollas (1 kg, 2,00 EUR) (Granada wh 3968)
-    "caballa en lata":               1.0833,  // real: Filetes de caballa del sur en tomate Hacendado (Granada wh 3968)
+    "caballa en lata":               1.5854,  // real: Filetes de caballa del sur en tomate Hacendado (pack de 2, 15,854 EUR/kg escurrido) (Granada wh 3968)
     "cacahuetes":                    0.4125,  // real: Cacahuete tostado con sal Hacendado (Granada wh 3968)
-    "carne picada 5% grasa":         1.1,  // real: Preparado de carne picada vacuno (11 EUR/kg, 500 g) (Granada wh 3968)
+    "carne picada mixta":            0.8,  // real: Preparado de carne picada vacuno y cerdo (8,00 EUR/kg, bandeja de 1 kg) (Granada wh 3968)
+    "carne picada 5% grasa":         1.08,  // real: Preparado de carne picada vacuno (bandeja de 1 kg, 10,80 EUR/kg) (Granada wh 3968)
     "claras de huevo":               0.285,  // real: Claras de huevo líquidas pasteurizadas (2,85 EUR/L) (Granada wh 3968)
     "copos de maiz":                 0.3,  // real: Corn Flakes Hacendado 0% azúcares (Granada wh 3968)
     "cuscus cocido":                 0.0696,  // real: Cous cous mediano Hacendado (seco ×2.8 = cocido) (Granada wh 3968)
@@ -103,13 +104,13 @@ PRICE_CATALOGS.mercadona = {
     "espinacas":                     0.26,  // real: Espinaca picada en porciones Hacendado ultracongelada (Granada wh 3968)
     "frutos rojos congelados":       0.6334,  // real: Mix frutos rojos Hacendado ultracongeladas (Granada wh 3968)
     "garbanzos cocidos":             0.2,  // real: Garbanzo cocido Hacendado (2,00 EUR/kg, ya cocido) (Granada wh 3968)
-    "granola":                       0.6,  // real: Cereales y semillas granola Hacendado con frutos secos (Granada wh 3968)
+    "granola":                       0.6,  // real: Muesli Hacendado con quinoa, chía y chocolate negro (2,40 EUR la caja de 400 g) (Granada wh 3968)
     "huevos enteros":                0.4034,  // real: Huevos grandes L (3,05 EUR/docena, 63 g/huevo) (Granada wh 3968)
     "hummus":                        0.4375,  // real: Hummus de garbanzos Hacendado receta clásica (Granada wh 3968)
     "jamon cocido extra":            1,  // real: Jamón cocido extra Hacendado finas lonchas (Granada wh 3968)
     "leche semidesnatada":           0.084,  // real: Leche semidesnatada Hacendado (0,84 EUR/L) (Granada wh 3968)
     "lechuga":                       0.38,  // real: Lechuga iceberg cortada y lavada (3,80 EUR/kg, bolsa 250 g) (Granada wh 3968)
-    "lentejas cocidas":              0.225,  // real: Lenteja cocida Hacendado, BOTE (2,25 EUR/kg escurrido) (Granada wh 3968)
+    "lentejas cocidas":              0.225,  // real: Lenteja cocida Hacendado (bote, 2,25 EUR/kg escurrido) (Granada wh 3968)
     "lomo de cerdo":                 0.63,  // real: Filetes lomo de cerdo cabeza (Granada wh 3968)
     "mantequilla de cacahuete":      0.53,  // real: Crema de cacahuete 100% Hacendado (Granada wh 3968)
     "manzana":                       0.24,  // real: Manzana Golden (Granada wh 3968)
@@ -117,7 +118,7 @@ PRICE_CATALOGS.mercadona = {
     "merluza":                       1.15,  // real: Merluza a rodajas (Granada wh 3968)
     "mermelada light":               0.4211,  // real: Confitura de fresa Hacendado 0% azúcares añadidos (Granada wh 3968)
     "miel":                          0.5,  // real: Miel de flores Hacendado (5 EUR/kg, tarro 1 kg) (Granada wh 3968)
-    "mozzarella light":              0.8,  // estimado -- solo mozzarella normal en catalogo
+    "mozzarella light":              0.72,  // real: Mozzarella fresca light de vaca Hacendado (7,20 EUR/kg escurrido) (Granada wh 3968)
     "muslo de pollo deshuesado":     0.555,  // real: Muslos de pollo deshuesados con piel (Granada wh 3968)
     "naranja":                       0.25,  // real: Naranja de mesa (Granada wh 3968)
     "nueces":                        1.25,  // real: Nuez natural Hacendado pelada (Granada wh 3968)
@@ -135,12 +136,11 @@ PRICE_CATALOGS.mercadona = {
     "queso light":                   0.967,  // real: Queso lonchas cremoso light de vaca Hacendado (9,67 EUR/kg) (Granada wh 3968)
     "quinoa cocida":                 0.1963,  // real: Quinoa Hacendado (seca ×2.7 = cocida) (Granada wh 3968)
     "requeson":                      0.5,  // real: Requesón mezcla Hacendado (Granada wh 3968)
-    "salmon":                        1.35,  // real: Filete de salmón rosado ultracongelado (Granada wh 3968)
+    "salmon":                        4.5,  // real: Filete de salmón rosado salvaje Hacendado ultracongelado (45,00 EUR/kg ESCURRIDO; Mercadona declara drained_weight 0,3, o sea que de 1 kg congelado quedan 300 g) (Granada wh 3968)
     "salchichas":                    0.475,  // real: Salchichas cocidas bocata Hacendado (4,75 EUR/kg, paquete 400 g) (Granada wh 3968)
     "pan blanco":                    0.2,  // real: Barra de pan (2,00 EUR/kg, barra de 250 g) (Granada wh 3968)
-    "sardinas en lata":              0.9402,  // real: Sardinas en aceite de oliva Hacendado (Granada wh 3968)
-    "skyr natural":                  0.28,  // estimado -- sin skyr; Postre lacteo natural +Proteinas 10 g 0% MG (2,80 EUR/kg)
-    "tempeh":                        1.8,  // estimado -- sin producto
+    "sardinas en lata":              1.3096,  // real: Sardinas en aceite de oliva Hacendado (pack de 2, 13,096 EUR/kg escurrido) (Granada wh 3968)
+    "skyr natural":                  0.28,  // real: Postre lácteo natural +Proteínas 10 g 0% MG (1,40 EUR la tarrina de 500 g) (Granada wh 3968)
     "ternera magra":                 1.7,  // real: Filetes de vacuno añojo 18 / tacos guisar 16,2 EUR/kg (media) (Granada wh 3968)
     "tofu firme":                    0.6364,  // real: Tofu firme Hacendado (Granada wh 3968)
     // Tomate FRESCO, no triturado (2026-09-02). El comentario venía diciendo
@@ -152,7 +152,7 @@ PRICE_CATALOGS.mercadona = {
     "tomate":                        0.2,  // real: Tomate pera (2,00 EUR/kg) (Granada wh 3968)
     "tortillas de trigo":            0.3195,  // real: Tortillas de trigo Hacendado (3,195 EUR/kg, paquete 360 g) (Granada wh 3968)
     "tortitas de arroz":             0.8871,  // real: Tortitas de arroz Hacendado (Granada wh 3968)
-    "verduras congeladas salteado":  0.3,  // estimado -- mezcla de verdura ultracongelada ~3 EUR/kg
+    "verduras congeladas salteado":  0.2583,  // real: Salteado de verduras Hacendado ultracongelado (1,55 EUR la bolsa de 600 g) (Granada wh 3968)
     "yogur griego ligero":           0.1934,  // real: Yogur griego natural ligero Hacendado (Granada wh 3968)
     "zanahoria":                     0.12,  // real: Zanahorias 1 kg (Granada wh 3968)
 
@@ -164,14 +164,12 @@ PRICE_CATALOGS.mercadona = {
     "rape":                          1.85,  // real: Cola de rape del Cabo ultracongelada (Granada wh 3968)
     "gamba cocida":                  2.7667,  // real: Gamba blanca cocida Hacendado (Granada wh 3968)
     "langostino cocido":             1.075,  // real: Langostino cocido (10,75 EUR/kg) (Granada wh 3968)
-    "pavo picado":                   0.79,  // estimado -- sin pavo picado; Preparado de carne picada pollo (7,90 EUR/kg)
     "champinones":                   0.52,  // real: Champiñones blancos (Granada wh 3968)
     "calabacin":                     0.19,  // real: Calabacín verde (Granada wh 3968)
     "pimiento":                      0.25,  // real: Pimiento rojo (Granada wh 3968)
     "coliflor":                      0.25,  // real: Coliflor (Granada wh 3968)
     "queso curado":                  1.11,  // real: Queso curado mezcla Hacendado (11,08 EUR/kg; generico, no DOP manchego) (Granada wh 3968)
     "pan de centeno":                0.34,  // real: Hogaza de centeno 50% (Granada wh 3968)
-    "trigo sarraceno cocido":        0.2,  // estimado -- Mercadona no vende trigo sarraceno; analogo quinoa seca ÷2.7
     "kiwi":                          0.465,  // real: Kiwi verde (Granada wh 3968)
     "fresas":                        0.75,  // real: Fresas (Granada wh 3968)
   }

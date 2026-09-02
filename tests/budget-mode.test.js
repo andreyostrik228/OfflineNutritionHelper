@@ -189,7 +189,11 @@ function run(t) {
     var purchase = s.resolvePurchaseCost("Miel", 23, "mercadona");
     assert.strictEqual(purchase.hasFixedPackage, true);
     assert.strictEqual(purchase.packagesToBuy, 1);
-    assert.strictEqual(purchase.packageSizeG, 350);
+    // 350 -> 1000 el 2026-09-02: el usuario abrió la ficha en Mercadona y
+    // el tarro es de 1 kg a 5,00 EUR/kg, que es de donde sale el precio del
+    // rol. Lo que este test protege no es el número, es que usar 23 g
+    // obligue a pagar UN tarro entero.
+    assert.strictEqual(purchase.packageSizeG, 1000);
     assert.notStrictEqual(purchase.purchaseCost, purchase.usageCost);
   });
 

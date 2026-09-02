@@ -1093,7 +1093,7 @@ var DISH_INSTRUCTIONS = {
     ]
   },
 
-  "Tempeh con quinoa y brócoli": {
+  "Carne picada con quinoa y brócoli": {
     difficulty: 2,
     equipment: ["sarten", "olla"],
     steps: [
@@ -1976,7 +1976,7 @@ var DISH_INSTRUCTIONS = {
     ]
   },
 
-  "Pavo con trigo sarraceno y espinacas": {
+  "Pavo con arroz y espinacas": {
     difficulty: 2,
     equipment: ["sarten"],
     steps: [
@@ -2041,7 +2041,7 @@ var DISH_INSTRUCTIONS = {
     ]
   },
 
-  "Pavo picado con pasta y verduras salteadas": {
+  "Carne picada con pasta y verduras salteadas": {
     difficulty: 2,
     equipment: ["sarten"],
     steps: [
@@ -2272,7 +2272,7 @@ var DISH_INSTRUCTIONS = {
     ]
   },
 
-  "Poke bowl de tempeh con arroz y aguacate": {
+  "Poke bowl de tofu con arroz y aguacate": {
     difficulty: 2,
     equipment: ["sarten", "olla"],
     steps: [
@@ -2432,7 +2432,7 @@ var DISH_INSTRUCTIONS = {
     ]
   },
 
-  "Salmón con trigo sarraceno y brócoli": {
+  "Salmón con quinoa y brócoli": {
     difficulty: 2,
     equipment: ["sarten", "olla"],
     steps: [
@@ -2477,7 +2477,7 @@ var DISH_INSTRUCTIONS = {
     ]
   },
 
-  "Merluza con trigo sarraceno y zanahoria": {
+  "Merluza con arroz y zanahoria": {
     difficulty: 2,
     equipment: ["sarten", "olla"],
     steps: [
@@ -2522,7 +2522,7 @@ var DISH_INSTRUCTIONS = {
     ]
   },
 
-  "Bacalao con trigo sarraceno y coliflor": {
+  "Bacalao con quinoa y coliflor": {
     difficulty: 2,
     equipment: ["sarten", "olla"],
     steps: [
@@ -2580,7 +2580,7 @@ var DISH_INSTRUCTIONS = {
     ]
   },
 
-  "Rape con trigo sarraceno y zanahoria": {
+  "Rape con quinoa y zanahoria": {
     difficulty: 2,
     equipment: ["sarten", "olla"],
     steps: [
@@ -2766,7 +2766,7 @@ var DISH_INSTRUCTIONS = {
     ]
   },
 
-  "Pavo picado con quinoa y coliflor": {
+  "Carne picada con quinoa y coliflor": {
     difficulty: 2,
     equipment: ["sarten"],
     steps: [
@@ -2788,7 +2788,7 @@ var DISH_INSTRUCTIONS = {
     ]
   },
 
-  "Carne picada con trigo sarraceno y brócoli": {
+  "Carne picada con arroz y brócoli": {
     difficulty: 2,
     equipment: ["sarten"],
     steps: [
@@ -2799,7 +2799,7 @@ var DISH_INSTRUCTIONS = {
     ]
   },
 
-  "Ternera con trigo sarraceno y zanahoria": {
+  "Ternera con quinoa y zanahoria": {
     difficulty: 2,
     equipment: ["sarten"],
     steps: [
@@ -2821,7 +2821,7 @@ var DISH_INSTRUCTIONS = {
     ]
   },
 
-  "Solomillo de ternera con trigo sarraceno y coliflor": {
+  "Solomillo de ternera con quinoa y coliflor": {
     difficulty: 2,
     equipment: ["sarten"],
     steps: [
@@ -3049,7 +3049,7 @@ var DISH_INSTRUCTIONS = {
     ]
   },
 
-  "Gambas con trigo sarraceno y coliflor": {
+  "Gambas con quinoa y coliflor": {
     difficulty: 1,
     equipment: ["sarten", "olla"],
     steps: [
@@ -3060,7 +3060,7 @@ var DISH_INSTRUCTIONS = {
     ]
   },
 
-  "Langostinos con trigo sarraceno y pimientos": {
+  "Langostinos con quinoa y pimientos": {
     difficulty: 1,
     equipment: ["sarten"],
     steps: [
@@ -3071,7 +3071,7 @@ var DISH_INSTRUCTIONS = {
     ]
   },
 
-  "Garbanzos con trigo sarraceno y calabacín": {
+  "Garbanzos con arroz y calabacín": {
     difficulty: 1,
     equipment: ["sarten"],
     steps: [
@@ -3137,7 +3137,7 @@ var DISH_INSTRUCTIONS = {
     ]
   },
 
-  "Tempeh con cuscús y brócoli": {
+  "Carne picada con cuscús y brócoli": {
     difficulty: 2,
     equipment: ["sarten", "olla"],
     steps: [
@@ -3148,7 +3148,7 @@ var DISH_INSTRUCTIONS = {
     ]
   },
 
-  "Tempeh con patatas y calabacín": {
+  "Carne picada con patatas y calabacín": {
     difficulty: 2,
     equipment: ["sarten"],
     steps: [
@@ -3268,7 +3268,7 @@ var DISH_INSTRUCTIONS = {
     ]
   },
 
-  "Atún con trigo sarraceno y pimientos": {
+  "Atún con arroz y pimientos": {
     difficulty: 1,
     equipment: ["sarten"],
     steps: [
@@ -3317,7 +3317,7 @@ var DISH_INSTRUCTIONS = {
   // bloques. "Merluza al ajillo con verduras" se queda SIN instrucciones:
   // necesita ajo y ese rol sigue sin resolver (T2).
 
-  "Pavo picado con cuscús y calabacín": {
+  "Carne picada con cuscús y calabacín": {
     difficulty: 2,
     equipment: ["sarten"],
     steps: [
@@ -3328,7 +3328,7 @@ var DISH_INSTRUCTIONS = {
     ]
   },
 
-  "Pavo picado con patatas y brócoli": {
+  "Carne picada con patatas y brócoli": {
     difficulty: 2,
     equipment: ["sarten", "olla"],
     steps: [
@@ -3526,7 +3526,7 @@ var DISH_INSTRUCTIONS = {
     ]
   },
 
-  "Tempeh con quinoa y verduras salteadas": {
+  "Carne picada con quinoa y verduras salteadas": {
     difficulty: 2,
     equipment: ["sarten"],
     steps: [
@@ -3537,7 +3537,7 @@ var DISH_INSTRUCTIONS = {
     ]
   },
 
-  "Tempeh con trigo sarraceno y coliflor": {
+  "Carne picada con arroz y coliflor": {
     difficulty: 2,
     equipment: ["sarten", "olla"],
     steps: [
@@ -3915,7 +3915,7 @@ var DISH_INSTRUCTIONS = {
     ]
   },
 
-  "Tempeh con pepino y salsa": {
+  "Tofu con pepino y salsa": {
     difficulty: 1,
     equipment: ["sarten"],
     steps: [
@@ -4252,7 +4252,7 @@ var DISH_INSTRUCTIONS = {
     ]
   },
 
-  "Pollo con trigo sarraceno": {
+  "Pollo con quinoa": {
     difficulty: 1,
     equipment: ["sarten", "olla"],
     steps: [
@@ -4340,7 +4340,7 @@ var DISH_INSTRUCTIONS = {
     ]
   },
 
-  "Pollo con trigo sarraceno y brócoli": {
+  "Pollo con arroz y brócoli": {
     difficulty: 1,
     equipment: ["sarten", "olla"],
     steps: [
@@ -4351,7 +4351,7 @@ var DISH_INSTRUCTIONS = {
     ]
   },
 
-  "Cerdo con trigo sarraceno": {
+  "Cerdo con quinoa": {
     difficulty: 1,
     equipment: ["sarten", "olla"],
     steps: [
