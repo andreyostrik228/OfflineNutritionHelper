@@ -484,6 +484,48 @@ function run(t) {
     assert.strictEqual(s.regenerateNoCookSlot(plan, "no-such", "mercadona", {}).error, "unknown_slot_key");
     assert.strictEqual(s.regenerateNoCookSlot(null, "dinner", "mercadona", {}).error, "no_plan");
   });
+
+  // ── Congelados: en el catálogo, pero NUNCA en este modo (2026-09-02) ──
+  //
+  // Los congelados entraron en real-products.js para poder buscarlos en el
+  // panel de productos. Este modo debe seguir sin verlos: casi todo
+  // congelado exige cocinar de verdad. Ver NO_COOK_EXCLUDED_CATEGORIES en
+  // no-cook-classifier.js para la medición completa.
+
+  t.test("el catálogo TIENE congelados (si no, los dos tests de abajo no prueban nada)", function () {
+    var s = fullSandbox();
+    var cong = s.REAL_PRODUCTS.filter(function (p) { return p.category === "Congelados"; });
+    // Sin esta comprobación, quitar los congelados del exportador apagaría
+    // los tests siguientes en silencio en vez de hacerlos fallar -- el
+    // mismo modo de fallo que ya tuvo el invariante de instrucciones.
+    assert.ok(cong.length > 100,
+      "se esperaban congelados en el catálogo y hay " + cong.length);
+  });
+
+  t.test("ningún congelado llega al pool de 'sin cocinar'", function () {
+    var s = fullSandbox();
+    var pool = s.getNoCookEligiblePool("mercadona");
+    var colados = pool.filter(function (e) { return e.product.category === "Congelados"; });
+    assert.strictEqual(colados.length, 0,
+      "congelados colados en el pool: "
+      + colados.map(function (e) { return e.product.name; }).join(" | "));
+  });
+
+  t.test("pescado y marisco CRUDOS congelados no se anuncian como 'abrir y comer'", function () {
+    var s = fullSandbox();
+    // Estos dos nombres son reales y son la razón de la regla: sin la
+    // exclusión por categoría caen en classifyByNameFallback(), que casa
+    // por SUBCADENA -- "Colas de gambón" con "cola" (el refresco) y
+    // "emPERAdor" con "pera" (la fruta) -- y los dos salían con nivel 0,
+    // es decir, marisco y pescado crudos presentados como listos para comer.
+    ["Colas de gambón crudo Hacendado congelado",
+     "Rodaja de emperador Hacendado ultracongelado"].forEach(function (name) {
+      var res = s.classifyNoCookProduct({
+        name: name, category: "Congelados", leafCategory: "Pescado"
+      });
+      assert.strictEqual(res, null, "no debería ser elegible sin cocinar: " + name);
+    });
+  });
 }
 
 module.exports = { run: run };

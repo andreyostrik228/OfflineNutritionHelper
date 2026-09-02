@@ -41,6 +41,27 @@ var NO_COOK_EXCLUDED_CATEGORIES = new Set([
   "Cuidado facial y corporal",
   "Cuidado del cabello",
   "Aceite, especias y salsas",
+  // Congelados (2026-09-02). Entra al catálogo para que se pueda BUSCAR en
+  // el panel de productos, pero no puede entrar en este modo: casi todo
+  // exige cocinar de verdad (horno, freidora, sartén), justo lo que este
+  // modo promete que no hace falta.
+  //
+  // Se excluye por CATEGORÍA, y no dejando que caiga sola, porque
+  // "Congelados" no coincide con ninguna regla curada y por tanto acaba en
+  // classifyByNameFallback() -- la rama que hasta ahora Mercadona nunca
+  // alcanzaba. Medido sobre los 254 congelados del catálogo suponiéndoles
+  // nutrición: 55 pasaban el clasificador, 48 de ellos por ese fallback, y
+  // sus coincidencias son por SUBCADENA, sin límite de palabra:
+  //   "Colas de gambón CRUDO"  -> casa "cola" (el refresco) -> nivel 0
+  //   "Rodaja de emPERAdor"    -> casa "pera" (la fruta)    -> nivel 0
+  // Es decir, marisco y pescado crudos anunciados como "abrir y comer".
+  // Mismo error de clase que "te" dentro de "textil", que el pipeline
+  // Python ya cerró con límites de palabra.
+  //
+  // Hoy los congelados no tienen casi nutrición (21 de 254), así que el
+  // daño está latente: sin esta línea aparecería solo, y en silencio, en
+  // cuanto el enriquecedor de OpenFoodFacts les diera kcal.
+  "Congelados",
 ]);
 
 // Reglas por leafCategory exacta (mayor prioridad que la regla de category).
