@@ -57,9 +57,6 @@ if (typeof window !== "undefined" && typeof window.setTimeout === "function") {
 var _onboardingIndex = 0;
 var _onboardingEls = null;
 var _onboardingOnFinish = null;
-// Se recuerda desde initOnboarding(): la pantalla de cuenta tiene que
-// poder volver a preguntar "¿y ahora qué?" con el mismo contexto.
-var _onboardingHasProfile = false;
 
 function _obEl(id) {
   return document.getElementById(id);
@@ -603,27 +600,28 @@ function _obAlCerrarse(dialogo, alCerrarse) {
   }, 300);
 }
 
+/**
+ * Qué hacer después de la pantalla de cuenta: SIEMPRE las preguntas.
+ *
+ * ── Por qué "siempre" y no "si hacen falta" ─────────────────────────────
+ * Antes se le volvía a preguntar a `nextOnboardingStep`, y con un perfil
+ * ya guardado la respuesta era "done": el usuario creaba la cuenta y la
+ * aplicación se abría sin más. Desde fuera eso es un botón que no lleva a
+ * ninguna parte -- "после создания аккаунта не кидает на вопросы" -- y
+ * pasaba justo a quien más tiempo llevaba usando esto, porque es quien
+ * tiene perfil guardado.
+ *
+ * `nextOnboardingStep` sigue decidiendo si esta pantalla se enseña o no,
+ * que es su trabajo. Pero una vez enseñada, el recorrido se termina: la
+ * bienvenida existe para llevar a las preguntas, y cortarla por la mitad
+ * según un estado que el usuario no puede ver es justo lo que hace que
+ * una interfaz parezca rota.
+ *
+ * Repetirlas es barato: cada respuesta viene precargada con lo que ya
+ * contestó, así que son siete toques, no siete decisiones.
+ */
 function _obAfterAccountChoice() {
-  // Se vuelve a MIRAR si hay perfil en vez de usar el valor con el que
-  // arrancó la página: quien acaba de entrar en una cuenta que ya tenía
-  // datos los ha recibido de la nube hace un instante, y preguntarle otra
-  // vez su peso y su altura sería no haberse enterado de nada.
-  var hasProfile = _onboardingHasProfile || _obTieneperfilGuardado();
-
-  var next = "intake";
-  if (typeof nextOnboardingStep === "function" && typeof getOnboardingState === "function") {
-    next = nextOnboardingStep(getOnboardingState(), {
-      hasProfile: hasProfile, hasAccount: _obHayCuenta()
-    });
-  }
-  // Sin cuenta se pasa a la anécdota aunque ya esté contestada: es la
-  // regla que pidió el dueño del proyecto (ver nextOnboardingStep). Las
-  // respuestas vienen precargadas, así que son toques, no decisiones.
-  if (next === "intake" || (next === "welcome" && !_obHayCuenta())) {
-    _obGoToIntake();
-    return;
-  }
-  _obHide();
+  _obGoToIntake();
 }
 
 /**
@@ -640,12 +638,6 @@ function e_yaAcepto(state) {
 
 function _obHayCuenta() {
   return typeof getCurrentUser === "function" && !!getCurrentUser();
-}
-
-function _obTieneperfilGuardado() {
-  if (typeof getSettings !== "function") return false;
-  var s = getSettings() || {};
-  return !!(s.age && s.weight && s.height);
 }
 
 /** Pasa de la bienvenida al botón único, y de ahí a las preguntas. */
@@ -743,7 +735,6 @@ function initOnboarding(opts) {
   _obCacheEls();
   _obWire();
   _onboardingOnFinish = typeof o.onFinish === "function" ? o.onFinish : null;
-  _onboardingHasProfile = !!o.hasProfile;
 
   var state = typeof getOnboardingState === "function" ? getOnboardingState() : {};
   var step = typeof nextOnboardingStep === "function"
