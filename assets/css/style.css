@@ -4459,3 +4459,99 @@ body.is-onboarding {
 .site-footer__sep {
   color: var(--line-strong);
 }
+
+/* ══ ARREGLOS DE LA PRIMERA VISITA (2026-09-02) ═══════════════════════
+   Cuatro cosas que el usuario encontró usándolo en el móvil.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* 1. El destello de la aplicación al recargar.
+   El script del <head> marca el <html> antes del primer pintado cuando
+   este visitante va a ver la bienvenida; aquí se esconde todo lo demás
+   desde el fotograma cero. La bienvenida se pinta encima un instante
+   después, así que lo que se ve entretanto es el mismo fondo de papel,
+   no media aplicación. */
+/* `display: none` y no `visibility: hidden`: lo segundo esconde la
+   aplicación pero le deja su sitio, así que el documento seguía midiendo
+   2.653 px de alto detrás de una pantalla de 812 y se podía arrastrar. Ese
+   era el "hueco" que asomaba al deslizar rápido en el móvil. Sin sitio, no
+   hay nada que desplazar.
+
+   Se aplica mientras dure la bienvenida (`is-onboarding`), no solo en el
+   primer fotograma (`esperando-bienvenida`): la marca del <head> se quita
+   en cuanto se decide, y el bloqueo tiene que durar lo que dure la
+   pantalla. */
+html.esperando-bienvenida body > .container,
+html.esperando-bienvenida body > footer,
+html.is-onboarding body > .container,
+html.is-onboarding body > footer {
+  display: none;
+}
+
+/* Y el fondo, para que ese instante sea el color de la bienvenida y no
+   el blanco del navegador. */
+html.esperando-bienvenida,
+html.esperando-bienvenida body {
+  background: var(--paper);
+}
+
+/* 2. El "hueco" al arrastrar.
+   Con solo `overflow: hidden` en el body, el móvil sigue permitiendo el
+   rebote elástico y por ahí asomaba la página de debajo. Fijar la altura
+   y cortar el encadenado del desplazamiento lo cierra de verdad. */
+html.esperando-bienvenida,
+html.is-onboarding,
+body.is-onboarding {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+.onboarding {
+  overscroll-behavior: contain;
+  /* En móvil, `100vh` cuenta la barra de direcciones que luego se
+     retrae, así que el overlay se quedaba corto por abajo justo cuando
+     el usuario arrastraba. `dvh` mide el viewport que hay de verdad; el
+     `inset: 0` de la regla original sigue como respaldo donde no exista. */
+  height: 100dvh;
+}
+
+/* 3. Cierre del texto legal: grande y al final, donde acaba de leer. */
+.legal-dialog__foot {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--line);
+  background: var(--paper-raised);
+}
+
+.legal-dialog__done {
+  padding: var(--space-3) var(--space-6);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--green);
+  color: var(--hero-ink);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.legal-dialog__done:hover {
+  background: var(--green-deep);
+}
+
+/* 4. La tarjeta de bienvenida en pantallas cortas.
+   Con `align-items: center` y contenido más alto que la ventana, el
+   principio de la tarjeta queda cortado y no se puede alcanzar
+   desplazando. `margin: auto` (que ya estaba) lo evita, y esto asegura
+   además que haya aire arriba y abajo en lugar de que el texto toque el
+   borde. */
+@media (max-height: 720px) {
+  .onboarding {
+    align-items: flex-start;
+    padding-top: var(--space-5);
+    padding-bottom: var(--space-8);
+  }
+}

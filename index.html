@@ -14,6 +14,40 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/css/style.css">
+
+  <!-- ══ ANTES DE PINTAR NADA ══════════════════════════════════════════
+       Decide, de forma SÍNCRONA y antes del primer pintado, si este
+       visitante va a ver la pantalla de bienvenida. Si va a verla, marca
+       el <html> y el CSS esconde la aplicación entera desde el primer
+       fotograma.
+
+       Sin esto, la aplicación se pintaba primero y la bienvenida llegaba
+       después, al final del arranque: recargando rápido se veía el sitio
+       completo un instante ("если быстро обновлять страницу то можно
+       ненадолго увидеть основной сайт"), y en móvil quedaba un hueco por
+       el que asomaba la página al arrastrar.
+
+       Es deliberadamente CONSERVADOR y no duplica la lógica de
+       js/core/onboarding.js: solo mira si constan unas condiciones
+       aceptadas. Quien las tenga aceptadas nunca ve nada raro; quien no,
+       ve fondo liso hasta que el JavaScript decide de verdad. Si
+       localStorage no está disponible, no esconde nada -- ante la duda,
+       la aplicación.
+       ══════════════════════════════════════════════════════════════════ -->
+  <script>
+    (function () {
+      try {
+        var raw = localStorage.getItem("nutritionPlanner.onboarding.v1");
+        var estado = raw ? JSON.parse(raw) : null;
+        var aceptadas = estado && estado.termsAcceptedAt && estado.termsVersion;
+        if (!aceptadas) {
+          document.documentElement.className += " esperando-bienvenida";
+        }
+      } catch (err) {
+        /* sin localStorage no se esconde nada: mejor la app que un vacío */
+      }
+    })();
+  </script>
 </head>
 <body>
   <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
@@ -159,6 +193,14 @@
       <button type="button" class="auth-dialog__close" id="legalDialogCloseBtn" aria-label="Cerrar">&times;</button>
     </div>
     <div class="auth-dialog__body legal-dialog__body" id="legalDialogBody"></div>
+    <!-- Un cierre grande y al final del texto. La × de la esquina es
+         diminuta en un móvil, y tocar fuera de un <dialog> no lo cierra:
+         quien abría las condiciones para leerlas se quedaba encerrado, y
+         desde ahí "Continuar sin cuenta" no respondía porque el modal
+         estaba tapándolo. -->
+    <div class="legal-dialog__foot">
+      <button type="button" class="legal-dialog__done" id="legalDialogDoneBtn">Cerrar</button>
+    </div>
   </dialog>
 
   <div class="container">

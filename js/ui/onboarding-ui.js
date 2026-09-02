@@ -34,6 +34,26 @@
  * ─────────────────────────────────────────────────────────────────────────
  */
 
+// Red de seguridad. La marca `esperando-bienvenida` la pone un script del
+// <head> y la quita este módulo; si por lo que sea este módulo no llegara
+// a cargarse o fallara antes de decidir, el usuario se quedaría mirando un
+// fondo liso para siempre. Un fallo así no puede depender de que todo lo
+// demás funcione, así que el propio script se desarma solo pasados unos
+// segundos. Es puro seguro: en un arranque normal la marca ya no está.
+if (typeof window !== "undefined" && typeof window.setTimeout === "function") {
+  window.setTimeout(function () {
+    // Si la bienvenida está delante, todo va bien y no hay nada que
+    // rescatar: quitar la marca aquí solo serviría para devolverle el
+    // desplazamiento al documento de detrás, que es justo el "hueco" que
+    // el usuario veía al arrastrar en el móvil.
+    var alta = document.getElementById("onboarding");
+    if (alta && !alta.hidden) return;
+    if (document.documentElement) {
+      document.documentElement.classList.remove("esperando-bienvenida");
+    }
+  }, 3000);
+}
+
 var _onboardingIndex = 0;
 var _onboardingEls = null;
 var _onboardingOnFinish = null;
@@ -460,7 +480,25 @@ function _obFinishIntake() {
   }
 }
 
+/**
+ * Devuelve la aplicación a la vista.
+ *
+ * El script del <head> marca `esperando-bienvenida` en el <html> antes de
+ * pintar, para que no se vea la aplicación un instante antes de la
+ * bienvenida. Esa marca la quita SIEMPRE este módulo, en cuanto decide
+ * que no hay (o ya no hay) nada que enseñar. Olvidarlo dejaría la
+ * aplicación escondida para siempre, que es un fallo mucho peor que el
+ * destello que se estaba arreglando -- por eso se llama desde los dos
+ * caminos: al esconder el alta y al decidir no enseñarla.
+ */
+function _obRevealApp() {
+  if (document.documentElement) {
+    document.documentElement.classList.remove("esperando-bienvenida");
+  }
+}
+
 function _obHide() {
+  _obRevealApp();
   var root = _onboardingEls && _onboardingEls.root;
   if (!root) return;
   root.classList.add("is-leaving");
@@ -468,6 +506,9 @@ function _obHide() {
     root.hidden = true;
     root.classList.remove("is-leaving");
     document.body.classList.remove("is-onboarding");
+    if (document.documentElement) {
+      document.documentElement.classList.remove("is-onboarding");
+    }
   }, 260);
 }
 
@@ -475,7 +516,13 @@ function _obShow() {
   var root = _onboardingEls && _onboardingEls.root;
   if (!root) return;
   root.hidden = false;
+  // En <html> además de en <body>: en móvil el rebote elástico lo produce
+  // el elemento raíz, y bloquear solo el <body> dejaba asomar la página
+  // de debajo al arrastrar rápido.
   document.body.classList.add("is-onboarding");
+  if (document.documentElement) {
+    document.documentElement.classList.add("is-onboarding");
+  }
 }
 
 /**
@@ -532,6 +579,21 @@ function _obWire() {
   if (e.accept) e.accept.addEventListener("change", _obSyncTermsGate);
   if (e.openTerms) e.openTerms.addEventListener("click", openLegalDialog);
   if (e.legalClose) e.legalClose.addEventListener("click", _obCloseLegalDialog);
+
+  var legalDone = _obEl("legalDialogDoneBtn");
+  if (legalDone) legalDone.addEventListener("click", _obCloseLegalDialog);
+
+  // Tocar FUERA del diálogo también cierra. Un <dialog> no lo hace solo, y
+  // ese es el gesto que todo el mundo prueba primero en un móvil: sin
+  // esto, quien abría las condiciones se quedaba con un modal encima que
+  // se tragaba los toques dirigidos a los botones de debajo.
+  if (e.legalDialog) {
+    e.legalDialog.addEventListener("click", function (ev) {
+      // El propio <dialog> ocupa solo su caja; un clic cuyo `target` es el
+      // diálogo (y no algo de dentro) viene del backdrop.
+      if (ev.target === e.legalDialog) _obCloseLegalDialog();
+    });
+  }
 
   if (e.skipBtn) {
     e.skipBtn.addEventListener("click", function () {
@@ -599,7 +661,9 @@ function _obWire() {
  */
 function initOnboarding(opts) {
   var o = opts || {};
-  if (!_obEl("onboarding")) return;
+  // Si no existe el esqueleto del alta, la marca del <head> se quedaría
+  // puesta y la aplicación invisible. Se descubre antes que nada.
+  if (!_obEl("onboarding")) { _obRevealApp(); return; }
 
   _obCacheEls();
   _obWire();
@@ -623,7 +687,10 @@ function initOnboarding(opts) {
     _obShow();
     return;
   }
-  // "tour" y "done" no pintan nada aquí: el recorrido guiado es otro módulo.
+  // "tour" y "done" no pintan nada aquí: el recorrido guiado es otro
+  // módulo. Este usuario no ve la bienvenida, así que la aplicación tiene
+  // que aparecer ya.
+  _obRevealApp();
 }
 
 /**
