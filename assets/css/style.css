@@ -4548,8 +4548,22 @@ html.is-onboarding body > .container > :not(dialog) {
   display: none;
 }
 
-html.esperando-bienvenida .onboarding:not([hidden]),
-html.is-onboarding .onboarding:not([hidden]) {
+/* Antes de que el JavaScript decida nada, manda la marca del <head>: así
+   la bienvenida se ve aunque no llegue ni un módulo. */
+html.esperando-bienvenida .onboarding:not([hidden]) {
+  display: flex;
+}
+
+/* A partir de ahí manda `is-open`, y SOLO la ponen y la quitan _obShow()
+   y _obHide().
+   Antes la visibilidad dependía de las clases del <html>, que las tocan
+   media docena de sitios -- el script del <head>, _obRevealApp(), una
+   decisión tardía sobre la sesión... Cualquiera de ellos podía hacer
+   desaparecer el cuestionario en mitad de su uso, y el usuario lo vio:
+   "появляется и сразу же пропадает".
+   Con un interruptor propio, lo que se enseña deja de ser un efecto
+   secundario de otra cosa. */
+.onboarding.is-open:not([hidden]) {
   display: flex;
 }
 

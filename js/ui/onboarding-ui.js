@@ -90,9 +90,19 @@ function _obCacheEls() {
   return _onboardingEls;
 }
 
-/** Enseña una de las tres secciones y esconde las otras dos. */
+/**
+ * Enseña una de las tres secciones y esconde las otras dos.
+ *
+ * Y marca la pantalla como abierta. Hace falta porque antes de que el
+ * JavaScript decida nada, la bienvenida ya se ve gracias a la marca del
+ * <head>: el usuario puede pulsar un botón y entrar en el cuestionario
+ * mientras la decisión sobre la sesión sigue pendiente. Si esa decisión
+ * llegaba después y era "no hay nada que enseñar", quitaba la marca y el
+ * cuestionario se esfumaba a media frase.
+ */
 function _obShowStep(name) {
   var e = _onboardingEls;
+  if (e && e.root) e.root.classList.add("is-open");
   [["welcome", e.welcome], ["start", e.start], ["intake", e.intake]].forEach(function (pair) {
     if (pair[1]) pair[1].hidden = (pair[0] !== name);
   });
@@ -506,6 +516,7 @@ function _obHide() {
   root.classList.add("is-leaving");
   window.setTimeout(function () {
     root.hidden = true;
+    root.classList.remove("is-open");
     root.classList.remove("is-leaving");
     document.body.classList.remove("is-onboarding");
     if (document.documentElement) {
@@ -517,6 +528,8 @@ function _obHide() {
 function _obShow() {
   var root = _onboardingEls && _onboardingEls.root;
   if (!root) return;
+  // `is-open` es el ÚNICO interruptor de esta pantalla (ver style.css).
+  root.classList.add("is-open");
 
   // Un overlay a pantalla completa con las tres secciones escondidas es,
   // literalmente, una pantalla en blanco: tapa la aplicación y no enseña
@@ -529,6 +542,7 @@ function _obShow() {
     (e.start && !e.start.hidden) ||
     (e.intake && !e.intake.hidden);
   if (!hayAlgoQueEnsenar) {
+    root.classList.remove("is-open");
     _obRevealApp();
     root.hidden = true;
     return;
@@ -765,6 +779,15 @@ function _obCuandoSeSepaLaSesion(luego) {
 }
 
 function _obDecidirYPintar(o) {
+  // Si el usuario ya está dentro (pulsó un botón mientras se esperaba a
+  // saber si había sesión), esta decisión llega tarde y no manda: cerrarle
+  // el cuestionario a media frase es peor que cualquier respuesta que
+  // pudiéramos dar aquí.
+  if (_onboardingEls && _onboardingEls.root &&
+      _onboardingEls.root.classList.contains("is-open")) {
+    return;
+  }
+
   var state = typeof getOnboardingState === "function" ? getOnboardingState() : {};
   var step = typeof nextOnboardingStep === "function"
     ? nextOnboardingStep(state, { hasProfile: !!o.hasProfile, hasAccount: _obHayCuenta() })
