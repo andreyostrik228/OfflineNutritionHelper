@@ -646,7 +646,20 @@ function _obGoToIntake() {
   _obShowStep("start");
 }
 
+/**
+ * Cablea los botones UNA sola vez.
+ *
+ * initOnboarding() se llama más de una vez -- al arrancar y otra vez al
+ * cerrar sesión o borrar la cuenta -- y cada llamada volvía a añadir los
+ * mismos `addEventListener`. Medido: tras la segunda llamada, un solo
+ * clic en "Crear una cuenta" abría el diálogo DOS veces. Los listeners no
+ * se sustituyen, se acumulan.
+ */
+var _obCableado = false;
+
 function _obWire() {
+  if (_obCableado) return;
+  _obCableado = true;
   var e = _onboardingEls;
 
   if (e.accept) e.accept.addEventListener("change", _obSyncTermsGate);
