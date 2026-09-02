@@ -115,7 +115,7 @@ npx wrangler pages deploy "$DIR" --project-name=offline-nutrition-helper --commi
 ## 5. Probar
 
 ```bash
-node tests/run-tests.js     # 519 tests, todos deben pasar
+node tests/run-tests.js     # 522 tests, todos deben pasar
 ```
 
 El runner es casero y la lista de suites está **a mano** en
@@ -173,6 +173,27 @@ curl "https://tienda.mercadona.es/api/products/<id>/?lang=es&wh=3968"
   `gen_product_links.js` lo corta en el primer `(` para sacar el nombre
   exacto del producto, y dos tests lo verifican. Meter detalle *dentro*
   del nombre rompe el botón de la foto en silencio.
+
+**Dónde vive el pipeline que genera todo esto**, porque ningún documento lo
+decía y hay que buscarlo a mano:
+
+    C:\Users\andre\PycharmProjects\PythonProject
+
+Es un repo git aparte (rama `master`, **sin remote**: no hay push que valga,
+sus commits solo existen en local). `real-products.js` NO se edita a mano,
+sale de ahí:
+
+```bash
+.venv\Scripts\python.exe scripts\scrape_mercadona.py         # precios frescos
+.venv\Scripts\python.exe main.py                             # nutrición (RED REAL)
+.venv\Scripts\python.exe scripts\export_mercadona_products.py  # -> real-products.js
+```
+
+`main.py` hace tráfico real contra OpenFoodFacts y reescribe el catálogo:
+**no lo ejecutes sin que él lo pida**. Usa siempre el `python.exe` del
+`.venv` — el del PATH no tiene las dependencias. Y ojo con la consola: si no
+es UTF-8, este pipeline imprime nombres con acento y muere; `main.py` ya se
+protege, `main_alcampo.py` todavía no.
 
 ---
 
@@ -288,6 +309,22 @@ su fdcId real, y pasa todas las validaciones automáticas.
 Solo comprobar **qué es la cosa realmente** sirve. Por eso el
 emparejamiento automático de alimentos siempre lleva revisión humana.
 
+Dos instancias más, del 2026-09-03, por si hacían falta:
+
+- **Un pescado emparejó con una cerveza.** "Dorada sin limpiar" (dorada, el
+  pescado) casó con **"Dorada sin, con limón"** — que es una cerveza sin
+  alcohol — y se quedó con 31 kcal y **0,2 g de proteína**. Atwater cuadra,
+  el registro de OFF es real, el `score` es 0,65. Lo único que lo delata es
+  que una dorada no tiene 0,2 g de proteína. Salió marcado `needs_review`,
+  que es exactamente para lo que existe esa marca.
+- **La coincidencia por SUBCADENA convierte comida cruda en comida lista.**
+  En `classifyByNameFallback()` (`no-cook-classifier.js`), "Colas de gambón
+  **crudo**" casa con `"cola"` (el refresco) y "Rodaja de em**pera**dor" con
+  `"pera"` (la fruta). Las dos salían con **nivel 0, "abrir y comer"**:
+  marisco y pescado crudos. Es el mismo error de clase que `"te"` dentro de
+  `"textil"`, que el pipeline Python ya cerró con límites de palabra. Sigue
+  vivo para Alcampo, ver §8.
+
 ### 7.7 Limpiar código también hace daño
 
 Al quitar la traza temporal, un script borró **872 líneas en vez de 64**:
@@ -306,10 +343,32 @@ cuánto puede borrar el script.
 - **`scripts/export_product_allergens.py`** en el repo de Python:
   `product-allergens.js` solo es reproducible con un script del
   scratchpad que ya no existe.
-- **494 productos nuevos sin nutrición** hasta que se pase el enriquecedor
-  de OpenFoodFacts.
-- **`Congelados`** (254 productos comestibles) excluido de la exportación
-  al frontend.
+- ~~494 productos nuevos sin nutrición~~ y ~~`Congelados` excluido~~ —
+  **HECHOS el 2026-09-03**, ver el UPDATE de esa fecha en `STATE.md` para
+  las cifras. Lo que queda de ellos:
+  - **153 EAN se rindieron ante un HTTP 429** de OpenFoodFacts durante la
+    corrida. A propósito NO quedan cacheados como negativos, así que otra
+    corrida los reintenta: es cobertura aplazada, no perdida.
+  - **El plan "sin cocinar" no etiqueta las aproximaciones.** El panel de
+    productos sí (`renderConfidenceBadge`, "EAN ✓" o el nivel de
+    confianza); las tarjetas de comida no dicen nada. Antes de la corrida
+    daba igual (0% de los items venían de una aproximación sin revisar);
+    ahora son el **7%**, y el 15% del pool está en `needs_review`. Es un
+    incumplimiento medible de la regla del propio proyecto: lo aproximado
+    se etiqueta.
+  - **La coincidencia por subcadena de `classifyByNameFallback()` sigue
+    rota** (ver §7.6). Para Mercadona ya no se alcanza —`Congelados` está
+    en `NO_COOK_EXCLUDED_CATEGORIES`—, pero es la única ruta de Alcampo.
+    Hoy no muerde porque el pool de Alcampo está vacío; el día que tenga
+    nutrición, sí.
+
+  **Y una advertencia sobre cómo estaba escrita la tarea de `Congelados`
+  aquí:** decía "excluido de la exportación", lo que sugiere que bastaba
+  quitar el filtro. No bastaba, y hacerlo solo habría sido peor. Medido:
+  quitarlo y ya no cambiaba nada (200 de 200 planes idénticos), y tras
+  enriquecer habría metido pizza, helado y croquetas en las comidas.
+  `real-products.js` tiene **dos consumidores** y solo uno debía verlos.
+  Si una tarea de esta lista parece un interruptor, mídela antes.
 - **El día de 8 € no cuadra el 61% de las veces** con los envases reales.
   El motor lo declara honestamente (`status: minimal`, violación
   `budget`), pero si se quiere arreglar de verdad hay que enseñarle a

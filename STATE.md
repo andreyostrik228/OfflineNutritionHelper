@@ -5,6 +5,95 @@
 > Escrito para alguien que llega SIN NINGÚN contexto previo. Si solo lees
 > una parte de este archivo, que sea esta.
 >
+> ### ⏩ UPDATE 2026-09-03 — congelados en el catálogo, y la primera corrida del enricher
+>
+> Las dos tareas abiertas de `HANDOFF.md` §8 ("494 productos sin nutrición"
+> y "Congelados excluido"). Frontend `aae233c` (pusheado, **no desplegado**),
+> Python `9dff75a` (repo local, sin remote). **522 tests + 92 de Python.**
+>
+> **La tarea de `Congelados` estaba mal planteada, y medirlo antes lo
+> salvó.** Estaba escrita como "excluido de la exportación", que suena a
+> quitar un filtro. Se midió primero: quitarlo cambiaba **200 de 200 planes
+> en NADA** (los 4 congelados que entraban al pool tienen `role = null` y no
+> pueden rellenar ningún hueco de plantilla). Y suponiéndoles nutrición, el
+> clasificador dejaba pasar 55, **48 por `classifyByNameFallback()`** — la
+> rama que para Mercadona nunca se había alcanzado, y que casa por
+> SUBCADENA: "Colas de gambón **crudo**" con `"cola"` (el refresco) y
+> "Rodaja de em**pera**dor" con `"pera"` (la fruta), las dos con **nivel 0,
+> "abrir y comer"**. Marisco y pescado crudos.
+>
+> Lo que hizo la tarea viable: `real-products.js` tiene **dos consumidores**
+> y solo uno debía verlos. El panel de productos (`render-real-products.js`)
+> solo busca por texto, así que ahí los congelados son 254 productos más con
+> precio real; el motor "sin cocinar" no debe verlos nunca. Así que entran
+> al export **y** `"Congelados"` entra en `NO_COOK_EXCLUDED_CATEGORIES`, con
+> la medición escrita al lado. La garantía vive en el mismo archivo que el
+> riesgo. Catálogo 3495 → **3749** (verificado comparando los JSON
+> parseados: +254, 0 borrados, 0 campos cambiados en los existentes — el
+> `git diff` de 31k líneas es artefacto del algoritmo sobre JSON uniforme).
+>
+> **La guarda parecía inerte y dejó de serlo el mismo día.** Al añadirla
+> movía el pool de 1175 a 1171 y los planes en 0. Tras el enrichment, que
+> dio nutrición a **158 congelados**, se volvió a medir: sin ella entrarían
+> **35** al pool y saldrían **15 veces en 200 planes** (pizza, helado,
+> croquetas, tarta de queso). El daño era latente y la corrida lo activaba.
+>
+> **Provider híbrido** (`providers/off_hybrid.py`, nuevo). El índice local
+> es la buena ruta para buscar por NOMBRE y `main_alcampo.py` ya la usaba,
+> pero Mercadona no podía: `OpenFoodFactsLocal` **no implementa
+> `get_by_ean`**. Alcampo no expone EAN, así que el hueco era invisible;
+> Mercadona sí, y la corrida moría con `AttributeError` en el primero de los
+> 425 EAN sin cachear. El híbrido compone: EAN → API, nombre → índice local.
+> Su `SOURCE_ID` se **delega** al provider de nombres en vez de escribirse
+> como constante, para que la clave de caché siga siempre a quien de verdad
+> contesta (es el bug que ya costó 659 negativos falsos).
+>
+> **Corrida del enricher** (`enable_generic=False`, sin tocar qué se
+> escribe): **1702 → 2396 productos con kcal (+694)**, 0 perdidos, 176 por
+> EAN y 518 por nombre, y **476 de los 694 (69%) marcados `needs_review`**.
+> OpenFoodFacts limitó la tasa: 777 avisos 429, **153 se rindieron** — no se
+> cachean como negativos, así que otra corrida los reintenta.
+>
+> Medido sobre 200 planes con semillas fijas, antes y después:
+>
+> | | antes | después |
+> | --- | --- | --- |
+> | pool elegible | 1171 | **1448** |
+> | kcal dentro de ±10% | 90,5% | **93,5%** |
+> | productos distintos usados | 278 | **308** |
+> | error medio de kcal | 4,0% | 4,1% *(peor)* |
+> | coste medio | 13,61 € | 13,73 € *(peor)* |
+> | proteína media | 108 g | 108 g |
+> | items de aproximación sin revisar | 4/2795 (0%) | **182/2797 (7%)** |
+>
+> Esa última fila es el precio de la corrida, y es el motivo de que el 69%
+> lleve marca: hay más catálogo utilizable y una parte medible es una
+> conjetura. El 15% del pool está en `needs_review`.
+>
+> **Dos defectos que solo aparecieron al EJECUTAR, no al leer:**
+> 1. La corrida murió antes de tocar un producto: `main.py` imprimía
+>    "Índice" y la consola era cp1251. No era cosmético — el pipeline
+>    imprime el nombre de CADA producto y el catálogo está lleno de "Piña"
+>    y "Jamón". `main_alcampo.py` lleva el mismo fallo latente.
+> 2. **El exportador tiraba la marca de "sin revisar".** Estaba escrito
+>    sobre la premisa de que `nutrition_source`/`needs_review` no están en
+>    `products.db.json` — cierto hasta esa corrida, falso después. Habría
+>    publicado los 694 como `needsReview: false`, o sea conjeturas de
+>    máquina presentadas como dato verificado. Ahora manda la procedencia
+>    del catálogo y el arrastre del js anterior queda solo para los legacy.
+>
+> El caso que lo hace concreto: **"Dorada sin limpiar" (un pescado) emparejó
+> con "Dorada sin, con limón" (una cerveza sin alcohol)** y se quedó con 31
+> kcal y 0,2 g de proteína. Atwater cuadra, el registro es real, la cosa no
+> es un pescado. El scorer lo cazó (0,65 / `very_low`); lo que faltaba era
+> que la marca sobreviviera al export. Ahora llega como
+> `openfoodfacts_name` / `very_low` / `needsReview: true`.
+>
+> **Hueco conocido que queda:** el panel de productos etiqueta esto
+> honestamente (`renderConfidenceBadge`), pero **las tarjetas de comida de
+> "sin cocinar" no etiquetan nada**. Con 0% daba igual; con 7% es un
+> incumplimiento real de la regla del proyecto. Sin hacer, a propósito.
+>
 > ### ⏩ UPDATE 2026-08-31 — T1 hecho; el auto-push ocurrió una tercera vez
 >
 > Los siete diffs de más abajo **YA ESTÁN commiteados y en `origin/main`.**
@@ -424,9 +513,11 @@
 > bueno: es una foto vieja, no el proyecto. Si `git status` falla o
 > `node tests/run-tests.js` no existe, estás en la copia equivocada.
 >
-> Estado del repo real: **HEAD `ee054be`, 384 tests en verde** (ver los dos
-> UPDATE de arriba: `4477365` tras T1, luego T2/T3/T4/T5 y las tareas
-> A/B/C).
+> Estado del repo real al 2026-09-03: **HEAD `aae233c`, 522 tests en verde**
+> (ver el UPDATE del 2026-09-03 arriba). El pipeline Python vive aparte, en
+> `C:\Users\andre\PycharmProjects\PythonProject` — rama `master`, **sin
+> remote**, HEAD `9dff75a`, 92 tests. Comprueba con `git log -1` en AMBOS
+> antes de fiarte de esta foto.
 >
 > ### 1. YA COMMITEADO (2026-08-31), y "sin comitear" nunca fue garantía
 >
