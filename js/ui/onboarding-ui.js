@@ -492,9 +492,14 @@ function _obFinishIntake() {
  * caminos: al esconder el alta y al decidir no enseñarla.
  */
 function _obRevealApp() {
-  if (document.documentElement) {
-    document.documentElement.classList.remove("esperando-bienvenida");
-  }
+  if (!document.documentElement) return;
+  // LAS DOS marcas que esconden la aplicación, no solo una. Quitar
+  // `esperando-bienvenida` y dejarse `is-onboarding` deja la pantalla
+  // igual de vacía -- comprobado forzando el fallo: el overlay se
+  // escondía solo, correctamente, y detrás seguía sin haber nada.
+  document.documentElement.classList.remove("esperando-bienvenida");
+  document.documentElement.classList.remove("is-onboarding");
+  document.body.classList.remove("is-onboarding");
 }
 
 function _obHide() {
@@ -515,6 +520,23 @@ function _obHide() {
 function _obShow() {
   var root = _onboardingEls && _onboardingEls.root;
   if (!root) return;
+
+  // Un overlay a pantalla completa con las tres secciones escondidas es,
+  // literalmente, una pantalla en blanco: tapa la aplicación y no enseña
+  // nada. No debería poder pasar, y justo por eso se comprueba -- un fallo
+  // que "no debería poder pasar" y que deja al usuario sin nada delante
+  // vale más comprobarlo que razonarlo.
+  var e = _onboardingEls;
+  var hayAlgoQueEnsenar =
+    (e.welcome && !e.welcome.hidden) ||
+    (e.start && !e.start.hidden) ||
+    (e.intake && !e.intake.hidden);
+  if (!hayAlgoQueEnsenar) {
+    _obRevealApp();
+    root.hidden = true;
+    return;
+  }
+
   root.hidden = false;
   // En <html> además de en <body>: en móvil el rebote elástico lo produce
   // el elemento raíz, y bloquear solo el <body> dejaba asomar la página

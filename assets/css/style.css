@@ -3273,7 +3273,10 @@ dialog.auth-dialog::backdrop {
 }
 
 dialog.auth-dialog[open] {
-  animation: pageIn 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  /* Sin `both` y con pageIn ya sin opacidad: un diálogo que se quedara
+     invisible seguiría capturando los toques de lo que hay debajo -- que
+     es justo lo que hacía que "Continuar sin cuenta" no respondiera. */
+  animation: pageIn 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 /* Despensa (2026-08-23): un poco más ancha que el resto de diálogos para
@@ -3468,9 +3471,29 @@ dialog.despensa-dialog[open] {
   .form-grid .field:nth-child(8) { animation-delay: 0.34s; } /* budget — now visually 3rd */
 }
 
+/* ── `pageIn` ya NO desvanece, solo desliza (2026-09-02) ───────────────
+   Antes era `from { opacity: 0; transform: translateY(10px) }` y se
+   aplicaba con `animation-fill-mode: both` a `.hero`, `.field` (los 26
+   campos), `.actions` y `.panel--results`. El fill-mode hace que el
+   elemento adopte el fotograma inicial ANTES de empezar y se quede ahí si
+   la animación nunca corre -- que es exactamente lo que ocurre en un
+   móvil con el ahorro de batería de Android, o con "duración de
+   animación" a cero en opciones de desarrollador.
+
+   Resultado: la aplicación entera invisible, presente y desplazable. El
+   usuario lo describió tres veces ("просто пустой экран") y aquí no se
+   reprodujo NUNCA porque este navegador de pruebas declara
+   `prefers-reduced-motion: reduce`, y toda esta sección vive dentro de un
+   `no-preference` -- la comprobación se saltaba el fallo por completo.
+
+   Animar solo el `transform` quita el riesgo sin quitar el efecto: si la
+   animación no se ejecuta, lo peor que pasa es que los elementos se
+   queden 10 px más abajo. Visibles, que es lo único que no es negociable.
+   La misma regla vale para cualquier animación de entrada que se añada
+   aquí: el estado en reposo tiene que ser el visible. */
 @keyframes pageIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { transform: translateY(10px); }
+  to   { transform: translateY(0); }
 }
 
 /* ── Pasos de elaboración en la tarjeta de comida (2026-08-26) ──────────
@@ -3774,7 +3797,19 @@ dialog.despensa-dialog[open] {
   justify-content: center;
   padding: var(--space-6) var(--space-5);
   overflow-y: auto;
-  animation: onboarding-in 320ms ease-out both;
+
+  /* SIN `both`. Con `animation-fill-mode: both` el elemento adopta el
+     fotograma inicial -- `opacity: 0` -- antes incluso de empezar, y se
+     queda ahí para siempre si la animación no llega a ejecutarse: es lo
+     que pasa con el ahorro de batería de Android o con la duración de
+     animaciones puesta a cero. El resultado es esta pantalla, presente y
+     completamente invisible: el "pustoy ekran" que el usuario veía y que
+     aquí nunca se reprodujo porque este navegador tiene el movimiento
+     reducido activado y mi propia regla de `prefers-reduced-motion`
+     apagaba la animación, tapando el fallo.
+     Sin fill-mode, el estado en reposo es el normal (visible) y la
+     animación solo adorna la entrada. */
+  animation: onboarding-in 320ms ease-out;
 }
 
 @keyframes onboarding-in {
@@ -3803,8 +3838,10 @@ body.is-onboarding {
   margin: auto;
 }
 
+/* Mismo motivo que arriba: el contenido de cada paso nunca puede depender
+   de que una animación se ejecute para ser visible. */
 .onboarding__step {
-  animation: onboarding-step-in 260ms ease-out both;
+  animation: onboarding-step-in 260ms ease-out;
 }
 
 @keyframes onboarding-step-in {

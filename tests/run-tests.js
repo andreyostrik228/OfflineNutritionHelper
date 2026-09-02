@@ -79,7 +79,8 @@ var suites = [
   "migration.test",
   "cloud-sync.test",
   "auth.test",
-  "onboarding.test"
+  "onboarding.test",
+  "css-visibility.test"
 ];
 
 (async function () {

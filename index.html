@@ -36,16 +36,61 @@
        ══════════════════════════════════════════════════════════════════ -->
   <script>
     (function () {
+      var raiz = document.documentElement;
+
+      /**
+       * QUIEN ESCONDE, DESESCONDE.
+       *
+       * Esta es la regla que faltaba y que costó una pantalla en blanco.
+       * Esconder la aplicación se hace aquí, en el HTML, que el navegador
+       * nunca cachea mucho tiempo; volver a enseñarla se hacía en
+       * js/ui/onboarding-ui.js, que sí se cachea. Un móvil con el HTML
+       * nuevo y el JavaScript viejo se queda sin nadie que la devuelva, y
+       * el resultado es un fondo liso para siempre.
+       *
+       * Así que la garantía vive aquí, junto al riesgo, y no depende de
+       * que ningún otro archivo llegue, se ejecute o esté al día.
+       */
+      function mostrarLaAplicacion() {
+        // Las DOS marcas que esconden la aplicacion: la de antes de pintar
+        // y la que pone el modulo mientras la bienvenida esta delante. Si
+        // el modulo se quedara a medias, la segunda tampoco puede dejar la
+        // pantalla vacia. (Sin acentos: dentro de <script> las entidades
+        // HTML no se decodifican.)
+        raiz.className = raiz.className
+          .replace(/\besperando-bienvenida\b/g, "")
+          .replace(/\bis-onboarding\b/g, "");
+      }
+
       try {
         var raw = localStorage.getItem("nutritionPlanner.onboarding.v1");
         var estado = raw ? JSON.parse(raw) : null;
         var aceptadas = estado && estado.termsAcceptedAt && estado.termsVersion;
         if (!aceptadas) {
-          document.documentElement.className += " esperando-bienvenida";
+          raiz.className += " esperando-bienvenida";
+        } else {
+          return;   // ya aceptó: no se esconde nada y no hay nada que vigilar
         }
       } catch (err) {
         /* sin localStorage no se esconde nada: mejor la app que un vacío */
+        return;
       }
+
+      // En cuanto la página está montada: si la bienvenida no está delante
+      // (no cargó, falló, o este usuario no tenía que verla), se devuelve
+      // la aplicación en el acto en vez de dejar un hueco.
+      function comprobar() {
+        var alta = document.getElementById("onboarding");
+        var visible = alta && !alta.hidden;
+        if (!visible) mostrarLaAplicacion();
+      }
+      document.addEventListener("DOMContentLoaded", function () {
+        window.setTimeout(comprobar, 400);
+      });
+
+      // Y un tope duro. Pase lo que pase, nadie se queda mirando un fondo
+      // liso más de esto.
+      window.setTimeout(comprobar, 2500);
     })();
   </script>
 </head>
