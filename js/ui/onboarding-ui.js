@@ -54,6 +54,51 @@ if (typeof window !== "undefined" && typeof window.setTimeout === "function") {
   }, 3000);
 }
 
+// ══ MODO DIAGNÓSTICO (temporal) ═══════════════════════════════════════
+// Se enciende con ?diag=1 en la URL y no hace nada sin él.
+//
+// Vuelve por segunda vez porque la pantalla sigue fallando en el móvil del
+// usuario y no aquí. La primera versión iba abajo y le tapaba los botones
+// -- tuvo que poner el navegador en modo escritorio para poder pulsarlos.
+// Ahora va ARRIBA, ocupa poco y se puede cerrar.
+var _obDiag = (function () {
+  try {
+    return typeof location !== "undefined" && /[?&]diag=1/.test(location.search);
+  } catch (err) { return false; }
+})();
+var _obDiagLineas = [];
+
+function _obApunta(que, detalle) {
+  if (!_obDiag) return;
+  _obDiagLineas.push(Math.round(performance.now()) + "ms  " + que + (detalle ? "  " + detalle : ""));
+  _obPintaDiag();
+}
+
+function _obPintaDiag() {
+  var caja = document.getElementById("obDiagPanel");
+  if (!caja) {
+    caja = document.createElement("div");
+    caja.id = "obDiagPanel";
+    // Arriba, y por encima de todo (el alta usa z-index 200).
+    caja.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:99999;" +
+      "max-height:38vh;overflow:auto;background:rgba(33,26,20,0.94);color:#f7f1e5;" +
+      "font:11px/1.4 monospace;padding:6px 30px 6px 6px;white-space:pre-wrap;";
+    var cerrar = document.createElement("button");
+    cerrar.type = "button";
+    cerrar.textContent = "x";
+    cerrar.style.cssText = "position:fixed;top:2px;right:2px;z-index:100000;" +
+      "width:26px;height:26px;border:0;border-radius:4px;background:#bd4e28;" +
+      "color:#fff;font:bold 14px monospace;cursor:pointer;";
+    cerrar.addEventListener("click", function () {
+      caja.remove(); cerrar.remove();
+    });
+    document.body.appendChild(caja);
+    document.body.appendChild(cerrar);
+  }
+  caja.textContent = _obDiagLineas.join(String.fromCharCode(10));
+  caja.scrollTop = caja.scrollHeight;
+}
+
 // Se pone al abrir el diálogo de acceso y se consume al entrar: es lo que
 // separa "este usuario acaba de pedir entrar" de "Supabase ha restaurado
 // una sesión que ya existía".
@@ -106,6 +151,7 @@ function _obCacheEls() {
  * cuestionario se esfumaba a media frase.
  */
 function _obShowStep(name) {
+  _obApunta("_obShowStep", name);
   var e = _onboardingEls;
   if (e && e.root) e.root.classList.add("is-open");
   [["welcome", e.welcome], ["start", e.start], ["intake", e.intake]].forEach(function (pair) {
@@ -429,6 +475,7 @@ function _obValidateNumber(step, raw) {
 }
 
 function _obNext() {
+  _obApunta("_obNext", "indice=" + _onboardingIndex);
   var steps = _obSteps();
   var step = steps[_onboardingIndex];
   var e = _onboardingEls;
@@ -483,6 +530,7 @@ function _obBack() {
 }
 
 function _obFinishIntake() {
+  _obApunta("_obFinishIntake", "indice=" + _onboardingIndex);
   if (typeof completeIntake === "function") {
     completeIntake();
   }
@@ -515,6 +563,7 @@ function _obRevealApp() {
 }
 
 function _obHide() {
+  _obApunta("_obHide  <-- ESCONDE", (new Error()).stack.split(String.fromCharCode(10)).slice(1,4).join(" << "));
   _obRevealApp();
   var root = _onboardingEls && _onboardingEls.root;
   if (!root) return;
@@ -533,6 +582,7 @@ function _obHide() {
 function _obShow() {
   var root = _onboardingEls && _onboardingEls.root;
   if (!root) return;
+  _obApunta("_obShow");
   // `is-open` es el ÚNICO interruptor de esta pantalla (ver style.css).
   root.classList.add("is-open");
 
@@ -785,6 +835,7 @@ function _obCuandoSeSepaLaSesion(luego) {
 }
 
 function _obDecidirYPintar(o) {
+  _obApunta("_obDecidirYPintar", "hayCuenta=" + _obHayCuenta() + " isOpen=" + (_onboardingEls && _onboardingEls.root ? _onboardingEls.root.classList.contains("is-open") : "?"));
   // Si el usuario ya está dentro (pulsó un botón mientras se esperaba a
   // saber si había sesión), esta decisión llega tarde y no manda: cerrarle
   // el cuestionario a media frase es peor que cualquier respuesta que
@@ -845,10 +896,12 @@ function _obDecidirYPintar(o) {
  * sesión restaurada al cargar la página no lo es.
  */
 function markSignInRequested() {
+  _obApunta("markSignInRequested");
   _obEsperandoEntrada = true;
 }
 
 function startIntakeAfterSignIn() {
+  _obApunta("startIntakeAfterSignIn", "esperandoEntrada=" + _obEsperandoEntrada);
   // Solo si el usuario ACABA de pedir entrar desde esta pantalla.
   //
   // Supabase emite SIGNED_IN también al restaurar una sesión al cargar la
@@ -889,6 +942,7 @@ function startIntakeAfterSignIn() {
  * cuanto se sabe.
  */
 function dismissWelcomeIfSignedIn() {
+  _obApunta("dismissWelcomeIfSignedIn");
   if (!_onboardingEls || !_onboardingEls.root) return;
   if (_onboardingEls.root.hidden) return;
   // Solo la pantalla de la cuenta: si está en las preguntas, se le deja
