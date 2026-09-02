@@ -61,11 +61,18 @@ if (typeof window !== "undefined" && typeof window.setTimeout === "function") {
 // usuario y no aquí. La primera versión iba abajo y le tapaba los botones
 // -- tuvo que poner el navegador en modo escritorio para poder pulsarlos.
 // Ahora va ARRIBA, ocupa poco y se puede cerrar.
-var _obDiag = (function () {
-  try {
-    return typeof location !== "undefined" && /[?&]diag=1/.test(location.search);
-  } catch (err) { return false; }
-})();
+// TEMPORALMENTE ENCENDIDO PARA TODOS.
+//
+// Estaba detrás de ?diag=1 y el usuario informó de que no le salía la
+// polea. La causa más probable era una copia vieja del script en la caché
+// de su móvil -- ya arreglada con el sello de versión de index.html --
+// pero mientras se busca el fallo no compensa depender de que el
+// parámetro llegue, sobreviva al redirect y encuentre el JavaScript
+// correcto. Con una sola persona usando esto de verdad, enseñar la traza
+// a todo el mundo cuesta poco y ahorra otra vuelta entera.
+//
+// SE QUITA EN CUANTO SE SEPA LA CAUSA.
+var _obDiag = true;
 var _obDiagLineas = [];
 
 function _obApunta(que, detalle) {
