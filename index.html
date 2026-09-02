@@ -61,6 +61,106 @@
     </symbol>
   </svg>
 
+  <!-- ══ PRIMERA VISITA ═══════════════════════════════════════════════
+       Tapa la aplicación entera hasta que el usuario ha aceptado las
+       condiciones y ha dado sus datos. Va ANTES que el resto del body a
+       propósito: si el JavaScript tardara o fallara, lo que se ve es el
+       formulario normal, nunca una pantalla a medias.
+
+       Nace `hidden`, y solo js/ui/onboarding-ui.js decide enseñarlo. Un
+       usuario que ya pasó por aquí no llega a verlo parpadear.
+
+       Todo el contenido lo pinta el JavaScript desde js/data/legal.js y
+       js/data/onboarding-steps.js -- aquí solo está el esqueleto, para
+       que el texto legal y las preguntas vivan en un solo sitio.
+       ══════════════════════════════════════════════════════════════════ -->
+  <div class="onboarding" id="onboarding" hidden>
+    <div class="onboarding__card" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
+
+      <!-- Paso 1: bienvenida, cuenta y condiciones -->
+      <section class="onboarding__step" id="onboardingWelcome" hidden>
+        <div class="onboarding__brand">
+          <span class="onboarding__brand-mark" aria-hidden="true">
+            <svg width="20" height="20"><use href="#icon-chef"/></svg>
+          </span>
+          <span class="onboarding__brand-name">Planificador de nutrici&oacute;n</span>
+        </div>
+
+        <h1 class="onboarding__title" id="onboardingTitle">
+          Men&uacute;s de una semana,<br><span class="onboarding__title-accent">con lo que cuestan de verdad</span>
+        </h1>
+
+        <ul class="onboarding__summary" id="onboardingSummary"></ul>
+
+        <div class="onboarding__terms">
+          <label class="onboarding__check">
+            <input type="checkbox" id="onboardingAcceptTerms">
+            <span>He le&iacute;do y acepto las <button type="button" class="onboarding__link" id="onboardingOpenTerms">condiciones de uso y privacidad</button>.</span>
+          </label>
+        </div>
+
+        <div class="onboarding__actions">
+          <button type="button" class="onboarding__btn onboarding__btn--primary" id="onboardingCreateAccountBtn" disabled>
+            Crear una cuenta
+          </button>
+          <button type="button" class="onboarding__btn onboarding__btn--ghost" id="onboardingSignInBtn" disabled>
+            Ya tengo cuenta
+          </button>
+        </div>
+
+        <button type="button" class="onboarding__skip" id="onboardingSkipAccountBtn" disabled>
+          Continuar sin cuenta
+        </button>
+        <p class="onboarding__skip-note">
+          Sin cuenta funciona todo igual: tus datos se quedan en este navegador.
+          Puedes crearla m&aacute;s tarde y se sincronizar&aacute;n.
+        </p>
+      </section>
+
+      <!-- Paso 2: una pregunta por pantalla -->
+      <section class="onboarding__step" id="onboardingIntake" hidden>
+        <div class="onboarding__progress" aria-hidden="true">
+          <div class="onboarding__progress-bar" id="onboardingProgressBar"></div>
+        </div>
+        <p class="onboarding__progress-label" id="onboardingProgressLabel"></p>
+
+        <h2 class="onboarding__question" id="onboardingQuestion"></h2>
+        <p class="onboarding__hint" id="onboardingHint" hidden></p>
+
+        <div class="onboarding__answer" id="onboardingAnswer"></div>
+
+        <p class="onboarding__error" id="onboardingIntakeError" hidden></p>
+
+        <div class="onboarding__nav">
+          <button type="button" class="onboarding__btn onboarding__btn--ghost" id="onboardingBackBtn">Atr&aacute;s</button>
+          <button type="button" class="onboarding__btn onboarding__btn--primary" id="onboardingNextBtn">Siguiente</button>
+        </div>
+      </section>
+
+      <!-- Paso 0: el bot&oacute;n &uacute;nico del centro -->
+      <section class="onboarding__step onboarding__step--single" id="onboardingStart" hidden>
+        <h2 class="onboarding__question">Vamos a calcular lo que necesitas</h2>
+        <p class="onboarding__hint">
+          Siete preguntas cortas. Nada m&aacute;s, y todo se puede cambiar despu&eacute;s.
+        </p>
+        <button type="button" class="onboarding__btn onboarding__btn--primary onboarding__btn--big" id="onboardingStartBtn">
+          Empezar
+        </button>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- Texto legal completo. Vive fuera del alta porque tambi&eacute;n se abre
+       desde el pie de p&aacute;gina, cuando ya hace mucho que se acept&oacute;. -->
+  <dialog class="auth-dialog legal-dialog" id="legalDialog">
+    <div class="auth-dialog__head">
+      <h2>Condiciones de uso y privacidad</h2>
+      <button type="button" class="auth-dialog__close" id="legalDialogCloseBtn" aria-label="Cerrar">&times;</button>
+    </div>
+    <div class="auth-dialog__body legal-dialog__body" id="legalDialogBody"></div>
+  </dialog>
+
   <div class="container">
     <!-- ══ CUENTA: botón de perfil + diálogos de acceso — ver
          js/ui/render-auth.js. Modo invitado (sin cuenta) sigue siendo
@@ -75,7 +175,13 @@
 
       <div class="topbar__menu" id="authUserMenu" hidden>
         <div class="topbar__menu-email" id="authUserEmail"></div>
-        <button type="button" class="topbar__menu-logout" id="authLogoutBtn">Cerrar sesi&oacute;n</button>
+        <button type="button" class="topbar__menu-item" id="authLogoutBtn">Cerrar sesi&oacute;n</button>
+        <!-- Separado y en rojo: es la &uacute;nica acci&oacute;n irreversible de toda la
+             aplicaci&oacute;n. Cerrar sesi&oacute;n dej&oacute; de ser roja el 2026-09-02
+             precisamente para que el color signifique algo. -->
+        <button type="button" class="topbar__menu-item topbar__menu-item--danger" id="authDeleteAccountBtn">
+          Borrar mi cuenta
+        </button>
       </div>
     </header>
 
@@ -127,6 +233,36 @@
         </div>
 
         <p class="auth-dialog__guest-note">Puedes cerrar esto y seguir usando la app sin cuenta en cualquier momento.</p>
+      </div>
+    </dialog>
+
+    <!-- ══ BORRAR LA CUENTA ══════════════════════════════════════════════
+         Confirmaci&oacute;n aparte, y no un confirm() del navegador, porque hay
+         que decir EXACTAMENTE qu&eacute; desaparece y qu&eacute; no. La acci&oacute;n destructiva
+         no es el bot&oacute;n por defecto: para dispararla hay que ir a buscarla.
+         ═══════════════════════════════════════════════════════════════════ -->
+    <dialog class="auth-dialog auth-dialog--conflict" id="authDeleteDialog">
+      <div class="auth-dialog__head">
+        <h2>&iquest;Borrar tu cuenta?</h2>
+      </div>
+      <div class="auth-dialog__body">
+        <p class="auth-dialog__notice-static">
+          Se borran ahora mismo y para siempre tu cuenta y todo lo que tuvieras
+          guardado en la nube: tu perfil, tu despensa y tus planes. No se puede deshacer.
+        </p>
+        <p class="delete-dialog__note">
+          Lo que tengas guardado en <strong>este navegador</strong> no se toca:
+          podr&aacute;s seguir usando la aplicaci&oacute;n sin cuenta, igual que antes de crearla.
+        </p>
+        <p class="auth-dialog__error" id="authDeleteError" hidden></p>
+        <div class="delete-dialog__actions">
+          <button type="button" class="auth-dialog__switch-btn" id="authDeleteCancelBtn">
+            No, volver
+          </button>
+          <button type="button" class="delete-dialog__confirm" id="authDeleteConfirmBtn">
+            S&iacute;, borrar mi cuenta
+          </button>
+        </div>
       </div>
     </dialog>
 
@@ -678,6 +814,22 @@
     </div>
 
     </main>
+
+    <!-- ══ PIE ═══════════════════════════════════════════════════════════
+         Dos cosas que tienen que seguir estando a mano cuando el alta ya
+         es un recuerdo: el texto que se aceptó (nadie recuerda qué firmó,
+         y tiene que poder releerse) y la forma de repetir la explicación
+         (que hoy solo aparece una vez, la primera).
+         ══════════════════════════════════════════════════════════════════ -->
+    <footer class="site-footer">
+      <button type="button" class="site-footer__link" id="footerLegalBtn">
+        Condiciones de uso y privacidad
+      </button>
+      <span class="site-footer__sep" aria-hidden="true">&middot;</span>
+      <button type="button" class="site-footer__link" id="footerTourBtn">
+        Ver la explicaci&oacute;n otra vez
+      </button>
+    </footer>
   </div>
 
   <!-- Scripts — orden obligatorio, cada archivo depende de los anteriores -->
@@ -690,6 +842,9 @@
  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.min.js"></script>
 
 <script src="js/data/supabase-config.js"></script>
+<script src="js/data/legal.js"></script>
+<script src="js/data/onboarding-steps.js"></script>
+<script src="js/data/tour-steps.js"></script>
 <script src="js/data/dishes.js"></script>
 <!-- dish-instructions.js: pasos/equipo/dificultad, ADITIVO y opcional.
      Un plato sin entrada aqui se comporta exactamente como antes -- por
@@ -747,6 +902,7 @@
 <script src="js/core/meal-schedule.js"></script>
 <script src="js/core/supabase-client.js"></script>
 <script src="js/core/settings.js"></script>
+<script src="js/core/onboarding.js"></script>
 <script src="js/core/auth.js"></script>
 <script src="js/core/cloud-sync.js"></script>
 <script src="js/core/migration.js"></script>
@@ -761,6 +917,8 @@
 <script src="js/ui/render-real-products.js"></script>
 <script src="js/ui/render-no-cook.js"></script>
 <script src="js/ui/render-auth.js"></script>
+<script src="js/ui/onboarding-ui.js"></script>
+<script src="js/ui/tour.js"></script>
 <script src="js/ui/ingredient-suggest.js"></script>
 <script src="js/ui/animations.js"></script>
 <script src="js/app.js"></script>

@@ -50,6 +50,7 @@ var authDialogEl, authDialogTitle, authDialogCloseBtn;
 var authGoogleBtn, authEmailForm, authEmailInput, authPasswordInput, authErrorEl, authNoticeEl,
     authSubmitBtn, authSwitchPrompt, authSwitchModeBtn, authUnavailableBox, authAvailableBox;
 var authConflictDialogEl, authConflictKeepCloudBtn, authConflictMergeBtn, authConflictKeepLocalBtn;
+var authDeleteAccountBtn, authDeleteDialogEl, authDeleteConfirmBtn, authDeleteCancelBtn, authDeleteErrorEl;
 
 var authOnDataReconciled; // callback de app.js -- ver cabecera del archivo
 var _authMode = "login"; // 'login' | 'register'
@@ -89,6 +90,12 @@ function initAuthRefs(refs) {
   authConflictMergeBtn        = refs.authConflictMergeBtn;
   authConflictKeepLocalBtn    = refs.authConflictKeepLocalBtn;
 
+  authDeleteAccountBtn = refs.authDeleteAccountBtn;
+  authDeleteDialogEl   = refs.authDeleteDialogEl;
+  authDeleteConfirmBtn = refs.authDeleteConfirmBtn;
+  authDeleteCancelBtn  = refs.authDeleteCancelBtn;
+  authDeleteErrorEl    = refs.authDeleteErrorEl;
+
   authOnDataReconciled = typeof refs.onDataReconciled === "function" ? refs.onDataReconciled : function () {};
 
   var available = (typeof isAuthAvailable === "function") && isAuthAvailable();
@@ -108,6 +115,9 @@ function initAuthRefs(refs) {
   if (authEmailForm)      authEmailForm.addEventListener("submit", handleEmailFormSubmit);
   if (authSwitchModeBtn)  authSwitchModeBtn.addEventListener("click", handleSwitchMode);
   if (authLogoutBtn)      authLogoutBtn.addEventListener("click", handleLogoutClick);
+  if (authDeleteAccountBtn) authDeleteAccountBtn.addEventListener("click", openDeleteAccountDialog);
+  if (authDeleteCancelBtn)  authDeleteCancelBtn.addEventListener("click", closeDeleteAccountDialog);
+  if (authDeleteConfirmBtn) authDeleteConfirmBtn.addEventListener("click", handleDeleteAccountConfirm);
 
   if (authConflictKeepCloudBtn) authConflictKeepCloudBtn.addEventListener("click", function () { handleConflictChoice("cloud"); });
   if (authConflictMergeBtn)     authConflictMergeBtn.addEventListener("click", function () { handleConflictChoice("merge"); });
@@ -191,11 +201,84 @@ function handleLogoutClick() {
   signOut(); // onAuthStateChange('SIGNED_OUT') hace el resto (ver handleAuthStateChange)
 }
 
+// ── Borrar la cuenta ─────────────────────────────────────────────────────
+// Lo prometen las condiciones de uso ("entra en tu menú de usuario y pulsa
+// Borrar mi cuenta"), así que este botón no es un extra: es la forma en que
+// esta aplicación cumple el derecho a que borren tus datos. Ver
+// js/core/auth.js (deleteOwnAccount) y supabase/delete-account.sql.
+
+function openDeleteAccountDialog() {
+  if (authUserMenu) authUserMenu.hidden = true;
+  if (!authDeleteDialogEl) return;
+  if (authDeleteErrorEl) authDeleteErrorEl.hidden = true;
+  if (authDeleteConfirmBtn) {
+    authDeleteConfirmBtn.disabled = false;
+    authDeleteConfirmBtn.textContent = "Sí, borrar mi cuenta";
+  }
+  if (typeof authDeleteDialogEl.showModal === "function") {
+    authDeleteDialogEl.showModal();
+  } else {
+    authDeleteDialogEl.setAttribute("open", "");
+  }
+}
+
+function closeDeleteAccountDialog() {
+  if (!authDeleteDialogEl) return;
+  if (typeof authDeleteDialogEl.close === "function" && authDeleteDialogEl.open) {
+    authDeleteDialogEl.close();
+  } else {
+    authDeleteDialogEl.removeAttribute("open");
+  }
+}
+
+function handleDeleteAccountConfirm() {
+  if (typeof deleteOwnAccount !== "function") return;
+
+  // Se bloquea el botón antes de empezar: un doble clic mandaría dos
+  // borrados, y el segundo llegaría cuando la sesión ya no existe --
+  // fallaría, y el usuario vería un error rojo justo después de que todo
+  // haya salido bien.
+  if (authDeleteConfirmBtn) {
+    authDeleteConfirmBtn.disabled = true;
+    authDeleteConfirmBtn.textContent = "Borrando…";
+  }
+  if (authDeleteErrorEl) authDeleteErrorEl.hidden = true;
+
+  deleteOwnAccount().then(function (result) {
+    if (result && result.error) {
+      if (authDeleteErrorEl) {
+        authDeleteErrorEl.textContent = (typeof authErrorMessage === "function")
+          ? authErrorMessage(result.error)
+          : "No se pudo borrar la cuenta.";
+        authDeleteErrorEl.hidden = false;
+      }
+      if (authDeleteConfirmBtn) {
+        authDeleteConfirmBtn.disabled = false;
+        authDeleteConfirmBtn.textContent = "Sí, borrar mi cuenta";
+      }
+      return;
+    }
+    // deleteOwnAccount() ya ha cerrado la sesión, así que
+    // onAuthStateChange('SIGNED_OUT') se encarga de volver a modo invitado
+    // y de limpiar la copia local (migration.js). Aquí solo se cierra el
+    // diálogo.
+    closeDeleteAccountDialog();
+  });
+}
+
 // ── Diálogo de acceso ─────────────────────────────────────────────────────
 
-function openAuthDialog() {
+/**
+ * @param {"login"|"register"} [mode] - por defecto "login", que es como se
+ *   llamaba desde el botón de perfil desde siempre. El parámetro lo añadió
+ *   la pantalla de bienvenida (js/ui/onboarding-ui.js), donde "Crear una
+ *   cuenta" y "Ya tengo cuenta" son dos botones distintos y abrir siempre
+ *   en "iniciar sesión" obligaría a cambiar de modo a mano justo después
+ *   de haber dicho cuál querías.
+ */
+function openAuthDialog(mode) {
   if (!authDialogEl) return;
-  setAuthMode("login");
+  setAuthMode(mode === "register" ? "register" : "login");
   clearAuthFeedback();
   if (typeof authDialogEl.showModal === "function") {
     authDialogEl.showModal();

@@ -60,6 +60,14 @@ function createFakeSupabaseAuthClient(opts) {
           listeners.push(cb);
           return { data: { subscription: { unsubscribe: function () {} } } };
         }
+      },
+      // Añadido 2026-09-02 para poder probar deleteOwnAccount(), que no va
+      // por `auth` sino por una función de Postgres (ver
+      // supabase/delete-account.sql).
+      rpc: function (name) {
+        calls.rpc = calls.rpc || [];
+        calls.rpc.push(name);
+        return Promise.resolve(opts.rpcResult || { data: null, error: null });
       }
     }
   };
@@ -262,6 +270,88 @@ function run(t) {
     var msg = s.authErrorMessage({ message: "some_internal_supabase_code_xyz" });
     assert.ok(msg.length > 0);
     assert.strictEqual(msg.indexOf("some_internal_supabase_code_xyz"), -1);
+  });
+
+  // ── Borrar la cuenta ────────────────────────────────────────────────
+  // Es la única operación irreversible de toda la aplicación, y además la
+  // que las condiciones de uso prometen que existe. Lo que se protege aquí
+  // es que nunca diga algo distinto de lo que ha pasado de verdad.
+
+  t.test("deleteOwnAccount() llama a la función delete_own_account() de Postgres", function () {
+    var s = freshAuthSandbox();
+    var fake = createFakeSupabaseAuthClient();
+    s.getSupabaseClient = function () { return fake.client; };
+
+    return s.deleteOwnAccount().then(function (result) {
+      assert.deepStrictEqual(JSON.parse(JSON.stringify(fake.calls.rpc)), ["delete_own_account"]);
+      assert.strictEqual(result.error, null);
+    });
+  });
+
+  t.test("deleteOwnAccount() cierra la sesión después de borrar", function () {
+    var s = freshAuthSandbox();
+    var fake = createFakeSupabaseAuthClient();
+    s.getSupabaseClient = function () { return fake.client; };
+
+    return s.deleteOwnAccount().then(function () {
+      assert.strictEqual(fake.calls.signOut.length, 1,
+        "la cuenta ya no existe: dejar la sesión viva hasta que caduque el token sería un estado fantasma");
+    });
+  });
+
+  // Si el SQL no se ha ejecutado en el proyecto, Postgres responde que la
+  // función no existe. Traducirlo a "error inesperado" dejaría al usuario
+  // sin saber si sus datos siguen ahí.
+  t.test("deleteOwnAccount() distingue \"todavía no instalado\" de un fallo real", function () {
+    var s = freshAuthSandbox();
+    var fake = createFakeSupabaseAuthClient({
+      rpcResult: { data: null, error: { code: "42883", message: "Could not find the function public.delete_own_account" } }
+    });
+    s.getSupabaseClient = function () { return fake.client; };
+
+    return s.deleteOwnAccount().then(function (result) {
+      assert.strictEqual(result.error.message, "not_installed");
+      assert.strictEqual(fake.calls.signOut.length, 0, "no se ha borrado nada: no hay que cerrar la sesión");
+      var msg = s.authErrorMessage(result.error);
+      assert.ok(msg.indexOf("siguen intactos") !== -1,
+        "el mensaje tiene que decirle al usuario que sus datos NO se han tocado");
+    });
+  });
+
+  t.test("deleteOwnAccount() propaga un fallo real del servidor sin fingir éxito", function () {
+    var s = freshAuthSandbox();
+    var fake = createFakeSupabaseAuthClient({
+      rpcResult: { data: null, error: { code: "P0001", message: "not_authenticated" } }
+    });
+    s.getSupabaseClient = function () { return fake.client; };
+
+    return s.deleteOwnAccount().then(function (result) {
+      assert.ok(result.error, "un fallo del servidor no puede convertirse en 'cuenta borrada'");
+      assert.strictEqual(fake.calls.signOut.length, 0);
+    });
+  });
+
+  // El orden importa: si el borrado fue bien y lo que falla es el cierre de
+  // sesión, la cuenta YA no existe. Decir "no se pudo borrar" sería mentir
+  // y empujar al usuario a intentarlo otra vez sobre algo que ya no está.
+  t.test("si la cuenta se borra pero falla el cierre de sesión, se informa de ÉXITO", function () {
+    var s = freshAuthSandbox();
+    var fake = createFakeSupabaseAuthClient({
+      signOutResult: { error: { message: "network down" } }
+    });
+    s.getSupabaseClient = function () { return fake.client; };
+
+    return s.deleteOwnAccount().then(function (result) {
+      assert.strictEqual(result.error, null);
+    });
+  });
+
+  t.test("deleteOwnAccount() sin Supabase configurado devuelve not_configured, no una excepción", function () {
+    var s = freshAuthSandbox();
+    s.getSupabaseClient = function () { return null; };
+    return s.deleteOwnAccount().then(function (result) {
+      assert.strictEqual(result.error.message, "not_configured");
+    });
   });
 
 }

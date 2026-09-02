@@ -165,6 +165,60 @@ function signOut() {
 }
 
 /**
+ * Borra la cuenta del usuario y todos sus datos en la nube, y cierra la
+ * sesión. Irreversible.
+ *
+ * ── Por qué pasa por una función de Postgres ────────────────────────────
+ * El cliente puede borrar su fila de `public.user_data` (hay política
+ * DELETE), pero NO puede tocar `auth.users`: ese esquema no se expone al
+ * cliente y la API de administración exige la service_role key, que nunca
+ * puede vivir en un frontend público. `delete_own_account()` es una
+ * función `security definer` que borra exclusivamente la fila de
+ * `auth.uid()` -- no acepta parámetros, así que no hay forma de pedirle
+ * que borre la cuenta de otro. Ver supabase/delete-account.sql.
+ *
+ * ── Si la función todavía no está instalada ─────────────────────────────
+ * El SQL hay que ejecutarlo a mano una vez en el proyecto Supabase. Si no
+ * se ha hecho, Postgres responde que la función no existe: eso se traduce
+ * a `not_installed` para que la interfaz pueda decir la verdad ("esto
+ * todavía no está disponible") en lugar de un "error inesperado" que
+ * dejaría al usuario sin saber si sus datos se han borrado o no.
+ *
+ * @returns {Promise<{error: object|null}>}
+ */
+function deleteOwnAccount() {
+  var client = getSupabaseClient();
+  if (!client) return Promise.resolve(_notConfiguredResult());
+
+  return client.rpc("delete_own_account")
+    .then(function (result) {
+      if (result && result.error) {
+        var raw = String(result.error.message || "").toLowerCase();
+        // 42883 = undefined_function. También se comprueba el texto porque
+        // el código no siempre viaja en el error del SDK.
+        if (result.error.code === "42883" ||
+            raw.indexOf("could not find the function") !== -1 ||
+            raw.indexOf("does not exist") !== -1) {
+          return { error: { message: "not_installed" } };
+        }
+        return { error: result.error };
+      }
+      // La cuenta ya no existe; la sesión local sobreviviría hasta que
+      // caducase el token, así que se cierra explícitamente. Si esto
+      // fallara, la cuenta YA está borrada -- se informa de éxito igual,
+      // porque decir "no se pudo borrar" sería mentir.
+      return signOut().then(function () {
+        return { error: null };
+      }, function () {
+        return { error: null };
+      });
+    })
+    .catch(function (err) {
+      return { error: err };
+    });
+}
+
+/**
  * Traduce un error de Supabase Auth a un mensaje en español, seguro de
  * mostrar tal cual en la UI -- nunca expone el mensaje crudo del SDK
  * (puede filtrar detalles internos o venir en inglés sin contexto).
@@ -176,6 +230,12 @@ function authErrorMessage(error) {
 
   if (error.message === "not_configured") {
     return "Las cuentas todavía no están disponibles en este sitio -- puedes seguir usándolo como invitado.";
+  }
+  if (error.message === "not_installed") {
+    return "Borrar la cuenta todavía no está activado en este servidor. Tus datos siguen intactos.";
+  }
+  if (error.message === "not_authenticated") {
+    return "Tu sesión ha caducado -- vuelve a iniciarla e inténtalo otra vez.";
   }
 
   var msg = String(error.message || error.error_description || error).toLowerCase();

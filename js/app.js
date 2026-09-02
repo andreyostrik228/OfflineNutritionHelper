@@ -170,6 +170,12 @@ document.addEventListener("DOMContentLoaded", function () {
   var authConflictMergeBtn     = document.getElementById("authConflictMergeBtn");
   var authConflictKeepLocalBtn = document.getElementById("authConflictKeepLocalBtn");
 
+  var authDeleteAccountBtn = document.getElementById("authDeleteAccountBtn");
+  var authDeleteDialogEl   = document.getElementById("authDeleteDialog");
+  var authDeleteConfirmBtn = document.getElementById("authDeleteConfirmBtn");
+  var authDeleteCancelBtn  = document.getElementById("authDeleteCancelBtn");
+  var authDeleteErrorEl    = document.getElementById("authDeleteError");
+
   // El plan actualmente mostrado — necesario para que "Confirmar plan de
   // hoy" sepa sobre qué comidas actuar sin regenerar nada. Una vez
   // guardado (savePlanForToday), la Etapa 2 (comprar) y la Etapa 3
@@ -562,6 +568,15 @@ document.addEventListener("DOMContentLoaded", function () {
         if (statusText) {
           statusText.textContent = "Plan generado correctamente.";
         }
+
+        // ── El recorrido guiado, si al usuario le toca ──────────────────
+        // Aquí y no en el arranque: casi todo lo que explica (la lista de
+        // la compra, "usar hoy") no existe en la página hasta que hay un
+        // plan. maybeStartTour() decide solo -- a quien ya lo vio, o lo
+        // saltó, no le vuelve a salir.
+        safeInit("tour-maybe-start", function () {
+          if (typeof maybeStartTour === "function") maybeStartTour();
+        });
       } catch (err) {
         console.error(err);
         showWarning("Ha ocurrido un error generando el plan. Revisa los datos introducidos.");
@@ -739,6 +754,11 @@ document.addEventListener("DOMContentLoaded", function () {
         authConflictKeepCloudBtn: authConflictKeepCloudBtn,
         authConflictMergeBtn: authConflictMergeBtn,
         authConflictKeepLocalBtn: authConflictKeepLocalBtn,
+        authDeleteAccountBtn: authDeleteAccountBtn,
+        authDeleteDialogEl: authDeleteDialogEl,
+        authDeleteConfirmBtn: authDeleteConfirmBtn,
+        authDeleteCancelBtn: authDeleteCancelBtn,
+        authDeleteErrorEl: authDeleteErrorEl,
         onDataReconciled: handleAuthDataReconciled
       });
     }
@@ -1174,6 +1194,63 @@ document.addEventListener("DOMContentLoaded", function () {
     if (dislikesInput && typeof initDislikesSuggest === "function") {
       initDislikesSuggest(dislikesInput);
     }
+  });
+
+  // ── Primera visita ───────────────────────────────────────────────────
+  // Va AL FINAL del arranque a propósito: para cuando el alta decide si
+  // enseñarse, el formulario ya está relleno con los ajustes guardados, y
+  // por tanto `hasProfile` dice la verdad. Al revés, un usuario de siempre
+  // vería la pantalla de "cuéntame quién eres" mientras sus datos llegan
+  // por detrás.
+  //
+  // Como todo lo demás, dentro de safeInit(): si el alta fallara, lo que
+  // queda es la aplicación de siempre, no una pantalla en blanco.
+  // Pie: releer las condiciones y repetir la explicación. Va aparte del
+  // alta porque tiene que funcionar SIEMPRE, no solo el primer día.
+  safeInit("footer-links", function () {
+    var legalBtn = document.getElementById("footerLegalBtn");
+    if (legalBtn && typeof openLegalDialog === "function") {
+      legalBtn.addEventListener("click", openLegalDialog);
+    }
+
+    var tourBtn = document.getElementById("footerTourBtn");
+    if (tourBtn) {
+      tourBtn.addEventListener("click", function () {
+        // Si ya hay un plan en pantalla, lo que hace falta es el recorrido
+        // guiado. Si no lo hay, no habría nada que señalar, así que se
+        // repite el alta entera desde la bienvenida.
+        var hayPlan = document.querySelectorAll("#mealsContainer .meal-card").length > 0;
+        if (hayPlan && typeof startTour === "function") {
+          startTour();
+        } else if (typeof restartOnboarding === "function") {
+          restartOnboarding();
+        }
+      });
+    }
+  });
+
+  safeInit("onboarding-init", function () {
+    if (typeof initOnboarding !== "function") return;
+
+    // "Ya tiene perfil" = los datos guardados traen las tres medidas que
+    // no tienen valor por defecto razonable. Mirar solo si el objeto de
+    // ajustes existe no valdría: se crea en cuanto se toca cualquier
+    // campo, incluido el presupuesto.
+    var saved = (typeof getSettings === "function") ? getSettings() : {};
+    var hasProfile = !!(saved && saved.age && saved.weight && saved.height);
+
+    initOnboarding({
+      hasProfile: hasProfile,
+      onFinish: function () {
+        // Al terminar las preguntas, el formulario queda relleno y a la
+        // vista. No se genera el plan solo: ver la cabecera de
+        // js/ui/onboarding-ui.js.
+        var generar = document.querySelector('#plannerForm button[type="submit"]');
+        if (generar && typeof generar.scrollIntoView === "function") {
+          generar.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }
+    });
   });
 
 });

@@ -3755,3 +3755,707 @@ dialog.despensa-dialog[open] {
   color: var(--ink-faint);
 }
 
+
+/* ══ PRIMERA VISITA ═══════════════════════════════════════════════════
+   Bienvenida, condiciones y las siete preguntas. Ver
+   js/ui/onboarding-ui.js y js/data/onboarding-steps.js.
+
+   Fondo OPACO, no una cortina translúcida sobre la aplicación. Dejar
+   entrever los 26 campos y los seis paneles por detrás sería enseñar
+   justo el muro que esta pantalla existe para quitar de en medio.
+   ═══════════════════════════════════════════════════════════════════ */
+.onboarding {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: var(--paper);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6) var(--space-5);
+  overflow-y: auto;
+  animation: onboarding-in 320ms ease-out both;
+}
+
+@keyframes onboarding-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.onboarding.is-leaving {
+  animation: onboarding-out 260ms ease-in both;
+}
+
+@keyframes onboarding-out {
+  from { opacity: 1; transform: none; }
+  to   { opacity: 0; transform: translateY(-8px); }
+}
+
+/* Mientras el alta está delante, el documento de detrás no se desplaza:
+   si no, el dedo arrastra la aplicación oculta en vez de la pantalla. */
+body.is-onboarding {
+  overflow: hidden;
+}
+
+.onboarding__card {
+  width: 100%;
+  max-width: 520px;
+  margin: auto;
+}
+
+.onboarding__step {
+  animation: onboarding-step-in 260ms ease-out both;
+}
+
+@keyframes onboarding-step-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.onboarding__step--single {
+  text-align: center;
+}
+
+/* ── Bienvenida ──────────────────────────────────────────────────── */
+.onboarding__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-8);
+}
+
+.onboarding__brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  background: var(--green);
+  color: var(--hero-ink);
+}
+
+.onboarding__brand-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: -0.01em;
+}
+
+.onboarding__title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.65rem, 5.5vw, 2.25rem);
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+  margin: 0 0 var(--space-6);
+  text-wrap: balance;
+}
+
+.onboarding__title-accent {
+  color: var(--clay);
+}
+
+/* El resumen honesto: lo que de verdad hay que saber antes de aceptar
+   nada. Va a la vista, no detrás de un desplegable. */
+.onboarding__summary {
+  list-style: none;
+  margin: 0 0 var(--space-8);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.onboarding__summary li {
+  position: relative;
+  padding-left: var(--space-6);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+.onboarding__summary li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--green);
+}
+
+.onboarding__terms {
+  padding: var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--paper-raised);
+  margin-bottom: var(--space-5);
+}
+
+/* El `label` global de los formularios va en mayúsculas y con
+   letter-spacing: es correcto para la etiqueta de un campo ("PESO (KG)"),
+   y ridículo para una frase entera. Se reajusta aquí, en la frase, no
+   tocando la regla global de la que dependen los 26 campos. */
+.onboarding__check {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--ink-soft);
+}
+
+.onboarding__check input {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  accent-color: var(--green);
+  cursor: pointer;
+}
+
+.onboarding__link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--green);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.onboarding__link:hover {
+  color: var(--green-deep);
+}
+
+.onboarding__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.onboarding__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  font-family: var(--font-body);
+  font-size: 0.98rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease, transform 120ms ease;
+}
+
+.onboarding__btn:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.onboarding__btn:not(:disabled):active {
+  transform: translateY(1px);
+}
+
+.onboarding__btn--primary {
+  background: var(--green);
+  color: var(--hero-ink);
+}
+
+.onboarding__btn--primary:not(:disabled):hover {
+  background: var(--green-deep);
+}
+
+.onboarding__btn--ghost {
+  background: transparent;
+  border-color: var(--line-strong);
+  color: var(--ink);
+}
+
+.onboarding__btn--ghost:not(:disabled):hover {
+  background: var(--paper-raised);
+  border-color: var(--ink-faint);
+}
+
+.onboarding__btn--big {
+  padding: var(--space-5) var(--space-8);
+  font-size: 1.05rem;
+  width: auto;
+  min-width: 220px;
+  margin-top: var(--space-8);
+}
+
+.onboarding__skip {
+  display: block;
+  width: 100%;
+  margin-top: var(--space-5);
+  padding: var(--space-2);
+  background: none;
+  border: none;
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.onboarding__skip:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.onboarding__skip:not(:disabled):hover {
+  color: var(--ink);
+}
+
+.onboarding__skip-note {
+  margin: var(--space-3) 0 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--ink-faint);
+  text-align: center;
+}
+
+/* ── Las preguntas ───────────────────────────────────────────────── */
+.onboarding__progress {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.onboarding__progress-bar {
+  height: 100%;
+  width: 0;
+  background: var(--green);
+  border-radius: 2px;
+  transition: width 280ms ease-out;
+}
+
+.onboarding__progress-label {
+  margin: var(--space-3) 0 var(--space-6);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.onboarding__question {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.4rem, 4.5vw, 1.8rem);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  margin: 0 0 var(--space-3);
+  text-wrap: balance;
+}
+
+.onboarding__hint {
+  margin: 0 0 var(--space-6);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+.onboarding__answer {
+  margin-bottom: var(--space-6);
+}
+
+.onboarding__answer--choices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.onboarding__choice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--paper-raised);
+  text-align: left;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease, transform 120ms ease;
+}
+
+.onboarding__choice:hover {
+  border-color: var(--green);
+  background: var(--green-wash);
+}
+
+.onboarding__choice:active {
+  transform: translateY(1px);
+}
+
+.onboarding__choice.is-selected {
+  border-color: var(--green);
+  border-width: 2px;
+  background: var(--green-wash);
+  padding: calc(var(--space-4) - 1px) calc(var(--space-5) - 1px);
+}
+
+.onboarding__choice-label {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.onboarding__choice-note {
+  font-size: 0.84rem;
+  color: var(--ink-soft);
+}
+
+/* El importe va en la tipografía de cifras, como todos los números de la
+   aplicación, y en verde: es el dato que decide la respuesta. */
+.onboarding__choice-amount {
+  font-family: var(--font-mono);
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--green);
+}
+
+/* Un solo número, grande, en la tipografía que ya usa todas las cifras
+   de la aplicación. */
+.onboarding__answer--number {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.onboarding__number {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--paper-raised);
+  font-family: var(--font-mono);
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.onboarding__number:focus {
+  outline: none;
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px var(--green-wash);
+}
+
+.onboarding__unit {
+  flex: 0 0 auto;
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--ink-faint);
+}
+
+.onboarding__error {
+  margin: 0 0 var(--space-5);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--danger-border);
+  border-radius: var(--radius-sm);
+  background: var(--danger-wash);
+  color: var(--danger);
+  font-size: 0.88rem;
+}
+
+.onboarding__nav {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.onboarding__nav .onboarding__btn--ghost {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 110px;
+}
+
+/* ── Texto legal completo ────────────────────────────────────────── */
+.legal-dialog {
+  max-width: 640px;
+}
+
+.legal-dialog__body {
+  max-height: 68vh;
+  overflow-y: auto;
+}
+
+.legal-dialog__version {
+  margin: 0 0 var(--space-5);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.legal-dialog__body h3 {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: var(--space-6) 0 var(--space-2);
+  color: var(--ink);
+}
+
+.legal-dialog__body h3:first-of-type {
+  margin-top: 0;
+}
+
+.legal-dialog__body p {
+  margin: 0 0 var(--space-3);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--ink-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onboarding,
+  .onboarding.is-leaving,
+  .onboarding__step {
+    animation: none;
+  }
+  .onboarding__progress-bar {
+    transition: none;
+  }
+}
+
+/* ══ MENÚ DE USUARIO: salir vs. borrar ════════════════════════════════
+   Hasta el 2026-09-02 "Cerrar sesión" era el único elemento del menú y
+   estaba en rojo. Al añadir "Borrar mi cuenta" al lado, dos acciones
+   rojas juntas -- una reversible y la otra no -- convertían el color en
+   ruido justo donde más falta hace que signifique algo. Cerrar sesión
+   pasa a ser un elemento normal; el rojo se reserva para lo que no tiene
+   vuelta atrás.
+   ═══════════════════════════════════════════════════════════════════ */
+.topbar__menu-item {
+  width: 100%;
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  color: var(--ink);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .topbar__menu-item:hover {
+    background: var(--green-wash);
+  }
+}
+
+.topbar__menu-item--danger {
+  color: var(--danger);
+  margin-top: var(--space-1);
+  border-top: 1px solid var(--line);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  padding-top: var(--space-3);
+}
+
+@media (hover: hover) {
+  .topbar__menu-item--danger:hover {
+    background: var(--danger-wash);
+  }
+}
+
+/* ── Diálogo de borrado ──────────────────────────────────────────── */
+.delete-dialog__note {
+  margin: var(--space-4) 0 0;
+  font-size: 0.86rem;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+
+.delete-dialog__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+}
+
+/* La acción destructiva NO es el botón por defecto: "No, volver" queda a
+   la izquierda como texto y el rojo hay que ir a buscarlo. */
+.delete-dialog__confirm {
+  padding: var(--space-3) var(--space-5);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-md);
+  background: var(--danger);
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 140ms ease, opacity 140ms ease;
+}
+
+.delete-dialog__confirm:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@media (hover: hover) {
+  .delete-dialog__confirm:not(:disabled):hover {
+    background: #8f1d17;
+  }
+}
+
+/* ══ RECORRIDO GUIADO ═════════════════════════════════════════════════
+   Ver js/ui/tour.js. El fondo oscuro NO es un elemento: es la sombra
+   enorme del hueco, así que el agujero no hay que recortarlo -- es lo
+   único que la sombra no tapa.
+   ═══════════════════════════════════════════════════════════════════ */
+.tour {
+  position: fixed;
+  inset: 0;
+  z-index: 210;
+  /* El contenedor no intercepta clics: lo hacen el hueco y la nota. */
+  pointer-events: none;
+}
+
+.tour__hole {
+  position: fixed;
+  border-radius: var(--radius-md);
+  box-shadow: 0 0 0 9999px rgba(33, 26, 20, 0.72);
+  transition: top 220ms ease, left 220ms ease, width 220ms ease, height 220ms ease;
+  pointer-events: auto;
+}
+
+.tour__card {
+  position: fixed;
+  width: min(340px, calc(100vw - 24px));
+  padding: var(--space-5);
+  background: var(--paper-raised);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  pointer-events: auto;
+  transition: top 220ms ease, left 220ms ease;
+}
+
+.tour__counter {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.tour__title {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+}
+
+.tour__body {
+  margin: 0 0 var(--space-5);
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+
+.tour__nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.tour__skip {
+  background: none;
+  border: none;
+  padding: var(--space-2) 0;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink-faint);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.tour__skip:hover {
+  color: var(--ink-soft);
+}
+
+.tour__next {
+  padding: var(--space-3) var(--space-5);
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--green);
+  color: var(--hero-ink);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 140ms ease;
+}
+
+.tour__next:hover {
+  background: var(--green-deep);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tour__hole,
+  .tour__card {
+    transition: none;
+  }
+}
+
+/* ══ PIE ══════════════════════════════════════════════════════════════ */
+.site-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  margin: var(--space-12) 0 var(--space-8);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--line);
+}
+
+.site-footer__link {
+  background: none;
+  border: none;
+  padding: var(--space-2);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ink-faint);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.site-footer__link:hover {
+  color: var(--ink-soft);
+}
+
+.site-footer__sep {
+  color: var(--line-strong);
+}
