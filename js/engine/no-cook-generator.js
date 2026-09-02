@@ -202,6 +202,15 @@ function buildNoCookItem(entry, servings, buysPackage) {
     size: p.size, sizeUnit: p.sizeUnit, price: p.price,
     buysPackage: !!buysPackage,
     kcal: m.kcal, protein: m.protein, carbs: m.carbs, fat: m.fat,
+    // Procedencia de esos macros, para que la UI pueda advertir cuando son
+    // una aproximación sin revisar (renderNutritionTrustBadge). Se arrastra
+    // aquí porque si no, se pierde en esta frontera: el item ya no tiene
+    // forma de volver al producto del catálogo, y la tarjeta acababa
+    // enseñando una conjetura con la misma cara que un dato real. No
+    // participa en elegir ni puntuar nada.
+    nutritionSource: p.nutritionSource || null,
+    nutritionConfidence: p.nutritionConfidence || null,
+    needsReview: !!p.needsReview,
   };
 }
 

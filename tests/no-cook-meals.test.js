@@ -511,6 +511,68 @@ function run(t) {
       + colados.map(function (e) { return e.product.name; }).join(" | "));
   });
 
+  // ── Nutrición aproximada: se advierte, y no decide nada (2026-09-03) ──
+  //
+  // Tras la primera corrida del enricher, el 6,5% de los items de un plan y
+  // el 46% de los planes llevan macros emparejados por NOMBRE y sin revisar.
+  // El panel de productos ya lo advertía; las tarjetas de comida no.
+
+  t.test("buildNoCookItem() arrastra la procedencia de la nutrición", function () {
+    var s = fullSandbox();
+    var pool = s.getNoCookEligiblePool("mercadona");
+    var conRevision = pool.filter(function (e) { return e.product.needsReview; });
+    // Si el catálogo dejara de traer productos marcados, este test se
+    // volvería vacío en silencio en vez de fallar.
+    assert.ok(conRevision.length > 0, "el catálogo ya no trae productos needsReview");
+
+    var item = s.buildNoCookItem(conRevision[0], 1, false);
+    assert.strictEqual(item.needsReview, true);
+    assert.strictEqual(item.nutritionSource, conRevision[0].product.nutritionSource);
+    assert.strictEqual(item.nutritionConfidence, conRevision[0].product.nutritionConfidence);
+  });
+
+  t.test("renderNutritionTrustBadge(): advierte de lo aproximado y calla del resto", function () {
+    var s = loadBrowserGlobals([projPath("js/core/utils.js"), projPath("js/ui/render.js")]);
+
+    var aprox = s.renderNutritionTrustBadge({
+      needsReview: true, nutritionConfidence: "very_low", kcal: 31
+    });
+    assert.ok(aprox.indexOf("sin verificar") !== -1, "debería advertir: " + aprox);
+    // El nivel se le enseña al usuario en español, no como identificador.
+    assert.ok(aprox.indexOf("muy baja") !== -1, "el nivel debe ir en español: " + aprox);
+    assert.strictEqual(aprox.indexOf("very_low"), -1, "no debe filtrarse el identificador inglés");
+
+    // Emparejado por EAN: el código de barras identifica el producto exacto.
+    assert.strictEqual(s.renderNutritionTrustBadge({
+      needsReview: false, nutritionSource: "openfoodfacts_ean", kcal: 120
+    }), "");
+    // Legacy sin procedencia: no consta que sea conjetura, así que no se
+    // afirma que lo sea. El silencio nunca significa "verificado".
+    assert.strictEqual(s.renderNutritionTrustBadge({ kcal: 120 }), "");
+    // Sin cifra que mostrar no hay nada de lo que desconfiar.
+    assert.strictEqual(s.renderNutritionTrustBadge({ needsReview: true, kcal: null }), "");
+    assert.strictEqual(s.renderNutritionTrustBadge(null), "");
+  });
+
+  t.test("la procedencia NO participa en generar el plan", function () {
+    // Mismo contrato que los alérgenos: es información, no un filtro. Si
+    // algún día se usara para elegir, un producto marcado dejaría de salir
+    // y la advertencia se volvería inútil por no tener a quién advertir.
+    var src = require("fs").readFileSync(projPath("js/engine/no-cook-generator.js"), "utf8");
+    var lineas = src.replace(/\/\*[\s\S]*?\*\//g, "").split("\n")
+      .filter(function (l) { return !/^\s*\/\//.test(l); });
+
+    ["needsReview", "nutritionConfidence", "nutritionSource"].forEach(function (campo) {
+      var citas = lineas.filter(function (l) { return l.indexOf(campo) !== -1; });
+      assert.strictEqual(citas.length, 1,
+        campo + " se menciona en " + citas.length + " líneas del generador; se espera 1");
+      // Y esa única línea debe ser una COPIA (`campo: ...p.campo...`), no
+      // una comparación ni una condición.
+      assert.ok(new RegExp("^\\s*" + campo + ":").test(citas[0]),
+        campo + " no se está solo copiando: " + citas[0].trim());
+    });
+  });
+
   t.test("pescado y marisco CRUDOS congelados no se anuncian como 'abrir y comer'", function () {
     var s = fullSandbox();
     // Estos dos nombres son reales y son la razón de la regla: sin la

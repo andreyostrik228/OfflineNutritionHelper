@@ -219,7 +219,14 @@ function renderConfidenceBadge(p) {
     return '<span class="verified-card__badge verified-card__badge--ean">EAN &#10003;</span>';
   }
   if (p.nutritionSource === "openfoodfacts_name") {
-    return '<span class="verified-card__badge">' + escapeHtml(p.nutritionConfidence || "estimado") + '</span>';
+    // El nivel viene del pipeline en inglés ("very_low"), que es un
+    // identificador, no texto para nadie. Se traduce con la misma tabla que
+    // usa el aviso del plan (render.js), para que los dos sitios no acaben
+    // diciendo cosas distintas del mismo dato.
+    var es = (typeof NUTRITION_CONFIDENCE_ES !== "undefined")
+      ? NUTRITION_CONFIDENCE_ES[p.nutritionConfidence] : null;
+    return '<span class="verified-card__badge">' +
+      escapeHtml(es ? "confianza " + es : "estimado") + '</span>';
   }
   return "";
 }

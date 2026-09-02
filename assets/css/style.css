@@ -1931,6 +1931,24 @@ button:focus-visible {
   color: var(--ink-faint);
 }
 
+/* Nutrición emparejada por nombre y sin revisar (renderNutritionTrustBadge
+   en render.js). Deliberadamente discreta: sale en el 46% de los planes, así
+   que si gritara sería ruido y se dejaría de leer. El color de aviso y el
+   "~" delante de la cifra son la señal; el detalle está en el `title`. */
+.nutrition-approx {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--clay-wash);
+  color: var(--clay-deep);
+  cursor: help;
+}
+
 /* Avisa de que esta toma se acaba el paquete (pizza y similares). */
 .nocook-item__whole {
   display: inline-block;

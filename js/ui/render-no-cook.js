@@ -349,9 +349,18 @@ function renderNoCookItem(item) {
   // Los macros son los de LO QUE TE COMES (raciones x gramos), no los de
   // 100 g del catálogo. Hasta 2026-09-01 se pintaban los de 100 g, así que
   // una pizza de 430 g decía "245 kcal" cuando son 1.054.
+  // Si esos macros son una aproximación emparejada por nombre y sin
+  // revisar, se dice. Medido el 2026-09-03: el 6,5% de los items y el 46%
+  // de los planes llevan al menos uno, así que callarlo no era un detalle.
+  // El "~" es la misma señal que usa la caducidad para lo estimado.
+  var trustBadge = typeof renderNutritionTrustBadge === "function"
+    ? renderNutritionTrustBadge(item) : "";
+
   var macrosLine = item.kcal != null
     ? '<div class="nocook-item__macros">' +
+        (trustBadge ? "~" : "") +
         round0(item.kcal) + " kcal &mdash; P " + round1(item.protein) + "g / C " + round1(item.carbs) + "g / G " + round1(item.fat) + "g" +
+        trustBadge +
       "</div>"
     : "";
 

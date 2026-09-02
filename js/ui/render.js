@@ -201,6 +201,52 @@ function renderProductFindBtn(product) {
     '📷</a>';
 }
 
+// Nivel de confianza del emparejamiento, en español. El pipeline los
+// escribe en inglés (`confidence_tier()` en PythonProject) porque son
+// identificadores, pero al usuario no se le enseña un identificador.
+var NUTRITION_CONFIDENCE_ES = {
+  high: "alta",
+  medium: "media",
+  low: "baja",
+  very_low: "muy baja",
+};
+
+/**
+ * Marca de "esto es una aproximación sin revisar" para la nutrición de un
+ * producto del catálogo.
+ *
+ * Qué marca y qué NO (2026-09-03). Solo marca `needsReview`, es decir, lo
+ * que el pipeline sabe que emparejó por NOMBRE sin confirmar. No marca:
+ * lo emparejado por EAN (el código de barras identifica el producto
+ * exacto), ni los "legacy" que ya traían nutrición de antes de que
+ * existiera `nutritionSource` — de esos no sabemos su procedencia, y
+ * marcarlos como dudosos afirmaría algo que tampoco consta. El silencio
+ * aquí significa "no consta que sea una conjetura", nunca "verificado".
+ *
+ * Por qué hace falta: el emparejamiento por nombre falla de formas que
+ * parecen perfectamente razonables. "Dorada sin limpiar" (el pescado)
+ * emparejó con "Dorada sin, con limón" (una cerveza sin alcohol) y se
+ * quedó con 31 kcal y 0,2 g de proteína, con Atwater cuadrando. El plan
+ * no puede presentar eso con la misma cara que un dato real.
+ *
+ * @param {{needsReview?:boolean, nutritionConfidence?:string, kcal?:number}} product
+ * @returns {string} HTML, o "" si no hay nada que advertir
+ */
+function renderNutritionTrustBadge(product) {
+  if (!product || !product.needsReview) return "";
+  // Sin kcal no se muestra ninguna cifra, así que no hay nada de lo que
+  // desconfiar: la fila ya dice "sin datos" por su cuenta.
+  if (typeof product.kcal !== "number" || !isFinite(product.kcal) || product.kcal <= 0) return "";
+
+  var nivel = NUTRITION_CONFIDENCE_ES[product.nutritionConfidence] || null;
+  var title = "Nutrición estimada automáticamente por el NOMBRE del producto y sin revisar"
+    + (nivel ? " (confianza " + nivel + ")" : "")
+    + ": puede no corresponder a este producto exacto.";
+
+  return '<span class="nutrition-approx" title="' + escapeHtml(title) + '">'
+    + '~ sin verificar</span>';
+}
+
 function renderMealCard(meal, total, dayIndex) {
   // data-meal-key habilita el salto desde la franja de horario (ver
   // js/ui/render-schedule.js, scrollToMealCard) hasta esta tarjeta.
