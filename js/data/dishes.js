@@ -521,6 +521,11 @@ var DISH_DB = [
   //  pimiento, coliflor, pan de centeno, trigo sarraceno, kiwi, fresas,
   //  pavo picado). Verificado contra colisiones de nombre/combo con los
   //  204 platos originales antes de añadirse.
+  //
+  //  2026-09-02: de esos 17, el trigo sarraceno y el pavo picado ya NO
+  //  existen -- Mercadona no los vende y sus platos pasaron a arroz,
+  //  quinoa o "Carne picada mixta". La lista de arriba se deja como estaba
+  //  porque describe lo que se añadió ENTONCES; esta nota dice qué queda.
   // ══════════════════════════════════════════════════════
 
   // ── Nuevos: desayuno (18) ──
