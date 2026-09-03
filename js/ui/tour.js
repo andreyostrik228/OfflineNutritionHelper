@@ -200,13 +200,78 @@ function _tourPosition() {
   e.card.style.left = cardLeft + "px";
 }
 
+/**
+ * Alto de lo que esté PEGADO ARRIBA y vaya a taparle el sitio al elemento
+ * que se resalta.
+ *
+ * El caso real (reportado el 2026-09-03: "кнопки подсвечиваются, но они
+ * слишком высоко, их не видно"): en móvil la franja "siguiente toma"
+ * (`.next-meal-sticky`) va `position: sticky; top: 0` y mide 52px. Como el
+ * recorrido alinea el elemento con el borde superior, los seis pasos
+ * dejaban al resaltado en `top: 16` -- es decir, con 36px metidos DEBAJO de
+ * la franja. En un botón de 43px de alto quedaban 7px a la vista, y había
+ * que subir a mano para verlo. En escritorio no pasaba: esa franja solo
+ * existe por debajo de 900px, que es justo por qué no se vio antes.
+ *
+ * Se busca en vez de mirar un id concreto para que una barra futura no
+ * vuelva a romper esto en silencio. El tope de 200px descarta las capas a
+ * pantalla completa (el alta, el propio recorrido), que no son barras.
+ *
+ * @returns {number} píxeles ocupados arriba
+ */
+function _tourTopInset() {
+  var inset = 0;
+  var nodes = document.querySelectorAll("body *");
+
+  for (var i = 0; i < nodes.length; i++) {
+    var el = nodes[i];
+    if (_tourEls && _tourEls.root && _tourEls.root.contains(el)) continue;
+
+    var cs = window.getComputedStyle(el);
+    if (cs.position !== "sticky" && cs.position !== "fixed") continue;
+    if (cs.display === "none" || cs.visibility === "hidden") continue;
+    if (parseFloat(cs.top) !== 0) continue;
+
+    var h = el.getBoundingClientRect().height;
+    if (h > 0 && h < 200) inset = Math.max(inset, h);
+  }
+
+  return inset;
+}
+
+// El elemento al que se le puso un `scroll-margin-top` prestado, para poder
+// devolvérselo: es una propiedad del elemento REAL de la página, y dejarla
+// puesta cambiaría cómo le hacen scroll otros (p. ej. el salto desde la
+// franja de horario a una tarjeta de comida).
+var _tourScrollMarginEl = null;
+var _tourScrollMarginPrev = "";
+
+function _tourRestoreScrollMargin() {
+  if (!_tourScrollMarginEl) return;
+  _tourScrollMarginEl.style.scrollMarginTop = _tourScrollMarginPrev;
+  _tourScrollMarginEl = null;
+  _tourScrollMarginPrev = "";
+}
+
 function _tourRender() {
   var step = _tourVisible[_tourIndex];
   var e = _tourEls;
   if (!step) { stopTour(); return; }
 
+  _tourRestoreScrollMargin();
+
   var el = document.querySelector(step.target);
   if (el && typeof el.scrollIntoView === "function") {
+    // El hueco se reserva con `scroll-margin-top` y NO restando píxeles
+    // después: así la cuenta la hace el navegador dentro del propio
+    // desplazamiento. Ajustar a mano tras un scroll suave ya falló aquí una
+    // vez -- el resultado dependía de CUÁNDO se midiera y caía distinto en
+    // cada intento (ver el andamiaje de `alignToSameMeal` que hubo que
+    // borrar).
+    _tourScrollMarginEl = el;
+    _tourScrollMarginPrev = el.style.scrollMarginTop;
+    el.style.scrollMarginTop = (_tourTopInset() + 12) + "px";
+
     // "start" y no "center": con un elemento más alto que la pantalla,
     // centrarlo deja su comienzo -- que es lo que se explica -- fuera de
     // la vista, y el usuario ve un trozo cualquiera de la mitad.
@@ -263,6 +328,11 @@ function startTour() {
  * enlace del pie.
  */
 function stopTour() {
+  // Se devuelve el `scroll-margin-top` prestado ANTES de nada: si el
+  // recorrido se cierra a mitad, ese margen se quedaría puesto en un
+  // elemento de la página para siempre.
+  _tourRestoreScrollMargin();
+
   if (typeof completeTour === "function") {
     completeTour();
   }
