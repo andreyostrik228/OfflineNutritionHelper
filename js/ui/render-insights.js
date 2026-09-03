@@ -107,7 +107,12 @@ function renderWarnings(profile, result, data) {
 
   var purchaseCost = typeof total.purchaseCost === "number" ? total.purchaseCost : total.cost;
   if (purchaseCost > data.budget + 0.01) {
-    messages.push("El plan supera el presupuesto de compra: hacen falta €" + Math.round(purchaseCost * 100) / 100 + " en paquetes reales (presupuesto: €" + data.budget + "). Prueba a ampliar el presupuesto, marcar más despensa disponible, o aumentar el tiempo de cocina.");
+    // Corto a proposito: la cifra es lo unico que importa aqui. La receta
+    // de que hacer (ampliar presupuesto, marcar despensa, mas tiempo) ya
+    // esta en los propios controles, y repetirla en cada plan ajustado
+    // era lo que convertia este aviso en un parrafo.
+    messages.push("La compra sale a €" + (Math.round(purchaseCost * 100) / 100) +
+                  ", algo por encima de tu €" + data.budget + ".");
   }
 
   // Umbral subido de 220 a 600 kcal: con objetivos de volumen altos, la
@@ -118,11 +123,11 @@ function renderWarnings(profile, result, data) {
   // dejaba de ser una se\u00f1al \u00fatil. Con 600, solo avisa cuando el desv\u00edo es
   // genuinamente grande.
   if (Math.abs(profile.calories - total.kcal) > 600) {
-    messages.push("No ha sido posible ajustar calor\u00edas con precisi\u00f3n total manteniendo variedad, tiempo y presupuesto.");
+    messages.push("Las calor\u00edas no cuadran del todo con este tiempo y presupuesto.");
   }
 
   if (data.cookTime <= 10) {
-    messages.push("Con muy poco tiempo de cocina el sistema usa platos r\u00e1pidos. Aumentar el tiempo mejora la variedad.");
+    messages.push("Poco tiempo de cocina: platos m\u00e1s simples.");
   }
 
   // Umbral recalibrado junto con los presets 2026-08-07 (15/20/28 de
@@ -133,27 +138,26 @@ function renderWarnings(profile, result, data) {
   // 2026-09-01: bajado a 12,5 al recalibrar los tramos a 8/12/16/20. Avisa
   // en "Muy ajustado" y "Ajustado", donde la variedad sí se resiente.
   if (data.budget <= 12.5) {
-    messages.push("Con presupuesto muy bajo la variedad de platos se reduce notablemente.");
+    messages.push("Presupuesto ajustado: menos variedad.");
   }
 
   var proteinSources = collectProteinSources(result.meals);
   var carbSources    = collectCarbSources(result.meals);
 
   if (proteinSources.length < 3) {
-    messages.push(
-      "Solo se encontraron " + proteinSources.length +
-      " fuentes de prote\u00edna distintas. Ampl\u00eda el presupuesto o el tiempo de cocina para m\u00e1s variedad."
-    );
+    messages.push("Solo " + proteinSources.length + " fuentes de prote\u00edna.");
   }
   if (carbSources.length < 3) {
-    messages.push(
-      "Solo se encontraron " + carbSources.length +
-      " fuentes de carbohidratos distintas. Considera ampliar el tiempo disponible para cocinar."
-    );
+    messages.push("Solo " + carbSources.length + " fuentes de carbohidratos.");
   }
 
   if (messages.length) {
-    warningBox.innerHTML = messages.map(escapeHtml).join("<br><br>");
+    // Lista compacta, no parrafos separados por <br><br>: son notas sobre
+    // el plan, no un texto que haya que leer entero.
+    warningBox.innerHTML = "<ul><li>" + messages.map(escapeHtml).join("</li><li>") + "</li></ul>";
+    // Y NO en rojo: el plan esta hecho y sirve. El rojo se reserva para
+    // showWarning(), donde de verdad hay algo que corregir.
+    warningBox.classList.remove("warning--error");
     warningBox.classList.add("show");
   } else {
     warningBox.classList.remove("show");
@@ -169,6 +173,10 @@ function renderWarnings(profile, result, data) {
  */
 function showWarning(msg) {
   warningBox.textContent = msg;
+  // Esto SI es un error que impide seguir (falta el presupuesto, ha fallado
+  // la generacion): aqui el rojo esta justificado, y por eso las NOTAS del
+  // plan dejaron de usarlo -- si todo grita, nada avisa.
+  warningBox.classList.add("warning--error");
   warningBox.classList.add("show");
 }
 

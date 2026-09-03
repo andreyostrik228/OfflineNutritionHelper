@@ -261,6 +261,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
     insightsList.innerHTML = "";
     warningBox.classList.remove("show");
+    // Y la severidad: si no, el siguiente aviso -- que puede ser una simple
+    // nota del plan -- heredaria el rojo del error anterior.
+    warningBox.classList.remove("warning--error");
     warningBox.textContent = "";
     if (statusText) statusText.textContent = "";
     if (shoppingPanel) shoppingPanel.hidden = true;

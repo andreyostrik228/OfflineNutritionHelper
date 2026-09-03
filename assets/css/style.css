@@ -1479,16 +1479,29 @@ button:focus-visible {
   color: var(--ink-faint);
 }
 
+/* ══ Avisos ═══════════════════════════════════════════════════
+   DOS severidades en la misma caja, y la diferencia importa:
+
+   - Por defecto es una NOTA sobre el plan ("el presupuesto aprieta",
+     "poca variedad"). No es un error: el plan está hecho y sirve. Antes
+     salía en rojo de error, a 13px, con las frases separadas por dos
+     saltos de línea, y con presupuesto ajustado aparecían tres a la vez:
+     media pantalla de rojo en cada generación. "Достала уже" -- y con
+     razón: un aviso que sale siempre y grita deja de leerse y solo
+     estorba.
+   - `.warning--error` sí es un error de verdad (falta el presupuesto, ha
+     fallado la generación). Ahí el rojo está bien: hay que hacer algo.  */
 .warning {
   max-height: 0;
   margin-top: 0;
-  padding: 0 var(--space-4);
+  padding: 0 var(--space-3);
   border-radius: var(--radius-sm);
-  background: var(--danger-wash);
+  background: var(--paper-raised);
   border: 1px solid transparent;
-  color: var(--danger);
-  font-size: 13px;
-  line-height: 1.5;
+  border-left: 2px solid var(--line);
+  color: var(--ink-soft);
+  font-size: 11.5px;
+  line-height: 1.45;
   overflow: hidden;
   opacity: 0;
   transition: max-height 0.3s ease, opacity 0.2s ease, margin-top 0.25s ease, padding 0.25s ease, border-color 0.25s ease;
@@ -1496,10 +1509,31 @@ button:focus-visible {
 
 .warning.show {
   max-height: 400px;
-  margin-top: var(--space-5);
-  padding: 12px var(--space-4);
-  border-color: var(--danger-border);
+  margin-top: var(--space-4);
+  padding: 8px var(--space-3);
+  border-color: transparent;
+  border-left-color: var(--line-strong);
   opacity: 1;
+}
+
+/* Lista compacta: un aviso por línea, con viñeta, en vez de párrafos
+   separados por <br><br>. */
+.warning ul {
+  margin: 0;
+  padding-left: 16px;
+}
+
+.warning li + li { margin-top: 3px; }
+
+.warning--error {
+  background: var(--danger-wash);
+  color: var(--danger);
+  font-size: 13px;
+}
+
+.warning--error.show {
+  border-color: var(--danger-border);
+  border-left-color: var(--danger-border);
 }
 
 @media (prefers-reduced-motion: reduce) {
