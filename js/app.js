@@ -687,6 +687,42 @@ document.addEventListener("DOMContentLoaded", function () {
     radio.addEventListener("change", updateBudgetCustomVisibility);
   });
 
+  // ── Anchura real de la barra de desplazamiento ──────────────────────
+  //
+  // `100vw` la INCLUYE, así que el sangrado a ancho completo de
+  // `.next-meal-sticky` (`calc(50% - 50vw)`) se pasaba justo esos píxeles y
+  // la página se iba 8px a la derecha en un portátil con la ventana
+  // estrecha. En un móvil no se notaba porque ahí la barra va superpuesta y
+  // no ocupa ancho.
+  //
+  // Se publica como `--sbw` y el CSS resta la mitad por lado. Vale 0 en la
+  // hoja de estilos, así que si esto no se ejecutara quedaría el
+  // comportamiento de antes, no una barra rota.
+  function medirBarraDesplazamiento() {
+    var sbw = window.innerWidth - document.documentElement.clientWidth;
+    // Nunca negativo: en algunos zooms la resta sale por debajo de cero y un
+    // margen "corregido" al revés ensancharía la franja en vez de encogerla.
+    document.documentElement.style.setProperty("--sbw", Math.max(0, sbw) + "px");
+  }
+
+  safeInit("scrollbar-width", function () {
+    medirBarraDesplazamiento();
+    window.addEventListener("resize", medirBarraDesplazamiento);
+
+    // `resize` NO basta: la barra también aparece cuando el contenido crece
+    // sin que la ventana cambie -- que es justo lo que pasa al generar un
+    // plan. Por eso se vuelve a medir al pintar un plan (ver renderDayDots),
+    // que es un momento que la aplicación sí controla.
+    //
+    // ResizeObserver sería lo natural aquí, pero NO se puede depender de él:
+    // observando el <html> no llegó a dispararse ni una vez en las pruebas,
+    // ni siquiera la llamada inicial. Se deja como refuerzo, nunca como
+    // único camino.
+    if (typeof ResizeObserver === "function") {
+      new ResizeObserver(medirBarraDesplazamiento).observe(document.documentElement);
+    }
+  });
+
   // ── Ayuda de la opción elegida (actividad, objetivo) ─────────────────
   //
   // El alta explica estas opciones una por una ("Moderado: en pie a ratos,
@@ -863,7 +899,8 @@ document.addEventListener("DOMContentLoaded", function () {
     if (count <= 1) {
       bar.hidden = true;
       dots.innerHTML = "";
-      _updateDayArrows();   // con un día no hay flechas que enseñar
+      _updateDayArrows();          // con un día no hay flechas que enseñar
+      medirBarraDesplazamiento();  // pero la barra de scroll sí puede salir
       return;
     }
     bar.hidden = false;
@@ -877,6 +914,10 @@ document.addEventListener("DOMContentLoaded", function () {
     // tiene que estar oculta antes de que haya ningún desplazamiento del
     // que deducirlo.
     _updateDayArrows();
+    // Y un plan recién pintado es justo cuando aparece la barra de
+    // desplazamiento: hay que volver a medirla o el sangrado a ancho
+    // completo de la franja "siguiente toma" se pasa por su anchura.
+    medirBarraDesplazamiento();
   }
 
   safeInit("day-carousel-init", function () {

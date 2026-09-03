@@ -3613,17 +3613,33 @@ dialog.despensa-dialog[open] {
       cada tramo.
 
       `calc(50% - 50vw)` sale exacto para CUALQUIER ancho de contenedor: el
-      borde izquierdo cae siempre en 0 y la barra mide 100vw. Solo se usa
-      por debajo de 900px, donde las barras de scroll son superpuestas y
-      100vw no provoca desbordamiento horizontal. */
+      borde izquierdo cae siempre en 0 y la barra mide 100vw.
+
+   3. Pero `100vw` INCLUYE la barra de desplazamiento, y la suposición de
+      que "por debajo de 900px las barras son superpuestas" solo vale en un
+      móvil. En un portátil con la ventana estrecha la barra es clásica y
+      ocupa ancho real: la franja medía 100vw = 820px dentro de un viewport
+      de maquetación de 805, y la página se iba 8px a la derecha (medido el
+      2026-09-03; quitando la franja el scrollWidth volvía exacto al
+      viewport, así que era esto y solo esto).
+
+      `--sbw` lo pone js/app.js con la anchura real de la barra. Restando la
+      mitad por lado, la franja mide `100vw - barra`, que es justo el
+      viewport de maquetación. Si el JavaScript no llegara a ejecutarse,
+      `--sbw` vale 0 y queda EXACTAMENTE el comportamiento anterior: se
+      degrada a lo de antes, nunca a una barra rota. */
+:root {
+  --sbw: 0px;
+}
+
 @media (max-width: 900px) {
   .next-meal-sticky:not([hidden]) {
     display: block;
     position: sticky;
     top: 0;
     z-index: 30;
-    margin-left: calc(50% - 50vw);
-    margin-right: calc(50% - 50vw);
+    margin-left: calc(50% - 50vw + var(--sbw) / 2);
+    margin-right: calc(50% - 50vw + var(--sbw) / 2);
   }
 
   .next-meal-sticky__btn {
