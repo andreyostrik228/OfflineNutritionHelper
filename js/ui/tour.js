@@ -35,6 +35,9 @@
 var _tourIndex = 0;
 var _tourVisible = [];
 var _tourEls = null;
+// .Ha llegado el recorrido a estar EN PANTALLA en esta ejecucion? Ver
+// stopTour(): decide si se marca como visto.
+var _tourSeVio = false;
 var _tourScrollHandler = null;
 
 /** Crea el DOM del recorrido una sola vez, la primera que hace falta. */
@@ -313,6 +316,9 @@ function startTour() {
 
   _tourIndex = 0;
   e.root.hidden = false;
+  // A partir de aquí el recorrido está EN PANTALLA. Ver stopTour(): solo
+  // cuenta como "visto" lo que se ha llegado a ver.
+  _tourSeVio = true;
 
   _tourScrollHandler = function () { _tourPosition(); };
   window.addEventListener("scroll", _tourScrollHandler, true);
@@ -333,9 +339,25 @@ function stopTour() {
   // elemento de la página para siempre.
   _tourRestoreScrollMargin();
 
-  if (typeof completeTour === "function") {
+  // "Visto" solo si de verdad llegó a la pantalla.
+  //
+  // Antes se marcaba SIEMPRE, y eso apaga el recorrido PARA SIEMPRE: basta
+  // con que stopTour() se llame una vez sin haber enseñado nada (un paso
+  // que no resuelve, un cierre inmediato, cualquier camino futuro) para que
+  // maybeStartTour() no vuelva a arrancarlo jamás. Es exactamente la forma
+  // del fallo reportado el 2026-09-03: "туториал не появляется... ни разу
+  // не видел". No se pudo reproducir aquí en cuatro intentos (estado
+  // vacío, estado de invitado, alta completa real y viewport de móvil), y
+  // esta es la única vía en el código por la que la marca puede quedar
+  // puesta sin que nadie haya visto nada.
+  //
+  // Marcar por error "no visto" solo cuesta que el recorrido salga otra
+  // vez. Marcar por error "visto" cuesta que no salga nunca. La asimetría
+  // decide.
+  if (_tourSeVio && typeof completeTour === "function") {
     completeTour();
   }
+  _tourSeVio = false;
   if (_tourScrollHandler) {
     window.removeEventListener("scroll", _tourScrollHandler, true);
     window.removeEventListener("resize", _tourScrollHandler);

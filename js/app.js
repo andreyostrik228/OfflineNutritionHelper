@@ -1371,7 +1371,11 @@ document.addEventListener("DOMContentLoaded", function () {
         // Si ya hay un plan en pantalla, lo que hace falta es el recorrido
         // guiado. Si no lo hay, no habría nada que señalar, así que se
         // repite el alta entera desde la bienvenida.
-        var hayPlan = document.querySelectorAll("#mealsContainer .meal-card").length > 0;
+        // `:not([data-empty])` -- la tarjeta "Esperando parámetros..." es
+        // también un `.meal-card`, así que SIN esto siempre había "plan" y
+        // este enlace nunca repetía el alta: arrancaba un recorrido cuyo
+        // primer paso señalaba una caja vacía.
+        var hayPlan = document.querySelectorAll("#mealsContainer .meal-card:not([data-empty])").length > 0;
         if (hayPlan && typeof startTour === "function") {
           startTour();
         } else if (typeof restartOnboarding === "function") {
@@ -1416,7 +1420,27 @@ document.addEventListener("DOMContentLoaded", function () {
         // que se rellene solo ANTE los ojos es parte de entender de donde
         // sale el plan. Tras generarlo, maybeStartTour() arranca el
         // recorrido por su cuenta (ver handleSubmit).
-        window.setTimeout(function () { generar.click(); }, 450);
+        window.setTimeout(function () {
+          generar.click();
+
+          // Y el recorrido, SIN pasar por maybeStartTour().
+          //
+          // maybeStartTour() solo arranca a quien no lo haya visto nunca, y
+          // eso es lo correcto para el plan que uno genera por su cuenta.
+          // Pero aquí acaba de contestar quince preguntas y ha pulsado un
+          // botón que promete un plan: si además pidió repetir el alta, lo
+          // que quiere es que se lo expliquen otra vez. Hacerlo depender de
+          // una marca guardada es justo lo que dejaba a este usuario sin
+          // recorrido (reportado el 2026-09-03).
+          //
+          // Se espera a que el plan esté pintado: startTour() descarta los
+          // pasos cuyo elemento no existe, y casi todos nacen con el plan.
+          window.setTimeout(function () {
+            var hayPlan = document.querySelectorAll(
+              "#mealsContainer .meal-card:not([data-empty])").length > 0;
+            if (hayPlan && typeof startTour === "function") startTour();
+          }, 900);
+        }, 450);
       }
     });
   });
