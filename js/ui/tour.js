@@ -71,12 +71,22 @@ function _tourBuild() {
   skip.className = "tour__skip";
   skip.textContent = "Saltar";
 
+  // "Atrás" existe porque un recorrido solo de ida obliga a elegir entre
+  // terminar sin haber entendido un paso o abandonarlo entero. Se oculta en
+  // el primero en vez de dejarlo desactivado: un botón que no hace nada
+  // invita a pulsarlo y a pensar que algo va mal.
+  var prev = document.createElement("button");
+  prev.type = "button";
+  prev.className = "tour__prev";
+  prev.textContent = "Atrás";
+
   var next = document.createElement("button");
   next.type = "button";
   next.className = "tour__next";
   next.textContent = "Siguiente";
 
   nav.appendChild(skip);
+  nav.appendChild(prev);
   nav.appendChild(next);
   card.appendChild(counter);
   card.appendChild(title);
@@ -87,6 +97,7 @@ function _tourBuild() {
   document.body.appendChild(root);
 
   skip.addEventListener("click", stopTour);
+  prev.addEventListener("click", _tourPrev);
   next.addEventListener("click", _tourNext);
 
   // Escape cierra: un recorrido del que no se puede salir es una trampa.
@@ -95,7 +106,7 @@ function _tourBuild() {
   });
 
   _tourEls = { root: root, hole: hole, card: card, counter: counter,
-               title: title, body: body, skip: skip, next: next };
+               title: title, body: body, skip: skip, prev: prev, next: next };
   return _tourEls;
 }
 
@@ -206,6 +217,7 @@ function _tourRender() {
   e.title.textContent = step.title;
   e.body.textContent = step.body;
   e.next.textContent = (_tourIndex === _tourVisible.length - 1) ? "Entendido" : "Siguiente";
+  e.prev.hidden = (_tourIndex === 0);
 
   // El desplazamiento suave tarda: se recoloca al terminar, y además en
   // cada scroll/resize mientras el recorrido esté abierto.
@@ -219,6 +231,12 @@ function _tourNext() {
     return;
   }
   _tourIndex++;
+  _tourRender();
+}
+
+function _tourPrev() {
+  if (_tourIndex <= 0) return;
+  _tourIndex--;
   _tourRender();
 }
 

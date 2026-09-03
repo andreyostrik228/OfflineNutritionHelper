@@ -396,7 +396,11 @@ function renderFoodRow(item, storeId) {
           formatQuantityPhrase(item.grams, info) +
           (hasRealMacros
             ? ' &mdash; P ' + round1(item.protein) + ' g / C ' + round1(item.carbs) + ' g / G ' + round1(item.fat) + ' g' +
-              ' <span class="food-macro__badge" title="Nutrición verificada por ingrediente">real</span>'
+              // "real" no dice nada por sí solo, y su explicación estaba en
+              // un `title`: en un móvil no hay puntero con el que sacarla.
+              // Una palabra que se explica sola vale más que un texto
+              // emergente que ahí no existe.
+              ' <span class="food-macro__badge" title="Nutrición verificada por ingrediente">verificado</span>'
             : ' <span class="food-macro__unavailable">macros por ingrediente no verificados</span>') +
         '</div>' +
         formatPurchaseLine(info, realMatch, purchase) +

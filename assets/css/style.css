@@ -402,6 +402,26 @@ body {
   gap: 7px;
 }
 
+/* Texto de ayuda bajo un campo.
+   Hasta el 2026-09-03 no tenía NINGUNA regla: heredaba los 16px y el negro
+   del cuerpo, así que la ayuda salía más grande y más oscura que la propia
+   etiqueta del campo que explicaba (11px, atenuada). En un móvil eso es un
+   muro de texto compitiendo con los controles. Una ayuda tiene que leerse
+   como secundaria: si grita, se deja de leer y estorba. */
+.field-hint {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--ink-soft);
+}
+
+/* La ayuda que describe la opción elegida (actividad, objetivo). Se vacía
+   cuando esa opción no necesita explicación, y entonces no debe dejar un
+   hueco en la columna. */
+.field-hint:empty {
+  display: none;
+}
+
 /* ── Autocompletado de "no me gusta" (js/ui/ingredient-suggest.js) ──────
    El ancla rodea SOLO al input (la crea el JS), no el `.field` entero:
    `.field` incluye también el <p class="field-hint">, y anclando ahí la
@@ -3700,6 +3720,67 @@ dialog.despensa-dialog[open] {
    devolverle la prioridad a mano. */
 .days-carousel__bar[hidden] { display: none; }
 
+/* ── Flechas laterales, para ratón (2026-09-03) ─────────────────────────
+   En un portátil no se desliza: la única forma de cambiar de día eran los
+   puntos, que miden 8px. Estas flechas ocupan medio dedo y están donde la
+   vista ya está mirando.
+
+   Solo en dispositivos con puntero fino. En un móvil sobran (el gesto ya
+   funciona) y encima taparían el plan, que es lo que se ha venido a leer.
+
+   Semitransparentes a propósito: encima del contenido, pero sin taparlo
+   ni pedir atención. Se opacan al pasar el ratón, que es cuando sí se las
+   está mirando.
+
+   El contenedor necesita `position: relative` para que se anclen a él. */
+.days-carousel {
+  position: relative;
+}
+
+.days-carousel__arrow {
+  /* Sin `display` aquí: se enciende en el media query de abajo con
+     `:not([hidden])`, y así el atributo `hidden` del primer y último día
+     sigue mandando. Poner `display` a secas ganaría al `[hidden]` del
+     navegador y habría que restaurarlo a mano, como pasó con
+     `.days-carousel__bar`. */
+  display: none;
+  position: absolute;
+  top: 90px;               /* a la altura de la primera tarjeta, no del centro
+                              de un carrusel que puede medir 4000px */
+  z-index: 3;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(210, 194, 163, 0.55);   /* --line-strong translúcido */
+  border-radius: 999px;
+  background: rgba(247, 241, 229, 0.72);         /* --paper translúcido */
+  color: var(--ink-soft);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+
+.days-carousel__arrow--prev { left: -6px; }
+.days-carousel__arrow--next { right: -6px; }
+
+/* El icono es un chevron que apunta ABAJO: se gira a cada lado. */
+.days-carousel__arrow--prev .icon { transform: rotate(90deg); }
+.days-carousel__arrow--next .icon { transform: rotate(-90deg); }
+
+.days-carousel__arrow:hover,
+.days-carousel__arrow:focus-visible {
+  opacity: 1;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .days-carousel__arrow:not([hidden]) { display: flex; }
+}
+
 .days-carousel__bar {
   display: flex;
   align-items: center;
@@ -4456,6 +4537,30 @@ body.is-onboarding {
 
 .tour__skip:hover {
   color: var(--ink-soft);
+}
+
+/* Secundario a propósito: acompaña a "Siguiente" sin competir con él.
+   OJO -- aquí NO se declara `display`. Este botón se oculta con el atributo
+   `hidden` en el primer paso, y una regla de autor con `display` GANA al
+   `display:none` que el navegador aplica a `[hidden]`; entonces habría que
+   restaurarlo a mano con `.tour__prev[hidden] { display: none; }`. Ya pasó
+   con la barra del carrusel de días. Sin regla de `display`, `hidden`
+   funciona solo. */
+.tour__prev {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: none;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.tour__prev:hover {
+  border-color: var(--ink-faint);
+  color: var(--ink);
 }
 
 .tour__next {

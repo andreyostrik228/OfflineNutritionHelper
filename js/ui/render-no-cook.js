@@ -110,8 +110,29 @@ function paintNoCookPlan(plan) {
       'etiqueta de Mercadona. Que no aparezcan <strong>no</strong> significa ' +
       'que el producto no los lleve — comprueba siempre el envase.</p>'
     : "";
+
+  // Qué significa la marca "~ sin verificar" de las tarjetas.
+  //
+  // Vivía SOLO en el atributo `title`, y en un móvil no hay puntero: no se
+  // puede posar el dedo sobre algo para leer un texto emergente. Así que en
+  // el sitio donde de verdad se usa esta aplicación, la marca era un
+  // jeroglífico. Aquí se explica sin depender de ningún gesto.
+  //
+  // Sale solo cuando el plan trae alguna, que es casi la mitad de las
+  // veces: un aviso permanente sobre algo que a menudo no está presente se
+  // convierte en decorado y se deja de leer.
+  var hayAprox = (plan.slots || []).some(function (s) {
+    return (s.items || []).some(function (it) { return it.needsReview; });
+  });
+  var aproxNote = hayAprox
+    ? '<p class="nocook-disclaimer">Donde pone <span class="nutrition-approx">' +
+      '~ sin verificar</span>, la nutrición se ha buscado por el <strong>nombre' +
+      '</strong> del producto y nadie la ha comprobado: puede no ser la de ese ' +
+      'producto exacto. El resto viene del código de barras.</p>'
+    : "";
+
   noCookResults.innerHTML =
-    renderNoCookSummary(plan) + allergenNote + plan.slots.map(renderNoCookSlot).join("");
+    renderNoCookSummary(plan) + allergenNote + aproxNote + plan.slots.map(renderNoCookSlot).join("");
   lastNoCookSlots = plan.slots;
   lastNoCookPlan = plan;
 }

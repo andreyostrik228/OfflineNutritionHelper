@@ -687,6 +687,39 @@ document.addEventListener("DOMContentLoaded", function () {
     radio.addEventListener("change", updateBudgetCustomVisibility);
   });
 
+  // ── Ayuda de la opción elegida (actividad, objetivo) ─────────────────
+  //
+  // El alta explica estas opciones una por una ("Moderado: en pie a ratos,
+  // o deporte 3-4 días"), pero el formulario las enseñaba peladas. Quien
+  // vuelve a la aplicación, o cambia un ajuste más tarde, se quedaba
+  // mirando "Sedentario / Ligero / Moderado" sin saber cuál es.
+  //
+  // El texto NO se copia: se lee de ONBOARDING_STEPS, que es donde ya
+  // estaba escrito. Dos copias del mismo texto acaban diciendo cosas
+  // distintas, y el alta y el formulario preguntan exactamente lo mismo.
+  safeInit("field-hints", function () {
+    if (typeof ONBOARDING_STEPS === "undefined") return;
+
+    [["activity", "activityHint"], ["goal", "goalHint"]].forEach(function (par) {
+      var select = document.getElementById(par[0]);
+      var hint = document.getElementById(par[1]);
+      if (!select || !hint) return;
+
+      var paso = ONBOARDING_STEPS.filter(function (s) { return s.field === par[0]; })[0];
+      if (!paso || !paso.options) return;
+
+      var pintar = function () {
+        var opcion = paso.options.filter(function (o) { return o.value === select.value; })[0];
+        // Sin `note` no se inventa una: hay opciones que se explican solas
+        // ("Perder grasa"), y rellenar el hueco por simetría sería ruido.
+        hint.textContent = (opcion && opcion.note) ? opcion.note : "";
+      };
+
+      select.addEventListener("change", pintar);
+      pintar();
+    });
+  });
+
   // ── Horario del día (franja de la parte superior del panel de resultados) ─
   safeInit("schedule-init", function () {
     if (scheduleTimelineEl && typeof initScheduleRefs === "function") {
@@ -817,12 +850,22 @@ document.addEventListener("DOMContentLoaded", function () {
   // Puntos + botón por día. El deslizamiento en sí lo hace el navegador
   // (scroll-snap en CSS): aquí solo se sincroniza el punto activo con lo
   // que se está viendo, y se permite saltar pulsando un punto.
+  // Lo asigna el init del carrusel (más abajo), que es quien sabe en qué
+  // día está. Vive aquí porque renderDayDots necesita avisarle al pintar un
+  // plan nuevo, y hasta entonces no debe hacer nada.
+  var _updateDayArrows = function () {};
+
   function renderDayDots(count) {
     var bar = document.getElementById("daysCarouselBar");
     var dots = document.getElementById("daysDots");
     if (!bar || !dots) return;
 
-    if (count <= 1) { bar.hidden = true; dots.innerHTML = ""; return; }
+    if (count <= 1) {
+      bar.hidden = true;
+      dots.innerHTML = "";
+      _updateDayArrows();   // con un día no hay flechas que enseñar
+      return;
+    }
     bar.hidden = false;
     var html = "";
     for (var i = 0; i < count; i++) {
@@ -830,6 +873,10 @@ document.addEventListener("DOMContentLoaded", function () {
         '" data-go="' + i + '" aria-label="Día ' + (i + 1) + '"></button>';
     }
     dots.innerHTML = html;
+    // Un plan nuevo empieza en el día 1, así que la flecha de "anterior"
+    // tiene que estar oculta antes de que haya ningún desplazamiento del
+    // que deducirlo.
+    _updateDayArrows();
   }
 
   safeInit("day-carousel-init", function () {
@@ -903,23 +950,59 @@ document.addEventListener("DOMContentLoaded", function () {
       settleTimer = setTimeout(flushAlign, 160);
     }
 
-    function goToDay(i) {
-      if (i === currentDay) return;
-      currentDay = i;
-      setActiveDot(i);
-      scheduleTop();
-    }
+    // ── Flechas laterales (2026-09-03) ────────────────────────────────
+    // "На ноутбуке не удобно между днями листать": en un portátil no se
+    // desliza, y los puntos miden 8px. Las flechas NO son otra forma de
+    // navegar: llaman al mismo `slideTo` que los puntos, para que no haya
+    // dos maneras de mover el carrusel que puedan discrepar.
+    var prevBtn = document.getElementById("dayPrevBtn");
+    var nextBtn = document.getElementById("dayNextBtn");
 
-    dots.addEventListener("click", function (e) {
-      var dot = e.target.closest(".days-carousel__dot");
-      if (!dot) return;
-      var i = Number(dot.dataset.go);
+    function updateArrows() {
+      if (!prevBtn || !nextBtn) return;
+      var total = track.querySelectorAll(".day-slide").length;
+      // Se ocultan, no se desactivan: un botón que no hace nada invita a
+      // pulsarlo y a pensar que algo va mal. Con un solo día no hay nada
+      // entre lo que moverse y desaparecen los dos.
+      prevBtn.hidden = (total < 2 || currentDay <= 0);
+      nextBtn.hidden = (total < 2 || currentDay >= total - 1);
+    }
+    // renderDayDots() lo llama al pintar un plan nuevo, cuando aún no ha
+    // habido ningún desplazamiento del que deducir el estado. Y de paso
+    // vuelve al día 1: al re-renderizar, la pista se queda con
+    // `scrollLeft = 0`, así que dejar `currentDay` en el día 4 del plan
+    // anterior descuadraba las flechas hasta el primer desplazamiento.
+    _updateDayArrows = function () {
+      currentDay = 0;
+      updateArrows();
+    };
+
+    function slideTo(i) {
       var slides = track.querySelectorAll(".day-slide");
+      if (!slides.length) return;
+      i = Math.max(0, Math.min(i, slides.length - 1));
       track.scrollTo({ left: i * slideStep(slides), behavior: "smooth" });
       // Se marca YA, sin esperar al evento `scroll`: con desplazamiento
       // suave ese evento puede no llegar nunca con la posición final, y el
       // punto se quedaba en el día 1 aunque el carrusel sí se moviera.
       goToDay(i);
+    }
+
+    function goToDay(i) {
+      if (i === currentDay) return;
+      currentDay = i;
+      setActiveDot(i);
+      updateArrows();
+      scheduleTop();
+    }
+
+    if (prevBtn) prevBtn.addEventListener("click", function () { slideTo(currentDay - 1); });
+    if (nextBtn) nextBtn.addEventListener("click", function () { slideTo(currentDay + 1); });
+
+    dots.addEventListener("click", function (e) {
+      var dot = e.target.closest(".days-carousel__dot");
+      if (!dot) return;
+      slideTo(Number(dot.dataset.go));
     });
 
     // El punto activo se deduce del scroll, no de quién pulsó: así también
