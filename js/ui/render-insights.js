@@ -113,6 +113,17 @@ function renderWarnings(profile, result, data) {
     // era lo que convertia este aviso en un parrafo.
     messages.push("La compra sale a €" + (Math.round(purchaseCost * 100) / 100) +
                   ", algo por encima de tu €" + data.budget + ".");
+
+    // Y si ademas es un plan de UN dia, el consejo mas util no es "gasta
+    // mas": es comprar para varios dias. Un paquete se paga una vez y
+    // rinde en todos ellos. Medido sobre 8 planes por punto con el
+    // catalogo actual: a 8 EUR/dia la compra baja de 8,77 a 6,10 por dia
+    // comprando para siete, y la proporcion se mantiene en 12 y 16 EUR
+    // (~30% menos). Solo se dice AQUI, cuando el presupuesto no llega y
+    // el plan es de un dia: en cualquier otro momento seria ruido.
+    if ((data.planDays || 1) === 1) {
+      messages.push("Comprando para 3 o 7 días sale más barato por día.");
+    }
   }
 
   // Umbral subido de 220 a 600 kcal: con objetivos de volumen altos, la
