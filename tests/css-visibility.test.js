@@ -40,6 +40,10 @@ function cssPath() {
   return path.join(__dirname, "..", "assets", "css", "style.css");
 }
 
+function htmlPath() {
+  return path.join(__dirname, "..", "index.html");
+}
+
 /** Los @keyframes cuyo fotograma `from`/`0%` deja el elemento invisible. */
 function keyframesQueEmpiezanInvisibles(css) {
   var invisibles = [];
@@ -109,6 +113,50 @@ function run(t) {
       "pageIn se aplica a .hero, .field (los 26 campos), .actions y " +
       ".panel--results: si vuelve a tocar la opacidad, un móvil sin " +
       "animaciones se queda sin interfaz");
+  });
+
+  // ── `display` de autor contra el atributo `hidden` ───────────────────
+  //
+  // Una regla de autor con `display` GANA al `display:none` que el
+  // navegador aplica a `[hidden]`. Así que un elemento al que el JS pone
+  // `hidden` sigue viéndose si su clase declara un `display`.
+  //
+  // Ya ha pasado tres veces aquí: la barra del carrusel salía con un solo
+  // día, y el campo "Repite la contraseña" se habría visto también al
+  // iniciar sesión. Este test lo caza para cualquier clase futura en vez
+  // de esperar a que alguien lo note en producción.
+  t.test("una clase que se esconde con `hidden` no puede declarar `display`", function () {
+    var html = fs.readFileSync(htmlPath(), "utf8");
+    var css = fs.readFileSync(cssPath(), "utf8");
+
+    // Clases de los elementos que nacen con el atributo `hidden` en el HTML
+    // (los que el JavaScript enseña y esconde).
+    var clases = {};
+    var re = /<[^>]*\sclass="([^"]+)"[^>]*\shidden[\s>]/g;
+    var m;
+    while ((m = re.exec(html)) !== null) {
+      m[1].split(/\s+/).forEach(function (c) { if (c) clases[c] = true; });
+    }
+
+    var rotas = Object.keys(clases).filter(function (c) {
+      // .Declara esa clase un `display` en su propia regla?
+      var i = css.indexOf("." + c + " {");
+      if (i === -1) return false;
+      var fin = css.indexOf("}", i);
+      var bloque = (fin === -1) ? css.slice(i) : css.slice(i, fin);
+      if (!/display\s*:/.test(bloque)) return false;
+      // Hay DOS formas correctas y las dos valen:
+      //   a) restaurar el atributo a mano: `.clase[hidden] { display: none; }`
+      //   b) encender el display solo cuando NO esta oculto:
+      //      `.clase:not([hidden]) { display: flex; }`
+      if (css.indexOf("." + c + ":not([hidden])") !== -1) return false;
+      return css.indexOf("." + c + "[hidden]") === -1;
+    });
+
+    assert.deepStrictEqual(rotas, [],
+      "estas clases declaran `display` y se esconden con `hidden`, así que " +
+      "el atributo no las esconde; hace falta `.clase[hidden] { display: none; }`: " +
+      rotas.join(", "));
   });
 
   t.test("la bienvenida tampoco depende de que su animación corra", function () {

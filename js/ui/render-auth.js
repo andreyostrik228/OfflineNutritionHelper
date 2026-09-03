@@ -48,6 +48,7 @@
 var authProfileBtn, authProfileLabel, authUserMenu, authUserEmailEl, authLogoutBtn;
 var authDialogEl, authDialogTitle, authDialogCloseBtn;
 var authGoogleBtn, authEmailForm, authEmailInput, authPasswordInput, authErrorEl, authNoticeEl,
+    authPassword2Field, authPassword2Input, authPasswordHint,
     authSubmitBtn, authSwitchPrompt, authSwitchModeBtn, authUnavailableBox, authAvailableBox;
 var authConflictDialogEl, authConflictKeepCloudBtn, authConflictMergeBtn, authConflictKeepLocalBtn;
 var authDeleteAccountBtn, authDeleteDialogEl, authDeleteConfirmBtn, authDeleteCancelBtn, authDeleteErrorEl;
@@ -81,6 +82,9 @@ function initAuthRefs(refs) {
   authEmailForm       = refs.authEmailForm;
   authEmailInput      = refs.authEmailInput;
   authPasswordInput   = refs.authPasswordInput;
+  authPassword2Field  = refs.authPassword2Field;
+  authPassword2Input  = refs.authPassword2Input;
+  authPasswordHint    = refs.authPasswordHint;
   authErrorEl         = refs.authErrorEl;
   authNoticeEl        = refs.authNoticeEl;
   authSubmitBtn       = refs.authSubmitBtn;
@@ -367,6 +371,12 @@ function closeAuthDialog() {
   }
 }
 
+/** Mínimo que exige Supabase por defecto. Se comprueba AQUÍ además de en
+ *  el servidor: el formulario es `novalidate`, así que el `minlength` del
+ *  HTML no lo aplica nadie, y una contraseña corta viajaba hasta Supabase
+ *  para volver como un error en inglés. */
+var AUTH_MIN_PASSWORD = 6;
+
 function setAuthMode(mode) {
   _authMode = mode;
   var isRegister = mode === "register";
@@ -374,6 +384,22 @@ function setAuthMode(mode) {
   if (authSubmitBtn)    authSubmitBtn.textContent = isRegister ? "Crear cuenta" : "Iniciar sesión";
   if (authSwitchPrompt) authSwitchPrompt.textContent = isRegister ? "¿Ya tienes cuenta?" : "¿No tienes cuenta?";
   if (authSwitchModeBtn) authSwitchModeBtn.textContent = isRegister ? "Iniciar sesión" : "Crear cuenta";
+
+  // Repetir la contraseña SOLO al crear cuenta. Al iniciar sesión sobra: si
+  // te equivocas, te lo dice el propio intento.
+  if (authPassword2Field) authPassword2Field.hidden = !isRegister;
+  // Y se vacía al cambiar de modo: dejarla escrita al volver a "iniciar
+  // sesión" deja un campo oculto con contenido que nadie va a mirar.
+  if (authPassword2Input && !isRegister) authPassword2Input.value = "";
+  if (authPasswordHint) authPasswordHint.hidden = !isRegister;
+
+  // `autocomplete` correcto para cada modo. No es cosmético: con
+  // "current-password" el gestor de contraseñas ofrece la GUARDADA cuando
+  // lo que toca es inventar una nueva, y no se ofrece a generarla ni a
+  // guardarla. Estaba fijo en "current-password" para los dos modos.
+  if (authPasswordInput) {
+    authPasswordInput.setAttribute("autocomplete", isRegister ? "new-password" : "current-password");
+  }
 }
 
 function handleSwitchMode() {
@@ -422,9 +448,29 @@ function handleEmailFormSubmit(event) {
 
   var email = authEmailInput ? authEmailInput.value.trim() : "";
   var password = authPasswordInput ? authPasswordInput.value : "";
+
   if (!email || !password) {
     showAuthError("Introduce email y contraseña.");
     return;
+  }
+
+  // Al CREAR cuenta se comprueba aquí, antes de salir a la red: un error
+  // que puede verse sin preguntar a nadie no debería costar un viaje al
+  // servidor ni volver traducido a medias.
+  if (_authMode === "register") {
+    if (password.length < AUTH_MIN_PASSWORD) {
+      showAuthError("La contraseña necesita al menos " + AUTH_MIN_PASSWORD + " caracteres.");
+      if (authPasswordInput) authPasswordInput.focus();
+      return;
+    }
+    var password2 = authPassword2Input ? authPassword2Input.value : "";
+    if (password !== password2) {
+      // Escribir a ciegas una contraseña nueva y equivocarse deja fuera de
+      // una cuenta recién creada, sin saber en qué se falló.
+      showAuthError("Las dos contraseñas no coinciden.");
+      if (authPassword2Input) { authPassword2Input.value = ""; authPassword2Input.focus(); }
+      return;
+    }
   }
 
   setAuthBusy(true);

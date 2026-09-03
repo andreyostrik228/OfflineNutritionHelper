@@ -408,6 +408,12 @@ body {
    etiqueta del campo que explicaba (11px, atenuada). En un móvil eso es un
    muro de texto compitiendo con los controles. Una ayuda tiene que leerse
    como secundaria: si grita, se deja de leer y estorba. */
+/* `.field` es flex, y una regla de autor con `display` GANA al
+   `display:none` que el navegador aplica a `[hidden]`. Sin esto, el campo
+   "Repite la contraseña" se vería también al INICIAR sesión, donde no
+   pinta nada. Es la misma trampa que ya se comió `.days-carousel__bar`. */
+.field[hidden] { display: none; }
+
 .field-hint {
   margin: 0;
   font-size: 11.5px;
@@ -639,6 +645,11 @@ select:focus-visible {
   outline: 2px solid var(--green);
   outline-offset: 1px;
 }
+
+/* `hidden` no basta con un `display` de autor: el campo de la cantidad
+   exacta se veía SIEMPRE, incluso con un tramo elegido (medido: 86px de
+   alto con `hidden=true`). Lo esconde app.js con `.hidden = !isCustom`. */
+.budget-custom-field[hidden] { display: none; }
 
 .budget-custom-field {
   margin-top: var(--space-3);
@@ -2544,6 +2555,9 @@ button:focus-visible {
 }
 
 /* ── Empty state: explica qué es la despensa, no solo que está vacía ──── */
+/* Mismo caso: el aviso de "despensa vacía" se esconde con `hidden`. */
+.pantry-empty[hidden] { display: none; }
+
 .pantry-empty {
   display: flex;
   flex-direction: column;
