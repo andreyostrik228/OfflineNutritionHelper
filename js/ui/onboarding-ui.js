@@ -255,7 +255,11 @@ function _obRenderStep() {
   if (e.error) e.error.hidden = true;
   if (e.backBtn) e.backBtn.disabled = (_onboardingIndex === 0);
   if (e.nextBtn) {
-    e.nextBtn.textContent = (_onboardingIndex === steps.length - 1) ? "Terminar" : "Siguiente";
+    // El ultimo boton dice lo que va a PASAR, no "Terminar": al pulsarlo se
+    // genera el plan y arranca el recorrido (ver onFinish en app.js).
+    // "Terminar" dejaba al usuario delante de un formulario relleno sin
+    // decirle que faltaba un paso mas.
+    e.nextBtn.textContent = (_onboardingIndex === steps.length - 1) ? "Generar plan" : "Siguiente";
   }
 
   var box = e.answer;
@@ -309,6 +313,28 @@ function _obRenderStep() {
       });
       box.appendChild(btn);
     });
+    return;
+  }
+
+  // ── Hora (despertar / dormir) y texto libre (no me gusta) ───────────
+  // Se anaden en 2026-09-03 con las 8 preguntas que faltaban. Reutilizan
+  // _obWriteAnswer/_obCurrentValue tal cual: escriben en el control REAL
+  // del formulario, igual que el resto -- lo unico propio es que input
+  // pintar.
+  if (step.kind === "time" || step.kind === "text") {
+    box.className = "onboarding__answer onboarding__answer--" + step.kind;
+    var libre = document.createElement("input");
+    libre.type = (step.kind === "time") ? "time" : "text";
+    libre.className = (step.kind === "time") ? "onboarding__time" : "onboarding__text";
+    libre.id = "onboardingFreeInput";
+    libre.value = current || "";
+    if (step.placeholder) libre.placeholder = step.placeholder;
+    libre.addEventListener("keydown", function (ev) {
+      if (ev.key === "Enter") { ev.preventDefault(); _obNext(); }
+    });
+    box.appendChild(libre);
+    // Sin focus() automatico, mismo motivo que en el numerico: en movil el
+    // teclado saldria de golpe y taparia la pregunta.
     return;
   }
 
@@ -389,6 +415,21 @@ function _obWriteAnswer(step, value) {
  * seis sí.
  */
 function _obCoerceForSettings(field, value) {
+  // Campos de LISTA (dislikes): settings.js los guarda como array y
+  // sanitizeStringList() devuelve [] ante cualquier cosa que no lo sea.
+  // Mandar la cadena tal cual del <input> perdía la respuesta EN SILENCIO
+  // -- se veía escrita en el formulario y desaparecía al recargar. Se
+  // parte igual que en app.js al guardar el formulario a mano, que es la
+  // otra puerta por la que entra este mismo campo.
+  var listas = (typeof SETTINGS_LIST_FIELDS !== "undefined") ? SETTINGS_LIST_FIELDS : [];
+  if (listas.indexOf(field) !== -1) {
+    if (Array.isArray(value)) return value;
+    return String(value || "")
+      .split(",")
+      .map(function (part) { return part.trim(); })
+      .filter(Boolean);
+  }
+
   var numericos = (typeof SETTINGS_NUMERIC_FIELDS !== "undefined") ? SETTINGS_NUMERIC_FIELDS : [];
   if (numericos.indexOf(field) === -1) return value;
   var n = (typeof value === "number") ? value : parseFloat(String(value).replace(",", "."));
@@ -450,6 +491,23 @@ function _obNext() {
       return;
     }
     _obWriteAnswer(step, parseFloat(String(input.value).replace(",", ".")));
+  }
+
+  // Hora y texto: se leen tal cual. La hora la valida el propio <input
+  // type="time"> del navegador, y el texto libre PUEDE quedarse vacio --
+  // "no me gusta" en blanco es una respuesta legitima ("me vale todo"), no
+  // un hueco por rellenar.
+  if (step.kind === "time" || step.kind === "text") {
+    var libreInput = _obEl("onboardingFreeInput");
+    var valorLibre = libreInput ? String(libreInput.value).trim() : "";
+    if (step.kind === "time" && !valorLibre) {
+      if (e.error) {
+        e.error.textContent = "Pon una hora para continuar.";
+        e.error.hidden = false;
+      }
+      return;
+    }
+    _obWriteAnswer(step, valorLibre);
   }
 
   // Una pregunta de opciones tiene que estar CONTESTADA para avanzar.

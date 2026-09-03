@@ -1109,7 +1109,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
       usePlanTodayBtn.disabled = true; // guarda simple contra doble clic (la llamada es síncrona)
       try {
-        var result, mode;
+        var result, mode, savedDays = 1;
         if (pendingReplaceEntryId && typeof replacePendingMealsForToday === "function") {
           result = replacePendingMealsForToday(pendingReplaceEntryId, lastGeneratedMeals, lastGeneratedStore, lastGeneratedDayOptions);
           pendingReplaceEntryId = null;
@@ -1117,6 +1117,32 @@ document.addEventListener("DOMContentLoaded", function () {
         } else if (typeof savePlanForToday === "function") {
           result = savePlanForToday(lastGeneratedMeals, lastGeneratedStore, lastGeneratedDayOptions);
           mode = result.replaced ? "draft-updated" : "created";
+
+          // ── Plan de VARIOS DÍAS (2026-09-03) ──────────────────────────
+          // Antes se guardaba solo `lastGeneratedMeals`, que son las tomas
+          // del DÍA 1: el usuario generaba una semana, pulsaba confirmar y
+          // en "Mis planes" aparecía un único día. Los demás días ya
+          // estaban generados y en pantalla (`lastGeneratedDays`, es lo que
+          // pinta el carrusel) -- simplemente nadie los guardaba.
+          //
+          // Cada día va bajo SU fecha, empezando hoy, porque "Mis planes"
+          // se organiza por fecha: guardarlos todos bajo hoy los apilaría
+          // en el mismo día y no serviría de nada.
+          //
+          // Se salta el día 0: ya lo guardó la llamada de arriba, con su
+          // UPSERT sobre el borrador de hoy. Repetirlo aquí crearía una
+          // segunda entrada de hoy.
+          if (lastGeneratedDays && lastGeneratedDays.length > 1) {
+            savedDays = lastGeneratedDays.length;
+            for (var d = 1; d < lastGeneratedDays.length; d++) {
+              var dayMeals = lastGeneratedDays[d] && lastGeneratedDays[d].meals;
+              if (!dayMeals) continue;
+              var fecha = new Date();
+              fecha.setDate(fecha.getDate() + d);
+              savePlanForToday(dayMeals, lastGeneratedStore, lastGeneratedDayOptions,
+                               formatLocalDateKey(fecha));
+            }
+          }
         }
         if (!result) return;
 
@@ -1131,7 +1157,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
 
         if (typeof renderPantryPanel === "function") renderPantryPanel();
-        if (typeof renderPlanSavedNotice === "function") renderPlanSavedNotice(result.entry, result.historySaved, mode);
+        if (typeof renderPlanSavedNotice === "function") renderPlanSavedNotice(result.entry, result.historySaved, mode, savedDays);
 
         // savePlanForToday()/replacePendingMealsForToday() escriben en
         // pantryHistory pero NO pasan por syncAfterPantryChange() (no se
@@ -1368,13 +1394,29 @@ document.addEventListener("DOMContentLoaded", function () {
     initOnboarding({
       hasProfile: hasProfile,
       onFinish: function () {
-        // Al terminar las preguntas, el formulario queda relleno y a la
-        // vista. No se genera el plan solo: ver la cabecera de
-        // js/ui/onboarding-ui.js.
+        // El ultimo boton del alta dice "Generar plan", asi que genera el
+        // plan (2026-09-03, a peticion del usuario).
+        //
+        // Antes solo hacia scroll hasta el boton y lo dejaba ahi: la idea
+        // era que el plan no apareciera "por arte de magia" sin haber visto
+        // de donde salen los numeros. Pero el efecto real era que el alta
+        // terminaba en un formulario y no en un resultado, y el recorrido
+        // guiado -- que necesita un plan que senalar -- no llegaba a salir
+        // hasta que el usuario adivinaba que faltaba pulsar algo.
+        //
+        // Se pulsa el boton REAL en vez de llamar al generador: asi pasa
+        // por la misma validacion que un envio a mano (si algo quedo sin
+        // contestar, sale el aviso de siempre en vez de un plan a medias).
         var generar = document.querySelector('#plannerForm button[type="submit"]');
-        if (generar && typeof generar.scrollIntoView === "function") {
+        if (!generar) return;
+        if (typeof generar.scrollIntoView === "function") {
           generar.scrollIntoView({ behavior: "smooth", block: "center" });
         }
+        // Un respiro antes de generar: el formulario acaba de aparecer y
+        // que se rellene solo ANTE los ojos es parte de entender de donde
+        // sale el plan. Tras generarlo, maybeStartTour() arranca el
+        // recorrido por su cuenta (ver handleSubmit).
+        window.setTimeout(function () { generar.click(); }, 450);
       }
     });
   });

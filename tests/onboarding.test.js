@@ -404,7 +404,12 @@ function run(t) {
     ["sex", "age", "weight", "height", "activity", "goal"].forEach(function (need) {
       assert.ok(ids.indexOf(need) !== -1, "sin " + need + " no se puede calcular nada");
     });
-    assert.ok(s.ONBOARDING_STEPS.length <= 8,
+    // El tope subió de 8 a 15 el 2026-09-03: el usuario pidió que se
+    // preguntara todo lo que cambia el plan, porque un valor por defecto
+    // razonable no es lo mismo que una respuesta (ver la cabecera de
+    // onboarding-steps.js). Sigue habiendo tope: el muro de 26 campos era
+    // un problema real y no ha dejado de serlo.
+    assert.ok(s.ONBOARDING_STEPS.length <= 15,
       "el muro de 26 campos era el problema; " + s.ONBOARDING_STEPS.length + " pasos ya es demasiado");
   });
 
@@ -412,12 +417,18 @@ function run(t) {
     var s = freshSandbox();
     s.ONBOARDING_STEPS.forEach(function (step) {
       assert.ok(step.title && step.title.length > 0, "paso sin pregunta: " + step.id);
-      assert.ok(["choice", "number"].indexOf(step.kind) !== -1, "tipo raro en " + step.id);
+      assert.ok(["choice", "number", "time", "text"].indexOf(step.kind) !== -1,
+        "tipo raro en " + step.id);
       if (step.kind === "choice") {
         assert.ok(step.options && step.options.length >= 2, "elección con menos de 2 opciones: " + step.id);
         step.options.forEach(function (o) {
           assert.ok(o.value && o.label, "opción incompleta en " + step.id);
         });
+      } else if (step.kind === "time" || step.kind === "text") {
+        // No llevan límites ni opciones: los valida el propio <input> (la
+        // hora) o se admite vacío a propósito (el texto libre).
+        assert.ok(step.min === undefined && step.max === undefined,
+          "un paso de hora/texto no debe traer límites numéricos: " + step.id);
       } else {
         assert.ok(typeof step.min === "number" && typeof step.max === "number",
           "paso numérico sin límites: " + step.id);
@@ -566,9 +577,48 @@ function run(t) {
   // solo funciona si la clave del paso es una que settings.js reconoce:
   // sanitizeSettings() descarta lo que no conoce, y lo haría en silencio.
 
+  t.test("el alta pregunta TODO lo que cambia el plan (2026-09-03)", function () {
+    var s = freshSandbox();
+    var campos = s.ONBOARDING_STEPS.map(function (x) { return x.field; });
+    // Un valor por defecto razonable NO es una respuesta: con 35 minutos de
+    // cocina, sin nada excluido y con el horario de otra persona, el plan
+    // que sale del alta no es el de este usuario. Estas ocho se añadieron
+    // porque el usuario avisó de que no se le preguntaban.
+    ["workouts", "cookTime", "priority", "taste", "cuisine",
+     "wakeTime", "sleepTime", "dislikes"].forEach(function (need) {
+      assert.ok(campos.indexOf(need) !== -1, "el alta ya no pregunta: " + need);
+    });
+  });
+
+  t.test("settings.js EXIGE un array en un campo de lista -- una cadena se pierde", function () {
+    var s = freshSandbox();
+    s.localStorage = createFakeLocalStorage();
+
+    // Este es el contrato que obliga a _obCoerceForSettings() a partir la
+    // cadena del <input> antes de guardar. Sin eso, la respuesta se veía
+    // escrita en el formulario y desaparecía al recargar, sin ningún aviso.
+    s.saveSettings({ dislikes: "cebolla, queso azul" });
+    var guardado = s.getSettings().dislikes;
+    // Se pierde ENTERO: sanitizeSettings() ni siquiera deja la clave. Da
+    // igual la forma exacta de perderse -- lo que fija este test es que la
+    // cadena NO llega, que es lo que obliga a partirla antes.
+    assert.ok(!guardado || guardado.length === 0,
+      "una cadena debería perderse aquí y llegó como: " + JSON.stringify(guardado));
+
+    s.saveSettings({ dislikes: ["cebolla", "queso azul"] });
+    assert.deepStrictEqual(plain(s.getSettings().dislikes), ["cebolla", "queso azul"]);
+  });
+
   t.test("cada campo del alta es una clave que settings.js sabe guardar", function () {
     var s = freshSandbox();
-    var conocidas = [].concat(s.SETTINGS_NUMERIC_FIELDS, s.SETTINGS_STRING_FIELDS);
+    // Las de LISTA cuentan igual (dislikes): settings.js las guarda, solo
+    // que como array. Faltaban aquí, y por eso este test señaló `dislikes`
+    // como huérfano cuando en realidad el problema era otro -- que la
+    // respuesta llegaba como cadena y sanitizeStringList() la convertía en
+    // [] sin avisar. Eso se arregló en _obCoerceForSettings(); el test de
+    // más abajo lo fija.
+    var conocidas = [].concat(s.SETTINGS_NUMERIC_FIELDS, s.SETTINGS_STRING_FIELDS,
+                              s.SETTINGS_LIST_FIELDS || []);
     var huerfanas = s.ONBOARDING_STEPS
       .filter(function (step) { return conocidas.indexOf(step.field) === -1; })
       .map(function (step) { return step.id + " -> " + step.field; });

@@ -25,7 +25,7 @@
        .css. Si se olvida, lo peor que pasa es lo de siempre; si se sube,
        no hay mezcla posible.
        ══════════════════════════════════════════════════════════════════ -->
-  <link rel="stylesheet" href="assets/css/style.css?v=20260903i">
+  <link rel="stylesheet" href="assets/css/style.css?v=20260903k">
 
   <!-- ══ ANTES DE PINTAR NADA ══════════════════════════════════════════
        Decide, de forma SÍNCRONA y antes del primer pintado, si este
@@ -975,87 +975,87 @@
        js/core/supabase-client.js. -->
  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.min.js"></script>
 
-<script src="js/data/supabase-config.js?v=20260903i"></script>
-<script src="js/data/legal.js?v=20260903i"></script>
-<script src="js/data/onboarding-steps.js?v=20260903i"></script>
-<script src="js/data/tour-steps.js?v=20260903i"></script>
-<script src="js/data/dishes.js?v=20260903i"></script>
+<script src="js/data/supabase-config.js?v=20260903k"></script>
+<script src="js/data/legal.js?v=20260903k"></script>
+<script src="js/data/onboarding-steps.js?v=20260903k"></script>
+<script src="js/data/tour-steps.js?v=20260903k"></script>
+<script src="js/data/dishes.js?v=20260903k"></script>
 <!-- dish-instructions.js: pasos/equipo/dificultad, ADITIVO y opcional.
      Un plato sin entrada aqui se comporta exactamente como antes -- por
      eso dishes.js no se toca y los golden-master no se mueven. -->
-<script src="js/data/dish-instructions.js?v=20260903i"></script>
-<script src="js/data/dish-cuisine.js?v=20260903i"></script>
-<script src="js/data/real-products.js?v=20260903i"></script>
-<script src="js/data/real-products-alcampo.js?v=20260903i"></script>
-<script src="js/data/real-products-carrefour.js?v=20260903i"></script>
-<script src="js/data/packaging.js?v=20260903i"></script>
-<script src="js/data/real-ingredient-matches.js?v=20260903i"></script>
-<script src="js/data/product-links.js?v=20260903i"></script>
-<script src="js/data/ingredient-nutrition.js?v=20260903i"></script>
-<script src="js/data/no-cook-classifier.js?v=20260903i"></script>
+<script src="js/data/dish-instructions.js?v=20260903k"></script>
+<script src="js/data/dish-cuisine.js?v=20260903k"></script>
+<script src="js/data/real-products.js?v=20260903k"></script>
+<script src="js/data/real-products-alcampo.js?v=20260903k"></script>
+<script src="js/data/real-products-carrefour.js?v=20260903k"></script>
+<script src="js/data/packaging.js?v=20260903k"></script>
+<script src="js/data/real-ingredient-matches.js?v=20260903k"></script>
+<script src="js/data/product-links.js?v=20260903k"></script>
+<script src="js/data/ingredient-nutrition.js?v=20260903k"></script>
+<script src="js/data/no-cook-classifier.js?v=20260903k"></script>
 <!-- Raciones/papeles de cada producto y formas de comida del modo "sin
      cocinar" (2026-09-01). serving-sizes.js antes que el generador: sin el
      ANTES no habia gramos por racion y los macros en pantalla eran los de
      100 g. -->
-<script src="js/data/serving-sizes.js?v=20260903i"></script>
-<script src="js/data/no-cook-templates.js?v=20260903i"></script>
-<script src="js/data/prices/mercadona.js?v=20260903i"></script>
-<script src="js/data/budget-presets.js?v=20260903i"></script>
-<script src="js/data/dislike-groups.js?v=20260903i"></script>
-<script src="js/data/shelf-life.js?v=20260903i"></script>
+<script src="js/data/serving-sizes.js?v=20260903k"></script>
+<script src="js/data/no-cook-templates.js?v=20260903k"></script>
+<script src="js/data/prices/mercadona.js?v=20260903k"></script>
+<script src="js/data/budget-presets.js?v=20260903k"></script>
+<script src="js/data/dislike-groups.js?v=20260903k"></script>
+<script src="js/data/shelf-life.js?v=20260903k"></script>
 <!-- Conservación REAL publicada por Mercadona (generado por
      PythonProject/scripts/export_product_storage.py). Tiene prioridad
      sobre shelf-life.js, que es estimación nuestra. -->
-<script src="js/data/product-storage.js?v=20260903i"></script>
+<script src="js/data/product-storage.js?v=20260903k"></script>
 <!-- Alergenos declarados en la etiqueta de Mercadona (generado por
      scratchpad/gen_allergens.js). Solo para MOSTRAR en las tarjetas de
      "sin cocinar" -- no es un filtro, ver js/core/allergens.js. -->
-<script src="js/data/product-allergens.js?v=20260903i"></script>
-<script src="js/core/utils.js?v=20260903i"></script>
-<script src="js/core/pricing.js?v=20260903i"></script>
-<script src="js/core/nutrition.js?v=20260903i"></script>
+<script src="js/data/product-allergens.js?v=20260903k"></script>
+<script src="js/core/utils.js?v=20260903k"></script>
+<script src="js/core/pricing.js?v=20260903k"></script>
+<script src="js/core/nutrition.js?v=20260903k"></script>
 <!-- expiry.js despues de pricing.js (usa normalizeIngredientKey) y de
      shelf-life.js (usa getShelfLife); antes de pantry.js, que lo consulta
      desde listPantryEntries(). Los tres son opcionales: si expiry.js
      faltara, la despensa sigue funcionando sin columna de caducidad. -->
-<script src="js/core/expiry.js?v=20260903i"></script>
+<script src="js/core/expiry.js?v=20260903k"></script>
 <!-- preferences.js despues de pricing.js (reutiliza
      normalizeIngredientKey para no tener dos normalizaciones que puedan
      divergir). Es SOLO preferencias blandas ("no me gusta"); las alergias
      son una restriccion de seguridad y viviran en su propio archivo, a
      proposito -- ver la cabecera de preferences.js. -->
-<script src="js/core/preferences.js?v=20260903i"></script>
+<script src="js/core/preferences.js?v=20260903k"></script>
 <!-- allergens.js: MOSTRAR alergenos de etiqueta, nunca filtrar. Aparte de
      preferences.js a proposito (ver cabecera de ambos). Despues de
      product-allergens.js (usa PRODUCT_ALLERGENS) y utils.js (escapeHtml). -->
-<script src="js/core/allergens.js?v=20260903i"></script>
-<script src="js/core/pantry.js?v=20260903i"></script>
-<script src="js/core/budget.js?v=20260903i"></script>
-<script src="js/core/calculator.js?v=20260903i"></script>
-<script src="js/core/meal-helpers.js?v=20260903i"></script>
-<script src="js/core/meal-schedule.js?v=20260903i"></script>
-<script src="js/core/supabase-client.js?v=20260903i"></script>
-<script src="js/core/settings.js?v=20260903i"></script>
-<script src="js/core/onboarding.js?v=20260903i"></script>
-<script src="js/core/auth.js?v=20260903i"></script>
-<script src="js/core/cloud-sync.js?v=20260903i"></script>
-<script src="js/core/migration.js?v=20260903i"></script>
-<script src="js/engine/dish-selector.js?v=20260903i"></script>
-<script src="js/engine/plan-generator.js?v=20260903i"></script>
-<script src="js/engine/no-cook-generator.js?v=20260903i"></script>
-<script src="js/ui/render.js?v=20260903i"></script>
-<script src="js/ui/render-schedule.js?v=20260903i"></script>
-<script src="js/ui/render-shopping-list.js?v=20260903i"></script>
-<script src="js/ui/render-pantry.js?v=20260903i"></script>
-<script src="js/ui/render-insights.js?v=20260903i"></script>
-<script src="js/ui/render-real-products.js?v=20260903i"></script>
-<script src="js/ui/render-no-cook.js?v=20260903i"></script>
-<script src="js/ui/render-auth.js?v=20260903i"></script>
-<script src="js/ui/onboarding-ui.js?v=20260903i"></script>
-<script src="js/ui/tour.js?v=20260903i"></script>
-<script src="js/ui/ingredient-suggest.js?v=20260903i"></script>
-<script src="js/ui/animations.js?v=20260903i"></script>
-<script src="js/app.js?v=20260903i"></script>
+<script src="js/core/allergens.js?v=20260903k"></script>
+<script src="js/core/pantry.js?v=20260903k"></script>
+<script src="js/core/budget.js?v=20260903k"></script>
+<script src="js/core/calculator.js?v=20260903k"></script>
+<script src="js/core/meal-helpers.js?v=20260903k"></script>
+<script src="js/core/meal-schedule.js?v=20260903k"></script>
+<script src="js/core/supabase-client.js?v=20260903k"></script>
+<script src="js/core/settings.js?v=20260903k"></script>
+<script src="js/core/onboarding.js?v=20260903k"></script>
+<script src="js/core/auth.js?v=20260903k"></script>
+<script src="js/core/cloud-sync.js?v=20260903k"></script>
+<script src="js/core/migration.js?v=20260903k"></script>
+<script src="js/engine/dish-selector.js?v=20260903k"></script>
+<script src="js/engine/plan-generator.js?v=20260903k"></script>
+<script src="js/engine/no-cook-generator.js?v=20260903k"></script>
+<script src="js/ui/render.js?v=20260903k"></script>
+<script src="js/ui/render-schedule.js?v=20260903k"></script>
+<script src="js/ui/render-shopping-list.js?v=20260903k"></script>
+<script src="js/ui/render-pantry.js?v=20260903k"></script>
+<script src="js/ui/render-insights.js?v=20260903k"></script>
+<script src="js/ui/render-real-products.js?v=20260903k"></script>
+<script src="js/ui/render-no-cook.js?v=20260903k"></script>
+<script src="js/ui/render-auth.js?v=20260903k"></script>
+<script src="js/ui/onboarding-ui.js?v=20260903k"></script>
+<script src="js/ui/tour.js?v=20260903k"></script>
+<script src="js/ui/ingredient-suggest.js?v=20260903k"></script>
+<script src="js/ui/animations.js?v=20260903k"></script>
+<script src="js/app.js?v=20260903k"></script>
 
 </body>
 </html>

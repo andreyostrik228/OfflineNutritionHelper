@@ -294,6 +294,94 @@ function run(t) {
     assert.strictEqual(history[0].id, result.entry.id);
   });
 
+  // ── Plan de varios días y borrado (2026-09-03) ───────────────────────
+
+  t.test("savePlanForToday: guarda bajo la fecha que se le pase, no siempre bajo hoy", function () {
+    var s = freshPantrySandbox();
+    var meals = fakeMeals({ breakfast: [{ name: "Avena", grams: 80 }] });
+
+    var manana = new Date();
+    manana.setDate(manana.getDate() + 1);
+    var claveManana = s.formatLocalDateKey(manana);
+
+    var result = s.savePlanForToday(meals, "mercadona", null, claveManana);
+    assert.strictEqual(result.entry.planDate, claveManana);
+    // Y sin fecha sigue siendo hoy: el parámetro es opcional de verdad.
+    var hoy = s.savePlanForToday(meals, "mercadona");
+    assert.strictEqual(hoy.entry.planDate, s.formatLocalDateKey(new Date()));
+  });
+
+  t.test("un plan de 7 días deja 7 entradas, una por fecha, y confirmarlo dos veces no duplica", function () {
+    var s = freshPantrySandbox();
+    var meals = fakeMeals({ breakfast: [{ name: "Avena", grams: 80 }] });
+
+    function confirmarSemana() {
+      for (var d = 0; d < 7; d++) {
+        var f = new Date();
+        f.setDate(f.getDate() + d);
+        s.savePlanForToday(meals, "mercadona", null, s.formatLocalDateKey(f));
+      }
+    }
+
+    confirmarSemana();
+    var fechas = s.getPantryHistory().map(function (e) { return e.planDate; });
+    assert.strictEqual(fechas.length, 7, "se esperaban 7 entradas y hay " + fechas.length);
+    // Siete fechas DISTINTAS: apilarlas todas bajo hoy no serviría de nada.
+    assert.strictEqual(new Set(fechas).size, 7, "las fechas se han repetido: " + fechas.join(", "));
+
+    // El UPSERT del borrador es por fecha: re-confirmar la misma semana sin
+    // haber comprado ni cocinado nada sigue dejando 7, no 14.
+    confirmarSemana();
+    assert.strictEqual(s.getPantryHistory().length, 7,
+      "confirmar dos veces duplicó las entradas: " + s.getPantryHistory().length);
+  });
+
+  t.test("deletePlanEntry: borra la entrada pedida y deja intactas las demás", function () {
+    var s = freshPantrySandbox();
+    var meals = fakeMeals({ breakfast: [{ name: "Avena", grams: 80 }] });
+
+    var manana = new Date(); manana.setDate(manana.getDate() + 1);
+    var pasado = new Date(); pasado.setDate(pasado.getDate() + 2);
+    var a = s.savePlanForToday(meals, "mercadona").entry;
+    var b = s.savePlanForToday(meals, "mercadona", null, s.formatLocalDateKey(manana)).entry;
+    var c = s.savePlanForToday(meals, "mercadona", null, s.formatLocalDateKey(pasado)).entry;
+
+    var res = s.deletePlanEntry(b.id);
+    assert.strictEqual(res.deleted, true);
+    assert.strictEqual(res.entry.id, b.id);
+
+    var quedan = s.getPantryHistory().map(function (e) { return e.id; });
+    assert.strictEqual(quedan.length, 2);
+    assert.ok(quedan.indexOf(a.id) !== -1 && quedan.indexOf(c.id) !== -1,
+      "se ha borrado la entrada equivocada");
+  });
+
+  t.test("deletePlanEntry: un id que no existe no es un error ni toca nada", function () {
+    var s = freshPantrySandbox();
+    var meals = fakeMeals({ breakfast: [{ name: "Avena", grams: 80 }] });
+    s.savePlanForToday(meals, "mercadona");
+
+    // Borrar dos veces es lo que pasa si alguien pulsa rápido: tiene que
+    // ser inocuo, no reventar ni vaciar el historial.
+    assert.strictEqual(s.deletePlanEntry("no-existe").deleted, false);
+    assert.strictEqual(s.deletePlanEntry(null).deleted, false);
+    assert.strictEqual(s.getPantryHistory().length, 1);
+  });
+
+  t.test("deletePlanEntry: NO devuelve a la despensa lo que ese plan hubiera comprado", function () {
+    var s = freshPantrySandbox();
+    var meals = fakeMeals({ breakfast: [{ name: "Avena", grams: 80 }] });
+    var entry = s.savePlanForToday(meals, "mercadona").entry;
+    s.markPurchaseDone(entry.id, []);
+    var stockTrasComprar = s.getStock("Avena");
+    assert.ok(stockTrasComprar > 0, "la compra no ha sumado stock, el test no prueba nada");
+
+    s.deletePlanEntry(entry.id);
+    // Lo comprado está en casa de verdad: borrar el papel donde estaba
+    // apuntado no lo hace desaparecer de la cocina.
+    assert.strictEqual(s.getStock("Avena"), stockTrasComprar);
+  });
+
   // ── planDate (2026-08-14c) ───────────────────────────────────────────
 
   t.test("formatLocalDateKey: fecha LOCAL con ceros a la izquierda en mes/día de un dígito", function () {

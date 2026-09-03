@@ -632,12 +632,22 @@ function findTodayEntry() {
  *   que siempre, solo que "cambiar este plato" (regenerateSingleMeal(),
  *   plan-generator.js) no estará disponible para ella -- ver
  *   render-pantry.js, que oculta esa acción cuando faltan estos campos.
+ * @param {string} [planDateKey] - fecha "YYYY-MM-DD" bajo la que guardar,
+ *   por defecto HOY. Existe por los planes de VARIOS DIAS (2026-09-03): al
+ *   confirmar un plan de 7 dias hay que guardar SIETE entradas, una por
+ *   dia, y hasta ahora solo se guardaba la de hoy -- el usuario confirmaba
+ *   una semana y en "Mis planes" solo aparecia el dia 1. El resto de la
+ *   funcion no cambia: el UPSERT sobre el borrador y la deteccion de
+ *   duplicados miran ESTA fecha, asi que confirmar dos veces el mismo plan
+ *   de 7 dias sigue sin duplicar nada.
  * @returns {{ entry:object, historySaved:boolean, replaced:boolean }}
  */
-function savePlanForToday(meals, storeId, dayOptions) {
+function savePlanForToday(meals, storeId, dayOptions, planDateKey) {
   var now = new Date();
   var nowISO = now.toISOString();
-  var todayKey = formatLocalDateKey(now);
+  var todayKey = (typeof planDateKey === "string" && planDateKey)
+    ? planDateKey
+    : formatLocalDateKey(now);
 
   var newMeals = (meals || []).map(function (meal) {
     return {
@@ -1464,4 +1474,36 @@ function appendPantryHistory(entry) {
     list = list.slice(0, PANTRY_HISTORY_MAX_ENTRIES);
   }
   return savePantryHistory(list);
+}
+
+/**
+ * Borra una entrada del historial por id.
+ *
+ * No existía: se podían crear planes pero no quitarlos, así que un plan
+ * generado por error se quedaba en "Mis planes" para siempre y solo se iba
+ * borrando los datos del navegador entero (con la despensa dentro).
+ *
+ * Es un borrado LIMPIO y nada más: NO devuelve a la despensa lo que esa
+ * entrada hubiera comprado, ni "descocina" lo cocinado. Y es a propósito
+ * -- el stock de la despensa es un hecho aparte (lo que hay en casa), y
+ * deshacer una compra al borrar el papel donde estaba apuntada
+ * descuadraría la despensa real del usuario. Quien quiera corregir el
+ * stock lo edita en la despensa, que para eso tiene su propia pantalla.
+ *
+ * @param {string} entryId
+ * @returns {{ deleted:boolean, saved:boolean, entry:(object|null) }}
+ *   deleted=false si ese id no estaba (borrar dos veces no es un error).
+ */
+function deletePlanEntry(entryId) {
+  if (!entryId) return { deleted: false, saved: false, entry: null };
+
+  var list = getPantryHistory();
+  var index = -1;
+  for (var i = 0; i < list.length; i++) {
+    if (list[i] && list[i].id === entryId) { index = i; break; }
+  }
+  if (index === -1) return { deleted: false, saved: false, entry: null };
+
+  var removed = list.splice(index, 1)[0];
+  return { deleted: true, saved: savePantryHistory(list), entry: removed };
 }

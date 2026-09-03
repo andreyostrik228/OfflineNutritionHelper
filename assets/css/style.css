@@ -2606,6 +2606,36 @@ button:focus-visible {
   gap: var(--space-3);
 }
 
+/* Borrar un plan guardado. Discreto a propósito: es destructivo y no es lo
+   que se viene a hacer a esta tarjeta, así que no compite con "Ya compré
+   todo esto". Al armarse (primer toque) se pinta en rojo y pregunta, que es
+   la única señal de que el siguiente toque va en serio. */
+.pantry-active-card__delete {
+  margin-left: auto;
+  padding: 3px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: none;
+  font-family: var(--font-body);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--ink-faint);
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.pantry-active-card__delete:hover {
+  color: var(--ink-soft);
+  border-color: var(--ink-faint);
+}
+
+.pantry-active-card__delete--armed,
+.pantry-active-card__delete--armed:hover {
+  border-color: var(--clay-deep);
+  background: var(--clay-wash);
+  color: var(--clay-deep);
+}
+
 .pantry-active-card__date {
   font-size: 11px;
   font-weight: 600;
@@ -4305,6 +4335,45 @@ body.is-onboarding {
 }
 
 .onboarding__number:focus {
+  outline: none;
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px var(--green-wash);
+}
+
+/* Hora y texto libre del alta (2026-09-03, las 8 preguntas que faltaban).
+   Comparten caja con el numérico; cambia el tamaño porque una hora se lee
+   como una cifra y "cebolla, queso azul" no cabe a 1.8rem. */
+.onboarding__answer--time,
+.onboarding__answer--text {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.onboarding__time,
+.onboarding__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--paper-raised);
+  color: var(--ink);
+}
+
+.onboarding__time {
+  font-family: var(--font-mono);
+  font-size: 1.8rem;
+  font-weight: 600;
+}
+
+.onboarding__text {
+  font-family: var(--font-body);
+  font-size: 1rem;
+}
+
+.onboarding__time:focus,
+.onboarding__text:focus {
   outline: none;
   border-color: var(--green);
   box-shadow: 0 0 0 3px var(--green-wash);

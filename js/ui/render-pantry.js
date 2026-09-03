@@ -692,6 +692,24 @@ function sumPantryCoverageGrams(aggregated) {
  * @param {object} entry
  * @returns {string}
  */
+/**
+ * Botón de borrar un plan guardado.
+ *
+ * Confirma en DOS toques en vez de borrar al primero: un plan puede llevar
+ * encima una compra hecha y comidas cocinadas, y eso es historial real que
+ * no se puede perder por un roce. No se usa un diálogo porque el resto del
+ * panel no usa ninguno; el propio botón se convierte en la pregunta.
+ * handleEntryClick() es quien arma y desarma ese estado.
+ *
+ * @param {object} entry
+ * @returns {string}
+ */
+function renderDeletePlanBtn(entry) {
+  return '<button type="button" class="pantry-active-card__delete"' +
+    ' data-action="delete-plan" data-id="' + escapeHtml(entry.id) + '"' +
+    ' aria-label="Borrar este plan">Borrar</button>';
+}
+
 function renderActiveEntryCard(entry) {
   if (entry.type === "nocook") return renderNoCookActiveCard(entry);
 
@@ -707,6 +725,7 @@ function renderActiveEntryCard(entry) {
       '<div class="pantry-active-card__head">' +
         '<span class="pantry-active-card__date">' + dateLabel + '</span>' +
         '<span class="pantry-active-card__summary">' + aggregated.length + ' ingredientes' + (entry.store ? ' &mdash; ' + escapeHtml(entry.store) : '') + pantryNote + '</span>' +
+        renderDeletePlanBtn(entry) +
       '</div>' +
       renderPurchaseSection(entry, aggregated) +
       renderMealChips(entry) +
@@ -843,6 +862,7 @@ function renderNoCookActiveCard(entry) {
       '<div class="pantry-active-card__head">' +
         '<span class="pantry-active-card__date">' + dateLabel + '</span>' +
         '<span class="pantry-active-card__summary">' + itemCount + ' productos &mdash; sin cocinar</span>' +
+        renderDeletePlanBtn(entry) +
       '</div>' +
       purchaseBlock +
       renderNoCookSlotChips(entry) +
@@ -1021,8 +1041,58 @@ function formatEntryDateTime(isoString) {
   }
 }
 
+// Botón de borrar actualmente armado (solo puede haber uno). Se guarda el
+// elemento y no un id: al re-renderizar el panel el nodo desaparece, y
+// entonces no hay nada que desarmar -- el estado se va con él, que es lo
+// que se quiere.
+var _armedDeleteBtn = null;
+var _armedDeleteTimer = null;
+
+function _armDeletePlanBtn(btn) {
+  _disarmDeletePlanBtn();
+  btn.setAttribute("data-armed", "true");
+  btn.classList.add("pantry-active-card__delete--armed");
+  btn.textContent = "¿Seguro?";
+  _armedDeleteBtn = btn;
+  // Se desarma solo: un botón que se queda preguntando para siempre acaba
+  // pulsándose sin querer en la visita siguiente.
+  _armedDeleteTimer = window.setTimeout(_disarmDeletePlanBtn, 4000);
+}
+
+function _disarmDeletePlanBtn() {
+  if (_armedDeleteTimer) { window.clearTimeout(_armedDeleteTimer); _armedDeleteTimer = null; }
+  if (!_armedDeleteBtn) return;
+  if (_armedDeleteBtn.isConnected) {
+    _armedDeleteBtn.removeAttribute("data-armed");
+    _armedDeleteBtn.classList.remove("pantry-active-card__delete--armed");
+    _armedDeleteBtn.textContent = "Borrar";
+  }
+  _armedDeleteBtn = null;
+}
+
 function handleEntryClick(event) {
   try {
+    // ── Borrar un plan guardado, en dos toques ────────────────────────
+    // El primero ARMA el botón (se convierte en la pregunta), el segundo
+    // borra. Un plan puede llevar una compra hecha y comidas cocinadas
+    // encima; perder eso por un roce no es aceptable, y el panel no usa
+    // diálogos en ningún otro sitio.
+    var deleteBtn = event.target.closest('button[data-action="delete-plan"]');
+    if (deleteBtn) {
+      if (deleteBtn.getAttribute("data-armed") !== "true") {
+        _armDeletePlanBtn(deleteBtn);
+        return;
+      }
+      _disarmDeletePlanBtn();
+      if (typeof deletePlanEntry === "function") deletePlanEntry(deleteBtn.getAttribute("data-id"));
+      renderPantryPanel();
+      pantryOnChange();
+      return;
+    }
+    // Un toque en cualquier otro sitio de la tarjeta cancela la pregunta:
+    // así no se queda un botón armado esperando a que alguien lo roce.
+    _disarmDeletePlanBtn();
+
     var toggleBtn = event.target.closest('button[data-action="toggle-checklist"]');
     if (toggleBtn) {
       var purchaseBlock = toggleBtn.closest(".pantry-active-card__purchase");
@@ -1159,7 +1229,7 @@ function handleEntryClick(event) {
  * @param {boolean} historySaved - si el guardado en localStorage tuvo éxito
  * @param {'created'|'draft-updated'|'active-replaced'} mode
  */
-function renderPlanSavedNotice(entry, historySaved, mode) {
+function renderPlanSavedNotice(entry, historySaved, mode, savedDays) {
   if (!planSavedNoticeEl) return;
 
   if (!entry) {
@@ -1183,6 +1253,15 @@ function renderPlanSavedNotice(entry, historySaved, mode) {
   } else if (mode === "draft-updated") {
     title = "Plan actualizado";
     body = '<p>Sigue siendo el mismo plan de hoy en <strong>Mis planes</strong> &mdash; no se ha comprado ni cocinado nada todav&iacute;a, ni se ha a&ntilde;adido nada a tu despensa.</p>';
+  } else if (typeof savedDays === "number" && savedDays > 1) {
+    // Un plan de varios días guarda una entrada POR DÍA, y hay que decirlo:
+    // si no, se ve solo la de hoy en pantalla y parece que el resto se
+    // perdió (que es justo lo que pasaba de verdad antes del 2026-09-03).
+    title = "Plan de " + savedDays + " días confirmado";
+    body = '<p>Se ha guardado un plan para cada uno de los <strong>' + savedDays +
+      ' d&iacute;as</strong>, empezando hoy. Cambia de d&iacute;a con los botones de fecha de ' +
+      '<strong>Mis planes</strong>. Cuando compres, toca <strong>Ya compr&eacute; todo esto</strong> ' +
+      'en el d&iacute;a que corresponda.</p>';
   } else {
     title = "Plan confirmado";
     body = '<p>Cuando compres, toca <strong>Ya compr&eacute; todo esto</strong> ah&iacute; abajo, en <strong>Mis planes</strong> &mdash; as&iacute; no te lo volver&aacute; a pedir la pr&oacute;xima vez.</p>';
