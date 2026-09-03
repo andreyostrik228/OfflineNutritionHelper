@@ -465,7 +465,10 @@ function run(t) {
     var s = freshSandbox();
     var html = readIndexHtml();
     var rotos = s.TOUR_STEPS.filter(function (step) {
-      // Todos los objetivos son selectores de id: "#loQueSea".
+      // Los pasos `dynamic` apuntan a algo que pinta el JavaScript, así que
+      // no puede estar en index.html: los comprueba el test de abajo,
+      // contra el archivo que los genera.
+      if (step.dynamic) return false;
       var id = step.target.replace(/^#/, "");
       return html.indexOf('id="' + id + '"') === -1;
     }).map(function (step) { return step.id + " -> " + step.target; });
@@ -473,13 +476,43 @@ function run(t) {
       "el recorrido iluminaría un hueco vacío: " + rotos.join(", "));
   });
 
-  t.test("los pasos del recorrido usan selectores de id, no rutas frágiles", function () {
+  t.test("los pasos del recorrido no se atan a clases de estilo", function () {
     var s = freshSandbox();
+    // Dos formas válidas, y las dos son un contrato explícito: un id del
+    // HTML, o un ancla `data-tour` puesta a propósito para el recorrido.
+    // Lo que sigue prohibido es apuntar a una clase CSS o a una posición:
+    // eso ata el tutorial a la maquetación y se rompe en silencio al
+    // reestilizar.
     var frágiles = s.TOUR_STEPS.filter(function (step) {
-      return !/^#[A-Za-z][\w-]*$/.test(step.target);
+      var porId = /^#[A-Za-z][\w-]*$/.test(step.target);
+      var porAncla = /^\[data-tour="[a-z-]+"\]$/.test(step.target);
+      return !porId && !porAncla;
     }).map(function (step) { return step.id + ": " + step.target; });
     assert.deepStrictEqual(plain(frágiles), [],
       "un selector por clase o por posición se rompe al mover el HTML: " + frágiles.join(", "));
+  });
+
+  t.test("cada ancla `data-tour` la pinta de verdad el renderizador", function () {
+    var s = freshSandbox();
+    var render = require("fs").readFileSync(projPath("js/ui/render.js"), "utf8");
+    var rotas = s.TOUR_STEPS.filter(function (step) {
+      if (!step.dynamic) return false;
+      var ancla = (step.target.match(/data-tour="([a-z-]+)"/) || [])[1];
+      return !ancla || render.indexOf('data-tour="' + ancla + '"') === -1;
+    }).map(function (step) { return step.id + " -> " + step.target; });
+    assert.deepStrictEqual(plain(rotas), [],
+      "el ancla no existe en render.js, el paso apuntaría a la nada: " + rotas.join(", "));
+  });
+
+  t.test("un paso `dynamic` es siempre `optional`", function () {
+    var s = freshSandbox();
+    // Su elemento no existe hasta que hay un plan pintado. Sin `optional`,
+    // el recorrido se rompería en la primera visita en vez de saltárselo.
+    var mal = s.TOUR_STEPS.filter(function (step) {
+      return step.dynamic && !step.optional;
+    }).map(function (step) { return step.id; });
+    assert.deepStrictEqual(plain(mal), [],
+      "sin `optional` apuntarían a una tarjeta que aún no existe: " + mal.join(", "));
   });
 
   // Los pasos que dependen de que haya un plan generado TIENEN que estar
@@ -496,7 +529,13 @@ function run(t) {
 
   t.test("el recorrido es corto y cada paso dice para qué sirve la función", function () {
     var s = freshSandbox();
-    assert.ok(s.TOUR_STEPS.length >= 4 && s.TOUR_STEPS.length <= 8,
+    // El tope subió de 8 a 11 el 2026-09-03, cuando el usuario pidió cubrir
+    // las funciones que faltaban (recetas, "↻ Cambiar", horario, catálogo y
+    // "Mis planes"). Sigue habiendo tope, y a propósito: la razón original
+    // -- un recorrido que no se termina no enseña nada -- no ha dejado de
+    // ser cierta, solo se ha movido la raya. Si hace falta subirla otra vez,
+    // que sea quitando un paso antes de añadir dos.
+    assert.ok(s.TOUR_STEPS.length >= 4 && s.TOUR_STEPS.length <= 11,
       "un recorrido que no se termina no enseña nada; hay " + s.TOUR_STEPS.length + " pasos");
     s.TOUR_STEPS.forEach(function (step) {
       assert.ok(step.title && step.title.length > 0, "paso sin título: " + step.id);

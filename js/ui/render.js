@@ -262,7 +262,13 @@ function renderMealCard(meal, total, dayIndex) {
           '<h3>' + escapeHtml(meal.label) + '</h3>' +
         '</div>' +
         '<div class="meal-head__right">' +
+          // `data-tour`: ancla del recorrido guiado (ver la nota en
+          // renderMealSteps más abajo). Se pone aparte de `data-action`
+          // aunque aquí coincidan: uno es el contrato con app.js y el otro
+          // con el tutorial, y mezclarlos haría que tocar uno moviera el
+          // otro sin querer.
           '<button type="button" class="meal-swap-btn" data-action="swap-plan-meal"' +
+            ' data-tour="swap"' +
             ' data-meal-key="' + escapeHtml(meal.key || "") + '"' +
             ' data-day="' + (dayIndex || 0) + '"' +
             ' title="Cambiar solo esta toma por otra">&#8635; Cambiar</button>' +
@@ -319,7 +325,13 @@ function renderCookingSteps(meal) {
 
   return (
     '<details class="meal-steps">' +
-      '<summary class="meal-steps__summary">' +
+      // `data-tour` es el ANCLA del recorrido guiado, no un gancho de
+      // estilo. Existe porque estos elementos los pinta el JavaScript y no
+      // pueden llevar un id (hay uno por tarjeta), y apuntar a la clase CSS
+      // habría atado el tutorial a una decisión de maquetación: al
+      // renombrarla, el paso iluminaría un hueco vacío sin que nada avise.
+      // Ver js/data/tour-steps.js y su test en tests/onboarding.test.js.
+      '<summary class="meal-steps__summary" data-tour="recipe">' +
         '<span class="meal-steps__toggle">Cómo se hace</span>' +
         (difficultyLabel
           ? '<span class="meal-steps__badge meal-steps__badge--d' + info.difficulty + '">' +
