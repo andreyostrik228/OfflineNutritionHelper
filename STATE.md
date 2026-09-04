@@ -5,6 +5,52 @@
 > Escrito para alguien que llega SIN NINGÚN contexto previo. Si solo lees
 > una parte de este archivo, que sea esta.
 >
+> ### ⏩ UPDATE 2026-09-04 (tarde) — el catálogo empieza a crecer, y un bug de "Cambiar"
+>
+> **550 tests en verde. 434 platos.** Dos cosas.
+>
+> **"Cambiar" borraba los demás días de un plan de varios.**
+> `rerenderCurrentPlan()` llamaba a `renderMeals()`, que es literalmente
+> `renderDayPlans([{meals}])` — UNA diapositiva. Los días seguían en
+> memoria (`lastGeneratedDays`) y desaparecían solo de la pantalla,
+> dejando el día 1 bajo los puntos de N días. Además todas las tarjetas se
+> repintaban con `data-day="0"`, así que el siguiente "Cambiar" iba al día
+> equivocado, y la lista de la compra se recalculaba con las tomas del día
+> 1 sola, encogiéndose sin avisar. Roto desde que llegó el carrusel
+> (`a8ccf2b`, 2026-09-01): esta función se escribió el mismo día y nunca
+> se enteró de que podía haber más de un día en pantalla. Arreglado en
+> `94eb0c2`, guardando y devolviendo `scrollLeft` para no echar al usuario
+> al día 1.
+>
+> **Catálogo 374 → 434, camino de 1000.** Generador en
+> `scripts/generar-platos/` (ver su `LEEME.md`). Todo se construye con
+> roles de ingrediente que YA existen, así que la cobertura de nutrición,
+> precio, envase, enlace y caducidad sigue completa sin tocar nada; y los
+> macros y el coste salen de `computeDishIngredientNutrition()` y
+> `priceDishAtStore()`, no escritos a mano.
+>
+> **Lo que costó no fue hacer platos, fue no empeorar el planificador.** El
+> primer lote, que solo miraba que el plato fuera comida plausible, subió
+> las violaciones del perfil de CORTE del 53% al 84% de los días. Lo
+> resolvió un control: clonar los 60 platos con más proteína por kcal que
+> ya existían, con otro nombre, y volver a medir. Eso dejó el perfil igual
+> o mejor (51%), y con eso quedó claro que el daño no venía de meter 60
+> platos más en la lotería sino de meterlos **a media altura**. Está
+> escrito como lección en `HANDOFF.md` §7.8.
+>
+> Medido sobre 200 semillas por perfil, antes → después:
+>
+> ```
+>   corte    proteína 110,6 → 112,1 g   violaciones 53% → 49%   perfect 13% → 17%
+>   recomp   proteína 154,7 → 158,9 g   violaciones  4% →  4%   perfect 60% → 66%
+>   volumen  proteína 216,3 → 219,0 g   violaciones  5% →  7%   perfect 68% → 61%
+> ```
+>
+> Volumen es el que pierde y no se disimula: los platos densos en proteína
+> salen más caros por kcal, y un día de 3871 kcal con 20 € ya iba justo.
+> El otro límite conocido: los 15 principales vegetarianos usan TODOS clara
+> de huevo, porque es lo único vegetal que pasa el suelo de densidad.
+>
 > ### ⏩ UPDATE 2026-09-04 — caducidad de verdad, y 6px que se arrastraban
 >
 > **550 tests en verde.** Cinco cosas, todas medidas antes y después.

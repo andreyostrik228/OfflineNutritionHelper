@@ -336,6 +336,36 @@ navegador mostró que faltaban funciones enteras.
 **Después de un borrado automático, abre la aplicación.** Y pon un tope a
 cuánto puede borrar el script.
 
+### 7.8 Para saber si un cambio de DATOS empeora el motor, clona lo mejor
+
+Ampliar `dishes.js` con 60 platos nuevos subió las violaciones por proteína
+del perfil de corte (12 €, 136 g) **del 53% al 84% de los días**, medido
+sobre 200 semillas. La pregunta era: ¿es que mis platos son malos, o es que
+meter 60 más en una lotería ponderada reparte la probabilidad y ya está?
+
+Las dos respuestas piden arreglos opuestos, y adivinar habría costado un
+día. El experimento que lo zanjó en una ejecución:
+
+> **Clona los 60 MEJORES platos que ya existen, con otro nombre, y mide
+> otra vez.** Nutricionalmente son inmejorables; lo único que aportan es el
+> tamaño del pool.
+
+Salió 51% — igual o mejor que el 53% de partida. O sea: el pool no era el
+problema. Lo era la **altura media** de lo que yo añadía. Con el suelo
+puesto en proteína POR KCAL en el percentil 75 del propio catálogo, el lote
+acabó en 49%, mejor que antes de existir.
+
+Sirve para cualquier cambio en datos que alimenten una selección
+aleatoria: separa "he añadido ruido" de "he añadido peor", que se parecen
+mucho desde fuera y no se arreglan igual. Está guardado como
+`scripts/generar-platos/` + su `LEEME.md`.
+
+Y el corolario: **la métrica obvia no era la buena.** Probé suelo de
+proteína absoluta (p25 y p50), porciones más grandes, techo de
+repeticiones y suelo de proteína por euro. Ninguno lo arregló. Lo arregló
+la proteína **por kcal**, que es lo que de verdad decide un día de corte.
+Cuatro intentos fallidos porque medía la cosa parecida en vez de la cosa.
+
 ---
 
 ## 8. Lo que queda abierto
@@ -377,6 +407,23 @@ cuánto puede borrar el script.
 - **El invitado ve la bienvenida en cada visita**, por decisión suya. Si
   algún día cansa, lo suave sería repetir la oferta de cuenta a diario
   pero el cuestionario no.
+- **El catálogo va por 434 platos y el objetivo son 1000** (2026-09-04).
+  Faltan 566, unos diez lotes. El generador y su porqué están en
+  `scripts/generar-platos/`; se cambia la semilla en cada lote:
+  `node scripts/generar-platos/emitir_platos.js 60 <semilla> 0.25 4 40 0.75`.
+  Después SIEMPRE: correr la suite, recapturar los dos golden-master con su
+  explicación, y medir los tres perfiles antes/después. Si algún perfil
+  empeora, el experimento de §7.8 va primero.
+- **Los 15 principales vegetarianos del lote 1 usan todos clara de huevo.**
+  Es lo único vegetal que pasa el suelo de densidad proteica: el yema, el
+  queso y el edamame no llegan. Varían la legumbre y la verdura, pero el
+  componente proteico se repite. Si molesta, la salida no es bajar el suelo
+  (ver §7.8) sino buscar combinaciones vegetales que de verdad lleguen.
+- **El perfil de VOLUMEN perdió 7 puntos de días "perfect"** con el lote 1
+  (68% → 61%), todo por presupuesto. Platos más densos en proteína cuestan
+  más por kcal y un día de 3871 kcal con 20 € va justo. Vigilarlo en los
+  próximos lotes: si sigue bajando, hay que meter platos densos en CALORÍAS
+  y baratos, no solo densos en proteína.
 - **El stock de "sin cocinar" no lo pinta NADIE** (medido 2026-09-04). Se
   escribe (`setNoCookProductStock`, `markNoCookSlotConsumed`) y no hay
   ninguna vista que lo enseñe: ni cantidades ni caducidad. Es la razón de
