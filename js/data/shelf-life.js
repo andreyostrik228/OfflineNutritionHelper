@@ -214,6 +214,51 @@ var PERISHABLE_KEYS = {
 };
 
 /**
+ * Vida útil UNA VEZ ABIERTO, para lo que no es perecedero pero cuya cifra
+ * de arriba describe el envase CERRADO.
+ *
+ * La sección "Legumbre y conserva" lo dice en su propio título: *(sin
+ * abrir)*. Una lata de lentejas cerrada dura años; abierta, pasada a la
+ * nevera, dura cinco días. Sin esta tabla el motor le seguía dando 365 y
+ * la lata abierta no corría ninguna prisa -- que es justo al revés de lo
+ * que pasa en una nevera de verdad.
+ *
+ * Las cuatro primeras cifras NO son mías: son las que publica Mercadona en
+ * su propia API para el producto emparejado por EAN (ver el puente en
+ * `js/core/expiry.js`). El resto sigue el mismo criterio conservador que
+ * el resto del fichero.
+ *
+ * Fuera quedan a propósito la miel, el aceite y la mermelada: abrirlos no
+ * cambia nada relevante, y la mermelada ya está anotada con su cifra de
+ * bote abierto en nevera.
+ *
+ * @type {Object<string, number>}
+ */
+var OPENED_SHELF_LIFE = {
+  // ── Conserva abierta: a la nevera y a gastarla ──────────────────────
+  "lentejas cocidas": 5,   // Mercadona
+  "alubias cocidas": 5,    // Mercadona
+  "garbanzos cocidos": 5,  // misma familia que las dos de arriba
+  "maiz dulce": 3,
+  "atun al natural": 2,
+  "caballa en lata": 2,
+  "sardinas en lata": 2,
+  // ── Tarro abierto ───────────────────────────────────────────────────
+  "mantequilla de cacahuete": 90
+};
+
+/**
+ * Días que le quedan a un envase ABIERTO de este ingrediente, si su cifra
+ * normal describía el envase cerrado.
+ * @param {string} key - clave ya normalizada
+ * @returns {number|null} null si no hay cifra específica para abierto
+ */
+function getOpenedShelfLife(key) {
+  var d = OPENED_SHELF_LIFE[key];
+  return (typeof d === "number") ? d : null;
+}
+
+/**
  * ¿Este ingrediente se degrada progresivamente?
  * @param {string} key - clave ya normalizada
  * @returns {boolean}
@@ -265,5 +310,6 @@ function getShelfLife(key, storage) {
 }
 
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { SHELF_LIFE: SHELF_LIFE, getShelfLife: getShelfLife };
+  module.exports = { SHELF_LIFE: SHELF_LIFE, getShelfLife: getShelfLife,
+    OPENED_SHELF_LIFE: OPENED_SHELF_LIFE, getOpenedShelfLife: getOpenedShelfLife };
 }

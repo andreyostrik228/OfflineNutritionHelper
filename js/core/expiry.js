@@ -12,7 +12,7 @@
  * TRES ORÍGENES DE FECHA, SIEMPRE DISTINGUIBLES, en este orden de
  * prioridad:
  *   - `"user"`      -- fecha introducida a mano, la del envase. Es un dato.
- *   - `"store"`     -- derivada de `acquiredAt` + los días que MERCADONA
+ *   - `"store"`     -- derivada de `openedAt` + los días que MERCADONA
  *                      publica en su propia API ("una vez abierto,
  *                      consumir en 3 días", ver js/data/product-storage.js).
  *                      Es un dato del fabricante, no una estimación nuestra
@@ -62,9 +62,62 @@ var OPENED_PERISHABLE_DAYS = 3;
  * @returns {number|null}
  */
 function getStoreDaysAfterOpening(productId) {
-  if (typeof PRODUCT_STORAGE === "undefined" || !productId) return null;
-  var e = PRODUCT_STORAGE[String(productId)];
+  var e = _fichaDeTienda(productId);
   return (e && typeof e.daysAfterOpening === "number") ? e.daysAfterOpening : null;
+}
+
+/**
+ * Puente ROL DE INGREDIENTE -> PRODUCTO REAL, por EAN.
+ *
+ * `PRODUCT_STORAGE` está indexado por id de producto de Mercadona, pero la
+ * despensa de ingredientes trabaja con roles ("zanahoria"). Sin puente, las
+ * 609 fichas con "consumir en N días tras abrir" no las leía NADIE: el
+ * origen `"store"` era código muerto (medido el 2026-09-04).
+ *
+ * El puente NO adivina: usa el EAN de `real-ingredient-matches.js`, que son
+ * emparejamientos verificados a mano, y lo busca en el catálogo. Un EAN es
+ * exacto o no es. Deliberadamente NO se empareja por parecido de texto --
+ * ya se probó para los precios y emparejaba "naranja" con "Fanta naranja"
+ * (ver la cabecera de real-ingredient-matches.js). Un emparejamiento malo
+ * aquí daría una fecha de caducidad inventada, que es peor que no dar
+ * ninguna.
+ *
+ * Se construye una sola vez y se memoiza: son 2994 productos.
+ */
+var _puenteRolProducto = null;
+
+function _idDeProductoParaRol(key) {
+  if (typeof REAL_INGREDIENT_MATCHES === "undefined") return null;
+  if (typeof REAL_PRODUCTS === "undefined") return null;
+
+  if (!_puenteRolProducto) {
+    var porEan = {};
+    for (var i = 0; i < REAL_PRODUCTS.length; i++) {
+      var p = REAL_PRODUCTS[i];
+      if (p && p.ean) porEan[String(p.ean)] = String(p.id);
+    }
+    _puenteRolProducto = {};
+    Object.keys(REAL_INGREDIENT_MATCHES).forEach(function (rol) {
+      var m = REAL_INGREDIENT_MATCHES[rol];
+      var id = (m && m.ean) ? porEan[String(m.ean)] : null;
+      if (id) _puenteRolProducto[rol] = id;
+    });
+  }
+  return _puenteRolProducto[key] || null;
+}
+
+/**
+ * Ficha de conservación de un producto, sea la clave un id de producto (el
+ * stock "sin cocinar") o un rol de ingrediente (la despensa normal).
+ * @param {string} clave
+ * @returns {object|null}
+ */
+function _fichaDeTienda(clave) {
+  if (typeof PRODUCT_STORAGE === "undefined" || !clave) return null;
+  var directa = PRODUCT_STORAGE[String(clave)];
+  if (directa) return directa;
+  var id = _idDeProductoParaRol(String(clave));
+  return id ? (PRODUCT_STORAGE[id] || null) : null;
 }
 
 /**
@@ -73,8 +126,7 @@ function getStoreDaysAfterOpening(productId) {
  * @returns {string|null} "nevera" | "despensa" | "congelador" | null
  */
 function getStoreStorage(productId) {
-  if (typeof PRODUCT_STORAGE === "undefined" || !productId) return null;
-  var e = PRODUCT_STORAGE[String(productId)];
+  var e = _fichaDeTienda(productId);
   return (e && typeof e.storage === "string") ? e.storage : null;
 }
 
@@ -217,22 +269,25 @@ function resolveExpiry(entry, key, todayISO) {
   // abrió, esa es la señal buena. `openedAt` lo pone sola la app al
   // cocinar una comida o consumir una toma (pantry.js), nunca el usuario.
   if (typeof entry.openedAt === "string" && entry.openedAt) {
-    var abiertoDias = getStoreDaysAfterOpening(entry.productId || key);
-    if (abiertoDias) {
-      // Dato del fabricante: "una vez abierto, consumir en N días".
-      var fechaTienda = addDays(entry.openedAt, abiertoDias);
-      var dt = daysBetween(todayISO, fechaTienda);
-      return {
-        date: fechaTienda,
-        source: "store",
-        daysLeft: dt,
-        totalDays: abiertoDias,
-        tier: applyFreshnessWindow(expiryTier(dt), dt, abiertoDias, key),
-        storage: storage || getStoreStorage(entry.productId || key)
-      };
+    // Prioridad dentro de "abierto": dato del fabricante > cifra propia
+    // para abierto (conservas) > regla general de perecedero.
+    var diasAbierto = null;
+    var origenAbierto = "estimated";
+
+    var deTienda = getStoreDaysAfterOpening(entry.productId || key);
+    if (deTienda) {
+      diasAbierto = deTienda;
+      origenAbierto = "store";
     }
-    if (typeof isPerishable === "function" && isPerishable(key)) {
-      var fechaAbierto = addDays(entry.openedAt, OPENED_PERISHABLE_DAYS);
+    if (diasAbierto === null && typeof getOpenedShelfLife === "function") {
+      diasAbierto = getOpenedShelfLife(key);
+    }
+    if (diasAbierto === null && typeof isPerishable === "function" && isPerishable(key)) {
+      diasAbierto = OPENED_PERISHABLE_DAYS;
+    }
+
+    if (diasAbierto !== null) {
+      var fechaAbierto = addDays(entry.openedAt, diasAbierto);
       // Regla: abrir nunca ALARGA la vida. Si al producto cerrado ya le
       // quedaba menos, se respeta la fecha más corta.
       if (typeof entry.acquiredAt === "string" && entry.acquiredAt && typeof getShelfLife === "function") {
@@ -246,33 +301,22 @@ function resolveExpiry(entry, key, todayISO) {
       var da = daysBetween(todayISO, fechaAbierto);
       return {
         date: fechaAbierto,
-        source: "estimated",
+        source: origenAbierto,
         daysLeft: da,
-        totalDays: OPENED_PERISHABLE_DAYS,
-        tier: applyFreshnessWindow(expiryTier(da), da, OPENED_PERISHABLE_DAYS, key),
-        storage: storage
-      };
-    }
-  }
-
-  // Dato REAL de la tienda antes que estimación nuestra. `productId` solo
-  // existe para el stock de "sin cocinar" (productos concretos con id);
-  // para roles de ingrediente genéricos no aplica y se cae al shelf-life.
-  if (typeof entry.acquiredAt === "string" && entry.acquiredAt) {
-    var storeDays = getStoreDaysAfterOpening(entry.productId || key);
-    if (storeDays) {
-      var storeDate = addDays(entry.acquiredAt, storeDays);
-      var sd = daysBetween(todayISO, storeDate);
-      return {
-        date: storeDate,
-        source: "store",
-        daysLeft: sd,
-        totalDays: storeDays,
-        tier: applyFreshnessWindow(expiryTier(sd), sd, storeDays, key),
+        totalDays: diasAbierto,
+        tier: applyFreshnessWindow(expiryTier(da), da, diasAbierto, key),
         storage: storage || getStoreStorage(entry.productId || key)
       };
     }
   }
+
+  // NO hay rama de tienda por fecha de COMPRA, y es a propósito.
+  // "Consumir en N días tras abrir" no dice absolutamente nada de un
+  // envase cerrado: aplicarlo desde la compra daba por urgente una lata
+  // que nadie ha tocado. Mientras el puente por EAN no existía la rama era
+  // inofensiva porque no se alcanzaba nunca; al conectarlo (2026-09-04)
+  // habría empezado a mentir, así que se retira. Un envase cerrado se
+  // estima con shelf-life.js, justo aquí debajo.
 
   if (typeof entry.acquiredAt === "string" && entry.acquiredAt && typeof getShelfLife === "function") {
     var life = getShelfLife(key, storage);

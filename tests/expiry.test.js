@@ -52,6 +52,30 @@ function costSandbox() {
  * expiry.js, para probar la rama de datos de tienda sin depender del
  * product-storage.js real (que cambia cada vez que se regenera).
  */
+/**
+ * Sandbox con el puente rol -> EAN -> id montado con datos SINTETICOS.
+ * A proposito no usa el catalogo real: lo que se prueba es el mecanismo,
+ * no un EAN concreto que puede cambiar cuando se reexporte el catalogo.
+ */
+function sandboxWithBridge(storeData, products, matches) {
+  var fs = require("fs");
+  var vm = require("vm");
+  var s = {};
+  vm.createContext(s);
+  s.PRODUCT_STORAGE = storeData;
+  s.REAL_PRODUCTS = products;
+  s.REAL_INGREDIENT_MATCHES = matches;
+  [
+    "js/core/utils.js",
+    "js/data/shelf-life.js",
+    "js/core/pricing.js",
+    "js/core/expiry.js"
+  ].forEach(function (rel) {
+    vm.runInContext(fs.readFileSync(projPath(rel), "utf8"), s, { filename: rel });
+  });
+  return s;
+}
+
 function sandboxWithStore(storeData) {
   var fs = require("fs");
   var vm = require("vm");
@@ -162,13 +186,31 @@ function run(t) {
 
   // ── Datos REALES de tienda (product-storage.js) ───────────────────
 
-  t.test("los días publicados por la TIENDA ganan a la estimación, y se marcan source:'store'", function () {
+  t.test("los días publicados por la TIENDA ganan a la estimación en un envase ABIERTO, y se marcan source:'store'", function () {
     var s = sandboxWithStore({ "10005": { storage: "nevera", daysAfterOpening: 3 } });
-    // zanahoria estimaría 28 días; la tienda dice 3 para este producto
-    var r = s.resolveExpiry({ quantity: 1, acquiredAt: "2026-08-25", productId: "10005" }, "zanahoria", "2026-08-25");
+    // zanahoria estimaría 28 días; la tienda dice 3 desde que se abre
+    var r = s.resolveExpiry(
+      { quantity: 1, acquiredAt: "2026-08-25", openedAt: "2026-08-25", productId: "10005" },
+      "zanahoria",
+      "2026-08-25"
+    );
     assert.strictEqual(r.source, "store");
     assert.strictEqual(r.daysLeft, 3);
     assert.strictEqual(r.date, "2026-08-28");
+  });
+
+  t.test("'consumir en N días tras abrir' NO se aplica a un envase sin abrir", function () {
+    var s = sandboxWithStore({ "10005": { storage: "nevera", daysAfterOpening: 3 } });
+    // Misma entrada que el test de arriba pero SIN openedAt. Antes esto
+    // daba 3 días y marcaba la lata cerrada como urgente; la frase de
+    // Mercadona no dice nada de un envase que nadie ha tocado.
+    var r = s.resolveExpiry(
+      { quantity: 1, acquiredAt: "2026-08-25", productId: "10005" },
+      "zanahoria",
+      "2026-08-25"
+    );
+    assert.strictEqual(r.source, "estimated");
+    assert.strictEqual(r.daysLeft, 28);
   });
 
   t.test("una fecha del usuario sigue ganando incluso a los datos de la tienda", function () {
@@ -197,7 +239,11 @@ function run(t) {
 
   t.test("la tienda aporta el sitio de conservación cuando la entrada no lo trae", function () {
     var s = sandboxWithStore({ "10005": { storage: "congelador", daysAfterOpening: 2 } });
-    var r = s.resolveExpiry({ quantity: 1, acquiredAt: "2026-08-25", productId: "10005" }, "x", "2026-08-25");
+    var r = s.resolveExpiry(
+      { quantity: 1, acquiredAt: "2026-08-25", openedAt: "2026-08-25", productId: "10005" },
+      "x",
+      "2026-08-25"
+    );
     assert.strictEqual(r.storage, "congelador");
   });
 
@@ -561,6 +607,55 @@ function run(t) {
     assert.strictEqual(a.date, b.date);
     assert.strictEqual(a.tier, b.tier);
     assert.strictEqual(a.daysLeft, b.daysLeft);
+  });
+
+  // ── Puente rol -> producto real (2026-09-04) ───────────────────────
+
+  t.test("el puente por EAN alcanza la ficha de la tienda desde un ROL de ingrediente", function () {
+    var s = sandboxWithBridge(
+      { "777": { storage: "nevera", daysAfterOpening: 4 } },
+      [{ id: "777", ean: "8480000111111", name: "Zanahoria bolsa" }],
+      { "zanahoria": { ean: "8480000111111" } }
+    );
+    // La clave es un ROL, no un id de producto. Sin puente esto caia en la
+    // estimacion y las 609 fichas de Mercadona no las leia nadie.
+    var r = s.resolveExpiry(
+      { grams: 300, acquiredAt: "2026-09-01", openedAt: "2026-09-03" },
+      "zanahoria", "2026-09-04"
+    );
+    assert.strictEqual(r.source, "store");
+    assert.strictEqual(r.totalDays, 4);
+    assert.strictEqual(r.date, "2026-09-07");
+  });
+
+  t.test("el puente NO adivina: un EAN que no esta en el catalogo no empareja", function () {
+    var s = sandboxWithBridge(
+      { "777": { storage: "nevera", daysAfterOpening: 4 } },
+      [{ id: "777", ean: "8480000111111", name: "Zanahoria bolsa" }],
+      { "zanahoria": { ean: "0000000000000" } }
+    );
+    var r = s.resolveExpiry(
+      { grams: 300, acquiredAt: "2026-09-01", openedAt: "2026-09-03" },
+      "zanahoria", "2026-09-04"
+    );
+    // Cae en la regla general de perecedero, jamas en un dato inventado.
+    assert.strictEqual(r.source, "estimated");
+    assert.strictEqual(r.totalDays, 3);
+  });
+
+  t.test("una lata de lentejas ABIERTA dura 5 dias, no 365", function () {
+    var s = sandbox();
+    var a = s.resolveExpiry({ grams: 400, acquiredAt: "2026-09-01" },
+                            "lentejas cocidas", "2026-09-04");
+    var b = s.resolveExpiry({ grams: 400, acquiredAt: "2026-09-01", openedAt: "2026-09-03" },
+                            "lentejas cocidas", "2026-09-04");
+    // Cerrada sigue siendo conserva de larga duracion.
+    assert.strictEqual(a.daysLeft, 362);
+    assert.strictEqual(a.tier, "ok");
+    // Abierta pasa a la nevera y a gastarse. Antes seguia en 362 dias.
+    assert.strictEqual(b.totalDays, 5);
+    assert.strictEqual(b.date, "2026-09-08");
+    assert.strictEqual(b.tier, "pronto");
   });
 
 }
