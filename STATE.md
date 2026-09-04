@@ -5,6 +5,56 @@
 > Escrito para alguien que llega SIN NINGÚN contexto previo. Si solo lees
 > una parte de este archivo, que sea esta.
 >
+> ### ⏩ UPDATE 2026-09-04 — caducidad de verdad, y 6px que se arrastraban
+>
+> **550 tests en verde.** Cinco cosas, todas medidas antes y después.
+>
+> **La página se arrastraba 6px de lado en el móvil.** `scrollWidth` 381
+> contra un viewport de 375. Mi primer diagnóstico fue coherente y
+> equivocado: culpé a la barra sticky sin mirar `scrollX`, que valía 6 —
+> con las coordenadas desplazadas, el culpable de verdad quedaba *dentro*
+> de los límites. Eran dos causas de agosto: `.form-grid` a dos columnas
+> con `1fr` (= `minmax(auto,1fr)`, que no baja del ancho del `<select>`) y
+> `.schedule-timeline__label` en `nowrap`. Con `min-width:0` y dejando
+> saltar la etiqueta: 381 → 375, elementos fuera 76 → 0. En escritorio,
+> lectura idéntica antes y después.
+>
+> **7 de los 83 roles no tenían vida útil** (aceite, ajo, carne picada
+> mixta, cebolla, lechuga, pan blanco, salchichas): entraron con platos
+> nuevos y `resolveExpiry()` los daba por `unknown`, así que dos carnes
+> frescas y una lechuga no pesaban NADA al elegir plato. Ahora 83/83.
+>
+> **Nada modelaba que un envase se ABRIERA.** `openedAt` lo pone sola la
+> app al cocinar o consumir una toma; el usuario no escribe nada. Medido a
+> 40 semillas: zanahoria `ok`/27d → `urgente`/2d y 30,0% → 35,5% de los
+> platos; manzana 12,5% → 17,5%; leche 11,8% → 13,2% (250 semillas; a 40
+> daba −1,0 pp, que era ruido). Abrir nunca ALARGA la vida.
+>
+> **El día N heredaba las prisas del día 1.** `targetDate` no lo ponía
+> nadie, así que los 7 días de un plan semanal se puntuaban contra la
+> despensa de hoy. Ahora se deriva de `dayIndex`. Una zanahoria comprada
+> hace 26 días: día 0 `urgente` y 35,3% de los platos; día 5 `caducado`,
+> fuera de la despensa, 6,3%. Antes el motor planificaba alrededor de algo
+> que para entonces estaría podrido, y encima lo contaba como gratis.
+>
+> **Las 609 fichas de Mercadona no las leía nadie.** `PRODUCT_STORAGE` va
+> por id de producto y la despensa por rol, y no había puente: el origen
+> `"store"` era código muerto y 104 KB viajaban a cada visitante para
+> nada. El puente nuevo va por **EAN** (exacto), nunca por parecido de
+> texto — eso ya se probó para precios y emparejaba "naranja" con "Fanta
+> naranja". Y destapó un error propio: una lata de lentejas ABIERTA valía
+> 365 días; Mercadona dice 5, en nevera. La sección se titulaba "(sin
+> abrir)" y nadie había modelado el abrir. Ver `OPENED_SHELF_LIFE`.
+>
+> Se retiró a la vez la rama que aplicaba "consumir en N días tras abrir"
+> desde la fecha de COMPRA: mientras el puente no existía era inofensiva
+> porque no se alcanzaba; conectarlo la habría hecho mentir sobre latas
+> cerradas.
+>
+> **Recuperación de contraseña** (parche que estaba aparcado). Cuatro
+> modos en un formulario: `login` / `register` / `recover` / `reset`.
+> **Requiere configurar Supabase** — ver `HANDOFF.md` §9.
+>
 > ### ⏩ UPDATE 2026-09-03 — congelados en el catálogo, y la primera corrida del enricher
 >
 > Las dos tareas abiertas de `HANDOFF.md` §8 ("494 productos sin nutrición"
@@ -478,9 +528,12 @@
 >   En pantalla ancha sigue todo en una sola fila. Verificado a 375px: 0
 >   solapamientos y ningún título recortado.
 >
-> El zoom NO está bloqueado: el `<meta viewport>` sigue siendo
-> `width=device-width, initial-scale=1.0`, sin `user-scalable=no` ni
-> `maximum-scale`.
+> **CORREGIDO EL 2026-09-04:** esto ya no es verdad. El zoom SÍ está
+> bloqueado desde el 2026-09-01, a petición expresa del usuario: el
+> `<meta viewport>` lleva `maximum-scale=1.0, user-scalable=no`. El
+> párrafo se quedó aquí describiendo un estado que había dejado de existir
+> — es justo el tipo de frase que hace perder una tarde a quien llega
+> nuevo, porque suena a hecho comprobado y no lo era.
 >
 > ### 🛒 SOLO MERCADONA — decisión del usuario (2026-09-01)
 >

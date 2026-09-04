@@ -115,7 +115,7 @@ npx wrangler pages deploy "$DIR" --project-name=offline-nutrition-helper --commi
 ## 5. Probar
 
 ```bash
-node tests/run-tests.js     # 522 tests, todos deben pasar
+node tests/run-tests.js     # 550 tests, todos deben pasar
 ```
 
 El runner es casero y la lista de suites está **a mano** en
@@ -377,3 +377,54 @@ cuánto puede borrar el script.
 - **El invitado ve la bienvenida en cada visita**, por decisión suya. Si
   algún día cansa, lo suave sería repetir la oferta de cuenta a diario
   pero el cuestionario no.
+- **El stock de "sin cocinar" no lo pinta NADIE** (medido 2026-09-04). Se
+  escribe (`setNoCookProductStock`, `markNoCookSlotConsumed`) y no hay
+  ninguna vista que lo enseñe: ni cantidades ni caducidad. Es la razón de
+  que sus entradas, que van por id de producto y podrían leer las fichas
+  de Mercadona directamente, no las aprovechen.
+- **El cableado `dayIndex` -> `planISO` no tiene test propio** (2026-09-04).
+  Que `projectPantryState()` descarte contra una fecha FUTURA sí está
+  probado; lo que no, es que `generateDietPlanTiered()` derive esa fecha
+  del `dayIndex`. Meter `expiry.js` en `freshFullEngineSandbox()` para
+  probarlo activaría el término de urgencia en los demás tests de ese
+  fichero y podría mover sus golden-master, así que se dejó medido a mano
+  (día 0 `urgente` 35,3% de los platos · día 5 `caducado` 6,3%) y sin test.
+- **`product-storage.js` pesa 104 KB y solo rinde para 12 roles.** El
+  puente por EAN (2026-09-04) lo hizo alcanzable, pero
+  `real-ingredient-matches.js` solo tiene 12 emparejamientos verificados a
+  mano. O se amplían — a mano y por EAN, nunca por parecido de texto — o
+  se recorta el fichero: hoy viaja entero a cada visitante para 12 filas.
+
+---
+
+## 9. Recuperación de contraseña — lo que falta hacer en Supabase
+
+El código está entero (`sendPasswordReset()` y `updatePassword()` en
+`js/core/auth.js`; los cuatro modos del formulario en
+`js/ui/render-auth.js`). Lo que NO se puede hacer desde el repo es la
+configuración del proyecto de Supabase. Sin estos pasos el correo no sale,
+o el enlace devuelve al usuario a una URL que Supabase rechaza.
+
+1. **Authentication → URL Configuration → Site URL:**
+   `https://offline-nutrition-helper.pages.dev`
+2. **Redirect URLs** — añadir:
+   `https://offline-nutrition-helper.pages.dev/**` y, solo para probar en
+   local, `http://localhost:8000/**`. `sendPasswordReset()` manda
+   `redirectTo: window.location.origin`; si ese origen no está en la lista,
+   Supabase no redirige.
+3. **Authentication → Email Templates → Reset Password:** comprobar que
+   está activada.
+
+**El correo de cortesía son ~2 mensajes por hora.** Es límite de Supabase,
+no del código, así que no se puede depurar a base de reintentos. Si
+estorba, la salida es SMTP propio en Authentication → SMTP Settings: Brevo
+da ~300 al día gratis y **no exige dominio propio**, que era la pega de las
+demás. Lo sensato es comprobar primero que llega UN correo, y montar SMTP
+solo si de verdad se topa con el límite.
+
+**Lo que no se ha verificado aquí:** el modo `reset` (volver desde el
+enlace) necesita un correo de verdad, así que está probado por lectura y
+por los otros tres modos, no de punta a punta. Los otros tres sí, con
+clics reales sobre los botones de la interfaz: `login → recover → login →
+register` cambian título, botón, campos visibles y el `autocomplete` del
+campo de contraseña como toca.

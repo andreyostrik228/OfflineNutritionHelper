@@ -14,8 +14,9 @@ Cuidado con DOS carpetas del Escritorio que NO son el repo:
   archivos que `index.html` necesita, sin tests ni docs ni git). Se
   regenera, no se edita.
 
-El repo bueno es el único con git: HEAD `4477365`, 372 tests en verde.
-Comprueba con `git log -1` antes de fiarte de una carpeta.
+El repo bueno es el único con git. Comprueba con `git log -1` antes de
+fiarte de una carpeta: el hash concreto que hubiera aquí escrito envejece
+en cada tanda, así que ya no se anota. A 2026-09-04, 550 tests en verde.
 
 Lo de esta tanda se commiteó el 2026-08-31 en cuatro commits revisados uno
 a uno con el usuario (`f9f2777` cordura de porciones · `0a69db5` módulo de
