@@ -834,6 +834,9 @@ function pickDish(category, data, usedState, tier, maxCost, target, storeId, tar
       storeId: storeId,
       committedGrams: committedGrams,
       pantryState: pantryState,
+      // Día del plan, no "hoy": lo pone plan-generator.js a partir de
+      // dayIndex. Sin él, el día 5 heredaba las prisas del día 1.
+      todayISO: data && data.planISO,
       tight: isBudgetTight(maxCost, spendTarget, minPoolCost),
       cuisinePref: cuisinePref,
       eatingPriority: eatingPriority
@@ -866,6 +869,9 @@ function pickDish(category, data, usedState, tier, maxCost, target, storeId, tar
       storeId: storeId,
       committedGrams: committedGrams,
       pantryState: pantryState,
+      // Día del plan, no "hoy": lo pone plan-generator.js a partir de
+      // dayIndex. Sin él, el día 5 heredaba las prisas del día 1.
+      todayISO: data && data.planISO,
       tight: isBudgetTight(maxCost, spendTarget, minFitCost),
       cuisinePref: cuisinePref,
       eatingPriority: eatingPriority

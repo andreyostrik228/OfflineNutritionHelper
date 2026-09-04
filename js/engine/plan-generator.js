@@ -449,8 +449,29 @@ function generateDietPlanTiered(profile, data) {
   //
   // Se filtra aquí, en el único sitio donde entra la despensa, para no
   // acoplar budget.js/pricing.js a la caducidad.
+  // Día para el que se planifica. En un plan de varios días el día N no es
+  // hoy: lo que corre prisa HOY no tiene por qué correrla el día 5, y al
+  // revés, algo que hoy aún sirve puede haber caducado para entonces.
+  //
+  // Antes esto se quedaba SIEMPRE en undefined porque `targetDate` no lo
+  // ponía nadie (2026-09-04), así que los 7 días de un plan semanal se
+  // puntuaban todos contra la despensa de hoy. Se deriva de `dayIndex`,
+  // que app.js ya rellena día a día.
+  var planISO = (data && typeof data.targetDate === "string" && data.targetDate)
+    ? data.targetDate
+    : null;
+  if (!planISO && typeof addDays === "function") {
+    var diaN = (data && typeof data.dayIndex === "number" && data.dayIndex > 0)
+      ? data.dayIndex : 0;
+    planISO = addDays(new Date().toISOString().slice(0, 10), diaN);
+  }
+  // Viaja dentro de `data` -- que aquí ya es la copia de sanitizeInputs, no
+  // el objeto del llamante -- porque es exactamente como ya viajan planDays
+  // y dayIndex hasta pickDish().
+  if (data) data.planISO = planISO;
+
   if (typeof projectPantryState === "function") {
-    pantryState = projectPantryState(pantryState, data && data.targetDate);
+    pantryState = projectPantryState(pantryState, planISO);
   }
 
   var bestAttempt = null;
