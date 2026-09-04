@@ -500,6 +500,69 @@ function run(t) {
     assert.strictEqual(Object.keys(vacio).length, 0);
   });
 
+  // ── Envase abierto (2026-09-04) ────────────────────────────────────
+  // Abrir reinicia el reloj. La app lo marca sola al cocinar; el usuario
+  // no tiene que tocar nada.
+
+  t.test("abrir un envase acorta la vida de un perecedero", function () {
+    var s = sandbox();
+    var cerrado = { grams: 300, acquiredAt: "2026-09-01" };
+    var abierto = { grams: 300, acquiredAt: "2026-09-01", openedAt: "2026-09-03" };
+
+    var a = s.resolveExpiry(cerrado, "zanahoria", "2026-09-04");
+    var b = s.resolveExpiry(abierto, "zanahoria", "2026-09-04");
+
+    // Zanahoria: 28 d cerrada. Recien comprada no corre ninguna prisa.
+    assert.strictEqual(a.tier, "ok");
+    assert.strictEqual(a.daysLeft, 25);
+    // Abierta ayer: quedan 2 dias y pasa a ser lo primero que gastar.
+    assert.strictEqual(b.tier, "urgente");
+    assert.strictEqual(b.daysLeft, 2);
+    assert.strictEqual(b.date, "2026-09-06");
+  });
+
+  t.test("abrir un envase NUNCA alarga la vida", function () {
+    var s = sandbox();
+    // Leche: 5 d. Comprada el 1 caducaba el 6; abrirla el 4 daria hasta el
+    // 7. Manda la fecha corta -- abrir algo no puede volverlo mas fresco.
+    var e = { grams: 500, acquiredAt: "2026-09-01", openedAt: "2026-09-04" };
+    var r = s.resolveExpiry(e, "leche semidesnatada", "2026-09-04");
+    assert.strictEqual(r.date, "2026-09-06");
+    assert.strictEqual(r.daysLeft, 2);
+    // totalDays delata que la rama de "abierto" SI corrio y luego recorto:
+    // sin ella el total seria la vida cerrada (5 d), no la ventana de
+    // abierto (3 d). Sin esta comprobacion el test pasaria igual SIN la
+    // funcion, que es exactamente lo que no queremos de un test.
+    assert.strictEqual(r.totalDays, 3);
+  });
+
+  t.test("abrir no toca lo que no se degrada progresivamente", function () {
+    var s = sandbox();
+    var e = { grams: 500, acquiredAt: "2026-09-01", openedAt: "2026-09-03" };
+    var r = s.resolveExpiry(e, "miel", "2026-09-04");
+    // La miel no esta en PERISHABLE_KEYS: sigue contando desde la compra.
+    assert.strictEqual(r.source, "estimated");
+    assert.ok(r.daysLeft > 1000, "un bote de miel abierto no es una urgencia");
+  });
+
+  t.test("una fecha del envase sigue ganando a un envase abierto", function () {
+    var s = sandbox();
+    var e = { grams: 300, acquiredAt: "2026-09-01", openedAt: "2026-09-03", expiresAt: "2026-09-20" };
+    var r = s.resolveExpiry(e, "zanahoria", "2026-09-04");
+    assert.strictEqual(r.source, "user");
+    assert.strictEqual(r.date, "2026-09-20");
+  });
+
+  t.test("sin openedAt la caducidad se resuelve exactamente como antes", function () {
+    var s = sandbox();
+    var a = s.resolveExpiry({ grams: 300, acquiredAt: "2026-09-01" }, "zanahoria", "2026-09-04");
+    var b = s.resolveExpiry({ grams: 300, acquiredAt: "2026-09-01", openedAt: null }, "zanahoria", "2026-09-04");
+    assert.strictEqual(a.source, "estimated");
+    assert.strictEqual(a.date, b.date);
+    assert.strictEqual(a.tier, b.tier);
+    assert.strictEqual(a.daysLeft, b.daysLeft);
+  });
+
 }
 
 module.exports = { run: run };

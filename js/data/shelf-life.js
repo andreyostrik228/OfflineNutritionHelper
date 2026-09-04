@@ -26,7 +26,12 @@
  * en STATE.md). Cambiar de sitio cambia la estimación: la misma zanahoria
  * dura ~28 días en nevera y ~14 en despensa.
  *
- * Cobertura: los 81 roles de `dishes.js`. Un rol ausente NO es un error --
+ * Cobertura: los 83 roles de `dishes.js`. Los 7 que faltaban (aceite de
+ * oliva, ajo, carne picada mixta, cebolla, lechuga, pan blanco, salchichas)
+ * se añadieron el 2026-09-04: entraron con platos nuevos y nadie les puso
+ * vida útil, así que dos carnes frescas y una lechuga quedaban INVISIBLES
+ * para la urgencia -- `resolveExpiry()` las daba por `unknown` y no pesaban
+ * nada al elegir plato. Un rol ausente NO es un error --
  * `resolveExpiry()` devuelve `source:"unknown"` y ese ingrediente
  * simplemente no participa en la urgencia, nunca se inventa una fecha.
  * ─────────────────────────────────────────────────────────────────────────
@@ -54,6 +59,7 @@ var SHELF_LIFE = {
 
   // ── Carne fresca ────────────────────────────────────────────────────
   "carne picada 5% grasa": { storage: "nevera", days: 2 },
+  "carne picada mixta": { storage: "nevera", days: 2 },
   "pavo picado": { storage: "nevera", days: 2 },
   "conejo": { storage: "nevera", days: 3 },
   "lomo de cerdo": { storage: "nevera", days: 3 },
@@ -64,6 +70,7 @@ var SHELF_LIFE = {
   "ternera magra": { storage: "nevera", days: 4 },
 
   // ── Charcutería y loncheados ────────────────────────────────────────
+  "salchichas": { storage: "nevera", days: 5 },
   "jamon cocido extra": { storage: "nevera", days: 7 },
   "pavo loncheado": { storage: "nevera", days: 7 },
   "jamon serrano": { storage: "nevera", days: 30 },
@@ -88,6 +95,7 @@ var SHELF_LIFE = {
   // ── Verdura y hortaliza fresca ──────────────────────────────────────
   "champinones": { storage: "nevera", days: 5 },
   "espinacas": { storage: "nevera", days: 5 },
+  "lechuga": { storage: "nevera", days: 5 },
   "lechuga pepino": { storage: "nevera", days: 5 },
   "brocoli": { storage: "nevera", days: 7 },
   "coliflor": { storage: "nevera", days: 7 },
@@ -97,6 +105,11 @@ var SHELF_LIFE = {
   "pimiento": { storage: "nevera", days: 10 },
   "zanahoria": { storage: "nevera", days: 28 },
   "batata": { storage: "despensa", days: 30 },
+  // Cebolla y ajo se guardan en seco y no se degradan de forma visible en
+  // su primera mitad, al contrario que la zanahoria: por eso tienen vida
+  // útil pero NO entran en PERISHABLE_KEYS.
+  "cebolla": { storage: "despensa", days: 60 },
+  "ajo": { storage: "despensa", days: 90 },
 
   // ── Fruta fresca ────────────────────────────────────────────────────
   "fresas": { storage: "nevera", days: 3 },
@@ -117,6 +130,7 @@ var SHELF_LIFE = {
   "trigo sarraceno cocido": { storage: "nevera", days: 4 },
 
   // ── Pan ─────────────────────────────────────────────────────────────
+  "pan blanco": { storage: "despensa", days: 3 },
   "pan integral": { storage: "despensa", days: 4 },
   "pan de centeno": { storage: "despensa", days: 5 },
   "pan de molde integral": { storage: "despensa", days: 7 },
@@ -145,6 +159,7 @@ var SHELF_LIFE = {
   "cacahuetes": { storage: "despensa", days: 180 },
   "copos de maiz": { storage: "despensa", days: 180 },
   "mantequilla de cacahuete": { storage: "despensa", days: 180 },
+  "aceite de oliva": { storage: "despensa", days: 730 },
   "mermelada light": { storage: "nevera", days: 30 },
   "miel": { storage: "despensa", days: 1095 }
 };
@@ -172,11 +187,12 @@ var PERISHABLE_KEYS = {
   "bacalao": true, "lubina": true, "merluza": true, "rape": true, "salmon": true,
   "gamba cocida": true, "langostino cocido": true,
   // Carne fresca
-  "carne picada 5% grasa": true, "pavo picado": true, "conejo": true,
+  "carne picada 5% grasa": true, "carne picada mixta": true,
+  "pavo picado": true, "conejo": true,
   "lomo de cerdo": true, "muslo de pollo deshuesado": true, "pechuga de pavo": true,
   "pechuga de pollo": true, "solomillo de ternera": true, "ternera magra": true,
   // Charcutería abierta
-  "jamon cocido extra": true, "pavo loncheado": true,
+  "jamon cocido extra": true, "pavo loncheado": true, "salchichas": true,
   // Lácteos frescos
   "claras de huevo": true, "leche semidesnatada": true, "mozzarella light": true,
   "queso fresco batido 0%": true, "requeson": true, "skyr natural": true,
@@ -184,7 +200,8 @@ var PERISHABLE_KEYS = {
   // Proteína vegetal fresca
   "hummus": true, "tofu firme": true, "tempeh": true,
   // Verdura y hortaliza
-  "champinones": true, "espinacas": true, "lechuga pepino": true, "brocoli": true,
+  "champinones": true, "espinacas": true, "lechuga": true,
+  "lechuga pepino": true, "brocoli": true,
   "coliflor": true, "pepino": true, "tomate": true, "calabacin": true,
   "pimiento": true, "zanahoria": true,
   // Fruta

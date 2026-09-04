@@ -34,6 +34,24 @@ var EXPIRY_URGENT_DAYS = 2;
 var EXPIRY_SOON_DAYS = 5;
 
 /**
+ * Días que le quedan a un PERECEDERO ya ABIERTO cuando la tienda no publica
+ * su "consumir en N días tras abrir".
+ *
+ * Abrir un envase reinicia el reloj: una bandeja de pechuga cerrada aguanta
+ * sus 3 días desde la compra, pero una vez abierta el aire y el manipulado
+ * mandan sobre la fecha original. Sin dato del fabricante, 3 días es la
+ * cifra conservadora habitual para fresco abierto en nevera.
+ *
+ * Solo se aplica a perecederos (`isPerishable`). Un bote de mermelada
+ * abierto no entra aquí: su vida útil ya contempla el uso normal y no
+ * tenemos ningún dato que justifique acortarla.
+ *
+ * NUNCA alarga: si al producto cerrado ya le quedaba menos que esto, manda
+ * la fecha más corta. Abrir algo no puede volverlo más fresco.
+ */
+var OPENED_PERISHABLE_DAYS = 3;
+
+/**
  * Días de consumo tras abrir que publica la TIENDA para un producto
  * concreto (`js/data/product-storage.js`, extraído de la API de Mercadona).
  *
@@ -192,6 +210,49 @@ function resolveExpiry(entry, key, todayISO) {
       tier: applyFreshnessWindow(expiryTier(d), d, userTotal, key),
       storage: storage
     };
+  }
+
+  // ── Envase ABIERTO (2026-09-04) ──────────────────────────────────
+  // Va ANTES que las ramas por fecha de compra: en cuanto consta que se
+  // abrió, esa es la señal buena. `openedAt` lo pone sola la app al
+  // cocinar una comida o consumir una toma (pantry.js), nunca el usuario.
+  if (typeof entry.openedAt === "string" && entry.openedAt) {
+    var abiertoDias = getStoreDaysAfterOpening(entry.productId || key);
+    if (abiertoDias) {
+      // Dato del fabricante: "una vez abierto, consumir en N días".
+      var fechaTienda = addDays(entry.openedAt, abiertoDias);
+      var dt = daysBetween(todayISO, fechaTienda);
+      return {
+        date: fechaTienda,
+        source: "store",
+        daysLeft: dt,
+        totalDays: abiertoDias,
+        tier: applyFreshnessWindow(expiryTier(dt), dt, abiertoDias, key),
+        storage: storage || getStoreStorage(entry.productId || key)
+      };
+    }
+    if (typeof isPerishable === "function" && isPerishable(key)) {
+      var fechaAbierto = addDays(entry.openedAt, OPENED_PERISHABLE_DAYS);
+      // Regla: abrir nunca ALARGA la vida. Si al producto cerrado ya le
+      // quedaba menos, se respeta la fecha más corta.
+      if (typeof entry.acquiredAt === "string" && entry.acquiredAt && typeof getShelfLife === "function") {
+        var vidaCerrada = getShelfLife(key, storage);
+        if (vidaCerrada) {
+          var fechaCerrada = addDays(entry.acquiredAt, vidaCerrada.days);
+          // Fechas YYYY-MM-DD: comparar como texto es comparar por día.
+          if (fechaCerrada && fechaCerrada < fechaAbierto) fechaAbierto = fechaCerrada;
+        }
+      }
+      var da = daysBetween(todayISO, fechaAbierto);
+      return {
+        date: fechaAbierto,
+        source: "estimated",
+        daysLeft: da,
+        totalDays: OPENED_PERISHABLE_DAYS,
+        tier: applyFreshnessWindow(expiryTier(da), da, OPENED_PERISHABLE_DAYS, key),
+        storage: storage
+      };
+    }
   }
 
   // Dato REAL de la tienda antes que estimación nuestra. `productId` solo

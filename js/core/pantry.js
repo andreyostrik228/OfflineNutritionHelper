@@ -178,6 +178,7 @@ function sanitizePantryState(raw) {
         // cocinar" en 2026-08-20f. Si se añade otro campo, va aquí Y en
         // sanitizeNoCookStock().
         acquiredAt: typeof entry.acquiredAt === "string" ? entry.acquiredAt : null,
+        openedAt: typeof entry.openedAt === "string" ? entry.openedAt : null,
         expiresAt: typeof entry.expiresAt === "string" ? entry.expiresAt : null,
         storage: typeof entry.storage === "string" ? entry.storage : null
       };
@@ -201,15 +202,26 @@ function sanitizePantryState(raw) {
  * anclar la estimación de vida útil a un campo que cambia cada vez que se
  * cocina haría que la fecha estimada se alejara sola.
  *
+ * `openedAt` sigue la misma regla y se pone SOLO cuando `abrir` es cierto:
+ * el momento en que una comida se cocina o una toma se consume es el
+ * momento en que el envase se abre de verdad. Una vez abierto no se vuelve
+ * a cerrar -- deshacer un "cocinado" no devuelve el envase a su estado
+ * original, así que `openedAt` no se borra nunca. Es la opción prudente:
+ * como mucho avisa de más, jamás da por fresco algo que ya no lo está.
+ *
  * @param {object|undefined} prev - entrada anterior, si existía
  * @param {object} next - entrada nueva ya construida
  * @param {string} nowISO
+ * @param {boolean} [abrir] - marcar el envase como abierto ahora
  * @returns {object} `next` con los campos de caducidad puestos
  */
-function preserveExpiryFields(prev, next, nowISO) {
+function preserveExpiryFields(prev, next, nowISO, abrir) {
   next.acquiredAt = (prev && typeof prev.acquiredAt === "string" && prev.acquiredAt)
     ? prev.acquiredAt
     : nowISO;
+  next.openedAt = (prev && typeof prev.openedAt === "string" && prev.openedAt)
+    ? prev.openedAt
+    : (abrir ? nowISO : null);
   next.expiresAt = (prev && typeof prev.expiresAt === "string") ? prev.expiresAt : null;
   next.storage = (prev && typeof prev.storage === "string") ? prev.storage : null;
   return next;
@@ -280,6 +292,7 @@ function listPantryEntries(todayISO) {
         grams: entry.grams || 0,
         updatedAt: entry.updatedAt || null,
         acquiredAt: entry.acquiredAt || null,
+        openedAt: entry.openedAt || null,
         storage: expiry.storage,
         expiryDate: expiry.date,
         expirySource: expiry.source,
@@ -976,7 +989,8 @@ function markMealCooked(entryId, mealKey, cooked) {
       pantryState[key] = preserveExpiryFields(
         pantryState[key],
         { grams: round0(Math.max(0, current - used)), displayName: item.name, updatedAt: nowISO },
-        nowISO
+        nowISO,
+        true // cocinar esta comida es lo que abre el envase
       );
       return { name: item.name, grams: round0(used) };
     });
@@ -1106,6 +1120,7 @@ function sanitizeNoCookStock(raw) {
         // saneado también reconstruye campo a campo, así que los campos de
         // caducidad tienen que declararse en AMBOS o se pierden en uno.
         acquiredAt: typeof entry.acquiredAt === "string" ? entry.acquiredAt : null,
+        openedAt: typeof entry.openedAt === "string" ? entry.openedAt : null,
         expiresAt: typeof entry.expiresAt === "string" ? entry.expiresAt : null,
         storage: typeof entry.storage === "string" ? entry.storage : null
       };
@@ -1367,7 +1382,8 @@ function markNoCookSlotConsumed(entryId, slotKey, consumed) {
       stock[item.id] = preserveExpiryFields(
         stock[item.id],
         { quantity: Math.max(0, current - used), displayName: item.name, updatedAt: nowISO },
-        nowISO
+        nowISO,
+        true // consumir la toma es lo que abre el envase
       );
       return { id: item.id, name: item.name, quantity: used };
     });
@@ -1376,7 +1392,15 @@ function markNoCookSlotConsumed(entryId, slotKey, consumed) {
   } else {
     (slot.consumedQuantities || []).forEach(function (c) {
       var current = getNoCookProductStock(c.id, stock);
-      stock[c.id] = { quantity: current + c.quantity, displayName: c.name, updatedAt: nowISO };
+      // Sin preserveExpiryFields esta rama reconstruia la entrada desde
+      // cero y se llevaba por delante acquiredAt, expiresAt y storage --
+      // justo la trampa que avisa sanitizeNoCookStock(). La rama gemela de
+      // markMealCooked() si lo hacia; esta se habia quedado atras.
+      stock[c.id] = preserveExpiryFields(
+        stock[c.id],
+        { quantity: current + c.quantity, displayName: c.name, updatedAt: nowISO },
+        nowISO
+      );
     });
     slot.consumed = false;
     slot.consumedAt = null;

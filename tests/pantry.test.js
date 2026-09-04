@@ -1220,6 +1220,68 @@ function run(t) {
     assert.strictEqual(s.getStock("Avena"), 300); // sin tocar por el stock de productos
     assert.strictEqual(s.getNoCookProductStock("p1"), 2);
   });
+
+  // ── Envase abierto (2026-09-04) ────────────────────────────────────
+
+  t.test("cocinar una comida marca el envase como ABIERTO", function () {
+    var s = freshPantrySandbox();
+    s.localStorage = createFakeLocalStorage();
+    s.setStock("Avena", 500);
+
+    var clave = s.normalizeIngredientKey("Avena");
+    assert.strictEqual(s.getPantryState()[clave].openedAt, null,
+      "tener algo en la despensa no significa haberlo abierto");
+
+    var meals = fakeMeals({ breakfast: [{ name: "Avena", grams: 80 }] });
+    var saved = s.savePlanForToday(meals, "mercadona");
+    s.markMealCooked(saved.entry.id, "breakfast", true);
+
+    assert.strictEqual(typeof s.getPantryState()[clave].openedAt, "string",
+      "cocinar es justo el momento en que el envase se abre");
+  });
+
+  t.test("openedAt se fija UNA vez: volver a cocinar no reinicia el reloj", function () {
+    var s = freshPantrySandbox();
+    s.localStorage = createFakeLocalStorage();
+    s.setStock("Avena", 500);
+    var clave = s.normalizeIngredientKey("Avena");
+
+    var meals = fakeMeals({
+      breakfast: [{ name: "Avena", grams: 80 }],
+      lunch: [{ name: "Avena", grams: 80 }]
+    });
+    var saved = s.savePlanForToday(meals, "mercadona");
+    s.markMealCooked(saved.entry.id, "breakfast", true);
+
+    // Se atrasa a mano la apertura y se cocina otra vez: tiene que
+    // sobrevivir, y de paso comprueba que el saneado no se la come.
+    var st = s.getPantryState();
+    st[clave].openedAt = "2026-01-01";
+    s.savePantryState(st);
+
+    s.markMealCooked(saved.entry.id, "lunch", true);
+    assert.strictEqual(s.getPantryState()[clave].openedAt, "2026-01-01");
+  });
+
+  t.test("deshacer una toma 'sin cocinar' ya no borra los campos de caducidad", function () {
+    var s = freshPantrySandbox();
+    s.localStorage = createFakeLocalStorage();
+    s.setNoCookProductStock("p1", 3, "Yogur");
+
+    var stock = s.getNoCookStock();
+    stock.p1.acquiredAt = "2026-09-01";
+    s.saveNoCookStock(stock);
+
+    var slots = fakeNoCookSlots({ breakfast: [fakeProduct("p1", "Yogur", 1, 0.5)] });
+    var saved = s.saveNoCookPlanForToday(slots);
+    s.markNoCookSlotConsumed(saved.entry.id, "breakfast", true);
+    s.markNoCookSlotConsumed(saved.entry.id, "breakfast", false);
+
+    var despues = s.getNoCookStock().p1;
+    assert.strictEqual(despues.quantity, 3, "deshacer devuelve la cantidad");
+    assert.strictEqual(despues.acquiredAt, "2026-09-01",
+      "deshacer no puede llevarse por delante la fecha de compra");
+  });
 }
 
 module.exports = { run: run };

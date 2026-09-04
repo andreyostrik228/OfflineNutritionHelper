@@ -387,12 +387,23 @@ function renderExpiryBadge(entry) {
   // igual que una fecha introducida a mano.
   var label = (estimated ? "~" : "") + text;
 
+  // Un envase ABIERTO cuenta desde que se abrió, no desde que se compró:
+  // decir "a partir de la fecha de compra" ahí sería sencillamente falso.
+  // `openedAt` lo pone sola la app al cocinar (pantry.js), nunca el usuario.
+  var abierto = typeof entry.openedAt === "string" && entry.openedAt;
+
   var title;
-  if (estimated) {
+  if (estimated && abierto) {
+    title = "Abierto el " + entry.openedAt.slice(0, 10) + ". Caducidad ESTIMADA ("
+      + entry.expiryDate + "): una vez abierto conviene gastarlo en pocos días"
+      + (entry.storage ? ", en " + entry.storage : "") + ". No es la fecha del envase. Pulsa para poner la real.";
+  } else if (estimated) {
     title = "Caducidad ESTIMADA (" + entry.expiryDate + ") a partir de la fecha de compra y la vida útil típica"
       + (entry.storage ? " en " + entry.storage : "") + ". No es la fecha del envase. Pulsa para poner la real.";
   } else if (fromStore) {
-    title = "Mercadona indica consumir en " + entry.expiryDaysLeft + " días desde la apertura"
+    // expiryTotalDays son los días que PUBLICA la tienda; expiryDaysLeft son
+    // los que quedan. La frase promete lo primero, así que usa lo primero.
+    title = "Mercadona indica consumir en " + entry.expiryTotalDays + " días desde la apertura"
       + (entry.storage ? " (conservar en " + entry.storage + ")" : "")
       + ". Pulsa para poner la fecha del envase.";
   } else {
