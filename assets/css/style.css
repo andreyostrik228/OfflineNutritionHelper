@@ -333,6 +333,10 @@ body {
 }
 
 .panel {
+  /* Sin esto el panel es un elemento de rejilla con min-width:auto y se niega
+     a encogerse por debajo de su contenido: en el movil crecia hasta 366px
+     dentro de un contenedor de 345 y empujaba la pagina a lo ancho. */
+  min-width: 0;
   background: transparent;
   border: none;
   border-radius: 0;
@@ -400,6 +404,9 @@ body {
   display: flex;
   flex-direction: column;
   gap: 7px;
+  /* Las pistas de .form-grid son 1fr, o sea minmax(auto,1fr): sin min-width:0
+     el campo no baja del ancho de su <select> y desborda la fila. */
+  min-width: 0;
 }
 
 /* Texto de ayuda bajo un campo.
@@ -1296,6 +1303,7 @@ button:focus-visible {
 .schedule-timeline__item {
   display: flex;
   align-items: baseline;
+  min-width: 0;
   gap: 6px;
   padding: 8px 12px;
   border-width: 1px;
@@ -1326,7 +1334,11 @@ button:focus-visible {
   font-size: 12px;
   font-weight: 600;
   color: var(--ink-soft);
-  white-space: nowrap;
+  /* Antes era nowrap: un plato de nombre largo dejaba la pildora en 366px y
+     la pagina entera se podia arrastrar 6px de lado en el movil. Con normal
+     solo salta de linea cuando de verdad no cabe. */
+  white-space: normal;
+  min-width: 0;
 }
 
 .schedule-timeline__next-tag {
