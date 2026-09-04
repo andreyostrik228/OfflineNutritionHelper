@@ -38,3 +38,6 @@ Thumbs.db
 /ratio
 /del
 /*.diff.tmp
+
+# Salida de trabajo del generador de platos (se regenera, no se versiona)
+scripts/generar-platos/lote_platos.json

@@ -595,15 +595,28 @@ function run(t) {
     // objetivo de 156 por primera vez, aunque dentro de tolerancia
     // (`violations` sigue vacío): con la bandeja entera, la carne sale
     // cara y el motor la cambia por huevos, sardinas y salchichas.
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 3, 2, 2, 2]);
-    assert.strictEqual(result.total.kcal, 2821.9);
-    assert.strictEqual(result.total.protein, 151.9);
-    assert.strictEqual(result.total.carbs, 325.59999999999997);
-    assert.strictEqual(result.total.fat, 100.3);
-    assert.strictEqual(result.total.cost, 5.47);
-    assert.strictEqual(result.total.purchaseCost, 14.21);
-    assert.strictEqual(result.report.status, "adjusted");
-    assert.strictEqual(result.report.tierUsed, 1);
+    // ── RECAPTURADO el 2026-09-04 (7): +60 platos (374 -> 434) ─────────
+    // Primer lote de la ampliacion hacia 1000. Cambio en los DATOS, no en
+    // el algoritmo: con 60 platos mas la loteria reparte distinto para la
+    // MISMA semilla. Este dia mejora en todo lo que se mide:
+    //
+    //   estado    adjusted/tier 1 -> PERFECT/tier 0
+    //   kcal      2821,9 -> 2822,0 sobre un objetivo de 2822 (clavado)
+    //   proteina  151,9 -> 174,9 g (objetivo 156: de -2,6% a +12%)
+    //   compra    14,21 -> 14,30 EUR (tope 16)
+    //
+    // No es suerte de esta semilla. Medido sobre 200 semillas del mismo
+    // perfil, antes y despues del lote: proteina media 154,7 -> 158,9 g y
+    // dias "perfect" 60% -> 66%.
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 3, 3, 1, 2]);
+    assert.strictEqual(result.total.kcal, 2822.0000000000005);
+    assert.strictEqual(result.total.protein, 174.9);
+    assert.strictEqual(result.total.carbs, 319.3);
+    assert.strictEqual(result.total.fat, 87.1);
+    assert.strictEqual(result.total.cost, 7.11);
+    assert.strictEqual(result.total.purchaseCost, 14.3);
+    assert.strictEqual(result.report.status, "perfect");
+    assert.strictEqual(result.report.tierUsed, 0);
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.report.violations)), []);
   });
 
@@ -643,18 +656,31 @@ function run(t) {
     // yogur) y por tanto cinco paquetes enteros -- 6,82 EUR de comida
     // usada dentro de 20,54 EUR de compra. Medido en 150 generaciones,
     // pasa en el 4% de los días de 20 EUR (antes, 1%).
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [4, 3, 3, 2, 2]);
-    assert.strictEqual(result.total.kcal, 3831.2);
-    assert.strictEqual(result.total.protein, 188.60000000000002);
-    assert.strictEqual(result.total.carbs, 623.2);
-    assert.strictEqual(result.total.fat, 51.7);
-    assert.strictEqual(result.total.cost, 6.82);
-    assert.strictEqual(result.total.purchaseCost, 20.54);
-    assert.strictEqual(result.report.status, "minimal");
-    assert.strictEqual(result.report.tierUsed, 4);
-    assert.deepStrictEqual(
-      JSON.parse(JSON.stringify(result.report.violations)),
-      [{ type: "budget", exceededBy: 0.54, purchaseCost: 20.54, usageCost: 6.82 }]);
+    // ── RECAPTURADO el 2026-09-04 (7): +60 platos (374 -> 434) ─────────
+    // Misma causa que seed=42, y aqui desaparece el caso incomodo que se
+    // documentaba arriba: este dia YA NO SE PASA del presupuesto.
+    //
+    //   compra      20,54 -> 19,51 EUR (tope 20: de pasarse a no pasarse)
+    //   estado      minimal/tier 4 -> adjusted/tier 1
+    //   violations  [budget +0,54] -> ninguna
+    //   proteina    188,6 -> 196,4 g (objetivo 171)
+    //
+    // Lo que se paga, y se apunta: 3831,2 -> 3703,4 kcal sobre un objetivo
+    // de 3871, de -1,0% a -4,3%. Dentro de tolerancia, pero es menos comida
+    // en un dia de volumen. Sobre 200 semillas de este perfil el lote sube
+    // la proteina media (216,3 -> 219,0 g) y baja los dias "perfect" del
+    // 68% al 61%: los platos nuevos son mas densos en proteina y por eso
+    // algo mas caros por kcal, y un dia de 3871 kcal con 20 EUR va justo.
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 3, 3, 2, 3]);
+    assert.strictEqual(result.total.kcal, 3703.4);
+    assert.strictEqual(result.total.protein, 196.4);
+    assert.strictEqual(result.total.carbs, 413.69999999999993);
+    assert.strictEqual(result.total.fat, 134.20000000000002);
+    assert.strictEqual(result.total.cost, 8.94);
+    assert.strictEqual(result.total.purchaseCost, 19.51);
+    assert.strictEqual(result.report.status, "adjusted");
+    assert.strictEqual(result.report.tierUsed, 1);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.report.violations)), []);
   });
 }
 
