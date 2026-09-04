@@ -345,7 +345,29 @@ document.addEventListener("DOMContentLoaded", function () {
       : (lastGeneratedReport && lastGeneratedReport.total) || {};
     var result = { meals: lastGeneratedMeals, total: total, report: lastGeneratedReport };
 
-    renderMeals(lastGeneratedMeals);
+    // Un plan de VARIOS días se repinta con renderDayPlans(), nunca con
+    // renderMeals(): renderMeals es literalmente
+    // `renderDayPlans([{meals: meals}])`, o sea UNA diapositiva. Al cambiar
+    // un plato borraba las demás -- seguían en memoria (`lastGeneratedDays`)
+    // pero desaparecían de la pantalla, quedaba el día 1 con los puntos de N
+    // días debajo, y como las tarjetas se repintaban con `data-day="0"` el
+    // siguiente "Cambiar" ya apuntaba al día equivocado.
+    //
+    // Roto desde que llegó el carrusel (a8ccf2b, 2026-09-01): esta función
+    // se escribió el mismo día y nunca se enteró de que podía haber más de
+    // un día en pantalla.
+    var dias = lastGeneratedDays;
+    var variosDias = !!(dias && dias.length > 1);
+    if (variosDias) {
+      // innerHTML deja `scrollLeft` en 0. Sin guardarlo y devolverlo,
+      // cambiar un plato del día 4 te dejaba mirando el día 1 -- y el punto
+      // activo y las flechas, que viven del scroll, se descuadraban con él.
+      var desplazado = mealsContainer ? mealsContainer.scrollLeft : 0;
+      renderDayPlans(dias);
+      if (mealsContainer) mealsContainer.scrollLeft = desplazado;
+    } else {
+      renderMeals(lastGeneratedMeals);
+    }
     if (lastGeneratedProfile) renderSummary(lastGeneratedProfile, total);
     safeInit("schedule-timeline-render", function () {
       if (typeof renderScheduleTimeline === "function") renderScheduleTimeline(lastGeneratedMeals);
@@ -356,7 +378,16 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     if (typeof renderShoppingList === "function") {
       safeInit("shopping-list-render", function () {
-        renderShoppingList(lastGeneratedMeals, lastGeneratedStore);
+        // La compra es de TODOS los días juntos, igual que al generar: un
+        // paquete que cubre varios días se paga una vez. Repintarla solo
+        // con las tomas del día 1 encogía la lista y el precio cada vez que
+        // se cambiaba un plato.
+        if (variosDias) {
+          var todas = dias.reduce(function (acc, d) { return acc.concat(d.meals || []); }, []);
+          renderShoppingList(todas, lastGeneratedStore, dias.length);
+        } else {
+          renderShoppingList(lastGeneratedMeals, lastGeneratedStore);
+        }
       });
     }
   }
