@@ -3528,6 +3528,15 @@ dialog.despensa-dialog[open] {
   margin: 0;
 }
 
+/* Enlace de "he olvidado la contraseña". Sin `display` a propósito: se
+   esconde con el atributo `hidden` en los modos donde no pinta nada, y un
+   `display` de autor lo dejaría visible igualmente. */
+.auth-dialog__forgot {
+  margin: 0 0 var(--space-2);
+  text-align: center;
+  font-size: 12.5px;
+}
+
 .auth-dialog__switch {
   margin: 0;
   text-align: center;

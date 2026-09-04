@@ -49,6 +49,7 @@ var authProfileBtn, authProfileLabel, authUserMenu, authUserEmailEl, authLogoutB
 var authDialogEl, authDialogTitle, authDialogCloseBtn;
 var authGoogleBtn, authEmailForm, authEmailInput, authPasswordInput, authErrorEl, authNoticeEl,
     authPassword2Field, authPassword2Input, authPasswordHint,
+    authEmailField, authPasswordField, authForgotRow, authForgotBtn, authSwitchRow,
     authSubmitBtn, authSwitchPrompt, authSwitchModeBtn, authUnavailableBox, authAvailableBox;
 var authConflictDialogEl, authConflictKeepCloudBtn, authConflictMergeBtn, authConflictKeepLocalBtn;
 var authDeleteAccountBtn, authDeleteDialogEl, authDeleteConfirmBtn, authDeleteCancelBtn, authDeleteErrorEl;
@@ -85,6 +86,11 @@ function initAuthRefs(refs) {
   authPassword2Field  = refs.authPassword2Field;
   authPassword2Input  = refs.authPassword2Input;
   authPasswordHint    = refs.authPasswordHint;
+  authEmailField      = refs.authEmailField;
+  authPasswordField   = refs.authPasswordField;
+  authForgotRow       = refs.authForgotRow;
+  authForgotBtn       = refs.authForgotBtn;
+  authSwitchRow       = refs.authSwitchRow;
   authErrorEl         = refs.authErrorEl;
   authNoticeEl        = refs.authNoticeEl;
   authSubmitBtn       = refs.authSubmitBtn;
@@ -123,6 +129,10 @@ function initAuthRefs(refs) {
   if (authGoogleBtn)      authGoogleBtn.addEventListener("click", handleGoogleClick);
   if (authEmailForm)      authEmailForm.addEventListener("submit", handleEmailFormSubmit);
   if (authSwitchModeBtn)  authSwitchModeBtn.addEventListener("click", handleSwitchMode);
+  if (authForgotBtn)      authForgotBtn.addEventListener("click", function () {
+    clearAuthFeedback();
+    setAuthMode("recover");
+  });
   if (authLogoutBtn)      authLogoutBtn.addEventListener("click", handleLogoutClick);
   if (authDeleteAccountBtn) authDeleteAccountBtn.addEventListener("click", openDeleteAccountDialog);
   if (authDeleteCancelBtn)  authDeleteCancelBtn.addEventListener("click", closeDeleteAccountDialog);
@@ -150,6 +160,33 @@ function initAuthRefs(refs) {
 
 function handleAuthStateChange(event, user) {
   renderProfileButton(user);
+
+  // ── Se vuelve del enlace del correo ────────────────────────────────────
+  //
+  // El SDK ya ha canjeado el token y HAY SESION. Sin interceptarlo aqui, el
+  // usuario entraria como si hubiera iniciado sesion normalmente y seguiria
+  // sin saber su contrasena: pidio recuperarla y acabaria dentro sin
+  // haberla cambiado. Asi que se le pide la nueva antes de nada.
+  //
+  // Va ANTES del bloque de SIGNED_IN/INITIAL_SESSION a proposito: ahi se
+  // lanza el cuestionario y la reconciliacion con la nube, y ninguna de las
+  // dos cosas es lo que toca en mitad de un cambio de contrasena.
+  //
+  // El dialogo se abre con showModal(), que lo pone en la capa superior del
+  // navegador -- por encima de la bienvenida (z-index 200) y del recorrido
+  // (210). Importa: se vuelve del correo con una CARGA NUEVA de la pagina,
+  // y a un invitado la bienvenida le sale siempre. Sin la capa superior,
+  // esto quedaria tapado justo cuando hace falta.
+  if (event === "PASSWORD_RECOVERY") {
+    if (authDialogEl && !authDialogEl.open) {
+      if (typeof authDialogEl.showModal === "function") authDialogEl.showModal();
+      else authDialogEl.setAttribute("open", "");
+    }
+    clearAuthFeedback();
+    setAuthMode("reset");
+    showAuthNotice("Escribe una contraseña nueva para tu cuenta.");
+    return;
+  }
 
   if (!user) {
     _reconciledForUserId = null;
@@ -377,34 +414,80 @@ function closeAuthDialog() {
  *  para volver como un error en inglés. */
 var AUTH_MIN_PASSWORD = 6;
 
+/**
+ * Cuatro estados, un solo formulario.
+ *
+ *   login     email + contrasena
+ *   register  email + contrasena + repetir
+ *   recover   SOLO email -- "mandame el enlace"
+ *   reset     SOLO contrasena + repetir -- al volver del correo
+ *
+ * Todo se decide aqui, en un sitio, en vez de repartir `hidden` por los
+ * manejadores: con cuatro modos y seis trozos que aparecen y desaparecen,
+ * el reparto es como se acaba llegando a un formulario que pide la
+ * contrasena para mandarte un enlace.
+ */
 function setAuthMode(mode) {
   _authMode = mode;
   var isRegister = mode === "register";
-  if (authDialogTitle)  authDialogTitle.textContent = isRegister ? "Crear cuenta" : "Iniciar sesión";
-  if (authSubmitBtn)    authSubmitBtn.textContent = isRegister ? "Crear cuenta" : "Iniciar sesión";
-  if (authSwitchPrompt) authSwitchPrompt.textContent = isRegister ? "¿Ya tienes cuenta?" : "¿No tienes cuenta?";
+  var isRecover  = mode === "recover";
+  var isReset    = mode === "reset";
+
+  var titulo = isRegister ? "Crear cuenta"
+             : isRecover  ? "Recuperar contraseña"
+             : isReset    ? "Elige una contraseña nueva"
+             : "Iniciar sesión";
+  var boton  = isRegister ? "Crear cuenta"
+             : isRecover  ? "Enviar enlace"
+             : isReset    ? "Guardar contraseña"
+             : "Iniciar sesión";
+
+  if (authDialogTitle) authDialogTitle.textContent = titulo;
+  if (authSubmitBtn)   authSubmitBtn.textContent = boton;
+
+  // El email no se pide al poner la contrasena nueva: ahi ya se sabe quien
+  // eres (hay sesion), y volver a pedirlo solo da ocasion de equivocarse.
+  if (authEmailField)    authEmailField.hidden = isReset;
+  // La contrasena no se pide para MANDAR el enlace, que es justo lo que
+  // se pide cuando no se recuerda.
+  if (authPasswordField) authPasswordField.hidden = isRecover;
+  // Repetirla, solo donde se escribe una nueva.
+  if (authPassword2Field) authPassword2Field.hidden = !(isRegister || isReset);
+  if (authPasswordHint)   authPasswordHint.hidden   = !(isRegister || isReset);
+  // Y el enlace de "la he olvidado" solo al iniciar sesion: en el resto de
+  // pasos o no hay contrasena todavia, o se esta poniendo una.
+  if (authForgotRow) authForgotRow.hidden = (mode !== "login");
+
+  if (authSwitchPrompt)  authSwitchPrompt.textContent = isRegister ? "¿Ya tienes cuenta?" : "¿No tienes cuenta?";
   if (authSwitchModeBtn) authSwitchModeBtn.textContent = isRegister ? "Iniciar sesión" : "Crear cuenta";
+  // Desde "recover" lo util es volver, no crear otra cuenta.
+  if (authSwitchModeBtn && isRecover) authSwitchModeBtn.textContent = "Volver a iniciar sesión";
+  if (authSwitchPrompt && isRecover)  authSwitchPrompt.textContent = "";
+  // Al poner la contrasena nueva no hay a donde ir: primero se guarda.
+  if (authSwitchRow) authSwitchRow.hidden = isReset;
 
-  // Repetir la contraseña SOLO al crear cuenta. Al iniciar sesión sobra: si
-  // te equivocas, te lo dice el propio intento.
-  if (authPassword2Field) authPassword2Field.hidden = !isRegister;
-  // Y se vacía al cambiar de modo: dejarla escrita al volver a "iniciar
-  // sesión" deja un campo oculto con contenido que nadie va a mirar.
-  if (authPassword2Input && !isRegister) authPassword2Input.value = "";
-  if (authPasswordHint) authPasswordHint.hidden = !isRegister;
+  // Se vacia lo que deja de verse: un campo oculto con algo escrito dentro
+  // acaba viajando en un envio que nadie esperaba.
+  if (authPassword2Input && !(isRegister || isReset)) authPassword2Input.value = "";
+  if (authPasswordInput && isRecover) authPasswordInput.value = "";
 
-  // `autocomplete` correcto para cada modo. No es cosmético: con
-  // "current-password" el gestor de contraseñas ofrece la GUARDADA cuando
+  // `autocomplete` correcto para cada modo. No es cosmetico: con
+  // "current-password" el gestor de contrasenas ofrece la GUARDADA cuando
   // lo que toca es inventar una nueva, y no se ofrece a generarla ni a
-  // guardarla. Estaba fijo en "current-password" para los dos modos.
+  // guardarla.
   if (authPasswordInput) {
-    authPasswordInput.setAttribute("autocomplete", isRegister ? "new-password" : "current-password");
+    authPasswordInput.setAttribute("autocomplete",
+      (isRegister || isReset) ? "new-password" : "current-password");
   }
 }
 
 function handleSwitchMode() {
   clearAuthFeedback();
-  setAuthMode(_authMode === "register" ? "login" : "register");
+  // Desde "recover" (y desde cualquier modo que no sea registro) el destino
+  // util es iniciar sesion, no crear otra cuenta.
+  setAuthMode(_authMode === "register" ? "login"
+            : _authMode === "recover"  ? "login"
+            : "register");
 }
 
 function clearAuthFeedback() {
@@ -442,12 +525,77 @@ function handleGoogleClick() {
   });
 }
 
+/**
+ * Quita de la URL el token que trae el enlace del correo.
+ *
+ * Supabase lo deja en el hash (`#access_token=...&type=recovery`). Si se
+ * queda ahi: se guarda en el historial, viaja si alguien comparte el
+ * enlace, y al recargar vuelve a disparar PASSWORD_RECOVERY -- volviendo a
+ * pedir una contrasena nueva a quien acaba de ponerla.
+ *
+ * `replaceState` y no `location.hash = ""`: lo segundo recarga y anade una
+ * entrada al historial, y este proyecto ya sabe lo que cuesta una recarga
+ * inesperada a mitad de un flujo (ver HANDOFF.md 7.1).
+ */
+function _limpiarTokenDeLaUrl() {
+  try {
+    if (window.history && typeof window.history.replaceState === "function") {
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    }
+  } catch (err) { /* sin historial manipulable, el token se queda: no es fatal */ }
+}
+
 function handleEmailFormSubmit(event) {
   event.preventDefault();
   clearAuthFeedback();
 
   var email = authEmailInput ? authEmailInput.value.trim() : "";
   var password = authPasswordInput ? authPasswordInput.value : "";
+
+  // ── "Mandame el enlace" ────────────────────────────────────────────────
+  if (_authMode === "recover") {
+    if (!email) { showAuthError("Introduce tu email."); return; }
+    setAuthBusy(true);
+    sendPasswordReset(email).then(function (result) {
+      setAuthBusy(false);
+      if (result.error) { showAuthError(authErrorMessage(result.error)); return; }
+      // A proposito NO se dice si ese email tiene cuenta: contestarlo
+      // convertiria esto en una forma de averiguar quien esta registrado.
+      showAuthNotice("Si esa dirección tiene cuenta, te llega un correo con un enlace. " +
+                     "Ábrelo en este mismo móvil y podrás poner una contraseña nueva.");
+    });
+    return;
+  }
+
+  // ── "Pon una contrasena nueva" (se vuelve del correo) ──────────────────
+  if (_authMode === "reset") {
+    var nueva = password;
+    var nueva2 = authPassword2Input ? authPassword2Input.value : "";
+    if (!nueva) { showAuthError("Escribe la contraseña nueva."); return; }
+    if (nueva.length < AUTH_MIN_PASSWORD) {
+      showAuthError("La contraseña necesita al menos " + AUTH_MIN_PASSWORD + " caracteres.");
+      return;
+    }
+    if (nueva !== nueva2) {
+      showAuthError("Las dos contraseñas no coinciden.");
+      if (authPassword2Input) { authPassword2Input.value = ""; authPassword2Input.focus(); }
+      return;
+    }
+    setAuthBusy(true);
+    updatePassword(nueva).then(function (result) {
+      setAuthBusy(false);
+      if (result.error) { showAuthError(authErrorMessage(result.error)); return; }
+      // La sesion ya esta activa (la creo el enlace), asi que aqui se acaba:
+      // se limpia la URL para que el token no se quede en el historial ni
+      // vuelva a dispararse al recargar.
+      _limpiarTokenDeLaUrl();
+      if (authPasswordInput)  authPasswordInput.value = "";
+      if (authPassword2Input) authPassword2Input.value = "";
+      showAuthNotice("Contraseña cambiada. Ya has entrado con ella.");
+      window.setTimeout(closeAuthDialog, 1400);
+    });
+    return;
+  }
 
   if (!email || !password) {
     showAuthError("Introduce email y contraseña.");

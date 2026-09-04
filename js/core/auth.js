@@ -175,6 +175,63 @@ function signInWithGoogle() {
     });
 }
 
+/**
+ * Pide a Supabase que mande el correo de "he olvidado la contrasena".
+ *
+ * ── Nunca dice si ese email tiene cuenta o no ───────────────────────────
+ * Supabase responde igual exista o no, y la interfaz tambien: contestar
+ * "ese correo no esta registrado" convierte el formulario en una forma de
+ * averiguar quien tiene cuenta aqui. Se avisa siempre de lo mismo: "si esa
+ * direccion tiene cuenta, te llega un correo".
+ *
+ * `redirectTo` es el origen de la aplicacion. Al volver desde el enlace,
+ * el SDK detecta el token en la URL, crea sesion y emite
+ * PASSWORD_RECOVERY -- ver handleAuthStateChange() en render-auth.js, que
+ * es quien tiene que interceptarlo para pedir la contrasena nueva. Sin esa
+ * intercepcion el usuario entraria "con sesion" sin haber cambiado nada y
+ * seguiria sin saber su contrasena.
+ *
+ * @param {string} email
+ * @returns {Promise<{error: object|null}>}
+ */
+function sendPasswordReset(email) {
+  var client = getSupabaseClient();
+  if (!client) return Promise.resolve(_notConfiguredResult());
+
+  return client.auth.resetPasswordForEmail(email, {
+    redirectTo: (typeof window !== "undefined" && window.location) ? window.location.origin : undefined
+  })
+    .then(function (result) {
+      return { error: result.error || null };
+    })
+    .catch(function (err) {
+      return { error: err };
+    });
+}
+
+/**
+ * Cambia la contrasena del usuario que tiene sesion AHORA.
+ *
+ * Se usa al final del camino de recuperacion: al volver del correo hay
+ * sesion (la creo el token del enlace), asi que esto basta y no hace falta
+ * la contrasena anterior -- que es justo la que no se recuerda.
+ *
+ * @param {string} password
+ * @returns {Promise<{user: object|null, error: object|null}>}
+ */
+function updatePassword(password) {
+  var client = getSupabaseClient();
+  if (!client) return Promise.resolve(_notConfiguredResult({ user: null }));
+
+  return client.auth.updateUser({ password: password })
+    .then(function (result) {
+      return { user: (result.data && result.data.user) || null, error: result.error || null };
+    })
+    .catch(function (err) {
+      return { user: null, error: err };
+    });
+}
+
 function signOut() {
   var client = getSupabaseClient();
   if (!client) return Promise.resolve({ error: null });
@@ -272,6 +329,10 @@ function authErrorMessage(error) {
   }
   if (msg.indexOf("already registered") !== -1 || msg.indexOf("user already registered") !== -1) {
     return "Ya existe una cuenta con ese email -- prueba a iniciar sesión.";
+  }
+  if (msg.indexOf("should be different from the old password") !== -1 ||
+      msg.indexOf("same as the old password") !== -1) {
+    return "Esa es la contraseña que ya tenías -- elige una distinta.";
   }
   if (msg.indexOf("rate limit") !== -1 || msg.indexOf("too many requests") !== -1) {
     return "Demasiados intentos -- espera un momento y vuelve a intentarlo.";
