@@ -360,6 +360,39 @@ aleatoria: separa "he añadido ruido" de "he añadido peor", que se parecen
 mucho desde fuera y no se arreglan igual. Está guardado como
 `scripts/generar-platos/` + su `LEEME.md`.
 
+### 7.8 bis — y el mecanismo tampoco estaba donde yo miraba
+
+Lo de arriba se escribió creyendo que el problema era la *altura media* del
+lote. Al revertirlo (`60a475f`) y volver a medir por partes, resultó estar
+en la CATEGORÍA:
+
+```
+  base 374                       corte violan 53,0%   perfect 12,5%
+  +40 solo comida/cena                 53,0%          12,5%   <- cero efecto
+  +20 solo desayuno/snack              67,0%           8,0%
+  +60 el lote entero                   67,0%           8,0%
+```
+
+Las comidas y cenas no movieron **ni una décima**, en tres semillas
+distintas. Toda la regresión venía de veinte platos ligeros. El porqué se ve
+mirando qué elige el motor: para un día de corte se apoya en unos pocos
+ganadores muy repetidos (`Tostadas con queso fresco y tomate` sale 157 veces
+de 1000 tomas), y los pools de desayuno (78) y snack (70) son pequeños.
+Meter ahí diez platos baratos y pequeños les quita sorteos: los nuevos se
+llevaron el **25%** de las tomas del día.
+
+Dos cosas que aprender de esto. Primera: **cuando un cambio de datos toca
+varias categorías, mídelas por separado antes de teorizar sobre la media** —
+la respuesta estaba a una ejecución de distancia y me costó cinco hipótesis.
+Segunda: **elegir la semilla que mejor mide es hacer trampas.** Entre cuatro
+semillas del mismo generador el corte iba de 56% a 67%; mi "49%" original
+era exactamente eso, un jugada afortunada. Lo que vale es el efecto que se
+repite en varias semillas, y en las comidas fue +0,0 en las tres.
+
+De ahí sale `scripts/generar-platos/probar_lote.js`: genera el lote, lo pega
+EN MEMORIA sobre el catálogo y lo mide sin escribir nada. Medir una cosa y
+publicar otra deja de ser posible.
+
 Y el corolario: **la métrica obvia no era la buena.** Probé suelo de
 proteína absoluta (p25 y p50), porciones más grandes, techo de
 repeticiones y suelo de proteína por euro. Ninguno lo arregló. Lo arregló
@@ -407,13 +440,28 @@ Cuatro intentos fallidos porque medía la cosa parecida en vez de la cosa.
 - **El invitado ve la bienvenida en cada visita**, por decisión suya. Si
   algún día cansa, lo suave sería repetir la oferta de cuenta a diario
   pero el cuestionario no.
-- **El catálogo va por 434 platos y el objetivo son 1000** (2026-09-04).
-  Faltan 566, unos diez lotes. El generador y su porqué están en
-  `scripts/generar-platos/`; se cambia la semilla en cada lote:
-  `node scripts/generar-platos/emitir_platos.js 60 <semilla> 0.25 4 40 0.75`.
-  Después SIEMPRE: correr la suite, recapturar los dos golden-master con su
-  explicación, y medir los tres perfiles antes/después. Si algún perfil
-  empeora, el experimento de §7.8 va primero.
+- **El catálogo va por 434 platos y el objetivo son 1000.** El ritual de
+  cada lote, en este orden:
+  ```
+  node scripts/generar-platos/probar_lote.js <semillas> 60 0.25 6 40 0.75 principales
+  node scripts/generar-platos/emitir_platos.js 60 <la que convenza> 0.25 6 40 0.75 principales
+  python scripts/generar-platos/aplicar_lote.py "lote N" <fecha>
+  node scripts/generar-platos/medir_perfiles.js HEAD 200
+  node tests/run-tests.js     # y recapturar los dos golden-master
+  ```
+  `probar_lote.js` mide ANTES de escribir nada; `medir_perfiles.js HEAD`
+  confirma que lo aplicado da lo mismo que lo probado. Si no coinciden, para.
+- **DESAYUNO y SNACK están CONGELADOS** hasta entender lo de §7.8 bis. Son
+  pools pequeños (78 y 70) donde el motor se apoya en pocos ganadores, y
+  meter platos ligeros y baratos ahí costó 14 puntos al perfil de corte.
+  Crecer por ahí exige antes saber qué hace bueno a un snack para un día
+  apretado, no solo que sea denso en proteína.
+- **Con las formas actuales el generador NO llega a 1000.** Quedan unos 147
+  principales únicos y **4** snacks; ya usa 78 de los 83 roles de
+  ingrediente que existen. El siguiente paso barato son FORMAS nuevas sobre
+  los mismos roles (un principal con dos verduras multiplica el espacio de
+  2.268 a ~12.000); las roles nuevas son caras porque cada una pide
+  nutrición, precio y envase verificados a mano.
 - **Los 15 principales vegetarianos del lote 1 usan todos clara de huevo.**
   Es lo único vegetal que pasa el suelo de densidad proteica: el yema, el
   queso y el edamame no llegan. Varían la legumbre y la verdura, pero el

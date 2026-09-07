@@ -143,13 +143,31 @@ function construir(c, categoria) {
   return { plato: completar(plato), receta: receta };
 }
 
-// ── Seleccion con cuotas proporcionales al catalogo actual ──────────────
-var cuota = {
-  comida: Math.round(CUANTOS * 0.35),
-  cena: Math.round(CUANTOS * 0.31),
-  desayuno: Math.round(CUANTOS * 0.18),
-  snack: CUANTOS - Math.round(CUANTOS * 0.35) - Math.round(CUANTOS * 0.31) - Math.round(CUANTOS * 0.18)
-};
+// ── Seleccion con cuotas ────────────────────────────────────────────────
+// MODO: "mixto" reparte como el catalogo actual; "principales" solo genera
+// comida y cena.
+//
+// Por que existe "principales" (medido el 2026-09-07, aislando el lote 1):
+//
+//   base 374                          violan 53,0%   perfect 12,5%
+//   +40 solo comida/cena              violan 53,0%   perfect 12,5%   <- CERO efecto
+//   +20 solo desayuno/snack           violan 67,0%   perfect  8,0%
+//   +60 el lote entero                violan 67,0%   perfect  8,0%
+//
+// Toda la regresion del perfil de corte venia de veinte platos ligeros. Las
+// comidas y cenas no movieron ni una decima. Los pools de desayuno (78) y
+// snack (70) son pequenos y el motor se apoya en unos pocos ganadores muy
+// repetidos; meter diez platos baratos y pequenos ahi les quita sorteos.
+// Hasta que eso se resuelva por separado, se crece por los principales.
+var MODO = process.argv[8] || "mixto";
+var cuota = (MODO === "principales")
+  ? { comida: Math.round(CUANTOS * 0.55), cena: CUANTOS - Math.round(CUANTOS * 0.55), desayuno: 0, snack: 0 }
+  : {
+      comida: Math.round(CUANTOS * 0.35),
+      cena: Math.round(CUANTOS * 0.31),
+      desayuno: Math.round(CUANTOS * 0.18),
+      snack: CUANTOS - Math.round(CUANTOS * 0.35) - Math.round(CUANTOS * 0.31) - Math.round(CUANTOS * 0.18)
+    };
 // ── Suelo de proteina, sacado de los DATOS y no a ojo ───────────────────
 // El primer intento de este lote no lo tenia y salio por debajo del
 // catalogo en las cuatro categorias (mediana de snack 8,2 g frente a 16,3).

@@ -4548,6 +4548,799 @@ var DISH_INSTRUCTIONS = {
     ]
   },
 
+
+  // ── Recetas de la ampliacion, lote 1 (solo principales) (2026-09-07) ────────────────────────
+  "Ternera con batata y tomate": {
+    difficulty: 2,
+    equipment: ["sarten", "olla", "ninguno"],
+    steps: [
+      "Saca la carne de la nevera 15 minutos antes y sécala bien: una superficie húmeda no se dora, se cuece.",
+      "Sala justo antes de que toque la sartén. Salada con antelación suelta agua y pierde el dorado.",
+      "Sartén bien caliente con una cucharada de aceite. Si la carne no chisporrotea al entrar, la sartén no estaba lista.",
+      "3 minutos por cada cara para un punto jugoso; un minuto más por cara si la quieres bien hecha.",
+      "Retira a un plato y deja reposar 3 minutos tapada sin apretar. Es lo que la diferencia de una suela.",
+      "Cuece la batata en trozos 15 minutos: tarda menos que la patata y se pasa antes, así que pínchala a los 12.",
+      "Corta el tomate en gajos y añádelo al final, fuera del fuego, para que no se deshaga.",
+      "Monta el plato con el batata de base, ternera encima y tomate al lado."
+    ]
+  },
+
+  "Solomillo con cuscús y champiñones": {
+    difficulty: 2,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Saca la carne de la nevera 15 minutos antes y sécala bien: una superficie húmeda no se dora, se cuece.",
+      "Sala justo antes de que toque la sartén. Salada con antelación suelta agua y pierde el dorado.",
+      "Sartén bien caliente con una cucharada de aceite. Si la carne no chisporrotea al entrar, la sartén no estaba lista.",
+      "3 minutos por cada cara para un punto jugoso; un minuto más por cara si la quieres bien hecha.",
+      "Retira a un plato y deja reposar 3 minutos tapada sin apretar. Es lo que la diferencia de una suela.",
+      "El cuscús no se cuece: cúbrelo con el mismo volumen de agua hirviendo con sal, tapa 5 minutos y suéltalo con un tenedor.",
+      "Los champiñones a fuego fuerte y en una sola capa: amontonados sueltan agua y se cuecen. No los sales hasta el final.",
+      "Monta el plato con el cuscús de base, solomillo encima y champiñones al lado."
+    ]
+  },
+
+  "Gambas con batata y verduras salteadas": {
+    difficulty: 1,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Ya vienen cocidos: aquí solo se calientan. Cocinarlos otra vez los deja gomosos.",
+      "Sartén a fuego medio con una cucharada de aceite y, si quieres, un diente de ajo laminado.",
+      "Saltea 2 minutos, lo justo para que cojan temperatura y el ajo perfume el aceite.",
+      "Cuece la batata en trozos 15 minutos: tarda menos que la patata y se pasa antes, así que pínchala a los 12.",
+      "Las verduras congeladas van a la sartén SIN descongelar y a fuego fuerte: descongeladas sueltan agua y se cuecen en vez de dorarse.",
+      "Monta el plato con el batata de base, gambas encima y verduras salteadas al lado."
+    ]
+  },
+
+  "Bacalao con batata y tomate": {
+    difficulty: 2,
+    equipment: ["horno", "olla", "ninguno"],
+    steps: [
+      "Precalienta el horno a 200 grados. Meter el pescado en un horno frío lo reseca mientras el horno sube.",
+      "Seca el pescado con papel, ponlo en una fuente con un hilo de aceite y sal.",
+      "Hornea 12 minutos. La regla es 10 minutos por cada 2,5 cm de grosor en la parte más alta.",
+      "Está hecho cuando la carne pasa de traslúcida a blanca opaca y se separa en lascas al empujarla con un tenedor. Un minuto de más lo seca.",
+      "Cuece la batata en trozos 15 minutos: tarda menos que la patata y se pasa antes, así que pínchala a los 12.",
+      "Corta el tomate en gajos y añádelo al final, fuera del fuego, para que no se deshaga.",
+      "Monta el plato con el batata de base, bacalao encima y tomate al lado."
+    ]
+  },
+
+  "Pavo a la plancha con patata y maíz": {
+    difficulty: 2,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Saca undefined de la nevera 10 minutos antes: frío por dentro se hace por fuera antes de estar listo por dentro.",
+      "Si la pieza es gruesa, ábrela por la mitad a lo ancho como un libro. Se hace en la mitad de tiempo y sin quedar cruda en el centro.",
+      "Sécala con papel de cocina. Es el paso que más se salta y el que decide si se dora o se cuece en su propia agua.",
+      "Sartén a fuego medio-alto con una cucharada de aceite; espera a que el aceite brille y se mueva con facilidad.",
+      "Coloca la carne y NO LA TOQUES 4 minutos: moverla antes impide que se forme la costra y la pega a la sartén.",
+      "Dale la vuelta y haz 4 minutos más. Está lista cuando al pinchar la parte más gruesa sale jugo transparente, no rosado.",
+      "Deja reposar 2 minutos antes de cortar, o el jugo se queda en la tabla.",
+      "Cuece la patata en trozos parejos 18 minutos desde que hierve. Está lista cuando el cuchillo entra sin resistencia y sale limpio.",
+      "El maíz ya viene cocido: escúrrelo bien y añádelo al final solo para que se caliente.",
+      "Monta el plato con el patata de base, pavo a la plancha encima y maíz al lado."
+    ]
+  },
+
+  "Tofu con claras y zanahoria": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Prensa el tofu 10 minutos entre dos platos con peso encima y córtalo en dados: sin ese paso suelta agua y no se dora nunca.",
+      "Cuaja las claras a fuego suave; sin la yema se secan mucho antes, asi que retíralas cuando aun brillen.",
+      "Corta la zanahoria en rodajas finas y saltéala 6 minutos: en rodajas gruesas queda cruda por dentro.",
+      "Junta todo en la sarten un minuto al final, solo para que coja temperatura: removido de mas, la legumbre se deshace."
+    ]
+  },
+
+  "Lentejas con claras y maíz": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Enjuaga las lentejas de bote bajo el grifo hasta que el agua salga clara: se va el liquido de conserva y con el el sabor a lata.",
+      "Cuaja las claras a fuego suave; sin la yema se secan mucho antes, asi que retíralas cuando aun brillen.",
+      "El maíz ya viene cocido: escúrrelo bien y añádelo al final solo para que se caliente.",
+      "Junta todo en la sarten un minuto al final, solo para que coja temperatura: removido de mas, la legumbre se deshace."
+    ]
+  },
+
+  "Ternera con batata y zanahoria": {
+    difficulty: 2,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Saca la carne de la nevera 15 minutos antes y sécala bien: una superficie húmeda no se dora, se cuece.",
+      "Sala justo antes de que toque la sartén. Salada con antelación suelta agua y pierde el dorado.",
+      "Sartén bien caliente con una cucharada de aceite. Si la carne no chisporrotea al entrar, la sartén no estaba lista.",
+      "3 minutos por cada cara para un punto jugoso; un minuto más por cara si la quieres bien hecha.",
+      "Retira a un plato y deja reposar 3 minutos tapada sin apretar. Es lo que la diferencia de una suela.",
+      "Cuece la batata en trozos 15 minutos: tarda menos que la patata y se pasa antes, así que pínchala a los 12.",
+      "Corta la zanahoria en rodajas finas y saltéala 6 minutos: en rodajas gruesas queda cruda por dentro.",
+      "Monta el plato con el batata de base, ternera encima y zanahoria al lado."
+    ]
+  },
+
+  "Pollo a la plancha con quinoa y zanahoria": {
+    difficulty: 2,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Saca undefined de la nevera 10 minutos antes: frío por dentro se hace por fuera antes de estar listo por dentro.",
+      "Si la pieza es gruesa, ábrela por la mitad a lo ancho como un libro. Se hace en la mitad de tiempo y sin quedar cruda en el centro.",
+      "Sécala con papel de cocina. Es el paso que más se salta y el que decide si se dora o se cuece en su propia agua.",
+      "Sartén a fuego medio-alto con una cucharada de aceite; espera a que el aceite brille y se mueva con facilidad.",
+      "Coloca la carne y NO LA TOQUES 4 minutos: moverla antes impide que se forme la costra y la pega a la sartén.",
+      "Dale la vuelta y haz 4 minutos más. Está lista cuando al pinchar la parte más gruesa sale jugo transparente, no rosado.",
+      "Deja reposar 2 minutos antes de cortar, o el jugo se queda en la tabla.",
+      "Enjuaga la quinoa bajo el grifo antes de cocerla (le quita el amargor de la cáscara) y hiérvela 15 minutos en el doble de agua.",
+      "Corta la zanahoria en rodajas finas y saltéala 6 minutos: en rodajas gruesas queda cruda por dentro.",
+      "Monta el plato con el quinoa de base, pollo a la plancha encima y zanahoria al lado."
+    ]
+  },
+
+  "Gambas con cuscús y pepino": {
+    difficulty: 1,
+    equipment: ["sarten", "olla", "ninguno"],
+    steps: [
+      "Ya vienen cocidos: aquí solo se calientan. Cocinarlos otra vez los deja gomosos.",
+      "Sartén a fuego medio con una cucharada de aceite y, si quieres, un diente de ajo laminado.",
+      "Saltea 2 minutos, lo justo para que cojan temperatura y el ajo perfume el aceite.",
+      "El cuscús no se cuece: cúbrelo con el mismo volumen de agua hirviendo con sal, tapa 5 minutos y suéltalo con un tenedor.",
+      "Corta el pepino en medias lunas y déjalo en crudo: es el contrapunto fresco del plato.",
+      "Monta el plato con el cuscús de base, gambas encima y pepino al lado."
+    ]
+  },
+
+  "Bacalao con quinoa y champiñones": {
+    difficulty: 2,
+    equipment: ["horno", "olla", "sarten"],
+    steps: [
+      "Precalienta el horno a 200 grados. Meter el pescado en un horno frío lo reseca mientras el horno sube.",
+      "Seca el pescado con papel, ponlo en una fuente con un hilo de aceite y sal.",
+      "Hornea 12 minutos. La regla es 10 minutos por cada 2,5 cm de grosor en la parte más alta.",
+      "Está hecho cuando la carne pasa de traslúcida a blanca opaca y se separa en lascas al empujarla con un tenedor. Un minuto de más lo seca.",
+      "Enjuaga la quinoa bajo el grifo antes de cocerla (le quita el amargor de la cáscara) y hiérvela 15 minutos en el doble de agua.",
+      "Los champiñones a fuego fuerte y en una sola capa: amontonados sueltan agua y se cuecen. No los sales hasta el final.",
+      "Monta el plato con el quinoa de base, bacalao encima y champiñones al lado."
+    ]
+  },
+
+  "Pavo a la plancha con batata y zanahoria": {
+    difficulty: 2,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Saca undefined de la nevera 10 minutos antes: frío por dentro se hace por fuera antes de estar listo por dentro.",
+      "Si la pieza es gruesa, ábrela por la mitad a lo ancho como un libro. Se hace en la mitad de tiempo y sin quedar cruda en el centro.",
+      "Sécala con papel de cocina. Es el paso que más se salta y el que decide si se dora o se cuece en su propia agua.",
+      "Sartén a fuego medio-alto con una cucharada de aceite; espera a que el aceite brille y se mueva con facilidad.",
+      "Coloca la carne y NO LA TOQUES 4 minutos: moverla antes impide que se forme la costra y la pega a la sartén.",
+      "Dale la vuelta y haz 4 minutos más. Está lista cuando al pinchar la parte más gruesa sale jugo transparente, no rosado.",
+      "Deja reposar 2 minutos antes de cortar, o el jugo se queda en la tabla.",
+      "Cuece la batata en trozos 15 minutos: tarda menos que la patata y se pasa antes, así que pínchala a los 12.",
+      "Corta la zanahoria en rodajas finas y saltéala 6 minutos: en rodajas gruesas queda cruda por dentro.",
+      "Monta el plato con el batata de base, pavo a la plancha encima y zanahoria al lado."
+    ]
+  },
+
+  "Tofu con claras y maíz": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Prensa el tofu 10 minutos entre dos platos con peso encima y córtalo en dados: sin ese paso suelta agua y no se dora nunca.",
+      "Cuaja las claras a fuego suave; sin la yema se secan mucho antes, asi que retíralas cuando aun brillen.",
+      "El maíz ya viene cocido: escúrrelo bien y añádelo al final solo para que se caliente.",
+      "Junta todo en la sarten un minuto al final, solo para que coja temperatura: removido de mas, la legumbre se deshace."
+    ]
+  },
+
+  "Lentejas con claras y zanahoria": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Enjuaga las lentejas de bote bajo el grifo hasta que el agua salga clara: se va el liquido de conserva y con el el sabor a lata.",
+      "Cuaja las claras a fuego suave; sin la yema se secan mucho antes, asi que retíralas cuando aun brillen.",
+      "Corta la zanahoria en rodajas finas y saltéala 6 minutos: en rodajas gruesas queda cruda por dentro.",
+      "Junta todo en la sarten un minuto al final, solo para que coja temperatura: removido de mas, la legumbre se deshace."
+    ]
+  },
+
+  "Langostinos con quinoa y pepino": {
+    difficulty: 1,
+    equipment: ["sarten", "olla", "ninguno"],
+    steps: [
+      "Ya vienen cocidos: aquí solo se calientan. Cocinarlos otra vez los deja gomosos.",
+      "Sartén a fuego medio con una cucharada de aceite y, si quieres, un diente de ajo laminado.",
+      "Saltea 2 minutos, lo justo para que cojan temperatura y el ajo perfume el aceite.",
+      "Enjuaga la quinoa bajo el grifo antes de cocerla (le quita el amargor de la cáscara) y hiérvela 15 minutos en el doble de agua.",
+      "Corta el pepino en medias lunas y déjalo en crudo: es el contrapunto fresco del plato.",
+      "Monta el plato con el quinoa de base, langostinos encima y pepino al lado."
+    ]
+  },
+
+  "Pollo a la plancha con patata y champiñones": {
+    difficulty: 2,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Saca undefined de la nevera 10 minutos antes: frío por dentro se hace por fuera antes de estar listo por dentro.",
+      "Si la pieza es gruesa, ábrela por la mitad a lo ancho como un libro. Se hace en la mitad de tiempo y sin quedar cruda en el centro.",
+      "Sécala con papel de cocina. Es el paso que más se salta y el que decide si se dora o se cuece en su propia agua.",
+      "Sartén a fuego medio-alto con una cucharada de aceite; espera a que el aceite brille y se mueva con facilidad.",
+      "Coloca la carne y NO LA TOQUES 4 minutos: moverla antes impide que se forme la costra y la pega a la sartén.",
+      "Dale la vuelta y haz 4 minutos más. Está lista cuando al pinchar la parte más gruesa sale jugo transparente, no rosado.",
+      "Deja reposar 2 minutos antes de cortar, o el jugo se queda en la tabla.",
+      "Cuece la patata en trozos parejos 18 minutos desde que hierve. Está lista cuando el cuchillo entra sin resistencia y sale limpio.",
+      "Los champiñones a fuego fuerte y en una sola capa: amontonados sueltan agua y se cuecen. No los sales hasta el final.",
+      "Monta el plato con el patata de base, pollo a la plancha encima y champiñones al lado."
+    ]
+  },
+
+  "Bacalao con quinoa y zanahoria": {
+    difficulty: 2,
+    equipment: ["horno", "olla", "sarten"],
+    steps: [
+      "Precalienta el horno a 200 grados. Meter el pescado en un horno frío lo reseca mientras el horno sube.",
+      "Seca el pescado con papel, ponlo en una fuente con un hilo de aceite y sal.",
+      "Hornea 12 minutos. La regla es 10 minutos por cada 2,5 cm de grosor en la parte más alta.",
+      "Está hecho cuando la carne pasa de traslúcida a blanca opaca y se separa en lascas al empujarla con un tenedor. Un minuto de más lo seca.",
+      "Enjuaga la quinoa bajo el grifo antes de cocerla (le quita el amargor de la cáscara) y hiérvela 15 minutos en el doble de agua.",
+      "Corta la zanahoria en rodajas finas y saltéala 6 minutos: en rodajas gruesas queda cruda por dentro.",
+      "Monta el plato con el quinoa de base, bacalao encima y zanahoria al lado."
+    ]
+  },
+
+  "Pavo a la plancha con quinoa y espinacas": {
+    difficulty: 2,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Saca undefined de la nevera 10 minutos antes: frío por dentro se hace por fuera antes de estar listo por dentro.",
+      "Si la pieza es gruesa, ábrela por la mitad a lo ancho como un libro. Se hace en la mitad de tiempo y sin quedar cruda en el centro.",
+      "Sécala con papel de cocina. Es el paso que más se salta y el que decide si se dora o se cuece en su propia agua.",
+      "Sartén a fuego medio-alto con una cucharada de aceite; espera a que el aceite brille y se mueva con facilidad.",
+      "Coloca la carne y NO LA TOQUES 4 minutos: moverla antes impide que se forme la costra y la pega a la sartén.",
+      "Dale la vuelta y haz 4 minutos más. Está lista cuando al pinchar la parte más gruesa sale jugo transparente, no rosado.",
+      "Deja reposar 2 minutos antes de cortar, o el jugo se queda en la tabla.",
+      "Enjuaga la quinoa bajo el grifo antes de cocerla (le quita el amargor de la cáscara) y hiérvela 15 minutos en el doble de agua.",
+      "Saltea las espinacas 2 minutos en la sartén caliente. Abultan mucho y se reducen a nada: caben aunque no lo parezca.",
+      "Monta el plato con el quinoa de base, pavo a la plancha encima y espinacas al lado."
+    ]
+  },
+
+  "Merluza con patata y tomate": {
+    difficulty: 2,
+    equipment: ["horno", "olla", "ninguno"],
+    steps: [
+      "Precalienta el horno a 200 grados. Meter el pescado en un horno frío lo reseca mientras el horno sube.",
+      "Seca el pescado con papel, ponlo en una fuente con un hilo de aceite y sal.",
+      "Hornea 12 minutos. La regla es 10 minutos por cada 2,5 cm de grosor en la parte más alta.",
+      "Está hecho cuando la carne pasa de traslúcida a blanca opaca y se separa en lascas al empujarla con un tenedor. Un minuto de más lo seca.",
+      "Cuece la patata en trozos parejos 18 minutos desde que hierve. Está lista cuando el cuchillo entra sin resistencia y sale limpio.",
+      "Corta el tomate en gajos y añádelo al final, fuera del fuego, para que no se deshaga.",
+      "Monta el plato con el patata de base, merluza encima y tomate al lado."
+    ]
+  },
+
+  "Garbanzos con claras y brócoli": {
+    difficulty: 1,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Escurre y enjuaga los garbanzos, y sécalos un poco: mojados no se doran y quedan sosos.",
+      "Cuaja las claras a fuego suave; sin la yema se secan mucho antes, asi que retíralas cuando aun brillen.",
+      "Cuece el brócoli en agua hirviendo con sal 4 minutos: verde vivo y que ceda al pincharlo, no blando.",
+      "Junta todo en la sarten un minuto al final, solo para que coja temperatura: removido de mas, la legumbre se deshace."
+    ]
+  },
+
+  "Tofu con claras y tomate": {
+    difficulty: 1,
+    equipment: ["sarten", "ninguno"],
+    steps: [
+      "Prensa el tofu 10 minutos entre dos platos con peso encima y córtalo en dados: sin ese paso suelta agua y no se dora nunca.",
+      "Cuaja las claras a fuego suave; sin la yema se secan mucho antes, asi que retíralas cuando aun brillen.",
+      "Corta el tomate en gajos y añádelo al final, fuera del fuego, para que no se deshaga.",
+      "Junta todo en la sarten un minuto al final, solo para que coja temperatura: removido de mas, la legumbre se deshace."
+    ]
+  },
+
+  "Lentejas con claras y cebolla": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Enjuaga las lentejas de bote bajo el grifo hasta que el agua salga clara: se va el liquido de conserva y con el el sabor a lata.",
+      "Cuaja las claras a fuego suave; sin la yema se secan mucho antes, asi que retíralas cuando aun brillen.",
+      "Pocha la cebolla en juliana a fuego medio 8 minutos, hasta que esté transparente y dulce.",
+      "Junta todo en la sarten un minuto al final, solo para que coja temperatura: removido de mas, la legumbre se deshace."
+    ]
+  },
+
+  "Ternera con quinoa y pepino": {
+    difficulty: 2,
+    equipment: ["sarten", "olla", "ninguno"],
+    steps: [
+      "Saca la carne de la nevera 15 minutos antes y sécala bien: una superficie húmeda no se dora, se cuece.",
+      "Sala justo antes de que toque la sartén. Salada con antelación suelta agua y pierde el dorado.",
+      "Sartén bien caliente con una cucharada de aceite. Si la carne no chisporrotea al entrar, la sartén no estaba lista.",
+      "3 minutos por cada cara para un punto jugoso; un minuto más por cara si la quieres bien hecha.",
+      "Retira a un plato y deja reposar 3 minutos tapada sin apretar. Es lo que la diferencia de una suela.",
+      "Enjuaga la quinoa bajo el grifo antes de cocerla (le quita el amargor de la cáscara) y hiérvela 15 minutos en el doble de agua.",
+      "Corta el pepino en medias lunas y déjalo en crudo: es el contrapunto fresco del plato.",
+      "Monta el plato con el quinoa de base, ternera encima y pepino al lado."
+    ]
+  },
+
+  "Solomillo con patata y espinacas": {
+    difficulty: 2,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Saca la carne de la nevera 15 minutos antes y sécala bien: una superficie húmeda no se dora, se cuece.",
+      "Sala justo antes de que toque la sartén. Salada con antelación suelta agua y pierde el dorado.",
+      "Sartén bien caliente con una cucharada de aceite. Si la carne no chisporrotea al entrar, la sartén no estaba lista.",
+      "3 minutos por cada cara para un punto jugoso; un minuto más por cara si la quieres bien hecha.",
+      "Retira a un plato y deja reposar 3 minutos tapada sin apretar. Es lo que la diferencia de una suela.",
+      "Cuece la patata en trozos parejos 18 minutos desde que hierve. Está lista cuando el cuchillo entra sin resistencia y sale limpio.",
+      "Saltea las espinacas 2 minutos en la sartén caliente. Abultan mucho y se reducen a nada: caben aunque no lo parezca.",
+      "Monta el plato con el patata de base, solomillo encima y espinacas al lado."
+    ]
+  },
+
+  "Gambas con patata y cebolla": {
+    difficulty: 1,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Ya vienen cocidos: aquí solo se calientan. Cocinarlos otra vez los deja gomosos.",
+      "Sartén a fuego medio con una cucharada de aceite y, si quieres, un diente de ajo laminado.",
+      "Saltea 2 minutos, lo justo para que cojan temperatura y el ajo perfume el aceite.",
+      "Cuece la patata en trozos parejos 18 minutos desde que hierve. Está lista cuando el cuchillo entra sin resistencia y sale limpio.",
+      "Pocha la cebolla en juliana a fuego medio 8 minutos, hasta que esté transparente y dulce.",
+      "Monta el plato con el patata de base, gambas encima y cebolla al lado."
+    ]
+  },
+
+  "Merluza con quinoa y pepino": {
+    difficulty: 2,
+    equipment: ["horno", "olla", "ninguno"],
+    steps: [
+      "Precalienta el horno a 200 grados. Meter el pescado en un horno frío lo reseca mientras el horno sube.",
+      "Seca el pescado con papel, ponlo en una fuente con un hilo de aceite y sal.",
+      "Hornea 12 minutos. La regla es 10 minutos por cada 2,5 cm de grosor en la parte más alta.",
+      "Está hecho cuando la carne pasa de traslúcida a blanca opaca y se separa en lascas al empujarla con un tenedor. Un minuto de más lo seca.",
+      "Enjuaga la quinoa bajo el grifo antes de cocerla (le quita el amargor de la cáscara) y hiérvela 15 minutos en el doble de agua.",
+      "Corta el pepino en medias lunas y déjalo en crudo: es el contrapunto fresco del plato.",
+      "Monta el plato con el quinoa de base, merluza encima y pepino al lado."
+    ]
+  },
+
+  "Alubias con claras y brócoli": {
+    difficulty: 1,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Enjuaga las alubias con cuidado, que se deshacen: mueve el colador, no las remuevas con la cuchara.",
+      "Cuaja las claras a fuego suave; sin la yema se secan mucho antes, asi que retíralas cuando aun brillen.",
+      "Cuece el brócoli en agua hirviendo con sal 4 minutos: verde vivo y que ceda al pincharlo, no blando.",
+      "Junta todo en la sarten un minuto al final, solo para que coja temperatura: removido de mas, la legumbre se deshace."
+    ]
+  },
+
+  "Tofu con claras y brócoli": {
+    difficulty: 1,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Prensa el tofu 10 minutos entre dos platos con peso encima y córtalo en dados: sin ese paso suelta agua y no se dora nunca.",
+      "Cuaja las claras a fuego suave; sin la yema se secan mucho antes, asi que retíralas cuando aun brillen.",
+      "Cuece el brócoli en agua hirviendo con sal 4 minutos: verde vivo y que ceda al pincharlo, no blando.",
+      "Junta todo en la sarten un minuto al final, solo para que coja temperatura: removido de mas, la legumbre se deshace."
+    ]
+  },
+
+  "Lentejas con claras y espinacas": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Enjuaga las lentejas de bote bajo el grifo hasta que el agua salga clara: se va el liquido de conserva y con el el sabor a lata.",
+      "Cuaja las claras a fuego suave; sin la yema se secan mucho antes, asi que retíralas cuando aun brillen.",
+      "Saltea las espinacas 2 minutos en la sartén caliente. Abultan mucho y se reducen a nada: caben aunque no lo parezca.",
+      "Junta todo en la sarten un minuto al final, solo para que coja temperatura: removido de mas, la legumbre se deshace."
+    ]
+  },
+
+  "Ternera con cuscús y cebolla": {
+    difficulty: 2,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Saca la carne de la nevera 15 minutos antes y sécala bien: una superficie húmeda no se dora, se cuece.",
+      "Sala justo antes de que toque la sartén. Salada con antelación suelta agua y pierde el dorado.",
+      "Sartén bien caliente con una cucharada de aceite. Si la carne no chisporrotea al entrar, la sartén no estaba lista.",
+      "3 minutos por cada cara para un punto jugoso; un minuto más por cara si la quieres bien hecha.",
+      "Retira a un plato y deja reposar 3 minutos tapada sin apretar. Es lo que la diferencia de una suela.",
+      "El cuscús no se cuece: cúbrelo con el mismo volumen de agua hirviendo con sal, tapa 5 minutos y suéltalo con un tenedor.",
+      "Pocha la cebolla en juliana a fuego medio 8 minutos, hasta que esté transparente y dulce.",
+      "Monta el plato con el cuscús de base, ternera encima y cebolla al lado."
+    ]
+  },
+
+  "Gambas con cuscús y maíz": {
+    difficulty: 1,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Ya vienen cocidos: aquí solo se calientan. Cocinarlos otra vez los deja gomosos.",
+      "Sartén a fuego medio con una cucharada de aceite y, si quieres, un diente de ajo laminado.",
+      "Saltea 2 minutos, lo justo para que cojan temperatura y el ajo perfume el aceite.",
+      "El cuscús no se cuece: cúbrelo con el mismo volumen de agua hirviendo con sal, tapa 5 minutos y suéltalo con un tenedor.",
+      "El maíz ya viene cocido: escúrrelo bien y añádelo al final solo para que se caliente.",
+      "Monta el plato con el cuscús de base, gambas encima y maíz al lado."
+    ]
+  },
+
+  "Bacalao con batata y maíz": {
+    difficulty: 2,
+    equipment: ["horno", "olla", "sarten"],
+    steps: [
+      "Precalienta el horno a 200 grados. Meter el pescado en un horno frío lo reseca mientras el horno sube.",
+      "Seca el pescado con papel, ponlo en una fuente con un hilo de aceite y sal.",
+      "Hornea 12 minutos. La regla es 10 minutos por cada 2,5 cm de grosor en la parte más alta.",
+      "Está hecho cuando la carne pasa de traslúcida a blanca opaca y se separa en lascas al empujarla con un tenedor. Un minuto de más lo seca.",
+      "Cuece la batata en trozos 15 minutos: tarda menos que la patata y se pasa antes, así que pínchala a los 12.",
+      "El maíz ya viene cocido: escúrrelo bien y añádelo al final solo para que se caliente.",
+      "Monta el plato con el batata de base, bacalao encima y maíz al lado."
+    ]
+  },
+
+  "Merluza con patata y calabacín": {
+    difficulty: 2,
+    equipment: ["horno", "olla", "sarten"],
+    steps: [
+      "Precalienta el horno a 200 grados. Meter el pescado en un horno frío lo reseca mientras el horno sube.",
+      "Seca el pescado con papel, ponlo en una fuente con un hilo de aceite y sal.",
+      "Hornea 12 minutos. La regla es 10 minutos por cada 2,5 cm de grosor en la parte más alta.",
+      "Está hecho cuando la carne pasa de traslúcida a blanca opaca y se separa en lascas al empujarla con un tenedor. Un minuto de más lo seca.",
+      "Cuece la patata en trozos parejos 18 minutos desde que hierve. Está lista cuando el cuchillo entra sin resistencia y sale limpio.",
+      "Corta el calabacín en medias lunas de un centímetro y saltéalo 5 minutos a fuego medio-alto, sin amontonarlo.",
+      "Monta el plato con el patata de base, merluza encima y calabacín al lado."
+    ]
+  },
+
+  "Garbanzos con claras y coliflor": {
+    difficulty: 1,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Escurre y enjuaga los garbanzos, y sécalos un poco: mojados no se doran y quedan sosos.",
+      "Cuaja las claras a fuego suave; sin la yema se secan mucho antes, asi que retíralas cuando aun brillen.",
+      "Cuece la coliflor en ramilletes 6 minutos. Si el agua huele fuerte es que se ha pasado: sácala antes.",
+      "Junta todo en la sarten un minuto al final, solo para que coja temperatura: removido de mas, la legumbre se deshace."
+    ]
+  },
+
+  "Alubias con claras y coliflor": {
+    difficulty: 1,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Enjuaga las alubias con cuidado, que se deshacen: mueve el colador, no las remuevas con la cuchara.",
+      "Cuaja las claras a fuego suave; sin la yema se secan mucho antes, asi que retíralas cuando aun brillen.",
+      "Cuece la coliflor en ramilletes 6 minutos. Si el agua huele fuerte es que se ha pasado: sácala antes.",
+      "Junta todo en la sarten un minuto al final, solo para que coja temperatura: removido de mas, la legumbre se deshace."
+    ]
+  },
+
+  "Tofu con claras y calabacín": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Prensa el tofu 10 minutos entre dos platos con peso encima y córtalo en dados: sin ese paso suelta agua y no se dora nunca.",
+      "Cuaja las claras a fuego suave; sin la yema se secan mucho antes, asi que retíralas cuando aun brillen.",
+      "Corta el calabacín en medias lunas de un centímetro y saltéalo 5 minutos a fuego medio-alto, sin amontonarlo.",
+      "Junta todo en la sarten un minuto al final, solo para que coja temperatura: removido de mas, la legumbre se deshace."
+    ]
+  },
+
+  "Lentejas con claras y champiñones": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Enjuaga las lentejas de bote bajo el grifo hasta que el agua salga clara: se va el liquido de conserva y con el el sabor a lata.",
+      "Cuaja las claras a fuego suave; sin la yema se secan mucho antes, asi que retíralas cuando aun brillen.",
+      "Los champiñones a fuego fuerte y en una sola capa: amontonados sueltan agua y se cuecen. No los sales hasta el final.",
+      "Junta todo en la sarten un minuto al final, solo para que coja temperatura: removido de mas, la legumbre se deshace."
+    ]
+  },
+
+  "Merluza con patata y coliflor": {
+    difficulty: 2,
+    equipment: ["horno", "olla"],
+    steps: [
+      "Precalienta el horno a 200 grados. Meter el pescado en un horno frío lo reseca mientras el horno sube.",
+      "Seca el pescado con papel, ponlo en una fuente con un hilo de aceite y sal.",
+      "Hornea 12 minutos. La regla es 10 minutos por cada 2,5 cm de grosor en la parte más alta.",
+      "Está hecho cuando la carne pasa de traslúcida a blanca opaca y se separa en lascas al empujarla con un tenedor. Un minuto de más lo seca.",
+      "Cuece la patata en trozos parejos 18 minutos desde que hierve. Está lista cuando el cuchillo entra sin resistencia y sale limpio.",
+      "Cuece la coliflor en ramilletes 6 minutos. Si el agua huele fuerte es que se ha pasado: sácala antes.",
+      "Monta el plato con el patata de base, merluza encima y coliflor al lado."
+    ]
+  },
+
+  "Garbanzos con claras y espinacas": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Escurre y enjuaga los garbanzos, y sécalos un poco: mojados no se doran y quedan sosos.",
+      "Cuaja las claras a fuego suave; sin la yema se secan mucho antes, asi que retíralas cuando aun brillen.",
+      "Saltea las espinacas 2 minutos en la sartén caliente. Abultan mucho y se reducen a nada: caben aunque no lo parezca.",
+      "Junta todo en la sarten un minuto al final, solo para que coja temperatura: removido de mas, la legumbre se deshace."
+    ]
+  },
+
+  "Tofu con claras y pimiento": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Prensa el tofu 10 minutos entre dos platos con peso encima y córtalo en dados: sin ese paso suelta agua y no se dora nunca.",
+      "Cuaja las claras a fuego suave; sin la yema se secan mucho antes, asi que retíralas cuando aun brillen.",
+      "Corta el pimiento en tiras y saltéalo 6 minutos hasta que los bordes empiecen a tostarse.",
+      "Junta todo en la sarten un minuto al final, solo para que coja temperatura: removido de mas, la legumbre se deshace."
+    ]
+  },
+
+  "Lentejas con claras y calabacín": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Enjuaga las lentejas de bote bajo el grifo hasta que el agua salga clara: se va el liquido de conserva y con el el sabor a lata.",
+      "Cuaja las claras a fuego suave; sin la yema se secan mucho antes, asi que retíralas cuando aun brillen.",
+      "Corta el calabacín en medias lunas de un centímetro y saltéalo 5 minutos a fuego medio-alto, sin amontonarlo.",
+      "Junta todo en la sarten un minuto al final, solo para que coja temperatura: removido de mas, la legumbre se deshace."
+    ]
+  },
+
+  "Langostinos con patata y coliflor": {
+    difficulty: 1,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Ya vienen cocidos: aquí solo se calientan. Cocinarlos otra vez los deja gomosos.",
+      "Sartén a fuego medio con una cucharada de aceite y, si quieres, un diente de ajo laminado.",
+      "Saltea 2 minutos, lo justo para que cojan temperatura y el ajo perfume el aceite.",
+      "Cuece la patata en trozos parejos 18 minutos desde que hierve. Está lista cuando el cuchillo entra sin resistencia y sale limpio.",
+      "Cuece la coliflor en ramilletes 6 minutos. Si el agua huele fuerte es que se ha pasado: sácala antes.",
+      "Monta el plato con el patata de base, langostinos encima y coliflor al lado."
+    ]
+  },
+
+  "Pollo a la plancha con quinoa y coliflor": {
+    difficulty: 2,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Saca undefined de la nevera 10 minutos antes: frío por dentro se hace por fuera antes de estar listo por dentro.",
+      "Si la pieza es gruesa, ábrela por la mitad a lo ancho como un libro. Se hace en la mitad de tiempo y sin quedar cruda en el centro.",
+      "Sécala con papel de cocina. Es el paso que más se salta y el que decide si se dora o se cuece en su propia agua.",
+      "Sartén a fuego medio-alto con una cucharada de aceite; espera a que el aceite brille y se mueva con facilidad.",
+      "Coloca la carne y NO LA TOQUES 4 minutos: moverla antes impide que se forme la costra y la pega a la sartén.",
+      "Dale la vuelta y haz 4 minutos más. Está lista cuando al pinchar la parte más gruesa sale jugo transparente, no rosado.",
+      "Deja reposar 2 minutos antes de cortar, o el jugo se queda en la tabla.",
+      "Enjuaga la quinoa bajo el grifo antes de cocerla (le quita el amargor de la cáscara) y hiérvela 15 minutos en el doble de agua.",
+      "Cuece la coliflor en ramilletes 6 minutos. Si el agua huele fuerte es que se ha pasado: sácala antes.",
+      "Monta el plato con el quinoa de base, pollo a la plancha encima y coliflor al lado."
+    ]
+  },
+
+  "Alubias con claras y espinacas": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Enjuaga las alubias con cuidado, que se deshacen: mueve el colador, no las remuevas con la cuchara.",
+      "Cuaja las claras a fuego suave; sin la yema se secan mucho antes, asi que retíralas cuando aun brillen.",
+      "Saltea las espinacas 2 minutos en la sartén caliente. Abultan mucho y se reducen a nada: caben aunque no lo parezca.",
+      "Junta todo en la sarten un minuto al final, solo para que coja temperatura: removido de mas, la legumbre se deshace."
+    ]
+  },
+
+  "Langostinos con batata y zanahoria": {
+    difficulty: 1,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Ya vienen cocidos: aquí solo se calientan. Cocinarlos otra vez los deja gomosos.",
+      "Sartén a fuego medio con una cucharada de aceite y, si quieres, un diente de ajo laminado.",
+      "Saltea 2 minutos, lo justo para que cojan temperatura y el ajo perfume el aceite.",
+      "Cuece la batata en trozos 15 minutos: tarda menos que la patata y se pasa antes, así que pínchala a los 12.",
+      "Corta la zanahoria en rodajas finas y saltéala 6 minutos: en rodajas gruesas queda cruda por dentro.",
+      "Monta el plato con el batata de base, langostinos encima y zanahoria al lado."
+    ]
+  },
+
+  "Gambas con quinoa y pepino": {
+    difficulty: 1,
+    equipment: ["sarten", "olla", "ninguno"],
+    steps: [
+      "Ya vienen cocidos: aquí solo se calientan. Cocinarlos otra vez los deja gomosos.",
+      "Sartén a fuego medio con una cucharada de aceite y, si quieres, un diente de ajo laminado.",
+      "Saltea 2 minutos, lo justo para que cojan temperatura y el ajo perfume el aceite.",
+      "Enjuaga la quinoa bajo el grifo antes de cocerla (le quita el amargor de la cáscara) y hiérvela 15 minutos en el doble de agua.",
+      "Corta el pepino en medias lunas y déjalo en crudo: es el contrapunto fresco del plato.",
+      "Monta el plato con el quinoa de base, gambas encima y pepino al lado."
+    ]
+  },
+
+  "Pavo a la plancha con batata y tomate": {
+    difficulty: 2,
+    equipment: ["sarten", "olla", "ninguno"],
+    steps: [
+      "Saca undefined de la nevera 10 minutos antes: frío por dentro se hace por fuera antes de estar listo por dentro.",
+      "Si la pieza es gruesa, ábrela por la mitad a lo ancho como un libro. Se hace en la mitad de tiempo y sin quedar cruda en el centro.",
+      "Sécala con papel de cocina. Es el paso que más se salta y el que decide si se dora o se cuece en su propia agua.",
+      "Sartén a fuego medio-alto con una cucharada de aceite; espera a que el aceite brille y se mueva con facilidad.",
+      "Coloca la carne y NO LA TOQUES 4 minutos: moverla antes impide que se forme la costra y la pega a la sartén.",
+      "Dale la vuelta y haz 4 minutos más. Está lista cuando al pinchar la parte más gruesa sale jugo transparente, no rosado.",
+      "Deja reposar 2 minutos antes de cortar, o el jugo se queda en la tabla.",
+      "Cuece la batata en trozos 15 minutos: tarda menos que la patata y se pasa antes, así que pínchala a los 12.",
+      "Corta el tomate en gajos y añádelo al final, fuera del fuego, para que no se deshaga.",
+      "Monta el plato con el batata de base, pavo a la plancha encima y tomate al lado."
+    ]
+  },
+
+  "Garbanzos con claras y pepino": {
+    difficulty: 1,
+    equipment: ["sarten", "ninguno"],
+    steps: [
+      "Escurre y enjuaga los garbanzos, y sécalos un poco: mojados no se doran y quedan sosos.",
+      "Cuaja las claras a fuego suave; sin la yema se secan mucho antes, asi que retíralas cuando aun brillen.",
+      "Corta el pepino en medias lunas y déjalo en crudo: es el contrapunto fresco del plato.",
+      "Junta todo en la sarten un minuto al final, solo para que coja temperatura: removido de mas, la legumbre se deshace."
+    ]
+  },
+
+  "Alubias con claras y tomate": {
+    difficulty: 1,
+    equipment: ["sarten", "ninguno"],
+    steps: [
+      "Enjuaga las alubias con cuidado, que se deshacen: mueve el colador, no las remuevas con la cuchara.",
+      "Cuaja las claras a fuego suave; sin la yema se secan mucho antes, asi que retíralas cuando aun brillen.",
+      "Corta el tomate en gajos y añádelo al final, fuera del fuego, para que no se deshaga.",
+      "Junta todo en la sarten un minuto al final, solo para que coja temperatura: removido de mas, la legumbre se deshace."
+    ]
+  },
+
+  "Pollo a la plancha con cuscús y champiñones": {
+    difficulty: 2,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Saca undefined de la nevera 10 minutos antes: frío por dentro se hace por fuera antes de estar listo por dentro.",
+      "Si la pieza es gruesa, ábrela por la mitad a lo ancho como un libro. Se hace en la mitad de tiempo y sin quedar cruda en el centro.",
+      "Sécala con papel de cocina. Es el paso que más se salta y el que decide si se dora o se cuece en su propia agua.",
+      "Sartén a fuego medio-alto con una cucharada de aceite; espera a que el aceite brille y se mueva con facilidad.",
+      "Coloca la carne y NO LA TOQUES 4 minutos: moverla antes impide que se forme la costra y la pega a la sartén.",
+      "Dale la vuelta y haz 4 minutos más. Está lista cuando al pinchar la parte más gruesa sale jugo transparente, no rosado.",
+      "Deja reposar 2 minutos antes de cortar, o el jugo se queda en la tabla.",
+      "El cuscús no se cuece: cúbrelo con el mismo volumen de agua hirviendo con sal, tapa 5 minutos y suéltalo con un tenedor.",
+      "Los champiñones a fuego fuerte y en una sola capa: amontonados sueltan agua y se cuecen. No los sales hasta el final.",
+      "Monta el plato con el cuscús de base, pollo a la plancha encima y champiñones al lado."
+    ]
+  },
+
+  "Merluza con quinoa y cebolla": {
+    difficulty: 2,
+    equipment: ["horno", "olla", "sarten"],
+    steps: [
+      "Precalienta el horno a 200 grados. Meter el pescado en un horno frío lo reseca mientras el horno sube.",
+      "Seca el pescado con papel, ponlo en una fuente con un hilo de aceite y sal.",
+      "Hornea 12 minutos. La regla es 10 minutos por cada 2,5 cm de grosor en la parte más alta.",
+      "Está hecho cuando la carne pasa de traslúcida a blanca opaca y se separa en lascas al empujarla con un tenedor. Un minuto de más lo seca.",
+      "Enjuaga la quinoa bajo el grifo antes de cocerla (le quita el amargor de la cáscara) y hiérvela 15 minutos en el doble de agua.",
+      "Pocha la cebolla en juliana a fuego medio 8 minutos, hasta que esté transparente y dulce.",
+      "Monta el plato con el quinoa de base, merluza encima y cebolla al lado."
+    ]
+  },
+
+  "Garbanzos con claras y cebolla": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Escurre y enjuaga los garbanzos, y sécalos un poco: mojados no se doran y quedan sosos.",
+      "Cuaja las claras a fuego suave; sin la yema se secan mucho antes, asi que retíralas cuando aun brillen.",
+      "Pocha la cebolla en juliana a fuego medio 8 minutos, hasta que esté transparente y dulce.",
+      "Junta todo en la sarten un minuto al final, solo para que coja temperatura: removido de mas, la legumbre se deshace."
+    ]
+  },
+
+  "Alubias con claras y pepino": {
+    difficulty: 1,
+    equipment: ["sarten", "ninguno"],
+    steps: [
+      "Enjuaga las alubias con cuidado, que se deshacen: mueve el colador, no las remuevas con la cuchara.",
+      "Cuaja las claras a fuego suave; sin la yema se secan mucho antes, asi que retíralas cuando aun brillen.",
+      "Corta el pepino en medias lunas y déjalo en crudo: es el contrapunto fresco del plato.",
+      "Junta todo en la sarten un minuto al final, solo para que coja temperatura: removido de mas, la legumbre se deshace."
+    ]
+  },
+
+  "Langostinos con batata y champiñones": {
+    difficulty: 1,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Ya vienen cocidos: aquí solo se calientan. Cocinarlos otra vez los deja gomosos.",
+      "Sartén a fuego medio con una cucharada de aceite y, si quieres, un diente de ajo laminado.",
+      "Saltea 2 minutos, lo justo para que cojan temperatura y el ajo perfume el aceite.",
+      "Cuece la batata en trozos 15 minutos: tarda menos que la patata y se pasa antes, así que pínchala a los 12.",
+      "Los champiñones a fuego fuerte y en una sola capa: amontonados sueltan agua y se cuecen. No los sales hasta el final.",
+      "Monta el plato con el batata de base, langostinos encima y champiñones al lado."
+    ]
+  },
+
+  "Ternera con cuscús y espinacas": {
+    difficulty: 2,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Saca la carne de la nevera 15 minutos antes y sécala bien: una superficie húmeda no se dora, se cuece.",
+      "Sala justo antes de que toque la sartén. Salada con antelación suelta agua y pierde el dorado.",
+      "Sartén bien caliente con una cucharada de aceite. Si la carne no chisporrotea al entrar, la sartén no estaba lista.",
+      "3 minutos por cada cara para un punto jugoso; un minuto más por cara si la quieres bien hecha.",
+      "Retira a un plato y deja reposar 3 minutos tapada sin apretar. Es lo que la diferencia de una suela.",
+      "El cuscús no se cuece: cúbrelo con el mismo volumen de agua hirviendo con sal, tapa 5 minutos y suéltalo con un tenedor.",
+      "Saltea las espinacas 2 minutos en la sartén caliente. Abultan mucho y se reducen a nada: caben aunque no lo parezca.",
+      "Monta el plato con el cuscús de base, ternera encima y espinacas al lado."
+    ]
+  },
+
+  "Gambas con batata y tomate": {
+    difficulty: 1,
+    equipment: ["sarten", "olla", "ninguno"],
+    steps: [
+      "Ya vienen cocidos: aquí solo se calientan. Cocinarlos otra vez los deja gomosos.",
+      "Sartén a fuego medio con una cucharada de aceite y, si quieres, un diente de ajo laminado.",
+      "Saltea 2 minutos, lo justo para que cojan temperatura y el ajo perfume el aceite.",
+      "Cuece la batata en trozos 15 minutos: tarda menos que la patata y se pasa antes, así que pínchala a los 12.",
+      "Corta el tomate en gajos y añádelo al final, fuera del fuego, para que no se deshaga.",
+      "Monta el plato con el batata de base, gambas encima y tomate al lado."
+    ]
+  },
+
+  "Bacalao con quinoa y brócoli": {
+    difficulty: 2,
+    equipment: ["horno", "olla"],
+    steps: [
+      "Precalienta el horno a 200 grados. Meter el pescado en un horno frío lo reseca mientras el horno sube.",
+      "Seca el pescado con papel, ponlo en una fuente con un hilo de aceite y sal.",
+      "Hornea 12 minutos. La regla es 10 minutos por cada 2,5 cm de grosor en la parte más alta.",
+      "Está hecho cuando la carne pasa de traslúcida a blanca opaca y se separa en lascas al empujarla con un tenedor. Un minuto de más lo seca.",
+      "Enjuaga la quinoa bajo el grifo antes de cocerla (le quita el amargor de la cáscara) y hiérvela 15 minutos en el doble de agua.",
+      "Cuece el brócoli en agua hirviendo con sal 4 minutos: verde vivo y que ceda al pincharlo, no blando.",
+      "Monta el plato con el quinoa de base, bacalao encima y brócoli al lado."
+    ]
+  },
+
+  "Pavo a la plancha con quinoa y cebolla": {
+    difficulty: 2,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Saca undefined de la nevera 10 minutos antes: frío por dentro se hace por fuera antes de estar listo por dentro.",
+      "Si la pieza es gruesa, ábrela por la mitad a lo ancho como un libro. Se hace en la mitad de tiempo y sin quedar cruda en el centro.",
+      "Sécala con papel de cocina. Es el paso que más se salta y el que decide si se dora o se cuece en su propia agua.",
+      "Sartén a fuego medio-alto con una cucharada de aceite; espera a que el aceite brille y se mueva con facilidad.",
+      "Coloca la carne y NO LA TOQUES 4 minutos: moverla antes impide que se forme la costra y la pega a la sartén.",
+      "Dale la vuelta y haz 4 minutos más. Está lista cuando al pinchar la parte más gruesa sale jugo transparente, no rosado.",
+      "Deja reposar 2 minutos antes de cortar, o el jugo se queda en la tabla.",
+      "Enjuaga la quinoa bajo el grifo antes de cocerla (le quita el amargor de la cáscara) y hiérvela 15 minutos en el doble de agua.",
+      "Pocha la cebolla en juliana a fuego medio 8 minutos, hasta que esté transparente y dulce.",
+      "Monta el plato con el quinoa de base, pavo a la plancha encima y cebolla al lado."
+    ]
+  },
+
+  "Garbanzos con claras y tomate": {
+    difficulty: 1,
+    equipment: ["sarten", "ninguno"],
+    steps: [
+      "Escurre y enjuaga los garbanzos, y sécalos un poco: mojados no se doran y quedan sosos.",
+      "Cuaja las claras a fuego suave; sin la yema se secan mucho antes, asi que retíralas cuando aun brillen.",
+      "Corta el tomate en gajos y añádelo al final, fuera del fuego, para que no se deshaga.",
+      "Junta todo en la sarten un minuto al final, solo para que coja temperatura: removido de mas, la legumbre se deshace."
+    ]
+  },
+
+  "Alubias con claras y calabacín": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Enjuaga las alubias con cuidado, que se deshacen: mueve el colador, no las remuevas con la cuchara.",
+      "Cuaja las claras a fuego suave; sin la yema se secan mucho antes, asi que retíralas cuando aun brillen.",
+      "Corta el calabacín en medias lunas de un centímetro y saltéalo 5 minutos a fuego medio-alto, sin amontonarlo.",
+      "Junta todo en la sarten un minuto al final, solo para que coja temperatura: removido de mas, la legumbre se deshace."
+    ]
+  },
 };
 
 /**

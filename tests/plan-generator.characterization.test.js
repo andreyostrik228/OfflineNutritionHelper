@@ -595,16 +595,39 @@ function run(t) {
     // objetivo de 156 por primera vez, aunque dentro de tolerancia
     // (`violations` sigue vacío): con la bandeja entera, la carne sale
     // cara y el motor la cambia por huevos, sardinas y salchichas.
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 3, 2, 2, 2]);
-    assert.strictEqual(result.total.kcal, 2821.9);
-    assert.strictEqual(result.total.protein, 151.9);
-    assert.strictEqual(result.total.carbs, 325.59999999999997);
-    assert.strictEqual(result.total.fat, 100.3);
-    assert.strictEqual(result.total.cost, 5.47);
-    assert.strictEqual(result.total.purchaseCost, 14.21);
-    assert.strictEqual(result.report.status, "adjusted");
-    assert.strictEqual(result.report.tierUsed, 1);
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.report.violations)), []);
+    // ── RECAPTURADO el 2026-09-07 (7): +60 platos PRINCIPALES ──────────
+    // Segundo intento del lote 1. El primero se revirtio (ver 60a475f): se
+    // midio un lote, se regenero otro y se publico el segundo con los
+    // numeros del primero. Ahora se mide lo que se publica, con
+    // scripts/generar-platos/probar_lote.js ANTES de tocar el repo.
+    //
+    // Este lote es SOLO comida y cena, porque aislarlo lo dejo claro:
+    //   base 374                    corte violan 53,0%   perfect 12,5%
+    //   +40 solo comida/cena              53,0%          12,5%   <- cero
+    //   +20 solo desayuno/snack           67,0%           8,0%
+    // Los veinte platos ligeros eran toda la regresion.
+    //
+    // Esta semilla EMPEORA y se apunta tal cual: el dia se pasa del
+    // presupuesto por 0,77 EUR y baja a "minimal" con violacion `budget`,
+    // cuando antes cuadraba en "adjusted" sin violaciones. Concuerda con el
+    // agregado del perfil sobre 200 semillas, que tambien sube de 3,5% a
+    // 5,5% de dias con violacion.
+    //
+    // Se acepta porque el mismo agregado mejora en lo demas: proteina media
+    // 154,7 -> 157,6 g y dias "perfect" 60% -> 68%. El motor declara la
+    // violacion en vez de esconderla, que es el contrato.
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 3, 3, 2, 2]);
+    assert.strictEqual(result.total.kcal, 2752.1000000000004);
+    assert.strictEqual(result.total.protein, 197.39999999999998);
+    assert.strictEqual(result.total.carbs, 254.50000000000003);
+    assert.strictEqual(result.total.fat, 95.5);
+    assert.strictEqual(result.total.cost, 8.49);
+    assert.strictEqual(result.total.purchaseCost, 16.77);
+    assert.strictEqual(result.report.status, "minimal");
+    assert.strictEqual(result.report.tierUsed, 0);
+    assert.deepStrictEqual(
+      JSON.parse(JSON.stringify(result.report.violations)),
+      [{ type: "budget", exceededBy: 0.77, purchaseCost: 16.77, usageCost: 8.49 }]);
   });
 
   t.test("golden-master (seed=7): volumen alto/Amplio -- agregados exactos del resultado actual", function () {
@@ -643,18 +666,32 @@ function run(t) {
     // yogur) y por tanto cinco paquetes enteros -- 6,82 EUR de comida
     // usada dentro de 20,54 EUR de compra. Medido en 150 generaciones,
     // pasa en el 4% de los días de 20 EUR (antes, 1%).
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [4, 3, 3, 2, 2]);
-    assert.strictEqual(result.total.kcal, 3831.2);
-    assert.strictEqual(result.total.protein, 188.60000000000002);
-    assert.strictEqual(result.total.carbs, 623.2);
-    assert.strictEqual(result.total.fat, 51.7);
-    assert.strictEqual(result.total.cost, 6.82);
-    assert.strictEqual(result.total.purchaseCost, 20.54);
-    assert.strictEqual(result.report.status, "minimal");
-    assert.strictEqual(result.report.tierUsed, 4);
-    assert.deepStrictEqual(
-      JSON.parse(JSON.stringify(result.report.violations)),
-      [{ type: "budget", exceededBy: 0.54, purchaseCost: 20.54, usageCost: 6.82 }]);
+    // ── RECAPTURADO el 2026-09-07 (7): +60 platos PRINCIPALES ──────────
+    // Misma causa que seed=42, y aqui sale el mejor dia que ha dado nunca
+    // este golden-master. El caso incomodo que se documentaba arriba --
+    // pasarse del presupuesto y caer a minimal/tier 4 -- desaparece:
+    //
+    //   kcal        3831,2 -> 3871,1 sobre un objetivo de 3871 (clavado)
+    //   proteina    188,6 -> 241,0 g
+    //   compra      20,54 -> 19,50 EUR (tope 20: deja de pasarse)
+    //   estado      minimal/tier 4 -> PERFECT/tier 0
+    //   violations  [budget +0,54] -> ninguna
+    //
+    // No se lea como que el perfil entero mejora: sobre 200 semillas los
+    // dias "perfect" de volumen BAJAN del 68% al 64% y la proteina media
+    // cae de 216,3 a 214,4 g. Los principales nuevos son mas densos en
+    // proteina y por tanto mas caros por kcal, y un dia de 3871 kcal con
+    // 20 EUR va justo. Esta semilla tiene suerte; el perfil paga un poco.
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 3, 3, 2, 2]);
+    assert.strictEqual(result.total.kcal, 3871.1000000000004);
+    assert.strictEqual(result.total.protein, 240.99999999999997);
+    assert.strictEqual(result.total.carbs, 487.8);
+    assert.strictEqual(result.total.fat, 103.60000000000001);
+    assert.strictEqual(result.total.cost, 9.68);
+    assert.strictEqual(result.total.purchaseCost, 19.5);
+    assert.strictEqual(result.report.status, "perfect");
+    assert.strictEqual(result.report.tierUsed, 0);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.report.violations)), []);
   });
 }
 
