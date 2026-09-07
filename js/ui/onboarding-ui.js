@@ -576,7 +576,56 @@ function _obRevealApp() {
   document.body.classList.remove("is-onboarding");
 }
 
+/**
+ * Marca como INERTE todo lo que hay detras de la bienvenida mientras esta
+ * delante.
+ *
+ * Sin esto se podia tabular desde el overlay hasta el formulario de debajo:
+ * invisible en pantalla, alcanzable con el teclado y anunciado por un lector
+ * de pantalla como si estuviera disponible. Medido el 2026-09-07 -- la
+ * bienvenida es un `<div>`, no un `<dialog>`, asi que el navegador no hace
+ * nada de esto por su cuenta.
+ *
+ * Los `<dialog>` quedan FUERA a proposito: el de la cuenta se abre DESDE la
+ * bienvenida ("Ya tengo cuenta"), y marcarlo inerte dejaria el formulario de
+ * acceso muerto en el sitio donde mas se usa.
+ */
+function _obInerte(activo) {
+  var root = _onboardingEls && _onboardingEls.root;
+  if (!root || !document.body) return;
+  _obInerteEn(document.body, root, activo);
+}
+
+/**
+ * `inert` se HEREDA y un descendiente no puede deshacerlo. La primera
+ * version marcaba los hijos de <body> saltandose los <dialog>, pero los
+ * dialogos NO cuelgan de <body>: viven dentro de `div.container`. Resultado
+ * medido en produccion: el dialogo de cuenta quedaba dentro de un subarbol
+ * inerte y "Ya tengo cuenta" -- que se pulsa justo desde la bienvenida --
+ * habria quedado muerto.
+ *
+ * Por eso, cuando un nodo CONTIENE dialogos no se marca entero: se baja un
+ * nivel y se marcan sus hijos uno a uno. Asi lo tapado queda inerte y los
+ * dialogos siguen siendo alcanzables.
+ */
+function _obInerteEn(nodo, root, activo) {
+  var hijos = nodo.children;
+  for (var i = 0; i < hijos.length; i++) {
+    var n = hijos[i];
+    if (n === root || n.tagName === "SCRIPT") continue;
+    if (n.tagName === "DIALOG") { n.removeAttribute("inert"); continue; }
+    if (n.querySelector && n.querySelector("dialog")) {
+      n.removeAttribute("inert");
+      _obInerteEn(n, root, activo);
+      continue;
+    }
+    if (activo) n.setAttribute("inert", "");
+    else n.removeAttribute("inert");
+  }
+}
+
 function _obHide() {
+  _obInerte(false);
   _obRevealApp();
   var root = _onboardingEls && _onboardingEls.root;
   if (!root) return;
@@ -610,12 +659,14 @@ function _obShow() {
     (e.intake && !e.intake.hidden);
   if (!hayAlgoQueEnsenar) {
     root.classList.remove("is-open");
+    _obInerte(false);
     _obRevealApp();
     root.hidden = true;
     return;
   }
 
   root.hidden = false;
+  _obInerte(true);
   // En <html> además de en <body>: en móvil el rebote elástico lo produce
   // el elemento raíz, y bloquear solo el <body> dejaba asomar la página
   // de debajo al arrastrar rápido.

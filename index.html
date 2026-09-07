@@ -42,7 +42,7 @@
        .css. Si se olvida, lo peor que pasa es lo de siempre; si se sube,
        no hay mezcla posible.
        ══════════════════════════════════════════════════════════════════ -->
-  <link rel="stylesheet" href="assets/css/style.css?v=20260907b">
+  <link rel="stylesheet" href="assets/css/style.css?v=20260907d">
 
   <!-- ══ ANTES DE PINTAR NADA ══════════════════════════════════════════
        Decide, de forma SÍNCRONA y antes del primer pintado, si este
@@ -124,6 +124,7 @@
   </script>
 </head>
 <body>
+  <a class="saltar-al-contenido" href="#mainContent">Saltar al contenido</a>
   <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
     <symbol id="icon-flame" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M12 2c1 3-2 4-2 7a4 4 0 0 0 8 0c0-1-.5-2-1-3 2 1 3 3.5 3 6a7 7 0 1 1-14 0c0-4 2-6 4-8 1-1 1.5-1.5 2-2z"/>
@@ -191,7 +192,7 @@
        js/data/onboarding-steps.js -- aquí solo está el esqueleto, para
        que el texto legal y las preguntas vivan en un solo sitio.
        ══════════════════════════════════════════════════════════════════ -->
-  <div class="onboarding" id="onboarding">
+  <div class="onboarding" id="onboarding" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
     <div class="onboarding__card" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
 
       <!-- Paso 1: bienvenida, cuenta y condiciones -->
@@ -203,9 +204,9 @@
           <span class="onboarding__brand-name">Planificador de nutrici&oacute;n</span>
         </div>
 
-        <h1 class="onboarding__title" id="onboardingTitle">
+        <h2 class="onboarding__title" id="onboardingTitle">
           Men&uacute;s de una semana,<br><span class="onboarding__title-accent">con lo que cuestan de verdad</span>
-        </h1>
+        </h2>
 
         <ul class="onboarding__summary" id="onboardingSummary"></ul>
 
@@ -270,9 +271,9 @@
 
   <!-- Texto legal completo. Vive fuera del alta porque tambi&eacute;n se abre
        desde el pie de p&aacute;gina, cuando ya hace mucho que se acept&oacute;. -->
-  <dialog class="auth-dialog legal-dialog" id="legalDialog">
+  <dialog class="auth-dialog legal-dialog" id="legalDialog" aria-labelledby="legalDialogTitle">
     <div class="auth-dialog__head">
-      <h2>Condiciones de uso y privacidad</h2>
+      <h2 id="legalDialogTitle">Condiciones de uso y privacidad</h2>
       <button type="button" class="auth-dialog__close" id="legalDialogCloseBtn" aria-label="Cerrar">&times;</button>
     </div>
     <div class="auth-dialog__body legal-dialog__body" id="legalDialogBody"></div>
@@ -310,7 +311,7 @@
       </div>
     </header>
 
-    <dialog class="auth-dialog" id="authDialog">
+    <dialog class="auth-dialog" id="authDialog" aria-labelledby="authDialogTitle">
       <div class="auth-dialog__head">
         <h2 id="authDialogTitle">Iniciar sesi&oacute;n</h2>
         <button type="button" class="auth-dialog__close" id="authDialogCloseBtn" aria-label="Cerrar">&times;</button>
@@ -384,9 +385,9 @@
          que decir EXACTAMENTE qu&eacute; desaparece y qu&eacute; no. La acci&oacute;n destructiva
          no es el bot&oacute;n por defecto: para dispararla hay que ir a buscarla.
          ═══════════════════════════════════════════════════════════════════ -->
-    <dialog class="auth-dialog auth-dialog--conflict" id="authDeleteDialog">
+    <dialog class="auth-dialog auth-dialog--conflict" id="authDeleteDialog" aria-labelledby="authDeleteDialogTitle">
       <div class="auth-dialog__head">
-        <h2>&iquest;Borrar tu cuenta?</h2>
+        <h2 id="authDeleteDialogTitle">&iquest;Borrar tu cuenta?</h2>
       </div>
       <div class="auth-dialog__body">
         <p class="auth-dialog__notice-static">
@@ -420,9 +421,9 @@
       </div>
     </dialog>
 
-    <dialog class="auth-dialog auth-dialog--conflict" id="authConflictDialog">
+    <dialog class="auth-dialog auth-dialog--conflict" id="authConflictDialog" aria-labelledby="authConflictDialogTitle">
       <div class="auth-dialog__head">
-        <h2>Encontramos datos en dos sitios</h2>
+        <h2 id="authConflictDialogTitle">Encontramos datos en dos sitios</h2>
       </div>
       <div class="auth-dialog__body">
         <p>Este dispositivo tiene despensa, historial o ajustes guardados, y tu cuenta tambi&eacute;n tiene datos guardados de otra sesi&oacute;n. &iquest;Qu&eacute; quieres hacer?</p>
@@ -439,9 +440,9 @@
          pendiente -- ver "Gate en Generar plan..." en la cabecera de
          js/core/pantry.js. Un borrador puro o un plan ya completado del
          todo no llegan a abrir esto. -->
-    <dialog class="auth-dialog auth-dialog--conflict" id="planReplaceDialog">
+    <dialog class="auth-dialog auth-dialog--conflict" id="planReplaceDialog" aria-labelledby="planReplaceDialogTitle">
       <div class="auth-dialog__head">
-        <h2>Ya tienes un plan activo hoy</h2>
+        <h2 id="planReplaceDialogTitle">Ya tienes un plan activo hoy</h2>
       </div>
       <div class="auth-dialog__body">
         <div id="planReplaceBody"></div>
@@ -463,7 +464,7 @@
          renderScheduleTimeline() (ver js/ui/render-schedule.js), igual
          que la franja completa — nunca lógica duplicada. ══ -->
     <div class="next-meal-sticky" id="nextMealSticky" hidden></div>
-    <main>
+    <main id="mainContent" tabindex="-1">
 
     <!-- ══ CABECERA compacta (2026-08-23, simplificación visual) -- antes
          "portada" con h1 gigante + párrafo + círculo decorativo, dominaba
@@ -892,9 +893,9 @@
          ahora en "Mis planes" (arriba), no aquí dentro. Misma lógica de
          negocio de siempre (js/core/pantry.js), solo cambia cómo se
          presenta. ══ -->
-    <dialog class="auth-dialog despensa-dialog" id="pantryPanel">
+    <dialog class="auth-dialog despensa-dialog" id="pantryPanel" aria-labelledby="pantryPanelTitle">
       <div class="auth-dialog__head">
-        <h2>Tu <em>despensa</em></h2>
+        <h2 id="pantryPanelTitle">Tu <em>despensa</em></h2>
         <button type="button" class="auth-dialog__close" id="pantryCloseBtn" aria-label="Cerrar">&times;</button>
       </div>
 
@@ -956,7 +957,7 @@
       <div class="disclosure__body">
         <div class="verified-panel__search">
           <svg width="16" height="16"><use href="#icon-search"/></svg>
-          <input type="search" id="verifiedSearchInput" placeholder="Buscar por nombre o marca... (ej. yogur, Hacendado, pollo)" autocomplete="off">
+          <input type="search" id="verifiedSearchInput" aria-label="Buscar producto por nombre o marca" placeholder="Buscar por nombre o marca... (ej. yogur, Hacendado, pollo)" autocomplete="off">
         </div>
 
         <div class="verified-grid" id="verifiedGrid"></div>
@@ -1015,17 +1016,17 @@
        js/core/supabase-client.js. -->
  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.min.js"></script>
 
-<script src="js/data/supabase-config.js?v=20260907b"></script>
-<script src="js/data/legal.js?v=20260907b"></script>
-<script src="js/data/onboarding-steps.js?v=20260907b"></script>
-<script src="js/data/tour-steps.js?v=20260907b"></script>
-<script src="js/data/dishes.js?v=20260907b"></script>
+<script src="js/data/supabase-config.js?v=20260907d"></script>
+<script src="js/data/legal.js?v=20260907d"></script>
+<script src="js/data/onboarding-steps.js?v=20260907d"></script>
+<script src="js/data/tour-steps.js?v=20260907d"></script>
+<script src="js/data/dishes.js?v=20260907d"></script>
 <!-- dish-instructions.js: pasos/equipo/dificultad, ADITIVO y opcional.
      Un plato sin entrada aqui se comporta exactamente como antes -- por
      eso dishes.js no se toca y los golden-master no se mueven. -->
-<script src="js/data/dish-instructions.js?v=20260907b"></script>
-<script src="js/data/dish-cuisine.js?v=20260907b"></script>
-<script src="js/data/real-products.js?v=20260907b"></script>
+<script src="js/data/dish-instructions.js?v=20260907d"></script>
+<script src="js/data/dish-cuisine.js?v=20260907d"></script>
+<script src="js/data/real-products.js?v=20260907d"></script>
 <!-- Alcampo y Carrefour se cayeron el 2026-09-07: 103 KB que viajaban a
      cada visitante sin que NADIE los leyera. Comprobado antes de quitarlos:
      ningun fichero fuera de ellos mismos menciona REAL_PRODUCTS_ALCAMPO ni
@@ -1033,74 +1034,74 @@
      js/data/prices/ solo existe mercadona.js -- asi que ni con precios
      habrian servido. Si algun dia vuelve el selector de tienda, vuelven
      desde git; ver la cabecera de js/core/pricing.js para el porque. -->
-<script src="js/data/packaging.js?v=20260907b"></script>
-<script src="js/data/real-ingredient-matches.js?v=20260907b"></script>
-<script src="js/data/product-links.js?v=20260907b"></script>
-<script src="js/data/ingredient-nutrition.js?v=20260907b"></script>
-<script src="js/data/no-cook-classifier.js?v=20260907b"></script>
+<script src="js/data/packaging.js?v=20260907d"></script>
+<script src="js/data/real-ingredient-matches.js?v=20260907d"></script>
+<script src="js/data/product-links.js?v=20260907d"></script>
+<script src="js/data/ingredient-nutrition.js?v=20260907d"></script>
+<script src="js/data/no-cook-classifier.js?v=20260907d"></script>
 <!-- Raciones/papeles de cada producto y formas de comida del modo "sin
      cocinar" (2026-09-01). serving-sizes.js antes que el generador: sin el
      ANTES no habia gramos por racion y los macros en pantalla eran los de
      100 g. -->
-<script src="js/data/serving-sizes.js?v=20260907b"></script>
-<script src="js/data/no-cook-templates.js?v=20260907b"></script>
-<script src="js/data/prices/mercadona.js?v=20260907b"></script>
-<script src="js/data/budget-presets.js?v=20260907b"></script>
-<script src="js/data/dislike-groups.js?v=20260907b"></script>
-<script src="js/data/shelf-life.js?v=20260907b"></script>
+<script src="js/data/serving-sizes.js?v=20260907d"></script>
+<script src="js/data/no-cook-templates.js?v=20260907d"></script>
+<script src="js/data/prices/mercadona.js?v=20260907d"></script>
+<script src="js/data/budget-presets.js?v=20260907d"></script>
+<script src="js/data/dislike-groups.js?v=20260907d"></script>
+<script src="js/data/shelf-life.js?v=20260907d"></script>
 <!-- Conservación REAL publicada por Mercadona (generado por
      PythonProject/scripts/export_product_storage.py). Tiene prioridad
      sobre shelf-life.js, que es estimación nuestra. -->
-<script src="js/data/product-storage.js?v=20260907b"></script>
+<script src="js/data/product-storage.js?v=20260907d"></script>
 <!-- Alergenos declarados en la etiqueta de Mercadona (generado por
      scratchpad/gen_allergens.js). Solo para MOSTRAR en las tarjetas de
      "sin cocinar" -- no es un filtro, ver js/core/allergens.js. -->
-<script src="js/data/product-allergens.js?v=20260907b"></script>
-<script src="js/core/utils.js?v=20260907b"></script>
-<script src="js/core/pricing.js?v=20260907b"></script>
-<script src="js/core/nutrition.js?v=20260907b"></script>
+<script src="js/data/product-allergens.js?v=20260907d"></script>
+<script src="js/core/utils.js?v=20260907d"></script>
+<script src="js/core/pricing.js?v=20260907d"></script>
+<script src="js/core/nutrition.js?v=20260907d"></script>
 <!-- expiry.js despues de pricing.js (usa normalizeIngredientKey) y de
      shelf-life.js (usa getShelfLife); antes de pantry.js, que lo consulta
      desde listPantryEntries(). Los tres son opcionales: si expiry.js
      faltara, la despensa sigue funcionando sin columna de caducidad. -->
-<script src="js/core/expiry.js?v=20260907b"></script>
+<script src="js/core/expiry.js?v=20260907d"></script>
 <!-- preferences.js despues de pricing.js (reutiliza
      normalizeIngredientKey para no tener dos normalizaciones que puedan
      divergir). Es SOLO preferencias blandas ("no me gusta"); las alergias
      son una restriccion de seguridad y viviran en su propio archivo, a
      proposito -- ver la cabecera de preferences.js. -->
-<script src="js/core/preferences.js?v=20260907b"></script>
+<script src="js/core/preferences.js?v=20260907d"></script>
 <!-- allergens.js: MOSTRAR alergenos de etiqueta, nunca filtrar. Aparte de
      preferences.js a proposito (ver cabecera de ambos). Despues de
      product-allergens.js (usa PRODUCT_ALLERGENS) y utils.js (escapeHtml). -->
-<script src="js/core/allergens.js?v=20260907b"></script>
-<script src="js/core/pantry.js?v=20260907b"></script>
-<script src="js/core/budget.js?v=20260907b"></script>
-<script src="js/core/calculator.js?v=20260907b"></script>
-<script src="js/core/meal-helpers.js?v=20260907b"></script>
-<script src="js/core/meal-schedule.js?v=20260907b"></script>
-<script src="js/core/supabase-client.js?v=20260907b"></script>
-<script src="js/core/settings.js?v=20260907b"></script>
-<script src="js/core/onboarding.js?v=20260907b"></script>
-<script src="js/core/auth.js?v=20260907b"></script>
-<script src="js/core/cloud-sync.js?v=20260907b"></script>
-<script src="js/core/migration.js?v=20260907b"></script>
-<script src="js/engine/dish-selector.js?v=20260907b"></script>
-<script src="js/engine/plan-generator.js?v=20260907b"></script>
-<script src="js/engine/no-cook-generator.js?v=20260907b"></script>
-<script src="js/ui/render.js?v=20260907b"></script>
-<script src="js/ui/render-schedule.js?v=20260907b"></script>
-<script src="js/ui/render-shopping-list.js?v=20260907b"></script>
-<script src="js/ui/render-pantry.js?v=20260907b"></script>
-<script src="js/ui/render-insights.js?v=20260907b"></script>
-<script src="js/ui/render-real-products.js?v=20260907b"></script>
-<script src="js/ui/render-no-cook.js?v=20260907b"></script>
-<script src="js/ui/render-auth.js?v=20260907b"></script>
-<script src="js/ui/onboarding-ui.js?v=20260907b"></script>
-<script src="js/ui/tour.js?v=20260907b"></script>
-<script src="js/ui/ingredient-suggest.js?v=20260907b"></script>
-<script src="js/ui/animations.js?v=20260907b"></script>
-<script src="js/app.js?v=20260907b"></script>
+<script src="js/core/allergens.js?v=20260907d"></script>
+<script src="js/core/pantry.js?v=20260907d"></script>
+<script src="js/core/budget.js?v=20260907d"></script>
+<script src="js/core/calculator.js?v=20260907d"></script>
+<script src="js/core/meal-helpers.js?v=20260907d"></script>
+<script src="js/core/meal-schedule.js?v=20260907d"></script>
+<script src="js/core/supabase-client.js?v=20260907d"></script>
+<script src="js/core/settings.js?v=20260907d"></script>
+<script src="js/core/onboarding.js?v=20260907d"></script>
+<script src="js/core/auth.js?v=20260907d"></script>
+<script src="js/core/cloud-sync.js?v=20260907d"></script>
+<script src="js/core/migration.js?v=20260907d"></script>
+<script src="js/engine/dish-selector.js?v=20260907d"></script>
+<script src="js/engine/plan-generator.js?v=20260907d"></script>
+<script src="js/engine/no-cook-generator.js?v=20260907d"></script>
+<script src="js/ui/render.js?v=20260907d"></script>
+<script src="js/ui/render-schedule.js?v=20260907d"></script>
+<script src="js/ui/render-shopping-list.js?v=20260907d"></script>
+<script src="js/ui/render-pantry.js?v=20260907d"></script>
+<script src="js/ui/render-insights.js?v=20260907d"></script>
+<script src="js/ui/render-real-products.js?v=20260907d"></script>
+<script src="js/ui/render-no-cook.js?v=20260907d"></script>
+<script src="js/ui/render-auth.js?v=20260907d"></script>
+<script src="js/ui/onboarding-ui.js?v=20260907d"></script>
+<script src="js/ui/tour.js?v=20260907d"></script>
+<script src="js/ui/ingredient-suggest.js?v=20260907d"></script>
+<script src="js/ui/animations.js?v=20260907d"></script>
+<script src="js/app.js?v=20260907d"></script>
 
 <!-- ══ OFFLINE DE VERDAD (2026-09-07) ═══════════════════════════════════
      Se registra al final y envuelto en try: si el navegador no soporta

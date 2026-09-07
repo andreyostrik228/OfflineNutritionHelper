@@ -419,6 +419,32 @@ body {
    `display:none` que el navegador aplica a `[hidden]`. Sin esto, el campo
    "Repite la contraseña" se vería también al INICIAR sesión, donde no
    pinta nada. Es la misma trampa que ya se comió `.days-carousel__bar`. */
+/* Enlace para saltar al contenido. Invisible hasta que se le da foco con
+   el tabulador: con la cabecera y la barra superior, llegar al formulario
+   con teclado eran demasiados saltos. No se oculta con display:none ni con
+   visibility, porque entonces tampoco seria enfocable -- se saca de la
+   pantalla y se trae de vuelta al enfocarlo. */
+.saltar-al-contenido {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 1000;
+  padding: 10px 16px;
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: 0 0 8px 0;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.saltar-al-contenido:focus {
+  left: 0;
+}
+
+/* main recibe foco por programa al usar el enlace; no debe dibujar anillo
+   por eso, solo por navegacion real de teclado. */
+main:focus { outline: none; }
+
 .field[hidden] { display: none; }
 
 .field-hint {
