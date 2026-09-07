@@ -5,6 +5,58 @@
 > Escrito para alguien que llega SIN NINGÚN contexto previo. Si solo lees
 > una parte de este archivo, que sea esta.
 >
+> ### ⏩ UPDATE 2026-09-07 — se revierte el lote, y la app por fin es offline
+>
+> **Tres cosas, y la primera es un error mío.**
+>
+> **El lote 1 se revirtió (`60a475f`).** Se midió un lote, se regeneró otro
+> (un arreglo tardío en la clave de grupo vegetariana cambió los 60 platos)
+> y se publicó el segundo con los números del primero. Lo anunciado —
+> "el corte mejora, 53% → 49% de días con violación" — nunca fue cierto de
+> lo que recibieron los usuarios: era 67%. Lo detectó el segundo chat al no
+> poder reproducir la cifra, y su banco coincidía con el mío hasta la
+> décima. No había discrepancia de bancos; la cifra estaba mal.
+>
+> **Segundo intento, y esta vez el mecanismo (`779d049`).** Aislar el lote
+> por categorías contestó en una ejecución lo que cinco hipótesis no:
+>
+> ```
+>   base 374                    corte violan 53,0%   perfect 12,5%
+>   +40 solo comida/cena              53,0%          12,5%   <- cero
+>   +20 solo desayuno/snack           67,0%           8,0%
+> ```
+>
+> Las comidas no movieron ni una décima, en tres semillas. Toda la regresión
+> venía de veinte platos ligeros: los pools de desayuno (78) y snack (70)
+> son pequeños, el motor se apoya en pocos ganadores muy repetidos, y diez
+> novedades baratas les quitaron el 25% de las tomas. Desayuno y snack
+> quedan CONGELADOS. Ver `HANDOFF.md` §7.8 bis.
+>
+> Nace `probar_lote.js`: genera el lote, lo pega EN MEMORIA sobre el
+> catálogo y lo mide sin escribir nada. Medir una cosa y publicar otra deja
+> de ser posible. Y `medir_perfiles.js`, el banco de tres perfiles que
+> faltaba — su ausencia es la razón por la que volver a medir pareció caro
+> y se saltó.
+>
+> **La app ya es offline de verdad (`ccfb40d`).** No había ni manifiesto ni
+> service worker. El sello `?v=` pasa de molestia a diseño: una URL sellada
+> es inmutable, así que se sirve de cache sin revalidar; `index.html` no
+> lleva sello y va a red primero. `sw.js` no hay que tocarlo en cada
+> despliegue: deduce su lista de precache leyendo el HTML y nombra su cache
+> con el sello que encuentra.
+>
+> Verificado en producción, no supuesto — y la verificación se pagó sola:
+> el primer despliegue creó la cache con el nombre correcto y CERO entradas,
+> porque `clone()` se llamaba después de `text()`. Tras el arreglo, en una
+> visita repetida los **55 de 55 recursos propios vienen del worker con
+> transferSize 0**; `real-products.js`, 1305 KB, viaja en 0 bytes.
+>
+> **Corrección a mí mismo:** dije que el peso era el problema principal tras
+> medir bytes EN DISCO. Cloudflare sirve brotli: la primera visita son
+> **572 KB por el cable**, no 3,0 MB. El peso está bien; el agujero era el
+> offline. Se fueron igualmente Alcampo y Carrefour, 103 KB que viajaban sin
+> que nadie los leyera.
+>
 > ### ⏩ UPDATE 2026-09-04 (tarde) — el catálogo empieza a crecer, y un bug de "Cambiar"
 >
 > **550 tests en verde. 434 platos.** Dos cosas.
