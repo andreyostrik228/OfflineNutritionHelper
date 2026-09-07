@@ -10,6 +10,23 @@
   <meta name="description" content="Planificador de dieta offline para musculación. Calcula macros con Mifflin-St Jeor y genera platos reales adaptados a tu objetivo, presupuesto y tiempo de cocina.">
   <title>Nutrition Planner — Mercadona</title>
   <link rel="icon" type="image/svg+xml" href="assets/img/icon.svg">
+  <link rel="apple-touch-icon" href="assets/img/icon.svg">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#f7f1e5">
+  <meta name="mobile-web-app-capable" content="yes">
+  <!-- Tarjeta al compartir el enlace. Sin og:image a proposito: el unico
+       icono que hay es SVG y casi ningun sitio lo acepta como imagen de
+       tarjeta, asi que declararlo daria una tarjeta rota en vez de una
+       sobria. Cuando exista un PNG de 1200x630, se anade aqui. -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Offline Nutrition Helper">
+  <meta property="og:locale" content="es_ES">
+  <meta property="og:title" content="Planificador de dieta con platos reales de Mercadona">
+  <meta property="og:description" content="Menus de una semana con lo que cuestan de verdad: macros, lista de la compra con precios reales y recetas paso a paso. Funciona sin conexion.">
+  <meta property="og:url" content="https://offline-nutrition-helper.pages.dev/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Planificador de dieta con platos reales de Mercadona">
+  <meta name="twitter:description" content="Menus de una semana con lo que cuestan de verdad. Funciona sin conexion.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
@@ -1009,8 +1026,13 @@
 <script src="js/data/dish-instructions.js?v=20260907b"></script>
 <script src="js/data/dish-cuisine.js?v=20260907b"></script>
 <script src="js/data/real-products.js?v=20260907b"></script>
-<script src="js/data/real-products-alcampo.js?v=20260907b"></script>
-<script src="js/data/real-products-carrefour.js?v=20260907b"></script>
+<!-- Alcampo y Carrefour se cayeron el 2026-09-07: 103 KB que viajaban a
+     cada visitante sin que NADIE los leyera. Comprobado antes de quitarlos:
+     ningun fichero fuera de ellos mismos menciona REAL_PRODUCTS_ALCAMPO ni
+     REAL_PRODUCTS_CARREFOUR, no hay acceso dinamico por nombre, y en
+     js/data/prices/ solo existe mercadona.js -- asi que ni con precios
+     habrian servido. Si algun dia vuelve el selector de tienda, vuelven
+     desde git; ver la cabecera de js/core/pricing.js para el porque. -->
 <script src="js/data/packaging.js?v=20260907b"></script>
 <script src="js/data/real-ingredient-matches.js?v=20260907b"></script>
 <script src="js/data/product-links.js?v=20260907b"></script>
@@ -1079,6 +1101,30 @@
 <script src="js/ui/ingredient-suggest.js?v=20260907b"></script>
 <script src="js/ui/animations.js?v=20260907b"></script>
 <script src="js/app.js?v=20260907b"></script>
+
+<!-- ══ OFFLINE DE VERDAD (2026-09-07) ═══════════════════════════════════
+     Se registra al final y envuelto en try: si el navegador no soporta
+     service workers, o el registro falla, la aplicacion tiene que seguir
+     funcionando exactamente igual que hasta ahora. Un fallo aqui no puede
+     impedir que se genere un plan.
+
+     `load` y no antes: el registro compite por ancho de banda con los 55
+     recursos de la primera visita, y lo que importa en esa visita es que
+     la pagina aparezca, no que quede guardada. A partir de la segunda ya
+     esta todo en cache.
+
+     Ver sw.js para la estrategia y para por que ese fichero NO hay que
+     tocarlo en cada despliegue. -->
+<script>
+  (function () {
+    if (!("serviceWorker" in navigator)) return;
+    window.addEventListener("load", function () {
+      try {
+        navigator.serviceWorker.register("sw.js").catch(function () { /* sin offline, pero la app va */ });
+      } catch (e) { /* idem */ }
+    });
+  })();
+</script>
 
 </body>
 </html>

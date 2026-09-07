@@ -83,7 +83,7 @@ NO despliega. Hay que ejecutarlo a mano.
 # 1. montar SOLO lo que sirve el sitio (sin tests, sin docs, sin db)
 DIR=<scratchpad>/deploy
 rm -rf "$DIR" && mkdir -p "$DIR"
-cp index.html icon.svg "$DIR/" && cp -r assets js "$DIR/"
+cp index.html icon.svg sw.js manifest.webmanifest "$DIR/" && cp -r assets js "$DIR/"
 
 # 2. comprobar que lo montado es lo del repo (ha habido copias viejas)
 diff -r --brief js "$DIR/js"

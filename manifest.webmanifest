@@ -1,0 +1,18 @@
+{
+  "name": "Offline Nutrition Helper",
+  "short_name": "Nutrition",
+  "description": "Planificador de dieta con platos reales de Mercadona: macros, precio de la compra y recetas paso a paso. Funciona sin conexion.",
+  "lang": "es",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f7f1e5",
+  "theme_color": "#f7f1e5",
+  "categories": ["health", "food", "lifestyle"],
+  "icons": [
+    { "src": "assets/img/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "assets/img/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
