@@ -83,7 +83,7 @@ NO despliega. Hay que ejecutarlo a mano.
 # 1. montar SOLO lo que sirve el sitio (sin tests, sin docs, sin db)
 DIR=<scratchpad>/deploy
 rm -rf "$DIR" && mkdir -p "$DIR"
-cp index.html icon.svg sw.js manifest.webmanifest "$DIR/" && cp -r assets js "$DIR/"
+cp index.html icon.svg sw.js manifest.webmanifest _headers 404.html "$DIR/" && cp -r assets js "$DIR/"
 
 # 2. comprobar que lo montado es lo del repo (ha habido copias viejas)
 diff -r --brief js "$DIR/js"
@@ -91,6 +91,11 @@ diff -r --brief js "$DIR/js"
 # 3. subir
 npx wrangler pages deploy "$DIR" --project-name=offline-nutrition-helper --commit-dirty=true
 ```
+
+**`_headers` y `404.html` no son opcionales**: el primero lleva la CSP y las
+demás cabeceras de seguridad, y el segundo evita que una ruta inexistente
+devuelva HTTP 200 con la aplicación entera. Si no se copian, el sitio sigue
+funcionando y pierde las dos cosas en silencio.
 
 **Trampas que ya me comí:**
 
