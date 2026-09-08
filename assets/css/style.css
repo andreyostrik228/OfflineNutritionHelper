@@ -3342,6 +3342,35 @@ button:focus-visible {
   position: relative;
 }
 
+/* Sin esta linea la pastilla se ve SIEMPRE: una regla de autor con
+   `display` gana al `display:none` que el navegador aplica a [hidden]. Es la
+   misma trampa que ya se comieron .days-carousel__bar y el campo de repetir
+   contrasena; hay un test que la vigila (tests/css-visibility.test.js). */
+.topbar__offline[hidden] { display: none; }
+
+.topbar__offline {
+  /* Empuja el resto de la barra a la derecha sin tocar su justify-content. */
+  margin: 0 auto 0 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: var(--paper-raised);
+  border: 1px solid var(--line-strong);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.topbar__offline-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ink-soft);
+  flex: none;
+}
+
 .topbar__profile-btn {
   display: inline-flex;
   align-items: center;

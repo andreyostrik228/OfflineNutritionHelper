@@ -963,6 +963,35 @@ document.addEventListener("DOMContentLoaded", function () {
     medirBarraDesplazamiento();
   }
 
+  // ── Estado de la red (2026-09-08) ────────────────────────────────────
+  // Hasta ahora NADIE miraba si habia conexion. Con sesion iniciada, cada
+  // cambio de despensa dispara pushPantryToCloud() y el resultado se tira:
+  // sin red la llamada fallaba en silencio y el usuario se quedaba creyendo
+  // que sus cambios estaban en la nube.
+  //
+  // Se arreglan las dos mitades: se dice que no hay red, y al volver se
+  // REINTENTAN esas mismas dos llamadas. Reintentar es lo honesto -- son las
+  // que la aplicacion ya hace tras cada cambio, no una sincronizacion nueva
+  // con otro criterio, asi que no puede pisar nada que no fuera a pisar.
+  safeInit("estado-de-red", function () {
+    var pastilla = document.getElementById("offlineBadge");
+    if (!pastilla) return;
+
+    function pintar() {
+      // `navigator.onLine === false` y no `!navigator.onLine`: donde la
+      // propiedad no exista, se asume que hay red y no se avisa de nada.
+      pastilla.hidden = navigator.onLine !== false;
+    }
+
+    window.addEventListener("offline", pintar);
+    window.addEventListener("online", function () {
+      pintar();
+      if (typeof pushPantryToCloud === "function") pushPantryToCloud();
+      if (typeof pushSettingsToCloud === "function") pushSettingsToCloud();
+    });
+    pintar();
+  });
+
   safeInit("day-carousel-init", function () {
     var track = mealsContainer;
     var dots = document.getElementById("daysDots");
