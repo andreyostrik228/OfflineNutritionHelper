@@ -230,6 +230,20 @@ var MEAL_DEFS = [
 // entre el tramo "Muy ajustado" (8 €, sin snacks) y "Ajustado" (12 €, con
 // snacks).
 var NO_SNACK_BUDGET_THRESHOLD = 10;
+// Un objetivo muy PROTEICO tambien pasa a 3 tomas aunque el dinero llegue.
+// Medido el 2026-09-08 sobre 8 perfiles x 4 presupuestos, 3 tomas contra 5:
+// por debajo de 8 g de proteina por 100 kcal ganan las 5 tomas SIEMPRE (16 de
+// 16 casos); por encima ganan las 3 mientras el presupuesto apriete, y a 20
+// EUR vuelven a empatar. Los dos snacks son la parte del dia sin proteina, y
+// en un objetivo denso se llevan las calorias que las principales necesitan
+// para llegar: el perfil de corte pasa de 110,6 a 131,8 g sobre un objetivo
+// de 136,4 y de 53% a 15,5% de dias con violacion, comprando 0,33 EUR MENOS.
+//
+// No es un umbral de dinero: un objetivo de 3871 kcal gana con 5 tomas hasta
+// a 12 EUR, y uno de 1200 kcal pierde con 5 tomas incluso a 16. Lo que decide
+// es la densidad del OBJETIVO, no cuanto se puede gastar.
+var DENSE_TARGET_PROTEIN = 8;
+var DENSE_TARGET_BUDGET_CEILING = 18;
 
 /**
  * Tomas del día según el presupuesto: las 5 de siempre, o 3 sin snacks
@@ -237,11 +251,23 @@ var NO_SNACK_BUDGET_THRESHOLD = 10;
  * siga sumando el 100% de las calorías objetivo -- comer 3 veces no es
  * comer menos, es repartir lo mismo en menos platos.
  *
+ * Y 3 tomas tambien cuando el OBJETIVO es muy proteico y el dinero aprieta
+ * (ver DENSE_TARGET_PROTEIN): ahi los snacks no son un extra, son dos huecos
+ * sin proteina que el dia no puede permitirse.
+ *
  * @param {number} budget
+ * @param {object} [profile] - perfil calculado; sin el solo se aplica la
+ *   regla de presupuesto, que es el comportamiento historico.
  * @returns {object[]} misma forma que MEAL_DEFS
  */
-function mealDefsForBudget(budget) {
-  if (typeof budget !== "number" || !isFinite(budget) || budget >= NO_SNACK_BUDGET_THRESHOLD) {
+function mealDefsForBudget(budget, profile) {
+  var conPresupuesto = (typeof budget === "number" && isFinite(budget));
+  var porDinero = conPresupuesto && budget < NO_SNACK_BUDGET_THRESHOLD;
+  var densidad = (profile && profile.calories > 0 && typeof profile.protein === "number")
+    ? (100 * profile.protein / profile.calories) : 0;
+  var porDensidad = densidad >= DENSE_TARGET_PROTEIN
+    && conPresupuesto && budget < DENSE_TARGET_BUDGET_CEILING;
+  if (!porDinero && !porDensidad) {
     return MEAL_DEFS;
   }
   var three = MEAL_DEFS.filter(function (d) {
@@ -535,7 +561,7 @@ function attemptPlanAtTier(profile, data, tier, pantryState) {
   // 4 tomas), entonces CADA toma recibe un mealCap >= su propio mínimo
   // absoluto — así el mensaje de inviabilidad y el comportamiento real de
   // la cascada nunca se contradicen entre sí.
-  var mealDefs = mealDefsForBudget(data.budget);
+  var mealDefs = mealDefsForBudget(data.budget, profile);
 
   var minCostByCategory = {};
   mealDefs.forEach(function (def) {

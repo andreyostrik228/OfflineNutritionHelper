@@ -80,11 +80,21 @@ var EXPECTED_MEAL_KEYS = ["breakfast", "lunch", "dinner", "snack", "snack2"];
 // el usuario. El perfil "Presupuesto exacto muy ajustado" cae en esta rama.
 var EXPECTED_MEAL_KEYS_NO_SNACKS = ["breakfast", "lunch", "dinner"];
 var NO_SNACK_BUDGET = 10;
+// Un objetivo MUY proteico tambien pasa a 3 tomas aunque el dinero llegue:
+// los dos snacks son la parte del dia sin proteina y se comen las calorias
+// que las comidas principales necesitan para llegar. Espeja la regla de
+// mealDefsForBudget() en plan-generator.js.
+var DENSE_TARGET_PROTEIN = 8;
+var DENSE_TARGET_BUDGET_CEILING = 18;
 
 /** Claves esperadas para un presupuesto dado. */
-function expectedKeysFor(budget) {
-  return (typeof budget === "number" && budget < NO_SNACK_BUDGET)
-    ? EXPECTED_MEAL_KEYS_NO_SNACKS : EXPECTED_MEAL_KEYS;
+function expectedKeysFor(budget, profile) {
+  var conPresupuesto = (typeof budget === "number");
+  var densidad = (profile && profile.calories > 0)
+    ? (100 * profile.protein / profile.calories) : 0;
+  var tres = (conPresupuesto && budget < NO_SNACK_BUDGET)
+    || (densidad >= DENSE_TARGET_PROTEIN && conPresupuesto && budget < DENSE_TARGET_BUDGET_CEILING);
+  return tres ? EXPECTED_MEAL_KEYS_NO_SNACKS : EXPECTED_MEAL_KEYS;
 }
 
 // ── Perfiles representativos ─────────────────────────────────────────────
@@ -205,7 +215,7 @@ function run(t) {
         // creados dentro del sandbox...").
         var keys = JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.key; })));
         assert.deepStrictEqual(
-          keys, expectedKeysFor(rp.data.budget),
+          keys, expectedKeysFor(rp.data.budget, rp.profile),
           rp.def.name + " (run " + i + "): claves de comida inesperadas: " + keys.join(",")
         );
       });
