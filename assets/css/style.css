@@ -739,6 +739,16 @@ select:focus-visible {
   flex-wrap: wrap;
 }
 
+/* Los tres botones menos usados. Van en su propio bloque para que en movil
+   NO se queden fijos abajo: ahi solo se fija el boton primario. En
+   escritorio se leen como continuacion de la misma fila. */
+.actions-secondary {
+  margin-top: 10px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 button {
   border: 0;
   border-radius: var(--radius-sm);
@@ -3299,7 +3309,7 @@ button:focus-visible {
      untouched. */
   .actions {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
     gap: 8px;
     position: sticky;
     bottom: 0;
@@ -3321,23 +3331,23 @@ button:focus-visible {
 
   .actions .btn-primary {
     grid-column: 1 / -1;
-    order: 1;
   }
 
-  #noCookBtn {
-    order: 2;
-  }
-
-  #despensaBtn {
-    order: 3;
+  /* Los tres secundarios, ya fuera de la barra fija: dos arriba y
+     "Resetear" —el menos usado— solo en su fila. */
+  .actions-secondary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 10px;
   }
 
   #resetBtn {
     grid-column: 1 / -1;
-    order: 4;
   }
 
-  .actions button {
+  .actions button,
+  .actions-secondary button {
     width: 100%;
     justify-content: center;
   }
@@ -3448,7 +3458,12 @@ button:focus-visible {
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
-  z-index: 20;
+  /* Por encima de la franja de "siguiente toma" (z-index 30). Con 20 la
+     franja se dibujaba ENCIMA del menu abierto y lo partia por la mitad:
+     entre lo que tapaba estaba "Borrar mi cuenta", una accion sin vuelta
+     atras. Un menu que el usuario acaba de abrir va por encima del
+     mobiliario fijo, siempre. */
+  z-index: 50;
   min-width: 200px;
   background: var(--paper-raised);
   border: 1px solid var(--line-strong);
