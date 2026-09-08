@@ -53,6 +53,63 @@ function recursosDe(html) {
   return urls;
 }
 
+/** Nombre de la cache que le toca a un sello. */
+function cacheDeSello(sello) {
+  return PREFIJO + sello;
+}
+
+/**
+ * Deja la cache de ESTE sello completa y borra las de sellos viejos.
+ *
+ * Se llama desde `install` y TAMBIEN desde cada navegacion, y esa segunda
+ * llamada es la que arregla un fallo real (medido el 2026-09-08).
+ *
+ * El worker se disenio a proposito para no tocarse en cada despliegue: no
+ * lleva dentro ni version ni lista de recursos. La consecuencia no prevista
+ * es que, si solo cambia el sello de index.html, `sw.js` sigue siendo
+ * IDENTICO byte a byte -- asi que el navegador no reinstala nada, `install`
+ * y `activate` no vuelven a correr, y la cache nunca cambia de nombre ni se
+ * limpia.
+ *
+ * Lo medido en el navegador tras subir el sello de `c` a `d`: la cache
+ * seguia llamandose `onh-20260908c` y contenia 111 entradas -- 55 del sello
+ * viejo y 55 del nuevo, porque el `fetch` guardaba lo nuevo en la primera
+ * cache que encontraba. **2,9 MB de entradas muertas que ya no pedia
+ * nadie**, y otro tanto en cada despliegue siguiente, para siempre, en el
+ * movil de quien usa la aplicacion todos los dias.
+ *
+ * No causaba versiones mezcladas: una URL con sello nuevo no esta en la
+ * cache, se pide a la red y llega bien. Lo que se rompia era la limpieza.
+ *
+ * El disparador correcto es el sello del HTML, que es lo unico que cambia
+ * de verdad en un despliegue -- y la navegacion ya lo trae de la red.
+ */
+function sincronizarCache(html) {
+  var vigente = cacheDeSello(selloDe(html));
+  var esperados = recursosDe(html).length;
+  // Existir no basta: una llenada anterior pudo cortarse a medias (sin red,
+  // pestana cerrada). Se comprueba el RECUENTO, asi se cura sola.
+  return caches.open(vigente).then(function (cache) {
+    return cache.keys().then(function (k) { return k.length >= esperados; });
+  }).then(function (completa) {
+    var llenar = completa ? Promise.resolve() : caches.open(vigente).then(function (cache) {
+      // De uno en uno y tolerando fallos sueltos: addAll es todo-o-nada y
+      // un solo recurso caido dejaria al usuario sin offline sin avisar.
+      return Promise.all(recursosDe(html).map(function (u) {
+        if (u === "./") return null;
+        return cache.add(u)["catch"](function () { return null; });
+      }));
+    });
+    return llenar.then(function () {
+      return caches.keys().then(function (nombres) {
+        return Promise.all(nombres.map(function (n) {
+          if (n === CACHE_FUENTES || n.indexOf(PREFIJO) !== 0 || n === vigente) return null;
+          return caches["delete"](n);
+        }));
+      });
+    });
+  });
+}
 self.addEventListener("install", function (e) {
   e.waitUntil(
     // `cache: "reload"` para que el propio index.html no venga de la cache
@@ -123,11 +180,16 @@ self.addEventListener("fetch", function (e) {
     e.respondWith(
       fetch(req)
         .then(function (r) {
-          var copia = r.clone();
-          caches.keys().then(function (ns) {
-            var mia = ns.filter(function (n) { return n.indexOf(PREFIJO) === 0 && n !== CACHE_FUENTES; })[0];
-            if (mia) caches.open(mia).then(function (c) { c.put("./", copia); });
-          });
+          // Dos clones: uno para guardar la entrada y otro para LEER el
+          // sello. El cuerpo de una Response se consume una sola vez.
+          var paraCache = r.clone(), paraSello = r.clone();
+          e.waitUntil(
+            paraSello.text().then(function (html) {
+              return caches.open(cacheDeSello(selloDe(html))).then(function (c) {
+                return c.put("./", paraCache);
+              }).then(function () { return sincronizarCache(html); });
+            })["catch"](function () { return null; })
+          );
           return r;
         })
         ["catch"](function () {
@@ -151,11 +213,14 @@ self.addEventListener("fetch", function (e) {
         if (hit) return hit;
         return fetch(req).then(function (r) {
           if (r && r.ok) {
+            // A la cache de SU PROPIO sello. Antes iba "a la primera cache
+            // onh- que hubiera", que tras un despliegue era la VIEJA: por eso
+            // acababa con dos generaciones de ficheros dentro.
             var copia = r.clone();
-            caches.keys().then(function (ns) {
-              var mia = ns.filter(function (n) { return n.indexOf(PREFIJO) === 0 && n !== CACHE_FUENTES; })[0];
-              if (mia) caches.open(mia).then(function (c) { c.put(req, copia); });
-            });
+            var sello = (url.search.match(/v=([0-9a-z]+)/) || [])[1];
+            if (sello) {
+              caches.open(cacheDeSello(sello)).then(function (c) { c.put(req, copia); });
+            }
           }
           return r;
         });
