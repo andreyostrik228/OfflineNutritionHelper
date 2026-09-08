@@ -5,6 +5,84 @@
 > Escrito para alguien que llega SIN NINGÚN contexto previo. Si solo lees
 > una parte de este archivo, que sea esta.
 >
+> ### ⏩ UPDATE 2026-09-08 — el motor deja de ser pesimista, y la interfaz empieza a escuchar
+>
+> **577 tests en verde. Dos despliegues: `05cd7c94` y `4bf19a24`.** Seis
+> cosas, y las dos primeras se encontraron mirando, no buscando.
+>
+> **El motor hablaba y nadie le hacía caso.** `report.headline`, `status`,
+> `violations` y `relaxations` no se leían en NINGÚN fichero de `js/ui/`.
+> Mientras tanto `renderWarnings()` juzgaba el plan por su cuenta y las dos
+> respuestas discrepaban: en el preset de 8 € el motor declaraba que
+> faltaban 43,1 g de proteína en 200 de 200 días y la pantalla decía
+> "presupuesto ajustado: menos variedad" — la palabra proteína no aparecía
+> ni una vez. Ahora `describePlanReport()` vive junto a quien escribe el
+> informe y la interfaz solo pinta. Ver `HANDOFF.md` 7.10.
+>
+> **El Service Worker no limpiaba nunca.** Se diseñó para no tocarlo en
+> cada despliegue, y por eso mismo el navegador no lo reinstalaba: si solo
+> cambia el sello, `sw.js` es idéntico byte a byte. Resultado medido tras
+> subir el sello: la caché seguía con el nombre viejo y 111 entradas, 55 de
+> ellas muertas — **2,9 MB de basura por despliegue, para siempre**. El
+> disparador ahora es el sello del HTML, que es lo único que un despliegue
+> cambia de verdad. Confirmado en el despliegue `4bf19a24`, donde `sw.js`
+> NO se subió y la caché pasó igualmente de `onh-20260908e` a
+> `onh-20260908g` borrando la vieja. Ver 7.11.
+>
+> **Un día proteico y apretado pasa a 3 tomas, no 5.** El perfil de corte
+> gastaba 6,33 € de sus 12 en desayuno y dos snacks, dejando 5,67 para
+> comida Y cena — y ahí solo entran los tres platos de legumbre más
+> baratos. Medido sobre 8 perfiles x 4 presupuestos: por debajo de 8 g de
+> proteína por 100 kcal ganan las 5 tomas SIEMPRE (16 de 16); por encima
+> ganan las 3 mientras el dinero apriete. **No es un umbral de dinero**: un
+> objetivo de 3.871 kcal prefiere 5 tomas incluso a 12 €, y uno de 1.200
+> las pierde incluso a 16.
+>
+> ```
+>   corte, 200 semillas    violaciones 53,0% -> 15,5%   perfect 12,5% -> 36,5%
+>                          proteína 110,6 -> 131,8 g (objetivo 136,4)
+>                          platos distintos 52 -> 114   compra 10,83 -> 10,50 €
+> ```
+>
+> **El plan es de 3 días por defecto, y elegir 1 se explica.** Un paquete se
+> paga una vez: planificar 7 días sale entre un 22% y un 34% más barato POR
+> DÍA, y 3 días entre un 9% y un 15%. La nota de "1 día" se puede ocultar
+> para siempre, lo que destapó un fallo latente: `saveSettings()` reemplaza
+> el objeto entero y el llamante lo construía desde cero con el formulario,
+> así que cualquier ajuste que no fuera un campo del formulario se borraba
+> en cada generación.
+>
+> **Y el motor ya sabe para cuántos días se compra.** Comprobaba el
+> presupuesto de cada día como si ese día fuera a la tienda solo. Lo obvio
+> —arrastrar los gramos ya comprados— se probó y es PEOR (violaciones de
+> recomp del 5,0% al 62,5%), porque `computeDayPurchaseCost()` valora el día
+> en solitario. Lo que funciona es dejar de ser pesimista: x1,03 a 3 días y
+> x1,15 a 7, que es el mayor margen con el que NINGÚN plan se pasa de lo
+> elegido.
+>
+> ```
+>   3 días   corte    violaciones 15,0% -> 9,2%    perfect 32,9% -> 39,6%
+>            volumen                               perfect 58,3% -> 64,6%
+>   7 días   corte    violaciones 17,3% -> 3,4%    perfect 35,7% -> 56,6%
+>            volumen  violaciones  8,4% -> 7,0%    perfect 58,0% -> 64,3%
+> ```
+>
+> Los planes de un solo día salen byte a byte iguales y los dos
+> golden-master no se movieron.
+>
+> **Y una limpieza que no cambia nada hoy:** el clasificador de "sin
+> cocinar" casaba "cola" dentro de cho-**cola**-te (60+ chocolates como
+> refresco de nivel 0) y tenía 18 claves con acento que no podían casar
+> nunca. Cero de los 2.994 productos cambia de clasificación, porque para
+> Mercadona esa rama no se alcanza — es deuda cerrada, no una mejora. Ver
+> 7.12.
+>
+> **Lo que NO se arregló y hay que saber:** el preset de 8 € sigue
+> incumpliendo algo el 100% de los días; ahora el usuario lo VE, pero para
+> un objetivo de volumen no se arregla con código. Y hay un fallo de test
+> visto UNA vez y no reproducido en 44 corridas: si vuelve, guarda la
+> salida entera. Los dos están en `HANDOFF.md` 8.
+>
 > ### ⏩ UPDATE 2026-09-07 — se revierte el lote, y la app por fin es offline
 >
 > **Tres cosas, y la primera es un error mío.**

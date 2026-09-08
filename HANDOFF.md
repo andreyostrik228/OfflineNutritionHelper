@@ -451,6 +451,105 @@ es un buen proxy.** Ambos experimentos subieron la media y empeoraron la
 tasa de fallo, que es la firma de haber ensanchado la distribucion en vez de
 desplazarla.
 
+### 7.10 El motor hablaba y la interfaz no escuchaba
+
+`generateDietPlan()` devuelve un informe honesto y bien redactado: `status`,
+un `headline` que explica el fallo con sus cifras, las `violations` y lo que
+hubo que relajar. **No lo pintaba nadie.** Ni `headline`, ni `status`, ni
+`violations`, ni `relaxations` se leían en ningún fichero de `js/ui/`;
+`app.js` guardaba `lastGeneratedReport` y solo le sacaba `total` y `store`.
+
+Mientras tanto `renderWarnings()` juzgaba el plan con reglas PROPIAS, en
+paralelo a las del motor, y las dos discrepaban. Medido sobre 200 semillas
+por celda:
+
+```
+                  el motor dice que falta proteina   la pantalla dice gramos
+  corte    @  8 €      200/200  (43,1 g de media)             0/200
+  volumen  @  8 €      104/200  (35,5 g)                      0/200
+  corte    @ 12 €       24/200  (29,3 g)                      0/200
+```
+
+A alguien al que le faltaba un tercio de su proteína se le decía
+"presupuesto ajustado: menos variedad".
+
+**La forma del fallo, que es lo que hay que reconocer:** dos dueños para el
+mismo juicio. No es que el texto estuviera mal escrito — es que existían dos
+respuestas a "¿está bien este plan?" y solo una tenía los datos. Las dos
+reglas de la interfaz que se quitaron eran DUPLICADOS PEORES de una
+violación que el motor ya emitía, con el mismo umbral o uno más flojo.
+
+Y por qué duró tanto sin verse: nada fallaba. Los tests pasaban, la pantalla
+mostraba algo, y ese algo no era falso — solo era otra cosa. **Un dato que
+no se pinta no produce ningún síntoma.** La comprobación que lo habría
+encontrado en un minuto es preguntar, por cada cosa que el motor calcula
+para el usuario, quién la lee.
+
+### 7.11 Un fichero que no cambia nunca no se instala nunca
+
+El Service Worker se diseñó a propósito para **no tocarlo en cada
+despliegue**: sin versión dentro, sin lista de recursos, la caché nombrada
+con el sello `?v=` que lee de `index.html`. La propiedad era buena y la
+consecuencia no se vio: si en un despliegue solo cambia el sello, `sw.js`
+sigue siendo IDÉNTICO byte a byte, así que **el navegador no reinstala
+nada** — `install` y `activate` no vuelven a correr, y la caché no se
+renombra ni se limpia jamás.
+
+Medido tras subir el sello de `c` a `d`:
+
+```
+  la caché seguía llamándose onh-20260908c y tenía 111 entradas:
+     55 del sello viejo   <- muertas, nadie las va a pedir
+     55 del nuevo
+  bytes muertos 2.976 KB   vivos 3.041 KB
+```
+
+Los ficheros nuevos acababan en la caché VIEJA porque el `fetch` los metía
+"en la primera caché `onh-` que encontrara". No mezclaba versiones —una URL
+con sello nuevo no está en la caché, va a la red y llega bien—, lo que se
+rompía era la limpieza: ~2,9 MB de basura por despliegue, para siempre, en
+el móvil de quien lo usa a diario.
+
+**La lección general:** cuando algo se dispara al cambiar un fichero, ese
+fichero tiene que ser el que cambia. Aquí el disparador correcto es el sello
+del HTML —lo único que un despliegue cambia de verdad— y la navegación ya lo
+trae de la red. Con eso la propiedad original se conserva: sigue sin haber
+nada que tocar aquí en un despliegue.
+
+Comprobado en el escenario exacto que estaba roto (sello nuevo, `sw.js` con
+el mismo md5) y confirmado luego en un despliegue real: la caché pasó de
+`onh-20260908e` a `onh-20260908g` y la vieja se borró.
+
+### 7.12 Una clave con acento no casa nunca, y una subcadena casa de más
+
+Dos formas del mismo descuido en `no-cook-classifier.js`, las dos invisibles
+porque **fallan en silencio y hacia el lado que no salta**.
+
+El texto llega por `normalizeText()`, que quita los acentos. Una clave
+escrita CON acento no puede casar jamás. Había **18**. Catorce tenían gemela
+sin acento y solo eran peso muerto; cuatro no, y esas eran agujeros de
+verdad: `champán`, `pañal` y `champú` no se excluían, y `lasaña` no se
+alcanzaba (8 productos reales). Un test que rechaza cualquier clave que la
+normalización cambiaría cierra la clase entera.
+
+Y la coincidencia por `indexOf` casa dentro de otra palabra. Medido sobre
+los 2.994 productos: **"cola" dentro de cho-COLA-te**, 60+ chocolates
+entrando como refresco de nivel 0 "abrir y beber" (refrescos de cola reales:
+23); "queso" dentro de re-QUESO-n; "pera" dentro de Des-PERA-dos, que es una
+cerveza; "tonica" dentro de iso-TONICA. Es el mismo error que `"te"` dentro
+de `"textil"`.
+
+**La trampa al arreglarlo:** los límites de palabra estrictos rompen las
+coincidencias BUENAS, que en este catálogo son mayoría — "Manzanas Golden",
+"Naranjas", "Fresas", "Kiwis verdes" es como se llaman los productos. Hace
+falta admitir el plural español. Y aun así "cola" seguía siendo ambigua
+("Colas de gambón"), así que la palabra se sustituyó por las formas que de
+verdad son un refresco: **cuando una palabra es ambigua en el idioma, el
+arreglo no es un límite mejor, es otra palabra.**
+
+Uno de los tests que ya existía pasaba por el motivo equivocado: "Champú
+anticaspa" devolvía `null` no porque se excluyera, sino porque no casaba
+con nada.
 ---
 
 ## 8. Lo que queda abierto
@@ -464,13 +563,13 @@ desplazarla.
   - **153 EAN se rindieron ante un HTTP 429** de OpenFoodFacts durante la
     corrida. A propósito NO quedan cacheados como negativos, así que otra
     corrida los reintenta: es cobertura aplazada, no perdida.
-  - **El plan "sin cocinar" no etiqueta las aproximaciones.** El panel de
-    productos sí (`renderConfidenceBadge`, "EAN ✓" o el nivel de
-    confianza); las tarjetas de comida no dicen nada. Antes de la corrida
-    daba igual (0% de los items venían de una aproximación sin revisar);
-    ahora son el **7%**, y el 15% del pool está en `needs_review`. Es un
-    incumplimiento medible de la regla del propio proyecto: lo aproximado
-    se etiqueta.
+  - ~~El plan "sin cocinar" no etiqueta las aproximaciones~~ — **HECHO**,
+    y la entrada llevaba tiempo caducada sin que nadie lo comprobara
+    (2026-09-08). `render-no-cook.js` llama a `renderNutritionTrustBadge()`
+    y tiene tests. Hoy el 14,8% del pool elegible está en `needs_review`, y
+    se marca en pantalla. Si una entrada de esta lista lleva semanas,
+    compruébala antes de trabajarla: cerrar algo y no tacharlo aquí cuesta
+    la siguiente sesión entera.
   - **La coincidencia por subcadena de `classifyByNameFallback()` sigue
     rota** (ver §7.6). Para Mercadona ya no se alcanza —`Congelados` está
     en `NO_COOK_EXCLUDED_CATEGORIES`—, pero es la única ruta de Alcampo.
@@ -484,6 +583,37 @@ desplazarla.
   enriquecer habría metido pizza, helado y croquetas en las comidas.
   `real-products.js` tiene **dos consumidores** y solo uno debía verlos.
   Si una tarea de esta lista parece un interruptor, mídela antes.
+- **El preset "Muy ajustado" (8 €) incumple algo el 100% de los días** en
+  los tres perfiles medidos, y ningún día sale "perfect" (medido
+  2026-09-08, 200 semillas por celda). Se ofrece en el cuestionario junto a
+  tres que sí funcionan. No es un problema, son TRES distintos:
+
+  ```
+    corte    compra 7,18 € de 8 -> el dinero SÍ llega.
+             Falla la proteína: 93,3 g contra 136, 200/200 días.
+    recomp   se pasa por 0,63 € de media, pero 200/200 días.
+    volumen  8 € no dan de comer 3.871 kcal: -14,6% de calorías y +1,48 €.
+  ```
+
+  Desde 2026-09-08 el usuario al menos LO VE (ver 7.10). Arreglarlo de
+  verdad es una decisión de producto: subir el tramo, no ofrecerlo cuando
+  las calorías objetivo no caben, o avisar antes de elegirlo. Para un
+  objetivo de volumen no se arregla con código: la comida cuesta lo que
+  cuesta.
+- **Un fallo de test que no se ha podido reproducir** (2026-09-08). Al
+  comprobar un commit en un worktree recién creado: 549 pasaron, 1 falló, y
+  no se capturó el nombre. Después, 44 corridas limpias (36 en HEAD, 8 en
+  el mismo commit) y 25 corridas dirigidas solo a la suite de
+  caracterización, sin un solo fallo. Uno de cada ~45. La sospecha
+  razonable es que algún invariante corre con `Math.random` REAL (10
+  iteraciones x 5 perfiles), pero no está demostrado. **Si vuelve a pasar,
+  guarda la salida entera**: lo único que falta es el nombre del test.
+- **El margen de presupuesto por días de plan hay que re-medirlo cuando
+  crezca el catálogo** (2026-09-08). `PLAN_DAYS_BUDGET_3` (x1,03) y
+  `PLAN_DAYS_BUDGET_7` (x1,15) son el mayor margen con el que NINGÚN plan
+  se pasa del presupuesto elegido, buscado a mano sobre los platos y
+  envases de HOY. No son constantes universales; con otro catálogo el punto
+  donde empiezan a colarse planes por encima se mueve.
 - **El día de 8 € no cuadra el 61% de las veces** con los envases reales.
   El motor lo declara honestamente (`status: minimal`, violación
   `budget`), pero si se quiere arreglar de verdad hay que enseñarle a
@@ -540,11 +670,21 @@ desplazarla.
   probarlo activaría el término de urgencia en los demás tests de ese
   fichero y podría mover sus golden-master, así que se dejó medido a mano
   (día 0 `urgente` 35,3% de los platos · día 5 `caducado` 6,3%) y sin test.
-- **`product-storage.js` pesa 104 KB y solo rinde para 12 roles.** El
-  puente por EAN (2026-09-04) lo hizo alcanzable, pero
-  `real-ingredient-matches.js` solo tiene 12 emparejamientos verificados a
-  mano. O se amplían — a mano y por EAN, nunca por parecido de texto — o
-  se recorta el fichero: hoy viaja entero a cada visitante para 12 filas.
+- **`product-storage.js`: la tarea estaba mal planteada** (revisada
+  2026-09-08). Decía "104 KB y solo rinde para 12 roles", y eso es falso:
+  se alcanza por DOS caminos, no uno. Además del puente por rol (12
+  emparejamientos), el stock de "sin cocinar" va por id de producto, y por
+  ahí son **1.389 de sus 2.386 filas** las alcanzables. Muertas de verdad
+  hay 262 huérfanas cuyo id ya no está en el catálogo: **11 KB**. El
+  fichero además es GENERADO y dice que no se edite a mano.
+
+  Y el peso tampoco es el problema que parecía: Cloudflare sirve con
+  `Content-Encoding: br`, los 2.844 KB de scripts viajan como **525 KB**
+  con gzip, y el Service Worker los cachea por sello sin revalidar. Medido
+  antes de tocar nada, que es lo que evitó recortar un fichero por 11 KB.
+
+  Lo que SÍ queda: ampliar `real-ingredient-matches.js` — a mano y por EAN,
+  nunca por parecido de texto.
 
 ---
 
