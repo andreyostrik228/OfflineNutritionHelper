@@ -137,6 +137,35 @@ function construirCandidatos(semilla) {
       });
     });
   });
+  // ── Principal con DOS verduras (2026-09-08) ─────────────────────────
+  // El generador se estaba quedando sin sitio: con una sola verdura quedaban
+  // 111 principales que pasaran los suelos, y el objetivo son 1000 platos.
+  // El cuello no eran los filtros sino la FORMA: proteina x grano x verdura
+  // da 2.268 combinaciones y se habian gastado casi todas.
+  //
+  // Anadir una segunda verdura multiplica el espacio por 5,5 (2.268 ->
+  // 12.474) sin tocar ni un ingrediente nuevo, y medido contra los suelos de
+  // hoy pasan 551 en vez de 111 -- con el MISMO porcentaje de aprobados
+  // (4,4% frente a 4,9%), o sea que no son platos peores, es que hay mas.
+  //
+  // La segunda verdura va al 70% de su racion: dos guarniciones enteras
+  // hacen un plato que nadie se come, y ademas subirian el coste sin subir
+  // la proteina.
+  baraja(T.PROTEINAS, rand).forEach(function (p) {
+    baraja(T.GRANOS, rand).forEach(function (g) {
+      var verduras = baraja(T.VERDURAS, rand);
+      verduras.forEach(function (v, i) {
+        verduras.slice(i + 1).forEach(function (v2) {
+          var frio = (p.tec === "lata" || p.tec === "edamame");
+          var nombre = frio
+            ? "Ensalada de " + g.label + " con " + p.label + ", " + v.label + " y " + v2.label
+            : mayus(p.label) + " con " + g.label + ", " + v.label + " y " + v2.label;
+          out.push({ tipo: "principal", nombre: nombre, p: p, g: g, v: v, v2: v2 });
+        });
+      });
+    });
+  });
+
   baraja(BASES_VEG, rand).forEach(function (bv) {
     baraja(SEGUNDAS_VEG, rand).forEach(function (sv) {
       baraja(T.VERDURAS, rand).forEach(function (v) {

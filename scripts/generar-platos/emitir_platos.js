@@ -61,22 +61,26 @@ function construir(c, categoria) {
   var plato, receta;
   if (c.tipo === "principal") {
     var t = TEC[c.p.tec];
+    // La segunda verdura (opcional, ver gen_platos.js) va al 70% de su
+    // racion: dos guarniciones enteras hacen un plato que nadie se acaba.
+    var items = [{ name: c.p.name, g: c.p.g }, { name: c.g.name, g: c.g.g },
+      { name: c.v.name, g: c.v.g }];
+    if (c.v2) items.push({ name: c.v2.name, g: Math.round(c.v2.g * 0.7) });
     plato = {
       name: c.nombre, category: categoria,
       kcal: 0, protein: 0, carbs: 0, fat: 0, cost: 0,
-      prep: Math.min(45, t.prep + (EXTRA_PREP_GRANO[c.g.name] || 0)),
+      // Cortar una verdura mas son 3 minutos de verdad, no cero.
+      prep: Math.min(45, t.prep + (EXTRA_PREP_GRANO[c.g.name] || 0) + (c.v2 ? 3 : 0)),
       mainProt: c.p.mainProt, taste: "savory",
-      items: [{ name: c.p.name, g: c.p.g }, { name: c.g.name, g: c.g.g }, { name: c.v.name, g: c.v.g }]
+      items: items
     };
-    receta = {
-      difficulty: c.p.dif,
-      equipment: unicos(c.p.eq.concat(["olla"], [EQ_VERDURA[c.v.name] || "sarten"])),
-      steps: t.pasos(c.p).concat([
-        c.g.paso,
-        c.v.paso,
-        "Monta el plato con el " + c.g.label + " de base, " + c.p.label + " encima y " + c.v.label + " al lado."
-      ])
-    };
+    var equipos = c.p.eq.concat(["olla"], [EQ_VERDURA[c.v.name] || "sarten"]);
+    if (c.v2) equipos = equipos.concat([EQ_VERDURA[c.v2.name] || "sarten"]);
+    var pasos = t.pasos(c.p).concat([c.g.paso, c.v.paso]);
+    if (c.v2) pasos.push(c.v2.paso);
+    pasos.push("Monta el plato con el " + c.g.label + " de base, " + c.p.label + " encima y "
+      + (c.v2 ? (c.v.label + " y " + c.v2.label + " al lado.") : (c.v.label + " al lado.")));
+    receta = { difficulty: c.p.dif, equipment: unicos(equipos), steps: pasos };
   } else if (c.tipo === "veg") {
     plato = {
       name: c.nombre, category: categoria,
