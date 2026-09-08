@@ -949,7 +949,8 @@ document.addEventListener("DOMContentLoaded", function () {
     var html = "";
     for (var i = 0; i < count; i++) {
       html += '<button type="button" class="days-carousel__dot' + (i === 0 ? " is-active" : "") +
-        '" data-go="' + i + '" aria-label="Día ' + (i + 1) + '"></button>';
+        '" data-go="' + i + '"' + (i === 0 ? ' aria-current="true"' : "") +
+        ' aria-label="Día ' + (i + 1) + ' de ' + count + '"></button>';
     }
     dots.innerHTML = html;
     // Un plan nuevo empieza en el día 1, así que la flecha de "anterior"
@@ -978,10 +979,38 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function setActiveDot(i) {
+      var total = 0;
       dots.querySelectorAll(".days-carousel__dot").forEach(function (d, n) {
-        d.classList.toggle("is-active", n === i);
+        total++;
+        var on = n === i;
+        d.classList.toggle("is-active", on);
+        // El color del punto no lo ve quien usa un lector de pantalla.
+        // aria-current es lo unico que dice "estas aqui".
+        if (on) d.setAttribute("aria-current", "true");
+        else d.removeAttribute("aria-current");
       });
+      var aviso = document.getElementById("dayAnnounce");
+      if (aviso && total) aviso.textContent = "Día " + (i + 1) + " de " + total;
     }
+
+    // Flechas del teclado sobre los puntos. Un grupo de botones que
+    // representa una sola eleccion se recorre con las flechas, no obligando
+    // a tabular por todos: con siete dias eran siete tabuladores para llegar
+    // al ultimo. El foco viaja con la seleccion para no perderlo de vista.
+    dots.addEventListener("keydown", function (e) {
+      var lista = dots.querySelectorAll(".days-carousel__dot");
+      if (!lista.length) return;
+      var destino = null;
+      if (e.key === "ArrowRight" || e.key === "ArrowDown") destino = currentDay + 1;
+      else if (e.key === "ArrowLeft" || e.key === "ArrowUp") destino = currentDay - 1;
+      else if (e.key === "Home") destino = 0;
+      else if (e.key === "End") destino = lista.length - 1;
+      else return;
+      e.preventDefault();
+      destino = Math.max(0, Math.min(destino, lista.length - 1));
+      slideTo(destino);
+      if (lista[destino]) lista[destino].focus();
+    });
 
     // ── Al cambiar de día, arriba del todo (2026-09-01) ────────────────
     // Antes se intentaba conservar la TOMA (ir del snack del día 1 al snack
