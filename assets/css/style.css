@@ -57,7 +57,12 @@
      canvas reads as a considered material, not default SaaS white/grey. */
   --ink: #211a14;
   --ink-soft: #5c5045;
-  --ink-faint: #8a7c6d;
+  /* Aclarado a proposito NO: oscurecido. #8a7c6d daba 3,60:1 sobre --paper,
+     por debajo del 4,5:1 que pide WCAG para texto normal, y se usa en 562
+     elementos visibles a 9-12px: las etiquetas de los macros, los importes
+     de presupuesto, las pistas del formulario. Justo lo que se lee de pie en
+     el supermercado. #786c5f da 4,54:1 y no cambia el tono. */
+  --ink-faint: #786c5f;
   --paper: #f7f1e5;
   --paper-raised: #fffdf8;
   --line: #e6dcc7;
@@ -72,7 +77,10 @@
 
   /* Warm contrast accent — terracotta. Energy/calories, and the hero's
      secondary headline color. */
-  --clay: #bd4e28;
+  /* #bd4e28 daba 4,36:1 sobre --paper y se usa como texto a 18px (la palabra
+     destacada del titulo): justo por debajo del 4,5:1. Dos puntos mas oscuro
+     lo cruza sin que se note el cambio de tono. */
+  --clay: #b94c27;
   --clay-deep: #87381a;
   --clay-wash: #f6e3d2;
 
@@ -84,6 +92,19 @@
 
   --slate: #5d6b58;
   --slate-wash: #e7ebe1;
+
+  /* Texto que va ENCIMA de un fondo de color. Existe porque en modo oscuro
+     el verde se aclara —es sobre todo un color de TEXTO: 26 usos como texto
+     frente a 12 como fondo— y entonces el blanco sobre el deja 2,16:1. El
+     color del texto tiene que viajar con su fondo, no estar escrito a mano. */
+  /* Texto sobre un panel INVERTIDO (fondo --ink, como el resumen de la
+     compra). Mismo motivo que --on-green: en oscuro el panel se voltea y el
+     literal casi blanco que habia escrito a mano se quedaba, dando 1,08:1. */
+  --on-ink-faint: rgba(246, 245, 241, 0.6);
+  --on-ink-soft: rgba(246, 245, 241, 0.75);
+
+  --on-green: #fff;
+  --on-danger: #fff;
 
   --danger: #b3261e;
   --danger-wash: #fbeae8;
@@ -154,7 +175,7 @@ body {
 
 ::selection {
   background: var(--green);
-  color: #fff;
+  color: var(--on-green);
 }
 
 /* ══ Layout ═════════════════════════════════════════════════ */
@@ -747,7 +768,10 @@ button:focus-visible {
 
 .btn-primary {
   background: var(--green);
-  color: var(--hero-ink);
+  /* No `--hero-ink`: ese color pertenece al heroe, que es verde OSCURO
+     siempre. Este boton es verde --green, que en modo oscuro se aclara, y
+     entonces la tinta clara del heroe encima daba 1,92:1. */
+  color: var(--on-green);
   position: relative;
   box-shadow: 0 1px 2px rgba(15, 53, 36, 0.15);
 }
@@ -1129,7 +1153,11 @@ button:focus-visible {
   font-size: 11.5px;
   font-weight: 700;
   line-height: 1;
-  padding: 4px 8px;
+  /* 4px arriba y abajo dejaban el boton en 22px de alto, por debajo del
+     minimo de 24 (WCAG 2.5.8), y este es de los que mas se pulsan. La letra
+     no cambia: solo el area. */
+  padding: 6px 10px;
+  min-height: 24px;
   border-radius: 999px;
   cursor: pointer;
   white-space: nowrap;
@@ -1207,7 +1235,7 @@ button:focus-visible {
   padding: 1px 5px;
   border-radius: 999px;
   background: var(--green);
-  color: #fff;
+  color: var(--on-green);
   font-size: 8px;
   font-weight: 700;
   text-transform: uppercase;
@@ -1237,7 +1265,7 @@ button:focus-visible {
   padding: 2px 7px;
   border-radius: 999px;
   background: var(--green);
-  color: #fff;
+  color: var(--on-green);
   font-size: 9px;
   font-weight: 700;
   text-transform: uppercase;
@@ -1923,8 +1951,12 @@ button:focus-visible {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
+  /* 22x22 quedaba por debajo del minimo de 24 (WCAG 2.5.8) y este boton
+     sale una vez por ingrediente: en un plan de 3 dias eran 106 objetivos
+     pequenos a la vez, todos en la lista que se usa de pie en la tienda.
+     Crece el area, no el icono. */
+  width: 26px;
+  height: 26px;
   margin-left: 6px;
   vertical-align: middle;
   border: 1px solid var(--line);
@@ -2158,7 +2190,7 @@ button:focus-visible {
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(246, 245, 241, 0.6);
+  color: var(--on-ink-faint);
   margin-bottom: 3px;
 }
 
@@ -2171,7 +2203,7 @@ button:focus-visible {
 
 .shopping-summary__stat--muted strong {
   font-size: 15px;
-  color: rgba(246, 245, 241, 0.75);
+  color: var(--on-ink-soft);
 }
 
 /* Flat receipt-style list, deliberately NOT another bordered card grid —
@@ -2865,7 +2897,7 @@ button:focus-visible {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: var(--on-green);
   font-size: 11px;
   font-weight: 700;
 }
@@ -4000,21 +4032,37 @@ dialog.despensa-dialog[open] {
 
 .days-carousel__dots {
   display: flex;
-  gap: 6px;
+  gap: 0;
   flex-shrink: 0;
 }
 
+/* El punto que se VE mide 7px; el que se PULSA, 24. Medido en un movil de
+   375px: eran objetivos de 7x7, muy por debajo de los 24x24 que pide
+   WCAG 2.5.8, y se usan de pie y con una mano. Se agranda el area con
+   padding en vez del punto, para no cambiar el diseno. */
 .days-carousel__dot {
-  width: 7px;
-  height: 7px;
+  width: 24px;
+  height: 24px;
   padding: 0;
   border: none;
-  border-radius: 50%;
-  background: var(--line-strong);
+  background: none;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.days-carousel__dot.is-active { background: var(--green-deep); }
+.days-carousel__dot::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--line-strong);
+  transition: background 0.15s ease;
+}
+
+.days-carousel__dot.is-active::before { background: var(--green-deep); }
 
 .days-carousel__track--multi {
   display: flex;
@@ -4666,7 +4714,7 @@ body.is-onboarding {
   border: 1px solid var(--danger);
   border-radius: var(--radius-md);
   background: var(--danger);
-  color: #fff;
+  color: var(--on-danger);
   font-family: var(--font-body);
   font-size: 0.9rem;
   font-weight: 700;
@@ -5031,4 +5079,118 @@ body.is-onboarding {
   outline: none;
   border-color: var(--danger);
   box-shadow: 0 0 0 3px var(--danger-wash);
+}
+
+
+/* ══ Sin JavaScript ════════════════════════════════════════════════════════
+   Solo se ve dentro de <noscript>, asi que no compite con nada. Se escribe
+   aqui y no en linea para que herede la tipografia y el color del resto. */
+.sin-js {
+  max-width: 34rem;
+  margin: 3rem auto;
+  padding: 0 1.25rem;
+  color: var(--ink);
+}
+
+.sin-js h1 {
+  font-size: 1.5rem;
+  margin: 0 0 0.75rem;
+}
+
+.sin-js p {
+  line-height: 1.55;
+  margin: 0 0 0.75rem;
+}
+
+
+/* ══ MODO OSCURO ═══════════════════════════════════════════════════════════
+   Antes no habia ni una regla `prefers-color-scheme`: el movil en modo
+   oscuro, de noche, recibia una pantalla color pergamino a plena luz.
+
+   Solo se redefinen TOKENS, no componentes, y eso es posible porque la hoja
+   ya estaba escrita asi: 867 usos de `var(--...)` frente a 47 colores
+   literales. Los literales que quedaban sobre un fondo de color se
+   convirtieron en `--on-green` / `--on-danger` justo por esto.
+
+   Los valores no estan elegidos a ojo. Todos se midieron contra el fondo
+   (#17130f) y contra las tarjetas (#1f1a15):
+
+     --ink        15,73:1      --green      8,56:1
+     --ink-soft   10,21:1      --clay       7,83:1
+     --ink-faint   6,45:1      --grain      8,76:1
+
+   Y la trampa que obligo a inventar `--on-green`: el verde es sobre todo un
+   color de TEXTO (26 usos como texto, 12 como fondo), asi que en oscuro se
+   ACLARA -- y entonces el blanco encima cae a 2,16:1. Por eso el texto que
+   va sobre un fondo de color viaja con el fondo. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #f2ece2;
+    --ink-soft: #cabfb1;
+    --ink-faint: #a2978a;
+    --paper: #17130f;
+    --paper-raised: #1f1a15;
+    --line: #332b22;
+    --line-strong: #4a3f32;
+
+    --green: #7bbf95;
+    --green-deep: #a5d6b7;
+    --green-wash: #1c2a22;
+
+    --clay: #f0906a;
+    --clay-deep: #f7b195;
+    --clay-wash: #2e1d15;
+
+    --grain: #d4ad63;
+    --grain-wash: #2b2317;
+
+    --slate: #a3b89b;
+    --slate-wash: #1e241c;
+
+    --danger: #f08a80;
+    --danger-wash: #2a1512;
+    --danger-border: #5c2b26;
+
+    /* Sobre un fondo claro de color, la tinta se oscurece. */
+    --on-ink-faint: rgba(23, 19, 15, 0.66);
+    --on-ink-soft: rgba(23, 19, 15, 0.8);
+    --on-green: #10231a;
+    --on-danger: #2a0f0d;
+
+    /* El heroe ya era verde oscuro con texto claro: ahi no cambia nada. */
+    --hero-bg-start: #12261c;
+    --hero-bg-end: #0a1a12;
+  }
+
+  /* Todo lo que usa un VERDE de fondo necesita la tinta que va con el: en
+     claro los verdes son oscuros y el texto va blanco, en oscuro se aclaran
+     y el texto tiene que oscurecerse. Medido antes de escribir esto: la
+     franja del horario y el boton "Siguiente" del asistente daban 1,45:1, y
+     "Confirmar plan de hoy" 1,92:1. */
+  .btn-primary,
+  .btn-primary:hover,
+  .pantry-add button,
+  .plan-days__btn.is-active,
+  .onboarding__btn--primary,
+  .onboarding__btn--primary:not(:disabled):hover,
+  .tour__next,
+  .tour__next:hover,
+  .legal-dialog__done,
+  .legal-dialog__done:hover,
+  .next-meal-sticky__btn,
+  .next-meal-sticky__btn * {
+    color: var(--on-green);
+  }
+
+  /* Insignias de dificultad: eran tres colores escritos a mano, pensados
+     sobre papel claro. Sobre tarjeta oscura, el verde daba 2,70:1. */
+  .meal-steps__badge--d1 { border-color: var(--green); color: var(--green); }
+  .meal-steps__badge--d2 { border-color: var(--grain); color: var(--grain); }
+  .meal-steps__badge--d3 { border-color: var(--danger); color: var(--danger); }
+
+  /* Los pocos fondos claros escritos a mano que quedaban en avisos y
+     estados. Sin esto serian rectangulos blancos en una pagina oscura. */
+  .warning { background: var(--clay-wash); }
+  .auth-msg--error,
+  .form-error { background: var(--danger-wash); color: var(--danger); }
 }

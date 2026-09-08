@@ -6,13 +6,21 @@
      NO se pueda hacer zoom (2026-09-01). Nota honesta: esto tambien impide
      ampliar a quien lo necesite por vista, que es la razon por la que suele
      desaconsejarse; se hace porque se ha pedido, no por descuido. -->
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <!-- Se puede ACERCAR con los dedos, pero no alejar por debajo del 100%.
+       `user-scalable=no` + `maximum-scale=1` impedian el zoom por completo:
+       incumple WCAG 1.4.4 y, sobre todo, es justo lo que hace falta de pie
+       en el supermercado leyendo una lista con letra pequena. `minimum-scale=1`
+       conserva lo unico que se queria evitar, que el diseno se vea encogido. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
   <meta name="description" content="Planificador de dieta offline para musculación. Calcula macros con Mifflin-St Jeor y genera platos reales adaptados a tu objetivo, presupuesto y tiempo de cocina.">
   <title>Nutrition Planner — Mercadona</title>
   <link rel="icon" type="image/svg+xml" href="assets/img/icon.svg">
   <link rel="apple-touch-icon" href="assets/img/icon.svg">
   <link rel="manifest" href="manifest.webmanifest">
-  <meta name="theme-color" content="#f7f1e5">
+  <!-- La barra del navegador sigue al tema del sistema; sin la segunda
+       linea, un movil en oscuro coronaba la pagina con una franja crema. -->
+  <meta name="theme-color" content="#f7f1e5" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#17130f" media="(prefers-color-scheme: dark)">
   <meta name="mobile-web-app-capable" content="yes">
   <!-- Tarjeta al compartir el enlace. Sin og:image a proposito: el unico
        icono que hay es SVG y casi ningun sitio lo acepta como imagen de
@@ -125,6 +133,28 @@
 </head>
 <body>
   <a class="saltar-al-contenido" href="#mainContent">Saltar al contenido</a>
+
+  <!-- ══ Sin JavaScript ═══════════════════════════════════════════════════
+       Esta aplicacion ES JavaScript: el motor calcula los planes en el
+       propio navegador, no hay servidor que los genere. Sin scripts no hay
+       nada que ensenar, pero DECIRLO es obligatorio -- si no, lo que queda
+       es un formulario que no responde y ni una palabra de por que.
+       Es la misma regla de HANDOFF 7.2: nada que el usuario deba ver puede
+       depender de que algo se ejecute. ══ -->
+  <noscript>
+    <div class="sin-js">
+      <h1>Hace falta JavaScript</h1>
+      <p>
+        Esta aplicaci&oacute;n calcula tus men&uacute;s y su precio <strong>dentro de tu
+        navegador</strong>, sin enviar nada a ning&uacute;n servidor. Por eso necesita
+        JavaScript para funcionar: sin &eacute;l no hay nada que mostrar.
+      </p>
+      <p>
+        Act&iacute;valo en los ajustes de tu navegador y vuelve a cargar la p&aacute;gina.
+        No hace falta crear ninguna cuenta para usarla.
+      </p>
+    </div>
+  </noscript>
   <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
     <symbol id="icon-flame" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M12 2c1 3-2 4-2 7a4 4 0 0 0 8 0c0-1-.5-2-1-3 2 1 3 3.5 3 6a7 7 0 1 1-14 0c0-4 2-6 4-8 1-1 1.5-1.5 2-2z"/>
