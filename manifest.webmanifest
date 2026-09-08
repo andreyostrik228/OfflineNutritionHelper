@@ -1,7 +1,7 @@
 {
-  "name": "Offline Nutrition Helper",
-  "short_name": "Nutrition",
-  "description": "Planificador de dieta con platos reales de Mercadona: macros, precio de la compra y recetas paso a paso. Funciona sin conexion.",
+  "name": "Weekplate — planificador de menús",
+  "short_name": "Weekplate",
+  "description": "Planificador de menús con precios reales: macros, lista de la compra y recetas paso a paso. Funciona sin conexión.",
   "lang": "es",
   "dir": "ltr",
   "start_url": "./",
