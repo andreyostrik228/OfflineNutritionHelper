@@ -658,6 +658,74 @@ function run(t) {
     assert.strictEqual(b.tier, "pronto");
   });
 
+  // ── dayIndex -> planISO: la fecha para la que se planifica ────────────
+  // Que projectPantryState() descarte contra una fecha FUTURA ya está
+  // probado arriba. Lo que NO lo estaba (HANDOFF 8, 2026-09-04) es el
+  // cableado: que generateDietPlanTiered() DERIVE esa fecha del
+  // `dayIndex`. Sin él, los 7 días de un plan semanal se puntuaban todos
+  // contra la despensa de hoy, y el día 5 planificaba alrededor de algo
+  // que para entonces estaría podrido, contándolo además como gratis.
+  //
+  // Vive en este fichero, y no en plan-generator.characterization.test.js,
+  // a propósito: meter expiry.js en AQUEL sandbox activaría el término de
+  // urgencia en todos sus tests y movería sus golden-master. Aquí el
+  // sandbox es nuevo y no afecta a nadie más.
+  function engineWithExpirySandbox() {
+    return loadBrowserGlobals([
+      projPath("js/data/dishes.js"),
+      projPath("js/data/real-products.js"),
+      projPath("js/data/packaging.js"),
+      projPath("js/data/real-ingredient-matches.js"),
+      projPath("js/data/ingredient-nutrition.js"),
+      projPath("js/data/no-cook-classifier.js"),
+      projPath("js/data/prices/mercadona.js"),
+      projPath("js/data/budget-presets.js"),
+      projPath("js/data/shelf-life.js"),
+      projPath("js/core/utils.js"),
+      projPath("js/core/pricing.js"),
+      projPath("js/core/nutrition.js"),
+      projPath("js/core/expiry.js"),
+      projPath("js/core/budget.js"),
+      projPath("js/core/calculator.js"),
+      projPath("js/core/meal-helpers.js"),
+      projPath("js/engine/dish-selector.js"),
+      projPath("js/engine/plan-generator.js")
+    ]);
+  }
+
+  /** Genera un plan capturando la fecha con la que se proyecta la despensa. */
+  function fechaConLaQueSeProyecta(extraData) {
+    var s = engineWithExpirySandbox();
+    var vistas = [];
+    // Se sustituye el global DESPUÉS de cargar: plan-generator.js lo
+    // resuelve en el momento de llamarlo, no al definirse.
+    s.projectPantryState = function (estado, iso) { vistas.push(iso); return estado; };
+    var profile = s.calculateProfile({
+      age: 27, sex: "male", weight: 78, height: 178, activity: 1.55, workouts: 4, goal: "recomp"
+    });
+    var data = { budget: 16, cookTime: 30, taste: "mixed", store: "mercadona" };
+    Object.keys(extraData || {}).forEach(function (k) { data[k] = extraData[k]; });
+    s.generateDietPlan(profile, data);
+    return vistas;
+  }
+
+  t.test("generateDietPlan() deriva la fecha del plan de `dayIndex`, no siempre HOY", function () {
+    var hoy = new Date().toISOString().slice(0, 10);
+    var dia0 = fechaConLaQueSeProyecta({ dayIndex: 0 });
+    var dia5 = fechaConLaQueSeProyecta({ planDays: 7, dayIndex: 5 });
+
+    assert.ok(dia0.length > 0, "projectPantryState() deberia llamarse al generar");
+    assert.strictEqual(dia0[0], hoy, "el dia 0 se planifica para hoy");
+
+    var s = engineWithExpirySandbox();
+    assert.strictEqual(dia5[0], s.addDays(hoy, 5),
+      "el dia 5 debe planificarse para hoy+5, no para hoy -- si no, hereda las prisas del dia 1");
+  });
+
+  t.test("un `targetDate` explicito manda sobre `dayIndex`", function () {
+    var vistas = fechaConLaQueSeProyecta({ targetDate: "2030-01-15", dayIndex: 3 });
+    assert.strictEqual(vistas[0], "2030-01-15");
+  });
 }
 
 module.exports = { run: run };
