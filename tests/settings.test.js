@@ -148,6 +148,44 @@ function run(t) {
     assert.strictEqual(Object.keys(s.getSettings()).length, 0);
   });
 
+
+  // ── Ajustes que NO salen del formulario (2026-09-08) ──────────────────
+  // `hideOneDayCostNote` es el primer ajuste de SI/NO del fichero, y un
+  // booleano no se sanea como una cadena: `false` es un valor legitimo y
+  // hay que conservarlo, mientras que una cadena vacia o una lista vacia se
+  // descartan a proposito.
+
+  t.test("planDays se guarda y se recupera como numero", function () {
+    var s = freshSettingsSandbox();
+    s.localStorage = createFakeLocalStorage();
+    s.saveSettings({ age: 32, planDays: 7 });
+    assert.strictEqual(s.getSettings().planDays, 7);
+  });
+
+  t.test("hideOneDayCostNote sobrevive a guardar y recargar", function () {
+    var s = freshSettingsSandbox();
+    s.localStorage = createFakeLocalStorage();
+    s.saveSettings({ age: 32, hideOneDayCostNote: true });
+    assert.strictEqual(s.getSettings().hideOneDayCostNote, true);
+  });
+
+  t.test("un booleano en FALSE se conserva -- no es lo mismo que no estar", function () {
+    var s = freshSettingsSandbox();
+    s.localStorage = createFakeLocalStorage();
+    s.saveSettings({ hideOneDayCostNote: false });
+    var leido = s.getSettings();
+    assert.ok("hideOneDayCostNote" in leido, "un false explicito no puede desaparecer");
+    assert.strictEqual(leido.hideOneDayCostNote, false);
+  });
+
+  t.test("un booleano con basura dentro se descarta, no se convierte", function () {
+    var s = freshSettingsSandbox();
+    s.localStorage = createFakeLocalStorage();
+    s.saveSettings({ hideOneDayCostNote: "si" });
+    assert.ok(!("hideOneDayCostNote" in s.getSettings()),
+      "'si' no es un booleano: mejor ausente que interpretado");
+  });
+
 }
 
 module.exports = { run: run };

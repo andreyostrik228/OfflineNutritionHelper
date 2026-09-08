@@ -714,14 +714,26 @@
           <div class="field full plan-days-field">
             <span class="budget-group-label" id="planDaysLabel">Dias de plan</span>
             <div class="plan-days" id="planDays" role="radiogroup" aria-labelledby="planDaysLabel">
-              <button type="button" class="plan-days__btn is-active" data-days="1" role="radio" aria-checked="true">1 d&iacute;a</button>
-              <button type="button" class="plan-days__btn" data-days="3" role="radio" aria-checked="false">3 d&iacute;as</button>
+              <button type="button" class="plan-days__btn" data-days="1" role="radio" aria-checked="false">1 d&iacute;a</button>
+              <button type="button" class="plan-days__btn is-active" data-days="3" role="radio" aria-checked="true">3 d&iacute;as</button>
               <button type="button" class="plan-days__btn" data-days="7" role="radio" aria-checked="false">7 d&iacute;as</button>
             </div>
             <p class="field-hint">
               Cuantos m&aacute;s d&iacute;as, m&aacute;s barato sale CADA d&iacute;a: un paquete se paga
-              una vez y rinde en varios. Medido: a 8&nbsp;&euro;/d&iacute;a, la compra
-              baja de 8,77&nbsp;&euro; por d&iacute;a a 6,10&nbsp;&euro; comprando para 7.
+              una vez y rinde en varios. Medido sobre los cuatro tramos de
+              presupuesto y los tres objetivos: planificar 7 d&iacute;as sale entre
+              un 22% y un 34% m&aacute;s barato por d&iacute;a que planificar 1.
+            </p>
+            <!-- ══ Aviso de "1 dia", ocultable PARA SIEMPRE ══════════════════
+                 Solo aparece con 1 dia elegido. El estado en reposo es
+                 oculto y lo revela app.js; si el script no corriera, lo
+                 unico que pasa es que no se ve una nota informativa -- el
+                 formulario sigue entero (ver HANDOFF 7.2). ══ -->
+            <p class="field-hint plan-days-note" id="oneDayCostNote" hidden>
+              Con 1 d&iacute;a pagas paquetes enteros para un solo d&iacute;a. Medido: sale
+              entre un <strong>22% y un 34% m&aacute;s caro por d&iacute;a</strong> que
+              planificar 7, y con 3 d&iacute;as ya te ahorras entre un 9% y un 15%.
+              <button type="button" class="link-btn" id="oneDayCostNoteDismiss">No volver a mostrarlo</button>
             </p>
           </div>
 

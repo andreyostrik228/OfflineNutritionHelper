@@ -4241,7 +4241,11 @@ body.is-onboarding {
   cursor: pointer;
 }
 
-.onboarding__link {
+/* Boton que se lee como un enlace. Nace en el asistente pero lo usa
+   tambien la nota de "1 dia" del formulario, asi que el nombre generico
+   comparte reglas en vez de duplicarlas. */
+.onboarding__link,
+.link-btn {
   background: none;
   border: none;
   padding: 0;
@@ -4252,7 +4256,8 @@ body.is-onboarding {
   cursor: pointer;
 }
 
-.onboarding__link:hover {
+.onboarding__link:hover,
+.link-btn:hover {
   color: var(--green-deep);
 }
 

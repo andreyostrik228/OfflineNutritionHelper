@@ -36,10 +36,15 @@ var SETTINGS_STORAGE_KEY = "nutritionPlanner.settings.v1";
 // entorno sin navegador) -- mismo patrón que _pantryMemoryState en pantry.js.
 var _settingsMemoryState = null;
 
-var SETTINGS_NUMERIC_FIELDS = ["age", "weight", "height", "activity", "workouts", "budgetCustom", "cookTime", "maxDifficulty"];
+var SETTINGS_NUMERIC_FIELDS = ["age", "weight", "height", "activity", "workouts", "budgetCustom", "cookTime", "maxDifficulty", "planDays"];
 // "store" retirado 2026-08-25 junto con el selector de tienda. Un ajuste
 // guardado de antes simplemente se ignora al sanear -- no rompe nada.
 var SETTINGS_STRING_FIELDS  = ["sex", "goal", "budgetMode", "taste", "wakeTime", "sleepTime", "cuisine", "priority"];
+
+// Ajustes de SI/NO. Hasta 2026-09-08 no habia ninguno, asi que sanear un
+// booleano es nuevo: un  es un valor legitimo y hay que guardarlo,
+// a diferencia de las cadenas vacias y las listas vacias, que se descartan.
+var SETTINGS_BOOLEAN_FIELDS = ["hideOneDayCostNote"];
 
 /**
  * Listas de exclusión del usuario. Son ARRAYS de texto, no cadenas, así
@@ -123,6 +128,9 @@ function sanitizeSettings(raw) {
   SETTINGS_STRING_FIELDS.forEach(function (key) {
     var v = raw[key];
     if (typeof v === "string" && v.length > 0) clean[key] = v;
+  });
+  SETTINGS_BOOLEAN_FIELDS.forEach(function (key) {
+    if (typeof raw[key] === "boolean") clean[key] = raw[key];
   });
   SETTINGS_LIST_FIELDS.forEach(function (key) {
     var list = sanitizeStringList(raw[key]);

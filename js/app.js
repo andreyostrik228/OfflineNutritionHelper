@@ -195,7 +195,47 @@ document.addEventListener("DOMContentLoaded", function () {
   // estado, y no junto a su listener: `var` se eleva pero su VALOR no, así
   // que dejarlo abajo lo hacía `undefined` en runGeneration y el bucle de
   // días no se ejecutaba nunca -- siempre salía un solo día.
-  var planDays = 1;
+  // Por defecto 3 dias, no 1 (2026-09-08). Medido sobre los cuatro tramos de
+  // presupuesto y los tres objetivos: planificar 7 dias sale entre un 22% y un
+  // 34% mas barato POR DIA que planificar 1, y 3 dias ya ahorra entre un 9% y
+  // un 15%. Un paquete se paga una vez y rinde en varios dias; con 1 dia se
+  // paga entero y se aprovecha una vez.
+  var planDays = 3;
+
+  /**
+   * Deja elegidos N dias: la variable, los botones y el aviso de "1 dia".
+   * Un solo sitio lo cambia todo, para que restaurar ajustes guardados y
+   * pulsar un boton no puedan acabar diciendo cosas distintas (el fallo mas
+   * largo de este proyecto salio justo de un estado con varios duenos, ver
+   * HANDOFF 7.3).
+   *
+   * @param {number} dias - 1, 3 o 7; cualquier otra cosa cae en 3.
+   */
+  function seleccionarDiasDePlan(dias) {
+    planDays = (dias === 1 || dias === 3 || dias === 7) ? dias : 3;
+    var group = document.getElementById("planDays");
+    if (group) {
+      Array.prototype.forEach.call(group.querySelectorAll(".plan-days__btn"), function (b) {
+        var on = Number(b.dataset.days) === planDays;
+        b.classList.toggle("is-active", on);
+        b.setAttribute("aria-checked", on ? "true" : "false");
+      });
+    }
+    actualizarAvisoUnDia();
+  }
+
+  /**
+   * El aviso de "1 dia sale mas caro" solo se ve con 1 dia elegido, y nunca
+   * si el usuario pidio no volver a verlo. Se relee el ajuste guardado en
+   * vez de recordarlo en una variable: asi "para siempre" sigue siendo para
+   * siempre despues de recargar.
+   */
+  function actualizarAvisoUnDia() {
+    var nota = document.getElementById("oneDayCostNote");
+    if (!nota) return;
+    var ajustes = (typeof getSettings === "function") ? getSettings() : {};
+    nota.hidden = !(planDays === 1 && ajustes.hideOneDayCostNote !== true);
+  }
 
   // Todos los días del plan actual (1..7). El día 1 es también
   // `lastGeneratedMeals`, que es lo que confirma "Confirmar plan de hoy":
@@ -567,7 +607,12 @@ document.addEventListener("DOMContentLoaded", function () {
         safeInit("settings-save", function () {
           if (typeof saveSettings !== "function") return;
           var scheduleSettings = (typeof readScheduleSettings === "function") ? readScheduleSettings() : {};
-          var toSave = {};
+          // Se parte de lo YA guardado, no de un objeto vacio: saveSettings()
+          // reemplaza el objeto entero, asi que cualquier ajuste que no salga
+          // del formulario (hoy hideOneDayCostNote) se borraria en cada
+          // generacion sin que nadie se entere.
+          var toSave = (typeof getSettings === "function") ? getSettings() : {};
+          delete toSave.updatedAt;
           Object.keys(data).forEach(function (k) { toSave[k] = data[k]; });
           Object.keys(scheduleSettings).forEach(function (k) { toSave[k] = scheduleSettings[k]; });
 
@@ -678,6 +723,8 @@ document.addEventListener("DOMContentLoaded", function () {
       budgetCustomInput.value = "";
     }
     updateBudgetCustomVisibility();
+
+    if (typeof settings.planDays === "number") seleccionarDiasDePlan(settings.planDays);
   }
 
   // ── Botón: resetear ───────────────────────────────────────────────────
@@ -916,13 +963,23 @@ document.addEventListener("DOMContentLoaded", function () {
     group.addEventListener("click", function (e) {
       var btn = e.target.closest(".plan-days__btn");
       if (!btn) return;
-      planDays = Number(btn.dataset.days) || 1;
-      group.querySelectorAll(".plan-days__btn").forEach(function (b) {
-        var on = b === btn;
-        b.classList.toggle("is-active", on);
-        b.setAttribute("aria-checked", on ? "true" : "false");
-      });
+      seleccionarDiasDePlan(Number(btn.dataset.days));
     });
+
+    var ocultar = document.getElementById("oneDayCostNoteDismiss");
+    if (ocultar) {
+      ocultar.addEventListener("click", function () {
+        if (typeof saveSettings === "function" && typeof getSettings === "function") {
+          var s = getSettings();
+          s.hideOneDayCostNote = true;
+          saveSettings(s);
+          if (typeof pushSettingsToCloud === "function") pushSettingsToCloud();
+        }
+        actualizarAvisoUnDia();
+      });
+    }
+
+    actualizarAvisoUnDia();
   });
 
   // Puntos + botón por día. El deslizamiento en sí lo hace el navegador
