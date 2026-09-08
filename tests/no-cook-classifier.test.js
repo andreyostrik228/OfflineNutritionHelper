@@ -119,6 +119,92 @@ function run(t) {
     assert.strictEqual(result, null);
   });
 
+  // ── Coincidencia por PALABRA, no por subcadena (2026-09-08) ──────────
+  // El fallback casaba con indexOf, así que una palabra clave dentro de
+  // otra palabra convertía comida cruda o un dulce en "abrir y comer".
+  // Medido sobre los 2.994 productos del catálogo antes del arreglo:
+  // "cola" casaba dentro de cho-cola-te en 60+ chocolates (refrescos de
+  // cola reales: 23), "queso" dentro de re-queso-n, "pera" dentro de
+  // Des-pera-dos (cerveza) y "tonica" dentro de iso-tonica.
+  //
+  // Es el mismo error de clase que "te" dentro de "textil", que el
+  // pipeline de Python ya cerró con límites de palabra.
+
+  t.test("fallback: 'cola' NO casa dentro de 'chocolate' (60+ chocolates entraban como refresco)", function () {
+    var s = freshClassifierSandbox();
+    assert.strictEqual(s.classifyNoCookProduct(alcampoProduct("Chocolate negro 70% 125 g")), null);
+  });
+
+  t.test("fallback: un refresco de cola DE VERDAD sigue entrando", function () {
+    var s = freshClassifierSandbox();
+    assert.deepStrictEqual(
+      JSON.parse(JSON.stringify(s.classifyNoCookProduct(alcampoProduct("Coca-Cola Zero lata 33 cl")))),
+      { level: 0, unit: "unidad" });
+    assert.deepStrictEqual(
+      JSON.parse(JSON.stringify(s.classifyNoCookProduct(alcampoProduct("Refresco de cola 2 L")))),
+      { level: 0, unit: "unidad" });
+  });
+
+  t.test("fallback: marisco y pescado CRUDOS no son 'abrir y comer'", function () {
+    var s = freshClassifierSandbox();
+    // Los dos casos reales que documenta HANDOFF 7.6: "cola" (refresco)
+    // dentro de "Colas de gambón", y "pera" (fruta) dentro de "emperador".
+    assert.strictEqual(s.classifyNoCookProduct(alcampoProduct("Colas de gambón crudo 400 g")), null);
+    assert.strictEqual(s.classifyNoCookProduct(alcampoProduct("Rodaja de emperador fresca")), null);
+  });
+
+  t.test("fallback: 'queso' NO casa dentro de 'requesón', ni 'tonica' dentro de 'isotonica'", function () {
+    var s = freshClassifierSandbox();
+    assert.strictEqual(s.classifyNoCookProduct(alcampoProduct("Requesón 250 g")), null);
+    // La isotónica SÍ es una bebida lista: entra por su propia palabra.
+    assert.deepStrictEqual(
+      JSON.parse(JSON.stringify(s.classifyNoCookProduct(alcampoProduct("Bebida isotonica naranja 500 ml")))),
+      { level: 0, unit: "unidad" });
+  });
+
+  t.test("fallback: el PLURAL español sigue contando como la misma palabra", function () {
+    var s = freshClassifierSandbox();
+    // Sin esta tolerancia los límites de palabra habrían roto la mayoría
+    // de las coincidencias BUENAS del catálogo: "Manzanas", "Naranjas",
+    // "Fresas", "Kiwis" son como se llaman de verdad los productos.
+    ["Manzanas Golden", "Naranjas", "Fresas 500 g", "Kiwis verdes"].forEach(function (nombre) {
+      var r = s.classifyNoCookProduct(alcampoProduct(nombre));
+      assert.ok(r && r.level === 0, nombre + " deberia seguir entrando como fruta lista, salio: " + JSON.stringify(r));
+    });
+  });
+
+  // ── Palabras clave que no podían casar NUNCA (2026-09-08) ────────────
+  // El texto llega por normalizeText(), que quita los acentos; una clave
+  // escrita CON acento no puede casar jamás. Había 18 así, y 4 sin gemelo
+  // sin acento, o sea agujeros de verdad: "champán", "pañal", "champú" y
+  // "lasaña" (8 productos reales del catálogo, inalcanzables).
+  t.test("las claves con acento no pueden casar: champán, pañal, champú y lasaña eran agujeros", function () {
+    var s = freshClassifierSandbox();
+    assert.strictEqual(s.classifyNoCookProduct(alcampoProduct("Champán brut nature 75 cl")), null, "el champan es alcohol");
+    assert.strictEqual(s.classifyNoCookProduct(alcampoProduct("Pañales talla 4")), null, "los panales no son comida");
+    assert.deepStrictEqual(
+      JSON.parse(JSON.stringify(s.classifyNoCookProduct(alcampoProduct("Lasaña boloñesa 500 g")))),
+      { level: 2, unit: "ración" }, "la lasana es un plato que hay que calentar");
+  });
+
+  t.test("ANTI-REGRESION: ninguna palabra clave puede llevar acento ni mayusculas", function () {
+    var s = freshClassifierSandbox();
+    function normalizada(k) {
+      return k === String(k).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    }
+    var malas = [];
+    s.FALLBACK_EXCLUDE_KEYWORDS.forEach(function (k) { if (!normalizada(k)) malas.push("EXCLUDE:" + k); });
+    s.FALLBACK_READY_KEYWORDS.forEach(function (g) {
+      g.keywords.forEach(function (k) { if (!normalizada(k)) malas.push("READY:" + k); });
+    });
+    assert.deepStrictEqual(malas, [],
+      "estas claves nunca podrian casar, porque el texto llega sin acentos: " + malas.join(", "));
+  });
+
+  t.test("'ron' se excluye tambien al principio del nombre (antes exigia espacios alrededor)", function () {
+    var s = freshClassifierSandbox();
+    assert.strictEqual(s.classifyNoCookProduct(alcampoProduct("Ron añejo 70 cl")), null);
+  });
 }
 
 module.exports = { run: run };

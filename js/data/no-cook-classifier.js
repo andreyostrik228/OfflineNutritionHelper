@@ -213,18 +213,21 @@ var FALLBACK_EXCLUDE_KEYWORDS = [
   // arriba, pero por nombre (aquí no hay categoría fiable en la que
   // apoyarse).
   "vino", "cerveza", "cava", "licor", "whisky", "vodka", "ginebra",
-  "tequila", "cóctel", "coctel", "sidra", "champagne", "champán", " ron ",
+  "tequila", "coctel", "sidra", "champagne", "champan", "ron",
   // Ingredientes/materias primas crudas -- necesitan cocinar de verdad,
   // no son "un producto listo para una comida" por sí solos. "masa" NO
   // vive en esta lista a propósito -- se comprueba aparte en
   // classifyByNameFallback() con una excepción para "masa madre", ver
   // ahí el razonamiento completo.
   "harina", "levadura", "para guisar", "para asar", "para freir",
-  "para freír", "para hervir", "para cocido", "carne picada", "filete de",
+  "para hervir", "para cocido", "carne picada", "filete de",
+  // Crudo = hay que cocinarlo, sea lo que sea. Cierra el caso real de
+  // "Colas de gambon crudo", que entraba como refresco de cola.
+  "crudo", "cruda",
   "chuleta", "solomillo", "aceite", "vinagre", "especias",
   // Higiene/farmacia/bebé -- fugas de categorización del scraping, no
   // son comida (mismo motivo que NO_COOK_EXCLUDED_CATEGORIES arriba).
-  "pañal", "champú", "gel de ducha", "desodorante", "pasta de dientes",
+  "panal", "champu", "gel de ducha", "desodorante", "pasta de dientes",
 ];
 
 // Grupos ordenados por especificidad -- el primero que matchee gana.
@@ -235,20 +238,20 @@ var FALLBACK_EXCLUDE_KEYWORDS = [
 // es una porción de queso suelta) -- confirmado por un test que
 // primero falló con el orden contrario antes de reordenar esto.
 var FALLBACK_READY_KEYWORDS = [
-  { keywords: ["pizza", "lasaña", "lasagna", "canelones", "croqueta", "empanadilla", "nugget"], level: 2, unit: "ración" },
+  { keywords: ["pizza", "lasana", "lasagna", "canelones", "croqueta", "empanadilla", "nugget"], level: 2, unit: "ración" },
   { keywords: ["sopa", "crema de", "caldo"], level: 2, unit: "ración" },
   { keywords: ["hummus", "guacamole"], level: 1, unit: "tarrina" },
   { keywords: ["ensalada preparada", "ensalada lista"], level: 1, unit: "bolsa" },
-  { keywords: ["sandwich", "sándwich", "bocadillo"], level: 1, unit: "unidad" },
-  { keywords: ["yogur", "yogourt", "kefir", "kéfir", "cuajada", "petit suisse"], level: 0, unit: "unidad" },
-  { keywords: ["jamon cocido", "jamón cocido", "jamon serrano", "jamón serrano", "fiambre", "salchichon", "salchichón", "chorizo", "mortadela", "lomo embuchado", "pate", "paté"], level: 0, unit: "porción" },
+  { keywords: ["sandwich", "bocadillo"], level: 1, unit: "unidad" },
+  { keywords: ["yogur", "yogourt", "kefir", "cuajada", "petit suisse"], level: 0, unit: "unidad" },
+  { keywords: ["jamon cocido", "jamon serrano", "fiambre", "salchichon", "chorizo", "mortadela", "lomo embuchado", "pate"], level: 0, unit: "porción" },
   { keywords: ["queso"], level: 0, unit: "porción" },
-  { keywords: ["manzana", "platano", "plátano", "banana", "pera", "naranja", "mandarina", "uva", "fresa", "melocoton", "melocotón", "kiwi", "sandia", "sandía", "melon", "melón", "ciruela", "nectarina", "aguacate"], level: 0, unit: "unidad" },
+  { keywords: ["manzana", "platano", "banana", "pera", "naranja", "mandarina", "uva", "fresa", "melocoton", "kiwi", "sandia", "melon", "ciruela", "nectarina", "aguacate"], level: 0, unit: "unidad" },
   { keywords: ["frutos secos", "almendras", "nueces", "anacardos", "pistachos", "cacahuetes", "avellanas"], level: 0, unit: "puñado" },
   { keywords: ["pan de molde", "pan bimbo", "pan tostado", "biscote"], level: 0, unit: "rebanada" },
   { keywords: ["galleta", "cereales"], level: 1, unit: "ración" },
   { keywords: ["zumo", "batido", "smoothie"], level: 0, unit: "vaso" },
-  { keywords: ["agua mineral", "agua con gas", "refresco", "cola", "fanta", "tonica", "tónica", "limonada", "isotonica", "isotónica"], level: 0, unit: "unidad" },
+  { keywords: ["agua mineral", "agua con gas", "refresco", "coca cola", "coca-cola", "pepsi", "fanta", "tonica", "limonada", "isotonica"], level: 0, unit: "unidad" },
 ];
 
 /**
@@ -267,22 +270,72 @@ function classifyByNameFallback(name) {
   // "masa para pizza"/"masa de pizza" no cubren variantes reales de
   // nombre de producto ("Masa rectangular maxi para pizza"), así que
   // se comprueba la palabra suelta en vez de una lista de frases.
-  if (text.indexOf("masa") !== -1 && text.indexOf("masa madre") === -1) {
+  if (containsKeyword(text, "masa") && text.indexOf("masa madre") === -1) {
     return null;
   }
 
-  if (FALLBACK_EXCLUDE_KEYWORDS.some(function (kw) { return text.indexOf(kw) !== -1; })) {
+  if (FALLBACK_EXCLUDE_KEYWORDS.some(function (kw) { return containsKeyword(text, kw); })) {
     return null;
   }
 
   for (var i = 0; i < FALLBACK_READY_KEYWORDS.length; i++) {
     var group = FALLBACK_READY_KEYWORDS[i];
-    if (group.keywords.some(function (kw) { return text.indexOf(kw) !== -1; })) {
+    if (group.keywords.some(function (kw) { return containsKeyword(text, kw); })) {
       return { level: group.level, unit: group.unit };
     }
   }
 
   return null;
+}
+
+/**
+ * ¿Aparece `keyword` en `text` como PALABRA, no como trozo de otra?
+ *
+ * `text` viene ya de normalizeText() (minúsculas, sin acentos).
+ *
+ * Existe porque la coincidencia por subcadena convertía comida en otra
+ * cosa, y no en casos raros (medido sobre los 2.994 productos del
+ * catálogo el 2026-09-08):
+ *   - "cola" casaba dentro de cho-**cola**-te: 60+ chocolates entraban
+ *     como refresco de nivel 0, "abrir y beber". Refrescos de cola de
+ *     verdad hay 23.
+ *   - "queso" dentro de re-**queso**-n, "pera" dentro de Des-**pera**-dos
+ *     (una cerveza), "tonica" dentro de iso-**tonica**.
+ * Es el mismo error de clase que "te" dentro de "textil", que el pipeline
+ * de Python ya cerró con límites de palabra.
+ *
+ * El plural español SÍ cuenta como la misma palabra ("manzanas" es
+ * "manzana"): sin esa tolerancia se perderían las coincidencias buenas,
+ * que en el catálogo son mayoría — "Manzanas Golden", "Naranjas",
+ * "Fresas", "Kiwis verdes".
+ *
+ * @param {string} text    - ya normalizado
+ * @param {string} keyword - ya normalizado (lo exige un test)
+ * @returns {boolean}
+ */
+function containsKeyword(text, keyword) {
+  if (!keyword) return false;
+  var i = text.indexOf(keyword);
+  while (i !== -1) {
+    var antes = (i === 0) ? "" : text.charAt(i - 1);
+    var fin = i + keyword.length;
+    if (!esLetraOCifra(antes) && terminaPalabra(text, fin)) return true;
+    i = text.indexOf(keyword, i + 1);
+  }
+  return false;
+}
+
+function esLetraOCifra(c) {
+  return c >= "a" && c <= "z" || c >= "0" && c <= "9";
+}
+
+/** Fin de palabra, admitiendo el plural español: -s y -es. */
+function terminaPalabra(text, fin) {
+  if (!esLetraOCifra(text.charAt(fin))) return true;
+  if (text.charAt(fin) === "s" && !esLetraOCifra(text.charAt(fin + 1))) return true;
+  if (text.charAt(fin) === "e" && text.charAt(fin + 1) === "s"
+      && !esLetraOCifra(text.charAt(fin + 2))) return true;
+  return false;
 }
 
 function normalizeText(s) {
