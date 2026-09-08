@@ -162,6 +162,8 @@ function construir(c, categoria) {
 var MODO = process.argv[8] || "mixto";
 var cuota = (MODO === "principales")
   ? { comida: Math.round(CUANTOS * 0.55), cena: CUANTOS - Math.round(CUANTOS * 0.55), desayuno: 0, snack: 0 }
+  : (MODO === "ligeros")
+  ? { comida: 0, cena: 0, desayuno: Math.round(CUANTOS * 0.6), snack: CUANTOS - Math.round(CUANTOS * 0.6) }
   : {
       comida: Math.round(CUANTOS * 0.35),
       cena: Math.round(CUANTOS * 0.31),
@@ -212,12 +214,21 @@ function percentilDensidad(cat, pct) {
     .sort(function (a, b) { return a - b; });
   return v[Math.floor(v.length * pct)];
 }
+// Un valor > 1 se interpreta como suelo ABSOLUTO en g de proteina por cada
+// 100 kcal, no como percentil. Hace falta porque un percentil siempre mide
+// contra lo que YA hay, y para el desayuno lo que hay es justo el problema:
+// un dia de corte necesita 8,9 g/100kcal y solo 8 de los 67 desayunos del
+// catalogo llegan. Pedir "el p75 de los desayunos" seguiria pidiendo poco.
 var PCTL_DENS = Number(process.argv[7] || 0.75);
+var ABSOLUTO = PCTL_DENS > 1;
+function suelo(cat) {
+  return ABSOLUTO ? (PCTL_DENS / 100) : percentilDensidad(cat, PCTL_DENS);
+}
 var SUELO_DENSIDAD = {
-  comida: percentilDensidad("comida", PCTL_DENS),
-  cena: percentilDensidad("cena", PCTL_DENS),
-  desayuno: percentilDensidad("desayuno", PCTL_DENS),
-  snack: percentilDensidad("snack", PCTL_DENS)
+  comida: suelo("comida"),
+  cena: suelo("cena"),
+  desayuno: suelo("desayuno"),
+  snack: suelo("snack")
 };
 
 var CUOTA_CAROS = Number(process.argv[6] || 4);

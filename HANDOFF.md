@@ -399,6 +399,58 @@ repeticiones y suelo de proteína por euro. Ninguno lo arregló. Lo arregló
 la proteína **por kcal**, que es lo que de verdad decide un día de corte.
 Cuatro intentos fallidos porque medía la cosa parecida en vez de la cosa.
 
+### 7.9 El perfil de CORTE falla la mitad de los dias, y dos arreglos evidentes NO lo arreglan
+
+Con presupuesto Ajustado (12 EUR), el perfil de corte incumple el objetivo
+de proteina en el **53% de los dias**: 110,6 g de media frente a 136,4. Es
+el fallo de producto mas grande que queda, y esta escrito aqui porque dos
+hipotesis razonables ya se probaron y **las dos fallaron medidas**. Que no
+las repita nadie sin leer esto.
+
+**Hipotesis 1: la penalizacion de proteina es simetrica y no deberia.**
+`macroFitScore()` usa `Math.abs(protein - target.protein)`, asi que pasarse
+de proteina cuesta lo mismo que quedarse corto. Suena mal para un dia de
+corte. Se probo con el exceso al 35% del coste del defecto, medido con
+`scripts/generar-platos/probar_motor.js` a 200 semillas:
+
+```
+  corte     prot 110,6 -> 111,2   violan 53,0% -> 51,5%   (dentro del ruido)
+  volumen   prot 214,4 -> 229,4   perfect 64,0% -> 54,5%  (claramente peor)
+```
+
+Casi no mueve el perfil que pretendia arreglar y estropea volumen, que ya se
+pasaba de proteina un 25% y pasa a un 34%. **Revertido.** La razon de fondo:
+el score es POR TOMA y no sabe cuanto lleva acumulado el dia, asi que
+aflojar el exceso ayuda igual al que ya va sobrado. Un arreglo de verdad
+tendria que ser consciente del dia, no de la toma.
+
+**Hipotesis 2: faltan desayunos densos.** Es cierto que faltan -- un dia de
+corte exige 8,9 g de proteina por cada 100 kcal y solo **8 de los 67**
+desayunos del catalogo llegan, mientras que en comida y cena lo hacen mas de
+la mitad. El desayuno es uno por plan, asi que el dia empieza en un agujero.
+Se generaron desayunos con suelo ABSOLUTO de densidad y salio al reves:
+
+```
+  base                     prot 110,6   violan 53,0%   tipos protein x106
+  +17 desayunos densos     prot 112,5   violan 62,0%   tipos protein x124
+```
+
+La media de proteina SUBE y las violaciones tambien. La explicacion esta en
+una cifra: los desayunos nuevos tienen **250 kcal de mediana frente a 389**
+del catalogo. Un desayuno de 250 kcal al 9% da 22 g; uno de 389 al 6,5% da
+25 g. **Optimice el cociente y perdi la masa.** Denso y pequeno es peor que
+flojo y grande cuando lo que falta son gramos.
+
+Asi que el suelo correcto para los platos ligeros son **gramos absolutos de
+proteina**, no densidad -- que es justo lo que ya hace el generador con
+`percentil25Proteina`. Lo que falta por probar es subir ESE suelo para
+desayuno sin encoger las raciones, o directamente raciones mas grandes.
+
+Y la leccion transferible: **cuando el objetivo es una cantidad, un ratio no
+es un buen proxy.** Ambos experimentos subieron la media y empeoraron la
+tasa de fallo, que es la firma de haber ensanchado la distribucion en vez de
+desplazarla.
+
 ---
 
 ## 8. Lo que queda abierto
@@ -451,6 +503,10 @@ Cuatro intentos fallidos porque medía la cosa parecida en vez de la cosa.
   ```
   `probar_lote.js` mide ANTES de escribir nada; `medir_perfiles.js HEAD`
   confirma que lo aplicado da lo mismo que lo probado. Si no coinciden, para.
+- **El perfil de CORTE falla el 53% de los días.** Es el mayor agujero de
+  producto que queda. Dos arreglos evidentes ya se midieron y fallaron: ver
+  §7.9 antes de tocar nada. La pista viva es el tamaño de las raciones de
+  desayuno, no su densidad.
 - **DESAYUNO y SNACK están CONGELADOS** hasta entender lo de §7.8 bis. Son
   pools pequeños (78 y 70) donde el motor se apoya en pocos ganadores, y
   meter platos ligeros y baratos ahí costó 14 puntos al perfil de corte.
