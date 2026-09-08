@@ -60,6 +60,7 @@ var suites = [
   "shopping-cost.test",
   "budget-mode.test",
   "plan-generator.characterization.test",
+  "plan-report.test",
   "ingredient-packaging-coverage.test",
   "pantry.test",
   "expiry.test",

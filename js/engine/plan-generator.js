@@ -1259,6 +1259,83 @@ function buildCompromiseReport(attempt, profile, data) {
   };
 }
 
+// ── Contar al usuario lo que el informe ya sabe ──────────────────────────
+
+/**
+ * Traduce un `report` a texto en español para la interfaz.
+ *
+ * Vive AQUÍ, pegado a quien escribe el informe, y no en `js/ui/`, por la
+ * regla de "una cosa, un dueño": el motor es el único que sabe qué
+ * prometió el plan y en qué falló, así que también dice cómo se cuenta.
+ * La interfaz solo pinta la lista que salga de aquí.
+ *
+ * Existe porque estaba pasando justo lo contrario (medido el 2026-09-08):
+ * el motor redactaba una explicación honesta -- "no ha sido posible montar
+ * un plan que quepa en 8 €, el más ajustado necesita comprar 9,48 €" -- y
+ * NADIE la pintaba. `report.headline`, `report.status`, `violations` y
+ * `relaxations` no se leían en ningún fichero de `js/ui/`; `app.js` guarda
+ * `lastGeneratedReport` y solo le saca `total` y `store`. El preset de 8 €
+ * incumple algo el 100% de los días en los tres perfiles medidos, y el
+ * usuario no veía ni una palabra de ello.
+ *
+ * El aviso de presupuesto NO se repite en la lista: cuando hay problema de
+ * presupuesto, `headline` ya lo explica con las dos cifras que importan
+ * (lo que cuesta comprar y lo que se usa de verdad), y repetirlo debajo
+ * solo añade ruido.
+ *
+ * @param {object} report - el `report` que devuelve generateDietPlan()
+ * @returns {{ status: string, headline: string, avisos: string[], ajustes: string[] }}
+ */
+function describePlanReport(report) {
+  if (!report) return { status: "unavailable", headline: "", avisos: [], ajustes: [] };
+
+  var etiquetaToma = {};
+  MEAL_DEFS.forEach(function (d) { etiquetaToma[d.key] = d.label; });
+  function toma(key) { return etiquetaToma[key] || key; }
+
+  var avisos = [];
+  (report.violations || []).forEach(function (v) {
+    switch (v.type) {
+      case "budget":
+      case "budget_infeasible":
+        // Ya lo cuenta `headline`, con más detalle del que cabe aquí.
+        break;
+      case "data_unavailable":
+        avisos.push("No hay platos disponibles para " + v.category + ".");
+        break;
+      case "menu_simplified":
+        avisos.push("En " + v.category + " hubo que simplificar el plato para que cupiera en el presupuesto.");
+        break;
+      case "time":
+        avisos.push(toma(v.meal) + " necesita " + v.exceededBy + " min más de los que pediste.");
+        break;
+      case "cap25":
+        avisos.push("Un ingrediente de " + toma(v.meal).toLowerCase() + " (" + v.item +
+          ") aporta más del 25% de las calorías del día.");
+        break;
+      case "calories":
+        avisos.push("Las calorías del día se desvían un " + v.deltaPct + "% del objetivo.");
+        break;
+      case "protein":
+        avisos.push("Faltan " + v.deltaG + " g de proteína para llegar al objetivo del día.");
+        break;
+      default:
+        // Un tipo nuevo no puede desaparecer en silencio: se enseña crudo.
+        avisos.push("Aviso sin describir: " + v.type + ".");
+    }
+  });
+
+  var ajustes = (report.relaxations || []).map(function (r) { return r.note; })
+    .filter(function (n) { return !!n; });
+
+  return {
+    status: report.status,
+    headline: report.headline || "",
+    avisos: avisos,
+    ajustes: ajustes
+  };
+}
+
 // ── Rebalanceador (sin cambios respecto a la versión anterior) ────────────
 
 /**

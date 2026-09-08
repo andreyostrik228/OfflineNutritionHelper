@@ -94,47 +94,63 @@ function renderInsights(profile, result, data) {
 
 /**
  * Muestra u oculta el bloque amarillo de advertencias según el plan.
- * Comprueba: presupuesto, desviación calórica, tiempo de cocina,
- * presupuesto muy bajo y diversidad de proteínas/carbohidratos.
+ *
+ * Lo primero y lo que MANDA es el informe del motor (`describePlanReport`
+ * en plan-generator.js). Después, y solo después, van las notas propias de
+ * la interfaz, que son CONSEJOS, no veredictos: comprar para varios días,
+ * poco tiempo de cocina, presupuesto justo, poca variedad de fuentes.
+ *
+ * Por qué se reordenó así (2026-09-08): esta función se inventaba sus
+ * propias reglas para juzgar el plan, en paralelo a las del motor, y las
+ * dos discrepaban. Medido sobre 200 semillas por celda: en el preset de
+ * 8 € el motor declaraba que faltaban 43,1 g de proteína en 200 de 200
+ * días —y en volumen, en 104— y aquí no se mencionaba la proteína NI UNA
+ * vez; lo único que se decía era "presupuesto ajustado: menos variedad".
+ * El motor es el único que sabe qué prometió el plan y en qué falló.
+ *
+ * Se quitaron dos mensajes por ser duplicados peores de una violación que
+ * el motor ya emite, con el MISMO umbral o uno más flojo:
+ *   - "la compra sale por encima" -> violación `budget`, idéntica
+ *     condición (`purchaseCost > budget + 0.01`), pero el headline del
+ *     motor además distingue lo que cuesta COMPRAR de lo que se USA.
+ *   - "las calorías no cuadran del todo" -> violación `calories`, que
+ *     salta al 15% de desvío; aquí el umbral era de 600 kcal absolutas.
+ * El consejo de comprar para varios días SÍ se queda: es un consejo, y el
+ * motor no da consejos.
  *
  * @param {object} profile  – { calories }
- * @param {object} result   – { meals[], total }
+ * @param {object} result   – { meals[], total, report }
  * @param {object} data     – { budget, cookTime }
  */
 function renderWarnings(profile, result, data) {
   var messages = [];
-  var total    = result.total;
 
-  var purchaseCost = typeof total.purchaseCost === "number" ? total.purchaseCost : total.cost;
-  if (purchaseCost > data.budget + 0.01) {
-    // Corto a proposito: la cifra es lo unico que importa aqui. La receta
-    // de que hacer (ampliar presupuesto, marcar despensa, mas tiempo) ya
-    // esta en los propios controles, y repetirla en cada plan ajustado
-    // era lo que convertia este aviso en un parrafo.
-    messages.push("La compra sale a €" + (Math.round(purchaseCost * 100) / 100) +
-                  ", algo por encima de tu €" + data.budget + ".");
-
-    // Y si ademas es un plan de UN dia, el consejo mas util no es "gasta
-    // mas": es comprar para varios dias. Un paquete se paga una vez y
-    // rinde en todos ellos. Medido sobre 8 planes por punto con el
-    // catalogo actual: a 8 EUR/dia la compra baja de 8,77 a 6,10 por dia
-    // comprando para siete, y la proporcion se mantiene en 12 y 16 EUR
-    // (~30% menos). Solo se dice AQUI, cuando el presupuesto no llega y
-    // el plan es de un dia: en cualquier otro momento seria ruido.
-    if ((data.planDays || 1) === 1) {
-      messages.push("Comprando para 3 o 7 días sale más barato por día.");
-    }
+  // ── 1. Lo que dice el motor ─────────────────────────────────────────
+  var informe = (typeof describePlanReport === "function" && result.report)
+    ? describePlanReport(result.report)
+    : null;
+  var problemaDePresupuesto = false;
+  if (informe && informe.status !== "perfect") {
+    if (informe.headline) messages.push(informe.headline);
+    informe.avisos.forEach(function (aviso) { messages.push(aviso); });
+    // Y QUÉ se relajó. Sin esto, "ajustando algunas preferencias" no dice
+    // cuáles, que es justo lo único que el usuario puede cambiar.
+    informe.ajustes.forEach(function (ajuste) { messages.push(ajuste); });
   }
+  (result.report && result.report.violations || []).forEach(function (v) {
+    if (v.type === "budget" || v.type === "budget_infeasible") problemaDePresupuesto = true;
+  });
 
-  // Umbral subido de 220 a 600 kcal: con objetivos de volumen altos, la
-  // raci\u00f3n m\u00e1xima realista por plato (1.35x, tope del 25% diario) deja un
-  // techo de ~3000-3300 kcal/d\u00eda \u2014 por debajo de eso, un desv\u00edo de
-  // 600-900 kcal es la norma estructural, no una rareza puntual. A 220
-  // este aviso sal\u00eda en pr\u00e1cticamente cualquier plan de volumen, que
-  // dejaba de ser una se\u00f1al \u00fatil. Con 600, solo avisa cuando el desv\u00edo es
-  // genuinamente grande.
-  if (Math.abs(profile.calories - total.kcal) > 600) {
-    messages.push("Las calor\u00edas no cuadran del todo con este tiempo y presupuesto.");
+  // ── 2. Consejos de la interfaz ──────────────────────────────────────
+  // Si el presupuesto no llega y el plan es de UN día, el consejo más útil
+  // no es "gasta más": es comprar para varios días. Un paquete se paga una
+  // vez y rinde en todos ellos. Medido sobre 8 planes por punto con el
+  // catálogo actual: a 8 EUR/día la compra baja de 8,77 a 6,10 por día
+  // comprando para siete, y la proporción se mantiene en 12 y 16 EUR
+  // (~30% menos). Solo se dice AQUÍ, cuando el presupuesto no llega y el
+  // plan es de un día: en cualquier otro momento sería ruido.
+  if (problemaDePresupuesto && (data.planDays || 1) === 1) {
+    messages.push("Comprando para 3 o 7 días sale más barato por día.");
   }
 
   if (data.cookTime <= 10) {
