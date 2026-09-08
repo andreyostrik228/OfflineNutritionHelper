@@ -249,6 +249,101 @@ function run(t) {
     assert.ok(maintain.protein < recomp.protein * 0.8,
       "maintain deberia pedir mucha menos proteina que recomp: " + maintain.protein + " vs " + recomp.protein);
   });
+
+  // ── Margen por dias de plan (2026-09-08) ──────────────────────────────
+  // El motor genera cada dia por separado y comprobaba su presupuesto como
+  // si ese dia fuera a la tienda solo. Es pesimista: medido sobre los
+  // cuatro tramos y los tres objetivos, planificar 7 dias sale entre un 22%
+  // y un 34% mas barato POR DIA, porque un paquete se paga una vez y rinde
+  // en varios. Ahora un dia dentro de un plan de N puede gastar algo mas.
+  //
+  // Lo que estos tests protegen es la PROMESA, no la formula: la compra
+  // real del plan, repartida entre sus dias, no puede superar lo que el
+  // usuario eligio.
+
+  t.test("budgetForPlanDays(): 1 dia no cambia nada; 3 y 7 dan el margen medido", function () {
+    var s = freshFullEngineSandbox();
+    assert.strictEqual(s.budgetForPlanDays(12, 1), 12, "un plan de 1 dia no comparte ningun paquete");
+    assert.strictEqual(s.budgetForPlanDays(12, 3), 12.36, "x1,03: el mayor margen con 0% de planes por encima");
+    assert.strictEqual(s.budgetForPlanDays(12, 7), 13.8, "x1,15: idem a 7 dias");
+  });
+
+  t.test("budgetForPlanDays(): sin dato de dias se comporta como 1 dia", function () {
+    var s = freshFullEngineSandbox();
+    [undefined, null, 0, -3, NaN, "7"].forEach(function (v) {
+      assert.strictEqual(s.budgetForPlanDays(12, v), 12, "con " + JSON.stringify(v) + " no puede ampliarse el margen");
+    });
+  });
+
+  // El GUARDIAN de verdad, y es determinista: el margen no puede pasar del
+  // mas alto que se midio seguro. Con x1,35 a 7 dias ya se pasaba el 5% de
+  // los planes, asi que ampliar la pendiente "un poco mas" tiene que doler
+  // aqui y no en la compra de alguien.
+  t.test("el margen por dias NUNCA pasa del x1,15 que se midio seguro", function () {
+    var s = freshFullEngineSandbox();
+    [1, 2, 3, 5, 7, 14, 30, 365].forEach(function (dias) {
+      var m = s.budgetForPlanDays(12, dias);
+      assert.ok(m <= 12 * 1.15 + 0.001,
+        dias + " dias dan un margen de " + m + " EUR, por encima del x1,15 medido como seguro");
+      assert.ok(m >= 12, dias + " dias no pueden dar MENOS de lo elegido");
+    });
+  });
+
+  // Comprobacion de humo de la promesa: si se piden 12 EUR al dia, la
+  // compra de la semana dividida entre 7 no puede pasar de 12.
+  //
+  // OJO con lo que este test NO hace: con 8 semillas y una tasa de fallo
+  // del ~5% (la que da un margen x1,35) tiene dos tercios de posibilidades
+  // de no ver nada. Comprobado por mutacion: subir la pendiente a 0,06 NO
+  // lo hace fallar. Quien de verdad protege la promesa es el test de arriba
+  // y la medicion escrita junto a PLAN_DAYS_BUDGET_SLOPE; esto solo detecta
+  // una rotura gorda.
+  t.test("humo: la compra de un plan de 7 dias, por dia, no supera lo elegido", function () {
+    var s = freshFullEngineSandbox();
+    var seedRandomInContext = require("./lib/seed-random").seedRandomInContext;
+    var profile = s.calculateProfile({
+      age: 32, sex: "female", weight: 62, height: 165, activity: 1.375, workouts: 3, goal: "cut"
+    });
+    var tope = 12;
+    var peor = 0;
+    for (var semilla = 1; semilla <= 8; semilla++) {
+      seedRandomInContext(s, semilla);
+      var data = { budget: tope, cookTime: 20, taste: "mixed", store: "mercadona", planDays: 7 };
+      var todas = [];
+      for (var d = 0; d < 7; d++) {
+        data.dayIndex = d;
+        var r = s.generateDietPlan(profile, data);
+        r.meals.forEach(function (m) { todas.push(m); });
+      }
+      var compra = s.computeDayPurchaseCost(todas, "mercadona");
+      var porDia = compra.lines.reduce(function (a, l) { return a + l.purchaseCost; }, 0) / 7;
+      if (porDia > peor) peor = porDia;
+    }
+    assert.ok(peor <= tope,
+      "el plan mas caro de los 8 sale a " + peor.toFixed(2) + " EUR/dia, por encima de los " + tope + " elegidos");
+  });
+
+  t.test("el aviso de presupuesto nombra lo que el usuario ELIGIO, no el margen interno", function () {
+    var s = freshFullEngineSandbox();
+    var profile = s.calculateProfile({
+      age: 24, sex: "male", weight: 90, height: 188, activity: 1.725, workouts: 6, goal: "bulk"
+    });
+    // 5 EUR para 3.871 kcal no cabe ni con el margen de 7 dias (5,75 EUR).
+    //
+    // Aqui iban 8 EUR y el test fallo: con el margen por dias, 8 EUR para un
+    // dia de volumen YA CABEN planificando la semana, cuando en un plan de un
+    // solo dia no cabian nunca. Es el cambio funcionando, asi que el caso se
+    // baja a 5 EUR en vez de aflojar la comprobacion.
+    var r = s.generateDietPlan(profile, {
+      budget: 5, cookTime: 35, taste: "savory", store: "mercadona", planDays: 7
+    });
+    var titular = String(r.report.headline);
+    assert.ok(/5 € al día/.test(titular),
+      "debe nombrar los 5 € que se eligieron: " + titular);
+    assert.ok(/7 días/.test(titular),
+      "y explicar que el margen sube porque se compra para 7 días: " + titular);
+  });
+
 }
 
 module.exports = { run: run };

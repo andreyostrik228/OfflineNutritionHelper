@@ -350,6 +350,180 @@ var PACKAGE_TRIM_RATIO = 0.20;
  */
 var SEQUENCING_BLEND_RATIO = 0.5;
 
+/**
+ * Cuanto MAS puede gastar un dia cuando la compra es para varios dias.
+ *
+ * El motor genera cada dia por separado y comprobaba su presupuesto como si
+ * ese dia fuera a la tienda solo. Eso es PESIMISTA y se nota: medido el
+ * 2026-09-08 sobre los cuatro tramos y los tres objetivos, planificar 7
+ * dias sale entre un 22% y un 34% mas barato POR DIA, porque un paquete se
+ * paga una vez y rinde en varios. En el perfil de corte eso son unos 4 EUR
+ * al dia que existen de verdad y que no se gastaban nunca -- y son los que
+ * dejaban la comida en 2,6 platos alcanzables de 162.
+ *
+ * ── Lo que se probo ANTES y se tiro ────────────────────────────────────
+ * Arrastrar los gramos ya comprados de un dia al siguiente. Suena mas
+ * correcto y es peor, porque enforcePurchaseBudgetCap() y
+ * computeDayPurchaseCost() valoran el dia EN SOLITARIO: el selector veia
+ * coste casi cero y elegia caro, y luego el informe recalculaba el dia
+ * entero a precio completo. Medido: las violaciones de recomp pasaban del
+ * 5,0% al 62,5% y los dias "perfect" del 64,3% al 19,3%. Descartado.
+ *
+ * ── De donde salen estas dos cifras ────────────────────────────────────
+ * No son una constante a ojo: son el margen MAS ALTO con el que NINGUN plan
+ * supera el presupuesto que el usuario eligio, buscado a mano.
+ *
+ *   3 dias  x1,03   0% de planes por encima (con x1,05 ya se pasa el 1,8%
+ *                   de los de volumen, y en silencio: el dia cabe en su
+ *                   propio techo, es la semana la que no)
+ *   7 dias  x1,15   0% de planes por encima (con x1,35, el 5%)
+ *
+ * Entre 3 y 7 se interpola, y fuera de ahi se sujeta. NO se extrapola: un
+ * test pidiendo 14 dias descubrio que la formula lineal daba x1,32, muy por
+ * encima de lo medido.
+ *
+ * ── Lo que gana, medido (110 planes por celda) ─────────────────────────
+ *   3 dias   corte    perfect 31,8% -> 41,2%   volumen 59,1% -> 63,6%
+ *   7 dias   corte    perfect 36,3% -> 54,6%   violaciones 17,7% -> 4,3%
+ *            volumen  perfect 62,9% -> 65,4%
+ *   recomp queda igual dentro del ruido en los dos.
+ *
+ * Si cambia el catalogo o los envases, esto se vuelve a medir: es una
+ * propiedad de estos datos, no una constante universal.
+ */
+var PLAN_DAYS_BUDGET_3 = 1.03;
+var PLAN_DAYS_BUDGET_7 = 1.15;
+
+/**
+ * Presupuesto que se le permite a UN dia dentro de un plan de N dias.
+ * @param {number} budget - el que eligio el usuario, por dia
+ * @param {number} planDays
+ * @returns {number}
+ */
+function budgetForPlanDays(budget, planDays) {
+  var dias = (typeof planDays === "number" && isFinite(planDays) && planDays > 1)
+    ? Math.floor(planDays) : 1;
+  if (dias <= 1) return budget;
+
+  var factor;
+  if (dias <= 3) {
+    // De 1 (sin margen) a 3 (medido), en linea recta.
+    factor = 1 + (PLAN_DAYS_BUDGET_3 - 1) * (dias - 1) / 2;
+  } else if (dias >= 7) {
+    // Mas alla de 7 no se ha medido nada: se queda en lo ultimo que si.
+    factor = PLAN_DAYS_BUDGET_7;
+  } else {
+    factor = PLAN_DAYS_BUDGET_3
+      + (PLAN_DAYS_BUDGET_7 - PLAN_DAYS_BUDGET_3) * (dias - 3) / 4;
+  }
+  return round2(budget * factor);
+}
+
+/**
+ * Tomas del día según el presupuesto: las 5 de siempre, o 3 sin snacks
+ * cuando el dinero aprieta. Los ratios se renormalizan para que el día
+ * siga sumando el 100% de las calorías objetivo -- comer 3 veces no es
+ * comer menos, es repartir lo mismo en menos platos.
+ *
+ * Y 3 tomas tambien cuando el OBJETIVO es muy proteico y el dinero aprieta
+ * (ver DENSE_TARGET_PROTEIN): ahi los snacks no son un extra, son dos huecos
+ * sin proteina que el dia no puede permitirse.
+ *
+ * @param {number} budget
+ * @param {object} [profile] - perfil calculado; sin el solo se aplica la
+ *   regla de presupuesto, que es el comportamiento historico.
+ * @returns {object[]} misma forma que MEAL_DEFS
+ */
+function mealDefsForBudget(budget, profile) {
+  var conPresupuesto = (typeof budget === "number" && isFinite(budget));
+  var porDinero = conPresupuesto && budget < NO_SNACK_BUDGET_THRESHOLD;
+  var densidad = (profile && profile.calories > 0 && typeof profile.protein === "number")
+    ? (100 * profile.protein / profile.calories) : 0;
+  var porDensidad = densidad >= DENSE_TARGET_PROTEIN
+    && conPresupuesto && budget < DENSE_TARGET_BUDGET_CEILING;
+  if (!porDinero && !porDensidad) {
+    return MEAL_DEFS;
+  }
+  var three = MEAL_DEFS.filter(function (d) {
+    return d.key === "breakfast" || d.key === "lunch" || d.key === "dinner";
+  });
+  var sum = three.reduce(function (a, d) { return a + d.ratio; }, 0);
+  return three.map(function (d) {
+    return { key: d.key, label: d.label, category: d.category, ratio: d.ratio / sum };
+  });
+}
+
+/**
+ * Tolerancia usada únicamente para el rebalanceo interno (convergencia de
+ * rebalancePlan). No decide qué nivel de relajación usar — eso lo decide
+ * verifyPlanFeasibility() contra las cifras ORIGINALES del usuario.
+ */
+var MACRO_TOLERANCE_TIERS = [
+  { kcalPct: 0.10, proteinG: 10, carbsG: 15 },
+  { kcalPct: 0.15, proteinG: 18, carbsG: 30 },
+  { kcalPct: 0.25, proteinG: 25, carbsG: 40 }
+];
+
+var HEADLINES = {
+  perfect:  "Plan generado exactamente según tus preferencias.",
+  adjusted: "Plan generado ajustando algunas preferencias para poder completarlo.",
+  minimal:  "No fue posible respetar tus preferencias con los datos actuales; este es el mejor plan disponible."
+};
+
+/**
+ * Fracción de `data.budget` que se reserva como margen de diversidad —
+ * ver "Reserva de presupuesto para diversidad" en la cabecera del
+ * archivo. Solo afecta a `data.targetBudget` (la cuota ORIENTATIVA por
+ * toma); el techo duro real (`data.budget`) nunca se toca. 0.12 (12%) es
+ * un primer ajuste razonado: sobre los presupuestos calibrados
+ * (`js/data/budget-presets.js` — Ajustado 15€/Equilibrado 20€/Amplio
+ * 28€) deja una reserva de ~1,80€/2,40€/3,36€, en la misma magnitud que
+ * el ejemplo que motivó este cambio (17€ → objetivo ≈15€, reserva ≈2€).
+ * Si una futura sesión lo recalibra, repetir el stress-test de 1000
+ * generaciones (ver STATE.md, sesión 2026-08-19b) antes/después para
+ * confirmar el efecto real, no asumirlo.
+ */
+var BUDGET_RESERVE_RATIO = 0.12;
+
+/**
+ * Tope de cordura: un ingrediente no puede superar en un día esta
+ * proporción de su mayor ración CURADA (dishes.js). Ver applyPortionSanity
+ * para el bug real y la medición. 2.5 es un primer corte conservador,
+ * pensado para revisarse con uso real, no un número definitivo.
+ */
+var PORTION_CAP_MULTIPLIER = 2.5;
+
+/**
+ * Si pasarse del borde de un envase consume menos de esta fracción del
+ * paquete, se recorta el plan HASTA el borde en vez de comprar un paquete
+ * entero más. Fracción y no gramos fijos porque los envases van de 100 g a
+ * 1 kg.
+ *
+ * El ahorro en dinero es MODESTO y conviene no venderlo de más: 804,60 EUR
+ * -> 799,22 EUR sobre 60 planes (~5,40 EUR, 0,7%). Se queda ahí porque la
+ * compensación de kcal vuelve a añadir gramos que cuestan dinero. Lo que
+ * de verdad arregla es la sensación de absurdo de comprar dos bolsas para
+ * usar el 2% de la segunda.
+ */
+var PACKAGE_TRIM_RATIO = 0.20;
+
+/**
+ * Cuánto se aplica el recorte proporcional (`fairShareCap`) del "Reparto
+ * secuencial del presupuesto" (ver cabecera del archivo) sobre `mealCap`.
+ * 0 = sin efecto (mealCap = hardCap, comportamiento de antes de
+ * 2026-08-19d). 1 = recorte proporcional COMPLETO (lo que se probó primero
+ * en 2026-08-19d: redujo violaciones de calorías un 53% pero le costó
+ * ~20pp de cobertura de platos en desayuno y comida, y SUBIÓ un 25% las
+ * violaciones de cap25 -- ver STATE.md, sesión 2026-08-19d). 0.5 es un
+ * punto medio deliberado tras ese resultado: aplica solo la mitad del
+ * recorte proporcional para conservar parte de la protección de tier
+ * escalation sin sacrificar tanta cobertura en las tomas tempranas. Si se
+ * recalibra, repetir el stress-test de 1000 generaciones (mismo perfil fijo
+ * que sesiones anteriores) antes/después -- este valor NO se ha ajustado
+ * por intuición, cada cambio se mide.
+ */
+var SEQUENCING_BLEND_RATIO = 0.5;
+
 // ── Saneamiento de entrada (restricción absoluta) ─────────────────────────
 
 function isFiniteNum(n) {
@@ -380,10 +554,18 @@ function sanitizeInputs(profile, data) {
     ? data.store
     : DEFAULT_STORE_ID;
 
-  var safeBudget = isFiniteNum(data && data.budget) && data.budget > 0 ? data.budget : 15;
+  var elegidoPorDia = isFiniteNum(data && data.budget) && data.budget > 0 ? data.budget : 15;
+  var safePlanDays = isFiniteNum(data && data.planDays) && data.planDays > 1
+    ? Math.floor(data.planDays) : 1;
+  // El techo que se hace cumplir es el del DIA dentro de un plan de N dias
+  // (ver PLAN_DAYS_BUDGET_3 / _7). `budgetPorDia` conserva lo que el usuario
+  // eligio de verdad, porque es lo unico que se le puede decir sin mentirle.
+  var safeBudget = budgetForPlanDays(elegidoPorDia, safePlanDays);
 
   var safeOverrides = {
     budget:   safeBudget,
+    budgetPorDia: elegidoPorDia,
+    planDays: safePlanDays,
     // Objetivo interno CON reserva (ver "Reserva de presupuesto para
     // diversidad" en la cabecera del archivo) — SOLO para targetSpend en
     // attemptPlanAtTier, nunca para el techo duro. safeBudget (arriba)
@@ -1225,14 +1407,22 @@ function buildCompromiseReport(attempt, profile, data) {
   if (hasBudgetIssue) {
     var achieved = round2(attempt.total.purchaseCost);
     var shortfall = round2(Math.max(0, achieved - data.budget));
+    // En un plan de varios dias el techo de ESTE dia es mas alto que lo que
+    // el usuario eligio (ver PLAN_DAYS_BUDGET_3 / _7). Decirle "no cabe en
+    // 13,80 €" cuando el eligio 12 seria mentirle con una cifra que no ha
+    // visto nunca, asi que se nombran las dos y se explica de donde sale.
+    var elMargen = (data.planDays > 1)
+      ? data.budgetPorDia + " € al día (en un plan de " + data.planDays + " días este día " +
+        "puede llegar a " + data.budget + " €, porque los paquetes se reparten entre todos)"
+      : data.budget + " € de presupuesto de compra";
     headline = shortfall > 0.005
-      ? "Con " + data.budget + " € de presupuesto de compra no ha sido posible montar un plan que quepa en " +
+      ? "Con " + elMargen + " no ha sido posible montar un plan que quepa en " +
         storeName + ", ni siquiera recortando raciones al máximo razonable. El plan más ajustado que se ha " +
         "podido construir necesita comprar " + achieved + " € (" + shortfall + " € más de lo disponible; " +
         "el uso real de ingredientes es de " + round2(attempt.total.cost) + " €, pero los paquetes que hay " +
         "que comprar cuestan más)."
-      : "No ha sido posible completar todas las tomas dentro de " + data.budget + " € de presupuesto de " +
-        "compra, aunque el coste de compra final (" + achieved + " €) prácticamente lo alcanza — revisa el " +
+      : "No ha sido posible completar todas las tomas dentro de " + elMargen +
+        ", aunque el coste de compra final (" + achieved + " €) prácticamente lo alcanza — revisa el " +
         "tiempo de cocina o la preferencia de sabor.";
   }
 
