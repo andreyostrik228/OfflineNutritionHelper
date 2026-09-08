@@ -310,6 +310,14 @@ function authErrorMessage(error) {
   if (!error) return "";
 
   if (error.message === "not_configured") {
+    // "not_configured" tiene DOS causas que se parecen desde aqui y no se
+    // parecen en nada para quien lo lee: que el sitio no tenga cuentas, o
+    // que el SDK no haya podido descargarse por falta de red. Decir lo
+    // primero cuando pasa lo segundo es mentir sobre el producto -- las
+    // cuentas existen, lo que falta es internet.
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      return "Sin conexión: las cuentas necesitan internet. Puedes seguir usando la aplicación como invitado -- todo se guarda en este dispositivo.";
+    }
     return "Las cuentas todavía no están disponibles en este sitio -- puedes seguir usándolo como invitado.";
   }
   if (error.message === "not_installed") {

@@ -164,10 +164,18 @@ self.addEventListener("fetch", function (e) {
     return;
   }
 
-  // Tipografias de Google: se usan en cada pantalla y sus URLs ya vienen
-  // versionadas por el propio Google.
+  // Tipografias de Google y el SDK de Supabase: URLs ya versionadas por
+  // quien las publica, asi que valen las mismas reglas que un recurso con
+  // sello propio.
+  //
+  // El SDK importa mas de lo que parece. Sin el, getSupabaseClient()
+  // devuelve null y la aplicacion contesta "las cuentas todavia no estan
+  // disponibles en este sitio" -- que sin red es sencillamente falso: lo que
+  // falta es la conexion, no la funcion. Guardandolo, quien ya entro una vez
+  // conserva su sesion sin cobertura.
   if (url.hostname.indexOf("fonts.googleapis.com") !== -1 ||
-      url.hostname.indexOf("fonts.gstatic.com") !== -1) {
+      url.hostname.indexOf("fonts.gstatic.com") !== -1 ||
+      url.hostname.indexOf("cdn.jsdelivr.net") !== -1) {
     e.respondWith(
       caches.match(req).then(function (hit) {
         if (hit) return hit;
