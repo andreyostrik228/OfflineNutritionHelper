@@ -1522,6 +1522,41 @@ document.addEventListener("DOMContentLoaded", function () {
       legalBtn.addEventListener("click", openLegalDialog);
     }
 
+    // ── Descargar mis datos ────────────────────────────────────────────
+    // Se podia BORRAR la cuenta pero no sacar nada antes, y todo lo que
+    // guarda esta aplicacion vive en ESTE navegador: perfil, despensa,
+    // planes, horario. Borrar los datos del sitio se los lleva sin aviso.
+    //
+    // Se exporta lo que hay en localStorage bajo el prefijo del proyecto,
+    // no una lista escrita a mano: asi una clave nueva entra en la copia
+    // sola, sin que nadie tenga que acordarse de anadirla aqui.
+    var exportBtn = document.getElementById("footerExportBtn");
+    if (exportBtn) {
+      exportBtn.addEventListener("click", function () {
+        var datos = { exportadoEl: new Date().toISOString(), version: 1, claves: {} };
+        try {
+          for (var i = 0; i < localStorage.length; i++) {
+            var k = localStorage.key(i);
+            if (k && k.indexOf("nutritionPlanner.") === 0) {
+              try { datos.claves[k] = JSON.parse(localStorage.getItem(k)); }
+              catch (e) { datos.claves[k] = localStorage.getItem(k); }
+            }
+          }
+        } catch (e) { /* sin localStorage no hay nada que exportar */ }
+
+        var blob = new Blob([JSON.stringify(datos, null, 2)], { type: "application/json" });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url;
+        a.download = "nutrition-planner-" + new Date().toISOString().slice(0, 10) + ".json";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        // Sin revocar, el blob se queda en memoria hasta recargar.
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      });
+    }
+
     var tourBtn = document.getElementById("footerTourBtn");
     if (tourBtn) {
       tourBtn.addEventListener("click", function () {

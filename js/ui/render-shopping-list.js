@@ -44,6 +44,10 @@
 
 var shoppingPanel, shoppingSummaryEl, shoppingCountEl, shoppingListContainer, shoppingEyebrowEl;
 
+// Ultima lista pintada, en texto. Se guarda al pintar para que compartir no
+// tenga que volver a recorrer el DOM ni recalcular precios.
+var _ultimaListaTexto = "";
+
 /**
  * Conecta los nodos DOM necesarios para este módulo.
  * @param {object} refs
@@ -54,6 +58,53 @@ function initShoppingListRefs(refs) {
   shoppingSummaryEl = refs.shoppingSummaryEl;
   shoppingCountEl = refs.shoppingCountEl;
   shoppingListContainer = refs.shoppingListContainer;
+  cablearAccionesDeLista();
+}
+
+/**
+ * Botones de "compartir" e "imprimir".
+ *
+ * `navigator.share` solo existe en movil (y solo bajo HTTPS), asi que el
+ * camino de respaldo NO es un mensaje de error: es copiar al portapapeles,
+ * que es lo que se quiere en un escritorio. Y si tampoco hay portapapeles,
+ * se dice en vez de no hacer nada -- un boton que calla es peor que uno que
+ * no esta.
+ */
+function cablearAccionesDeLista() {
+  var compartir = document.getElementById("shareListBtn");
+  var imprimir = document.getElementById("printListBtn");
+  var nota = document.getElementById("shareListNote");
+
+  function avisar(texto) {
+    if (!nota) return;
+    nota.textContent = texto;
+    nota.hidden = false;
+  }
+
+  if (compartir && !compartir._cableado) {
+    compartir._cableado = true;
+    compartir.addEventListener("click", function () {
+      var texto = _ultimaListaTexto;
+      if (!texto) { avisar("Genera un plan primero."); return; }
+      if (navigator.share) {
+        navigator.share({ title: "Lista de la compra", text: texto })
+          ["catch"](function () { /* cancelar no es un error */ });
+        return;
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(texto)
+          .then(function () { avisar("Lista copiada al portapapeles."); })
+          ["catch"](function () { avisar("No se pudo copiar la lista."); });
+        return;
+      }
+      avisar("Este navegador no deja compartir ni copiar.");
+    });
+  }
+
+  if (imprimir && !imprimir._cableado) {
+    imprimir._cableado = true;
+    imprimir.addEventListener("click", function () { window.print(); });
+  }
 }
 
 /**
@@ -163,10 +214,16 @@ function renderShoppingList(meals, storeId, days) {
 
   if (items.length === 0) {
     shoppingPanel.hidden = true;
+    _ultimaListaTexto = "";
     return;
   }
 
   shoppingPanel.hidden = false;
+  // Se prepara AQUI, mientras estan los datos delante, y no al pulsar
+  // compartir: asi el boton no depende de volver a leer el DOM.
+  _ultimaListaTexto = shoppingListAsText(items, n);
+  var notaCompartir = document.getElementById("shareListNote");
+  if (notaCompartir) notaCompartir.hidden = true;
 
   var totalPurchaseCost = items.reduce(function (sum, i) { return sum + i.purchase.purchaseCost; }, 0);
   var totalUsageCost = items.reduce(function (sum, i) { return sum + i.usageCost; }, 0);
@@ -255,6 +312,57 @@ function resolveShoppingProduct(ingredientName) {
     }
   }
   return out;
+}
+
+/**
+ * La lista de la compra como TEXTO PLANO, para compartir o copiar.
+ *
+ * Existe porque el momento de uso de esta pantalla es estar de pie en el
+ * supermercado, y hasta ahora la lista solo se podia MIRAR en esta pestana:
+ * ni enviarsela a alguien, ni pegarla en las notas, ni imprimirla.
+ *
+ * Es una funcion pura a proposito -- ni toca el DOM ni sabe quien la llama.
+ * Asi se puede probar de verdad, que es justo lo que no pasa con el resto de
+ * este fichero.
+ *
+ * Lo que se lleva y lo que no: el nombre, cuanto hay que COMPRAR (paquetes,
+ * no gramos usados: es lo unico accionable en la tienda) y el precio. Lo que
+ * ya esta en la despensa se marca en vez de omitirse, porque quien lee la
+ * lista necesita saber que no se olvido.
+ *
+ * @param {object[]} items - lo que devuelve buildShoppingItems()
+ * @param {number} [dias]  - dias que cubre la compra
+ * @returns {string}
+ */
+function shoppingListAsText(items, dias) {
+  var lineas = [];
+  var n = (typeof dias === "number" && dias > 1) ? dias : 1;
+  lineas.push(n > 1 ? "Lista de la compra (" + n + " dias)" : "Lista de la compra");
+  lineas.push("");
+
+  var total = 0;
+  (items || []).forEach(function (entry) {
+    var p = entry.purchase || {};
+    var cantidad;
+    if (typeof p.packagesToBuy === "number" && p.packagesToBuy === 0) {
+      cantidad = "ya lo tienes";
+    } else if (p.hasFixedPackage) {
+      var etiqueta = p.packageLabel || "envase";
+      var conGramos = !/\d/.test(p.packageLabel || "");
+      cantidad = p.packagesToBuy + " x " + etiqueta
+        + (conGramos && p.packageSizeG ? " (" + Math.round(p.packageSizeG) + " g)" : "");
+    } else {
+      cantidad = Math.round(entry.requiredGrams || 0) + " g al peso";
+    }
+    var precio = (typeof p.purchaseCost === "number") ? p.purchaseCost : 0;
+    total += precio;
+    lineas.push("- " + entry.name + " — " + cantidad + " — " + precio.toFixed(2) + " EUR");
+  });
+
+  lineas.push("");
+  lineas.push("Total: " + total.toFixed(2) + " EUR"
+    + (n > 1 ? " (" + (total / n).toFixed(2) + " EUR al dia)" : ""));
+  return lineas.join("\n");
 }
 
 function renderShoppingRow(entry) {

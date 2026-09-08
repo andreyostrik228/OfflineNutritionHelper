@@ -5103,6 +5103,82 @@ body.is-onboarding {
 }
 
 
+/* ══ Nota de "compartir" ═══════════════════════════════════════════════ */
+.shopping-share-note {
+  margin: var(--space-2) 0 0;
+  font-size: 12px;
+  color: var(--ink-faint);
+  flex-basis: 100%;
+}
+
+/* ══ IMPRIMIR ══════════════════════════════════════════════════════════════
+   Lo que se imprime es LA LISTA DE LA COMPRA, nada mas. Antes no habia ni una
+   regla `@media print`: al imprimir salia la pagina entera —formulario,
+   asistente, panel de despensa— repartida en varias hojas, con fondos de
+   color y sin la lista completa.
+
+   Se imprime en negro sobre blanco a proposito: la tinta de color cuesta
+   dinero y el papel de un supermercado no necesita marca. Y se anaden
+   casillas de verdad, porque una lista impresa se va tachando. */
+@media print {
+  /* Se oculta todo y se vuelve a mostrar solo la rama que lleva a la lista.
+     Es mas seguro que enumerar lo que sobra: un panel nuevo no se colara
+     en la impresion por olvido. */
+  body > *:not(main),
+  main > *:not(.shopping-panel),
+  .panel--form,
+  .panel--results,
+  .today-plans-panel,
+  .shopping-panel__actions,
+  .site-footer,
+  .onboarding,
+  .shopping-item__find {
+    display: none !important;
+  }
+
+  html, body {
+    background: #fff !important;
+    color: #000 !important;
+    font-size: 12pt;
+  }
+
+  .shopping-panel {
+    display: block !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: #fff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .shopping-panel h2 { font-size: 18pt; }
+
+  .shopping-list { list-style: none; padding: 0; }
+
+  .shopping-item {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    border-bottom: 1px solid #ccc;
+    padding: 6pt 0;
+  }
+
+  /* Casilla real para ir tachando en la tienda. En pantalla este cuadro es
+     decorativo (aria-hidden), aqui es la mitad del sentido de imprimir. */
+  .shopping-item__check {
+    display: inline-block !important;
+    width: 11pt;
+    height: 11pt;
+    border: 1pt solid #000;
+    border-radius: 2pt;
+    margin-right: 8pt;
+    vertical-align: top;
+  }
+
+  /* Las URL de los enlaces no aportan nada en papel. */
+  a[href]::after { content: none !important; }
+}
+
+
 /* ══ MODO OSCURO ═══════════════════════════════════════════════════════════
    Antes no habia ni una regla `prefers-color-scheme`: el movil en modo
    oscuro, de noche, recibia una pantalla color pergamino a plena luz.

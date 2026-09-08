@@ -293,6 +293,66 @@ function run(t) {
     assert.strictEqual(tomateEntries[0].requiredGrams, 160);
     assert.deepStrictEqual(Array.from(tomateEntries[0].meals), ["Desayuno", "Comida", "Cena"]);
   });
+
+  // ── La lista como texto, para compartir o imprimir (2026-09-08) ───────
+  // El momento de uso de esta pantalla es estar DE PIE en el supermercado, y
+  // hasta ahora la lista solo se podia mirar en la pestana. shoppingListAsText()
+  // es pura a proposito: es la unica parte de render-shopping-list.js que se
+  // puede probar sin navegador.
+
+  function entrada(nombre, gramos, compra) {
+    return { name: nombre, requiredGrams: gramos, usageCost: 0, purchase: compra };
+  }
+
+  t.test("la lista en texto dice QUE COMPRAR, no los gramos usados", function () {
+    var s = freshShoppingListSandbox();
+    var txt = s.shoppingListAsText([
+      entrada("Lentejas cocidas", 250, { packagesToBuy: 1, hasFixedPackage: true,
+        packageLabel: "bote", packageSizeG: 400, purchaseCost: 1.15 })
+    ], 1);
+    assert.ok(/Lentejas cocidas/.test(txt), txt);
+    assert.ok(/1 x bote/.test(txt), "lo accionable en la tienda son los envases: " + txt);
+    assert.ok(/400 g/.test(txt), "y cuanto trae cada uno: " + txt);
+    assert.ok(/1\.15 EUR/.test(txt), txt);
+  });
+
+  t.test("lo que ya esta en la despensa se marca, no se omite", function () {
+    var s = freshShoppingListSandbox();
+    var txt = s.shoppingListAsText([
+      entrada("Aceite de oliva", 20, { packagesToBuy: 0, hasFixedPackage: true,
+        packageLabel: "botella", packageSizeG: 916, purchaseCost: 0 })
+    ], 1);
+    // Omitirlo seria peor: quien lee la lista necesita saber que no se olvido.
+    assert.ok(/Aceite de oliva/.test(txt), "debe aparecer aunque no haya que comprarlo: " + txt);
+    assert.ok(/ya lo tienes/.test(txt), txt);
+  });
+
+  t.test("con varios dias se anade el coste POR DIA, que es la cifra que decide", function () {
+    var s = freshShoppingListSandbox();
+    var items = [
+      entrada("A", 100, { packagesToBuy: 1, hasFixedPackage: true, packageLabel: "bote", packageSizeG: 100, purchaseCost: 6 }),
+      entrada("B", 100, { packagesToBuy: 1, hasFixedPackage: true, packageLabel: "bote", packageSizeG: 100, purchaseCost: 3 })
+    ];
+    var txt = s.shoppingListAsText(items, 3);
+    assert.ok(/3 dias/.test(txt), txt);
+    assert.ok(/Total: 9\.00 EUR/.test(txt), txt);
+    assert.ok(/3\.00 EUR al dia/.test(txt), "9 EUR entre 3 dias: " + txt);
+  });
+
+  t.test("un ingrediente sin envase fijo se compra al peso, y lo dice", function () {
+    var s = freshShoppingListSandbox();
+    var txt = s.shoppingListAsText([
+      entrada("Ternera magra", 190, { hasFixedPackage: false, purchaseCost: 4.15 })
+    ], 1);
+    assert.ok(/190 g al peso/.test(txt), txt);
+  });
+
+  t.test("sin nada que comprar no revienta", function () {
+    var s = freshShoppingListSandbox();
+    var txt = s.shoppingListAsText([], 1);
+    assert.ok(/Total: 0\.00 EUR/.test(txt), txt);
+  });
+
 }
 
 module.exports = { run: run };

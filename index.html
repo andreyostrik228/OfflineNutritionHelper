@@ -906,6 +906,17 @@
              borrador, nunca crea copias que se puedan "comprar" por
              separado. -->
         <button type="button" class="btn-primary" id="usePlanTodayBtn">Confirmar plan de hoy</button>
+        <!-- ══ Llevarse la lista ══════════════════════════════════════════
+             El momento de uso de esta pantalla es estar DE PIE en el
+             supermercado, y hasta ahora la lista solo se podia mirar en esta
+             pestana. "Compartir" usa navigator.share en el movil y cae en
+             copiar al portapapeles donde no exista. ══ -->
+        <button type="button" class="btn-secondary" id="shareListBtn">
+          <svg class="icon" width="16" height="16" aria-hidden="true"><use href="#icon-cart"/></svg>
+          Compartir lista
+        </button>
+        <button type="button" class="btn-secondary" id="printListBtn">Imprimir</button>
+        <p class="shopping-share-note" id="shareListNote" role="status" aria-live="polite" hidden></p>
         <div class="confirm-receipt" id="planSavedNotice" hidden></div>
       </div>
     </section>
@@ -1057,6 +1068,13 @@
       <span class="site-footer__sep" aria-hidden="true">&middot;</span>
       <button type="button" class="site-footer__link" id="footerTourBtn">
         Ver la explicaci&oacute;n otra vez
+      </button>
+      <span class="site-footer__sep" aria-hidden="true">&middot;</span>
+      <!-- Llevarse los datos. Se podia BORRAR la cuenta pero no sacar nada
+           antes, y todo lo que guarda esta aplicacion (perfil, despensa,
+           planes) vive en este navegador: si se borra, se pierde. -->
+      <button type="button" class="site-footer__link" id="footerExportBtn">
+        Descargar mis datos
       </button>
     </footer>
   </div>
