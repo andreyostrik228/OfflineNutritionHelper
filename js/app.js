@@ -936,15 +936,51 @@ document.addEventListener("DOMContentLoaded", function () {
     // Un bucle en vez de tres variables sueltas: añadir un tramo nuevo
     // (como "minimal" el 2026-09-01) no debe obligar a tocar esto.
     [
-      ["minimal", "budgetMinimalAmount"],
-      ["small",   "budgetSmallAmount"],
-      ["medium",  "budgetMediumAmount"],
-      ["high",    "budgetHighAmount"],
+      ["minimal", "budgetMinimalAmount", "budgetModeMinimal"],
+      ["small",   "budgetSmallAmount",   "budgetModeSmall"],
+      ["medium",  "budgetMediumAmount",  "budgetModeMedium"],
+      ["high",    "budgetHighAmount",    "budgetModeHigh"],
     ].forEach(function (pair) {
       var el = document.getElementById(pair[1]);
       var preset = presets[pair[0]];
-      if (el && preset) el.textContent = "€" + preset.amount + "/día";
+      if (!preset) return;
+      if (el) el.textContent = "€" + preset.amount + "/día";
+
+      // El NOMBRE del tramo tambien sale de aqui. Estaba escrito dos veces
+      // -- `label` en budget-presets.js y a mano en index.html -- y de las
+      // dos copias solo se veia la del HTML, asi que renombrar el tramo en
+      // los datos no cambiaba nada en pantalla y las dos versiones podian
+      // separarse sin que se notara. El texto del HTML se queda como
+      // repliegue por si el JavaScript no llega.
+      var chip = document.querySelector('label[for="' + pair[2] + '"] .budget-chip__title');
+      if (chip && preset.label) chip.textContent = preset.label;
     });
+
+    // ── Y lo que significa el tramo elegido ──────────────────────────
+    // `preset.hint` llevaba escrito desde el principio y NO SE PINTABA en
+    // ningun sitio: ni aqui ni en onboarding-ui.js, que tambien lee solo
+    // `amount`. Cuatro textos mantenidos que nadie habia visto.
+    //
+    // Importa sobre todo en "Muy ajustado": medido el 2026-09-09, con 8 €
+    // ningun perfil consigue un dia sin recortes, y quien lo elegia solo
+    // veia la etiqueta y el importe. El chip no da para el texto -- son
+    // cinco en fila -- asi que va debajo del grupo, igual que el de
+    // objetivo.
+    var hint = document.getElementById("budgetHint");
+    if (hint) {
+      var pintarHint = function () {
+        var elegido = document.querySelector('input[name="budgetMode"]:checked');
+        var p = elegido ? presets[elegido.value] : null;
+        // "Cantidad exacta" no es un preset y no tiene texto: el hueco se
+        // queda vacio en vez de inventar uno por simetria.
+        hint.textContent = (p && p.hint) ? p.hint : "";
+      };
+      Array.prototype.forEach.call(
+        document.querySelectorAll('input[name="budgetMode"]'),
+        function (r) { r.addEventListener("change", pintarHint); }
+      );
+      pintarHint();
+    }
   });
 
   // ── Comprar para varios días (2026-09-01) ────────────────────────────

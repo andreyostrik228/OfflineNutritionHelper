@@ -12,6 +12,7 @@
 
 var assert = require("assert");
 var path = require("path");
+var fs = require("fs");
 var loadBrowserGlobals = require("./lib/load-browser-globals").loadBrowserGlobals;
 
 function projPath(rel) {
@@ -342,6 +343,69 @@ function run(t) {
       "debe nombrar los 5 € que se eligieron: " + titular);
     assert.ok(/7 días/.test(titular),
       "y explicar que el margen sube porque se compra para 7 días: " + titular);
+  });
+
+  // ── Los textos de los tramos: una sola copia, y que se vea ──────────
+  // Los cuatro nombres estaban escritos DOS veces: `label` en
+  // budget-presets.js y a mano en index.html. Y de las dos, solo se pintaba
+  // la del HTML -- ni `label` ni `hint` los leia nadie (2026-09-09).
+  //
+  // O sea que se podía renombrar un tramo en los datos, o reescribir su
+  // explicación, y no cambiaba nada en pantalla. El `hint` de "Muy
+  // ajustado" prometía "lo más barato que da un día completo" -- medido:
+  // 0% de días sin recortes en los tres perfiles -- y nadie lo había visto
+  // nunca porque no se pintaba.
+  t.test("cada tramo de presupuesto tiene nombre, importe y explicación", function () {
+    var s = freshCalculatorSandbox();
+    var tramos = s.BUDGET_PRESETS[s.DEFAULT_BUDGET_PERIOD];
+    var faltan = [];
+    ["minimal", "small", "medium", "high"].forEach(function (k) {
+      var p = tramos[k];
+      if (!p) { faltan.push(k + ": no existe"); return; }
+      if (typeof p.amount !== "number") faltan.push(k + ": sin importe");
+      if (!p.label) faltan.push(k + ": sin nombre");
+      if (!p.hint) faltan.push(k + ": sin explicación");
+    });
+    assert.deepStrictEqual(faltan, [], faltan.join(" | "));
+  });
+
+  t.test("el nombre del HTML no se ha separado del de los datos", function () {
+    var s = freshCalculatorSandbox();
+    var html = fs.readFileSync(projPath("index.html"), "utf8");
+    var tramos = s.BUDGET_PRESETS[s.DEFAULT_BUDGET_PERIOD];
+    var ids = { minimal: "budgetModeMinimal", small: "budgetModeSmall",
+                medium: "budgetModeMedium", high: "budgetModeHigh" };
+    var desviados = [];
+    Object.keys(ids).forEach(function (k) {
+      // El texto de repliegue que hay dentro del <label for="...">.
+      var re = new RegExp('for="' + ids[k] + '"[\\s\\S]{0,200}?budget-chip__title">([^<]*)<');
+      var m = html.match(re);
+      if (!m) { desviados.push(k + ": no encuentro el chip en index.html"); return; }
+      if (m[1].trim() !== tramos[k].label) {
+        desviados.push(k + ': HTML dice "' + m[1].trim() + '" y los datos "' + tramos[k].label + '"');
+      }
+    });
+    assert.deepStrictEqual(desviados, [], desviados.join(" | "));
+  });
+
+  t.test("index.html tiene dónde pintar la explicación del tramo", function () {
+    var html = fs.readFileSync(projPath("index.html"), "utf8");
+    assert.ok(/id="budgetHint"/.test(html),
+      "sin #budgetHint los `hint` vuelven a ser datos muertos");
+  });
+
+  t.test("ningún texto de presupuesto enseña un hueco del generador", function () {
+    var s = freshCalculatorSandbox();
+    var tramos = s.BUDGET_PRESETS[s.DEFAULT_BUDGET_PERIOD];
+    var rotos = [];
+    Object.keys(tramos).forEach(function (k) {
+      [tramos[k].label, tramos[k].hint].forEach(function (txt) {
+        if (typeof txt === "string" && /(undefined|NaN|\[object Object\]|\$\{)/.test(txt)) {
+          rotos.push(k + ": " + txt.slice(0, 60));
+        }
+      });
+    });
+    assert.deepStrictEqual(rotos, [], rotos.join(" | "));
   });
 
 }

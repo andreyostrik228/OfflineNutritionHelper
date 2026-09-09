@@ -30,6 +30,13 @@
  *   P50  (mediana)              €20.41    -> Equilibrado (20)
  *   P85  (generoso)             €27.06    -> Amplio      (28)
  *
+ * ── OJO: esos importes YA NO son los de abajo (recalibrado 2026-09-01) ─
+ * La tabla de arriba es de la calibración del 2026-08-07 y se conserva
+ * porque explica la METODOLOGÍA (purchaseCost real, no catálogo sin
+ * escalar). Los importes vigentes son 8/12/16/20 y salen del suelo real
+ * del catálogo, que se documenta en el propio tramo "Muy ajustado".
+ * Quien lea solo esta cabecera se irá con tres cifras que no existen.
+ *
  * A diferencia de la calibración anterior (percentiles de coste de
  * catálogo SIN escalar, con un margen añadido a mano para compensar el
  * escalado 1.5x de las raciones), esta mide directamente el purchaseCost
@@ -77,7 +84,19 @@ var BUDGET_PRESETS = {
     minimal: {
       label: "Muy ajustado",
       amount: 8,
-      hint: "Lo más barato que da un día completo. Repite ingredientes a propósito y quita los snacks para concentrar el dinero en las comidas."
+      // "Lo más barato que da un día completo" decía antes, y era falso.
+      // Medido el 2026-09-09 (120 semillas por celda, despensa vacía): con
+      // 8 € ningún perfil consigue un solo día sin recortes -- 0% en los
+      // tres. Y no es cosa de afinar la cifra: 9, 10 y 11 € siguen dando
+      // 0% en recomposición y volumen. El salto está en 12 €, que es
+      // justo el preset siguiente.
+      //
+      // Aun así el tramo se queda, porque quien tiene 8 € los tiene: lo
+      // que cambia es lo que se le promete. El texto ahora dice qué se
+      // sacrifica y dónde está la palanca de verdad, que es la despensa:
+      // el gasto real de ingredientes de ese mismo día son 5,52 €, y los
+      // 8 € se van en abrir paquetes enteros.
+      hint: "Para cuando el tope es el tope. No llega a cubrir el día entero: repite ingredientes, quita los snacks y suele quedarse corto de proteína. Si ya tienes cosas en casa, márcalas en la despensa — ahí es donde baja el precio de verdad."
     },
     small: {
       label: "Ajustado",
