@@ -839,8 +839,12 @@ con nada.
   elige a veces una comida de 4 g/100kcal cuando 94 de las 162 del catálogo
   pasan de 8,92. Detalle y tablas al final de §7.9.
 
-  **Hay un candidato MEDIDO y NO aplicado** (2026-09-09), a la espera de
-  decisión del dueño. Es un FILTRO del pool, no un peso: cuando el objetivo
+  **Hubo un candidato medido, y está RECHAZADO por el dueño** (2026-09-09)
+  por lo que cuesta en variedad — el detalle del rechazo, con el barrido
+  que lo cierra, va al final de esta entrada. Se conserva escrito porque la
+  idea es tentadora y el motivo del rechazo no es obvio.
+
+  Es un FILTRO del pool, no un peso: cuando el objetivo
   de la toma pide ≥8 g/100kcal, se descartan los platos por debajo del 75%
   de esa densidad, **y solo si tras filtrar quedan ≥40 candidatos** — sin
   esa guarda el pool se queda en 3 platos a 8 € y rompe el perfil de corte
@@ -867,6 +871,36 @@ con nada.
   **solo dos de esos perfiles son reales** (los del banco); `corte-M` está
   inventado para tener un segundo perfil denso al que el filtro pudiera
   romper. Antes de aplicarlo conviene medir contra perfiles de verdad.
+
+  **POR QUÉ SE RECHAZA, y por qué no hay que volver a barrerlo.** El dueño
+  puso el límite en perder como mucho **1/6 (17%) de variedad**; el
+  candidato costaba entre el 20% y el 35%. Se barrieron las dos palancas
+  —bajar el suelo y subir la guarda— buscando algo que entrara en el
+  límite (150 semillas):
+
+  ```
+    corte 12      (hoy: perfect 34,7%)        corte-M 12   (hoy: perfect 2,7%)
+      0,75/100   perfect 34,7   var  -6,6%      0,75/100   perfect  2,7   var -13,0%
+      0,55/40    perfect 44,0   var -26,4%      0,55/40    perfect 13,3   var -25,0%
+      0,65/70    perfect 56,0   var -27,4%      0,65/70    perfect 10,0   var -29,0%
+      0,65/40    perfect 61,3   var -47,2%      0,75/70    perfect 12,0   var -35,0%
+  ```
+
+  **Ninguna combinación entra en el 17% en todos los perfiles, y las que
+  entran donde entran dan exactamente CERO de ganancia.** No es que falte
+  afinar el número: la ganancia y la pérdida de variedad **son la misma
+  acción**. El motor acierta más porque la lotería cae más veces en los seis
+  platos `X con claras`; concentrarse ES el beneficio y ES el coste, y no se
+  pueden separar tocando estos dos parámetros. En el tramo de 8 € toda
+  configuración pierde entre el 33% y el 73%, porque ahí el pool ya es de 15
+  platos.
+
+  **La palanca que queda, entonces, no es el motor: es el catálogo.** Hacen
+  falta más comidas y cenas que pasen el suelo de densidad, para que
+  concentrarse deje de costar variedad. Es exactamente el trabajo de 434 →
+  1000 que ya está en marcha — con la advertencia de §7.8 bis de medir cada
+  lote por categoría, y la de §7.9 de que aquí el suelo bueno son kcal Y
+  gramos, no un ratio.
 - **Los fallos de recomp y volumen ya casi no son de proteína, son de
   `budget`** (medido 2026-09-09). De sus violaciones, 10 de 11 en recomp y 8
   de 11 en volumen son presupuesto. Es otra palanca distinta de la de corte,
