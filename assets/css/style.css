@@ -68,12 +68,24 @@
   --line: #e6dcc7;
   --line-strong: #d2c2a3;
 
-  /* Dominant brand color — deep, confident forest green. Used with
-     intention in a handful of high-impact spots (hero panel, primary CTA),
-     never as a repeated card background. */
-  --green: #1c5c40;
-  --green-deep: #0f3524;
-  --green-wash: #e5ede2;
+  /* Color de marca. Se usa con intencion en unos pocos sitios de impacto
+     (panel del heroe, boton principal), nunca como fondo repetido de
+     tarjeta.
+
+     2026-09-09: el verde pasa de un forestal azulado (#1c5c40, tono 154º)
+     a uno mas vivo y algo mas calido (tono 148º, saturacion del 53% al
+     72%) — el verde fresco de fruteria que se pide para una compra, no el
+     de un club de campo.
+
+     Por que no es el verde vivo tal cual: `--green` hace DOS trabajos a la
+     vez (26 usos como TEXTO sobre papel, 12 como FONDO bajo --on-green), y
+     un verde de supermercado de verdad se queda en 2,5:1 en las dos
+     direcciones. Este mantiene 5,62:1 como tinta sobre --paper y 6,32:1
+     bajo el blanco. Se pierde algo del margen de antes (7,03 y 7,91) y
+     sigue holgadamente sobre el 4,5:1 de WCAG. */
+  --green: #126e3d;
+  --green-deep: #0a4526;
+  --green-wash: #e2efe4;
 
   /* Warm contrast accent — terracotta. Energy/calories, and the hero's
      secondary headline color. */
@@ -110,9 +122,11 @@
   --danger-wash: #fbeae8;
   --danger-border: #f0c9c4;
 
-  /* Hero panel — the one large expressive color block on the page. */
-  --hero-bg-start: #1e5a3f;
-  --hero-bg-end: #0f2f20;
+  /* Hero panel — the one large expressive color block on the page.
+     Sigue al verde de marca: mismo tono nuevo, un punto mas vivo arriba y
+     mas profundo abajo para que el degradado siga leyendose. */
+  --hero-bg-start: #156a3b;
+  --hero-bg-end: #08301c;
   --hero-ink: #f7f1e5;
   --hero-ink-soft: rgba(247, 241, 229, 0.76);
 
@@ -5224,9 +5238,12 @@ body.is-onboarding {
     --line: #332b22;
     --line-strong: #4a3f32;
 
-    --green: #7bbf95;
-    --green-deep: #a5d6b7;
-    --green-wash: #1c2a22;
+    /* El mismo giro de tono que en claro (2026-09-09): mas vivo y algo mas
+       calido. En oscuro el verde se ACLARA, asi que --on-green se oscurece
+       con el; medido, no supuesto: 8,28:1 el boton, 8,97:1 como texto. */
+    --green: #5ec98a;
+    --green-deep: #8fdcac;
+    --green-wash: #14291d;
 
     --clay: #f0906a;
     --clay-deep: #f7b195;
@@ -5245,12 +5262,13 @@ body.is-onboarding {
     /* Sobre un fondo claro de color, la tinta se oscurece. */
     --on-ink-faint: rgba(23, 19, 15, 0.66);
     --on-ink-soft: rgba(23, 19, 15, 0.8);
-    --on-green: #10231a;
+    --on-green: #06210f;
     --on-danger: #2a0f0d;
 
-    /* El heroe ya era verde oscuro con texto claro: ahi no cambia nada. */
-    --hero-bg-start: #12261c;
-    --hero-bg-end: #0a1a12;
+    /* El heroe ya era verde oscuro con texto claro: sigue siendolo, solo
+       gira al tono nuevo. */
+    --hero-bg-start: #0e2a1b;
+    --hero-bg-end: #071a10;
   }
 
   /* Todo lo que usa un VERDE de fondo necesita la tinta que va con el: en
