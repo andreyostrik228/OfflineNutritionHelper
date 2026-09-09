@@ -4611,7 +4611,7 @@ var DISH_INSTRUCTIONS = {
     difficulty: 2,
     equipment: ["sarten", "olla"],
     steps: [
-      "Saca undefined de la nevera 10 minutos antes: frío por dentro se hace por fuera antes de estar listo por dentro.",
+      "Saca el pavo de la nevera 10 minutos antes: frío por dentro se hace por fuera antes de estar listo por dentro.",
       "Si la pieza es gruesa, ábrela por la mitad a lo ancho como un libro. Se hace en la mitad de tiempo y sin quedar cruda en el centro.",
       "Sécala con papel de cocina. Es el paso que más se salta y el que decide si se dora o se cuece en su propia agua.",
       "Sartén a fuego medio-alto con una cucharada de aceite; espera a que el aceite brille y se mueva con facilidad.",
@@ -4665,7 +4665,7 @@ var DISH_INSTRUCTIONS = {
     difficulty: 2,
     equipment: ["sarten", "olla"],
     steps: [
-      "Saca undefined de la nevera 10 minutos antes: frío por dentro se hace por fuera antes de estar listo por dentro.",
+      "Saca el pollo de la nevera 10 minutos antes: frío por dentro se hace por fuera antes de estar listo por dentro.",
       "Si la pieza es gruesa, ábrela por la mitad a lo ancho como un libro. Se hace en la mitad de tiempo y sin quedar cruda en el centro.",
       "Sécala con papel de cocina. Es el paso que más se salta y el que decide si se dora o se cuece en su propia agua.",
       "Sartén a fuego medio-alto con una cucharada de aceite; espera a que el aceite brille y se mueva con facilidad.",
@@ -4709,7 +4709,7 @@ var DISH_INSTRUCTIONS = {
     difficulty: 2,
     equipment: ["sarten", "olla"],
     steps: [
-      "Saca undefined de la nevera 10 minutos antes: frío por dentro se hace por fuera antes de estar listo por dentro.",
+      "Saca el pavo de la nevera 10 minutos antes: frío por dentro se hace por fuera antes de estar listo por dentro.",
       "Si la pieza es gruesa, ábrela por la mitad a lo ancho como un libro. Se hace en la mitad de tiempo y sin quedar cruda en el centro.",
       "Sécala con papel de cocina. Es el paso que más se salta y el que decide si se dora o se cuece en su propia agua.",
       "Sartén a fuego medio-alto con una cucharada de aceite; espera a que el aceite brille y se mueva con facilidad.",
@@ -4761,7 +4761,7 @@ var DISH_INSTRUCTIONS = {
     difficulty: 2,
     equipment: ["sarten", "olla"],
     steps: [
-      "Saca undefined de la nevera 10 minutos antes: frío por dentro se hace por fuera antes de estar listo por dentro.",
+      "Saca el pollo de la nevera 10 minutos antes: frío por dentro se hace por fuera antes de estar listo por dentro.",
       "Si la pieza es gruesa, ábrela por la mitad a lo ancho como un libro. Se hace en la mitad de tiempo y sin quedar cruda en el centro.",
       "Sécala con papel de cocina. Es el paso que más se salta y el que decide si se dora o se cuece en su propia agua.",
       "Sartén a fuego medio-alto con una cucharada de aceite; espera a que el aceite brille y se mueva con facilidad.",
@@ -4792,7 +4792,7 @@ var DISH_INSTRUCTIONS = {
     difficulty: 2,
     equipment: ["sarten", "olla"],
     steps: [
-      "Saca undefined de la nevera 10 minutos antes: frío por dentro se hace por fuera antes de estar listo por dentro.",
+      "Saca el pavo de la nevera 10 minutos antes: frío por dentro se hace por fuera antes de estar listo por dentro.",
       "Si la pieza es gruesa, ábrela por la mitad a lo ancho como un libro. Se hace en la mitad de tiempo y sin quedar cruda en el centro.",
       "Sécala con papel de cocina. Es el paso que más se salta y el que decide si se dora o se cuece en su propia agua.",
       "Sartén a fuego medio-alto con una cucharada de aceite; espera a que el aceite brille y se mueva con facilidad.",
@@ -5106,7 +5106,7 @@ var DISH_INSTRUCTIONS = {
     difficulty: 2,
     equipment: ["sarten", "olla"],
     steps: [
-      "Saca undefined de la nevera 10 minutos antes: frío por dentro se hace por fuera antes de estar listo por dentro.",
+      "Saca el pollo de la nevera 10 minutos antes: frío por dentro se hace por fuera antes de estar listo por dentro.",
       "Si la pieza es gruesa, ábrela por la mitad a lo ancho como un libro. Se hace en la mitad de tiempo y sin quedar cruda en el centro.",
       "Sécala con papel de cocina. Es el paso que más se salta y el que decide si se dora o se cuece en su propia agua.",
       "Sartén a fuego medio-alto con una cucharada de aceite; espera a que el aceite brille y se mueva con facilidad.",
@@ -5160,7 +5160,7 @@ var DISH_INSTRUCTIONS = {
     difficulty: 2,
     equipment: ["sarten", "olla", "ninguno"],
     steps: [
-      "Saca undefined de la nevera 10 minutos antes: frío por dentro se hace por fuera antes de estar listo por dentro.",
+      "Saca el pavo de la nevera 10 minutos antes: frío por dentro se hace por fuera antes de estar listo por dentro.",
       "Si la pieza es gruesa, ábrela por la mitad a lo ancho como un libro. Se hace en la mitad de tiempo y sin quedar cruda en el centro.",
       "Sécala con papel de cocina. Es el paso que más se salta y el que decide si se dora o se cuece en su propia agua.",
       "Sartén a fuego medio-alto con una cucharada de aceite; espera a que el aceite brille y se mueva con facilidad.",
@@ -5199,7 +5199,7 @@ var DISH_INSTRUCTIONS = {
     difficulty: 2,
     equipment: ["sarten", "olla"],
     steps: [
-      "Saca undefined de la nevera 10 minutos antes: frío por dentro se hace por fuera antes de estar listo por dentro.",
+      "Saca el pollo de la nevera 10 minutos antes: frío por dentro se hace por fuera antes de estar listo por dentro.",
       "Si la pieza es gruesa, ábrela por la mitad a lo ancho como un libro. Se hace en la mitad de tiempo y sin quedar cruda en el centro.",
       "Sécala con papel de cocina. Es el paso que más se salta y el que decide si se dora o se cuece en su propia agua.",
       "Sartén a fuego medio-alto con una cucharada de aceite; espera a que el aceite brille y se mueva con facilidad.",
@@ -5307,7 +5307,7 @@ var DISH_INSTRUCTIONS = {
     difficulty: 2,
     equipment: ["sarten", "olla"],
     steps: [
-      "Saca undefined de la nevera 10 minutos antes: frío por dentro se hace por fuera antes de estar listo por dentro.",
+      "Saca el pavo de la nevera 10 minutos antes: frío por dentro se hace por fuera antes de estar listo por dentro.",
       "Si la pieza es gruesa, ábrela por la mitad a lo ancho como un libro. Se hace en la mitad de tiempo y sin quedar cruda en el centro.",
       "Sécala con papel de cocina. Es el paso que más se salta y el que decide si se dora o se cuece en su propia agua.",
       "Sartén a fuego medio-alto con una cucharada de aceite; espera a que el aceite brille y se mueva con facilidad.",

@@ -449,6 +449,55 @@ function run(t) {
     }).map(function (k) { return roles[k]; });
     assert.deepStrictEqual(sin, [], "sin enlace: " + sin.join(", "));
   });
+
+  // ── Ningún texto generado puede enseñar un hueco del generador ──────
+  // Se publicó y estuvo en producción: **"Saca undefined de la nevera 10
+  // minutos antes"**, en 9 recetas de pollo y pavo a la plancha.
+  //
+  // La causa fue de una sola letra: gen_platos_tecnicas.js interpolaba
+  // `p.art` y ese campo no existía en ninguna proteina de
+  // gen_platos_tablas.js. JavaScript no avisa -- concatena "undefined" y
+  // sigue. La plantilla `plancha_ave` era la única que lo usaba, así que
+  // solo se estropeó un rincón del catálogo y nadie lo miró.
+  //
+  // Este test existe porque el catálogo va camino de los 1000 platos y su
+  // texto lo escribe un generador, no una persona: nadie va a releer 1000
+  // recetas. Cubre TODO el texto que llega a la pantalla, no solo los
+  // pasos, porque el siguiente hueco no tiene por qué salir en el mismo
+  // sitio.
+  t.test("ningún texto visible del catálogo contiene un hueco del generador", function () {
+    var s = freshSandbox();
+    var instrucciones = loadBrowserGlobals([projPath("js/data/dish-instructions.js")]);
+
+    // "null" no entra: es una palabra improbable en español pero no
+    // imposible, y estas marcas tienen que ser inequívocas.
+    var HUECOS = /(undefined|NaN|\[object Object\]|\$\{|\bnull\b)/;
+    var rotos = [];
+
+    function revisa(donde, texto) {
+      if (typeof texto !== "string") return;
+      var m = texto.match(HUECOS);
+      if (m) rotos.push(donde + ' → "' + m[1] + '" en: ' + texto.slice(0, 70));
+    }
+
+    s.DISH_DB.forEach(function (d) {
+      revisa("nombre de plato", d.name);
+      d.items.forEach(function (i) { revisa("ingrediente de " + d.name, i.name); });
+    });
+
+    var recetas = instrucciones.DISH_INSTRUCTIONS || {};
+    Object.keys(recetas).forEach(function (nombre) {
+      revisa("clave de receta", nombre);
+      (recetas[nombre].steps || []).forEach(function (paso, i) {
+        revisa(nombre + " [paso " + (i + 1) + "]", paso);
+      });
+      (recetas[nombre].equipment || []).forEach(function (eq) {
+        revisa(nombre + " [equipo]", eq);
+      });
+    });
+
+    assert.deepStrictEqual(rotos, [], rotos.length + " texto(s) con hueco:\n  " + rotos.join("\n  "));
+  });
 }
 
 module.exports = { run: run };

@@ -9,9 +9,9 @@
 // ── PROTEINAS ────────────────────────────────────────────────────────────
 // g = racion tipica ya usada en el catalogo (mediana observada).
 var PROTEINAS = [
-  { name:"Pechuga de pollo", g:200, mainProt:"pollo", label:"pollo a la plancha", tec:"plancha_ave", dif:2, eq:["sarten"] },
-  { name:"Muslo de pollo deshuesado", g:200, mainProt:"pollo", label:"muslo de pollo", tec:"plancha_ave", dif:2, eq:["sarten"] },
-  { name:"Pechuga de pavo", g:190, mainProt:"pavo", label:"pavo a la plancha", tec:"plancha_ave", dif:2, eq:["sarten"] },
+  { name:"Pechuga de pollo", g:200, mainProt:"pollo", label:"pollo a la plancha", art:"el pollo", tec:"plancha_ave", dif:2, eq:["sarten"] },
+  { name:"Muslo de pollo deshuesado", g:200, mainProt:"pollo", label:"muslo de pollo", art:"el muslo", tec:"plancha_ave", dif:2, eq:["sarten"] },
+  { name:"Pechuga de pavo", g:190, mainProt:"pavo", label:"pavo a la plancha", art:"el pavo", tec:"plancha_ave", dif:2, eq:["sarten"] },
   { name:"Lomo de cerdo", g:190, mainProt:"cerdo", label:"lomo de cerdo", tec:"plancha_carne", dif:2, eq:["sarten"] },
   { name:"Ternera magra", g:190, mainProt:"ternera", label:"ternera", tec:"plancha_carne", dif:2, eq:["sarten"] },
   { name:"Solomillo de ternera", g:180, mainProt:"ternera", label:"solomillo", tec:"plancha_carne", dif:2, eq:["sarten"] },
