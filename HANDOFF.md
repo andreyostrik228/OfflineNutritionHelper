@@ -588,23 +588,53 @@ con nada.
   enriquecer habría metido pizza, helado y croquetas en las comidas.
   `real-products.js` tiene **dos consumidores** y solo uno debía verlos.
   Si una tarea de esta lista parece un interruptor, mídela antes.
-- **El preset "Muy ajustado" (8 €) incumple algo el 100% de los días** en
-  los tres perfiles medidos, y ningún día sale "perfect" (medido
-  2026-09-08, 200 semillas por celda). Se ofrece en el cuestionario junto a
-  tres que sí funcionan. No es un problema, son TRES distintos:
+- **El preset "Muy ajustado" (8 €) no da un solo día "perfect"** en ninguno
+  de los tres perfiles. Confirmado el 2026-09-09 con un barrido de 8 a 14 €
+  (120 semillas por celda), que además contesta dónde deja de fallar:
 
   ```
-    corte    compra 7,18 € de 8 -> el dinero SÍ llega.
-             Falla la proteína: 93,3 g contra 136, 200/200 días.
-    recomp   se pasa por 0,63 € de media, pero 200/200 días.
-    volumen  8 € no dan de comer 3.871 kcal: -14,6% de calorías y +1,48 €.
+     EUR   corte   recomp   volumen
+       8      0%       0%        0%
+       9      8%       1%        0%
+      10      5%       0%        0%
+      11     33%       0%        0%
+      12     33%      40%       25%   <- el salto, y ya es el tramo siguiente
   ```
 
-  Desde 2026-09-08 el usuario al menos LO VE (ver 7.10). Arreglarlo de
-  verdad es una decisión de producto: subir el tramo, no ofrecerlo cuando
-  las calorías objetivo no caben, o avisar antes de elegirlo. Para un
-  objetivo de volumen no se arregla con código: la comida cuesta lo que
-  cuesta.
+  **No se arregla subiendo la cifra**: de 8 a 11 € es zona muerta. Y son
+  TRES fallos distintos, no uno:
+
+  ```
+    corte    102% de calorias pero 69% de proteina, pagando 6,86 de 8.
+             El dinero llega: lo que aprieta es la regla del 25% por item.
+    recomp    96% calorias, 103% proteina -> falla por 45 centimos.
+    volumen   86% calorias, 90% proteina. Aqui si falta dinero.
+  ```
+
+  **Lo hecho el 2026-09-09**: el tramo se queda — quien tiene 8 € los
+  tiene — y lo que cambia es lo que promete. Su texto decía "lo más barato
+  que da un día completo", que es falso, y además **no se pintaba en ningún
+  sitio**: `label` y `hint` de `BUDGET_PRESETS` eran datos muertos (ver
+  `STATE.md`). Ahora se pintan y el texto apunta a la despensa, que es la
+  palanca real (5,52 € de ingredientes; el resto es abrir paquetes).
+
+  **Lo que sigue abierto** es una decisión de producto, no de código: para
+  un objetivo de volumen 8 € no dan de comer 3.871 kcal, y ahí la comida
+  cuesta lo que cuesta. Opciones sin explorar: no ofrecer el tramo cuando
+  las calorías objetivo no caben, o pedir la despensa antes de ofrecerlo.
+- **El lote de la forma de dos verduras sigue RECHAZADO** (2026-09-09). Un
+  perfil gana 3,2 puntos de días perfectos y dos pierden 4,8 y 6,3, con el
+  suelo inevitable del control de §7.8 en −3,5. Ya se arreglaron las dos
+  cosas que lo empeoraban de más — el juez que solo miraba violaciones y el
+  reparto por categoría que impedía generar cenas — y aun así no compensa.
+  **La palanca que queda por probar es el MOTOR, no el catálogo.** Detalle
+  completo en `scripts/generar-platos/LEEME.md`.
+- **El tema por tienda es solo una preparación** (2026-09-09). El enganche
+  (`data-store`), el contrato de tokens y sus tests existen, pero **no hay
+  ninguna tienda con tema propio ni selector de tienda** (se retiró el
+  2026-08-25), y `PRICE_CATALOGS` sigue teniendo solo `mercadona`. Tres de
+  las comprobaciones de `tests/store-theme.test.js` no tienen sujeto hasta
+  que exista la primera tienda; saltan solas ese día.
 - **Un fallo de test que no se ha podido reproducir** (2026-09-08). Al
   comprobar un commit en un worktree recién creado: 549 pasaron, 1 falló, y
   no se capturó el nombre. Después, 44 corridas limpias (36 en HEAD, 8 en

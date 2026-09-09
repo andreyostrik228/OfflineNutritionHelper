@@ -5,6 +5,162 @@
 > Escrito para alguien que llega SIN NINGÚN contexto previo. Si solo lees
 > una parte de este archivo, que sea esta.
 >
+> ### ⏩ UPDATE 2026-09-09 — un `undefined` publicado, y dos textos que nadie veía
+>
+> **596 tests en verde. Desplegado (`dd2151df`), sello `20260909a`, y `main`
+> empujado a origin — 22 commits que llevaban semanas sin salir del disco.**
+> Cuatro commits, y los tres primeros son cosas que estaban rotas o mudas
+> desde hacía tiempo sin que nadie mirara.
+>
+> **Nueve recetas decían "Saca undefined de la nevera 10 minutos antes".**
+> En producción. Pollo y pavo a la plancha. La causa: `gen_platos_tecnicas.js`
+> interpolaba `p.art` y ese campo no existe en NINGUNA proteína de
+> `gen_platos_tablas.js`. JavaScript no avisa — concatena "undefined" y sigue.
+> Solo la plantilla `plancha_ave` lo usaba, así que se rompió un rincón y ese
+> rincón no lo lee nadie.
+>
+> Arreglado en los tres sitios donde podía repetirse: el campo `art` añadido a
+> las tres aves, la plantilla con repliegue a `"la carne"` si falta, y los
+> nueve pasos publicados reescritos tomando el ave del NOMBRE del plato. El
+> guardián vive en `tests/ingredient-packaging-coverage.test.js`: recorre
+> nombres, ingredientes y pasos de las 434 recetas y falla ante `undefined`,
+> `NaN`, `[object Object]` o `${`. **Este es el modo de fallo de un catálogo
+> generado**: el texto lo escribe una plantilla, nadie relee mil recetas, y un
+> campo mal escrito no da error. La comprobación tiene que ser automática.
+>
+> **`label` y `hint` de BUDGET_PRESETS eran datos muertos.** Ni `app.js` ni
+> `onboarding-ui.js` los leían — solo `amount`. Y los cuatro nombres estaban
+> escritos DOS veces: en los datos y a mano en `index.html`, de las cuales
+> solo se veía la del HTML. O sea que se podía renombrar un tramo, o
+> reescribir su explicación, sin que cambiara nada en pantalla.
+>
+> Importaba sobre todo en el tramo barato, cuyo texto invisible prometía "lo
+> más barato que da un día completo". Medido, 120 semillas por celda,
+> despensa vacía:
+>
+> ```
+>    EUR   corte   recomp   volumen      (% de dias "perfect")
+>      8      0%       0%        0%
+>      9      8%       1%        0%
+>     10      5%       0%        0%
+>     11     33%       0%        0%
+>     12     33%      40%       25%   <- el salto esta aqui, y es el tramo siguiente
+> ```
+>
+> No es cuestión de afinar la cifra: de 8 a 11 € es zona muerta. Pero el
+> detalle cambia la conclusión — a 8 € **recomp recibe el 96% de las
+> calorías y el 103% de la proteína** y falla por **45 céntimos**, mientras
+> que **corte se queda en el 69% de proteína pagando 6,86 de los 8**: ahí lo
+> que aprieta no es el dinero sino la regla del 25% por ítem. El tramo se
+> queda (quien tiene 8 € los tiene); lo que cambia es lo que promete, y ahora
+> apunta a la despensa, que es la palanca real — el mismo día son 5,52 € de
+> ingredientes y el resto es abrir paquetes enteros.
+>
+> **El juez de lotes era medio ciego, y el generador no podía hacer cenas.**
+> Dos fallos en la herramienta, encontrados al decidir sobre el lote de dos
+> verduras, y los dos escondían lo mismo: cuánto cuesta un lote de verdad.
+>
+> `probar_lote.js` solo rechazaba si subían las violaciones. Pero un día deja
+> de ser perfecto sin violar nada — el motor recorta ración, relaja el sabor
+> o cambia de plato, y el contador ni se entera. En la semilla 2 las
+> violaciones se movían +1,0 y +2,5, las dos bajo el ruido: **veredicto OK
+> para un lote que costaba 8,5 y 9,5 puntos de días perfectos**. Lo primero
+> que apareció al arreglarlo: volumen perdía 11,5 puntos, más que recomp, y
+> eso no lo había medido nunca nadie.
+>
+> Y el generador daba **una cena de cada 42 platos**, con 543 descartes por
+> cuota. La categoría se asignaba llenando comidas primero y mandando el
+> resto a cena — pero los suelos son POR CATEGORÍA y el de cena es más duro
+> (densidad 0,1171 contra 0,1120). En cuanto la cuota de comida se llenaba,
+> el listón subía de golpe para el MISMO plato. Ahora la categoría se ELIGE:
+> se prueban las que admiten al candidato, la de más hueco primero. Cenas de
+> 1 a 10, lote de 42 a 48:
+>
+> ```
+>   perfil    antes    despues        (puntos de dias "perfect", media de 3 semillas)
+>   corte      +9,0     +3,2
+>   recomp     -7,7     -4,8
+>   volumen   -11,5     -6,3
+> ```
+>
+> **El lote SIGUE RECHAZADO y no se ha aplicado.** Con el suelo inevitable
+> del control de §7.8 en −3,5, recomp queda cerca pero volumen sigue casi al
+> doble. El reparto ya no es la palanca; la siguiente por probar es el
+> MOTOR, no el catálogo. Todo escrito en `scripts/generar-platos/LEEME.md`
+> para que el próximo intento empiece por la medición y no la repita.
+>
+> **Y una preparación que hoy no cambia un píxel: el tema por tienda.**
+> `data-store` en `<html>`, puesto antes de pintar y validado antes de
+> llegar al DOM. Hoy vale siempre "mercadona", que es el tema por defecto y
+> a propósito NO tiene bloque propio (una copia de `:root` se desincroniza
+> sola). Quitar el atributo, o poner una tienda inventada, resuelve a los
+> mismos tokens — comprobado en el navegador.
+>
+> La trampa que justifica los tests: `:root[data-store="x"]` tiene
+> especificidad 0,2,0 y el modo oscuro redefine sobre `:root`, 0,1,0. La
+> especificidad gana al orden, **así que un overlay escrito en claro le gana
+> al modo oscuro** — verde claro sobre pantalla oscura, contraste por los
+> suelos, y solo para quien haya elegido esa tienda. Invisible en un
+> escritorio en claro, que es donde se desarrolla. De ahí la regla: todo
+> token definido en claro hay que definirlo también en oscuro. Un test que
+> nunca ha fallado no prueba nada, así que se introdujeron **8 fallos a
+> propósito y se confirmó que los 8 se cazan**.
+>
+> ### ⏩ UPDATE 2026-09-08 bis — el sitio se llama Weekplate y deja de parecer un prototipo
+>
+> Siete commits que no estaban registrados, del mismo día pero posteriores
+> al bloque de abajo. Tres despliegues.
+>
+> **Nombre.** "Offline Nutrition Helper" pasa a **Weekplate** — neutral, en
+> inglés, buscable, y sin Mercadona en el nombre ni en la tarjeta al
+> compartir. Título, `og:*`, `twitter:card`, manifiesto y
+> `apple-mobile-web-app-title` alineados, con `og:image` ABSOLUTA (un
+> scraper no resuelve rutas relativas) y `assets/img/og-weekplate.jpg`.
+>
+> **Calidad de sitio, lo que tenían todos menos este.** Zoom permitido solo
+> para acercar (`minimum-scale=1.0`); contraste corregido donde no llegaba a
+> 4,5:1 (`--ink-faint` #8a7c6d daba 3,60:1 en 562 elementos de 9-12 px, y
+> `--clay` 4,36:1 en el titular); áreas de pulsación a 24 px; `<noscript>`
+> que explica por qué no hay nada; `@media print`; `_headers` con CSP, HSTS
+> y `X-Frame-Options`; `404.html` autocontenida para que una ruta
+> inexistente deje de devolver 200 con la app entera; y "Descargar mis
+> datos", que exporta todas las claves `nutritionPlanner.` en JSON.
+>
+> **Modo oscuro.** No había ni una regla `prefers-color-scheme`: un móvil de
+> noche recibía pergamino a plena luz. Se pudo hacer solo con tokens porque
+> la hoja ya estaba escrita así — **867 usos de `var(--…)` contra 47 colores
+> literales**. La trampa: el verde es sobre todo color de TEXTO (26 usos
+> como texto, 12 como fondo), así que en oscuro se ACLARA y el blanco encima
+> cae a 2,16:1; de ahí `--on-green` y compañía. Dos overrides se escribieron
+> mal y se quitaron: `.meta-time-badge` y `.shopping-summary__stat span` son
+> paneles INVERTIDOS que ya se voltean solos.
+>
+> **La barra fija tapaba el texto en el móvil** (21% de la pantalla) y el
+> menú de cuenta se dibujaba por DEBAJO de ella. Arreglado.
+>
+> **Iconos.** Dos fallos reales, no cosmética: `apple-touch-icon` apuntaba a
+> un SVG **y iOS no acepta SVG ahí**, así que añadir a la pantalla de inicio
+> daba una captura de la página en vez de un icono; y el manifiesto
+> declaraba ese mismo SVG como `maskable`, prometiendo una zona segura que
+> el fichero no tenía. El PNG que llegó tampoco valía tal cual: **marco
+> blanco OPACO de 36 px (2,9%)** justo donde recorta la máscara del móvil, y
+> el arte llegaba al **49,2% del lado desde el centro** cuando la zona segura
+> admite 40% — una máscara circular le cortaba los brazos a la W.
+>
+> Se construyó un juego por uso (esquinas transparentes para "any", verde a
+> sangre y arte reducido al 39,8% para `maskable`, opaco y cuadrado para
+> iOS). El original tenía ±2 de ruido en cada píxel — el 93% de la imagen —
+> que impedía comprimir: aplanados los dos colores sólidos, el de 512 pasa
+> de 187 KB a 49, y **el juego entero pesa 121 KB frente a los 1014 KB del
+> fichero suelto**. El icono viejo (una mancuerna sobre azul marino, de
+> cuando esto era una herramienta de musculación) se borró.
+>
+> **El generador tiene un quinto hueco de ingrediente.** Con una verdura,
+> `proteina x grano x verdura` da 2.268 combinaciones y solo 111 pasan los
+> suelos; con una segunda al 70% de ración son 12.474 y pasan 551 — mismo
+> porcentaje de aprobados con cinco veces más candidatos. El lote hecho con
+> esa forma es el que sigue rechazado arriba.
+>
 > ### ⏩ UPDATE 2026-09-08 — el motor deja de ser pesimista, y la interfaz empieza a escuchar
 >
 > **577 tests en verde. Dos despliegues: `05cd7c94` y `4bf19a24`.** Seis
