@@ -84,6 +84,16 @@
      bajo el blanco. Se pierde algo del margen de antes (7,03 y 7,91) y
      sigue holgadamente sobre el 4,5:1 de WCAG. */
   --green: #126e3d;
+
+  /* El verde VIVO, y solo para FONDOS (2026-09-09). Nace porque --green
+     no puede serlo: hace de texto en 27 sitios y sobre --paper un verde
+     de supermercado da 4,11:1, por debajo del 4,5:1 de WCAG. El fondo si
+     puede, con la tinta oscura de --on-green: 4,85:1 medido.
+
+     --green-bright-hi es el hover, y ACLARA en vez de oscurecer: sobre el
+     --green-deep de antes la tinta oscura se quedaba en 3,35:1. */
+  --green-bright: #00a650;
+  --green-bright-hi: #33c47a;
   --green-deep: #0a4526;
   --green-wash: #e2efe4;
 
@@ -115,7 +125,7 @@
   --on-ink-faint: rgba(246, 245, 241, 0.6);
   --on-ink-soft: rgba(246, 245, 241, 0.75);
 
-  --on-green: #fff;
+  --on-green: #0a2a16;
   --on-danger: #fff;
 
   --danger: #b3261e;
@@ -188,7 +198,7 @@ body {
 }
 
 ::selection {
-  background: var(--green);
+  background: var(--green-bright);
   color: var(--on-green);
 }
 
@@ -791,7 +801,7 @@ button:focus-visible {
 }
 
 .btn-primary {
-  background: var(--green);
+  background: var(--green-bright);
   /* No `--hero-ink`: ese color pertenece al heroe, que es verde OSCURO
      siempre. Este boton es verde --green, que en modo oscuro se aclara, y
      entonces la tinta clara del heroe encima daba 1,92:1. */
@@ -802,7 +812,7 @@ button:focus-visible {
 
 @media (hover: hover) {
   .btn-primary:hover {
-    background: var(--green-deep);
+    background: var(--green-bright-hi);
     box-shadow: 0 6px 16px rgba(15, 53, 36, 0.28);
   }
 }
@@ -1258,7 +1268,7 @@ button:focus-visible {
   margin-left: 4px;
   padding: 1px 5px;
   border-radius: 999px;
-  background: var(--green);
+  background: var(--green-bright);
   color: var(--on-green);
   font-size: 8px;
   font-weight: 700;
@@ -1288,7 +1298,7 @@ button:focus-visible {
   margin-left: 6px;
   padding: 2px 7px;
   border-radius: 999px;
-  background: var(--green);
+  background: var(--green-bright);
   color: var(--on-green);
   font-size: 9px;
   font-weight: 700;
@@ -2514,8 +2524,8 @@ button:focus-visible {
 
 .pantry-add button {
   flex-shrink: 0;
-  background: var(--green);
-  color: var(--hero-ink);
+  background: var(--green-bright);
+  color: var(--on-green);
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
   padding: 0 var(--space-4);
@@ -2526,7 +2536,7 @@ button:focus-visible {
 
 @media (hover: hover) {
   .pantry-add button:hover {
-    background: var(--green-deep);
+    background: var(--green-bright-hi);
   }
 }
 
@@ -2910,8 +2920,8 @@ button:focus-visible {
 }
 
 .pantry-purchase-row__check[aria-checked="true"] {
-  background: var(--green);
-  border-color: var(--green);
+  background: var(--green-bright);
+  border-color: var(--green-bright);
 }
 
 .pantry-purchase-row__check[aria-checked="true"]::after {
@@ -3887,8 +3897,8 @@ dialog.despensa-dialog[open] {
     padding: 12px max(14px, 4vw);
     min-height: 52px;
     border: none;
-    background: var(--green-deep);
-    color: var(--hero-ink);
+    background: var(--green-bright-hi);
+    color: var(--on-green);
     font-family: var(--font-body);
     cursor: pointer;
     box-shadow: var(--shadow-sm);
@@ -3948,9 +3958,9 @@ dialog.despensa-dialog[open] {
 }
 
 .plan-days__btn.is-active {
-  background: var(--green-deep);
+  background: var(--green-bright-hi);
   border-color: var(--green-deep);
-  color: var(--hero-ink);
+  color: var(--on-green);
 }
 
 .plan-days__btn:focus-visible { outline: 2px solid var(--green-deep); outline-offset: 2px; }
@@ -4091,7 +4101,7 @@ dialog.despensa-dialog[open] {
   transition: background 0.15s ease;
 }
 
-.days-carousel__dot.is-active::before { background: var(--green-deep); }
+.days-carousel__dot.is-active::before { background: var(--green-bright-hi); }
 
 .days-carousel__track--multi {
   display: flex;
@@ -4229,8 +4239,8 @@ body.is-onboarding {
   width: 34px;
   height: 34px;
   border-radius: var(--radius-sm);
-  background: var(--green);
-  color: var(--hero-ink);
+  background: var(--green-bright);
+  color: var(--on-green);
 }
 
 .onboarding__brand-name {
@@ -4281,7 +4291,7 @@ body.is-onboarding {
   width: 8px;
   height: 8px;
   border-radius: 2px;
-  background: var(--green);
+  background: var(--green-bright);
 }
 
 .onboarding__terms {
@@ -4369,12 +4379,12 @@ body.is-onboarding {
 }
 
 .onboarding__btn--primary {
-  background: var(--green);
-  color: var(--hero-ink);
+  background: var(--green-bright);
+  color: var(--on-green);
 }
 
 .onboarding__btn--primary:not(:disabled):hover {
-  background: var(--green-deep);
+  background: var(--green-bright-hi);
 }
 
 .onboarding__btn--ghost {
@@ -4440,7 +4450,7 @@ body.is-onboarding {
 .onboarding__progress-bar {
   height: 100%;
   width: 0;
-  background: var(--green);
+  background: var(--green-bright);
   border-radius: 2px;
   transition: width 280ms ease-out;
 }
@@ -4873,8 +4883,8 @@ body.is-onboarding {
   padding: var(--space-3) var(--space-5);
   border: none;
   border-radius: var(--radius-md);
-  background: var(--green);
-  color: var(--hero-ink);
+  background: var(--green-bright);
+  color: var(--on-green);
   font-family: var(--font-body);
   font-size: 0.9rem;
   font-weight: 700;
@@ -4883,7 +4893,7 @@ body.is-onboarding {
 }
 
 .tour__next:hover {
-  background: var(--green-deep);
+  background: var(--green-bright-hi);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -5052,8 +5062,8 @@ body.is-onboarding {
   padding: var(--space-3) var(--space-6);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-md);
-  background: var(--green);
-  color: var(--hero-ink);
+  background: var(--green-bright);
+  color: var(--on-green);
   font-family: var(--font-body);
   font-size: 0.9rem;
   font-weight: 700;
@@ -5061,7 +5071,7 @@ body.is-onboarding {
 }
 
 .legal-dialog__done:hover {
-  background: var(--green-deep);
+  background: var(--green-bright-hi);
 }
 
 /* 4. La tarjeta de bienvenida en pantallas cortas.

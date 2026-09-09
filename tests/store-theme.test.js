@@ -37,6 +37,19 @@ var TOKENS_DE_MARCA = [
   "--hero-bg-start", "--hero-bg-end"
 ];
 
+/**
+ * El verde VIVO de los fondos (2026-09-09). Va aparte porque vive SOLO en
+ * `:root` y el modo oscuro lo hereda: un vivo con tinta oscura encima
+ * funciona igual sobre papel claro que sobre papel oscuro, así que copiarlo
+ * al bloque oscuro sería justo la duplicación que se desincroniza sola —
+ * la misma razón por la que mercadona no tiene overlay.
+ *
+ * Por eso NO entra en TOKENS_DE_MARCA, cuya comprobación exige gemelo
+ * oscuro. Una tienda sí puede redefinirlo, y si lo hace en claro y también
+ * en oscuro, las reglas de overlay de más abajo le aplican igual.
+ */
+var TOKENS_DE_FONDO = ["--green-bright", "--green-bright-hi"];
+
 /** Lo que NINGUNA tienda puede tocar: legibilidad e identidad del producto. */
 var TOKENS_PROHIBIDOS = ["--ink", "--ink-soft", "--ink-faint", "--paper", "--paper-raised", "--line", "--line-strong"];
 
@@ -181,11 +194,31 @@ function run(t) {
   });
 
   // ── 2. El tema por defecto se lee, en los dos modos ───────────────────
-  // No es decorativo: --on-green es TEXTO sobre --green, y el bloque
-  // oscuro aclara el verde. Ese cruce ya rompió el contraste una vez.
-  t.test("--on-green sobre --green cumple 4,5:1 en claro y en oscuro", function () {
-    var claro = contraste(rootClaro["--on-green"], rootClaro["--green"]);
-    var oscuro = contraste(rootOscuro["--on-green"], rootOscuro["--green"]);
+  // No es decorativo: --on-green es la TINTA que va sobre un fondo verde, y
+  // ese fondo ya no es --green sino --green-bright (2026-09-09). El cruce de
+  // modos rompió el contraste una vez y por eso se mide, no se supone.
+  t.test("--on-green sobre los verdes de FONDO cumple 4,5:1 en los dos modos", function () {
+    TOKENS_DE_FONDO.forEach(function (tok) {
+      var fondoClaro = rootClaro[tok];
+      assert.ok(fondoClaro, "falta " + tok + " en :root -- ¿renombrado?");
+      // El oscuro HEREDA salvo que lo redefina; se comprueba lo que de
+      // verdad se aplicaría en cada modo.
+      var fondoOscuro = rootOscuro[tok] || fondoClaro;
+      var claro = contraste(rootClaro["--on-green"], fondoClaro);
+      var oscuro = contraste(rootOscuro["--on-green"] || rootClaro["--on-green"], fondoOscuro);
+      assert.ok(claro >= 4.5, tok + " en claro da " + claro.toFixed(2) + ":1");
+      assert.ok(oscuro >= 4.5, tok + " en oscuro da " + oscuro.toFixed(2) + ":1");
+    });
+  });
+
+  // ── 2 bis. Y --green sigue siendo legible como TEXTO ──────────────────
+  // Es su papel desde que el fondo se mudó a --green-bright: 27 usos como
+  // color de texto. Este es EL límite que impide poner el verde vivo aquí
+  // (daría 4,11:1), así que queda medido para que nadie lo intente sin ver
+  // la cifra.
+  t.test("--green sobre --paper cumple 4,5:1 como texto, en los dos modos", function () {
+    var claro = contraste(rootClaro["--green"], rootClaro["--paper"]);
+    var oscuro = contraste(rootOscuro["--green"], rootOscuro["--paper"]);
     assert.ok(claro >= 4.5, "en claro da " + claro.toFixed(2) + ":1");
     assert.ok(oscuro >= 4.5, "en oscuro da " + oscuro.toFixed(2) + ":1");
   });
@@ -222,28 +255,32 @@ function run(t) {
       Object.keys(o.tokens).forEach(function (tok) {
         assert.strictEqual(TOKENS_PROHIBIDOS.indexOf(tok), -1,
           'la tienda "' + o.tienda + '" redefine ' + tok + ": eso es identidad del producto y legibilidad, no del supermercado");
-        assert.ok(TOKENS_DE_MARCA.indexOf(tok) !== -1,
+        assert.ok(TOKENS_DE_MARCA.concat(TOKENS_DE_FONDO).indexOf(tok) !== -1,
           'la tienda "' + o.tienda + '" redefine ' + tok + ", que no está en la lista de tokens de marca");
       });
     });
   });
 
   // ── 5. Y el contraste de cada tienda, medido ──────────────────────────
-  t.test("cada tienda mantiene 4,5:1 de --on-green sobre --green, en los dos modos", function () {
+  t.test("cada tienda mantiene 4,5:1 de --on-green sobre su verde de fondo", function () {
     claros.forEach(function (o) {
-      var verde = o.tokens["--green"] || rootClaro["--green"];
-      var tinta = o.tokens["--on-green"] || rootClaro["--on-green"];
-      var r = contraste(tinta, verde);
-      assert.ok(r !== null, 'colores no interpretables en "' + o.tienda + '"');
-      assert.ok(r >= 4.5, 'la tienda "' + o.tienda + '" da ' + r.toFixed(2) + ":1 en claro");
+      TOKENS_DE_FONDO.forEach(function (tok) {
+        var verde = o.tokens[tok] || rootClaro[tok];
+        var tinta = o.tokens["--on-green"] || rootClaro["--on-green"];
+        var r = contraste(tinta, verde);
+        assert.ok(r !== null, 'colores no interpretables en "' + o.tienda + '" (' + tok + ")");
+        assert.ok(r >= 4.5, 'la tienda "' + o.tienda + '" da ' + r.toFixed(2) + ":1 en claro (" + tok + ")");
+      });
     });
     Object.keys(oscurosPorTienda).forEach(function (id) {
       var tk = oscurosPorTienda[id];
-      var verde = tk["--green"] || rootOscuro["--green"];
-      var tinta = tk["--on-green"] || rootOscuro["--on-green"];
-      var r = contraste(tinta, verde);
-      assert.ok(r !== null, 'colores no interpretables en "' + id + '" (oscuro)');
-      assert.ok(r >= 4.5, 'la tienda "' + id + '" da ' + r.toFixed(2) + ":1 en oscuro");
+      TOKENS_DE_FONDO.forEach(function (tok) {
+        var verde = tk[tok] || rootOscuro[tok] || rootClaro[tok];
+        var tinta = tk["--on-green"] || rootOscuro["--on-green"];
+        var r = contraste(tinta, verde);
+        assert.ok(r !== null, 'colores no interpretables en "' + id + '" (oscuro, ' + tok + ")");
+        assert.ok(r >= 4.5, 'la tienda "' + id + '" da ' + r.toFixed(2) + ":1 en oscuro (" + tok + ")");
+      });
     });
   });
 
