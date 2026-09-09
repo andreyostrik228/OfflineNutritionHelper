@@ -404,11 +404,35 @@ repeticiones y suelo de proteína por euro. Ninguno lo arregló. Lo arregló
 la proteína **por kcal**, que es lo que de verdad decide un día de corte.
 Cuatro intentos fallidos porque medía la cosa parecida en vez de la cosa.
 
-### 7.9 El perfil de CORTE falla la mitad de los dias, y dos arreglos evidentes NO lo arreglan
+### 7.9 El perfil de CORTE fallaba la mitad de los dias — lo arreglo quitar tomas, no mejorar platos
 
-Con presupuesto Ajustado (12 EUR), el perfil de corte incumple el objetivo
-de proteina en el **53% de los dias**: 110,6 g de media frente a 136,4. Es
-el fallo de producto mas grande que queda, y esta escrito aqui porque dos
+> **AVISO: el 53% que se lee mas abajo es HISTORIA.** Quedo resuelto el
+> 2026-09-08 y esta seccion tardo un dia en enterarse. Si has llegado aqui
+> desde la lista de §8 buscando "el mayor agujero de producto", ya no lo es.
+> Cifras reales, medidas en HEAD el 2026-09-09 con 200 semillas:
+>
+> ```
+>                    antes (5 tomas)   ahora (3 tomas)
+>      violan             53,0%             15,5%
+>      perfect            12,5%             36,5%
+>      proteina          110,6 g           131,8 g   (objetivo 136,4)
+>      compra            10,83 EUR         10,50 EUR
+> ```
+>
+> Lo que lo arreglo no fue un plato mejor ni un score mas listo: fue
+> **borrar los dos snacks**. Un objetivo denso en proteina no puede
+> permitirse dos huecos sin proteina que se llevan el 23% de las calorias
+> del dia. El mecanismo vive en `mealDefsForBudget()` y
+> `DENSE_TARGET_PROTEIN` (`plan-generator.js`), medido sobre 8 perfiles x
+> 4 presupuestos.
+>
+> La seccion se conserva entera porque los dos arreglos que FALLARON
+> siguen siendo igual de tentadores hoy, y porque el agujero que queda es
+> el mismo, solo que mas pequeno. Lo vivo esta al final, en "Lo que queda".
+
+Con presupuesto Ajustado (12 EUR), el perfil de corte incumplia el objetivo
+de proteina en el **53% de los dias**: 110,6 g de media frente a 136,4. Era
+el fallo de producto mas grande que quedaba, y esta escrito aqui porque dos
 hipotesis razonables ya se probaron y **las dos fallaron medidas**. Que no
 las repita nadie sin leer esto.
 
@@ -455,6 +479,97 @@ Y la leccion transferible: **cuando el objetivo es una cantidad, un ratio no
 es un buen proxy.** Ambos experimentos subieron la media y empeoraron la
 tasa de fallo, que es la firma de haber ensanchado la distribucion en vez de
 desplazarla.
+
+**Lo que queda — y por que el desayuno pesa MAS que antes** (medido el
+2026-09-09 sobre los 434 platos de HOY). Un dia de corte exige 8,92 g de
+proteina por cada 100 kcal. Quien llega:
+
+```
+  categoria    n     llegan a 8,92    densidad mediana   kcal mediana
+  comida      162     94  (58%)            9,73              487
+  cena        144     87  (60%)           10,00              453
+  snack        61     22  (36%)            7,48              209
+  desayuno     67      8  (12%)            6,55              389
+```
+
+**"8 de 67" es exactamente la misma cifra que cuando se escribio esto**, y no
+por casualidad: el desayuno esta CONGELADO desde §7.8 bis, asi que el
+catalogo crecio de 374 a 434 platos sin tocarlo.
+
+Y ahora aprieta mas. Con 3 tomas los ratios se renormalizan, asi que el
+desayuno pasa del 24% al **31,2% de las calorias del dia**: en corte son 477
+kcal que deben traer **42,5 g de proteina**. Cuantos de los 67 lo consiguen,
+contando el escalado de racion:
+
+```
+  a racion normal      0 de 67
+  escalando x1,25      1 de 67
+  escalando x1,50      7 de 67
+```
+
+**Cero.** El dia de corte empieza SIEMPRE por detras y son comida y cena
+quienes lo recuperan — pueden, porque el 58% y el 60% de ellas si llegan.
+Los fallos de proteina que quedan son los dias en que no les da.
+
+De ahi que el suelo correcto para un desayuno de corte sean **las dos cosas
+a la vez**: cerca de 477 kcal Y cerca de 42,5 g. Optimizar solo la densidad
+ya se probo y dio desayunos de 250 kcal que empeoraron el resultado (arriba);
+optimizar solo los gramos daria platos que se salen por calorias. El objetivo
+no es un ratio ni una cantidad: es un PUNTO, y hay que generar contra los dos
+ejes o no vale.
+
+**Y AUN ASI el desayuno no es lo que hay que arreglar.** Todo lo de arriba
+mira el CATALOGO parado. Al mirar los dias que de verdad genera el motor
+—200 semillas, separando los 24 que fallan proteina de los 176 que no— sale
+otra cosa:
+
+```
+                        dias que fallan   dias que van bien   delta
+    proteina del dia         107,1 g           135,2 g        -28,2
+    proteina desayuno         31,3 g            32,2 g         -0,8   <-- nada
+    proteina comida           34,8 g            57,9 g        -23,1   <-- aqui
+    proteina cena             41,0 g            45,2 g         -4,2
+    kcal comida              631,8             575,5          +56,3
+```
+
+El desayuno es **igual de flojo los dos dias**: es un impuesto constante, no
+lo que decide. Lo que decide es la COMIDA, que se lleva el 82% del hueco — y
+encima con MAS calorias, o sea que el dia que falla se come un plato grande y
+pobre (5,5 g/100kcal frente a 10,1).
+
+Se ve en un vistazo mirando que platos salen:
+
+```
+    comidas de los dias que FALLAN        veces   prot   g/100kcal
+      Garbanzos con arroz y calabacin        3    24,5      4,01
+      Huevos con arroz                       3    31,4      5,26
+      Pasta con salchichas y tomate          3    33,6      4,98
+      Arroz con huevo y tomate               2    32,7      4,78
+
+    comidas de los dias que van BIEN
+      Lentejas con claras y cebolla         57    65,7     12,23
+      Lentejas con claras y espinacas       18    68,8     12,83
+      Lentejas con claras y zanahoria       14    65,5     12,00
+      Alubias con claras y brocoli           9    59,5     11,41
+```
+
+Un dia de corte sale bien cuando la loteria le da uno de los seis platos
+"X con claras", y sale mal cuando le da un plato de cereal sin refuerzo
+proteico. **18 de los 24 fallos no violan NADA MAS** — ni presupuesto, ni
+tiempo, ni el 25% por item. No es que las restricciones aprieten: es la
+seleccion de plato.
+
+**El corolario que ahorra la siguiente sesion entera:** a un dia que falla le
+faltan **20,8 g como MINIMO** (mediana 28,5). Subir el desayuno unos 10 g
+—que es todo lo que daria arreglar el catalogo de desayunos— sube TODOS los
+dias por igual y **no rescata ni uno solo** de los 24; solo empuja mas
+arriba a los 176 que ya cumplian. Es la misma forma del error de la
+hipotesis 2: mejorar la media sin tocar la cola.
+
+Y es el patron de §7.8 bis otra vez, ahora en la comida: **el motor se apoya
+en pocos ganadores muy repetidos**. `Lentejas con claras y cebolla` sale 57
+veces de 176. La palanca esta en por que la loteria elige a veces un plato de
+4 g/100kcal cuando 94 de las 162 comidas del catalogo pasan de 8,92.
 
 ### 7.10 El motor hablaba y la interfaz no escuchaba
 
@@ -654,6 +769,36 @@ con nada.
   `budget`), pero si se quiere arreglar de verdad hay que enseñarle a
   preferir **menos paquetes distintos**, no ingredientes más baratos: en
   un día de 20 € la comida usada son 6,82 € dentro de 20,54 € de compra.
+
+  **Medido el 2026-09-09, y la hipótesis de "menos paquetes" NO se sostiene
+  como causa de las violaciones** de recomp/volumen (200 semillas):
+
+  ```
+                            recomp 16 €      volumen 20 €
+    días que violan budget    10 (5,0%)        8 (4,0%)
+    se pasan de media          0,51 €           1,02 €      (máx 0,80 / 2,02)
+
+                            violan   resto   violan   resto
+    comprado                 16,51   14,40    21,02   17,97
+    comido                    6,86    6,25    11,67    9,25
+    NO se come               58,5%   56,4%    44,7%   48,4%
+    ingredientes distintos    11,5    10,3     11,8    11,0
+  ```
+
+  El día que se pasa **no desperdicia más** — en volumen desperdicia MENOS
+  (44,7% contra 48,4%) — y solo lleva **un ingrediente distinto más**.
+  Simplemente compra más. Y el 56-58% que no se come es una constante de
+  TODOS los días, así que no puede explicar por qué unos violan y otros no.
+  Para eso la respuesta ya está en el motor y es planificar varios días
+  (7 días salen un 22-34% más baratos POR DÍA), no puntuar distinto.
+
+  **Conclusión de prioridad: esto no merece trabajo de motor hoy.** El
+  margen real son 5 días de cada 100 pasándose un 3-5%. Compárese con lo
+  que sí duele: en corte fallaban 15,5% de los días y por un 21% o más.
+  Nota aparte, por si tienta: volumen entrega 214 g de proteína sobre un
+  objetivo de 171 (+25%), y eso sí es dinero tirado — pero el arreglo
+  evidente (penalizar el exceso) ya se midió y empeoró justo a volumen,
+  ver §7.9 hipótesis 1.
 - **El invitado ve la bienvenida en cada visita**, por decisión suya. Si
   algún día cansa, lo suave sería repetir la oferta de cuenta a diario
   pero el cuestionario no.
@@ -668,10 +813,67 @@ con nada.
   ```
   `probar_lote.js` mide ANTES de escribir nada; `medir_perfiles.js HEAD`
   confirma que lo aplicado da lo mismo que lo probado. Si no coinciden, para.
-- **El perfil de CORTE falla el 53% de los días.** Es el mayor agujero de
-  producto que queda. Dos arreglos evidentes ya se midieron y fallaron: ver
-  §7.9 antes de tocar nada. La pista viva es el tamaño de las raciones de
-  desayuno, no su densidad.
+- ~~**El perfil de CORTE falla el 53% de los días**, el mayor agujero de
+  producto que queda~~ — **el 53% se arregló el 2026-09-08** pasando el día
+  a 3 tomas, y esta entrada se quedó un día entera sin enterarse. Medido en
+  HEAD el 2026-09-09, 200 semillas por perfil:
+
+  ```
+                violan   perfect   proteína        compra
+    corte        15,5%    36,5%    131,8 / 136,4   10,50 €
+    recomp        5,5%    68,0%    157,6 / 156,0   14,51 €
+    volumen       5,0%    64,0%    214,4 / 171,0   18,10 €
+  ```
+
+  Sigue siendo el peor de los tres, pero por un tercio de lo que decía esta
+  lista, y **el mayor agujero ya no es este**. Leer §7.9 antes de tocar
+  nada: los dos arreglos evidentes ya fallaron medidos.
+
+  **Y NO es el desayuno**, aunque el catálogo lo sugiera. Diseccionados los
+  24 días que fallan contra los 176 que no (2026-09-09, 200 semillas), el
+  hueco de 28,2 g se reparte así: desayuno **−0,8 g** (nada), **comida
+  −23,1 g** (el 82%), cena −4,2 g. El desayuno es igual de flojo los dos
+  días — un impuesto constante, no lo que decide. Y como al día que falla le
+  faltan **20,8 g como mínimo**, arreglar el catálogo de desayunos (unos
+  +10 g) **no rescataría ni uno solo**. La palanca es por qué la lotería
+  elige a veces una comida de 4 g/100kcal cuando 94 de las 162 del catálogo
+  pasan de 8,92. Detalle y tablas al final de §7.9.
+
+  **Hay un candidato MEDIDO y NO aplicado** (2026-09-09), a la espera de
+  decisión del dueño. Es un FILTRO del pool, no un peso: cuando el objetivo
+  de la toma pide ≥8 g/100kcal, se descartan los platos por debajo del 75%
+  de esa densidad, **y solo si tras filtrar quedan ≥40 candidatos** — sin
+  esa guarda el pool se queda en 3 platos a 8 € y rompe el perfil de corte
+  masculino. Dos bloques de 200 semillas DISJUNTOS, "hoy → con filtro":
+
+  ```
+                    violan            perfect           platos distintos
+    corte 12     15,5 → 2,0 / 14,0 → 0,0    36,5 → 62,0 / 36,5 → 59,5    114 → 79
+    corte 16      1,5 → 1,0 /  2,5 → 1,0    67,0 → 80,5 / 62,5 → 80,0    178 → 146
+    corte-M 12   69,5 →56,5 / 70,0 →52,5     3,0 → 13,0 /  7,5 → 15,0    104 → 67
+    corte-M 16   13,0 → 8,5 / 14,5 →13,0    37,5 → 38,5 / 41,5 → 41,0    186 → 148
+    corte  8    100   →100  /100   →100      0   →  0   /  0   →  0       15 →  9
+    recomp / volumen: IDÉNTICO byte a byte (su objetivo pide 5,53 y 4,42)
+  ```
+
+  **El coste es real y hay que decidirlo, no esconderlo:** la variedad cae
+  entre un 20% y un 35% en todos los perfiles densos, y en el tramo de 8 €
+  —que ya falla el 100% de los días haga lo que haga— baja de 15 platos a 9.
+
+  Dos avisos sobre lo anterior. Primero, **la guarda de 40 no es una
+  calibración**, es el primer valor razonable de un barrido de 5 perfiles:
+  con guarda 25 el filtro se aplica casi siempre y EMPEORA corte-M 12
+  (69,5% → 75,3%), o sea que el número importa tanto como la idea. Segundo,
+  **solo dos de esos perfiles son reales** (los del banco); `corte-M` está
+  inventado para tener un segundo perfil denso al que el filtro pudiera
+  romper. Antes de aplicarlo conviene medir contra perfiles de verdad.
+- **Los fallos de recomp y volumen ya casi no son de proteína, son de
+  `budget`** (medido 2026-09-09). De sus violaciones, 10 de 11 en recomp y 8
+  de 11 en volumen son presupuesto. Es otra palanca distinta de la de corte,
+  y hay una hipótesis concreta sin probar más abajo en esta misma lista: que
+  el motor prefiera **menos paquetes distintos**, no ingredientes más
+  baratos. Ojo además con volumen, que entrega 214,4 g de proteína sobre un
+  objetivo de 171 — un 25% de más que se está pagando.
 - **DESAYUNO y SNACK están CONGELADOS** hasta entender lo de §7.8 bis. Son
   pools pequeños (78 y 70) donde el motor se apoya en pocos ganadores, y
   meter platos ligeros y baratos ahí costó 14 puntos al perfil de corte.
