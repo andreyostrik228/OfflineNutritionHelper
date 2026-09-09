@@ -309,19 +309,43 @@ porTurnos(G.construirCandidatos(SEMILLA), SEMILLA).forEach(function (c) {
       && !FRUTOS_SECOS[c.b2.name]) { descartes.snackSinProte++; return; }
   if (nombres[c.nombre.toLowerCase()]) { descartes.nombre++; return; }
 
-  var cat = (c.tipo === "principal" || c.tipo === "veg")
-    ? (hechos.comida < cuota.comida ? "comida" : "cena")
-    : ((c.tipo === "snack" || c.tipo === "snack3") ? "snack" : "desayuno");
-  if (hechos[cat] >= cuota[cat]) { descartes.sinCuota++; return; }
+  // ── La categoria se ELIGE; antes se asignaba por orden de llegada ─────
+  // Esto era `hechos.comida < cuota.comida ? "comida" : "cena"`: se
+  // llenaban las comidas y a partir de ahi todo caia en cena. Pero los
+  // suelos son POR CATEGORIA y el de cena es mas duro que el de comida
+  // (densidad 0,1171 frente a 0,1120, medido sobre los 434 platos). Asi
+  // que en cuanto la cuota de comida se llenaba, el liston subia de golpe
+  // para el MISMO plato y ya no pasaba casi ninguno.
+  //
+  // El resultado medido: 21 comidas y UNA cena, con 543 descartes por
+  // cuota. Un lote que no trae cenas ensancha tres de los cuatro huecos
+  // del dia y deja el cuarto igual, y el dia entero se sigue jugando con
+  // las cenas que ya habia.
+  //
+  // Ahora se prueban las categorias que admite el candidato, la que mas
+  // hueco libre tiene primero, y se coloca en la primera que de verdad lo
+  // acepta. El rango de kcal se comprueba aqui por lo mismo: tambien es
+  // por categoria.
+  var posibles = (c.tipo === "principal" || c.tipo === "veg")
+    ? ["comida", "cena"]
+    : ((c.tipo === "snack" || c.tipo === "snack3") ? ["snack"] : ["desayuno"]);
+  posibles.sort(function (a, b) { return (cuota[b] - hechos[b]) - (cuota[a] - hechos[a]); });
 
-  var hecho = construir(c, cat);
+  var cat = null, hecho = null, motivo = "sinCuota";
+  for (var ci = 0; ci < posibles.length; ci++) {
+    var cc = posibles[ci];
+    if (hechos[cc] >= cuota[cc]) continue;
+    var candidato = construir(c, cc);
+    if (candidato.plato.protein < SUELO_PROTEINA[cc]) { motivo = "pocaProteina"; continue; }
+    if (candidato.plato.protein / candidato.plato.kcal < SUELO_DENSIDAD[cc]) { motivo = "pocaDensidad"; continue; }
+    var rc = rango[cc];
+    if (candidato.plato.kcal < rc.min || candidato.plato.kcal > rc.max) { motivo = "kcal"; continue; }
+    cat = cc; hecho = candidato; break;
+  }
+  if (!cat) { descartes[motivo]++; return; }
+
   var f = G.firma(hecho.plato.items);
   if (firmas[f]) { descartes.firma++; return; }
-  if (hecho.plato.protein < SUELO_PROTEINA[cat]) { descartes.pocaProteina++; return; }
-  // Techo de repeticion: sin esto el lote salia con 7 de 11 desayunos de
-  // jamon serrano, porque era de lo poco que pasaba el suelo de proteina.
-  // Un catalogo de 1000 platos no se construye repitiendo el mismo.
-  if (hecho.plato.protein / hecho.plato.kcal < SUELO_DENSIDAD[cat]) { descartes.pocaDensidad++; return; }
   if (SUELO_PROT_EURO[cat]) {
     var porEuro = hecho.plato.protein / Math.max(0.01, hecho.plato.cost);
     if (porEuro < SUELO_PROT_EURO[cat]) {
@@ -331,9 +355,10 @@ porTurnos(G.construirCandidatos(SEMILLA), SEMILLA).forEach(function (c) {
   }
   var gk = claveGrupo(c);
   porGrupo[gk] = porGrupo[gk] || 0;
+  // Techo de repeticion: sin esto el lote salia con 7 de 11 desayunos de
+  // jamon serrano, porque era de lo poco que pasaba el suelo de proteina.
+  // Un catalogo de 1000 platos no se construye repitiendo el mismo.
   if (porGrupo[gk] >= TECHO_POR_GRUPO) { descartes.mismoGrupo++; return; }
-  var r = rango[cat];
-  if (hecho.plato.kcal < r.min || hecho.plato.kcal > r.max) { descartes.kcal++; return; }
 
   porGrupo[gk]++;
   nombres[c.nombre.toLowerCase()] = true;

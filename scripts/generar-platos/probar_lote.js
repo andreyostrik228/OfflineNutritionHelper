@@ -85,14 +85,23 @@ SEMILLAS_ARG.split(",").forEach(function (s) {
     var b = base[p.id];
     var dDias = x.dias - b.dias, dPerf = x.perfectos - b.perfectos, dProt = x.prot - b.prot;
     // 3,5 puntos es el error tipico con 200 semillas: por debajo de eso no
-    // se declara nada. Peor de verdad = mas de 3,5 puntos de violaciones.
+    // se declara nada.
+    //
+    // Se juzga por LAS DOS COSAS. Hasta el 2026-09-09 esto solo miraba
+    // dDias, y el lote de la forma de dos verduras salio "OK" mientras le
+    // quitaba 7 puntos de dias perfectos a recomposicion: un dia puede
+    // dejar de ser perfecto sin llegar a violar nada -- el motor recorta
+    // racion, relaja el sabor o cambia de plato y el contador de
+    // violaciones ni se entera. Juzgar solo por violaciones es mirar la
+    // mitad del dano, y esa mitad es justo la que el usuario nota.
     if (dDias > 3.5) veredicto = "RECHAZADO";
+    if (dPerf < -3.5) veredicto = "RECHAZADO";
     console.log("    " + p.id.padEnd(8) + String(x.platos).padStart(4) + " platos"
       + "   prot " + x.prot.toFixed(1).padStart(5) + " (" + (dProt >= 0 ? "+" : "") + dProt.toFixed(1) + ")"
       + "   violan " + x.dias.toFixed(1).padStart(5) + "% (" + (dDias >= 0 ? "+" : "") + dDias.toFixed(1) + ")"
       + "   perfect " + x.perfectos.toFixed(1).padStart(5) + "% (" + (dPerf >= 0 ? "+" : "") + dPerf.toFixed(1) + ")");
   });
   console.log("    VEREDICTO: " + veredicto
-    + (veredicto === "RECHAZADO" ? "  (algun perfil empeora mas que el ruido)" : ""));
+    + (veredicto === "RECHAZADO" ? "  (algun perfil empeora mas que el ruido, en violaciones o en dias perfectos)" : ""));
   console.log("");
 });
