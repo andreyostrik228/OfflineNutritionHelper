@@ -5285,3 +5285,58 @@ body.is-onboarding {
   .auth-msg--error,
   .form-error { background: var(--danger-wash); color: var(--danger); }
 }
+
+
+/* == TEMA POR TIENDA =======================================================
+   La aplicacion nacio atada a Mercadona y va a dejar de estarlo. Este es el
+   sitio donde una tienda cambia el color de la interfaz, y el contrato que
+   tiene que cumplir para no romper nada.
+
+   COMO SE ELIGE: el atributo `data-store` en <html>, puesto por el script
+   en linea de index.html ANTES de pintar (si se pusiera despues, la pagina
+   parpadearia del tema viejo al nuevo). Cuando no hay tienda guardada vale
+   "mercadona", y NO hay ningun bloque que capture ese valor: se queda con
+   los tokens de :root. O sea que hoy esto no cambia ni un pixel, y es
+   deliberado -- Mercadona no es "un tema mas", es el tema por defecto.
+   Escribirlo aparte solo duplicaria valores que ya estan arriba, y la
+   duplicacion se desincroniza sola en cuanto alguien retoque :root.
+
+   QUE PUEDE CAMBIAR UNA TIENDA: solo la familia de marca.
+
+       --green   --green-deep   --green-wash   --on-green
+       --hero-bg-start   --hero-bg-end
+
+   Son 106 usos en esta hoja, de sobra para que un cambio se note. Lo que NO
+   puede tocar es --ink / --paper / --line: esos son la identidad del
+   producto, no la del supermercado, y ademas es donde vive la legibilidad.
+
+   LA TRAMPA DEL CASCADE, que es el motivo de que esto lleve tests:
+
+       :root                     especificidad 0,1,0
+       :root[data-store="x"]     especificidad 0,2,0   <-- gana
+
+   El bloque de modo oscuro redefine los tokens sobre `:root`, o sea 0,1,0.
+   Un overlay de tienda escrito para modo claro es 0,2,0 y le GANA aunque el
+   telefono este en oscuro. El resultado no es un color raro: es el verde
+   claro de la tienda colandose en una pantalla oscura, con el contraste por
+   los suelos, y solo en los moviles de quien tenga esa tienda elegida.
+
+   Por eso la regla es innegociable: TODO token que un overlay defina en
+   claro lo tiene que definir tambien su gemelo oscuro.
+   tests/store-theme.test.js lo comprueba, comprueba que no se toquen
+   tokens fuera de la lista de arriba, y mide el contraste de --on-green
+   sobre --green en los dos modos.
+
+   COMO SE ANADE UNA TIENDA -- los dos bloques, siempre los dos:
+
+       :root[data-store="lidl"] { --green: ...; --on-green: ...; }
+
+       @media (prefers-color-scheme: dark) {
+         :root[data-store="lidl"] { --green: ...; --on-green: ...; }
+       }
+
+   Y un aviso que no es tecnico: usar los colores corporativos exactos de
+   una cadena sugiere una relacion comercial que no existe. El acento de
+   cada tienda sale de la paleta de este producto, no del manual de marca
+   del supermercado.
+   ======================================================================== */

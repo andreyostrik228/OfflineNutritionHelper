@@ -81,7 +81,8 @@ var suites = [
   "cloud-sync.test",
   "auth.test",
   "onboarding.test",
-  "css-visibility.test"
+  "css-visibility.test",
+  "store-theme.test"
 ];
 
 (async function () {
