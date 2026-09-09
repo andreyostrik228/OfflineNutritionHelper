@@ -41,7 +41,41 @@ Estas no se negocian y romperlas ya ha costado disgustos.
 | **CRLF en todo el repositorio.** Después de cada `Write`/`Edit`, renormaliza. | `.gitattributes` fuerza `eol=crlf`; sin renormalizar, cada edición ensucia el diff entero. |
 | **Nunca un trailer `Co-Authored-By`.** | Está en `~/CLAUDE.md`. La plantilla del Bash tool lo sugiere; ignórala. |
 | **Nunca commitear secretos.** La clave de USDA vive solo en el scratchpad. | La anon key de Supabase SÍ es pública por diseño (RLS es la seguridad real). |
-| **Deja el árbol limpio al terminar.** | Un hook `SessionStart` de claude-flow hace `git add -A && commit && push` automáticamente. Lo que dejes suelto, se publica. También deja ficheros basura de 0 bytes: bórralos. |
+| **Deja el árbol limpio al terminar**, y `git push` a mano cuando él lo autorice. | Ver la corrección de abajo: **nadie empuja por ti**. |
+
+### El hook que "commitea y empuja solo" NO EXISTE (comprobado 2026-09-09)
+
+Esta tabla decía, hasta hoy, que un hook `SessionStart` de claude-flow hacía
+`git add -A && commit && push` automáticamente y que **lo que dejaras suelto
+en el árbol se publicaba**. Es **falso**, y llevaba tiempo escrito.
+
+Lo comprobado, no supuesto:
+
+- `~/.claude/settings.json` sí tiene hooks de claude-flow (`SessionStart`,
+  `PostToolUse`, `UserPromptSubmit`…), y todos llaman a
+  `~/.claude/helpers/hook-handler.cjs`.
+- Ese fichero **no contiene `git push`, ni `git commit`, ni `git add`**. Las
+  únicas coincidencias de "push" son `array.push()` de JavaScript.
+
+Consecuencias prácticas, que no son pequeñas:
+
+1. **Los commits se quedan en el disco hasta que alguien empuja a mano.** Una
+   sesión que "termina con el árbol limpio" no ha publicado nada. Si el dueño
+   autoriza publicar, hay que ejecutar `git push` explícitamente y
+   comprobarlo con `git log origin/main..main` (vacío = empujado).
+2. **Dejar una edición en el árbol NO equivale a commitearla.** La regla de
+   pedirle permiso por cada diff sigue en pie por sí misma, pero no hace
+   falta tratarla como si el hook fuera a publicar por su cuenta.
+
+Y sobre los **ficheros basura de 0 bytes** que sí aparecen de vez en cuando
+en la raíz (esta sesión: `el`, `puesto`, `#5ec98a`, `--on-green`, `4.5`): la
+explicación que había —el hook los deja— tampoco se sostiene, porque el hook
+no escribe ficheros. Se intentó reproducirlos a propósito con `Write`, con
+`Edit` y con una orden cuya SALIDA llevaba `>` y `>=`, y **no aparecieron en
+ninguno de los tres casos**. Así que el mecanismo sigue sin conocerse. Lo que
+sí funciona es la defensa: `git status --porcelain` antes de dar por
+terminada la sesión, y borrar lo que salga. No inventes una causa para esto
+sin reproducirlo primero.
 
 Renormalizar CRLF, el comando exacto:
 
