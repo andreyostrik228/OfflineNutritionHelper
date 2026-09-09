@@ -67,15 +67,35 @@ Consecuencias prácticas, que no son pequeñas:
    pedirle permiso por cada diff sigue en pie por sí misma, pero no hace
    falta tratarla como si el hook fuera a publicar por su cuenta.
 
-Y sobre los **ficheros basura de 0 bytes** que sí aparecen de vez en cuando
-en la raíz (esta sesión: `el`, `puesto`, `#5ec98a`, `--on-green`, `4.5`): la
-explicación que había —el hook los deja— tampoco se sostiene, porque el hook
-no escribe ficheros. Se intentó reproducirlos a propósito con `Write`, con
-`Edit` y con una orden cuya SALIDA llevaba `>` y `>=`, y **no aparecieron en
-ninguno de los tres casos**. Así que el mecanismo sigue sin conocerse. Lo que
-sí funciona es la defensa: `git status --porcelain` antes de dar por
-terminada la sesión, y borrar lo que salga. No inventes una causa para esto
-sin reproducirlo primero.
+### Y los ficheros basura de 0 bytes salen del `>` de TUS PROPIOS TEXTOS
+
+La otra mitad de la frase vieja decía que esos ficheros los dejaba el hook.
+Tampoco: el hook no escribe ficheros. Lo que pasa es más útil de saber.
+
+Los nombres que aparecieron esta sesión —`el`, `puesto`, `#5ec98a`,
+`--on-green`, `4.5`, `` `planISO` ``— **son palabras que van justo detrás de
+un `>` dentro de ficheros del repositorio**. Dos comprobados al carácter:
+
+```
+  `planISO`   HANDOFF.md:971    - **El cableado `dayIndex` -> `planISO` ...
+  el          HANDOFF.md:465    > el mismo, solo que mas pequeno. ...
+```
+
+O sea: el contenido de un fichero acaba pasando por una shell, el `>` se
+interpreta como redirección y la palabra siguiente se convierte en un fichero
+vacío en la raíz. Las dos fuentes son justo lo que más se escribe en estos
+documentos: las **flechas `->`** de las tablas de medición y las **citas de
+markdown `> `**. Por eso el efecto se dispara en las sesiones que tocan mucho
+`HANDOFF.md` o `STATE.md`, y no en las que solo tocan código.
+
+No se ha identificado QUÉ componente hace ese paso por shell —se intentó
+reproducir con `Write`, con `Edit` y con una orden cuya SALIDA llevaba `>` y
+`>=`, y ninguno de los tres lo provocó—, así que eso queda sin cerrar. Pero
+el patrón sí está: si escribes `->` o citas, espera basura.
+
+La defensa, que es barata y funciona: `git status --porcelain` antes de dar
+por terminada la sesión, y borrar lo que salga. Son 0 bytes y no rompen nada;
+lo único que hacen es colarse en un commit si nadie mira.
 
 Renormalizar CRLF, el comando exacto:
 
