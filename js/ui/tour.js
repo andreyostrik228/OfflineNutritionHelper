@@ -170,9 +170,52 @@ function _tourResolveSteps() {
  * @returns {Element|null}
  */
 function _tourContexto(el) {
-  if (!el || typeof el.closest !== "function") return null;
-  var c = el.closest(".meal-card, .panel, .shopping-panel, #todayPlansPanel, #verifiedPanel");
-  return (c && c !== el) ? c : null;
+  if (!el || !el.parentElement) return null;
+
+  // Cuanto sitio hay de verdad: la pantalla menos la nota y sus margenes.
+  var cardH = (_tourEls && _tourEls.card && _tourEls.card.offsetHeight) || 200;
+  var hueco = Math.max(120, window.innerHeight - cardH - 36);
+
+  // Con el hueco a secas, en una pantalla de 720 la tarjeta de comida (587)
+  // se rechazaba por 147 px y el paso de la receta se quedaba SIN contexto:
+  // un marco de 30 px alrededor del enlace y ni rastro del plato. Eso es lo
+  // que el dueno describio como "no se ve mi dia".
+  //
+  // "No cabe por poco" y "no cabe ni de lejos" son cosas distintas: la
+  // tarjeta recortada sigue leyendose como una tarjeta, y el formulario
+  // entero (1.689 px) no se lee como nada. De ahi el margen de vez y media,
+  // topado por la pantalla para que el marco nunca la desborde entera.
+  var altoMaxDebajo = Math.min(hueco * 1.5, window.innerHeight - 24);
+  var altoMaxAlLado = window.innerHeight - 24;
+  var anchoMax = window.innerWidth - 24;
+  var cardW = (_tourEls && _tourEls.card && _tourEls.card.offsetWidth) || 340;
+
+  var r = el.getBoundingClientRect();
+  var mejor = null;
+  var p = el.parentElement;
+
+  while (p && p !== document.body && p !== document.documentElement) {
+    var pr = p.getBoundingClientRect();
+    // Mismo criterio que _tourPosition: si la nota cabe AL LADO de este
+    // candidato, el marco dispone de toda la altura de la pantalla. Las dos
+    // funciones tienen que decidir igual o eligen marcos distintos.
+    var notaAlLado = (window.innerWidth - pr.right >= cardW + 24) || (pr.left >= cardW + 24);
+    var altoMax = notaAlLado ? altoMaxAlLado : altoMaxDebajo;
+    // En cuanto un antepasado NO cabe entero, se para: framear algo que hay
+    // que recortar da una losa gris sin bordes visibles, que es justo lo
+    // que el dueno califico de horrible en los pasos de los botones del
+    // formulario (contexto .panel de 1.689 px en una pantalla de 900).
+    if (pr.height > altoMax || pr.width > anchoMax) break;
+    // Y tiene que aportar algo: un envoltorio del mismo tamano que el
+    // objetivo no ensena donde esta nada.
+    if (pr.height >= r.height + 12 || pr.width >= r.width + 12) mejor = p;
+    p = p.parentElement;
+  }
+
+  // El MAS GRANDE que quepa, no el mas pequeno: el dueno aprobo la tarjeta
+  // de comida entera (444x615) como contexto del boton "Cambiar", no la
+  // fila que lo contiene. La unidad con sentido es la tarjeta.
+  return mejor;
 }
 
 function _tourPosition() {
@@ -206,7 +249,20 @@ function _tourPosition() {
   // con un tope fijo del 60% el hueco llegaba tan abajo que la nota se
   // quedaba encima de él, tapando justo lo que estaba explicando.
   var cardH = e.card.offsetHeight || 160;
-  var altoMax = Math.max(120, vh - cardH - margen * 3);
+  var cardW0 = e.card.offsetWidth || 300;
+
+  // ¿Cabe la nota AL LADO del marco? Cuando el marco es estrecho -- una
+  // tarjeta de comida de 444 px en una pantalla de 1.400 -- sobra sitio a
+  // la derecha, y ponerla ahi devuelve al marco toda la altura de la
+  // pantalla. Con la nota siempre debajo, la tarjeta de comida (646 px) no
+  // cabia en los 440 que quedaban, habia que recortarla y el recorte
+  // desplazaba la vista: es el "no se ve mi dia, me tira hacia abajo".
+  var alLado = (vw - right >= cardW0 + margen * 2) || (left >= cardW0 + margen * 2);
+
+  // Con la nota al lado no hay que reservar altura para ella.
+  var altoMax = alLado
+    ? Math.max(120, vh - margen * 2)
+    : Math.max(120, vh - cardH - margen * 3);
   if (bottom - top > altoMax) {
     bottom = top + altoMax;
     // El recorte no puede dejar FUERA lo que se esta señalando. Con la
@@ -275,17 +331,34 @@ function _tourPosition() {
   var anclaBottom = foco ? (foco.top + foco.h) : bottom;
   var anclaLeft = foco ? foco.left : left;
 
-  var cardTop;
-  if (vh - anclaBottom > cardH + margen * 2) {
-    cardTop = anclaBottom + margen;
-  } else if (anclaTop > cardH + margen * 2) {
-    cardTop = anclaTop - cardH - margen;
-  } else {
-    cardTop = vh - cardH - margen;
-  }
-  cardTop = Math.max(margen, Math.min(cardTop, vh - cardH - margen));
+  var cardTop, cardLeft;
 
-  var cardLeft = Math.max(margen, Math.min(anclaLeft, vw - cardW - margen));
+  if (alLado) {
+    // Al lado del marco, a la altura de lo enfocado: asi la explicacion
+    // esta enfrente de lo que explica y el marco se queda entero.
+    cardTop = Math.max(margen, Math.min(anclaTop, vh - cardH - margen));
+    cardLeft = (vw - right >= cardW + margen * 2)
+      ? right + margen
+      : left - cardW - margen;
+    cardLeft = Math.max(margen, Math.min(cardLeft, vw - cardW - margen));
+  } else {
+    // Apilada, la nota tiene que salvar el MARCO entero, no solo el foco.
+    // El foco suele estar arriba del contexto, asi que "debajo del foco"
+    // cae DENTRO del marco: en la lista de la compra la nota se plantaba
+    // sobre los ultimos 35px del recuadro que estaba explicando. Al lado
+    // no pasa, porque ahi no se solapan por altura.
+    var bajoTodo = Math.max(anclaBottom, bottom);
+    var sobreTodo = Math.min(anclaTop, top);
+    if (vh - bajoTodo > cardH + margen * 2) {
+      cardTop = bajoTodo + margen;
+    } else if (sobreTodo > cardH + margen * 2) {
+      cardTop = sobreTodo - cardH - margen;
+    } else {
+      cardTop = vh - cardH - margen;
+    }
+    cardTop = Math.max(margen, Math.min(cardTop, vh - cardH - margen));
+    cardLeft = Math.max(margen, Math.min(anclaLeft, vw - cardW - margen));
+  }
 
   e.card.style.top = cardTop + "px";
   e.card.style.left = cardLeft + "px";

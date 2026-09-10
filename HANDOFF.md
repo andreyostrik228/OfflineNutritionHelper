@@ -299,6 +299,35 @@ Y una pregunta bien hecha vale más que otro despliegue: *"¿se abre la
 aplicación, se queda la bienvenida, o está en blanco?"* — cada respuesta
 señalaba una causa distinta.
 
+#### 7.1 bis El panel del navegador está OCULTO, y eso falsea las medidas
+
+`document.hidden === true` en el panel de vista previa, incluso tras
+`tabs_select`: lo que está oculto es el panel, no la pestaña. Consecuencias
+medidas, no supuestas:
+
+- **No corre el reloj de animaciones.** Las transiciones CSS se quedan
+  congeladas en su valor inicial. `getBoundingClientRect()` sobre
+  `.tour__foco` devolvía la geometría del paso ANTERIOR — con
+  `transition: none` saltaba al valor bueno en el mismo instante. Así medí
+  los 11 pasos del recorrido **desplazados una posición** y di por buena
+  una tabla entera que no lo era.
+- **No corre `requestAnimationFrame`.** Por eso nada se desplaza con
+  suavidad aquí, tenga el sistema el ajuste que tenga. Ya provocó un
+  diagnóstico falso: atribuí el salto del scroll a
+  `prefers-reduced-motion` cuando lo que medía era mi propio panel.
+- **`setTimeout` va estrangulado.** Una cadena de ~20 esperas agota el
+  límite de 45s de la herramienta.
+
+Regla: **antes de medir algo pintado, mata la transición**
+(`.tour__foco, .tour__hole { transition: none !important; }`) y fuerza el
+reflow con `void document.documentElement.offsetHeight` en vez de esperar
+con temporizadores. Y lo que dependa de animación o de aspecto **no se
+puede verificar aquí**: se dice que está sin verificar y lo mira el dueño.
+
+Las dos veces que este entorno me ha engañado ha sido con un **falso
+positivo**, que es peor que un falso negativo: un fallo que no aparece
+invita a mirar otra vez; una medida inventada se publica.
+
 ### 7.2 Nada que el usuario deba ver puede depender de que algo se ejecute
 
 Tres fallos distintos, la misma forma:
