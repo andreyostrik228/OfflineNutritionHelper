@@ -179,6 +179,46 @@ function _tourResolveSteps() {
 var TOUR_MARGEN = 12;   // aire entre el marco, la nota y el borde
 var TOUR_PAD = 8;       // aire entre lo enmarcado y el borde del marco
 
+// `_tourTopInset` recorre TODOS los elementos de la pagina con
+// `getComputedStyle` -- 2.514 en un plan normal, 3,0 ms por llamada aqui y
+// bastante mas en un movil. Mientras estuvo solo en _tourRender (una vez
+// por paso) daba igual; al entrar en _tourPosition paso a correr en CADA
+// evento de scroll, y ademas cuatro veces por evento (una directa, dos por
+// _tourContexto y otra por la comprobacion de la nota). Medido: 12,8 ms por
+// evento, con 16,7 de presupuesto por fotograma -- de ahi que el recorrido
+// "лагает" en el movil.
+//
+// La barra pegajosa no se mueve al desplazarse (comprobado: 52 px en siete
+// posiciones de scroll distintas), asi que basta con calcularlo una vez por
+// paso y al cambiar el tamaño de la ventana.
+var _tourInsetCache = -1;
+
+function _tourInset() {
+  if (_tourInsetCache < 0) _tourInsetCache = _tourTopInset();
+  return _tourInsetCache;
+}
+
+function _tourOlvidarInset() {
+  _tourInsetCache = -1;
+}
+
+/**
+ * .Se centra el bloque en la pantalla?
+ *
+ * Solo en pantallas anchas. Centrar TODO dejo el movil "сбилось": ahi los
+ * once pasos usan la disposicion apilada, el marco ocupa casi toda la
+ * altura y moverlo del sitio donde el dueno ya lo habia dado por bueno no
+ * gana nada. En el portatil, donde el mismo cambio dejo "всё хорошо", los
+ * marcos son pequenos y sobra pantalla.
+ *
+ * 900 px es el mismo corte que usa la hoja de estilos para la barra
+ * pegajosa: una sola frontera entre "movil" y "escritorio" en todo el
+ * proyecto, y no una nueva inventada aqui.
+ */
+function _tourCentrar() {
+  return window.innerWidth >= 900;
+}
+
 function _tourCardW() {
   return (_tourEls && _tourEls.card && _tourEls.card.offsetWidth) || 340;
 }
@@ -200,7 +240,7 @@ function _tourNotaAlLado(rect) {
  * el paso de la receta).
  */
 function _tourAltoMaxMarco(alLado) {
-  var libre = window.innerHeight - _tourTopInset();
+  var libre = window.innerHeight - _tourInset();
   return alLado
     ? Math.max(120, libre - TOUR_MARGEN * 2)
     : Math.max(120, libre - _tourCardH() - TOUR_MARGEN * 3);
@@ -333,7 +373,7 @@ function _tourPosition() {
   var e = _tourEls;
   var vh = window.innerHeight;
   var vw = window.innerWidth;
-  var inset = _tourTopInset();
+  var inset = _tourInset();
   var cardH = _tourCardH();
 
   var left  = Math.max(margen, r.left - pad);
@@ -393,7 +433,16 @@ function _tourPosition() {
   // encabezado y donde el usuario mira. Pero el recorte no puede dejar
   // FUERA lo que se esta señalando: si el objetivo cae por debajo, la
   // ventana se desliza hasta contenerlo, conservando su altura.
-  if (ro0.bottom + pad > bottom && ro0.top - pad < top) {
+  //
+  // Solo si HAY recorte. Sin esta condicion, un contexto que cabe entero
+  // entraba igualmente por la ultima rama y salia estirado a toda la banda:
+  // el grupo de botones "Despensa"/"Sin cocinar" (94 px) se pintaba como un
+  // marco de 458. Y entraba por medio pixel -- el desplazamiento dejaba el
+  // contexto en 71,5 y la comparacion `ro0.top - pad < top` daba 63,5 < 64.
+  // En el portatil no pasaba porque el centrado deja otros restos.
+  if (!recorta) {
+    // Cabe entero: no hay nada que deslizar ni que estirar.
+  } else if (ro0.bottom + pad > bottom && ro0.top - pad < top) {
     // El objetivo es MAS alto que la banda: no hay nada que deslizar.
     top = bandaTop;
     bottom = bandaBottom;
@@ -604,7 +653,7 @@ function _tourDestino(el, objetivo) {
   var desde = window.pageYOffset || document.documentElement.scrollTop || 0;
   var r = el.getBoundingClientRect();
   var vh = window.innerHeight;
-  var inset = _tourTopInset();
+  var inset = _tourInset();
   var cardH = _tourCardH();
 
   var left = Math.max(TOUR_MARGEN, r.left - TOUR_PAD);
@@ -615,7 +664,9 @@ function _tourDestino(el, objetivo) {
   var altoMarco = Math.min(r.height + TOUR_PAD * 2, altoBanda);
   var bloque = alLado ? altoMarco : (altoMarco + TOUR_MARGEN + cardH);
 
-  var arriba = inset + Math.max(TOUR_MARGEN, (vh - inset - bloque) / 2);
+  var arriba = _tourCentrar()
+    ? inset + Math.max(TOUR_MARGEN, (vh - inset - bloque) / 2)
+    : inset + TOUR_MARGEN;
 
   // Con la nota ARRIBA el marco empieza despues de ella. Mismo criterio que
   // _tourPosition, pero medido DENTRO de lo enmarcado y no contra la
@@ -698,6 +749,10 @@ function _tourRender() {
   if (!step) { stopTour(); return; }
 
   _tourRestoreScrollMargin();
+  // Una sola medida del inset por paso: dentro de un paso no cambia, y
+  // medirla en cada evento de scroll era casi todo el coste de
+  // _tourPosition.
+  _tourOlvidarInset();
 
   // Se desplaza hasta lo que se va a ENMARCAR, que es el contexto cuando
   // lo hay. Llevando el objetivo al borde de arriba, la tarjeta que lo
@@ -725,7 +780,7 @@ function _tourRender() {
     // borrar).
     _tourScrollMarginEl = el;
     _tourScrollMarginPrev = el.style.scrollMarginTop;
-    el.style.scrollMarginTop = (_tourTopInset() + 12) + "px";
+    el.style.scrollMarginTop = (_tourInset() + 12) + "px";
 
     // El destino lo calcula _tourDestino: centra el bloque, y con algo mas
     // alto que la pantalla enseña su comienzo (o su final, si es ahi donde
@@ -766,7 +821,12 @@ function startTour() {
   // cuenta como "visto" lo que se ha llegado a ver.
   _tourSeVio = true;
 
-  _tourScrollHandler = function () { _tourPosition(); };
+  _tourScrollHandler = function (ev) {
+    // Al cambiar el tamaño puede aparecer o desaparecer la barra pegajosa,
+    // asi que ahi el inset se vuelve a medir; al desplazarse no cambia.
+    if (ev && ev.type === "resize") _tourOlvidarInset();
+    _tourPosition();
+  };
   window.addEventListener("scroll", _tourScrollHandler, true);
   window.addEventListener("resize", _tourScrollHandler);
 
