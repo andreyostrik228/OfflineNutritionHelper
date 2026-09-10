@@ -394,7 +394,9 @@ function renderCookingSteps(meal) {
         : "") +
       '<ol class="meal-steps__list">' +
         info.steps.map(function (step) {
-          return '<li>' + escapeHtml(step) + '</li>';
+          // Se traduce AL PINTAR, no en los datos: el paso español es la
+          // clave del diccionario, igual que pasa con los nombres.
+          return '<li>' + escapeHtml(typeof tStep === "function" ? tStep(step) : step) + '</li>';
         }).join("") +
       '</ol>' +
     '</details>'

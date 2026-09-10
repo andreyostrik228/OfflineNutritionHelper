@@ -342,6 +342,56 @@ function tDish(nombre, lang) {
   return salida.replace(/\s+/g, " ").trim();
 }
 
+// ── Los PASOS de las recetas ─────────────────────────────────────────────
+//
+// 2.101 pasos repartidos en 434 platos, 1.682 distintos. Van en su propia
+// tabla y NO en I18N_TABLES por dos motivos:
+//
+// La clave es la frase española entera, igual que en FOOD_TABLES, no un
+// identificador. Un paso de receta no es una etiqueta de interfaz: no se
+// reutiliza en veinte sitios, no cabe en un slug, y con la frase de clave
+// el fichero de traducción se lee en paralelo con el original y se puede
+// revisar. Inventar `receta.pollo_paso_3` no aportaría nada y haria
+// imposible saber que se esta traduciendo sin abrir el otro fichero.
+//
+// Y porque el generador de platos escribe pasos nuevos. Sin traducción,
+// `tStep` devuelve el ORIGINAL: un plato recien generado sale en español
+// dentro de una interfaz en ingles, que es feo pero se entiende y se
+// cocina. Devolver la clave, o un hueco, dejaria la receta inservible.
+
+/** Diccionarios de pasos por idioma, que rellenan js/i18n/steps-*.js */
+var STEP_TABLES = {};
+
+/**
+ * Registra el diccionario de pasos de receta de un idioma.
+ * @param {string} lang
+ * @param {object} tabla - {"Lava la manzana…": "Rinse the apple…", ...}
+ */
+function registerStepTable(lang, tabla) {
+  if (LANGS.indexOf(lang) === -1) return;
+  if (!tabla || typeof tabla !== "object") return;
+  STEP_TABLES[lang] = tabla;
+}
+
+/**
+ * Un paso de receta en el idioma que toque.
+ *
+ * Sin traducción devuelve el ORIGINAL en español, por lo mismo que tFood():
+ * una instruccion de cocina a medias no se puede seguir.
+ *
+ * @param {string} paso - la frase en español
+ * @param {string} [lang]
+ * @returns {string}
+ */
+function tStep(paso, lang) {
+  if (typeof paso !== "string" || !paso) return paso;
+  var idioma = (typeof lang === "string") ? sanitizeLang(lang) : getLang();
+  if (idioma === DEFAULT_LANG) return paso;
+  var tabla = STEP_TABLES[idioma];
+  if (tabla && typeof tabla[paso] === "string") return tabla[paso];
+  return paso;
+}
+
 /**
  * La cadena de una clave.
  *
