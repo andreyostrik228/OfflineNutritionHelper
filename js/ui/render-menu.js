@@ -107,6 +107,11 @@ function applyI18nToDom(lang) {
       conAttr[j].setAttribute(attr, t(conAttr[j].getAttribute("data-i18n-" + attr), idioma));
     }
   }
+
+  // El recorrido se pinta desde JavaScript y no lleva marcas `data-i18n`,
+  // asi que este barrido no lo toca. Si esta abierto cuando se cambia de
+  // idioma, se queda en el anterior hasta el siguiente paso.
+  if (typeof refreshTourTexts === "function") refreshTourTexts();
 }
 
 // ── Cuando el navegador traduce la página por su cuenta ──────────────────

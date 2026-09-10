@@ -40,6 +40,66 @@ var _tourEls = null;
 var _tourSeVio = false;
 var _tourScrollHandler = null;
 
+/**
+ * Traduce, y si no hay traduccion se queda con el original.
+ *
+ * `t()` devuelve la CLAVE cuando no conoce una -- a proposito, para que un
+ * hueco se vea en pantalla en vez de quedarse en blanco. Aqui eso no sirve:
+ * el espanol de estos textos existe y esta a mano, asi que un hueco tiene
+ * que caer al original y no pintar "tour.plan_titulo" en la tarjeta.
+ *
+ * @param {string} clave
+ * @param {string} original  el castellano, que es la fuente
+ * @returns {string}
+ */
+function _tourT(clave, original) {
+  if (typeof t !== "function") return original;
+  var traducido = t(clave);
+  return (traducido && traducido !== clave) ? traducido : original;
+}
+
+/**
+ * El titulo o el cuerpo de un paso, en el idioma de ahora mismo.
+ *
+ * El castellano NO se copia a js/i18n/es.js: vive en TOUR_STEPS, pegado al
+ * comentario que explica por que ese paso existe y por que se dice asi.
+ * Separarlos convierte el texto en una cadena huerfana que nadie sabe si
+ * puede tocar. Misma decision que LEGAL_SUMMARY.
+ *
+ * @param {object} step
+ * @param {string} campo  "titulo" o "cuerpo"
+ * @returns {string}
+ */
+function _tourTextoPaso(step, campo) {
+  var original = (campo === "titulo") ? step.title : step.body;
+  return _tourT("tour." + step.id + "_" + campo, original);
+}
+
+/**
+ * Pone en la tarjeta los textos del paso actual, en el idioma de ahora.
+ *
+ * Los botones de la barra se crean una sola vez en _tourBuild, asi que
+ * tambien se repintan aqui: si no, al cambiar de idioma con el recorrido
+ * abierto se quedaban en el anterior.
+ */
+function _tourPintarTextos() {
+  var e = _tourEls;
+  var step = _tourVisible[_tourIndex];
+  if (!e || !step) return;
+
+  e.counter.textContent = _tourT("ui.paso_n_de_m", "{n} de {total}")
+    .replace("{n}", _tourIndex + 1)
+    .replace("{total}", _tourVisible.length);
+  e.title.textContent = _tourTextoPaso(step, "titulo");
+  e.body.textContent = _tourTextoPaso(step, "cuerpo");
+  e.next.textContent = (_tourIndex === _tourVisible.length - 1)
+    ? _tourT("ui.entendido", "Entendido")
+    : _tourT("ui.siguiente", "Siguiente");
+  e.skip.textContent = _tourT("ui.saltar", "Saltar");
+  e.prev.textContent = _tourT("ui.atras", "Atrás");
+  e.prev.hidden = (_tourIndex === 0);
+}
+
 /** Crea el DOM del recorrido una sola vez, la primera que hace falta. */
 function _tourBuild() {
   if (_tourEls) return _tourEls;
@@ -82,7 +142,7 @@ function _tourBuild() {
   var skip = document.createElement("button");
   skip.type = "button";
   skip.className = "tour__skip";
-  skip.textContent = "Saltar";
+  skip.textContent = _tourT("ui.saltar", "Saltar");
 
   // "Atrás" existe porque un recorrido solo de ida obliga a elegir entre
   // terminar sin haber entendido un paso o abandonarlo entero. Se oculta en
@@ -91,12 +151,12 @@ function _tourBuild() {
   var prev = document.createElement("button");
   prev.type = "button";
   prev.className = "tour__prev";
-  prev.textContent = "Atrás";
+  prev.textContent = _tourT("ui.atras", "Atrás");
 
   var next = document.createElement("button");
   next.type = "button";
   next.className = "tour__next";
-  next.textContent = "Siguiente";
+  next.textContent = _tourT("ui.siguiente", "Siguiente");
 
   nav.appendChild(skip);
   nav.appendChild(prev);
@@ -764,11 +824,7 @@ function _tourRender() {
   // saber cuanto mide la nota, y hasta que no lleva el texto de ESTE paso
   // mide lo que midiera el anterior -- con notas de 3 y de 6 lineas el
   // error son 60 px de descuadre.
-  e.counter.textContent = (_tourIndex + 1) + " de " + _tourVisible.length;
-  e.title.textContent = step.title;
-  e.body.textContent = step.body;
-  e.next.textContent = (_tourIndex === _tourVisible.length - 1) ? "Entendido" : "Siguiente";
-  e.prev.hidden = (_tourIndex === 0);
+  _tourPintarTextos();
 
   var el = _tourContexto(objetivo) || objetivo;
   if (el && typeof el.scrollIntoView === "function") {
@@ -792,6 +848,23 @@ function _tourRender() {
   // cada scroll/resize mientras el recorrido esté abierto.
   _tourPosition();
   window.setTimeout(_tourPosition, 320);
+}
+
+/**
+ * Repinta SOLO los textos de la tarjeta, en el idioma de ahora mismo.
+ *
+ * Lo llama applyI18nToDom() al cambiar de idioma. No es _tourRender()
+ * porque aquel vuelve a desplazar la pagina, y cambiar de idioma no es
+ * motivo para mover a nadie de sitio: se quedaria mirando otro paso.
+ */
+function refreshTourTexts() {
+  var e = _tourEls;
+  if (!e || e.root.hidden) return;
+  if (!_tourVisible[_tourIndex]) return;
+  _tourPintarTextos();
+  // El texto cambia de largo con el idioma, y de su alto dependen la banda
+  // del marco y donde cae la nota.
+  _tourPosition();
 }
 
 function _tourNext() {

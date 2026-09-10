@@ -189,8 +189,37 @@ function run(t) {
    * copia aquí: dos copias de un texto legal se separan solas y la que
    * queda vieja es la que el usuario acepta. El renderer pide la
    * traducción y, si no la hay, usa el original.
+   *
+   * Los textos del recorrido están en `TOUR_STEPS` (js/data/tour-steps.js)
+   * por lo mismo, y además porque ahí viven pegados al comentario que
+   * explica por qué cada paso existe: separarlos deja veintidós cadenas
+   * huérfanas que nadie sabe si puede tocar.
+   *
+   * Las del recorrido NO se listan a mano: se derivan de TOUR_STEPS, así
+   * que un paso nuevo exige su traducción el día que se añade, en vez de
+   * salir en castellano hasta que alguien se dé cuenta.
    */
-  var CLAVES_CON_ORIGEN_FUERA = ["ui.legal_resumen_1", "ui.legal_resumen_2", "ui.legal_resumen_3"];
+  function clavesDelRecorrido() {
+    var s = loadBrowserGlobals([projPath("js/data/tour-steps.js")]);
+    var claves = [];
+    (s.TOUR_STEPS || []).forEach(function (paso) {
+      claves.push("tour." + paso.id + "_titulo");
+      claves.push("tour." + paso.id + "_cuerpo");
+    });
+    return claves;
+  }
+
+  var CLAVES_CON_ORIGEN_FUERA = ["ui.legal_resumen_1", "ui.legal_resumen_2", "ui.legal_resumen_3"]
+    .concat(clavesDelRecorrido());
+
+  t.test("cada paso del recorrido aporta sus dos claves de traducción", function () {
+    // Si TOUR_STEPS deja de cargar en el sandbox, la lista sale vacía y los
+    // dos tests de abajo pasarían sin comprobar nada.
+    var claves = clavesDelRecorrido();
+    assert.ok(claves.length >= 22,
+      "solo " + claves.length + " claves derivadas de TOUR_STEPS");
+    assert.strictEqual(claves.length % 2, 0, "cada paso son dos claves");
+  });
 
   t.test("una traducción no inventa claves que el español no tiene", function () {
     // Una clave de más es una cadena que ya no se usa y que nadie borra, o

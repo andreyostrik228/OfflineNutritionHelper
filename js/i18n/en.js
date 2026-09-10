@@ -136,6 +136,7 @@ registerI18nTable("en", {
   "ui.elige_un_dia_para_ver_o_gestionar_ese_plan": "Pick a day to see or manage that plan",
   "ui.email": "Email",
   "ui.empezar": "Start",
+  "ui.entendido": "Got it",
   "ui.encontramos_datos_en_dos_sitios": "We found data in two places",
   "ui.entrenamientos_semana": "Workouts / week",
   "ui.equilibrado": "Balanced",
@@ -187,6 +188,7 @@ registerI18nTable("en", {
   "ui.offline": "Offline",
   "ui.olvidaste_tu_contrasena": "Forgotten your password?",
   "ui.oscura": "Dark",
+  "ui.paso_n_de_m": "{n} of {total}",
   "ui.perder_grasa": "Lose fat",
   "ui.personalizado_para_tus_objetivos_fisicos": "Tailored to your training goals",
   "ui.peso_kg": "Weight (kg)",
@@ -208,6 +210,7 @@ registerI18nTable("en", {
   "ui.repite_la_contrasena": "Repeat the password",
   "ui.resetear": "Reset",
   "ui.salado": "Savoury",
+  "ui.saltar": "Skip",
   "ui.saltar_al_contenido": "Skip to content",
   "ui.se_borran_ahora_mismo_y_para_siempre_tu_cuen": "Your account and everything saved in the cloud — your profile, your pantry and your plans — are deleted right now and for good. This cannot be undone.",
   "ui.sedentario": "Sedentary",
@@ -233,5 +236,34 @@ registerI18nTable("en", {
   "ui.weekplate": "Weekplate",
   "ui.weekplate_planificador_de_menus_con_precios_": "Weekplate — meal planner with real prices",
   "ui.ya_tengo_cuenta": "I already have an account",
-  "ui.ya_tienes_un_plan_activo_hoy": "You already have an active plan today"
+  "ui.ya_tienes_un_plan_activo_hoy": "You already have an active plan today",
+
+  // ── El recorrido guiado ────────────────────────────────────────────────
+  // El espanol de estas 22 NO esta en es.js: vive en TOUR_STEPS
+  // (js/data/tour-steps.js), junto al comentario que explica por que cada
+  // paso existe y por que se dice asi. Misma decision que LEGAL_SUMMARY, y
+  // por el mismo motivo: el texto y su justificacion no se separan. El
+  // recorrido pide la traduccion y, si no la hay, usa el original.
+  "tour.plan_titulo": "Your day of meals",
+  "tour.plan_cuerpo": "Five sittings that add up to the calories and protein you asked for. Each card carries the ingredients with their weight and the steps to cook it.",
+  "tour.recipe_titulo": "How each dish is cooked",
+  "tour.recipe_cuerpo": "Open it and you have the steps in order, with amounts and times. They are written for someone who has never cooked, and they warn you about what usually goes wrong before it goes wrong.",
+  "tour.swap_titulo": "Change a single meal",
+  "tour.swap_cuerpo": "If a dish does not appeal to you, or your Mercadona does not stock it, re-roll that sitting on its own and the rest of the day stays as it is.",
+  "tour.schedule_titulo": "When each meal is due",
+  "tour.schedule_cuerpo": "The times come from when you get up and when you go to bed. They can also be tapped: each one takes you to its card.",
+  "tour.shopping_titulo": "The shopping list",
+  "tour.shopping_cuerpo": "Everything in the plan, grouped and with what it actually costs: if a recipe uses 150 g out of a 600 g pack, here you will see the whole pack. The photo button opens the exact product page in Mercadona.",
+  "tour.pantry_titulo": "What you already have at home",
+  "tour.pantry_cuerpo": "Note down the rice you have left or the eggs in the fridge. It stops appearing in the shopping list and the plan gets cheaper, because you are only charged for what you have to go and buy.",
+  "tour.nocook_titulo": "Days without cooking",
+  "tour.nocook_cuerpo": "For when you have no kitchen or do not feel like turning it on: a whole day of things you eat as they are, with no hob and no pan.",
+  "tour.days_titulo": "Shopping for several days",
+  "tour.days_cuerpo": "Turn this up to 3 or 7 and you will get different days from a single shop. It usually works out cheaper: opened packs stretch across several days instead of going to waste in one.",
+  "tour.catalog_titulo": "Look up a single product",
+  "tour.catalog_cuerpo": "Mercadona's whole catalogue with its price. Search by name or brand when you want to check what something costs, and the photo button opens its page in the shop.",
+  "tour.saved_titulo": "The days you have already saved",
+  "tour.saved_cuerpo": "This is where the plans you confirm stay. You can open them again, tick off what you have eaten and change a single meal.",
+  "tour.today_titulo": "Set today's plan",
+  "tour.today_cuerpo": "Saves this plan as today's. When you come back tomorrow it will be waiting, with the time for each meal."
 });
