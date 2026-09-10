@@ -1552,11 +1552,24 @@ document.addEventListener("DOMContentLoaded", function () {
   // queda es la aplicación de siempre, no una pantalla en blanco.
   // Pie: releer las condiciones y repetir la explicación. Va aparte del
   // alta porque tiene que funcionar SIEMPRE, no solo el primer día.
+  // El menú de ajustes. Dentro de safeInit como todo lo demás: si fallara,
+  // lo que queda es la aplicación de siempre sin menú, no una pantalla en
+  // blanco. El tema ya está aplicado por el IIFE del <head> antes de esto.
+  safeInit("ajustes-menu", function () {
+    if (typeof initAjustesMenu === "function") initAjustesMenu();
+  });
+
   safeInit("footer-links", function () {
     var legalBtn = document.getElementById("footerLegalBtn");
     if (legalBtn && typeof openLegalDialog === "function") {
       legalBtn.addEventListener("click", openLegalDialog);
     }
+
+    // Estas dos eran funciones anónimas aquí dentro. Se sacaron con nombre
+    // (más abajo en este archivo) cuando el menú de ajustes empezó a
+    // ofrecer lo mismo: dos botones que hacen "lo mismo" con dos copias del
+    // código son dos comportamientos que se separan solos. Un dueño, una
+    // implementación -- la lección de 7.10.
 
     // ── Descargar mis datos ────────────────────────────────────────────
     // Se podia BORRAR la cuenta pero no sacar nada antes, y todo lo que
@@ -1567,50 +1580,10 @@ document.addEventListener("DOMContentLoaded", function () {
     // no una lista escrita a mano: asi una clave nueva entra en la copia
     // sola, sin que nadie tenga que acordarse de anadirla aqui.
     var exportBtn = document.getElementById("footerExportBtn");
-    if (exportBtn) {
-      exportBtn.addEventListener("click", function () {
-        var datos = { exportadoEl: new Date().toISOString(), version: 1, claves: {} };
-        try {
-          for (var i = 0; i < localStorage.length; i++) {
-            var k = localStorage.key(i);
-            if (k && k.indexOf("nutritionPlanner.") === 0) {
-              try { datos.claves[k] = JSON.parse(localStorage.getItem(k)); }
-              catch (e) { datos.claves[k] = localStorage.getItem(k); }
-            }
-          }
-        } catch (e) { /* sin localStorage no hay nada que exportar */ }
-
-        var blob = new Blob([JSON.stringify(datos, null, 2)], { type: "application/json" });
-        var url = URL.createObjectURL(blob);
-        var a = document.createElement("a");
-        a.href = url;
-        a.download = "nutrition-planner-" + new Date().toISOString().slice(0, 10) + ".json";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        // Sin revocar, el blob se queda en memoria hasta recargar.
-        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
-      });
-    }
+    if (exportBtn) exportBtn.addEventListener("click", exportarMisDatos);
 
     var tourBtn = document.getElementById("footerTourBtn");
-    if (tourBtn) {
-      tourBtn.addEventListener("click", function () {
-        // Si ya hay un plan en pantalla, lo que hace falta es el recorrido
-        // guiado. Si no lo hay, no habría nada que señalar, así que se
-        // repite el alta entera desde la bienvenida.
-        // `:not([data-empty])` -- la tarjeta "Esperando parámetros..." es
-        // también un `.meal-card`, así que SIN esto siempre había "plan" y
-        // este enlace nunca repetía el alta: arrancaba un recorrido cuyo
-        // primer paso señalaba una caja vacía.
-        var hayPlan = document.querySelectorAll("#mealsContainer .meal-card:not([data-empty])").length > 0;
-        if (hayPlan && typeof startTour === "function") {
-          startTour();
-        } else if (typeof restartOnboarding === "function") {
-          restartOnboarding();
-        }
-      });
-    }
+    if (tourBtn) tourBtn.addEventListener("click", repetirExplicacion);
   });
 
   safeInit("onboarding-init", function () {
@@ -1674,3 +1647,59 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
 });
+
+/**
+ * Se lleva TODO lo que esta aplicacion guarda en este navegador: perfil,
+ * despensa, planes, horario, tema. Se podia borrar la cuenta pero no sacar
+ * nada antes, y borrar los datos del sitio se lo lleva sin aviso.
+ *
+ * Recorre el prefijo del proyecto en vez de una lista escrita a mano: asi
+ * una clave nueva entra en la copia sola, sin que nadie se acuerde de
+ * anadirla aqui. `nutritionPlanner.theme.v1` entro por esa puerta.
+ *
+ * Tiene nombre porque la llaman DOS botones -- el del pie y el del menu de
+ * ajustes -- y dos copias del mismo codigo se separan solas.
+ */
+function exportarMisDatos() {
+  var datos = { exportadoEl: new Date().toISOString(), version: 1, claves: {} };
+  try {
+    for (var i = 0; i < localStorage.length; i++) {
+      var k = localStorage.key(i);
+      if (k && k.indexOf("nutritionPlanner.") === 0) {
+        try { datos.claves[k] = JSON.parse(localStorage.getItem(k)); }
+        catch (e) { datos.claves[k] = localStorage.getItem(k); }
+      }
+    }
+  } catch (e) { /* sin localStorage no hay nada que exportar */ }
+
+  var blob = new Blob([JSON.stringify(datos, null, 2)], { type: "application/json" });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url;
+  a.download = "nutrition-planner-" + new Date().toISOString().slice(0, 10) + ".json";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  // Sin revocar, el blob se queda en memoria hasta recargar.
+  setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+}
+
+/**
+ * Repite la explicacion. Si ya hay un plan en pantalla hace falta el
+ * recorrido guiado; si no lo hay no habria nada que senalar, asi que se
+ * repite el alta entera desde la bienvenida.
+ *
+ * `:not([data-empty])` -- la tarjeta "Esperando parametros..." es tambien
+ * un `.meal-card`, asi que SIN esto siempre habia "plan" y este enlace
+ * nunca repetia el alta: arrancaba un recorrido cuyo primer paso senalaba
+ * una caja vacia.
+ */
+function repetirExplicacion() {
+  var hayPlan = document.querySelectorAll(
+    "#mealsContainer .meal-card:not([data-empty])").length > 0;
+  if (hayPlan && typeof startTour === "function") {
+    startTour();
+  } else if (typeof restartOnboarding === "function") {
+    restartOnboarding();
+  }
+}

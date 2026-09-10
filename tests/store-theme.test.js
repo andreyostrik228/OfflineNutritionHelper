@@ -81,15 +81,15 @@ function sinComentarios(css) {
   return css.replace(/\/\*[\s\S]*?\*\//g, "");
 }
 
-/** Todos los cuerpos de `@media (prefers-color-scheme: dark)`. */
-function bloquesOscuros(css) {
-  var out = [], re = /@media[^{]*prefers-color-scheme\s*:\s*dark[^{]*/g, m;
-  while ((m = re.exec(css))) {
-    var b = cuerpoDesde(css, m.index);
-    if (b) { out.push(b.cuerpo); re.lastIndex = b.fin; }
-  }
-  return out;
-}
+/**
+ * El selector del tema oscuro. Desde el 2026-09-10 el modo oscuro NO cuelga
+ * de `@media (prefers-color-scheme: dark)` sino de un atributo que pone el
+ * usuario desde el menu de ajustes -- la preferencia del sistema le llegaba
+ * al dueno como una imposicion. "Del sistema" sigue existiendo como opcion,
+ * pero la resuelve el JavaScript y escribe aqui el valor ya resuelto, para
+ * que los valores oscuros vivan en UN solo bloque.
+ */
+var SEL_OSCURO = ':root[data-theme="oscuro"]';
 
 /** Declaraciones `--token: valor` de un cuerpo de regla. */
 function tokensDe(cuerpo) {
@@ -111,9 +111,22 @@ function reglas(css, selector) {
   return out;
 }
 
-/** Los overlays de tienda: `:root[data-store="x"]`, con su id. */
-function overlaysDeTienda(css) {
-  var out = [], re = /:root\[data-store\s*=\s*"([a-z0-9-]+)"\]\s*\{/g, m;
+/**
+ * Los overlays de tienda, con su id.
+ *
+ *   claro:   :root[data-store="x"]
+ *   oscuro:  :root[data-theme="oscuro"][data-store="x"]
+ *
+ * La forma oscura la fija esta funcion porque todavia no hay ninguna tienda
+ * con tema propio: cuando llegue la primera, este es el molde, y los tests
+ * de mas abajo exigen que quien escriba la clara escriba tambien la oscura.
+ */
+function overlaysDeTienda(css, oscuro) {
+  var out = [];
+  var re = oscuro
+    ? /:root\[data-theme\s*=\s*"oscuro"\]\[data-store\s*=\s*"([a-z0-9-]+)"\]\s*\{/g
+    : /:root\[data-store\s*=\s*"([a-z0-9-]+)"\]\s*\{/g;
+  var m;
   while ((m = re.exec(css))) {
     var b = cuerpoDesde(css, m.index + m[0].length - 1);
     if (b) { out.push({ tienda: m[1], tokens: tokensDe(b.cuerpo) }); re.lastIndex = b.fin; }
@@ -165,23 +178,22 @@ function run(t) {
   var css = sinComentarios(leer("assets/css/style.css"));
   var html = leer("index.html");
 
-  var oscuros = bloquesOscuros(css);
-  var cssClaro = oscuros.reduce(function (acc, b) { return acc.split(b).join(""); }, css);
-
-  // Los `:root` sueltos del bloque claro. El de --sbw también sale aquí:
-  // se fusionan, que es justo lo que hace el navegador.
+  // Los `:root` SUELTOS son el tema claro. `reglas()` exige que la llave
+  // venga justo detras del selector, asi que `:root[data-theme="oscuro"] {`
+  // no cae aqui: son dos conjuntos disjuntos sin tener que recortar nada.
+  // El `:root` de --sbw tambien sale aqui y se fusiona, que es justo lo que
+  // hace el navegador.
   var rootClaro = {};
-  reglas(cssClaro, ":root").forEach(function (c) {
+  reglas(css, ":root").forEach(function (c) {
     var tk = tokensDe(c);
     Object.keys(tk).forEach(function (k) { rootClaro[k] = tk[k]; });
   });
   var rootOscuro = {};
-  oscuros.forEach(function (b) {
-    reglas(b, ":root").forEach(function (c) {
-      var tk = tokensDe(c);
-      Object.keys(tk).forEach(function (k) { rootOscuro[k] = tk[k]; });
-    });
+  reglas(css, SEL_OSCURO).forEach(function (c) {
+    var tk = tokensDe(c);
+    Object.keys(tk).forEach(function (k) { rootOscuro[k] = tk[k]; });
   });
+  var cssClaro = css;
 
   // ── 1. El contrato existe de verdad ────────────────────────────────────
   // Si alguien renombra --green, el tema de tienda apunta al vacío y no se
@@ -224,12 +236,10 @@ function run(t) {
   });
 
   // ── 3. LA TRAMPA: claro sin gemelo oscuro ─────────────────────────────
-  var claros = overlaysDeTienda(cssClaro);
+  var claros = overlaysDeTienda(cssClaro, false);
   var oscurosPorTienda = {};
-  oscuros.forEach(function (b) {
-    overlaysDeTienda(b).forEach(function (o) {
-      oscurosPorTienda[o.tienda] = Object.assign(oscurosPorTienda[o.tienda] || {}, o.tokens);
-    });
+  overlaysDeTienda(css, true).forEach(function (o) {
+    oscurosPorTienda[o.tienda] = Object.assign(oscurosPorTienda[o.tienda] || {}, o.tokens);
   });
 
   t.test("cada overlay de tienda en claro define los MISMOS tokens en oscuro", function () {

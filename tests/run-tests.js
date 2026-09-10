@@ -57,6 +57,7 @@ function drain() {
 }
 
 var suites = [
+  "theme.test",
   "shopping-cost.test",
   "budget-mode.test",
   "plan-generator.characterization.test",
