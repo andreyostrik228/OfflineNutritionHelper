@@ -49,8 +49,18 @@ function _tourBuild() {
   root.id = "tour";
   root.hidden = true;
 
+  // Dos huecos, no uno. El de CONTEXTO deja ver la tarjeta o el panel donde
+  // vive lo que se explica; el de FOCO señala la cosa concreta dentro de
+  // ella. Con un solo hueco sobre un botón pequeño, la tarjeta que lo
+  // contiene quedaba tan oscura como el resto de la página y no se sabía
+  // DÓNDE estaba ese botón -- que era justo lo que el recorrido tenía que
+  // enseñar.
   var hole = document.createElement("div");
   hole.className = "tour__hole";
+
+  var foco = document.createElement("div");
+  foco.className = "tour__foco";
+  foco.hidden = true;
 
   var card = document.createElement("div");
   card.className = "tour__card";
@@ -96,6 +106,9 @@ function _tourBuild() {
   card.appendChild(body);
   card.appendChild(nav);
   root.appendChild(hole);
+  // El foco va DESPUES del contexto: su velo gris cae encima, asi que la
+  // tarjeta de contexto queda atenuada y solo lo enfocado sale limpio.
+  root.appendChild(foco);
   root.appendChild(card);
   document.body.appendChild(root);
 
@@ -108,7 +121,7 @@ function _tourBuild() {
     if (ev.key === "Escape" && !root.hidden) stopTour();
   });
 
-  _tourEls = { root: root, hole: hole, card: card, counter: counter,
+  _tourEls = { root: root, hole: hole, foco: foco, card: card, counter: counter,
                title: title, body: body, skip: skip, prev: prev, next: next };
   return _tourEls;
 }
@@ -143,11 +156,34 @@ function _tourResolveSteps() {
  * Así que el hueco se limita a la parte VISIBLE del elemento, y la nota
  * se coloca contra ese rectángulo recortado, no contra el original.
  */
+/**
+ * La tarjeta o el panel donde vive lo que se explica.
+ *
+ * Sirve para que el usuario vea DONDE esta lo que se le senala: sin esto,
+ * un boton pequeno se iluminaba solo y todo su alrededor quedaba tan oscuro
+ * como el resto de la pagina, asi que se veia el boton pero no donde estaba.
+ *
+ * Devuelve null cuando el propio objetivo YA es la tarjeta o el panel: ahi
+ * no hay nada que contextualizar y el foco sobraria.
+ *
+ * @param {Element} el
+ * @returns {Element|null}
+ */
+function _tourContexto(el) {
+  if (!el || typeof el.closest !== "function") return null;
+  var c = el.closest(".meal-card, .panel, .shopping-panel, #todayPlansPanel, #verifiedPanel");
+  return (c && c !== el) ? c : null;
+}
+
 function _tourPosition() {
   var step = _tourVisible[_tourIndex];
   if (!step) return;
-  var el = document.querySelector(step.target);
-  if (!el) return;
+  var objetivo = document.querySelector(step.target);
+  if (!objetivo) return;
+
+  // El hueco oscuro enmarca el CONTEXTO; el foco gris, el objetivo.
+  var contexto = _tourContexto(objetivo);
+  var el = contexto || objetivo;
 
   var r = el.getBoundingClientRect();
   var pad = 8;
@@ -173,6 +209,20 @@ function _tourPosition() {
   var altoMax = Math.max(120, vh - cardH - margen * 3);
   if (bottom - top > altoMax) {
     bottom = top + altoMax;
+    // El recorte no puede dejar FUERA lo que se esta señalando. Con la
+    // tarjeta de una comida, el trozo explicado ("como se cocina") esta
+    // abajo del todo y el recorte por arriba lo cortaba: el foco se
+    // quedaba sin sitio y no se encendia. Si pasa, la ventana se desliza
+    // hasta contenerlo, conservando su altura.
+    if (contexto) {
+      var ro0 = objetivo.getBoundingClientRect();
+      if (ro0.bottom + pad > bottom) {
+        var corrimiento = Math.min(ro0.bottom + pad - bottom, top - margen);
+        if (corrimiento > 0) { top -= corrimiento; bottom -= corrimiento; }
+        bottom = Math.min(vh - margen, Math.max(bottom, ro0.bottom + pad));
+        top = Math.max(margen, bottom - altoMax);
+      }
+    }
   }
 
   var h = Math.max(0, bottom - top);
@@ -183,21 +233,59 @@ function _tourPosition() {
   e.hole.style.width  = w + "px";
   e.hole.style.height = h + "px";
 
+  // El foco: la cosa concreta, dentro del contexto ya iluminado. Sin
+  // contexto no hay nada que atenuar, asi que no se enciende.
+  var foco = null;
+  if (contexto) {
+    var ro = objetivo.getBoundingClientRect();
+    // Solo si de verdad se ve: un objetivo que ha quedado fuera del recorte
+    // del contexto senalaria una zona vacia de la pantalla.
+    var fTop = Math.max(top, ro.top - 6);
+    var fBottom = Math.min(top + h, ro.bottom + 6);
+    var fLeft = Math.max(left, ro.left - 6);
+    var fRight = Math.min(left + w, ro.right + 6);
+    if (fBottom - fTop > 4 && fRight - fLeft > 4) {
+      var areaFoco = (fBottom - fTop) * (fRight - fLeft);
+      var areaCtx = Math.max(1, w * h);
+      // Si el foco ocupa casi todo el contexto no distingue nada: seria un
+      // velo gris sobre un margen de cuatro pixeles. Mejor no encenderlo.
+      if (areaFoco / areaCtx < 0.8) {
+        foco = { top: fTop, left: fLeft, w: fRight - fLeft, h: fBottom - fTop };
+      }
+    }
+  }
+  if (foco) {
+    e.foco.hidden = false;
+    e.foco.style.top    = foco.top + "px";
+    e.foco.style.left   = foco.left + "px";
+    e.foco.style.width  = foco.w + "px";
+    e.foco.style.height = foco.h + "px";
+  } else {
+    e.foco.hidden = true;
+  }
+
   // La nota va debajo del hueco; si no cabe, encima; y si tampoco, se
   // pega al borde inferior de la pantalla. Nunca queda fuera de la vista.
   var cardW = e.card.offsetWidth || 300;
 
+  // La nota se coloca junto a lo ENFOCADO, no junto al contexto: si no,
+  // al senalar un boton pequeno la nota se iba al borde de la tarjeta
+  // entera y quedaba lejos de lo que estaba explicando.
+  var anclaTop = foco ? foco.top : top;
+  var anclaBottom = foco ? (foco.top + foco.h) : bottom;
+  var anclaLeft = foco ? foco.left : left;
+
   var cardTop;
-  if (vh - bottom > cardH + margen * 2) {
-    cardTop = bottom + margen;
-  } else if (top > cardH + margen * 2) {
-    cardTop = top - cardH - margen;
+  if (vh - anclaBottom > cardH + margen * 2) {
+    cardTop = anclaBottom + margen;
+  } else if (anclaTop > cardH + margen * 2) {
+    cardTop = anclaTop - cardH - margen;
   } else {
     cardTop = vh - cardH - margen;
   }
   cardTop = Math.max(margen, Math.min(cardTop, vh - cardH - margen));
 
-  var cardLeft = Math.max(margen, Math.min(left, vw - cardW - margen));
+  var cardLeft = Math.max(margen, Math.min(anclaLeft, vw - cardW - margen));
 
   e.card.style.top = cardTop + "px";
   e.card.style.left = cardLeft + "px";
@@ -256,6 +344,88 @@ function _tourRestoreScrollMargin() {
   _tourScrollMarginPrev = "";
 }
 
+// ── El desplazamiento entre pasos ────────────────────────────────────────
+//
+// Se anima a mano y NO con `scrollIntoView({behavior:"smooth"})`.
+//
+// Medido en un portatil: `scrollIntoView` con `smooth` salta de golpe
+// -- 951 px a 1555 px en un solo fotograma, a los 19 ms -- cuando el
+// sistema tiene activado "reducir movimiento". Chrome respeta esa
+// preferencia tambien para la version JS de la llamada, aunque se le pida
+// `smooth` explicitamente. En un movil sin esa preferencia se desliza; de
+// ahi que el mismo recorrido se sintiera distinto en cada aparato.
+//
+// Aqui el movimiento NO es decoracion: es lo que dice "lo que te voy a
+// enseñar esta MAS ABAJO". Un salto seco deja al usuario sin saber a donde
+// ha ido a parar, que es justo lo que el recorrido existe para evitar. Asi
+// que se anima siempre, pero con la preferencia respetada en la DURACION:
+// corta cuando se pide menos movimiento, normal cuando no.
+var _tourScrollRaf = null;
+
+function _tourPrefiereMenosMovimiento() {
+  try {
+    return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  } catch (e) { return false; }
+}
+
+function _tourScrollSuave(el) {
+  if (_tourScrollRaf) { window.cancelAnimationFrame(_tourScrollRaf); _tourScrollRaf = null; }
+
+  var desde = window.pageYOffset || document.documentElement.scrollTop || 0;
+  var r = el.getBoundingClientRect();
+  var maximo = Math.max(0, (document.documentElement.scrollHeight || 0) - window.innerHeight);
+  var hasta = Math.max(0, Math.min(maximo, desde + r.top - (_tourTopInset() + 12)));
+  var salto = hasta - desde;
+  if (Math.abs(salto) < 2) return;
+
+  if (typeof window.requestAnimationFrame !== "function") {
+    window.scrollTo(0, hasta);
+    return;
+  }
+
+  // La hoja pone `scroll-behavior: smooth` en la raiz, asi que CADA
+  // `scrollTo` de esta animacion se suavizaria por su cuenta: dos
+  // animaciones peleandose por el mismo scroll, con el resultado de que
+  // ninguna llega. Se apaga mientras dura y se devuelve al terminar.
+  var raiz = document.documentElement;
+  var behaviorPrevio = raiz.style.scrollBehavior;
+  raiz.style.scrollBehavior = "auto";
+  function terminar() {
+    raiz.style.scrollBehavior = behaviorPrevio;
+    _tourScrollRaf = null;
+  }
+
+  var duracion = _tourPrefiereMenosMovimiento() ? 200 : 480;
+  var t0 = null;
+  function paso(ahora) {
+    if (t0 === null) t0 = ahora;
+    var k = Math.min(1, (ahora - t0) / duracion);
+    // easeInOutCubic: arranca y frena despacio, que es lo que hace que se
+    // lea como "me estan llevando" y no como "me han movido".
+    var f = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+    window.scrollTo(0, desde + salto * f);
+    if (k < 1) _tourScrollRaf = window.requestAnimationFrame(paso);
+    else terminar();
+  }
+  _tourScrollRaf = window.requestAnimationFrame(paso);
+
+  // Red de seguridad: en una pestaña en segundo plano el navegador NO
+  // ejecuta requestAnimationFrame, asi que la animacion no arranca y el
+  // recorrido se quedaria señalando algo que no esta en pantalla.
+  // Comprobado a las malas: la panel de pruebas estaba oculta y ningun
+  // fotograma llego a correr.
+  //
+  // Pasado el tiempo de la animacion, si no ha llegado, se lleva de golpe.
+  // Saltar es peor que deslizar y mucho mejor que no moverse.
+  window.setTimeout(function () {
+    if (_tourScrollRaf === null) return;      // la animacion ya termino
+    window.cancelAnimationFrame(_tourScrollRaf);
+    raiz.style.scrollBehavior = "auto";
+    window.scrollTo(0, hasta);
+    terminar();
+  }, duracion + 260);
+}
+
 function _tourRender() {
   var step = _tourVisible[_tourIndex];
   var e = _tourEls;
@@ -263,7 +433,12 @@ function _tourRender() {
 
   _tourRestoreScrollMargin();
 
-  var el = document.querySelector(step.target);
+  // Se desplaza hasta lo que se va a ENMARCAR, que es el contexto cuando
+  // lo hay. Llevando el objetivo al borde de arriba, la tarjeta que lo
+  // contiene se quedaba por encima de la pantalla: el marco de contexto se
+  // recortaba a una franja de 51 px y el foco no cabia dentro. Medido.
+  var objetivo = document.querySelector(step.target);
+  var el = _tourContexto(objetivo) || objetivo;
   if (el && typeof el.scrollIntoView === "function") {
     // El hueco se reserva con `scroll-margin-top` y NO restando píxeles
     // después: así la cuenta la hace el navegador dentro del propio
@@ -278,7 +453,7 @@ function _tourRender() {
     // "start" y no "center": con un elemento más alto que la pantalla,
     // centrarlo deja su comienzo -- que es lo que se explica -- fuera de
     // la vista, y el usuario ve un trozo cualquiera de la mitad.
-    el.scrollIntoView({ behavior: "smooth", block: "start" });
+    _tourScrollSuave(el);
   }
 
   e.counter.textContent = (_tourIndex + 1) + " de " + _tourVisible.length;

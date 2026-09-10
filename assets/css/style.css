@@ -4873,6 +4873,8 @@ body.is-onboarding {
   pointer-events: none;
 }
 
+/* El hueco del CONTEXTO: la tarjeta o el panel donde vive lo que se
+   explica. Su sombra enorme oscurece TODO lo demas de la pagina. */
 .tour__hole {
   position: fixed;
   border-radius: var(--radius-md);
@@ -4880,6 +4882,29 @@ body.is-onboarding {
   transition: top 220ms ease, left 220ms ease, width 220ms ease, height 220ms ease;
   pointer-events: auto;
 }
+
+/* El FOCO: la cosa concreta dentro de ese contexto.
+   Su sombra es GRIS y clara, no negra, y cae encima del contexto: la
+   tarjeta se queda atenuada pero legible -- se sigue viendo DONDE esta el
+   boton -- y solo lo enfocado sale a plena luz. Con un unico hueco, el
+   alrededor de un boton pequeno quedaba tan negro como el resto de la
+   pagina y no habia forma de situarlo. */
+.tour__foco {
+  position: fixed;
+  border-radius: var(--radius-sm);
+  box-shadow:
+    0 0 0 9999px rgba(120, 108, 95, 0.42),
+    0 0 0 3px var(--green-bright),
+    0 0 18px 4px rgba(0, 166, 80, 0.45);
+  transition: top 220ms ease, left 220ms ease, width 220ms ease, height 220ms ease;
+  pointer-events: none;
+}
+
+/* Sin esta linea el foco se ve SIEMPRE: una regla de autor con `position`
+   y sombra gana al `display:none` de [hidden]. Misma trampa que ya se
+   comieron .topbar__offline y el dialogo de la despensa, y hay un test que
+   la vigila (tests/css-visibility.test.js). */
+.tour__foco[hidden] { display: none; }
 
 .tour__card {
   position: fixed;
