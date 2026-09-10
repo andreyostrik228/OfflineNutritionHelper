@@ -282,20 +282,24 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function clearOutput() {
     summaryEls.calories.textContent    = "-";
-    summaryEls.caloriesSub.textContent = "Esperando cálculo";
+    summaryEls.caloriesSub.textContent = t("ui.esperando_calculo");
     summaryEls.protein.textContent     = "-";
-    summaryEls.proteinSub.textContent  = "Esperando cálculo";
+    summaryEls.proteinSub.textContent  = t("ui.esperando_calculo");
     summaryEls.carbs.textContent       = "-";
-    summaryEls.carbsSub.textContent    = "Esperando cálculo";
+    summaryEls.carbsSub.textContent    = t("ui.esperando_calculo");
     summaryEls.fats.textContent        = "-";
-    summaryEls.fatsSub.textContent     = "Esperando cálculo";
+    summaryEls.fatsSub.textContent     = t("ui.esperando_calculo");
 
     mealsContainer.innerHTML =
       '<div class="meal-card meal-card--empty" data-empty>' +
         '<div class="meal-body">' +
           '<span class="empty-icon"><svg width="28" height="28"><use href="#icon-search"/></svg></span>' +
-          '<p><em>Esperando parámetros&hellip;</em></p>' +
-          '<p>Configura tus datos en el panel lateral y pulsa <strong>Generar plan</strong>.</p>' +
+          // Llevan `data-i18n-html` para que applyI18nToDom() las repinte al
+          // cambiar de idioma: este bloque se construye una vez y no vuelve
+          // a pasar por aqui.
+          '<p data-i18n-html="html.esperando_parametros">' + t("html.esperando_parametros") + '</p>' +
+          '<p data-i18n-html="html.configura_tus_datos_en_el_panel_lateral_y_pu">' +
+            t("html.configura_tus_datos_en_el_panel_lateral_y_pu") + '</p>' +
         '</div>' +
       '</div>';
 
@@ -357,8 +361,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (!res || res.error || !res.meal) {
       btn.disabled = false;
-      btn.textContent = "sin más opciones";
-      setTimeout(function () { btn.innerHTML = "↻ Cambiar"; }, 1600);
+      btn.textContent = t("ui.sin_mas_opciones");
+      setTimeout(function () { btn.innerHTML = "&#8635; " + escapeHtml(t("ui.cambiar")); }, 1600);
       return;
     }
 
@@ -646,7 +650,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
 
         if (statusText) {
-          statusText.textContent = "Plan generado correctamente.";
+          statusText.textContent = t("ui.plan_generado_correctamente");
         }
 
         // ── El recorrido guiado, si al usuario le toca ──────────────────
@@ -659,7 +663,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
       } catch (err) {
         console.error(err);
-        showWarning("Ha ocurrido un error generando el plan. Revisa los datos introducidos.");
+        showWarning(t("ui.ha_ocurrido_un_error_generando_el_plan"));
       } finally {
         hideSpinner();
       }
@@ -829,7 +833,11 @@ document.addEventListener("DOMContentLoaded", function () {
         var opcion = paso.options.filter(function (o) { return o.value === select.value; })[0];
         // Sin `note` no se inventa una: hay opciones que se explican solas
         // ("Perder grasa"), y rellenar el hueco por simetría sería ruido.
-        hint.textContent = (opcion && opcion.note) ? opcion.note : "";
+        // `noteKey` cuando la hay: el castellano se queda en los datos y
+        // la traduccion se busca por la clave (mismo criterio que TOUR_STEPS).
+        hint.textContent = (opcion && opcion.note)
+          ? (opcion.noteKey ? t(opcion.noteKey) : opcion.note)
+          : "";
       };
 
       select.addEventListener("change", pintar);
@@ -977,7 +985,9 @@ document.addEventListener("DOMContentLoaded", function () {
         var p = elegido ? presets[elegido.value] : null;
         // "Cantidad exacta" no es un preset y no tiene texto: el hueco se
         // queda vacio en vez de inventar uno por simetria.
-        hint.textContent = (p && p.hint) ? p.hint : "";
+        hint.textContent = (p && p.hint)
+          ? (p.hintKey ? t(p.hintKey) : p.hint)
+          : "";
       };
       Array.prototype.forEach.call(
         document.querySelectorAll('input[name="budgetMode"]'),
@@ -1047,7 +1057,7 @@ document.addEventListener("DOMContentLoaded", function () {
     for (var i = 0; i < count; i++) {
       html += '<button type="button" class="days-carousel__dot' + (i === 0 ? " is-active" : "") +
         '" data-go="' + i + '"' + (i === 0 ? ' aria-current="true"' : "") +
-        ' aria-label="Día ' + (i + 1) + ' de ' + count + '"></button>';
+        ' aria-label="' + escapeHtml(t("ui.dia")) + ' ' + (i + 1) + ' ' + escapeHtml(t("ui.de_contador")) + ' ' + count + '"></button>';
     }
     dots.innerHTML = html;
     // Un plan nuevo empieza en el día 1, así que la flecha de "anterior"
@@ -1116,7 +1126,7 @@ document.addEventListener("DOMContentLoaded", function () {
         else d.removeAttribute("aria-current");
       });
       var aviso = document.getElementById("dayAnnounce");
-      if (aviso && total) aviso.textContent = "Día " + (i + 1) + " de " + total;
+      if (aviso && total) aviso.textContent = t("ui.dia") + " " + (i + 1) + " " + t("ui.de_contador") + " " + total;
     }
 
     // Flechas del teclado sobre los puntos. Un grupo de botones que

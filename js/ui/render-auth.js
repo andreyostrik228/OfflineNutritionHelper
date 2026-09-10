@@ -184,7 +184,7 @@ function handleAuthStateChange(event, user) {
     }
     clearAuthFeedback();
     setAuthMode("reset");
-    showAuthNotice("Escribe una contraseña nueva para tu cuenta.");
+    showAuthNotice(t("ui.escribe_una_contrasena_nueva_para_tu_cuenta"));
     return;
   }
 
@@ -261,10 +261,10 @@ function renderProfileButton(user) {
 
   if (user) {
     var name = (user.user_metadata && user.user_metadata.full_name) ? user.user_metadata.full_name : user.email;
-    authProfileLabel.textContent = name || "Mi cuenta";
+    authProfileLabel.textContent = name || t("ui.mi_cuenta");
     if (authUserEmailEl) authUserEmailEl.textContent = user.email || "";
   } else {
-    authProfileLabel.textContent = "Iniciar sesión";
+    authProfileLabel.textContent = t("ui.iniciar_sesion");
     if (authUserMenu) authUserMenu.hidden = true;
   }
 }
@@ -296,7 +296,7 @@ function openDeleteAccountDialog() {
   if (authDeleteErrorEl) authDeleteErrorEl.hidden = true;
   if (authDeleteConfirmInput) authDeleteConfirmInput.value = "";
   if (authDeleteConfirmBtn) {
-    authDeleteConfirmBtn.textContent = "Borrar mi cuenta para siempre";
+    authDeleteConfirmBtn.textContent = t("ui.borrar_mi_cuenta_para_siempre");
   }
   syncDeleteGate();
   if (typeof authDeleteDialogEl.showModal === "function") {
@@ -357,12 +357,12 @@ function handleDeleteAccountConfirm() {
       if (authDeleteErrorEl) {
         authDeleteErrorEl.textContent = (typeof authErrorMessage === "function")
           ? authErrorMessage(result.error)
-          : "No se pudo borrar la cuenta.";
+          : t("ui.no_se_pudo_borrar_la_cuenta");
         authDeleteErrorEl.hidden = false;
       }
       if (authDeleteConfirmBtn) {
         authDeleteConfirmBtn.disabled = false;
-        authDeleteConfirmBtn.textContent = "Sí, borrar mi cuenta";
+        authDeleteConfirmBtn.textContent = t("ui.si_borrar_mi_cuenta");
       }
       return;
     }
@@ -433,14 +433,14 @@ function setAuthMode(mode) {
   var isRecover  = mode === "recover";
   var isReset    = mode === "reset";
 
-  var titulo = isRegister ? "Crear cuenta"
-             : isRecover  ? "Recuperar contraseña"
-             : isReset    ? "Elige una contraseña nueva"
-             : "Iniciar sesión";
-  var boton  = isRegister ? "Crear cuenta"
-             : isRecover  ? "Enviar enlace"
-             : isReset    ? "Guardar contraseña"
-             : "Iniciar sesión";
+  var titulo = isRegister ? t("ui.crear_cuenta")
+             : isRecover  ? t("ui.recuperar_contrasena")
+             : isReset    ? t("ui.elige_una_contrasena_nueva")
+             : t("ui.iniciar_sesion");
+  var boton  = isRegister ? t("ui.crear_cuenta")
+             : isRecover  ? t("ui.enviar_enlace")
+             : isReset    ? t("ui.guardar_contrasena")
+             : t("ui.iniciar_sesion");
 
   if (authDialogTitle) authDialogTitle.textContent = titulo;
   if (authSubmitBtn)   authSubmitBtn.textContent = boton;
@@ -458,10 +458,10 @@ function setAuthMode(mode) {
   // pasos o no hay contrasena todavia, o se esta poniendo una.
   if (authForgotRow) authForgotRow.hidden = (mode !== "login");
 
-  if (authSwitchPrompt)  authSwitchPrompt.textContent = isRegister ? "¿Ya tienes cuenta?" : "¿No tienes cuenta?";
-  if (authSwitchModeBtn) authSwitchModeBtn.textContent = isRegister ? "Iniciar sesión" : "Crear cuenta";
+  if (authSwitchPrompt)  authSwitchPrompt.textContent = isRegister ? t("ui.ya_tienes_cuenta_pregunta") : t("ui.no_tienes_cuenta_pregunta");
+  if (authSwitchModeBtn) authSwitchModeBtn.textContent = isRegister ? t("ui.iniciar_sesion") : t("ui.crear_cuenta");
   // Desde "recover" lo util es volver, no crear otra cuenta.
-  if (authSwitchModeBtn && isRecover) authSwitchModeBtn.textContent = "Volver a iniciar sesión";
+  if (authSwitchModeBtn && isRecover) authSwitchModeBtn.textContent = t("ui.volver_a_iniciar_sesion");
   if (authSwitchPrompt && isRecover)  authSwitchPrompt.textContent = "";
   // Al poner la contrasena nueva no hay a donde ir: primero se guarda.
   if (authSwitchRow) authSwitchRow.hidden = isReset;
@@ -554,15 +554,15 @@ function handleEmailFormSubmit(event) {
 
   // ── "Mandame el enlace" ────────────────────────────────────────────────
   if (_authMode === "recover") {
-    if (!email) { showAuthError("Introduce tu email."); return; }
+    if (!email) { showAuthError(t("ui.introduce_tu_email")); return; }
     setAuthBusy(true);
     sendPasswordReset(email).then(function (result) {
       setAuthBusy(false);
       if (result.error) { showAuthError(authErrorMessage(result.error)); return; }
       // A proposito NO se dice si ese email tiene cuenta: contestarlo
       // convertiria esto en una forma de averiguar quien esta registrado.
-      showAuthNotice("Si esa dirección tiene cuenta, te llega un correo con un enlace. " +
-                     "Ábrelo en este mismo móvil y podrás poner una contraseña nueva.");
+      showAuthNotice(t("ui.si_esa_direccion_tiene_cuenta") + " " +
+                     t("ui.abrelo_en_este_mismo_movil"));
     });
     return;
   }
@@ -571,13 +571,13 @@ function handleEmailFormSubmit(event) {
   if (_authMode === "reset") {
     var nueva = password;
     var nueva2 = authPassword2Input ? authPassword2Input.value : "";
-    if (!nueva) { showAuthError("Escribe la contraseña nueva."); return; }
+    if (!nueva) { showAuthError(t("ui.escribe_la_contrasena_nueva")); return; }
     if (nueva.length < AUTH_MIN_PASSWORD) {
-      showAuthError("La contraseña necesita al menos " + AUTH_MIN_PASSWORD + " caracteres.");
+      showAuthError(t("ui.la_contrasena_necesita_al_menos") + " " + AUTH_MIN_PASSWORD + " caracteres.");
       return;
     }
     if (nueva !== nueva2) {
-      showAuthError("Las dos contraseñas no coinciden.");
+      showAuthError(t("ui.las_dos_contrasenas_no_coinciden"));
       if (authPassword2Input) { authPassword2Input.value = ""; authPassword2Input.focus(); }
       return;
     }
@@ -591,14 +591,14 @@ function handleEmailFormSubmit(event) {
       _limpiarTokenDeLaUrl();
       if (authPasswordInput)  authPasswordInput.value = "";
       if (authPassword2Input) authPassword2Input.value = "";
-      showAuthNotice("Contraseña cambiada. Ya has entrado con ella.");
+      showAuthNotice(t("ui.contrasena_cambiada_ya_has_entrado"));
       window.setTimeout(closeAuthDialog, 1400);
     });
     return;
   }
 
   if (!email || !password) {
-    showAuthError("Introduce email y contraseña.");
+    showAuthError(t("ui.introduce_email_y_contrasena"));
     return;
   }
 
@@ -607,7 +607,7 @@ function handleEmailFormSubmit(event) {
   // servidor ni volver traducido a medias.
   if (_authMode === "register") {
     if (password.length < AUTH_MIN_PASSWORD) {
-      showAuthError("La contraseña necesita al menos " + AUTH_MIN_PASSWORD + " caracteres.");
+      showAuthError(t("ui.la_contrasena_necesita_al_menos") + " " + AUTH_MIN_PASSWORD + " caracteres.");
       if (authPasswordInput) authPasswordInput.focus();
       return;
     }
@@ -615,7 +615,7 @@ function handleEmailFormSubmit(event) {
     if (password !== password2) {
       // Escribir a ciegas una contraseña nueva y equivocarse deja fuera de
       // una cuenta recién creada, sin saber en qué se falló.
-      showAuthError("Las dos contraseñas no coinciden.");
+      showAuthError(t("ui.las_dos_contrasenas_no_coinciden"));
       if (authPassword2Input) { authPassword2Input.value = ""; authPassword2Input.focus(); }
       return;
     }
@@ -637,7 +637,7 @@ function handleEmailFormSubmit(event) {
     // un error, necesita su propio aviso en vez de cerrarse como si ya
     // hubiera iniciado sesión.
     if (_authMode === "register" && result.user && !result.user.email_confirmed_at) {
-      showAuthNotice("Cuenta creada -- revisa tu correo para confirmarla antes de iniciar sesión.");
+      showAuthNotice(t("ui.cuenta_creada_revisa_tu_correo"));
       return;
     }
 

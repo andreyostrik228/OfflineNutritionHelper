@@ -151,16 +151,16 @@ function initRenderRefs(refs) {
  */
 function renderSummary(profile, total) {
   summaryEls.calories.textContent    = round0(profile.calories) + " kcal";
-  summaryEls.caloriesSub.textContent = "Real plan: " + round0(total.kcal) + " kcal";
+  summaryEls.caloriesSub.textContent = t("ui.plan_real") + " " + round0(total.kcal) + " kcal";
 
   summaryEls.protein.textContent    = round0(profile.protein) + " g";
-  summaryEls.proteinSub.textContent = "Real plan: " + round0(total.protein) + " g";
+  summaryEls.proteinSub.textContent = t("ui.plan_real") + " " + round0(total.protein) + " g";
 
   summaryEls.carbs.textContent    = round0(profile.carbs) + " g";
-  summaryEls.carbsSub.textContent = "Real plan: " + round0(total.carbs) + " g";
+  summaryEls.carbsSub.textContent = t("ui.plan_real") + " " + round0(total.carbs) + " g";
 
   summaryEls.fats.textContent    = round0(profile.fats) + " g";
-  summaryEls.fatsSub.textContent = "Real plan: " + round0(total.fat) + " g";
+  summaryEls.fatsSub.textContent = t("ui.plan_real") + " " + round0(total.fat) + " g";
 }
 
 // ── Tarjetas de comidas ───────────────────────────────────────────────────
@@ -200,8 +200,8 @@ function renderDayPlans(days) {
     }).join("");
 
     var head = multi
-      ? '<div class="day-slide__head"><span class="day-slide__n">Día ' + (index + 1) +
-        '</span><span class="day-slide__of">de ' + list.length + "</span></div>"
+      ? '<div class="day-slide__head"><span class="day-slide__n">' + escapeHtml(t("ui.dia")) + ' ' + (index + 1) +
+        '</span><span class="day-slide__of">' + escapeHtml(t("ui.de_contador")) + ' ' + list.length + "</span></div>"
       : "";
 
     return '<section class="day-slide" data-day="' + index + '">' + head +
@@ -240,11 +240,11 @@ function mercadonaProductUrl(product) {
  */
 function renderProductFindBtn(product) {
   if (!product) return "";
-  var name = (product.name || "producto");
+  var name = (product.name || t("ui.producto"));
   return '<a class="product-find-btn" target="_blank" rel="noopener noreferrer"' +
     ' href="' + escapeHtml(mercadonaProductUrl(product)) + '"' +
-    ' title="Ver la foto y la ficha en Mercadona"' +
-    ' aria-label="Ver ' + escapeHtml(name) + ' en Mercadona">' +
+    ' title="' + escapeHtml(t("ui.ver_la_foto_y_la_ficha_en_mercadona")) + '"' +
+    ' aria-label="' + escapeHtml(t("ui.ver_en_mercadona").replace("{producto}", name)) + '">' +
     '📷</a>';
 }
 
@@ -286,12 +286,12 @@ function renderNutritionTrustBadge(product) {
   if (typeof product.kcal !== "number" || !isFinite(product.kcal) || product.kcal <= 0) return "";
 
   var nivel = NUTRITION_CONFIDENCE_ES[product.nutritionConfidence] || null;
-  var title = "Nutrición estimada automáticamente por el NOMBRE del producto y sin revisar"
-    + (nivel ? " (confianza " + nivel + ")" : "")
-    + ": puede no corresponder a este producto exacto.";
+  var title = t("ui.nutricion_estimada_por_el_nombre")
+    + (nivel ? " (" + t("ui.confianza") + " " + nivel + ")" : "")
+    + t("ui.puede_no_corresponder_a_este_producto");
 
   return '<span class="nutrition-approx" title="' + escapeHtml(title) + '">'
-    + '~ sin verificar</span>';
+    + escapeHtml(t("ui.sin_verificar_tilde")) + '</span>';
 }
 
 function renderMealCard(meal, total, dayIndex) {
@@ -318,7 +318,8 @@ function renderMealCard(meal, total, dayIndex) {
             ' data-tour="swap"' +
             ' data-meal-key="' + escapeHtml(meal.key || "") + '"' +
             ' data-day="' + (dayIndex || 0) + '"' +
-            ' title="Cambiar solo esta toma por otra">&#8635; Cambiar</button>' +
+            ' title="' + escapeHtml(t("ui.cambiar_solo_esta_toma_por_otra")) + '">&#8635; ' +
+            escapeHtml(t("ui.cambiar")) + '</button>' +
           '<div class="meal-kcal">' + round0(total.kcal) + ' kcal</div>' +
         '</div>' +
       '</div>' +
@@ -479,8 +480,9 @@ function renderFoodRow(item, storeId) {
               // un `title`: en un móvil no hay puntero con el que sacarla.
               // Una palabra que se explica sola vale más que un texto
               // emergente que ahí no existe.
-              ' <span class="food-macro__badge" title="Nutrición verificada por ingrediente">verificado</span>'
-            : ' <span class="food-macro__unavailable">macros por ingrediente no verificados</span>') +
+              ' <span class="food-macro__badge" title="' + escapeHtml(t("ui.nutricion_verificada_por_ingrediente")) + '">' +
+              escapeHtml(t("ui.verificado")) + '</span>'
+            : ' <span class="food-macro__unavailable">' + escapeHtml(t("ui.macros_por_ingrediente_no_verificados")) + '</span>') +
         '</div>' +
         formatPurchaseLine(info, realMatch, purchase) +
       '</div>' +
@@ -649,7 +651,7 @@ function formatPurchaseLine(info, realMatch, purchase) {
   if (!purchase || !purchase.hasFixedPackage) return "";
 
   var label = purchase.packagesToBuy > 1
-    ? purchase.packagesToBuy + " " + pluralizePackageLabel(purchase.packageLabel) + " (" + round0(purchase.packageSizeG) + "g cada uno)"
+    ? purchase.packagesToBuy + " " + pluralizePackageLabel(purchase.packageLabel) + " (" + round0(purchase.packageSizeG) + "g " + t("ui.cada_uno") + ")"
     : "1 " + purchase.packageLabel + " (" + round0(purchase.packageSizeG) + "g)";
 
   var priceNote = ' &middot; &euro;' + round2(purchase.purchaseCost);
@@ -664,14 +666,14 @@ function formatPurchaseLine(info, realMatch, purchase) {
  * @returns {string}
  */
 function formatRealMatchPurchaseLine(realMatch, purchase) {
-  var badge = ' <span class="food-purchase__badge">verificado</span>';
+  var badge = ' <span class="food-purchase__badge">' + escapeHtml(t("ui.verificado")) + '</span>';
 
   // Casos como "huevos enteros": se compran por unidades (docena/pack),
   // no tenemos un tamaño en gramos fiable para calcular cuántos packs, así
   // que tampoco se anota un precio de paquete aquí (sería ambiguo a qué
   // unidad se refiere).
   if (!realMatch.sizeG) {
-    var packInfo = realMatch.units ? " (pack de " + realMatch.units + ")" : "";
+    var packInfo = realMatch.units ? " (" + t("ui.pack_de") + " " + realMatch.units + ")" : "";
     return '<div class="food-purchase">' + escapeHtml(t("ui.compra_dos_puntos")) + ' ' + escapeHtml(realMatch.productName) + packInfo + badge + '</div>';
   }
 
@@ -696,11 +698,11 @@ function formatRealMatchPurchaseLine(realMatch, purchase) {
 function renderMealFooter(total, prep) {
   return (
     '<div class="meal-footer">' +
-      '<div>Prote&iacute;na<strong>' + round0(total.protein) + ' g</strong></div>' +
-      '<div>Carbs<strong>'           + round0(total.carbs)   + ' g</strong></div>' +
-      '<div>Grasas<strong>'          + round0(total.fat)     + ' g</strong></div>' +
-      '<div>Coste<strong>&euro;'     + round2(total.cost)    + '</strong></div>' +
-      '<div>Prep<strong>'            + (prep || 0)           + ' min</strong></div>' +
+      '<div>' + escapeHtml(t("ui.proteina")) + '<strong>' + round0(total.protein) + ' g</strong></div>' +
+      '<div>' + escapeHtml(t("ui.carbs"))    + '<strong>' + round0(total.carbs)   + ' g</strong></div>' +
+      '<div>' + escapeHtml(t("ui.grasas"))   + '<strong>' + round0(total.fat)     + ' g</strong></div>' +
+      '<div>' + escapeHtml(t("ui.coste"))    + '<strong>&euro;' + round2(total.cost) + '</strong></div>' +
+      '<div>' + escapeHtml(t("ui.prep"))     + '<strong>' + (prep || 0)           + ' min</strong></div>' +
     '</div>'
   );
 }

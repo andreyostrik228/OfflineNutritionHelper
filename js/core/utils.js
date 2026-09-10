@@ -43,14 +43,22 @@ function escapeHtml(str) {
 
 // ── Textos de interfaz ────────────────────────────────────────────────────
 
+// Estas dos salen DENTRO de frases ya traducidas ("Objetivo: recomposición"),
+// asi que devolverlas siempre en castellano dejaba media linea en cada
+// idioma. `t()` no existe en los tests que cargan utils.js suelto, de ahi
+// la guarda.
+function _txt(clave, castellano) {
+  return (typeof t === "function") ? t(clave) : castellano;
+}
+
 function goalText(goal) {
-  if (goal === "bulk")   return "volumen";
-  if (goal === "cut")    return "definición";
-  return "recomposición";
+  if (goal === "bulk")   return _txt("ui.objetivo_volumen", "volumen");
+  if (goal === "cut")    return _txt("ui.objetivo_definicion", "definición");
+  return _txt("ui.objetivo_recomposicion", "recomposición");
 }
 
 function tasteText(taste) {
-  if (taste === "sweet")  return "dulce";
-  if (taste === "savory") return "salado";
-  return "mixto";
+  if (taste === "sweet")  return _txt("ui.sabor_dulce", "dulce");
+  if (taste === "savory") return _txt("ui.sabor_salado", "salado");
+  return _txt("ui.sabor_mixto", "mixto");
 }

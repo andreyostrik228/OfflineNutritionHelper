@@ -49,7 +49,8 @@ function freshShoppingListSandbox() {
   var sandbox = freshPricingSandbox();
   var fs = require("fs");
   var vm = require("vm");
-  [projPath("js/core/budget.js"), projPath("js/ui/render-shopping-list.js")].forEach(function (file) {
+  [projPath("js/core/i18n.js"), projPath("js/i18n/es.js"),
+   projPath("js/core/budget.js"), projPath("js/ui/render-shopping-list.js")].forEach(function (file) {
     vm.runInContext(fs.readFileSync(file, "utf8"), sandbox, { filename: file });
   });
   return sandbox;

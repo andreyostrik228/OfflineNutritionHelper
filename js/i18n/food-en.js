@@ -361,7 +361,20 @@ registerDishWords("en", {
   "plato": "dish",
   "desayuno": "breakfast",
   "salsa": "sauce",
-  "salsa verde": "green sauce"
+  "salsa verde": "green sauce",
+
+  // ── Etiquetas de `mainProt` (js/data/dishes.js) ──────────────────────
+  // Salen en "Fuentes de proteina del dia". Van en minuscula porque son
+  // etiquetas internas, no nombres de producto de la estanteria. Y van en
+  // ESTE objeto, no en el de metodos de coccion de abajo: alli "atun" se
+  // leeria como una forma de cocinar y saldrian nombres sin sentido.
+  "atun": "tuna",
+  "champinones": "mushrooms",
+  "gamba": "prawn",
+  "jamon": "ham",
+  "legumbre": "pulses",
+  "salchicha": "sausage",
+  "salmon": "salmon"
 }, {
   // ── Métodos de cocción ──────────────────────────────────────────────
   // En español van detrás ("Pollo a la plancha"), en inglés delante

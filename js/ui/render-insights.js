@@ -75,17 +75,27 @@ function renderInsights(profile, result, data) {
   var capStatus = check25PercentRule(result.meals, total.kcal);
 
   var notes = [
-    "TMB estimada: " + profile.bmr + " kcal. Gasto diario total estimado: " + profile.tdee + " kcal.",
-    "Objetivo: " + goalText(data.goal) + ". Proteína final: " + proteinPerKg + " g/kg de peso corporal.",
-    "Fuentes de proteína del día (" + proteinSources.length + "): " + (proteinSources.join(", ") || "—") + ".",
-    "Fuentes de carbohidratos del día (" + carbSources.length + "): "    + (carbSources.join(", ")    || "—") + ".",
+    t("ui.nota_tmb").replace("{bmr}", profile.bmr).replace("{tdee}", profile.tdee),
+    t("ui.nota_objetivo").replace("{objetivo}", goalText(data.goal)).replace("{gkg}", proteinPerKg),
+    // Los nombres se traducen AQUI, al pintar, y no en collect*Sources():
+    // ahi el nombre español es la clave con la que se quitan los repetidos,
+    // y traducirlo antes rompería esa comparación.
+    // `mainProt` son etiquetas internas en minuscula ("pollo", "legumbre"),
+    // y viven en el diccionario de PIEZAS de nombre de plato, no en el de
+    // alimentos: por eso van por nombrePlato() y no por nombreComida().
+    t("ui.nota_fuentes_proteina").replace("{n}", proteinSources.length)
+      .replace("{lista}", proteinSources.map(nombrePlato).join(", ") || "—"),
+    t("ui.nota_fuentes_carbos").replace("{n}", carbSources.length)
+      .replace("{lista}", carbSources.map(nombreComida).join(", ") || "—"),
     capStatus,
-    "Presupuesto diario: €" + round2(data.budget) + ". Compra necesaria: €" + round2(purchaseCost) +
-      " (margen: €" + Math.max(0, budgetGap) + "). Consumo real de ingredientes: €" + round2(total.cost) + ".",
+    t("ui.nota_presupuesto").replace("{presupuesto}", round2(data.budget))
+      .replace("{compra}", round2(purchaseCost))
+      .replace("{margen}", Math.max(0, budgetGap))
+      .replace("{consumo}", round2(total.cost)),
     // "DISH_DB" era el nombre de una variable interna asomando en pantalla.
     // Lo que le importa a quien lee esto es que los platos son recetas de
     // verdad y no combinaciones sueltas de alimentos.
-    "Tiempo medio de preparación por bloque: " + avgPrep + " min. Los platos son recetas completas, no alimentos sueltos."
+    t("ui.nota_tiempo_preparacion").replace("{min}", avgPrep)
   ];
 
   insightsList.innerHTML = notes.map(function (n) {
@@ -153,11 +163,11 @@ function renderWarnings(profile, result, data) {
   // (~30% menos). Solo se dice AQUÍ, cuando el presupuesto no llega y el
   // plan es de un día: en cualquier otro momento sería ruido.
   if (problemaDePresupuesto && (data.planDays || 1) === 1) {
-    messages.push("Comprando para 3 o 7 días sale más barato por día.");
+    messages.push(t("ui.comprando_para_3_o_7_dias_mas_barato"));
   }
 
   if (data.cookTime <= 10) {
-    messages.push("Poco tiempo de cocina: platos m\u00e1s simples.");
+    messages.push(t("ui.poco_tiempo_de_cocina_platos_simples"));
   }
 
   // Umbral recalibrado junto con los presets 2026-08-07 (15/20/28 de
@@ -168,17 +178,17 @@ function renderWarnings(profile, result, data) {
   // 2026-09-01: bajado a 12,5 al recalibrar los tramos a 8/12/16/20. Avisa
   // en "Muy ajustado" y "Ajustado", donde la variedad sí se resiente.
   if (data.budget <= 12.5) {
-    messages.push("Presupuesto ajustado: menos variedad.");
+    messages.push(t("ui.presupuesto_ajustado_menos_variedad"));
   }
 
   var proteinSources = collectProteinSources(result.meals);
   var carbSources    = collectCarbSources(result.meals);
 
   if (proteinSources.length < 3) {
-    messages.push("Solo " + proteinSources.length + " fuentes de prote\u00edna.");
+    messages.push(t("ui.solo_n_fuentes_de_proteina").replace("{n}", proteinSources.length));
   }
   if (carbSources.length < 3) {
-    messages.push("Solo " + carbSources.length + " fuentes de carbohidratos.");
+    messages.push(t("ui.solo_n_fuentes_de_carbohidratos").replace("{n}", carbSources.length));
   }
 
   if (messages.length) {
@@ -330,7 +340,7 @@ function check25PercentRule(meals, dailyKcal) {
     });
   });
   if (violations.length === 0) {
-    return "Ning\u00fan alimento supera el 25% de las calor\u00edas diarias.";
+    return t("ui.ningun_alimento_supera_el_25");
   }
-  return "Atenci\u00f3n \u2014 alimentos con m\u00e1s del 25% de las calor\u00edas (tras ajuste): " + violations.join(", ");
+  return t("ui.atencion_alimentos_mas_del_25") + " " + violations.join(", ");
 }

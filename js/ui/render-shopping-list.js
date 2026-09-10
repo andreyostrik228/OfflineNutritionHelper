@@ -85,19 +85,19 @@ function cablearAccionesDeLista() {
     compartir._cableado = true;
     compartir.addEventListener("click", function () {
       var texto = _ultimaListaTexto;
-      if (!texto) { avisar("Genera un plan primero."); return; }
+      if (!texto) { avisar(t("ui.genera_un_plan_primero")); return; }
       if (navigator.share) {
-        navigator.share({ title: "Lista de la compra", text: texto })
+        navigator.share({ title: t("ui.lista_de_la_compra"), text: texto })
           ["catch"](function () { /* cancelar no es un error */ });
         return;
       }
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(texto)
-          .then(function () { avisar("Lista copiada al portapapeles."); })
-          ["catch"](function () { avisar("No se pudo copiar la lista."); });
+          .then(function () { avisar(t("ui.lista_copiada_al_portapapeles")); })
+          ["catch"](function () { avisar(t("ui.no_se_pudo_copiar_la_lista")); });
         return;
       }
-      avisar("Este navegador no deja compartir ni copiar.");
+      avisar(t("ui.este_navegador_no_deja_compartir_ni_copiar"));
     });
   }
 
@@ -234,12 +234,13 @@ function renderShoppingList(meals, storeId, days) {
     // Con varios días se añade el coste POR DÍA, que es la cifra que hace
     // ver el ahorro: los paquetes se pagan una vez y se reparten.
     var perDay = n > 1
-      ? '<div class="shopping-summary__stat"><span>Por d&iacute;a</span><strong>&euro;' +
+      ? '<div class="shopping-summary__stat"><span>' + escapeHtml(t("ui.por_dia_etiqueta")) + '</span><strong>&euro;' +
         round2(totalPurchaseCost / n) + '</strong></div>'
       : "";
     shoppingSummaryEl.innerHTML =
-      '<div class="shopping-summary__stat"><span>Productos</span><strong>' + items.length + '</strong></div>' +
-      '<div class="shopping-summary__stat"><span>Coste de compra' + (n > 1 ? " (" + n + " días)" : "") +
+      '<div class="shopping-summary__stat"><span>' + escapeHtml(t("ui.productos_etiqueta")) + '</span><strong>' + items.length + '</strong></div>' +
+      '<div class="shopping-summary__stat"><span>' + escapeHtml(t("ui.coste_de_compra")) +
+        (n > 1 ? " (" + n + " " + escapeHtml(t("ui.dias")) + ")" : "") +
         '</span><strong>&euro;' + round2(totalPurchaseCost) + '</strong></div>' +
       perDay +
       '<div class="shopping-summary__stat shopping-summary__stat--muted"><span>' + escapeHtml(t("ui.coste_de_uso")) + '</span><strong>&euro;' + round2(totalUsageCost) + '</strong></div>';
@@ -247,8 +248,8 @@ function renderShoppingList(meals, storeId, days) {
 
   if (shoppingEyebrowEl) {
     shoppingEyebrowEl.textContent = n > 1
-      ? "Cantidades para " + n + " días del mismo plan"
-      : "Todo lo que necesitas comprar para el plan de hoy";
+      ? t("ui.cantidades_para_n_dias_del_mismo_plan").replace("{n}", n)
+      : t("ui.todo_lo_que_necesitas_comprar_para_el_plan_d");
   }
 
   shoppingListContainer.innerHTML = items.map(renderShoppingRow).join("");
@@ -337,7 +338,13 @@ function resolveShoppingProduct(ingredientName) {
 function shoppingListAsText(items, dias) {
   var lineas = [];
   var n = (typeof dias === "number" && dias > 1) ? dias : 1;
-  lineas.push(n > 1 ? "Lista de la compra (" + n + " dias)" : "Lista de la compra");
+  // Este texto va sin tildes a proposito, igual que "al peso" y "al dia" de
+  // mas abajo: se pega en las notas del movil, en un SMS o en una impresora
+  // de tickets, y ahi una tilde mal codificada sale como un simbolo raro.
+  // Por eso lleva claves propias y no reutiliza las de la pantalla.
+  lineas.push(n > 1
+    ? t("ui.lista_de_la_compra") + " (" + n + " " + t("ui.lista_texto_dias") + ")"
+    : t("ui.lista_de_la_compra"));
   lineas.push("");
 
   var total = 0;
@@ -345,14 +352,14 @@ function shoppingListAsText(items, dias) {
     var p = entry.purchase || {};
     var cantidad;
     if (typeof p.packagesToBuy === "number" && p.packagesToBuy === 0) {
-      cantidad = "ya lo tienes";
+      cantidad = t("ui.ya_lo_tienes");
     } else if (p.hasFixedPackage) {
-      var etiqueta = p.packageLabel || "envase";
+      var etiqueta = p.packageLabel || t("ui.envase");
       var conGramos = !/\d/.test(p.packageLabel || "");
       cantidad = p.packagesToBuy + " x " + etiqueta
         + (conGramos && p.packageSizeG ? " (" + Math.round(p.packageSizeG) + " g)" : "");
     } else {
-      cantidad = Math.round(entry.requiredGrams || 0) + " g al peso";
+      cantidad = Math.round(entry.requiredGrams || 0) + " g " + t("ui.lista_texto_al_peso");
     }
     var precio = (typeof p.purchaseCost === "number") ? p.purchaseCost : 0;
     total += precio;
@@ -360,8 +367,8 @@ function shoppingListAsText(items, dias) {
   });
 
   lineas.push("");
-  lineas.push("Total: " + total.toFixed(2) + " EUR"
-    + (n > 1 ? " (" + (total / n).toFixed(2) + " EUR al dia)" : ""));
+  lineas.push(t("ui.lista_texto_total") + " " + total.toFixed(2) + " EUR"
+    + (n > 1 ? " (" + (total / n).toFixed(2) + " " + t("ui.lista_texto_eur_al_dia") + ")" : ""));
   return lineas.join("\n");
 }
 

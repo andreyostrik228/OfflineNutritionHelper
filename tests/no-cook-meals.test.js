@@ -584,7 +584,8 @@ function run(t) {
   });
 
   t.test("renderNutritionTrustBadge(): advierte de lo aproximado y calla del resto", function () {
-    var s = loadBrowserGlobals([projPath("js/core/utils.js"), projPath("js/ui/render.js")]);
+    var s = loadBrowserGlobals([projPath("js/core/utils.js"), projPath("js/core/i18n.js"),
+      projPath("js/i18n/es.js"), projPath("js/ui/render.js")]);
 
     var aprox = s.renderNutritionTrustBadge({
       needsReview: true, nutritionConfidence: "very_low", kcal: 31

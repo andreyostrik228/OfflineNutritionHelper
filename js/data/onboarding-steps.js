@@ -114,11 +114,11 @@ var ONBOARDING_STEPS = [
     title: "¿Cuánto te mueves en un día normal?",
     hint: "Cuenta tu día entero, no solo el gimnasio.",
     options: [
-      { value: "1.2",   label: "Sedentario", note: "Escritorio, poco andar" },
-      { value: "1.375", label: "Ligero",     note: "Algo de paseo diario" },
-      { value: "1.55",  label: "Moderado",   note: "En pie a ratos, o deporte 3-4 días" },
-      { value: "1.725", label: "Alto",       note: "Trabajo físico, o deporte casi diario" },
-      { value: "1.9",   label: "Muy alto",   note: "Trabajo duro más entrenamiento" }
+      { value: "1.2",   label: "Sedentario", note: "Escritorio, poco andar", noteKey: "ui.nota_actividad_sedentario" },
+      { value: "1.375", label: "Ligero",     note: "Algo de paseo diario", noteKey: "ui.nota_actividad_ligero" },
+      { value: "1.55",  label: "Moderado",   note: "En pie a ratos, o deporte 3-4 días", noteKey: "ui.nota_actividad_moderado" },
+      { value: "1.725", label: "Alto",       note: "Trabajo físico, o deporte casi diario", noteKey: "ui.nota_actividad_alto" },
+      { value: "1.9",   label: "Muy alto",   note: "Trabajo duro más entrenamiento", noteKey: "ui.nota_actividad_muy_alto" }
     ]
   },
   {
@@ -139,8 +139,8 @@ var ONBOARDING_STEPS = [
     options: [
       { value: "bulk",     label: "Ganar músculo" },
       { value: "cut",      label: "Perder grasa" },
-      { value: "recomp",   label: "Recomposición",  note: "Las dos cosas a la vez, más despacio" },
-      { value: "maintain", label: "Solo comer bien", note: "Sin objetivo de peso" }
+      { value: "recomp",   label: "Recomposición",  note: "Las dos cosas a la vez, más despacio", noteKey: "ui.nota_objetivo_recomp" },
+      { value: "maintain", label: "Solo comer bien", note: "Sin objetivo de peso", noteKey: "ui.nota_objetivo_sin_objetivo" }
     ]
   },
   {

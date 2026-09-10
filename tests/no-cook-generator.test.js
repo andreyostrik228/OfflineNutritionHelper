@@ -59,6 +59,8 @@ function renderHelpersSandbox() {
     projPath("js/core/utils.js"),
     projPath("js/core/meal-helpers.js"),
     projPath("js/core/pricing.js"),
+    projPath("js/core/i18n.js"),
+    projPath("js/i18n/es.js"),
     projPath("js/ui/render.js"),
   ]);
 }

@@ -190,9 +190,9 @@ function renderProductCard(p) {
     ? (
       '<div class="verified-card__macros">' +
         '<div><span>Kcal</span><strong>' + round0(p.kcal) + '</strong></div>' +
-        '<div><span>Prote&iacute;na</span><strong>' + round1(p.protein) + 'g</strong></div>' +
-        '<div><span>Carbos</span><strong>' + round1(p.carbs) + 'g</strong></div>' +
-        '<div><span>Grasas</span><strong>' + round1(p.fat) + 'g</strong></div>' +
+        '<div><span>' + escapeHtml(t("ui.proteina")) + '</span><strong>' + round1(p.protein) + 'g</strong></div>' +
+        '<div><span>' + escapeHtml(t("ui.carbos")) + '</span><strong>' + round1(p.carbs) + 'g</strong></div>' +
+        '<div><span>' + escapeHtml(t("ui.grasas")) + '</span><strong>' + round1(p.fat) + 'g</strong></div>' +
       '</div>'
     )
     : '<div class="verified-card__no-nutrition">' + escapeHtml(t("ui.sin_datos_nutricionales")) + '</div>';

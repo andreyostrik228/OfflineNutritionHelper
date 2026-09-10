@@ -164,9 +164,13 @@ function renderNextMealSticky(nextMeal) {
   nextMealStickyEl.hidden = false;
   nextMealStickyEl.innerHTML = (
     '<button type="button" class="next-meal-sticky__btn" data-meal-key="' + escapeHtml(nextMeal.key) + '">' +
-      '<span class="next-meal-sticky__eyebrow">Siguiente</span>' +
+      '<span class="next-meal-sticky__eyebrow">' + escapeHtml(t("ui.siguiente")) + '</span>' +
       '<span class="next-meal-sticky__time">' + escapeHtml(nextMeal.time) + '</span>' +
-      '<span class="next-meal-sticky__label">' + escapeHtml(nextMeal.label) + '</span>' +
+      // `label` viene pegado del generador ("Cena — Lentejas..."): la
+      // primera mitad es interfaz y la segunda el nombre de un plato, y
+      // cada una se traduce por su lado. tituloDeToma() lo recompone.
+      '<span class="next-meal-sticky__label">' + escapeHtml(
+        typeof tituloDeToma === "function" ? tituloDeToma(nextMeal) : nextMeal.label) + '</span>' +
     '</button>'
   );
 }
@@ -176,8 +180,9 @@ function renderTimelineChip(meal, isNext) {
   return (
     '<button type="button" class="schedule-timeline__item' + (isNext ? ' schedule-timeline__item--next' : '') + '" data-meal-key="' + escapeHtml(meal.key) + '">' +
       '<span class="schedule-timeline__time">' + escapeHtml(meal.time) + '</span>' +
-      '<span class="schedule-timeline__label">' + escapeHtml(meal.label) + '</span>' +
-      (isNext ? '<span class="schedule-timeline__next-tag">Siguiente</span>' : '') +
+      '<span class="schedule-timeline__label">' + escapeHtml(
+        typeof tituloDeToma === "function" ? tituloDeToma(meal) : meal.label) + '</span>' +
+      (isNext ? '<span class="schedule-timeline__next-tag">' + escapeHtml(t("ui.siguiente")) + '</span>' : '') +
     '</button>'
   );
 }

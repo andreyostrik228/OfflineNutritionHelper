@@ -96,21 +96,25 @@ var BUDGET_PRESETS = {
       // sacrifica y dónde está la palanca de verdad, que es la despensa:
       // el gasto real de ingredientes de ese mismo día son 5,52 €, y los
       // 8 € se van en abrir paquetes enteros.
+      hintKey: "ui.hint_presupuesto_muy_ajustado",
       hint: "Para cuando el tope es el tope. No llega a cubrir el día entero: repite ingredientes, quita los snacks y suele quedarse corto de proteína. Si ya tienes cosas en casa, márcalas en la despensa — ahí es donde baja el precio de verdad."
     },
     small: {
       label: "Ajustado",
       amount: 12,
+      hintKey: "ui.hint_presupuesto_ajustado",
       hint: "Cubre lo esencial; el generador prioriza proteína por euro y puede recortar ración para no pasarse en caja."
     },
     medium: {
       label: "Equilibrado",
       amount: 16,
+      hintKey: "ui.hint_presupuesto_equilibrado",
       hint: "Variedad razonable la mayoría de los días, sin sorpresas al pagar."
     },
     high: {
       label: "Amplio",
       amount: 20,
+      hintKey: "ui.hint_presupuesto_amplio",
       hint: "Casi cualquier plato del catálogo, sin ajustes de presupuesto. Para más, usa «Cantidad exacta»."
     }
   }
