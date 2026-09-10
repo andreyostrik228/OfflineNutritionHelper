@@ -4941,6 +4941,16 @@ body.is-onboarding {
   box-shadow: var(--shadow-md);
   pointer-events: auto;
   transition: top 220ms ease, left 220ms ease;
+
+  /* Mientras dura el recorrido la pagina no se mueve (ver _tourActivarBloqueo
+     en js/ui/tour.js), pero la nota SI: en una pantalla corta, un texto de
+     seis lineas con dos botones debajo puede no caber, y sin esto el boton
+     "Siguiente" se quedaria fuera de alcance con la pagina bloqueada.
+     `overscroll-behavior: contain` evita que al llegar al final del texto el
+     desplazamiento siga en la pagina de detras. */
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .tour__counter {

@@ -803,6 +803,70 @@ function _tourScrollSuave(el, objetivo) {
   }, duracion + 260);
 }
 
+// ── Que el usuario no mueva la pantalla mientras dura el recorrido ───────
+//
+// El recorrido decide a donde mirar en cada paso: mueve la pagina, mide
+// donde ha quedado lo señalado y coloca el marco encima. Si a la vez se
+// puede arrastrar con el dedo o con la rueda, el marco se queda enmarcando
+// un trozo de pagina vacio -- se recoloca en cada evento de scroll, si,
+// pero lo que se lee entonces ya no es el paso que se estaba explicando.
+//
+// Se bloquean los GESTOS, no la scrollabilidad. Poner `overflow: hidden` en
+// el <html> seria lo evidente y romperia justo lo que hay que conservar: la
+// pagina dejaria de poder desplazarse y `window.scrollTo` del propio
+// recorrido no haria nada. Asi que la pagina sigue siendo desplazable y lo
+// que se cancela es la rueda, el arrastre y las teclas de desplazamiento.
+//
+// La nota SI se puede desplazar por dentro: en una pantalla corta un texto
+// de seis lineas con dos botones debajo puede no caber, y dejarlo sin
+// desplazar seria dejar el boton "Siguiente" fuera del alcance.
+var _tourBloqueoGestos = null;
+
+/** Teclas que mueven la pagina y que hay que cancelar mientras dura. */
+var TOUR_TECLAS_SCROLL = {
+  ArrowUp: 1, ArrowDown: 1, ArrowLeft: 1, ArrowRight: 1,
+  PageUp: 1, PageDown: 1, Home: 1, End: 1, " ": 1, Spacebar: 1
+};
+
+function _tourDentroDeLaNota(nodo) {
+  if (!_tourEls || !_tourEls.card || !nodo) return false;
+  return _tourEls.card === nodo ||
+    (typeof _tourEls.card.contains === "function" && _tourEls.card.contains(nodo));
+}
+
+function _tourActivarBloqueo() {
+  if (_tourBloqueoGestos) return;
+
+  var gesto = function (ev) {
+    if (_tourDentroDeLaNota(ev.target)) return;
+    if (ev.cancelable) ev.preventDefault();
+  };
+  var tecla = function (ev) {
+    if (!TOUR_TECLAS_SCROLL[ev.key]) return;
+    // En un boton, la barra espaciadora lo PULSA; cancelarla ahi dejaria
+    // "Siguiente" sin responder al teclado.
+    if (_tourDentroDeLaNota(ev.target)) return;
+    if (ev.cancelable) ev.preventDefault();
+  };
+
+  // `passive: false` es obligatorio: el navegador da por pasivos los
+  // listeners de rueda y de tacto, y en un listener pasivo preventDefault()
+  // no hace nada y ademas avisa por consola.
+  window.addEventListener("wheel", gesto, { passive: false });
+  window.addEventListener("touchmove", gesto, { passive: false });
+  window.addEventListener("keydown", tecla, false);
+
+  _tourBloqueoGestos = { gesto: gesto, tecla: tecla };
+}
+
+function _tourQuitarBloqueo() {
+  if (!_tourBloqueoGestos) return;
+  window.removeEventListener("wheel", _tourBloqueoGestos.gesto, { passive: false });
+  window.removeEventListener("touchmove", _tourBloqueoGestos.gesto, { passive: false });
+  window.removeEventListener("keydown", _tourBloqueoGestos.tecla, false);
+  _tourBloqueoGestos = null;
+}
+
 function _tourRender() {
   var step = _tourVisible[_tourIndex];
   var e = _tourEls;
@@ -902,6 +966,7 @@ function startTour() {
   };
   window.addEventListener("scroll", _tourScrollHandler, true);
   window.addEventListener("resize", _tourScrollHandler);
+  _tourActivarBloqueo();
 
   _tourRender();
 }
@@ -942,6 +1007,10 @@ function stopTour() {
     window.removeEventListener("resize", _tourScrollHandler);
     _tourScrollHandler = null;
   }
+  // Incondicional, fuera del `if` de arriba: dejarse el bloqueo puesto
+  // significa una pagina que no se mueve y sin nada en pantalla que
+  // explique por que. Es el fallo peor de todo este mecanismo.
+  _tourQuitarBloqueo();
   if (_tourEls) _tourEls.root.hidden = true;
 }
 
