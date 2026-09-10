@@ -169,26 +169,66 @@ function _tourResolveSteps() {
  * @param {Element} el
  * @returns {Element|null}
  */
+// ── La geometria, en un solo sitio ───────────────────────────────────────
+//
+// `_tourContexto`, `_tourPosition` y el desplazamiento tienen que decidir
+// EXACTAMENTE igual: si uno cree que la nota va al lado y otro que va
+// debajo, se elige un marco con una altura y se pinta con otra. Ya paso.
+// Por eso las tres preguntas viven aqui y no repetidas en cada funcion.
+
+var TOUR_MARGEN = 12;   // aire entre el marco, la nota y el borde
+var TOUR_PAD = 8;       // aire entre lo enmarcado y el borde del marco
+
+function _tourCardW() {
+  return (_tourEls && _tourEls.card && _tourEls.card.offsetWidth) || 340;
+}
+
+function _tourCardH() {
+  return (_tourEls && _tourEls.card && _tourEls.card.offsetHeight) || 200;
+}
+
+/** .Cabe la nota AL LADO de un rectangulo, sin encogerlo? */
+function _tourNotaAlLado(rect) {
+  var falta = _tourCardW() + TOUR_MARGEN * 2;
+  return (window.innerWidth - rect.right >= falta) || (rect.left >= falta);
+}
+
+/**
+ * Alto maximo del marco. Con la nota al lado se lleva la pantalla entera;
+ * apilada hay que reservarle su sitio, porque si no la nota acaba ENCIMA
+ * del marco que esta explicando (medido en el movil: 28.023 px2 tapados en
+ * el paso de la receta).
+ */
+function _tourAltoMaxMarco(alLado) {
+  var libre = window.innerHeight - _tourTopInset();
+  return alLado
+    ? Math.max(120, libre - TOUR_MARGEN * 2)
+    : Math.max(120, libre - _tourCardH() - TOUR_MARGEN * 3);
+}
+
+/**
+ * La tarjeta o el panel donde vive lo que se explica.
+ *
+ * Sirve para que el usuario vea DONDE esta lo que se le senala: sin esto,
+ * un boton pequeno se iluminaba solo y todo su alrededor quedaba tan oscuro
+ * como el resto de la pagina, asi que se veia el boton pero no donde estaba.
+ *
+ * Devuelve null cuando ningun antepasado aporta nada: ahi el foco sobraria
+ * y se enmarca el objetivo a secas.
+ *
+ * @param {Element} el
+ * @returns {Element|null}
+ */
 function _tourContexto(el) {
   if (!el || !el.parentElement) return null;
 
-  // Cuanto sitio hay de verdad: la pantalla menos la nota y sus margenes.
-  var cardH = (_tourEls && _tourEls.card && _tourEls.card.offsetHeight) || 200;
-  var hueco = Math.max(120, window.innerHeight - cardH - 36);
-
-  // Con el hueco a secas, en una pantalla de 720 la tarjeta de comida (587)
-  // se rechazaba por 147 px y el paso de la receta se quedaba SIN contexto:
-  // un marco de 30 px alrededor del enlace y ni rastro del plato. Eso es lo
-  // que el dueno describio como "no se ve mi dia".
-  //
   // "No cabe por poco" y "no cabe ni de lejos" son cosas distintas: la
   // tarjeta recortada sigue leyendose como una tarjeta, y el formulario
   // entero (1.689 px) no se lee como nada. De ahi el margen de vez y media,
   // topado por la pantalla para que el marco nunca la desborde entera.
-  var altoMaxDebajo = Math.min(hueco * 1.5, window.innerHeight - 24);
-  var altoMaxAlLado = window.innerHeight - 24;
+  var altoMaxDebajo = Math.min(_tourAltoMaxMarco(false) * 1.5, window.innerHeight - 24);
+  var altoMaxAlLado = _tourAltoMaxMarco(true);
   var anchoMax = window.innerWidth - 24;
-  var cardW = (_tourEls && _tourEls.card && _tourEls.card.offsetWidth) || 340;
 
   var r = el.getBoundingClientRect();
   var mejor = null;
@@ -196,25 +236,84 @@ function _tourContexto(el) {
 
   while (p && p !== document.body && p !== document.documentElement) {
     var pr = p.getBoundingClientRect();
-    // Mismo criterio que _tourPosition: si la nota cabe AL LADO de este
-    // candidato, el marco dispone de toda la altura de la pantalla. Las dos
-    // funciones tienen que decidir igual o eligen marcos distintos.
-    var notaAlLado = (window.innerWidth - pr.right >= cardW + 24) || (pr.left >= cardW + 24);
-    var altoMax = notaAlLado ? altoMaxAlLado : altoMaxDebajo;
+    var altoMax = _tourNotaAlLado(pr) ? altoMaxAlLado : altoMaxDebajo;
     // En cuanto un antepasado NO cabe entero, se para: framear algo que hay
     // que recortar da una losa gris sin bordes visibles, que es justo lo
     // que el dueno califico de horrible en los pasos de los botones del
     // formulario (contexto .panel de 1.689 px en una pantalla de 900).
     if (pr.height > altoMax || pr.width > anchoMax) break;
-    // Y tiene que aportar algo: un envoltorio del mismo tamano que el
-    // objetivo no ensena donde esta nada.
-    if (pr.height >= r.height + 12 || pr.width >= r.width + 12) mejor = p;
+    // Y tiene que aportar SITIO VISIBLE, no doce pixeles. Un envoltorio que
+    // solo saca 4 px de ancho y 63 de alto al objetivo pinta un cerco verde
+    // rodeado de otro gris casi identico: dos rectangulos, ninguna
+    // informacion. Es lo que el dueno llamo "чуть чуть фигово" en el paso
+    // de "fijar el plan de hoy" (.shopping-panel__actions, h4 v63). El
+    // corte esta por encima de eso y por debajo del contexto que si vale
+    // (.field del selector de dias, h4 v188).
+    if (pr.height >= r.height + 96 || pr.width >= r.width + 96) mejor = p;
     p = p.parentElement;
   }
 
   // El MAS GRANDE que quepa, no el mas pequeno: el dueno aprobo la tarjeta
   // de comida entera (444x615) como contexto del boton "Cambiar", no la
   // fila que lo contiene. La unidad con sentido es la tarjeta.
+  return mejor;
+}
+
+/**
+ * Cuando hay que RECORTAR algo mas alto que la pantalla, corta por donde el
+ * contenido ya se corta solo.
+ *
+ * La lista de la compra tiene filas de 84 px (194..278, 278..362,
+ * 362..446...) y el recorte caia en 440: la tercera fila partida por la
+ * mitad. En el movil el mismo corte caia entre filas y por eso alli se veia
+ * bien y en el portatil no -- "lista de compra на телефоне хорошо на ноуте
+ * хуёво".
+ *
+ * Solo se mueve hasta una fila de distancia: mas seria recortar por gusto.
+ *
+ * El corte solo puede moverse DENTRO de [minAbs, maxAbs]: el marco no puede
+ * crecer mas alla de su banda ni encoger hasta dejar fuera lo señalado. Sin
+ * ese limite, la fila mas cercana al corte de la lista de la compra caia 36
+ * px por DEBAJO del final de la banda, se descartaba, y el corte se quedaba
+ * partiendo la fila igual que antes. Medido: corte en 430, fila 382..466.
+ *
+ * @param {Element} el       lo que se esta enmarcando
+ * @param {number} bordeAbs  y absoluta (de pagina) donde caeria el corte
+ * @param {number} minAbs    lo mas arriba que puede quedar el corte
+ * @param {number} maxAbs    lo mas abajo que puede quedar el corte
+ * @returns {number} la y ajustada, o la misma si no hay nada cerca
+ */
+function _tourCorteLimpio(el, bordeAbs, minAbs, maxAbs) {
+  var hijos = el.children;
+  if (!hijos || hijos.length < 2) return bordeAbs;
+
+  var desplazamiento = window.pageYOffset || document.documentElement.scrollTop || 0;
+  var mejor = bordeAbs;
+  var distMejor = Infinity;
+
+  for (var i = 0; i < hijos.length; i++) {
+    var hr = hijos[i].getBoundingClientRect();
+    if (!hr.height) continue;
+    // Los bordes de CADA hijo, y ademas los de sus filas cuando el hijo es
+    // la lista: el corte feo estaba dentro de un <ul>, no entre los
+    // bloques del panel.
+    var candidatos = [hr.top + desplazamiento, hr.bottom + desplazamiento];
+    if (hijos[i].children && hijos[i].children.length > 1) {
+      for (var j = 0; j < hijos[i].children.length; j++) {
+        var nr = hijos[i].children[j].getBoundingClientRect();
+        if (nr.height) candidatos.push(nr.bottom + desplazamiento);
+      }
+    }
+    for (var k = 0; k < candidatos.length; k++) {
+      var cand = candidatos[k];
+      if (cand < minAbs || cand > maxAbs) continue;
+      var d = Math.abs(cand - bordeAbs);
+      // Una fila de margen: 96 px cubre las de 84 de la lista de la compra
+      // y las de 73 del movil, y no llega a saltarse un bloque entero.
+      if (d < distMejor && d <= 96) { distMejor = d; mejor = cand; }
+    }
+  }
+
   return mejor;
 }
 
@@ -229,56 +328,104 @@ function _tourPosition() {
   var el = contexto || objetivo;
 
   var r = el.getBoundingClientRect();
-  var pad = 8;
-  var margen = 12;
+  var pad = TOUR_PAD;
+  var margen = TOUR_MARGEN;
   var e = _tourEls;
   var vh = window.innerHeight;
   var vw = window.innerWidth;
+  var inset = _tourTopInset();
+  var cardH = _tourCardH();
 
-  // Intersección con la pantalla, dejando sitio para que se note el borde
-  // oscuro por arriba y por abajo.
-  var top    = Math.max(margen, r.top - pad);
-  var bottom = Math.min(vh - margen, r.bottom + pad);
-  var left   = Math.max(margen, r.left - pad);
-  var right  = Math.min(vw - margen, r.right + pad);
+  var left  = Math.max(margen, r.left - pad);
+  var right = Math.min(vw - margen, r.right + pad);
 
-  // Un elemento altísimo se ilumina solo por su comienzo: es donde está su
-  // encabezado y donde el usuario mira.
-  //
-  // El tope reserva sitio para la nota. Medido con la lista de la compra:
-  // con un tope fijo del 60% el hueco llegaba tan abajo que la nota se
-  // quedaba encima de él, tapando justo lo que estaba explicando.
-  var cardH = e.card.offsetHeight || 160;
-  var cardW0 = e.card.offsetWidth || 300;
-
-  // ¿Cabe la nota AL LADO del marco? Cuando el marco es estrecho -- una
+  // .Cabe la nota AL LADO del marco? Cuando el marco es estrecho -- una
   // tarjeta de comida de 444 px en una pantalla de 1.400 -- sobra sitio a
   // la derecha, y ponerla ahi devuelve al marco toda la altura de la
-  // pantalla. Con la nota siempre debajo, la tarjeta de comida (646 px) no
-  // cabia en los 440 que quedaban, habia que recortarla y el recorte
-  // desplazaba la vista: es el "no se ve mi dia, me tira hacia abajo".
-  var alLado = (vw - right >= cardW0 + margen * 2) || (left >= cardW0 + margen * 2);
+  // pantalla.
+  var alLado = _tourNotaAlLado({ left: left, right: right });
 
-  // Con la nota al lado no hay que reservar altura para ella.
-  var altoMax = alLado
-    ? Math.max(120, vh - margen * 2)
-    : Math.max(120, vh - cardH - margen * 3);
+  // ── La BANDA donde puede vivir el marco ────────────────────────────────
+  //
+  // Apilada, la nota se decide ANTES que el marco y se le quita su trozo de
+  // pantalla. Antes era al reves -- primero el marco, y la nota se apanaba
+  // con lo que quedara -- y cuando no quedaba nada la nota se plantaba
+  // ENCIMA del marco: 28.023 px2 tapados en el paso de la receta en el
+  // movil, justo sobre la tarjeta que estaba explicando.
+  //
+  // La nota va ARRIBA cuando lo señalado esta en la mitad baja de la
+  // pantalla. Ese caso es real: el enlace "como se cocina" vive al final de
+  // una tarjeta de 631 px que no cabe entera, asi que el marco tiene que
+  // enseñar su FINAL, y con la nota debajo no habia sitio para las dos
+  // cosas. Con la nota arriba, si.
+  // El criterio se mide DENTRO de lo enmarcado, no contra la pantalla: la
+  // posicion en pantalla es justo lo que el desplazamiento esta cambiando,
+  // y _tourDestino tiene que llegar a la misma conclusion que esta funcion
+  // ANTES de mover nada. Con un criterio en coordenadas de pantalla, las
+  // dos discrepaban durante la animacion y el marco daba un salto al final.
+  var ro0 = objetivo.getBoundingClientRect();
+  var recorta = (r.height + pad * 2) > _tourAltoMaxMarco(alLado);
+  var frac = (ro0.top + ro0.height / 2 - r.top) / Math.max(1, r.height);
+  var notaArriba = !alLado && recorta && frac > 0.55;
+
+  var bandaTop, bandaBottom;
+  if (alLado) {
+    bandaTop = inset + margen;
+    bandaBottom = vh - margen;
+  } else if (notaArriba) {
+    bandaTop = inset + margen + cardH + margen;
+    bandaBottom = vh - margen;
+  } else {
+    bandaTop = inset + margen;
+    bandaBottom = vh - margen - cardH - margen;
+  }
+  if (bandaBottom - bandaTop < 120) bandaBottom = bandaTop + 120;
+
+  var top    = Math.max(bandaTop, r.top - pad);
+  var bottom = Math.min(bandaBottom, r.bottom + pad);
+  var altoMax = bandaBottom - bandaTop;
+
   if (bottom - top > altoMax) {
     bottom = top + altoMax;
-    // El recorte no puede dejar FUERA lo que se esta señalando. Con la
-    // tarjeta de una comida, el trozo explicado ("como se cocina") esta
-    // abajo del todo y el recorte por arriba lo cortaba: el foco se
-    // quedaba sin sitio y no se encendia. Si pasa, la ventana se desliza
-    // hasta contenerlo, conservando su altura.
-    if (contexto) {
-      var ro0 = objetivo.getBoundingClientRect();
-      if (ro0.bottom + pad > bottom) {
-        var corrimiento = Math.min(ro0.bottom + pad - bottom, top - margen);
-        if (corrimiento > 0) { top -= corrimiento; bottom -= corrimiento; }
-        bottom = Math.min(vh - margen, Math.max(bottom, ro0.bottom + pad));
-        top = Math.max(margen, bottom - altoMax);
-      }
-    }
+  }
+
+  // Un elemento altisimo se ilumina solo por su comienzo: es donde esta su
+  // encabezado y donde el usuario mira. Pero el recorte no puede dejar
+  // FUERA lo que se esta señalando: si el objetivo cae por debajo, la
+  // ventana se desliza hasta contenerlo, conservando su altura.
+  if (ro0.bottom + pad > bottom && ro0.top - pad < top) {
+    // El objetivo es MAS alto que la banda: no hay nada que deslizar.
+    top = bandaTop;
+    bottom = bandaBottom;
+  } else if (ro0.bottom + pad > bottom) {
+    var corrimiento = Math.min(ro0.bottom + pad - bottom, top - bandaTop);
+    if (corrimiento > 0) { top -= corrimiento; bottom -= corrimiento; }
+    bottom = Math.min(bandaBottom, Math.max(bottom, ro0.bottom + pad));
+    top = Math.max(bandaTop, bottom - altoMax);
+  } else if (ro0.top - pad < top) {
+    var subida = Math.min(top - (ro0.top - pad), bandaBottom - bottom);
+    if (subida > 0) { top += subida; bottom += subida; }
+    top = Math.max(bandaTop, Math.min(top, ro0.top - pad));
+    bottom = Math.min(bandaBottom, top + altoMax);
+  }
+
+  // Si ha habido recorte, que corte por donde el contenido ya se corta:
+  // una fila partida por la mitad es lo que hacia feo el paso de la lista
+  // de la compra en el portatil.
+  if (bottom < r.bottom + pad - 1) {
+    var desplazamiento = window.pageYOffset || document.documentElement.scrollTop || 0;
+    // Lo mas arriba que puede subir el corte: sin dejar el marco enano y,
+    // cuando hay contexto, sin dejar fuera lo señalado. Cuando lo señalado
+    // ES lo enmarcado no cabe entero de todas formas, y exigir contenerlo
+    // impedia cualquier ajuste.
+    var minCorte = top + 120;
+    if (contexto) minCorte = Math.max(minCorte, Math.min(ro0.bottom + pad, bandaBottom));
+    bottom = _tourCorteLimpio(
+      el,
+      bottom + desplazamiento,
+      minCorte + desplazamiento,
+      bandaBottom + desplazamiento
+    ) - desplazamiento;
   }
 
   var h = Math.max(0, bottom - top);
@@ -334,29 +481,24 @@ function _tourPosition() {
   var cardTop, cardLeft;
 
   if (alLado) {
-    // Al lado del marco, a la altura de lo enfocado: asi la explicacion
-    // esta enfrente de lo que explica y el marco se queda entero.
-    cardTop = Math.max(margen, Math.min(anclaTop, vh - cardH - margen));
+    // Al lado del marco y CENTRADA con lo enfocado -- no alineada con su
+    // borde de arriba: asi la explicacion queda enfrente de lo que explica
+    // en vez de colgando por encima.
+    cardTop = anclaTop + (anclaBottom - anclaTop) / 2 - cardH / 2;
+    cardTop = Math.max(inset + margen, Math.min(cardTop, vh - cardH - margen));
     cardLeft = (vw - right >= cardW + margen * 2)
       ? right + margen
       : left - cardW - margen;
     cardLeft = Math.max(margen, Math.min(cardLeft, vw - cardW - margen));
   } else {
-    // Apilada, la nota tiene que salvar el MARCO entero, no solo el foco.
-    // El foco suele estar arriba del contexto, asi que "debajo del foco"
-    // cae DENTRO del marco: en la lista de la compra la nota se plantaba
-    // sobre los ultimos 35px del recuadro que estaba explicando. Al lado
-    // no pasa, porque ahi no se solapan por altura.
-    var bajoTodo = Math.max(anclaBottom, bottom);
-    var sobreTodo = Math.min(anclaTop, top);
-    if (vh - bajoTodo > cardH + margen * 2) {
-      cardTop = bajoTodo + margen;
-    } else if (sobreTodo > cardH + margen * 2) {
-      cardTop = sobreTodo - cardH - margen;
-    } else {
-      cardTop = vh - cardH - margen;
-    }
-    cardTop = Math.max(margen, Math.min(cardTop, vh - cardH - margen));
+    // Apilada, la nota ocupa el trozo de pantalla que la banda del marco ha
+    // dejado libre a proposito. No hay que buscarle sitio ni comprobar si
+    // cabe: se le reservo antes de decidir el marco, asi que por
+    // construccion no puede solaparse con el.
+    cardTop = notaArriba
+      ? Math.max(inset + margen, top - margen - cardH)
+      : bottom + margen;
+    cardTop = Math.max(inset + margen, Math.min(cardTop, vh - cardH - margen));
     cardLeft = Math.max(margen, Math.min(anclaLeft, vw - cardW - margen));
   }
 
@@ -441,13 +583,64 @@ function _tourPrefiereMenosMovimiento() {
   } catch (e) { return false; }
 }
 
-function _tourScrollSuave(el) {
+/**
+ * A que altura de la pantalla hay que dejar lo enmarcado.
+ *
+ * CENTRADO, no pegado arriba. Antes todo aterrizaba en y=12 y en los pasos
+ * de un boton eso dejaba un marco de 104 px arriba del todo con 600 px de
+ * oscuridad debajo -- medido: los pasos 4, 6, 7, 8, 9, 10 y 11 caian entre
+ * 218 y 296 px por encima del centro. "сделай так чтобы всё было +- по
+ * центру а не вверху или внизу экрана".
+ *
+ * Se centra el BLOQUE entero (marco + nota cuando va apilada), no solo el
+ * marco: centrar el marco y colgarle la nota debajo descuadra el conjunto
+ * hacia abajo.
+ *
+ * @param {Element} el        lo que se va a enmarcar
+ * @param {Element} objetivo  lo que se señala dentro de ello
+ * @returns {number} desplazamiento de pagina al que hay que ir
+ */
+function _tourDestino(el, objetivo) {
+  var desde = window.pageYOffset || document.documentElement.scrollTop || 0;
+  var r = el.getBoundingClientRect();
+  var vh = window.innerHeight;
+  var inset = _tourTopInset();
+  var cardH = _tourCardH();
+
+  var left = Math.max(TOUR_MARGEN, r.left - TOUR_PAD);
+  var right = Math.min(window.innerWidth - TOUR_MARGEN, r.right + TOUR_PAD);
+  var alLado = _tourNotaAlLado({ left: left, right: right });
+
+  var altoBanda = _tourAltoMaxMarco(alLado);
+  var altoMarco = Math.min(r.height + TOUR_PAD * 2, altoBanda);
+  var bloque = alLado ? altoMarco : (altoMarco + TOUR_MARGEN + cardH);
+
+  var arriba = inset + Math.max(TOUR_MARGEN, (vh - inset - bloque) / 2);
+
+  // Con la nota ARRIBA el marco empieza despues de ella. Mismo criterio que
+  // _tourPosition, pero medido DENTRO de lo enmarcado y no contra la
+  // pantalla, que es lo unico que no cambia al desplazarse.
+  var ro = (objetivo || el).getBoundingClientRect();
+  var recorta = (r.height + TOUR_PAD * 2) > altoBanda;
+  var frac = (ro.top + ro.height / 2 - r.top) / Math.max(1, r.height);
+  var notaArriba = !alLado && recorta && frac > 0.55;
+  if (notaArriba) arriba += cardH + TOUR_MARGEN;
+
+  // Recortando y con la nota arriba se enseña el FINAL de lo enmarcado --
+  // ahi esta lo señalado. En cualquier otro caso, su comienzo.
+  var hasta = notaArriba
+    ? desde + r.bottom - (arriba + altoMarco - TOUR_PAD)
+    : desde + r.top - (arriba + TOUR_PAD);
+
+  var maximo = Math.max(0, (document.documentElement.scrollHeight || 0) - vh);
+  return Math.max(0, Math.min(maximo, hasta));
+}
+
+function _tourScrollSuave(el, objetivo) {
   if (_tourScrollRaf) { window.cancelAnimationFrame(_tourScrollRaf); _tourScrollRaf = null; }
 
   var desde = window.pageYOffset || document.documentElement.scrollTop || 0;
-  var r = el.getBoundingClientRect();
-  var maximo = Math.max(0, (document.documentElement.scrollHeight || 0) - window.innerHeight);
-  var hasta = Math.max(0, Math.min(maximo, desde + r.top - (_tourTopInset() + 12)));
+  var hasta = _tourDestino(el, objetivo);
   var salto = hasta - desde;
   if (Math.abs(salto) < 2) return;
 
@@ -511,6 +704,17 @@ function _tourRender() {
   // contiene se quedaba por encima de la pantalla: el marco de contexto se
   // recortaba a una franja de 51 px y el foco no cabia dentro. Medido.
   var objetivo = document.querySelector(step.target);
+
+  // El texto va ANTES del desplazamiento. La cuenta del centrado necesita
+  // saber cuanto mide la nota, y hasta que no lleva el texto de ESTE paso
+  // mide lo que midiera el anterior -- con notas de 3 y de 6 lineas el
+  // error son 60 px de descuadre.
+  e.counter.textContent = (_tourIndex + 1) + " de " + _tourVisible.length;
+  e.title.textContent = step.title;
+  e.body.textContent = step.body;
+  e.next.textContent = (_tourIndex === _tourVisible.length - 1) ? "Entendido" : "Siguiente";
+  e.prev.hidden = (_tourIndex === 0);
+
   var el = _tourContexto(objetivo) || objetivo;
   if (el && typeof el.scrollIntoView === "function") {
     // El hueco se reserva con `scroll-margin-top` y NO restando píxeles
@@ -523,17 +727,11 @@ function _tourRender() {
     _tourScrollMarginPrev = el.style.scrollMarginTop;
     el.style.scrollMarginTop = (_tourTopInset() + 12) + "px";
 
-    // "start" y no "center": con un elemento más alto que la pantalla,
-    // centrarlo deja su comienzo -- que es lo que se explica -- fuera de
-    // la vista, y el usuario ve un trozo cualquiera de la mitad.
-    _tourScrollSuave(el);
+    // El destino lo calcula _tourDestino: centra el bloque, y con algo mas
+    // alto que la pantalla enseña su comienzo (o su final, si es ahi donde
+    // esta lo señalado) en vez de un trozo cualquiera de la mitad.
+    _tourScrollSuave(el, objetivo);
   }
-
-  e.counter.textContent = (_tourIndex + 1) + " de " + _tourVisible.length;
-  e.title.textContent = step.title;
-  e.body.textContent = step.body;
-  e.next.textContent = (_tourIndex === _tourVisible.length - 1) ? "Entendido" : "Siguiente";
-  e.prev.hidden = (_tourIndex === 0);
 
   // El desplazamiento suave tarda: se recoloca al terminar, y además en
   // cada scroll/resize mientras el recorrido esté abierto.
