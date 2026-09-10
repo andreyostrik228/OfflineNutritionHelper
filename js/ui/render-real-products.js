@@ -195,7 +195,7 @@ function renderProductCard(p) {
         '<div><span>Grasas</span><strong>' + round1(p.fat) + 'g</strong></div>' +
       '</div>'
     )
-    : '<div class="verified-card__no-nutrition">Sin datos nutricionales</div>';
+    : '<div class="verified-card__no-nutrition">' + escapeHtml(t("ui.sin_datos_nutricionales")) + '</div>';
 
   var findBtn = typeof renderProductFindBtn === "function" ? renderProductFindBtn(p) : "";
 

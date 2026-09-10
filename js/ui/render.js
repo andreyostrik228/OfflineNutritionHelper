@@ -78,6 +78,53 @@
 // Referencias al DOM — se rellenan desde app.js mediante initRenderRefs().
 // Se declaran aquí como let de módulo para que renderSummary y renderMeals
 // las vean sin necesidad de recibirlas como parámetros en cada llamada.
+/**
+ * Los nombres de comida, para pintar.
+ *
+ * Existen como envoltorio y no se llama a `tFood`/`tDish` directamente por
+ * una razon concreta: si `js/core/i18n.js` no llegara a cargarse, estas
+ * siguen existiendo y devuelven el nombre en español. Lo que se pierde es
+ * la traduccion, no la pantalla -- misma idea que 7.2.
+ *
+ * Se usan SOLO al pintar. `item.name` y `meal.dishName` son ademas las
+ * CLAVES con las que se busca el envase, el precio, el producto real y las
+ * instrucciones: traducirlas antes de esas busquedas no da ningun error,
+ * simplemente deja de encontrar nada.
+ *
+ * Y nunca sobre un nombre de `real-products.js`: eso es lo que pone en la
+ * estanteria del supermercado.
+ */
+function nombreComida(n) {
+  return (typeof tFood === "function") ? tFood(n) : n;
+}
+function nombrePlato(n) {
+  return (typeof tDish === "function") ? tDish(n) : n;
+}
+
+/** Nombre de cada toma por su clave. La clave no cambia con el idioma. */
+var CLAVES_DE_TOMA = {
+  breakfast: "ui.desayuno", lunch: "ui.comida", dinner: "ui.cena",
+  snack: "ui.snack_1", snack2: "ui.snack_2"
+};
+
+/**
+ * El titulo de una tarjeta: "Desayuno — Wrap con claras".
+ *
+ * `meal.label` viene ya pegado del generador, y pegado no se puede
+ * traducir: la primera mitad es interfaz y la segunda es el nombre de un
+ * plato, y cada una va por su camino. Se recompone desde `meal.key` y
+ * `meal.dishName`, que son los datos de verdad.
+ *
+ * Si faltara alguno se cae al `label` de siempre, en español: media
+ * traduccion es mejor que una tarjeta sin titulo.
+ */
+function tituloDeToma(meal) {
+  if (!meal) return "";
+  var claveToma = CLAVES_DE_TOMA[meal.key];
+  if (!claveToma || !meal.dishName || typeof t !== "function") return meal.label || "";
+  return t(claveToma) + " — " + nombrePlato(meal.dishName);
+}
+
 var mealsContainer, summaryEls;
 
 /**
@@ -259,7 +306,7 @@ function renderMealCard(meal, total, dayIndex) {
       '<div class="meal-head">' +
         '<div class="meal-head__title">' +
           timeBadge +
-          '<h3>' + escapeHtml(meal.label) + '</h3>' +
+          '<h3>' + escapeHtml(tituloDeToma(meal)) + '</h3>' +
         '</div>' +
         '<div class="meal-head__right">' +
           // `data-tour`: ancla del recorrido guiado (ver la nota en
@@ -312,15 +359,19 @@ function renderCookingSteps(meal) {
   var info = getDishInstructions(meal && meal.dishName);
   if (!info || !Array.isArray(info.steps) || !info.steps.length) return "";
 
-  var difficultyLabel = { 1: "Fácil", 2: "Medio", 3: "Avanzado" }[info.difficulty] || "";
+  var difficultyLabel = { 1: t("ui.facil"), 2: t("ui.medio"), 3: t("ui.avanzado") }[info.difficulty] || "";
 
   // "ninguno" se muestra como una afirmación útil, no como una carencia:
   // es la respuesta directa a "no tengo el equipo".
   var equipment = Array.isArray(info.equipment) ? info.equipment : [];
+  // OJO con el nombre: esta variable local se llamaba igual que la funcion
+  // que traduce los nombres de equipo, y dentro de su propia asignacion la
+  // variable gana a la funcion -- `equipmentLabel(e)` llamaba a un
+  // `undefined`. No fallaba ningun test: los tests no pintan.
   var equipmentLabel = (equipment.length === 1 && equipment[0] === "ninguno")
-    ? "Sin cacharros: solo cuchillo y bol"
+    ? t("ui.sin_cacharros")
     : equipment.filter(function (e) { return e !== "ninguno"; })
-        .map(function (e) { return EQUIPMENT_LABELS[e] || e; })
+        .map(function (e) { return etiquetaDeEquipo(e); })
         .join(" · ");
 
   return (
@@ -332,7 +383,7 @@ function renderCookingSteps(meal) {
       // renombrarla, el paso iluminaría un hueco vacío sin que nada avise.
       // Ver js/data/tour-steps.js y su test en tests/onboarding.test.js.
       '<summary class="meal-steps__summary" data-tour="recipe">' +
-        '<span class="meal-steps__toggle">Cómo se hace</span>' +
+        '<span class="meal-steps__toggle">' + escapeHtml(t("ui.como_se_hace")) + '</span>' +
         (difficultyLabel
           ? '<span class="meal-steps__badge meal-steps__badge--d' + info.difficulty + '">' +
               escapeHtml(difficultyLabel) + '</span>'
@@ -350,15 +401,25 @@ function renderCookingSteps(meal) {
   );
 }
 
-/** Etiquetas legibles del vocabulario cerrado de equipo. */
-var EQUIPMENT_LABELS = {
-  tostadora: "Tostadora",
-  microondas: "Microondas",
-  sarten: "Sartén",
-  olla: "Olla o cazo",
-  horno: "Horno",
-  batidora: "Batidora"
-};
+/**
+ * Etiquetas legibles del vocabulario cerrado de equipo.
+ *
+ * Es una FUNCION y no un objeto porque el idioma se puede cambiar sin
+ * recargar: un objeto se congelaria con el idioma que hubiera al cargar el
+ * fichero, y a partir de ahi el resto de la pantalla cambiaria y esto no.
+ */
+function etiquetaDeEquipo(clave) {
+  var claves = {
+    tostadora: "ui.tostadora",
+    microondas: "ui.microondas",
+    sarten: "ui.sarten",
+    olla: "ui.olla_o_cazo",
+    horno: "ui.horno",
+    batidora: "ui.batidora"
+  };
+  if (!claves[clave] || typeof t !== "function") return clave;
+  return t(claves[clave]);
+}
 
 /**
  * Genera el HTML de una fila de ingrediente dentro de una tarjeta. Muestra,
@@ -403,7 +464,11 @@ function renderFoodRow(item, storeId) {
   return (
     '<div class="food-row">' +
       '<div class="food-main">' +
-        '<div class="food-name">' + escapeHtml(item.name) + '</div>' +
+        // OJO: se traduce AQUI, al pintar, y nunca antes. `item.name` es la
+        // clave con la que se busca el envase, el precio y el producto real
+        // (las tres lineas de arriba): traducirlo antes las rompe todas y
+        // no falla nada, simplemente deja de encontrar.
+        '<div class="food-name">' + escapeHtml(nombreComida(item.name)) + '</div>' +
         '<div class="food-meta">' +
           formatQuantityPhrase(item.grams, info) +
           (hasRealMacros
@@ -587,7 +652,7 @@ function formatPurchaseLine(info, realMatch, purchase) {
 
   var priceNote = ' &middot; &euro;' + round2(purchase.purchaseCost);
 
-  return '<div class="food-purchase">Compra: ' + escapeHtml(label) + priceNote + '</div>';
+  return '<div class="food-purchase">' + escapeHtml(t("ui.compra_dos_puntos")) + ' ' + escapeHtml(label) + priceNote + '</div>';
 }
 
 /**
@@ -605,7 +670,7 @@ function formatRealMatchPurchaseLine(realMatch, purchase) {
   // unidad se refiere).
   if (!realMatch.sizeG) {
     var packInfo = realMatch.units ? " (pack de " + realMatch.units + ")" : "";
-    return '<div class="food-purchase">Compra: ' + escapeHtml(realMatch.productName) + packInfo + badge + '</div>';
+    return '<div class="food-purchase">' + escapeHtml(t("ui.compra_dos_puntos")) + ' ' + escapeHtml(realMatch.productName) + packInfo + badge + '</div>';
   }
 
   var packagesToBuy = (purchase && purchase.hasFixedPackage) ? purchase.packagesToBuy : 1;
@@ -615,7 +680,7 @@ function formatRealMatchPurchaseLine(realMatch, purchase) {
     : '';
 
   return (
-    '<div class="food-purchase">Compra: ' + quantityPrefix + escapeHtml(realMatch.productName) +
+    '<div class="food-purchase">' + escapeHtml(t("ui.compra_dos_puntos")) + ' ' + quantityPrefix + escapeHtml(realMatch.productName) +
     ' (' + round0(realMatch.sizeG) + 'g)' + priceNote + badge + '</div>'
   );
 }

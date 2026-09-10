@@ -242,7 +242,7 @@ function renderShoppingList(meals, storeId, days) {
       '<div class="shopping-summary__stat"><span>Coste de compra' + (n > 1 ? " (" + n + " días)" : "") +
         '</span><strong>&euro;' + round2(totalPurchaseCost) + '</strong></div>' +
       perDay +
-      '<div class="shopping-summary__stat shopping-summary__stat--muted"><span>Coste de uso</span><strong>&euro;' + round2(totalUsageCost) + '</strong></div>';
+      '<div class="shopping-summary__stat shopping-summary__stat--muted"><span>' + escapeHtml(t("ui.coste_de_uso")) + '</span><strong>&euro;' + round2(totalUsageCost) + '</strong></div>';
   }
 
   if (shoppingEyebrowEl) {
@@ -367,36 +367,43 @@ function shoppingListAsText(items, dias) {
 
 function renderShoppingRow(entry) {
   var p = entry.purchase;
-  var usedText = "Usado: " + round0(entry.requiredGrams) + " g";
+  var usedText = t("ui.usado") + ": " + round0(entry.requiredGrams) + " g";
 
   var buyText;
   if (typeof p.packagesToBuy === "number" && p.packagesToBuy === 0) {
     // Cubierto por completo por la despensa (pantry.js) — no hace falta
     // comprar nada de este ingrediente hoy.
-    buyText = "Ya tienes suficiente en tu despensa";
+    buyText = t("ui.ya_tienes_suficiente_en_tu_despensa");
   } else if (p.hasFixedPackage) {
-    var label = p.packageLabel ? escapeHtml(p.packageLabel) : "envase";
+    // `packageLabel` viene de packaging.js y describe el ENVASE tal y como
+    // se vende ("docena", "bandeja"): es lo que hay que buscar en la
+    // tienda, así que no se traduce.
+    var label = p.packageLabel ? escapeHtml(p.packageLabel) : t("ui.envase");
     // Si la etiqueta ya nombra un número de piezas ("docena (12 huevos)"),
     // el "(756 g)" no le dice nada a quien compra -- se omite.
     var withGrams = !/\d/.test(p.packageLabel || "");
-    buyText = "Comprar: " + p.packagesToBuy + " &times; " + label +
+    buyText = t("ui.comprar") + ": " + p.packagesToBuy + " &times; " + label +
       (withGrams ? " (" + round0(p.packageSizeG) + "g)" : "");
   } else {
-    buyText = "Se compra al peso &mdash; sin envase fijo";
+    buyText = t("ui.se_compra_al_peso_sin_envase_fijo");
   }
 
   // Nota de despensa: solo aparece cuando pantry.js está cargado Y cubre
   // parte (o todo) de este ingrediente — invisible/sin cambio alguno
   // cuando no hay despensa activa.
   var pantryNote = (typeof p.coveredFromPantry === "number" && p.coveredFromPantry > 0)
-    ? '<div class="shopping-item__pantry">Ya en tu despensa: ' + round0(p.coveredFromPantry) + ' g</div>'
+    ? '<div class="shopping-item__pantry">' + escapeHtml(t("ui.ya_en_tu_despensa")) + ': '
+        + round0(p.coveredFromPantry) + ' g</div>'
     : '';
 
   return (
     '<li class="shopping-item">' +
       '<span class="shopping-item__check" aria-hidden="true"></span>' +
       '<div class="shopping-item__main">' +
-        '<div class="shopping-item__name">' + escapeHtml(entry.name) +
+        // El nombre se traduce al PINTAR; `entry.name` sigue en español
+        // dentro de resolveShoppingProduct(), que lo usa como clave para
+        // encontrar el producto real de Mercadona.
+        '<div class="shopping-item__name">' + escapeHtml(nombreComida(entry.name)) +
           (typeof renderProductFindBtn === "function"
             ? renderProductFindBtn(resolveShoppingProduct(entry.name)) : "") +
         '</div>' +
@@ -407,7 +414,7 @@ function renderShoppingRow(entry) {
       '<div class="shopping-item__price">' +
         '&euro;' + round2(p.purchaseCost) +
         (Math.abs(p.purchaseCost - entry.usageCost) > 0.005
-          ? '<span class="shopping-item__usage-price">Coste de uso: &euro;' + round2(entry.usageCost) + '</span>'
+          ? '<span class="shopping-item__usage-price">' + escapeHtml(t("ui.coste_de_uso")) + ': &euro;' + round2(entry.usageCost) + '</span>'
           : '') +
       '</div>' +
     '</li>'

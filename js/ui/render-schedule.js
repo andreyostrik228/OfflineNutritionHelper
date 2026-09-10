@@ -223,7 +223,7 @@ function renderMealCookNote(meal) {
     var cookStart = getCookStartTime(meal);
     if (cookStart) {
       out +=
-        '<div class="meal-cook-note">Empieza a cocinar sobre las <strong>' + escapeHtml(cookStart) +
+        '<div class="meal-cook-note">' + escapeHtml(t("ui.empieza_a_cocinar_sobre_las")) + ' <strong>' + escapeHtml(cookStart) +
         '</strong> (' + (meal.prep || 0) + ' min)</div>';
     }
   }

@@ -246,7 +246,7 @@ function _obBudgetAmount(step, value) {
   if (typeof BUDGET_PRESETS === "undefined" || typeof DEFAULT_BUDGET_PERIOD === "undefined") return "";
   var presets = BUDGET_PRESETS[DEFAULT_BUDGET_PERIOD];
   var preset = presets && presets[value];
-  return preset ? "€" + preset.amount + "/día" : "";
+  return preset ? "€" + preset.amount + t("ui.por_dia") : "";
 }
 
 function _obRenderStep() {

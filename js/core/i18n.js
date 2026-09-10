@@ -170,6 +170,178 @@ function detectLang(preferidas) {
   return DEFAULT_LANG;
 }
 
+// ── Los nombres de COMIDA ────────────────────────────────────────────────
+//
+// La linea no es "comida si / interfaz no". Es DESCRIPCION contra ETIQUETA:
+//
+//   "Aguacate"                          se traduce: describe un alimento
+//   "Aguacate Hacendado bandeja 2 uds"  NO: es lo que pone en el precio
+//
+// Quien lee la lista de la compra tiene que reconocer el producto en la
+// estanteria, y para eso el NOMBRE COMERCIAL tiene que ir tal cual. Pero
+// "aguacate" no ayuda a nadie que no sepa español, y traducirlo no rompe
+// nada porque no es lo que se busca en la tienda.
+//
+// Por eso `js/data/real-products.js` no entra aqui NUNCA, y los
+// ingredientes y los platos si.
+//
+// La tabla va por el propio nombre español, no por una clave inventada:
+// son nombres, no frases de interfaz, y asi el fichero de traduccion se
+// lee como un diccionario.
+
+/** Diccionarios de comida por idioma, que rellenan js/i18n/food-*.js */
+var FOOD_TABLES = {};
+
+/**
+ * Registra el diccionario de comida de un idioma.
+ * @param {string} lang
+ * @param {object} tabla - {"Aguacate": "Avocado", ...}
+ */
+function registerFoodTable(lang, tabla) {
+  if (LANGS.indexOf(lang) === -1) return;
+  if (!tabla || typeof tabla !== "object") return;
+  FOOD_TABLES[lang] = tabla;
+}
+
+/**
+ * El nombre de un alimento o plato en el idioma que toque.
+ *
+ * Sin traduccion devuelve el ORIGINAL, no la clave: aqui la clave ES el
+ * nombre español, y enseñar "Aguacate" a quien lee en ingles es mucho mejor
+ * que enseñarle un hueco. Es lo contrario que en `t()`, donde la clave es
+ * un identificador y verla en pantalla avisa de que falta algo.
+ *
+ * @param {string} nombre - el nombre en español
+ * @param {string} [lang]
+ * @returns {string}
+ */
+function tFood(nombre, lang) {
+  if (typeof nombre !== "string" || !nombre) return nombre;
+  var idioma = (typeof lang === "string") ? sanitizeLang(lang) : getLang();
+  if (idioma === DEFAULT_LANG) return nombre;
+  var tabla = FOOD_TABLES[idioma];
+  if (tabla && typeof tabla[nombre] === "string") return tabla[nombre];
+  return nombre;
+}
+
+// ── Los nombres de PLATO, por composición ────────────────────────────────
+//
+// Son 434 y el catálogo va camino de 1.000: traducirlos a mano es un
+// callejón sin salida, porque cada plato que genere `scripts/generar-platos`
+// llegaría sin traducir y nadie se enteraría.
+//
+// Medido: los 434 nombres se descomponen en 233 piezas distintas unidas por
+// seis conectores ("con" x314, "de" x80, "a la" x17, "al" x16, "y" x3,
+// "en" x3). Traduciendo las piezas se traducen los nombres de hoy Y los de
+// mañana, mientras el generador siga usando el mismo vocabulario.
+
+/** Vocabulario de piezas por idioma, en minúsculas. */
+var DISH_WORD_TABLES = {};
+
+/** Métodos de cocción: en español van detrás, en inglés delante. */
+var DISH_METHODS = {};
+
+function registerDishWords(lang, palabras, metodos) {
+  if (LANGS.indexOf(lang) === -1) return;
+  if (palabras && typeof palabras === "object") DISH_WORD_TABLES[lang] = palabras;
+  if (metodos && typeof metodos === "object") DISH_METHODS[lang] = metodos;
+}
+
+/** Primera letra en mayúscula, respetando el resto. */
+function _capitalizar(s) {
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+}
+
+/** Una pieza suelta: se busca en minúsculas y se devuelve como estaba. */
+function _piezaTraducida(pieza, palabras) {
+  var limpia = pieza.trim();
+  if (!limpia) return limpia;
+  var t = palabras[limpia.toLowerCase()];
+  if (typeof t !== "string") return limpia;          // sin traducción: el original
+  // Si venía en mayúscula (va al principio del nombre), se mantiene.
+  return /^[A-ZÁÉÍÓÚÑ]/.test(limpia) ? _capitalizar(t) : t;
+}
+
+/**
+ * "A de B" se invierte: en inglés el complemento va delante.
+ *   "Sopa de lentejas"   -> "Lentil soup"
+ *   "Bowl de skyr"       -> "Skyr bowl"
+ *   "Muslo de pollo"     -> "Chicken thigh"
+ * Menos cuando la cabeza es una cantidad, que en inglés sí lleva "of":
+ *   "Puñado de almendras" -> "Handful of almonds"
+ */
+var DISH_DE_CON_OF = /^(pu[ñn]ado|racion|raci[óo]n|vaso|taza|bol)$/i;
+
+function _tramoConDe(tramo, palabras) {
+  // El tramo ENTERO manda sobre el despiece. Sin esto "Claras de huevo"
+  // se partia en "Claras" + "huevo" y salia "Egg egg whites": el nombre
+  // completo ya significa una cosa y trocearlo la repite.
+  var limpio = tramo.trim();
+  if (typeof palabras[limpio.toLowerCase()] === "string") {
+    return _piezaTraducida(limpio, palabras);
+  }
+  var i = tramo.indexOf(" de ");
+  if (i === -1) return _piezaTraducida(tramo, palabras);
+  var cabeza = tramo.slice(0, i).trim();
+  var cola = tramo.slice(i + 4).trim();
+  var tc = _piezaTraducida(cabeza, palabras);
+  var tl = _piezaTraducida(cola, palabras);
+  if (DISH_DE_CON_OF.test(cabeza)) return tc + " of " + tl.toLowerCase();
+  // Invertido: la cola pasa delante y en minúscula, la cabeza detrás.
+  var delante = /^[A-ZÁÉÍÓÚÑ]/.test(cabeza) ? _capitalizar(tl) : tl.toLowerCase();
+  return delante + " " + tc.toLowerCase();
+}
+
+/**
+ * El nombre de un plato en el idioma que toque.
+ *
+ * Sin traducción para una pieza se deja esa pieza en español: media frase
+ * entendible es mejor que ninguna, y es lo mismo que hace tFood().
+ *
+ * @param {string} nombre
+ * @param {string} [lang]
+ * @returns {string}
+ */
+function tDish(nombre, lang) {
+  if (typeof nombre !== "string" || !nombre) return nombre;
+  var idioma = (typeof lang === "string") ? sanitizeLang(lang) : getLang();
+  if (idioma === DEFAULT_LANG) return nombre;
+
+  // 1. ¿Está el nombre entero en el diccionario? Gana siempre: es una
+  //    traducción escrita a mano y sabe más que cualquier composición.
+  var tabla = FOOD_TABLES[idioma];
+  if (tabla && typeof tabla[nombre] === "string") return tabla[nombre];
+
+  var palabras = DISH_WORD_TABLES[idioma];
+  if (!palabras) return nombre;
+  var metodos = DISH_METHODS[idioma] || {};
+
+  var resto = nombre, metodo = "";
+
+  // 2. Método de cocción: "Pollo a la plancha" -> "Grilled chicken".
+  var m = resto.match(/\s+(?:a\s+la|al)\s+([^\s,]+)/i);
+  if (m) {
+    var clave = m[1].toLowerCase();
+    if (typeof metodos[clave] === "string") {
+      metodo = metodos[clave];
+      resto = resto.replace(m[0], "");
+    }
+  }
+
+  // 3. Se parte por "con" y por "y", que en inglés van igual y en el mismo
+  //    orden. Cada tramo puede llevar un "de" dentro, que sí se invierte.
+  var conPartes = resto.split(/\s+con\s+/i);
+  var traducidas = conPartes.map(function (parte) {
+    return parte.split(/\s+y\s+/i).map(function (p) {
+      return _tramoConDe(p, palabras);
+    }).join(" and ");
+  });
+
+  var salida = traducidas.join(" with ");
+  if (metodo) salida = _capitalizar(metodo) + " " + salida.charAt(0).toLowerCase() + salida.slice(1);
+  return salida.replace(/\s+/g, " ").trim();
+}
+
 /**
  * La cadena de una clave.
  *

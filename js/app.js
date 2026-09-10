@@ -948,7 +948,7 @@ document.addEventListener("DOMContentLoaded", function () {
       var el = document.getElementById(pair[1]);
       var preset = presets[pair[0]];
       if (!preset) return;
-      if (el) el.textContent = "€" + preset.amount + "/día";
+      if (el) el.textContent = "€" + preset.amount + t("ui.por_dia");
 
       // El NOMBRE del tramo tambien sale de aqui. Estaba escrito dos veces
       // -- `label` en budget-presets.js y a mano en index.html -- y de las

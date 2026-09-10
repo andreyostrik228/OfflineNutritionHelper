@@ -266,6 +266,104 @@ function run(t) {
     assert.deepStrictEqual(JSON.parse(JSON.stringify(s.availableLangs())), ["es", "en"]);
   });
 
+  // ── Los nombres de comida ──────────────────────────────────────────────
+
+  t.test("TODOS los ingredientes del catálogo tienen traducción", function () {
+    // Sin este test, un ingrediente nuevo entra en el catálogo y aparece en
+    // español dentro de una lista en inglés sin que nadie se entere: tFood()
+    // devuelve el original y no falla nada.
+    var vm = require("vm");
+    var fs = require("fs");
+    var s = loadBrowserGlobals([
+      projPath("js/core/i18n.js"), projPath("js/i18n/food-en.js")
+    ]);
+    var c = {}; vm.createContext(c);
+    vm.runInContext(fs.readFileSync(projPath("js/data/dishes.js"), "utf8"), c);
+
+    var ingredientes = {};
+    c.DISH_DB.forEach(function (d) {
+      (d.items || []).forEach(function (i) { ingredientes[i.name] = 1; });
+    });
+    var faltan = Object.keys(ingredientes).filter(function (n) {
+      return typeof s.FOOD_TABLES["en"][n] !== "string";
+    }).sort();
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(faltan)), [],
+      faltan.length + " ingredientes sin traducir: " + faltan.slice(0, 8).join(" | "));
+  });
+
+  t.test("tFood devuelve el ORIGINAL cuando no hay traducción, no un hueco", function () {
+    var s = loadBrowserGlobals([
+      projPath("js/core/i18n.js"), projPath("js/i18n/food-en.js")
+    ]);
+    // Un nombre inventado: "Aguacate" en español es mejor que nada para
+    // quien lee en inglés. Es al revés que t(), donde ver la clave avisa.
+    assert.strictEqual(s.tFood("Nombre que no existe", "en"), "Nombre que no existe");
+    assert.strictEqual(s.tFood("Aguacate", "en"), "Avocado");
+    // En español no se toca nada, ni siquiera se mira la tabla.
+    assert.strictEqual(s.tFood("Aguacate", "es"), "Aguacate");
+  });
+
+  t.test("tFood aguanta lo que no es un nombre", function () {
+    var s = loadBrowserGlobals([projPath("js/core/i18n.js")]);
+    assert.strictEqual(s.tFood("", "en"), "");
+    assert.strictEqual(s.tFood(null, "en"), null);
+    assert.strictEqual(s.tFood(undefined, "en"), undefined);
+  });
+
+  t.test("el diccionario de comida SOLO traduce nombres del catálogo de platos", function () {
+    // Primero se escribió al revés -- "ningún nombre comercial puede estar
+    // en el diccionario" -- y falló, con razón: Mercadona vende productos
+    // que se llaman literalmente "Piña", "Fresas" o "Aguacate". El solape
+    // es inevitable y no hace daño.
+    //
+    // La regla de verdad no es QUÉ hay en el diccionario, es DÓNDE se
+    // aplica: a los ingredientes y platos sí, a `real-products.js` nunca.
+    // Eso lo vigila el test de más abajo sobre el código que pinta.
+    //
+    // Lo que sí se puede comprobar aquí: que no se haya colado nada que no
+    // sea un nombre del catálogo de platos, o sea que el diccionario no
+    // crezca por su cuenta con cosas que nadie usa.
+    var vm = require("vm");
+    var fs = require("fs");
+    var s = loadBrowserGlobals([
+      projPath("js/core/i18n.js"), projPath("js/i18n/food-en.js")
+    ]);
+    var c = {}; vm.createContext(c);
+    vm.runInContext(fs.readFileSync(projPath("js/data/dishes.js"), "utf8"), c);
+
+    var delCatalogo = {};
+    c.DISH_DB.forEach(function (d) {
+      delCatalogo[d.name] = 1;
+      (d.items || []).forEach(function (i) { delCatalogo[i.name] = 1; });
+    });
+    var sobran = Object.keys(s.FOOD_TABLES["en"]).filter(function (n) {
+      return !delCatalogo[n];
+    });
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(sobran)), [],
+      "el diccionario traduce nombres que no están en el catálogo: " + sobran.slice(0, 6).join(" | "));
+  });
+
+  t.test("el código que pinta PRODUCTOS no pasa por el diccionario", function () {
+    // La lista de la compra y las fichas de producto tienen que decir lo
+    // que pone en la estantería. Si alguien envuelve `producto.name` en
+    // tFood(), la lista deja de servir para lo único que existe, y no
+    // fallaría nada: saldría traducido y con buena pinta.
+    var fs = require("fs");
+    var sospechosos = [];
+    ["js/ui/render-real-products.js", "js/ui/render-shopping-list.js",
+     "js/ui/render-no-cook.js"].forEach(function (rel) {
+      var src = fs.readFileSync(projPath(rel), "utf8")
+        .replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+      // tFood aplicado a algo que se llama producto/product
+      var re = /tFood\s*\(\s*[a-zA-Z_$][\w$]*(\.[\w$]+)*/g, m;
+      while ((m = re.exec(src))) {
+        if (/produc/i.test(m[0])) sospechosos.push(rel + ": " + m[0]);
+      }
+    });
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(sospechosos)), [],
+      "nombre comercial pasando por el diccionario: " + sospechosos.join(" | "));
+  });
+
   t.test("cada idioma admitido tiene nombre en SU propio idioma", function () {
     var s = freshI18nSandbox();
     s.LANGS.forEach(function (lang) {
