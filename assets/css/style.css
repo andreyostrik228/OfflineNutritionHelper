@@ -364,20 +364,32 @@ body {
   font-size: 0;
 }
 
+.hero--imagen picture {
+  display: block;
+}
+
 .hero__img {
   display: block;
-  /* Con `width:100%` a secas, en un contenedor de 1.280px la imagen salia
-     a 1.280x671: media pantalla de portatil ocupada por una cabecera que
-     no es accionable, que es justo lo que se quito en 2026-08-23 cuando la
-     "portada" era un h1 gigante. Aqui es una MARCA, no una portada.
-
-     El tope va en px y el ancho en %, no al reves: por debajo de 520px
-     manda el %, asi que en el movil sigue ocupando el ancho entero sin
-     necesitar una media query. */
   width: 100%;
-  max-width: 520px;
   height: auto;
   border-radius: var(--radius-xl);
+  /* La proporcion del ARCHIVO del movil (og-weekplate.jpg, 1732x908). Se
+     declara aqui y no con width/height en el <img> porque con <picture> el
+     archivo cambia con la pantalla y los atributos solo describen a uno.
+     Sin esto la pagina da un salto cuando baja la imagen. */
+  aspect-ratio: 1732 / 908;
+  /* Tope solo mientras manda la imagen del movil: a 520px se queda en
+     520x273, que es una cabecera y no una portada. */
+  max-width: 520px;
+}
+
+/* A partir de aqui manda hero-weekplate.jpg (1600x524), que es ancha de
+   verdad: ocupa el contenedor entero y a 1.280 px sale 1.280x419. */
+@media (min-width: 720px) {
+  .hero__img {
+    aspect-ratio: 1600 / 524;
+    max-width: none;
+  }
 }
 
 .hero--imagen .brand-eyebrow {
@@ -5294,6 +5306,69 @@ body.is-onboarding {
 }
 
 
+/* ══ AVISO DE TRADUCCION AUTOMATICA ════════════════════════════════════════
+   Sin esta linea la caja se ve SIEMPRE: una regla de autor con `display`
+   gana al `display:none` que el navegador aplica a [hidden]. Es la misma
+   trampa de .topbar__offline y del dialogo de la despensa, y hay un test
+   que la vigila (tests/css-visibility.test.js). */
+.traduccion-aviso[hidden] { display: none; }
+
+.traduccion-aviso {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--paper-raised);
+}
+
+.traduccion-aviso__texto {
+  margin: 0;
+  flex: 1 1 260px;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+.traduccion-aviso__acciones {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.traduccion-aviso__si,
+.traduccion-aviso__no {
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.traduccion-aviso__si {
+  border: 1px solid var(--green-bright);
+  background: var(--green-bright);
+  color: var(--on-green);
+}
+
+.traduccion-aviso__no {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink-soft);
+}
+
+.traduccion-aviso__si:focus-visible,
+.traduccion-aviso__no:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+
+
 /* ══ MENU DE AJUSTES ═══════════════════════════════════════════════════════
    El boton vive a la IZQUIERDA del todo. `.topbar` esta en
    `justify-content: flex-end`, asi que sin `margin-right: auto` este boton
@@ -5431,6 +5506,23 @@ dialog.ajustes-dialog::backdrop {
   border-color: var(--green-bright);
   color: var(--on-green);
 }
+
+/* Diez idiomas no caben como botones: aqui si toca un desplegable, y el
+   nativo del movil ya sabe buscar por letra. */
+.ajustes-select {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ajustes-select:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
 
 .ajustes-actions {
   display: grid;

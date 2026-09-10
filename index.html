@@ -67,7 +67,7 @@
        .css. Si se olvida, lo peor que pasa es lo de siempre; si se sube,
        no hay mezcla posible.
        ══════════════════════════════════════════════════════════════════ -->
-  <link rel="stylesheet" href="assets/css/style.css?v=20260910f">
+  <link rel="stylesheet" href="assets/css/style.css?v=20260910l">
 
   <!-- ══ ANTES DE PINTAR NADA ══════════════════════════════════════════
        Decide, de forma SÍNCRONA y antes del primer pintado, si este
@@ -222,7 +222,7 @@
   </script>
 </head>
 <body>
-  <a class="saltar-al-contenido" href="#mainContent">Saltar al contenido</a>
+  <a class="saltar-al-contenido" href="#mainContent" data-i18n="ui.saltar_al_contenido">Saltar al contenido</a>
 
   <!-- ══ Sin JavaScript ═══════════════════════════════════════════════════
        Esta aplicacion ES JavaScript: el motor calcula los planes en el
@@ -233,13 +233,13 @@
        depender de que algo se ejecute. ══ -->
   <noscript>
     <div class="sin-js">
-      <h1>Hace falta JavaScript</h1>
+      <h1 data-i18n="ui.hace_falta_javascript">Hace falta JavaScript</h1>
       <p>
-        Esta aplicaci&oacute;n calcula tus men&uacute;s y su precio <strong>dentro de tu
+        Esta aplicaci&oacute;n calcula tus men&uacute;s y su precio <strong data-i18n="ui.dentro_de_tu_navegador">dentro de tu
         navegador</strong>, sin enviar nada a ning&uacute;n servidor. Por eso necesita
         JavaScript para funcionar: sin &eacute;l no hay nada que mostrar.
       </p>
-      <p>
+      <p data-i18n="ui.activalo_en_los_ajustes_de_tu_navegador_y_vu">
         Act&iacute;valo en los ajustes de tu navegador y vuelve a cargar la p&aacute;gina.
         No hace falta crear ninguna cuenta para usarla.
       </p>
@@ -327,11 +327,14 @@
           <span class="onboarding__brand-mark" aria-hidden="true">
             <svg width="20" height="20"><use href="#icon-chef"/></svg>
           </span>
-          <span class="onboarding__brand-name">Weekplate</span>
+          <span class="onboarding__brand-name" data-i18n="ui.weekplate">Weekplate</span>
         </div>
 
         <h2 class="onboarding__title" id="onboardingTitle">
-          Men&uacute;s de una semana,<br><span class="onboarding__title-accent">con lo que cuestan de verdad</span>
+          <!-- La primera linea va en su propio <span> para poder traducirse:
+               suelta dentro del <h2>, junto a un <br> y a otro <span>, no hay
+               donde colgar `data-i18n` sin llevarse por delante a los hermanos. -->
+          <span data-i18n="ui.menus_de_una_semana">Men&uacute;s de una semana,</span><br><span class="onboarding__title-accent" data-i18n="ui.con_lo_que_cuestan_de_verdad">con lo que cuestan de verdad</span>
         </h2>
 
         <ul class="onboarding__summary" id="onboardingSummary"></ul>
@@ -339,23 +342,23 @@
         <div class="onboarding__terms">
           <label class="onboarding__check">
             <input type="checkbox" id="onboardingAcceptTerms">
-            <span>He le&iacute;do y acepto las <button type="button" class="onboarding__link" id="onboardingOpenTerms">condiciones de uso y privacidad</button>.</span>
+            <span><span data-i18n="ui.he_leido_y_acepto_las">He le&iacute;do y acepto las</span> <button type="button" class="onboarding__link" id="onboardingOpenTerms" data-i18n="ui.condiciones_de_uso_y_privacidad">condiciones de uso y privacidad</button>.</span>
           </label>
         </div>
 
         <div class="onboarding__actions">
-          <button type="button" class="onboarding__btn onboarding__btn--primary" id="onboardingCreateAccountBtn" disabled>
+          <button type="button" class="onboarding__btn onboarding__btn--primary" id="onboardingCreateAccountBtn" disabled data-i18n="ui.crear_una_cuenta">
             Crear una cuenta
           </button>
-          <button type="button" class="onboarding__btn onboarding__btn--ghost" id="onboardingSignInBtn" disabled>
+          <button type="button" class="onboarding__btn onboarding__btn--ghost" id="onboardingSignInBtn" disabled data-i18n="ui.ya_tengo_cuenta">
             Ya tengo cuenta
           </button>
         </div>
 
-        <button type="button" class="onboarding__skip" id="onboardingSkipAccountBtn" disabled>
+        <button type="button" class="onboarding__skip" id="onboardingSkipAccountBtn" disabled data-i18n="ui.continuar_sin_cuenta">
           Continuar sin cuenta
         </button>
-        <p class="onboarding__skip-note">
+        <p class="onboarding__skip-note" data-i18n="ui.sin_cuenta_funciona_todo_igual_tus_datos_se_">
           Sin cuenta funciona todo igual: tus datos se quedan en este navegador.
           Puedes crearla m&aacute;s tarde y se sincronizar&aacute;n.
         </p>
@@ -376,18 +379,18 @@
         <p class="onboarding__error" id="onboardingIntakeError" hidden></p>
 
         <div class="onboarding__nav">
-          <button type="button" class="onboarding__btn onboarding__btn--ghost" id="onboardingBackBtn">Atr&aacute;s</button>
-          <button type="button" class="onboarding__btn onboarding__btn--primary" id="onboardingNextBtn">Siguiente</button>
+          <button type="button" class="onboarding__btn onboarding__btn--ghost" id="onboardingBackBtn" data-i18n="ui.atras">Atr&aacute;s</button>
+          <button type="button" class="onboarding__btn onboarding__btn--primary" id="onboardingNextBtn" data-i18n="ui.siguiente">Siguiente</button>
         </div>
       </section>
 
       <!-- Paso 0: el bot&oacute;n &uacute;nico del centro -->
       <section class="onboarding__step onboarding__step--single" id="onboardingStart" hidden>
-        <h2 class="onboarding__question">Vamos a calcular lo que necesitas</h2>
-        <p class="onboarding__hint">
+        <h2 class="onboarding__question" data-i18n="ui.vamos_a_calcular_lo_que_necesitas">Vamos a calcular lo que necesitas</h2>
+        <p class="onboarding__hint" data-i18n="ui.siete_preguntas_cortas_nada_mas_y_todo_se_pu">
           Siete preguntas cortas. Nada m&aacute;s, y todo se puede cambiar despu&eacute;s.
         </p>
-        <button type="button" class="onboarding__btn onboarding__btn--primary onboarding__btn--big" id="onboardingStartBtn">
+        <button type="button" class="onboarding__btn onboarding__btn--primary onboarding__btn--big" id="onboardingStartBtn" data-i18n="ui.empezar">
           Empezar
         </button>
       </section>
@@ -399,8 +402,8 @@
        desde el pie de p&aacute;gina, cuando ya hace mucho que se acept&oacute;. -->
   <dialog class="auth-dialog legal-dialog" id="legalDialog" aria-labelledby="legalDialogTitle">
     <div class="auth-dialog__head">
-      <h2 id="legalDialogTitle">Condiciones de uso y privacidad</h2>
-      <button type="button" class="auth-dialog__close" id="legalDialogCloseBtn" aria-label="Cerrar">&times;</button>
+      <h2 id="legalDialogTitle" data-i18n="ui.condiciones_de_uso_y_privacidad_2">Condiciones de uso y privacidad</h2>
+      <button type="button" class="auth-dialog__close" id="legalDialogCloseBtn" data-i18n-aria-label="ui.cerrar" aria-label="Cerrar">&times;</button>
     </div>
     <div class="auth-dialog__body legal-dialog__body" id="legalDialogBody"></div>
     <!-- Un cierre grande y al final del texto. La × de la esquina es
@@ -409,7 +412,7 @@
          desde ahí "Continuar sin cuenta" no respondía porque el modal
          estaba tapándolo. -->
     <div class="legal-dialog__foot">
-      <button type="button" class="legal-dialog__done" id="legalDialogDoneBtn">Cerrar</button>
+      <button type="button" class="legal-dialog__done" id="legalDialogDoneBtn" data-i18n="ui.cerrar">Cerrar</button>
     </div>
   </dialog>
 
@@ -422,7 +425,7 @@
            tabular, y a la izquierda del todo, que es donde el dueno lo
            pidio y donde lo buscan todos. -->
       <button type="button" class="topbar__menu-btn" id="ajustesBtn"
-              aria-haspopup="dialog" aria-label="Ajustes">
+              aria-haspopup="dialog" data-i18n-aria-label="ui.ajustes" aria-label="Ajustes">
         <svg width="20" height="20" aria-hidden="true"><use href="#icon-menu"/></svg>
       </button>
       <!-- Aviso de que no hay red. `role="status"` para que se anuncie al
@@ -430,7 +433,7 @@
            aplicacion sigue haciendo su trabajo entero, asi que esto informa,
            no alarma. -->
       <p class="topbar__offline" id="offlineBadge" role="status" hidden
-         title="Sin conexi&oacute;n. Puedes seguir usando la aplicaci&oacute;n: todo se guarda en este dispositivo y se sincroniza solo al volver la red.">
+         data-i18n-title="ui.sin_conexion_puedes_seguir_usando_la_aplicac" title="Sin conexi&oacute;n. Puedes seguir usando la aplicaci&oacute;n: todo se guarda en este dispositivo y se sincroniza solo al volver la red.">
         <span class="topbar__offline-dot" aria-hidden="true"></span>Sin conexi&oacute;n
       </p>
       <button type="button" class="topbar__profile-btn" id="authProfileBtn">
@@ -442,15 +445,33 @@
 
       <div class="topbar__menu" id="authUserMenu" hidden>
         <div class="topbar__menu-email" id="authUserEmail"></div>
-        <button type="button" class="topbar__menu-item" id="authLogoutBtn">Cerrar sesi&oacute;n</button>
+        <button type="button" class="topbar__menu-item" id="authLogoutBtn" data-i18n="ui.cerrar_sesion">Cerrar sesi&oacute;n</button>
         <!-- Separado y en rojo: es la &uacute;nica acci&oacute;n irreversible de toda la
              aplicaci&oacute;n. Cerrar sesi&oacute;n dej&oacute; de ser roja el 2026-09-02
              precisamente para que el color signifique algo. -->
-        <button type="button" class="topbar__menu-item topbar__menu-item--danger" id="authDeleteAccountBtn">
+        <button type="button" class="topbar__menu-item topbar__menu-item--danger" id="authDeleteAccountBtn" data-i18n="ui.borrar_mi_cuenta">
           Borrar mi cuenta
         </button>
       </div>
     </header>
+
+    <!-- ══ AVISO DE TRADUCCION AUTOMATICA ════════════════════════════════
+         Sale SOLO cuando el navegador traduce la pagina a un idioma que
+         esta aplicacion ya habla. Traducir automaticamente lo que ya esta
+         traducido a mano da peor resultado, y ademas se lleva por delante
+         los nombres de producto: la lista de la compra dejaria de decir lo
+         que pone en la etiqueta del supermercado.
+
+         Si traducen a un idioma que NO tenemos, esto no aparece: que lo
+         traduzca el navegador, es mejor que nada. ══════════════════════ -->
+    <div class="traduccion-aviso" id="traduccionAviso" role="status" hidden>
+      <p class="traduccion-aviso__texto" id="traduccionAvisoTexto"></p>
+      <div class="traduccion-aviso__acciones">
+        <button type="button" class="traduccion-aviso__si" id="traduccionAvisoSi"></button>
+        <button type="button" class="traduccion-aviso__no" id="traduccionAvisoNo"
+                data-i18n="ui.no_gracias">No, gracias</button>
+      </div>
+    </div>
 
     <!-- ══ AJUSTES ═══════════════════════════════════════════════════════
          Recoge lo que ya estaba repartido por el pie de pagina. No duplica
@@ -459,54 +480,79 @@
          el navegador ya sabe cerrar con Escape y devolver el foco. ══ -->
     <dialog class="ajustes-dialog" id="ajustesDialog" aria-labelledby="ajustesDialogTitle">
       <div class="ajustes-dialog__head">
-        <h2 class="ajustes-dialog__title" id="ajustesDialogTitle">Ajustes</h2>
-        <button type="button" class="ajustes-dialog__close" id="ajustesCloseBtn" aria-label="Cerrar">
+        <h2 class="ajustes-dialog__title" id="ajustesDialogTitle" data-i18n="ui.ajustes">Ajustes</h2>
+        <button type="button" class="ajustes-dialog__close" id="ajustesCloseBtn" data-i18n-aria-label="ui.cerrar" aria-label="Cerrar">
           <svg width="18" height="18" aria-hidden="true"><use href="#icon-close"/></svg>
         </button>
       </div>
 
       <section class="ajustes-group">
-        <h3 class="ajustes-group__title" id="ajustesTemaTitle">Tema</h3>
+        <h3 class="ajustes-group__title" id="ajustesTemaTitle" data-i18n="ui.tema">Tema</h3>
         <!-- radiogroup y no <select>: son tres opciones y se ven las tres,
              que es lo que hace que se entienda "Del sistema" sin explicarlo. -->
         <div class="ajustes-choice" role="radiogroup" aria-labelledby="ajustesTemaTitle" id="ajustesTema">
-          <button type="button" class="ajustes-choice__btn" role="radio" aria-checked="false" data-tema="claro">Clara</button>
-          <button type="button" class="ajustes-choice__btn" role="radio" aria-checked="false" data-tema="oscuro">Oscura</button>
-          <button type="button" class="ajustes-choice__btn" role="radio" aria-checked="false" data-tema="sistema">Del sistema</button>
+          <button type="button" class="ajustes-choice__btn" role="radio" aria-checked="false" data-tema="claro" data-i18n="ui.clara">Clara</button>
+          <button type="button" class="ajustes-choice__btn" role="radio" aria-checked="false" data-tema="oscuro" data-i18n="ui.oscura">Oscura</button>
+          <button type="button" class="ajustes-choice__btn" role="radio" aria-checked="false" data-tema="sistema" data-i18n="ui.del_sistema">Del sistema</button>
         </div>
-        <p class="ajustes-group__hint">
+        <p class="ajustes-group__hint" data-i18n="ui.del_sistema_sigue_al_ajuste_de_tu_movil_y_ca">
           &laquo;Del sistema&raquo; sigue al ajuste de tu m&oacute;vil y cambia con &eacute;l.
         </p>
       </section>
 
       <section class="ajustes-group">
-        <h3 class="ajustes-group__title">Tienda</h3>
+        <h3 class="ajustes-group__title"><label for="ajustesIdioma" data-i18n="ui.idioma">Idioma</label></h3>
+        <!-- Un <select> y no botones como el tema: diez opciones no caben a
+             la vista, y el desplegable nativo del movil ya sabe buscar por
+             letra. Cada idioma va escrito EN SU IDIOMA, que es como lo
+             reconoce quien lo busca -- por eso estas opciones NO llevan
+             data-i18n: no se traducen nunca. -->
+        <select class="ajustes-select" id="ajustesIdioma">
+          <option value="es">Espa&ntilde;ol</option>
+          <option value="en">English</option>
+          <option value="de">Deutsch</option>
+          <option value="fr">Fran&ccedil;ais</option>
+          <option value="ru">&#1056;&#1091;&#1089;&#1089;&#1082;&#1080;&#1081;</option>
+          <option value="uk">&#1059;&#1082;&#1088;&#1072;&#1111;&#1085;&#1089;&#1100;&#1082;&#1072;</option>
+          <option value="it">Italiano</option>
+          <option value="pt">Portugu&ecirc;s</option>
+          <option value="pl">Polski</option>
+          <option value="ro">Rom&acirc;n&#259;</option>
+        </select>
+        <p class="ajustes-group__hint" data-i18n="ui.los_nombres_de_platos_y_productos_siguen_en_e">
+          Los nombres de platos y productos siguen en espa&ntilde;ol: la lista de la compra
+          tiene que decir lo mismo que la etiqueta del supermercado.
+        </p>
+      </section>
+
+      <section class="ajustes-group">
+        <h3 class="ajustes-group__title" data-i18n="ui.tienda">Tienda</h3>
         <p class="ajustes-group__hint" id="ajustesTiendaHint">
-          Los precios son de <strong>Mercadona</strong>. Por ahora es la
+          Los precios son de <strong data-i18n="ui.mercadona">Mercadona</strong>. Por ahora es la
           &uacute;nica tienda con precios reales, as&iacute; que no hay nada que elegir.
         </p>
       </section>
 
       <section class="ajustes-group">
-        <h3 class="ajustes-group__title">Tus datos</h3>
+        <h3 class="ajustes-group__title" data-i18n="ui.tus_datos">Tus datos</h3>
         <div class="ajustes-actions">
-          <button type="button" class="ajustes-action" id="ajustesExportBtn">Descargar mis datos</button>
-          <button type="button" class="ajustes-action" id="ajustesTourBtn">Ver la explicaci&oacute;n otra vez</button>
-          <button type="button" class="ajustes-action" id="ajustesLegalBtn">Condiciones de uso y privacidad</button>
+          <button type="button" class="ajustes-action" id="ajustesExportBtn" data-i18n="ui.descargar_mis_datos">Descargar mis datos</button>
+          <button type="button" class="ajustes-action" id="ajustesTourBtn" data-i18n="ui.ver_la_explicacion_otra_vez">Ver la explicaci&oacute;n otra vez</button>
+          <button type="button" class="ajustes-action" id="ajustesLegalBtn" data-i18n="ui.condiciones_de_uso_y_privacidad_2">Condiciones de uso y privacidad</button>
         </div>
       </section>
     </dialog>
 
     <dialog class="auth-dialog" id="authDialog" aria-labelledby="authDialogTitle">
       <div class="auth-dialog__head">
-        <h2 id="authDialogTitle">Iniciar sesi&oacute;n</h2>
-        <button type="button" class="auth-dialog__close" id="authDialogCloseBtn" aria-label="Cerrar">&times;</button>
+        <h2 id="authDialogTitle" data-i18n="ui.iniciar_sesion">Iniciar sesi&oacute;n</h2>
+        <button type="button" class="auth-dialog__close" id="authDialogCloseBtn" data-i18n-aria-label="ui.cerrar" aria-label="Cerrar">&times;</button>
       </div>
 
       <div class="auth-dialog__body">
 
         <div id="authUnavailableBox" hidden>
-          <p class="auth-dialog__notice-static">Las cuentas todav&iacute;a no est&aacute;n disponibles en este sitio. Puedes seguir usando la app como invitado &mdash; tus datos se guardan solo en este dispositivo.</p>
+          <p class="auth-dialog__notice-static" data-i18n="ui.las_cuentas_todavia_no_estan_disponibles_en_">Las cuentas todav&iacute;a no est&aacute;n disponibles en este sitio. Puedes seguir usando la app como invitado &mdash; tus datos se guardan solo en este dispositivo.</p>
         </div>
 
         <div id="authAvailableBox" hidden>
@@ -520,17 +566,17 @@
             Continuar con Google
           </button>
 
-          <div class="auth-divider"><span>o con email</span></div>
+          <div class="auth-divider"><span data-i18n="ui.o_con_email">o con email</span></div>
 
           <form id="authEmailForm" novalidate>
             <div class="field" id="authEmailField">
-              <label for="authEmail">Email</label>
+              <label for="authEmail" data-i18n="ui.email">Email</label>
               <input id="authEmail" type="email" autocomplete="email" required>
             </div>
             <div class="field" id="authPasswordField">
-              <label for="authPassword">Contrase&ntilde;a</label>
+              <label for="authPassword" data-i18n="ui.contrasena">Contrase&ntilde;a</label>
               <input id="authPassword" type="password" autocomplete="current-password" required minlength="6">
-              <p class="field-hint" id="authPasswordHint" hidden>M&iacute;nimo 6 caracteres.</p>
+              <p class="field-hint" id="authPasswordHint" hidden data-i18n="ui.minimo_6_caracteres">M&iacute;nimo 6 caracteres.</p>
             </div>
 
             <!-- Solo al CREAR cuenta: escribir una contrase&ntilde;a nueva a ciegas
@@ -538,14 +584,14 @@
                  sin forma de saber en qu&eacute; se fall&oacute;. Lo ense&ntilde;a y lo esconde
                  setAuthMode() en js/ui/render-auth.js. -->
             <div class="field" id="authPassword2Field" hidden>
-              <label for="authPassword2">Repite la contrase&ntilde;a</label>
+              <label for="authPassword2" data-i18n="ui.repite_la_contrasena">Repite la contrase&ntilde;a</label>
               <input id="authPassword2" type="password" autocomplete="new-password">
             </div>
 
             <div class="auth-dialog__error" id="authError" hidden></div>
             <div class="auth-dialog__notice" id="authNotice" hidden></div>
 
-            <button type="submit" class="btn-primary auth-submit-btn" id="authSubmitBtn">Iniciar sesi&oacute;n</button>
+            <button type="submit" class="btn-primary auth-submit-btn" id="authSubmitBtn" data-i18n="ui.iniciar_sesion">Iniciar sesi&oacute;n</button>
           </form>
 
           <!-- Solo al INICIAR sesi&oacute;n: quien est&aacute; creando la cuenta todav&iacute;a no
@@ -553,16 +599,16 @@
                ofrecer otra vez el enlace ser&iacute;a un bucle. Lo ense&ntilde;a y lo
                esconde setAuthMode() en js/ui/render-auth.js. -->
           <p class="auth-dialog__forgot" id="authForgotRow">
-            <button type="button" class="auth-dialog__switch-btn" id="authForgotBtn">&iquest;Olvidaste tu contrase&ntilde;a?</button>
+            <button type="button" class="auth-dialog__switch-btn" id="authForgotBtn" data-i18n="ui.olvidaste_tu_contrasena">&iquest;Olvidaste tu contrase&ntilde;a?</button>
           </p>
 
           <p class="auth-dialog__switch" id="authSwitchRow">
-            <span id="authSwitchPrompt">&iquest;No tienes cuenta?</span>
-            <button type="button" class="auth-dialog__switch-btn" id="authSwitchModeBtn">Crear cuenta</button>
+            <span id="authSwitchPrompt" data-i18n="ui.no_tienes_cuenta">&iquest;No tienes cuenta?</span>
+            <button type="button" class="auth-dialog__switch-btn" id="authSwitchModeBtn" data-i18n="ui.crear_cuenta">Crear cuenta</button>
           </p>
         </div>
 
-        <p class="auth-dialog__guest-note">Puedes cerrar esto y seguir usando la app sin cuenta en cualquier momento.</p>
+        <p class="auth-dialog__guest-note" data-i18n="ui.puedes_cerrar_esto_y_seguir_usando_la_app_si">Puedes cerrar esto y seguir usando la app sin cuenta en cualquier momento.</p>
       </div>
     </dialog>
 
@@ -573,15 +619,15 @@
          ═══════════════════════════════════════════════════════════════════ -->
     <dialog class="auth-dialog auth-dialog--conflict" id="authDeleteDialog" aria-labelledby="authDeleteDialogTitle">
       <div class="auth-dialog__head">
-        <h2 id="authDeleteDialogTitle">&iquest;Borrar tu cuenta?</h2>
+        <h2 id="authDeleteDialogTitle" data-i18n="ui.borrar_tu_cuenta">&iquest;Borrar tu cuenta?</h2>
       </div>
       <div class="auth-dialog__body">
-        <p class="auth-dialog__notice-static">
+        <p class="auth-dialog__notice-static" data-i18n="ui.se_borran_ahora_mismo_y_para_siempre_tu_cuen">
           Se borran ahora mismo y para siempre tu cuenta y todo lo que tuvieras
           guardado en la nube: tu perfil, tu despensa y tus planes. No se puede deshacer.
         </p>
         <p class="delete-dialog__note">
-          Lo que tengas guardado en <strong>este navegador</strong> no se toca:
+          Lo que tengas guardado en <strong data-i18n="ui.este_navegador">este navegador</strong> no se toca:
           podr&aacute;s seguir usando la aplicaci&oacute;n sin cuenta, igual que antes de crearla.
         </p>
         <!-- Escribir la palabra para poder borrar. Dos toques seguidos son
@@ -589,18 +635,18 @@
              donde estaba el del men&uacute;, se puede llegar hasta el final sin
              haber le&iacute;do una sola l&iacute;nea. Teclear obliga a parar. -->
         <label class="delete-dialog__gate" for="authDeleteConfirmInput">
-          Para confirmar, escribe <strong>BORRAR</strong> aqu&iacute;:
+          Para confirmar, escribe <strong data-i18n="ui.borrar">BORRAR</strong> aqu&iacute;:
         </label>
         <input type="text" id="authDeleteConfirmInput" class="delete-dialog__input"
                autocomplete="off" autocapitalize="characters" spellcheck="false"
-               placeholder="BORRAR">
+               data-i18n-placeholder="ui.borrar" placeholder="BORRAR">
 
         <p class="auth-dialog__error" id="authDeleteError" hidden></p>
         <div class="delete-dialog__actions">
-          <button type="button" class="auth-dialog__switch-btn" id="authDeleteCancelBtn">
+          <button type="button" class="auth-dialog__switch-btn" id="authDeleteCancelBtn" data-i18n="ui.no_volver">
             No, volver
           </button>
-          <button type="button" class="delete-dialog__confirm" id="authDeleteConfirmBtn" disabled>
+          <button type="button" class="delete-dialog__confirm" id="authDeleteConfirmBtn" disabled data-i18n="ui.borrar_mi_cuenta_para_siempre">
             Borrar mi cuenta para siempre
           </button>
         </div>
@@ -609,14 +655,14 @@
 
     <dialog class="auth-dialog auth-dialog--conflict" id="authConflictDialog" aria-labelledby="authConflictDialogTitle">
       <div class="auth-dialog__head">
-        <h2 id="authConflictDialogTitle">Encontramos datos en dos sitios</h2>
+        <h2 id="authConflictDialogTitle" data-i18n="ui.encontramos_datos_en_dos_sitios">Encontramos datos en dos sitios</h2>
       </div>
       <div class="auth-dialog__body">
-        <p>Este dispositivo tiene despensa, historial o ajustes guardados, y tu cuenta tambi&eacute;n tiene datos guardados de otra sesi&oacute;n. &iquest;Qu&eacute; quieres hacer?</p>
+        <p data-i18n="ui.este_dispositivo_tiene_despensa_historial_o_">Este dispositivo tiene despensa, historial o ajustes guardados, y tu cuenta tambi&eacute;n tiene datos guardados de otra sesi&oacute;n. &iquest;Qu&eacute; quieres hacer?</p>
         <div class="auth-conflict__actions">
-          <button type="button" class="btn-primary" id="authConflictKeepCloudBtn">Usar los de la cuenta</button>
-          <button type="button" class="btn-secondary" id="authConflictMergeBtn">Combinar ambos</button>
-          <button type="button" class="btn-secondary" id="authConflictKeepLocalBtn">Usar los de este dispositivo</button>
+          <button type="button" class="btn-primary" id="authConflictKeepCloudBtn" data-i18n="ui.usar_los_de_la_cuenta">Usar los de la cuenta</button>
+          <button type="button" class="btn-secondary" id="authConflictMergeBtn" data-i18n="ui.combinar_ambos">Combinar ambos</button>
+          <button type="button" class="btn-secondary" id="authConflictKeepLocalBtn" data-i18n="ui.usar_los_de_este_dispositivo">Usar los de este dispositivo</button>
         </div>
       </div>
     </dialog>
@@ -628,13 +674,13 @@
          todo no llegan a abrir esto. -->
     <dialog class="auth-dialog auth-dialog--conflict" id="planReplaceDialog" aria-labelledby="planReplaceDialogTitle">
       <div class="auth-dialog__head">
-        <h2 id="planReplaceDialogTitle">Ya tienes un plan activo hoy</h2>
+        <h2 id="planReplaceDialogTitle" data-i18n="ui.ya_tienes_un_plan_activo_hoy">Ya tienes un plan activo hoy</h2>
       </div>
       <div class="auth-dialog__body">
         <div id="planReplaceBody"></div>
         <div class="auth-conflict__actions">
-          <button type="button" class="btn-primary" id="planReplaceFullBtn">Cambiar el plan completo</button>
-          <button type="button" class="btn-secondary" id="planReplaceCancelBtn">Cancelar</button>
+          <button type="button" class="btn-primary" id="planReplaceFullBtn" data-i18n="ui.cambiar_el_plan_completo">Cambiar el plan completo</button>
+          <button type="button" class="btn-secondary" id="planReplaceCancelBtn" data-i18n="ui.cancelar">Cancelar</button>
         </div>
       </div>
     </dialog>
@@ -672,104 +718,117 @@
          baje la imagen y la pagina no de un salto. ══════════════════════ -->
     <section class="hero hero--imagen">
       <h1 class="hero__marca">
-        <img class="hero__img" src="assets/img/og-weekplate.jpg?v=20260910f"
-             width="1732" height="908" decoding="async"
-             alt="Weekplate &mdash; planificador de men&uacute;s con precios reales">
+        <!-- Dos imagenes, no una. Una imagen tiene proporcion FIJA y el
+             contenedor va de 359 px en un movil a 1.280 en un portatil: la
+             misma ilustracion no puede ser una franja ancha arriba y algo
+             legible abajo. La ancha (3,05:1) a 359 px de ancho se quedaria
+             en 118 px de alto, y la del movil (1,9:1) a 1.280 daria 671 px
+             de alto -- que es lo que ya se rechazo por gigante.
+             El corte esta en 720 px, que es donde el contenedor empieza a
+             ser mas ancho que alto el dibujo. La proporcion de cada una la
+             fija el CSS (`aspect-ratio`), no estos atributos, para que el
+             hueco se reserve antes de que baje la imagen. -->
+        <picture>
+          <source media="(min-width: 720px)" srcset="assets/img/hero-weekplate.jpg?v=20260910l">
+          <img class="hero__img" src="assets/img/og-weekplate.jpg?v=20260910l"
+               decoding="async"
+               data-i18n-alt="ui.weekplate_planificador_de_menus_con_precios_" alt="Weekplate &mdash; planificador de men&uacute;s con precios reales">
+        </picture>
       </h1>
-      <span class="brand-eyebrow"><span class="badge-text">Motor de reglas &middot; 100% offline</span></span>
+      <span class="brand-eyebrow"><span class="badge-text" data-i18n="ui.motor_de_reglas_100_offline">Motor de reglas &middot; 100% offline</span></span>
     </section>
 
     <div class="grid">
 
       <!-- ══ PANEL IZQUIERDO: formulario ══ -->
       <section class="panel">
-        <span class="form-section-label">Datos del usuario</span>
+        <span class="form-section-label" data-i18n="ui.datos_del_usuario">Datos del usuario</span>
 
         <form id="plannerForm">
           <div class="form-grid">
 
             <div class="field">
-              <label for="age">Edad</label>
+              <label for="age" data-i18n="ui.edad">Edad</label>
               <input id="age" type="number" min="14" max="90" value="28" required>
             </div>
 
             <div class="field">
-              <label for="sex">Sexo</label>
+              <label for="sex" data-i18n="ui.sexo">Sexo</label>
               <select id="sex" required>
-                <option value="male">Hombre</option>
-                <option value="female">Mujer</option>
+                <option value="male" data-i18n="ui.hombre">Hombre</option>
+                <option value="female" data-i18n="ui.mujer">Mujer</option>
               </select>
             </div>
 
             <div class="field">
-              <label for="weight">Peso (kg)</label>
+              <label for="weight" data-i18n="ui.peso_kg">Peso (kg)</label>
               <input id="weight" type="number" min="35" max="250" step="0.1" value="78" required>
             </div>
 
             <div class="field">
-              <label for="height">Altura (cm)</label>
+              <label for="height" data-i18n="ui.altura_cm">Altura (cm)</label>
               <input id="height" type="number" min="130" max="230" value="178" required>
             </div>
 
             <div class="field">
-              <label for="activity">Nivel de actividad</label>
+              <label for="activity" data-i18n="ui.nivel_de_actividad">Nivel de actividad</label>
               <select id="activity" required>
-                <option value="1.2">Sedentario</option>
-                <option value="1.375">Ligero</option>
-                <option value="1.55" selected>Moderado</option>
-                <option value="1.725">Alto</option>
-                <option value="1.9">Muy alto</option>
+                <option value="1.2" data-i18n="ui.sedentario">Sedentario</option>
+                <option value="1.375" data-i18n="ui.ligero">Ligero</option>
+                <option value="1.55" selected data-i18n="ui.moderado">Moderado</option>
+                <option value="1.725" data-i18n="ui.alto">Alto</option>
+                <option value="1.9" data-i18n="ui.muy_alto">Muy alto</option>
               </select>
               <p class="field-hint" id="activityHint"></p>
             </div>
 
             <div class="field">
-              <label for="workouts">Entrenamientos / semana</label>
+              <label for="workouts" data-i18n="ui.entrenamientos_semana">Entrenamientos / semana</label>
               <input id="workouts" type="number" min="0" max="14" value="4" required>
             </div>
 
             <div class="field">
-              <label for="goal">Objetivo</label>
+              <label for="goal" data-i18n="ui.objetivo">Objetivo</label>
               <select id="goal" required>
-                <option value="bulk">Ganar m&uacute;sculo</option>
-                <option value="cut">Perder grasa</option>
-                <option value="recomp">Recomposici&oacute;n</option>
-                <option value="maintain">Solo comer bien &mdash; sin objetivo</option>
+                <option value="bulk" data-i18n="ui.ganar_musculo">Ganar m&uacute;sculo</option>
+                <option value="cut" data-i18n="ui.perder_grasa">Perder grasa</option>
+                <option value="recomp" data-i18n="ui.recomposicion">Recomposici&oacute;n</option>
+                <option value="maintain" data-i18n="ui.solo_comer_bien_sin_objetivo">Solo comer bien &mdash; sin objetivo</option>
               </select>
               <p class="field-hint" id="goalHint"></p>
             </div>
 
             <div class="field full">
-              <span class="budget-group-label" id="budgetGroupLabel">Presupuesto diario</span>
+              <span class="budget-group-label" id="budgetGroupLabel" data-i18n="ui.presupuesto_diario">Presupuesto diario</span>
               <div class="budget-modes" role="radiogroup" aria-labelledby="budgetGroupLabel">
 
                 <input type="radio" name="budgetMode" id="budgetModeMinimal" value="minimal" class="visually-hidden">
                 <label for="budgetModeMinimal" class="budget-chip">
-                  <span class="budget-chip__title">Muy ajustado</span>
+                  <span class="budget-chip__title" data-i18n="ui.muy_ajustado">Muy ajustado</span>
                   <span class="budget-chip__amount" id="budgetMinimalAmount">&ndash;</span>
                 </label>
 
                 <input type="radio" name="budgetMode" id="budgetModeSmall" value="small" class="visually-hidden">
                 <label for="budgetModeSmall" class="budget-chip">
-                  <span class="budget-chip__title">Ajustado</span>
+                  <span class="budget-chip__title" data-i18n="ui.ajustado">Ajustado</span>
                   <span class="budget-chip__amount" id="budgetSmallAmount">&ndash;</span>
                 </label>
 
                 <input type="radio" name="budgetMode" id="budgetModeMedium" value="medium" class="visually-hidden">
                 <label for="budgetModeMedium" class="budget-chip">
-                  <span class="budget-chip__title">Equilibrado</span>
+                  <span class="budget-chip__title" data-i18n="ui.equilibrado">Equilibrado</span>
                   <span class="budget-chip__amount" id="budgetMediumAmount">&ndash;</span>
                 </label>
 
                 <input type="radio" name="budgetMode" id="budgetModeHigh" value="high" class="visually-hidden">
                 <label for="budgetModeHigh" class="budget-chip">
-                  <span class="budget-chip__title">Amplio</span>
+                  <span class="budget-chip__title" data-i18n="ui.amplio">Amplio</span>
                   <span class="budget-chip__amount" id="budgetHighAmount">&ndash;</span>
                 </label>
 
                 <input type="radio" name="budgetMode" id="budgetModeCustom" value="custom" class="visually-hidden">
                 <label for="budgetModeCustom" class="budget-chip budget-chip--custom">
-                  <span class="budget-chip__title">Cantidad exacta</span>
+                  <span class="budget-chip__title" data-i18n="ui.cantidad_exacta">Cantidad exacta</span>
                 </label>
 
                 <!-- El texto de cada tramo sale de BUDGET_PRESETS, no se
@@ -781,37 +840,37 @@
               <p class="field-hint" id="budgetHint"></p>
 
               <div class="budget-custom-field" id="budgetCustomField" hidden>
-                <label for="budgetCustom">Presupuesto exacto (€/día)</label>
-                <input id="budgetCustom" type="number" min="2" max="100" step="0.1" placeholder="ej. 20">
+                <label for="budgetCustom" data-i18n="ui.presupuesto_exacto_dia">Presupuesto exacto (€/día)</label>
+                <input id="budgetCustom" type="number" min="2" max="100" step="0.1" data-i18n-placeholder="ui.ej_20" placeholder="ej. 20">
               </div>
             </div>
 
             <div class="field">
-              <label for="cookTime">Tiempo para cocinar</label>
+              <label for="cookTime" data-i18n="ui.tiempo_para_cocinar">Tiempo para cocinar</label>
               <select id="cookTime" required>
-                <option value="10">Muy poco (&lt;= 10 min)</option>
-                <option value="20" selected>Poco (&lt;= 20 min)</option>
-                <option value="35">Normal (&lt;= 35 min)</option>
-                <option value="60">Amplio (&lt;= 60 min)</option>
+                <option value="10" data-i18n="ui.muy_poco_lt_10_min">Muy poco (&lt;= 10 min)</option>
+                <option value="20" selected data-i18n="ui.poco_lt_20_min">Poco (&lt;= 20 min)</option>
+                <option value="35" data-i18n="ui.normal_lt_35_min">Normal (&lt;= 35 min)</option>
+                <option value="60" data-i18n="ui.amplio_lt_60_min">Amplio (&lt;= 60 min)</option>
               </select>
             </div>
 
             <div class="field">
-              <label for="wakeTime">Hora de despertar</label>
+              <label for="wakeTime" data-i18n="ui.hora_de_despertar">Hora de despertar</label>
               <input id="wakeTime" type="time" value="07:00">
             </div>
 
             <div class="field">
-              <label for="sleepTime">Hora de dormir</label>
+              <label for="sleepTime" data-i18n="ui.hora_de_dormir">Hora de dormir</label>
               <input id="sleepTime" type="time" value="23:00">
             </div>
 
             <div class="field full">
-              <label for="taste">Preferencia de comida</label>
+              <label for="taste" data-i18n="ui.preferencia_de_comida">Preferencia de comida</label>
               <select id="taste" required>
-                <option value="mixed" selected>Mixto</option>
-                <option value="sweet">Dulce</option>
-                <option value="savory">Salado</option>
+                <option value="mixed" selected data-i18n="ui.mixto">Mixto</option>
+                <option value="sweet" data-i18n="ui.dulce">Dulce</option>
+                <option value="savory" data-i18n="ui.salado">Salado</option>
               </select>
             </div>
 
@@ -825,14 +884,14 @@
                  El techo lo pone el catálogo: solo 25 de 334 platos son
                  españoles. Ver js/data/dish-cuisine.js. ══ -->
             <div class="field full">
-              <label for="cuisine">Estilo de cocina</label>
+              <label for="cuisine" data-i18n="ui.estilo_de_cocina">Estilo de cocina</label>
               <select id="cuisine">
-                <option value="mixta" selected>Mixta &mdash; sin preferencia</option>
-                <option value="espanola">M&aacute;s espa&ntilde;ola</option>
-                <option value="internacional">M&aacute;s internacional</option>
+                <option value="mixta" selected data-i18n="ui.mixta_sin_preferencia">Mixta &mdash; sin preferencia</option>
+                <option value="espanola" data-i18n="ui.mas_espanola">M&aacute;s espa&ntilde;ola</option>
+                <option value="internacional" data-i18n="ui.mas_internacional">M&aacute;s internacional</option>
               </select>
               <p class="field-hint">
-                Es una <strong>preferencia, no un filtro</strong>: lo que elijas
+                Es una <strong data-i18n="ui.preferencia_no_un_filtro">preferencia, no un filtro</strong>: lo que elijas
                 sale m&aacute;s a menudo, pero el resto sigue apareciendo.
               </p>
             </div>
@@ -845,15 +904,15 @@
                  asi que lo elige el usuario. Afecta SOLO al modo "sin
                  cocinar" hoy. ══ -->
             <div class="field full">
-              <label for="priority">Qu&eacute; buscas al comer</label>
+              <label for="priority" data-i18n="ui.que_buscas_al_comer">Qu&eacute; buscas al comer</label>
               <select id="priority">
-                <option value="balanced" selected>Equilibrado</option>
-                <option value="satiety">Llenarme &mdash; m&aacute;s comida por euro</option>
-                <option value="protein">M&aacute;xima prote&iacute;na</option>
+                <option value="balanced" selected data-i18n="ui.equilibrado">Equilibrado</option>
+                <option value="satiety" data-i18n="ui.llenarme_mas_comida_por_euro">Llenarme &mdash; m&aacute;s comida por euro</option>
+                <option value="protein" data-i18n="ui.maxima_proteina">M&aacute;xima prote&iacute;na</option>
               </select>
               <p class="field-hint">
-                Es distinto del objetivo de arriba: aquel fija <strong>cu&aacute;ntas</strong>
-                calor&iacute;as, este con <strong>qu&eacute;</strong> se llenan. Se aplica a los dos
+                Es distinto del objetivo de arriba: aquel fija <strong data-i18n="ui.cuantas">cu&aacute;ntas</strong>
+                calor&iacute;as, este con <strong data-i18n="ui.que">qu&eacute;</strong> se llenan. Se aplica a los dos
                 modos, con platos y sin cocinar.
               </p>
             </div>
@@ -869,13 +928,13 @@
                  Esto NO es un filtro de alergenos y la UI no debe
                  insinuarlo nunca -- ver js/core/preferences.js. ══ -->
             <div class="field full">
-              <label for="dislikes">Alimentos que no te gustan</label>
+              <label for="dislikes" data-i18n="ui.alimentos_que_no_te_gustan">Alimentos que no te gustan</label>
               <input type="text" id="dislikes" autocomplete="off"
-                     placeholder="cebolla, queso azul, salm&oacute;n" />
+                     data-i18n-placeholder="ui.cebolla_queso_azul_salmon" placeholder="cebolla, queso azul, salm&oacute;n" />
               <p class="field-hint" id="dislikesHint">
                 Separa con comas. Se descarta cualquier producto o plato cuyo
                 nombre o ingredientes coincidan.
-                <strong>No sirve para alergias:</strong> es una preferencia, no
+                <strong data-i18n="ui.no_sirve_para_alergias">No sirve para alergias:</strong> es una preferencia, no
                 una comprobaci&oacute;n de seguridad.
               </p>
             </div>
@@ -909,13 +968,13 @@
                mismo multiplicado: medido, 7 dias dan 31 platos distintos de
                35 huecos. ══ -->
           <div class="field full plan-days-field">
-            <span class="budget-group-label" id="planDaysLabel">Dias de plan</span>
+            <span class="budget-group-label" id="planDaysLabel" data-i18n="ui.dias_de_plan">Dias de plan</span>
             <div class="plan-days" id="planDays" role="radiogroup" aria-labelledby="planDaysLabel">
-              <button type="button" class="plan-days__btn" data-days="1" role="radio" aria-checked="false">1 d&iacute;a</button>
-              <button type="button" class="plan-days__btn is-active" data-days="3" role="radio" aria-checked="true">3 d&iacute;as</button>
-              <button type="button" class="plan-days__btn" data-days="7" role="radio" aria-checked="false">7 d&iacute;as</button>
+              <button type="button" class="plan-days__btn" data-days="1" role="radio" aria-checked="false" data-i18n="ui.1_dia">1 d&iacute;a</button>
+              <button type="button" class="plan-days__btn is-active" data-days="3" role="radio" aria-checked="true" data-i18n="ui.3_dias">3 d&iacute;as</button>
+              <button type="button" class="plan-days__btn" data-days="7" role="radio" aria-checked="false" data-i18n="ui.7_dias">7 d&iacute;as</button>
             </div>
-            <p class="field-hint">
+            <p class="field-hint" data-i18n="ui.cuantos_mas_dias_mas_barato_sale_cada_dia_un">
               Cuantos m&aacute;s d&iacute;as, m&aacute;s barato sale CADA d&iacute;a: un paquete se paga
               una vez y rinde en varios. Medido sobre los cuatro tramos de
               presupuesto y los tres objetivos: planificar 7 d&iacute;as sale entre
@@ -928,9 +987,9 @@
                  formulario sigue entero (ver HANDOFF 7.2). ══ -->
             <p class="field-hint plan-days-note" id="oneDayCostNote" hidden>
               Con 1 d&iacute;a pagas paquetes enteros para un solo d&iacute;a. Medido: sale
-              entre un <strong>22% y un 34% m&aacute;s caro por d&iacute;a</strong> que
+              entre un <strong data-i18n="ui.22_y_un_34_mas_caro_por_dia">22% y un 34% m&aacute;s caro por d&iacute;a</strong> que
               planificar 7, y con 3 d&iacute;as ya te ahorras entre un 9% y un 15%.
-              <button type="button" class="link-btn" id="oneDayCostNoteDismiss">No volver a mostrarlo</button>
+              <button type="button" class="link-btn" id="oneDayCostNoteDismiss" data-i18n="ui.no_volver_a_mostrarlo">No volver a mostrarlo</button>
             </p>
           </div>
 
@@ -949,27 +1008,27 @@
           <div class="actions-secondary">
             <button type="button" class="btn-secondary btn-nocook" id="noCookBtn"><svg width="16" height="16"><use href="#icon-bolt"/></svg> Sin cocinar</button>
             <button type="button" class="btn-secondary" id="despensaBtn"><svg width="16" height="16"><use href="#icon-cart"/></svg> Despensa <span class="despensa-btn__count">(<span id="pantryCount">0</span>)</span></button>
-            <button type="button" class="btn-secondary" id="resetBtn">Resetear</button>
+            <button type="button" class="btn-secondary" id="resetBtn" data-i18n="ui.resetear">Resetear</button>
           </div>
 
           <div class="spinner-wrap" id="spinnerWrap">
             <span class="loader-flame" aria-hidden="true"></span>
-            <div>Analizando macros, coste, tiempo y alimentos más eficientes...</div>
+            <div data-i18n="ui.analizando_macros_coste_tiempo_y_alimentos_m">Analizando macros, coste, tiempo y alimentos más eficientes...</div>
           </div>
 
           <div class="status" id="statusText" aria-live="polite"></div>
 
           <div class="meta-boxes">
             <div class="meta">
-              <div class="k">Motor</div>
-              <div class="v">Offline</div>
+              <div class="k" data-i18n="ui.motor">Motor</div>
+              <div class="v" data-i18n="ui.offline">Offline</div>
             </div>
             <div class="meta">
-              <div class="k">Base de platos</div>
+              <div class="k" data-i18n="ui.base_de_platos">Base de platos</div>
               <div class="v" id="foodCount">0</div>
             </div>
             <div class="meta">
-              <div class="k">Dependencias</div>
+              <div class="k" data-i18n="ui.dependencias">Dependencias</div>
               <div class="v">1</div>
             </div>
           </div>
@@ -980,8 +1039,8 @@
       <section class="panel panel--results">
         <div class="output-top">
           <div>
-            <h2>Tu <em>plan de hoy</em></h2>
-            <span class="eyebrow">Personalizado para tus objetivos físicos</span>
+            <h2>Tu <em data-i18n="ui.plan_de_hoy">plan de hoy</em></h2>
+            <span class="eyebrow" data-i18n="ui.personalizado_para_tus_objetivos_fisicos">Personalizado para tus objetivos físicos</span>
           </div>
           <div class="badge"><svg class="icon" width="14" height="14"><use href="#icon-chef"/></svg> 100% offline</div>
         </div>
@@ -990,22 +1049,22 @@
           <div class="summary-card summary-card--calories">
             <h3><span class="icon-badge"><svg class="icon" width="14" height="14"><use href="#icon-flame"/></svg></span> Calorías</h3>
             <div class="big" id="sumCalories">-</div>
-            <div class="sub" id="sumCaloriesSub">Esperando cálculo</div>
+            <div class="sub" id="sumCaloriesSub" data-i18n="ui.esperando_calculo">Esperando cálculo</div>
           </div>
           <div class="summary-card summary-card--protein">
             <h3><span class="icon-badge"><svg class="icon" width="14" height="14"><use href="#icon-protein"/></svg></span> Proteínas</h3>
             <div class="big" id="sumProtein">-</div>
-            <div class="sub" id="sumProteinSub">Esperando cálculo</div>
+            <div class="sub" id="sumProteinSub" data-i18n="ui.esperando_calculo">Esperando cálculo</div>
           </div>
           <div class="summary-card summary-card--carbs">
             <h3><span class="icon-badge"><svg class="icon" width="14" height="14"><use href="#icon-wheat"/></svg></span> Carbos</h3>
             <div class="big" id="sumCarbs">-</div>
-            <div class="sub" id="sumCarbsSub">Esperando cálculo</div>
+            <div class="sub" id="sumCarbsSub" data-i18n="ui.esperando_calculo">Esperando cálculo</div>
           </div>
           <div class="summary-card summary-card--fat">
             <h3><span class="icon-badge"><svg class="icon" width="14" height="14"><use href="#icon-droplet"/></svg></span> Grasas</h3>
             <div class="big" id="sumFats">-</div>
-            <div class="sub" id="sumFatsSub">Esperando cálculo</div>
+            <div class="sub" id="sumFatsSub" data-i18n="ui.esperando_calculo">Esperando cálculo</div>
           </div>
         </div>
 
@@ -1025,8 +1084,8 @@
              se ve exactamente como antes. ══ -->
         <div class="days-carousel" id="daysCarousel">
           <div class="days-carousel__bar" id="daysCarouselBar" hidden>
-            <span class="days-carousel__hint">Desliza para ver los dem&aacute;s d&iacute;as</span>
-            <div class="days-carousel__dots" id="daysDots" role="group" aria-label="D&iacute;as del plan"></div>
+            <span class="days-carousel__hint" data-i18n="ui.desliza_para_ver_los_demas_dias">Desliza para ver los dem&aacute;s d&iacute;as</span>
+            <div class="days-carousel__dots" id="daysDots" role="group" data-i18n-aria-label="ui.dias_del_plan" aria-label="D&iacute;as del plan"></div>
             <!-- Sin esto, cambiar de dia con el teclado no se anuncia: los
                  puntos cambian de color y un lector de pantalla no dice nada.
                  aria-live="polite" espera a que el usuario deje de teclear. -->
@@ -1038,19 +1097,19 @@
                query en el CSS): en un movil taparian el plan y ahi el gesto
                ya funciona. Se ocultan en el primer y ultimo dia. -->
           <button type="button" class="days-carousel__arrow days-carousel__arrow--prev"
-                  id="dayPrevBtn" aria-label="D&iacute;a anterior" hidden>
+                  id="dayPrevBtn" data-i18n-aria-label="ui.dia_anterior" aria-label="D&iacute;a anterior" hidden>
             <svg class="icon" width="22" height="22" aria-hidden="true"><use href="#icon-chevron"/></svg>
           </button>
           <button type="button" class="days-carousel__arrow days-carousel__arrow--next"
-                  id="dayNextBtn" aria-label="D&iacute;a siguiente" hidden>
+                  id="dayNextBtn" data-i18n-aria-label="ui.dia_siguiente" aria-label="D&iacute;a siguiente" hidden>
             <svg class="icon" width="22" height="22" aria-hidden="true"><use href="#icon-chevron"/></svg>
           </button>
           <div class="days-carousel__track" id="mealsContainer">
           <div class="meal-card meal-card--empty" data-empty>
             <div class="meal-body">
               <span class="empty-icon"><svg width="28" height="28"><use href="#icon-search"/></svg></span>
-              <p><em>Esperando parámetros&hellip;</em></p>
-              <p>Configura tus datos en el panel lateral y pulsa <strong>Generar plan</strong>.</p>
+              <p><em data-i18n="ui.esperando_parametros">Esperando parámetros&hellip;</em></p>
+              <p>Configura tus datos en el panel lateral y pulsa <strong data-i18n="ui.generar_plan">Generar plan</strong>.</p>
             </div>
           </div>
           </div>
@@ -1067,8 +1126,8 @@
     <section class="shopping-panel" id="shoppingPanel" hidden>
       <div class="shopping-panel__head">
         <div>
-          <h2>Lista de la <em>compra</em></h2>
-          <span class="eyebrow" id="shoppingEyebrow">Todo lo que necesitas comprar para el plan de hoy</span>
+          <h2>Lista de la <em data-i18n="ui.compra">compra</em></h2>
+          <span class="eyebrow" id="shoppingEyebrow" data-i18n="ui.todo_lo_que_necesitas_comprar_para_el_plan_d">Todo lo que necesitas comprar para el plan de hoy</span>
         </div>
         <div class="badge"><svg class="icon" width="14" height="14"><use href="#icon-cart"/></svg> <span id="shoppingCount">0</span> productos</div>
       </div>
@@ -1083,7 +1142,7 @@
              varias veces tras regenerar/editar el plan actualiza el mismo
              borrador, nunca crea copias que se puedan "comprar" por
              separado. -->
-        <button type="button" class="btn-primary" id="usePlanTodayBtn">Confirmar plan de hoy</button>
+        <button type="button" class="btn-primary" id="usePlanTodayBtn" data-i18n="ui.confirmar_plan_de_hoy">Confirmar plan de hoy</button>
         <!-- ══ Llevarse la lista ══════════════════════════════════════════
              El momento de uso de esta pantalla es estar DE PIE en el
              supermercado, y hasta ahora la lista solo se podia mirar en esta
@@ -1093,7 +1152,7 @@
           <svg class="icon" width="16" height="16" aria-hidden="true"><use href="#icon-cart"/></svg>
           Compartir lista
         </button>
-        <button type="button" class="btn-secondary" id="printListBtn">Imprimir</button>
+        <button type="button" class="btn-secondary" id="printListBtn" data-i18n="ui.imprimir">Imprimir</button>
         <p class="shopping-share-note" id="shareListNote" role="status" aria-live="polite" hidden></p>
         <div class="confirm-receipt" id="planSavedNotice" hidden></div>
       </div>
@@ -1114,13 +1173,13 @@
     <section class="today-plans-panel" id="todayPlansPanel">
       <div class="today-plans-panel__head verified-panel__head">
         <div>
-          <h2>Mis <em>planes</em></h2>
-          <span class="eyebrow">Elige un día para ver o gestionar ese plan</span>
+          <h2>Mis <em data-i18n="ui.planes">planes</em></h2>
+          <span class="eyebrow" data-i18n="ui.elige_un_dia_para_ver_o_gestionar_ese_plan">Elige un día para ver o gestionar ese plan</span>
         </div>
       </div>
-      <div class="date-strip" role="radiogroup" aria-label="Elegir fecha" id="dateStrip"></div>
+      <div class="date-strip" role="radiogroup" data-i18n-aria-label="ui.elegir_fecha" aria-label="Elegir fecha" id="dateStrip"></div>
       <div class="pantry-active" id="todayPlansContainer"></div>
-      <p class="pantry-plans-empty" id="plansEmptyNote" hidden>Todav&iacute;a no hay ning&uacute;n plan guardado para este d&iacute;a.</p>
+      <p class="pantry-plans-empty" id="plansEmptyNote" hidden data-i18n="ui.todavia_no_hay_ningun_plan_guardado_para_est">Todav&iacute;a no hay ning&uacute;n plan guardado para este d&iacute;a.</p>
     </section>
 
     <!-- ══ DESPENSA: recuerda cuánto de cada ingrediente ya tienes en casa
@@ -1138,25 +1197,25 @@
          presenta. ══ -->
     <dialog class="auth-dialog despensa-dialog" id="pantryPanel" aria-labelledby="pantryPanelTitle">
       <div class="auth-dialog__head">
-        <h2 id="pantryPanelTitle">Tu <em>despensa</em></h2>
-        <button type="button" class="auth-dialog__close" id="pantryCloseBtn" aria-label="Cerrar">&times;</button>
+        <h2 id="pantryPanelTitle">Tu <em data-i18n="ui.despensa">despensa</em></h2>
+        <button type="button" class="auth-dialog__close" id="pantryCloseBtn" data-i18n-aria-label="ui.cerrar" aria-label="Cerrar">&times;</button>
       </div>
 
       <div class="auth-dialog__body">
-        <p class="pantry-intro">Guarda aqu&iacute; lo que ya tienes en la nevera o el armario (sobras, compras anteriores&hellip;). Cuando generes un plan, el sitio lo tendr&aacute; en cuenta y no te lo volver&aacute; a pedir en la lista de la compra.</p>
+        <p class="pantry-intro" data-i18n="ui.guarda_aqui_lo_que_ya_tienes_en_la_nevera_o_">Guarda aqu&iacute; lo que ya tienes en la nevera o el armario (sobras, compras anteriores&hellip;). Cuando generes un plan, el sitio lo tendr&aacute; en cuenta y no te lo volver&aacute; a pedir en la lista de la compra.</p>
 
         <form class="pantry-add" id="pantryAddForm">
-          <input type="text" id="pantryAddName" list="pantryIngredientOptions" placeholder="&iquest;Qu&eacute; tienes? (ej. Arroz blanco cocido)" aria-label="Ingrediente" autocomplete="off">
+          <input type="text" id="pantryAddName" list="pantryIngredientOptions" data-i18n-placeholder="ui.que_tienes_ej_arroz_blanco_cocido" placeholder="&iquest;Qu&eacute; tienes? (ej. Arroz blanco cocido)" data-i18n-aria-label="ui.ingrediente" aria-label="Ingrediente" autocomplete="off">
           <datalist id="pantryIngredientOptions"></datalist>
-          <input type="number" id="pantryAddGrams" min="0" step="1" placeholder="gramos" aria-label="Gramos" inputmode="numeric">
-          <button type="submit" id="pantryAddBtn">A&ntilde;adir</button>
+          <input type="number" id="pantryAddGrams" min="0" step="1" data-i18n-placeholder="ui.gramos" placeholder="gramos" data-i18n-aria-label="ui.gramos_2" aria-label="Gramos" inputmode="numeric">
+          <button type="submit" id="pantryAddBtn" data-i18n="ui.anadir">A&ntilde;adir</button>
         </form>
         <p class="pantry-add__error" id="pantryAddError" hidden></p>
 
         <ul class="pantry-list" id="pantryListContainer"></ul>
         <div class="pantry-empty" id="pantryEmpty" hidden>
           <svg width="26" height="26"><use href="#icon-cart"/></svg>
-          <p><strong>Tu despensa est&aacute; vac&iacute;a.</strong> Aqu&iacute; guardas lo que ya tienes en casa, para que el sitio no te lo vuelva a pedir comprar. A&ntilde;ade tu primer producto arriba &uarr;</p>
+          <p><strong data-i18n="ui.tu_despensa_esta_vacia">Tu despensa est&aacute; vac&iacute;a.</strong> Aqu&iacute; guardas lo que ya tienes en casa, para que el sitio no te lo vuelva a pedir comprar. A&ntilde;ade tu primer producto arriba &uarr;</p>
         </div>
       </div>
     </dialog>
@@ -1168,8 +1227,8 @@
     <section class="nocook-panel" id="noCookPanel" hidden>
       <div class="nocook-panel__head">
         <div>
-          <h2>Plan <em>sin cocinar</em></h2>
-          <span class="eyebrow">Productos reales de tu supermercado &mdash; comprar, abrir o calentar r&aacute;pido, comer</span>
+          <h2>Plan <em data-i18n="ui.sin_cocinar">sin cocinar</em></h2>
+          <span class="eyebrow" data-i18n="ui.productos_reales_de_tu_supermercado_comprar_">Productos reales de tu supermercado &mdash; comprar, abrir o calentar r&aacute;pido, comer</span>
         </div>
         <div class="badge"><svg class="icon" width="14" height="14"><use href="#icon-flame"/></svg> <span id="noCookCount">0</span> productos elegibles</div>
       </div>
@@ -1178,7 +1237,7 @@
       <!-- Despensa "sin cocinar" (2026-08-20f, known issue #9) -- mismo
            patrón que usePlanTodayBtn del plan normal: confirma el plan de
            hoy en "Mis planes", desde donde se compra/consume por toma. -->
-      <button type="button" class="btn-primary" id="usePlanTodayNoCookBtn">Confirmar plan sin cocinar</button>
+      <button type="button" class="btn-primary" id="usePlanTodayNoCookBtn" data-i18n="ui.confirmar_plan_sin_cocinar">Confirmar plan sin cocinar</button>
     </section>
 
     <!-- ══ CATÁLOGO DE PRODUCTOS: catálogo real de Mercadona (nombre, marca,
@@ -1189,8 +1248,8 @@
       <summary>
         <div class="verified-panel__head">
           <div>
-            <h2>Cat&aacute;logo de <em>productos</em></h2>
-            <span class="eyebrow">Productos reales de tu supermercado &mdash; nombre, marca y precio reales; nutrici&oacute;n cuando est&aacute; disponible</span>
+            <h2>Cat&aacute;logo de <em data-i18n="ui.productos">productos</em></h2>
+            <span class="eyebrow" data-i18n="ui.productos_reales_de_tu_supermercado_nombre_m">Productos reales de tu supermercado &mdash; nombre, marca y precio reales; nutrici&oacute;n cuando est&aacute; disponible</span>
           </div>
           <div class="badge"><svg class="icon" width="14" height="14"><use href="#icon-search"/></svg> <span id="verifiedCount">0</span> productos</div>
         </div>
@@ -1200,7 +1259,7 @@
       <div class="disclosure__body">
         <div class="verified-panel__search">
           <svg width="16" height="16"><use href="#icon-search"/></svg>
-          <input type="search" id="verifiedSearchInput" aria-label="Buscar producto por nombre o marca" placeholder="Buscar por nombre o marca... (ej. yogur, Hacendado, pollo)" autocomplete="off">
+          <input type="search" id="verifiedSearchInput" data-i18n-aria-label="ui.buscar_producto_por_nombre_o_marca" aria-label="Buscar producto por nombre o marca" data-i18n-placeholder="ui.buscar_por_nombre_o_marca_ej_yogur_hacendado" placeholder="Buscar por nombre o marca... (ej. yogur, Hacendado, pollo)" autocomplete="off">
         </div>
 
         <div class="verified-grid" id="verifiedGrid"></div>
@@ -1226,13 +1285,13 @@
              usuario. -->
         <li>Recetas de verdad: <span id="insightsDishCount">&hellip;</span> platos con
             ingredientes, pesos y precios reales.</li>
-        <li>Garantiza ≥3 fuentes de proteína y ≥3 de carbohidratos al día.</li>
-        <li>Ningún alimento puede superar el 25% de las calorías diarias.</li>
-        <li>Sin dependencias externas — 100% offline.</li>
+        <li data-i18n="ui.garantiza_3_fuentes_de_proteina_y_3_de_carbo">Garantiza ≥3 fuentes de proteína y ≥3 de carbohidratos al día.</li>
+        <li data-i18n="ui.ningun_alimento_puede_superar_el_25_de_las_c">Ningún alimento puede superar el 25% de las calorías diarias.</li>
+        <li data-i18n="ui.sin_dependencias_externas_100_offline">Sin dependencias externas — 100% offline.</li>
       </ul>
     </div>
 
-    <div class="footer-note">
+    <div class="footer-note" data-i18n="ui.esta_herramienta_ofrece_una_planificacion_pr">
       Esta herramienta ofrece una planificación práctica orientada al fitness.
       Si necesitas asesoramiento médico o nutricional personalizado, consulta con un profesional.
     </div>
@@ -1246,18 +1305,18 @@
          (que hoy solo aparece una vez, la primera).
          ══════════════════════════════════════════════════════════════════ -->
     <footer class="site-footer">
-      <button type="button" class="site-footer__link" id="footerLegalBtn">
+      <button type="button" class="site-footer__link" id="footerLegalBtn" data-i18n="ui.condiciones_de_uso_y_privacidad_2">
         Condiciones de uso y privacidad
       </button>
       <span class="site-footer__sep" aria-hidden="true">&middot;</span>
-      <button type="button" class="site-footer__link" id="footerTourBtn">
+      <button type="button" class="site-footer__link" id="footerTourBtn" data-i18n="ui.ver_la_explicacion_otra_vez">
         Ver la explicaci&oacute;n otra vez
       </button>
       <span class="site-footer__sep" aria-hidden="true">&middot;</span>
       <!-- Llevarse los datos. Se podia BORRAR la cuenta pero no sacar nada
            antes, y todo lo que guarda esta aplicacion (perfil, despensa,
            planes) vive en este navegador: si se borra, se pierde. -->
-      <button type="button" class="site-footer__link" id="footerExportBtn">
+      <button type="button" class="site-footer__link" id="footerExportBtn" data-i18n="ui.descargar_mis_datos">
         Descargar mis datos
       </button>
     </footer>
@@ -1272,17 +1331,17 @@
        js/core/supabase-client.js. -->
  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.min.js"></script>
 
-<script src="js/data/supabase-config.js?v=20260910f"></script>
-<script src="js/data/legal.js?v=20260910f"></script>
-<script src="js/data/onboarding-steps.js?v=20260910f"></script>
-<script src="js/data/tour-steps.js?v=20260910f"></script>
-<script src="js/data/dishes.js?v=20260910f"></script>
+<script src="js/data/supabase-config.js?v=20260910l"></script>
+<script src="js/data/legal.js?v=20260910l"></script>
+<script src="js/data/onboarding-steps.js?v=20260910l"></script>
+<script src="js/data/tour-steps.js?v=20260910l"></script>
+<script src="js/data/dishes.js?v=20260910l"></script>
 <!-- dish-instructions.js: pasos/equipo/dificultad, ADITIVO y opcional.
      Un plato sin entrada aqui se comporta exactamente como antes -- por
      eso dishes.js no se toca y los golden-master no se mueven. -->
-<script src="js/data/dish-instructions.js?v=20260910f"></script>
-<script src="js/data/dish-cuisine.js?v=20260910f"></script>
-<script src="js/data/real-products.js?v=20260910f"></script>
+<script src="js/data/dish-instructions.js?v=20260910l"></script>
+<script src="js/data/dish-cuisine.js?v=20260910l"></script>
+<script src="js/data/real-products.js?v=20260910l"></script>
 <!-- Alcampo y Carrefour se cayeron el 2026-09-07: 103 KB que viajaban a
      cada visitante sin que NADIE los leyera. Comprobado antes de quitarlos:
      ningun fichero fuera de ellos mismos menciona REAL_PRODUCTS_ALCAMPO ni
@@ -1290,80 +1349,88 @@
      js/data/prices/ solo existe mercadona.js -- asi que ni con precios
      habrian servido. Si algun dia vuelve el selector de tienda, vuelven
      desde git; ver la cabecera de js/core/pricing.js para el porque. -->
-<script src="js/data/packaging.js?v=20260910f"></script>
-<script src="js/data/real-ingredient-matches.js?v=20260910f"></script>
-<script src="js/data/product-links.js?v=20260910f"></script>
-<script src="js/data/ingredient-nutrition.js?v=20260910f"></script>
-<script src="js/data/no-cook-classifier.js?v=20260910f"></script>
+<script src="js/data/packaging.js?v=20260910l"></script>
+<script src="js/data/real-ingredient-matches.js?v=20260910l"></script>
+<script src="js/data/product-links.js?v=20260910l"></script>
+<script src="js/data/ingredient-nutrition.js?v=20260910l"></script>
+<script src="js/data/no-cook-classifier.js?v=20260910l"></script>
 <!-- Raciones/papeles de cada producto y formas de comida del modo "sin
      cocinar" (2026-09-01). serving-sizes.js antes que el generador: sin el
      ANTES no habia gramos por racion y los macros en pantalla eran los de
      100 g. -->
-<script src="js/data/serving-sizes.js?v=20260910f"></script>
-<script src="js/data/no-cook-templates.js?v=20260910f"></script>
-<script src="js/data/prices/mercadona.js?v=20260910f"></script>
-<script src="js/data/budget-presets.js?v=20260910f"></script>
-<script src="js/data/dislike-groups.js?v=20260910f"></script>
-<script src="js/data/shelf-life.js?v=20260910f"></script>
+<script src="js/data/serving-sizes.js?v=20260910l"></script>
+<script src="js/data/no-cook-templates.js?v=20260910l"></script>
+<script src="js/data/prices/mercadona.js?v=20260910l"></script>
+<script src="js/data/budget-presets.js?v=20260910l"></script>
+<script src="js/data/dislike-groups.js?v=20260910l"></script>
+<script src="js/data/shelf-life.js?v=20260910l"></script>
 <!-- Conservación REAL publicada por Mercadona (generado por
      PythonProject/scripts/export_product_storage.py). Tiene prioridad
      sobre shelf-life.js, que es estimación nuestra. -->
-<script src="js/data/product-storage.js?v=20260910f"></script>
+<script src="js/data/product-storage.js?v=20260910l"></script>
 <!-- Alergenos declarados en la etiqueta de Mercadona (generado por
      scratchpad/gen_allergens.js). Solo para MOSTRAR en las tarjetas de
      "sin cocinar" -- no es un filtro, ver js/core/allergens.js. -->
-<script src="js/data/product-allergens.js?v=20260910f"></script>
+<script src="js/data/product-allergens.js?v=20260910l"></script>
 <!-- Estado del tema. Sin DOM: solo guarda, valida y resuelve.
      Antes que cualquier ui/ porque render-menu.js lo usa. -->
-<script src="js/core/theme.js?v=20260910f"></script>
-<script src="js/core/utils.js?v=20260910f"></script>
-<script src="js/core/pricing.js?v=20260910f"></script>
-<script src="js/core/nutrition.js?v=20260910f"></script>
+<script src="js/core/theme.js?v=20260910l"></script>
+<!-- Idioma. i18n.js ANTES que las tablas: son ellas las que llaman a
+     registerI18nTable(). Y las tablas antes que cualquier ui/, que es
+     quien pinta. Se cargan TODAS y no solo la elegida: cargarla despues
+     de pintar hace parpadear la pagina del espanol al idioma elegido, y
+     esconderla hasta que llegue es lo que prohibe 7.2. -->
+<script src="js/core/i18n.js?v=20260910l"></script>
+<script src="js/i18n/es.js?v=20260910l"></script>
+<script src="js/i18n/en.js?v=20260910l"></script>
+<script src="js/core/utils.js?v=20260910l"></script>
+<script src="js/core/pricing.js?v=20260910l"></script>
+<script src="js/core/nutrition.js?v=20260910l"></script>
 <!-- expiry.js despues de pricing.js (usa normalizeIngredientKey) y de
      shelf-life.js (usa getShelfLife); antes de pantry.js, que lo consulta
      desde listPantryEntries(). Los tres son opcionales: si expiry.js
      faltara, la despensa sigue funcionando sin columna de caducidad. -->
-<script src="js/core/expiry.js?v=20260910f"></script>
+<script src="js/core/expiry.js?v=20260910l"></script>
 <!-- preferences.js despues de pricing.js (reutiliza
      normalizeIngredientKey para no tener dos normalizaciones que puedan
      divergir). Es SOLO preferencias blandas ("no me gusta"); las alergias
      son una restriccion de seguridad y viviran en su propio archivo, a
      proposito -- ver la cabecera de preferences.js. -->
-<script src="js/core/preferences.js?v=20260910f"></script>
+<script src="js/core/preferences.js?v=20260910l"></script>
 <!-- allergens.js: MOSTRAR alergenos de etiqueta, nunca filtrar. Aparte de
      preferences.js a proposito (ver cabecera de ambos). Despues de
      product-allergens.js (usa PRODUCT_ALLERGENS) y utils.js (escapeHtml). -->
-<script src="js/core/allergens.js?v=20260910f"></script>
-<script src="js/core/pantry.js?v=20260910f"></script>
-<script src="js/core/budget.js?v=20260910f"></script>
-<script src="js/core/calculator.js?v=20260910f"></script>
-<script src="js/core/meal-helpers.js?v=20260910f"></script>
-<script src="js/core/meal-schedule.js?v=20260910f"></script>
-<script src="js/core/supabase-client.js?v=20260910f"></script>
-<script src="js/core/settings.js?v=20260910f"></script>
-<script src="js/core/onboarding.js?v=20260910f"></script>
-<script src="js/core/auth.js?v=20260910f"></script>
-<script src="js/core/cloud-sync.js?v=20260910f"></script>
-<script src="js/core/migration.js?v=20260910f"></script>
-<script src="js/engine/dish-selector.js?v=20260910f"></script>
-<script src="js/engine/plan-generator.js?v=20260910f"></script>
-<script src="js/engine/no-cook-generator.js?v=20260910f"></script>
-<script src="js/ui/render.js?v=20260910f"></script>
-<script src="js/ui/render-schedule.js?v=20260910f"></script>
-<script src="js/ui/render-shopping-list.js?v=20260910f"></script>
-<script src="js/ui/render-pantry.js?v=20260910f"></script>
-<script src="js/ui/render-insights.js?v=20260910f"></script>
-<script src="js/ui/render-real-products.js?v=20260910f"></script>
-<script src="js/ui/render-no-cook.js?v=20260910f"></script>
-<script src="js/ui/render-auth.js?v=20260910f"></script>
-<script src="js/ui/onboarding-ui.js?v=20260910f"></script>
-<script src="js/ui/tour.js?v=20260910f"></script>
-<script src="js/ui/ingredient-suggest.js?v=20260910f"></script>
-<script src="js/ui/animations.js?v=20260910f"></script>
+<script src="js/core/allergens.js?v=20260910l"></script>
+<script src="js/core/pantry.js?v=20260910l"></script>
+<script src="js/core/budget.js?v=20260910l"></script>
+<script src="js/core/calculator.js?v=20260910l"></script>
+<script src="js/core/meal-helpers.js?v=20260910l"></script>
+<script src="js/core/meal-schedule.js?v=20260910l"></script>
+<script src="js/core/supabase-client.js?v=20260910l"></script>
+<script src="js/core/settings.js?v=20260910l"></script>
+<script src="js/core/onboarding.js?v=20260910l"></script>
+<script src="js/core/auth.js?v=20260910l"></script>
+<script src="js/core/cloud-sync.js?v=20260910l"></script>
+<script src="js/core/migration.js?v=20260910l"></script>
+<script src="js/engine/dish-selector.js?v=20260910l"></script>
+<script src="js/engine/plan-generator.js?v=20260910l"></script>
+<script src="js/engine/no-cook-generator.js?v=20260910l"></script>
+<script src="js/ui/render.js?v=20260910l"></script>
+<script src="js/ui/render-schedule.js?v=20260910l"></script>
+<script src="js/ui/render-shopping-list.js?v=20260910l"></script>
+<script src="js/ui/render-pantry.js?v=20260910l"></script>
+<script src="js/ui/render-insights.js?v=20260910l"></script>
+<script src="js/ui/render-real-products.js?v=20260910l"></script>
+<script src="js/ui/render-no-cook.js?v=20260910l"></script>
+<script src="js/ui/render-auth.js?v=20260910l"></script>
+<script src="js/ui/onboarding-ui.js?v=20260910l"></script>
+<script src="js/ui/tour.js?v=20260910l"></script>
+<script src="js/ui/ingredient-suggest.js?v=20260910l"></script>
+<script src="js/ui/animations.js?v=20260910l"></script>
 <!-- El menu de ajustes. Despues de onboarding-ui.js (usa
      openLegalDialog) y de tour.js (usa startTour via app.js). -->
-<script src="js/ui/render-menu.js?v=20260910f"></script>
-<script src="js/app.js?v=20260910f"></script>
+<script src="js/ui/render-menu.js?v=20260910l"></script>
+<script src="js/app.js?v=20260910l"></script>
 
 <!-- ══ OFFLINE DE VERDAD (2026-09-07) ═══════════════════════════════════
      Se registra al final y envuelto en try: si el navegador no soporta

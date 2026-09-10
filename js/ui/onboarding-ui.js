@@ -117,14 +117,28 @@ function _obShowStep(name) {
   });
 }
 
-/** Pinta el resumen honesto de tres líneas de la bienvenida. */
+/**
+ * Pinta el resumen honesto de tres líneas de la bienvenida.
+ *
+ * El español vive en `LEGAL_SUMMARY` (js/data/legal.js) y NO se copia a
+ * js/i18n/es.js: dos copias del mismo texto legal se separan sola, y la que
+ * queda vieja es la que el usuario acepta. Así que aquí se pide la
+ * traducción y, si no la hay, se usa el original. `t()` devuelve la clave
+ * cuando no conoce una, y eso es justo la señal de "no hay traducción".
+ */
 function _obRenderSummary() {
   var box = _onboardingEls.summary;
   if (!box || typeof LEGAL_SUMMARY === "undefined") return;
   box.innerHTML = "";
-  LEGAL_SUMMARY.forEach(function (line) {
+  LEGAL_SUMMARY.forEach(function (line, i) {
+    var clave = "ui.legal_resumen_" + (i + 1);
+    var texto = line;
+    if (typeof t === "function") {
+      var traducido = t(clave);
+      if (traducido && traducido !== clave) texto = traducido;
+    }
     var li = document.createElement("li");
-    li.textContent = line;
+    li.textContent = texto;
     box.appendChild(li);
   });
 }

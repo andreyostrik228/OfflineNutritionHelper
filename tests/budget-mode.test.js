@@ -378,7 +378,11 @@ function run(t) {
     var desviados = [];
     Object.keys(ids).forEach(function (k) {
       // El texto de repliegue que hay dentro del <label for="...">.
-      var re = new RegExp('for="' + ids[k] + '"[\\s\\S]{0,200}?budget-chip__title">([^<]*)<');
+      // `[^>]*` entre la clase y el `>`: desde el 2026-09-10 estos <span>
+      // llevan además `data-i18n="..."` para el selector de idioma. Sin
+      // eso el patrón dejó de casar y el test dijo "no encuentro el chip"
+      // cuando el chip estaba y el invariante se cumplía.
+      var re = new RegExp('for="' + ids[k] + '"[\\s\\S]{0,240}?budget-chip__title"[^>]*>([^<]*)<');
       var m = html.match(re);
       if (!m) { desviados.push(k + ": no encuentro el chip en index.html"); return; }
       if (m[1].trim() !== tramos[k].label) {

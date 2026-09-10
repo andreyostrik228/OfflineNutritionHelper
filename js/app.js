@@ -1563,6 +1563,23 @@ document.addEventListener("DOMContentLoaded", function () {
     if (typeof initAjustesMenu === "function") initAjustesMenu();
   });
 
+  // El idioma se aplica al DOM aquí y no en el <head>: para traducir hace
+  // falta que el texto EXISTA, o sea que el HTML esté parseado. Puede
+  // quedar un parpadeo del español al idioma elegido en un móvil lento; se
+  // acepta a propósito, porque la alternativa era esconder la página hasta
+  // traducirla y esconder es justo lo que prohíbe 7.2. Para quien lee en
+  // español -- la mayoría -- no hay parpadeo ninguno.
+  safeInit("i18n-aplicar", function () {
+    if (typeof applyI18nToDom === "function") applyI18nToDom();
+  });
+
+  // Ofrecer la versión propia cuando el navegador traduce a un idioma que
+  // ya hablamos. Va aparte de i18n-aplicar: si esto fallara, la aplicación
+  // sigue traduciéndose igual, solo se pierde el aviso.
+  safeInit("aviso-traduccion", function () {
+    if (typeof initAvisoTraduccion === "function") initAvisoTraduccion();
+  });
+
   safeInit("footer-links", function () {
     var legalBtn = document.getElementById("footerLegalBtn");
     if (legalBtn && typeof openLegalDialog === "function") {
