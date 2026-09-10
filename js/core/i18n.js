@@ -392,6 +392,52 @@ function tStep(paso, lang) {
   return paso;
 }
 
+// ── Las ETIQUETAS DE ENVASE ──────────────────────────────────────────────
+//
+// "barra", "tarro", "bandeja", "plátano"... 42 palabras que describen CÓMO
+// se compra algo. No son nombres comerciales -- no es lo que pone en la
+// etiqueta del producto -- asi que se traducen: quien lee "Buy: 1 barra"
+// sin saber español no sabe qué coger de la estantería.
+//
+// Cada una lleva singular Y plural porque el inglés no los forma añadiendo
+// una "s": loaf/loaves, box/boxes. En español bastaba con eso, y de ahí
+// viene `pluralizePackageLabel`, que sigue siendo el repliegue.
+
+/** Diccionarios de etiquetas de envase por idioma (js/i18n/packages-*.js) */
+var PACKAGE_TABLES = {};
+
+/**
+ * @param {string} lang
+ * @param {object} tabla - {"barra": ["loaf", "loaves"], ...}
+ */
+function registerPackageTable(lang, tabla) {
+  if (LANGS.indexOf(lang) === -1) return;
+  if (!tabla || typeof tabla !== "object") return;
+  PACKAGE_TABLES[lang] = tabla;
+}
+
+/**
+ * La etiqueta de un envase, en singular o plural segun cuantos sean.
+ *
+ * Sin traduccion devuelve null, para que quien llama use lo que ya hacia
+ * con el español (incluido su plural).
+ *
+ * @param {string} label - la etiqueta en español
+ * @param {number} [n]   - cuantos envases; >1 pide el plural
+ * @param {string} [lang]
+ * @returns {string|null}
+ */
+function tPackageLabel(label, n, lang) {
+  if (typeof label !== "string" || !label) return null;
+  var idioma = (typeof lang === "string") ? sanitizeLang(lang) : getLang();
+  if (idioma === DEFAULT_LANG) return null;
+  var tabla = PACKAGE_TABLES[idioma];
+  var par = tabla && tabla[label];
+  if (!par) return null;
+  var plural = (typeof n === "number" && n > 1);
+  return plural ? (par[1] || par[0]) : par[0];
+}
+
 /**
  * La cadena de una clave.
  *

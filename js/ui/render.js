@@ -488,10 +488,12 @@ function renderFoodRow(item, storeId) {
       '</div>' +
       '<div class="food-right">' +
         '<div>' + round0(item.kcal) + ' kcal</div>' +
-        '<div class="food-cost food-cost--usage">&euro;' + round2(item.cost) + '<span class="food-cost__tag">consumo</span></div>' +
+        '<div class="food-cost food-cost--usage">&euro;' + round2(item.cost) +
+          '<span class="food-cost__tag">' + escapeHtml(t("ui.consumo_etiqueta")) + '</span></div>' +
         (purchase && purchase.hasFixedPackage
           ? '<div class="food-cost food-cost--package">&euro;' + round2(purchase.purchaseCost) + '<span class="food-cost__tag">' +
-            (purchase.packagesToBuy > 1 ? purchase.packagesToBuy + '&times; ' : '') + round0(purchase.packageSizeG) + 'g paquete</span></div>'
+            (purchase.packagesToBuy > 1 ? purchase.packagesToBuy + '&times; ' : '') + round0(purchase.packageSizeG) + 'g ' +
+            escapeHtml(t("ui.paquete_etiqueta")) + '</span></div>'
           : '') +
       '</div>' +
     '</div>'
@@ -612,6 +614,24 @@ function pluralizePackageLabel(label) {
 }
 
 /**
+ * La etiqueta de un envase en el idioma de ahora, en singular o plural.
+ *
+ * Sin traduccion cae al español y a su plural de siempre: media linea
+ * entendible es mejor que ninguna, igual que en tFood().
+ *
+ * @param {string} label
+ * @param {number} n
+ * @returns {string}
+ */
+function etiquetaDeEnvase(label, n) {
+  if (typeof tPackageLabel === "function") {
+    var traducida = tPackageLabel(label, n);
+    if (traducida) return traducida;
+  }
+  return (n > 1) ? pluralizePackageLabel(label) : label;
+}
+
+/**
  * Línea adicional bajo food-meta indicando qué envase comprar realmente
  * (bote, bolsa, lata...) para ingredientes de envase fijo o de cucharada.
  * Si hay un producto real verificado por EAN (js/data/real-ingredient-
@@ -651,8 +671,8 @@ function formatPurchaseLine(info, realMatch, purchase) {
   if (!purchase || !purchase.hasFixedPackage) return "";
 
   var label = purchase.packagesToBuy > 1
-    ? purchase.packagesToBuy + " " + pluralizePackageLabel(purchase.packageLabel) + " (" + round0(purchase.packageSizeG) + "g " + t("ui.cada_uno") + ")"
-    : "1 " + purchase.packageLabel + " (" + round0(purchase.packageSizeG) + "g)";
+    ? purchase.packagesToBuy + " " + etiquetaDeEnvase(purchase.packageLabel, purchase.packagesToBuy) + " (" + round0(purchase.packageSizeG) + "g " + t("ui.cada_uno") + ")"
+    : "1 " + etiquetaDeEnvase(purchase.packageLabel, 1) + " (" + round0(purchase.packageSizeG) + "g)";
 
   var priceNote = ' &middot; &euro;' + round2(purchase.purchaseCost);
 

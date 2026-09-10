@@ -354,7 +354,9 @@ function shoppingListAsText(items, dias) {
     if (typeof p.packagesToBuy === "number" && p.packagesToBuy === 0) {
       cantidad = t("ui.ya_lo_tienes");
     } else if (p.hasFixedPackage) {
-      var etiqueta = p.packageLabel || t("ui.envase");
+      var etiqueta = p.packageLabel
+        ? ((typeof etiquetaDeEnvase === "function") ? etiquetaDeEnvase(p.packageLabel, p.packagesToBuy) : p.packageLabel)
+        : t("ui.envase");
       var conGramos = !/\d/.test(p.packageLabel || "");
       cantidad = p.packagesToBuy + " x " + etiqueta
         + (conGramos && p.packageSizeG ? " (" + Math.round(p.packageSizeG) + " g)" : "");
@@ -385,7 +387,9 @@ function renderShoppingRow(entry) {
     // `packageLabel` viene de packaging.js y describe el ENVASE tal y como
     // se vende ("docena", "bandeja"): es lo que hay que buscar en la
     // tienda, así que no se traduce.
-    var label = p.packageLabel ? escapeHtml(p.packageLabel) : t("ui.envase");
+    var label = p.packageLabel
+      ? escapeHtml(etiquetaDeEnvase(p.packageLabel, p.packagesToBuy))
+      : t("ui.envase");
     // Si la etiqueta ya nombra un número de piezas ("docena (12 huevos)"),
     // el "(756 g)" no le dice nada a quien compra -- se omite.
     var withGrams = !/\d/.test(p.packageLabel || "");

@@ -354,6 +354,9 @@ function run(t) {
     var s = freshSandbox();
     var html = readIndexHtml();
     var faltan = s.ONBOARDING_STEPS.filter(function (step) {
+      // Los pasos de META (el idioma) no escriben en el formulario: no
+      // son datos del perfil. Ver PASOS_META mas abajo.
+      if (!step.field) return false;
       // budgetMode son radios: se identifican por name, no por id.
       if (step.field === "budgetMode") {
         return html.indexOf('name="budgetMode"') === -1;
@@ -370,6 +373,9 @@ function run(t) {
     var malas = [];
     s.ONBOARDING_STEPS.forEach(function (step) {
       if (step.kind !== "choice") return;
+      // Las opciones dinamicas (los idiomas disponibles) no salen del
+      // formulario: se piden a availableLangs() al pintar.
+      if (step.optionsFrom) return;
       step.options.forEach(function (opt) {
         if (html.indexOf('value="' + opt.value + '"') === -1) {
           malas.push(step.id + ": " + opt.value);
@@ -409,7 +415,9 @@ function run(t) {
     // razonable no es lo mismo que una respuesta (ver la cabecera de
     // onboarding-steps.js). Sigue habiendo tope: el muro de 26 campos era
     // un problema real y no ha dejado de serlo.
-    assert.ok(s.ONBOARDING_STEPS.length <= 15,
+    // 16 desde que el idioma es la primera pregunta: sin ella, quien no
+    // lee español tiene que atravesar el alta entera a ciegas.
+    assert.ok(s.ONBOARDING_STEPS.length <= 16,
       "el muro de 26 campos era el problema; " + s.ONBOARDING_STEPS.length + " pasos ya es demasiado");
   });
 
@@ -420,10 +428,17 @@ function run(t) {
       assert.ok(["choice", "number", "time", "text"].indexOf(step.kind) !== -1,
         "tipo raro en " + step.id);
       if (step.kind === "choice") {
-        assert.ok(step.options && step.options.length >= 2, "elección con menos de 2 opciones: " + step.id);
-        step.options.forEach(function (o) {
-          assert.ok(o.value && o.label, "opción incompleta en " + step.id);
-        });
+        // Las que se rellenan al pintar declaran de DONDE salen; exigirles
+        // dos opciones escritas obligaria a duplicar aqui la lista de
+        // idiomas, que es justo lo que `optionsFrom` evita.
+        if (step.optionsFrom) {
+          assert.strictEqual(step.optionsFrom, "langs", "origen de opciones desconocido en " + step.id);
+        } else {
+          assert.ok(step.options && step.options.length >= 2, "elección con menos de 2 opciones: " + step.id);
+          step.options.forEach(function (o) {
+            assert.ok(o.value && o.label, "opción incompleta en " + step.id);
+          });
+        }
       } else if (step.kind === "time" || step.kind === "text") {
         // No llevan límites ni opciones: los valida el propio <input> (la
         // hora) o se admite vacío a propósito (el texto libre).
@@ -619,8 +634,16 @@ function run(t) {
     // más abajo lo fija.
     var conocidas = [].concat(s.SETTINGS_NUMERIC_FIELDS, s.SETTINGS_STRING_FIELDS,
                               s.SETTINGS_LIST_FIELDS || []);
+    // Un paso sin `field` no se guarda en los ajustes porque no es un dato
+    // del perfil. La lista blanca esta escrita a mano a proposito: sin
+    // ella, olvidarse de poner `field` en un paso de perfil dejaria de
+    // fallar aqui y la respuesta se perderia en silencio.
+    var PASOS_META = ["lang"];
     var huerfanas = s.ONBOARDING_STEPS
-      .filter(function (step) { return conocidas.indexOf(step.field) === -1; })
+      .filter(function (step) {
+        if (!step.field) return PASOS_META.indexOf(step.id) === -1;
+        return conocidas.indexOf(step.field) === -1;
+      })
       .map(function (step) { return step.id + " -> " + step.field; });
     assert.deepStrictEqual(plain(huerfanas), [],
       "settings.js descartaría estas respuestas al sanear, sin avisar: " + huerfanas.join(", "));

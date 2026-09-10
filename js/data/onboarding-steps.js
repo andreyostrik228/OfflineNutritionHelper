@@ -68,21 +68,43 @@
  */
 var ONBOARDING_STEPS = [
   {
+    // PRIMERA, antes que ninguna pregunta de perfil, porque de ella depende
+    // el idioma de todo lo que viene detrás: las otras doce preguntas y el
+    // recorrido guiado que arranca al terminar. Preguntarla al final, o
+    // dejarla solo en el menú de ajustes, obliga a leer el alta entera en
+    // un idioma que a lo mejor no se entiende.
+    //
+    // No escribe en el formulario (`field: null`): el idioma no es un dato
+    // del perfil, se guarda con saveLang(). Y las opciones no están escritas
+    // aquí -- se piden a availableLangs() al pintar, para que añadir una
+    // traducción la haga aparecer sola en vez de tener que acordarse de
+    // tocar también este fichero.
+    id: "lang",
+    field: null,
+    kind: "choice",
+    optionsFrom: "langs",
+    title: "¿En qué idioma?",
+    titleKey: "ui.en_que_idioma",
+    hint: "Puedes cambiarlo luego en el menú.",
+    hintKey: "ui.puedes_cambiarlo_luego_en_el_menu",
+    options: []
+  },
+  {
     id: "sex",
     field: "sex",
     kind: "choice",
-    title: "¿Cuál es tu sexo?",
-    hint: "Cambia la fórmula del gasto energético; no cambia nada más.",
+    title: "¿Cuál es tu sexo?", titleKey: "ui.ob_sexo_titulo",
+    hint: "Cambia la fórmula del gasto energético; no cambia nada más.", hintKey: "ui.ob_sexo_pista",
     options: [
-      { value: "male", label: "Hombre" },
-      { value: "female", label: "Mujer" }
+      { value: "male", label: "Hombre", labelKey: "ui.hombre" },
+      { value: "female", label: "Mujer", labelKey: "ui.mujer" }
     ]
   },
   {
     id: "age",
     field: "age",
     kind: "number",
-    title: "¿Cuántos años tienes?",
+    title: "¿Cuántos años tienes?", titleKey: "ui.ob_edad_titulo",
     min: 14,
     max: 90,
     unit: "años"
@@ -91,8 +113,8 @@ var ONBOARDING_STEPS = [
     id: "weight",
     field: "weight",
     kind: "number",
-    title: "¿Cuánto pesas?",
-    hint: "Aproximado vale. Podrás cambiarlo cuando quieras.",
+    title: "¿Cuánto pesas?", titleKey: "ui.ob_peso_titulo",
+    hint: "Aproximado vale. Podrás cambiarlo cuando quieras.", hintKey: "ui.ob_peso_pista",
     min: 35,
     max: 250,
     step: 0.1,
@@ -102,7 +124,7 @@ var ONBOARDING_STEPS = [
     id: "height",
     field: "height",
     kind: "number",
-    title: "¿Cuánto mides?",
+    title: "¿Cuánto mides?", titleKey: "ui.ob_altura_titulo",
     min: 130,
     max: 230,
     unit: "cm"
@@ -111,22 +133,22 @@ var ONBOARDING_STEPS = [
     id: "activity",
     field: "activity",
     kind: "choice",
-    title: "¿Cuánto te mueves en un día normal?",
-    hint: "Cuenta tu día entero, no solo el gimnasio.",
+    title: "¿Cuánto te mueves en un día normal?", titleKey: "ui.ob_actividad_titulo",
+    hint: "Cuenta tu día entero, no solo el gimnasio.", hintKey: "ui.ob_actividad_pista",
     options: [
-      { value: "1.2",   label: "Sedentario", note: "Escritorio, poco andar", noteKey: "ui.nota_actividad_sedentario" },
-      { value: "1.375", label: "Ligero",     note: "Algo de paseo diario", noteKey: "ui.nota_actividad_ligero" },
-      { value: "1.55",  label: "Moderado",   note: "En pie a ratos, o deporte 3-4 días", noteKey: "ui.nota_actividad_moderado" },
-      { value: "1.725", label: "Alto",       note: "Trabajo físico, o deporte casi diario", noteKey: "ui.nota_actividad_alto" },
-      { value: "1.9",   label: "Muy alto",   note: "Trabajo duro más entrenamiento", noteKey: "ui.nota_actividad_muy_alto" }
+      { value: "1.2",   label: "Sedentario", labelKey: "ui.sedentario", note: "Escritorio, poco andar", noteKey: "ui.nota_actividad_sedentario" },
+      { value: "1.375", label: "Ligero", labelKey: "ui.ligero",     note: "Algo de paseo diario", noteKey: "ui.nota_actividad_ligero" },
+      { value: "1.55",  label: "Moderado", labelKey: "ui.moderado",   note: "En pie a ratos, o deporte 3-4 días", noteKey: "ui.nota_actividad_moderado" },
+      { value: "1.725", label: "Alto", labelKey: "ui.alto",       note: "Trabajo físico, o deporte casi diario", noteKey: "ui.nota_actividad_alto" },
+      { value: "1.9",   label: "Muy alto", labelKey: "ui.muy_alto",   note: "Trabajo duro más entrenamiento", noteKey: "ui.nota_actividad_muy_alto" }
     ]
   },
   {
     id: "workouts",
     field: "workouts",
     kind: "number",
-    title: "¿Cuántos días entrenas a la semana?",
-    hint: "Cuenta solo el entrenamiento de verdad. Si no entrenas, pon 0.",
+    title: "¿Cuántos días entrenas a la semana?", titleKey: "ui.ob_entrenos_titulo",
+    hint: "Cuenta solo el entrenamiento de verdad. Si no entrenas, pon 0.", hintKey: "ui.ob_entrenos_pista",
     min: 0,
     max: 14,
     unit: "días"
@@ -135,95 +157,95 @@ var ONBOARDING_STEPS = [
     id: "goal",
     field: "goal",
     kind: "choice",
-    title: "¿Qué quieres conseguir?",
+    title: "¿Qué quieres conseguir?", titleKey: "ui.ob_objetivo_titulo",
     options: [
-      { value: "bulk",     label: "Ganar músculo" },
-      { value: "cut",      label: "Perder grasa" },
-      { value: "recomp",   label: "Recomposición",  note: "Las dos cosas a la vez, más despacio", noteKey: "ui.nota_objetivo_recomp" },
-      { value: "maintain", label: "Solo comer bien", note: "Sin objetivo de peso", noteKey: "ui.nota_objetivo_sin_objetivo" }
+      { value: "bulk",     label: "Ganar músculo", labelKey: "ui.ganar_musculo" },
+      { value: "cut",      label: "Perder grasa", labelKey: "ui.perder_grasa" },
+      { value: "recomp",   label: "Recomposición", labelKey: "ui.recomposicion",  note: "Las dos cosas a la vez, más despacio", noteKey: "ui.nota_objetivo_recomp" },
+      { value: "maintain", label: "Solo comer bien", labelKey: "ui.solo_comer_bien", note: "Sin objetivo de peso", noteKey: "ui.nota_objetivo_sin_objetivo" }
     ]
   },
   {
     id: "budget",
     field: "budgetMode",
     kind: "choice",
-    title: "¿Cuánto quieres gastarte al día en comida?",
-    hint: "Es el tope de la compra, no lo que te vas a comer. Se puede cambiar en cualquier momento.",
+    title: "¿Cuánto quieres gastarte al día en comida?", titleKey: "ui.ob_presupuesto_titulo",
+    hint: "Es el tope de la compra, no lo que te vas a comer. Se puede cambiar en cualquier momento.", hintKey: "ui.ob_presupuesto_pista",
     options: [
-      { value: "minimal", label: "Muy ajustado" },
-      { value: "small",   label: "Ajustado" },
-      { value: "medium",  label: "Equilibrado" },
-      { value: "high",    label: "Amplio" }
+      { value: "minimal", label: "Muy ajustado", labelKey: "ui.muy_ajustado" },
+      { value: "small",   label: "Ajustado", labelKey: "ui.ajustado" },
+      { value: "medium",  label: "Equilibrado", labelKey: "ui.equilibrado" },
+      { value: "high",    label: "Amplio", labelKey: "ui.amplio" }
     ]
   },
   {
     id: "cookTime",
     field: "cookTime",
     kind: "choice",
-    title: "¿Cuánto tiempo tienes para cocinar?",
-    hint: "Es un filtro DURO: no saldrá ningún plato que pase de ese tiempo.",
+    title: "¿Cuánto tiempo tienes para cocinar?", titleKey: "ui.ob_tiempo_titulo",
+    hint: "Es un filtro DURO: no saldrá ningún plato que pase de ese tiempo.", hintKey: "ui.ob_tiempo_pista",
     options: [
-      { value: "10", label: "Muy poco", note: "10 minutos o menos" },
-      { value: "20", label: "Poco",     note: "Hasta 20 minutos" },
-      { value: "35", label: "Normal",   note: "Hasta 35 minutos" },
-      { value: "60", label: "Amplio",   note: "Hasta una hora" }
+      { value: "10", label: "Muy poco", labelKey: "ui.muy_poco", note: "10 minutos o menos", noteKey: "ui.diez_minutos_o_menos" },
+      { value: "20", label: "Poco",     labelKey: "ui.poco", note: "Hasta 20 minutos", noteKey: "ui.hasta_20_minutos" },
+      { value: "35", label: "Normal",   labelKey: "ui.normal", note: "Hasta 35 minutos", noteKey: "ui.hasta_35_minutos" },
+      { value: "60", label: "Amplio",   labelKey: "ui.amplio", note: "Hasta una hora", noteKey: "ui.hasta_una_hora" }
     ]
   },
   {
     id: "priority",
     field: "priority",
     kind: "choice",
-    title: "¿Qué buscas al comer?",
-    hint: "Distinto del objetivo: aquel fija cuántas calorías, este con qué se llenan.",
+    title: "¿Qué buscas al comer?", titleKey: "ui.ob_prioridad_titulo",
+    hint: "Distinto del objetivo: aquel fija cuántas calorías, este con qué se llenan.", hintKey: "ui.ob_prioridad_pista",
     options: [
-      { value: "balanced", label: "Equilibrado" },
-      { value: "satiety",  label: "Llenarme",         note: "Más comida por euro" },
-      { value: "protein",  label: "Máxima proteína" }
+      { value: "balanced", label: "Equilibrado", labelKey: "ui.equilibrado" },
+      { value: "satiety",  label: "Llenarme", labelKey: "ui.llenarme", note: "Más comida por euro", noteKey: "ui.mas_comida_por_euro" },
+      { value: "protein",  label: "Máxima proteína", labelKey: "ui.maxima_proteina" }
     ]
   },
   {
     id: "taste",
     field: "taste",
     kind: "choice",
-    title: "¿Dulce o salado?",
-    hint: "Solo inclina el desayuno y los snacks; no descarta nada.",
+    title: "¿Dulce o salado?", titleKey: "ui.ob_sabor_titulo",
+    hint: "Solo inclina el desayuno y los snacks; no descarta nada.", hintKey: "ui.ob_sabor_pista",
     options: [
-      { value: "mixed",  label: "Mixto", note: "Un poco de todo" },
-      { value: "sweet",  label: "Dulce" },
-      { value: "savory", label: "Salado" }
+      { value: "mixed",  label: "Mixto", labelKey: "ui.mixto", note: "Un poco de todo", noteKey: "ui.un_poco_de_todo" },
+      { value: "sweet",  label: "Dulce", labelKey: "ui.dulce" },
+      { value: "savory", label: "Salado", labelKey: "ui.salado" }
     ]
   },
   {
     id: "cuisine",
     field: "cuisine",
     kind: "choice",
-    title: "¿Algún estilo de cocina?",
-    hint: "Es una preferencia, no un filtro: sale más a menudo, pero el resto sigue apareciendo.",
+    title: "¿Algún estilo de cocina?", titleKey: "ui.ob_cocina_titulo",
+    hint: "Es una preferencia, no un filtro: sale más a menudo, pero el resto sigue apareciendo.", hintKey: "ui.ob_cocina_pista",
     options: [
-      { value: "mixta",         label: "Sin preferencia" },
-      { value: "espanola",      label: "Más española" },
-      { value: "internacional", label: "Más internacional" }
+      { value: "mixta",         label: "Sin preferencia", labelKey: "ui.sin_preferencia" },
+      { value: "espanola",      label: "Más española", labelKey: "ui.mas_espanola" },
+      { value: "internacional", label: "Más internacional", labelKey: "ui.mas_internacional" }
     ]
   },
   {
     id: "wakeTime",
     field: "wakeTime",
     kind: "time",
-    title: "¿A qué hora te levantas?",
-    hint: "Con esto se reparten las horas de cada comida."
+    title: "¿A qué hora te levantas?", titleKey: "ui.ob_despertar_titulo",
+    hint: "Con esto se reparten las horas de cada comida.", hintKey: "ui.ob_despertar_pista"
   },
   {
     id: "sleepTime",
     field: "sleepTime",
     kind: "time",
-    title: "¿Y a qué hora te acuestas?"
+    title: "¿Y a qué hora te acuestas?", titleKey: "ui.ob_dormir_titulo"
   },
   {
     id: "dislikes",
     field: "dislikes",
     kind: "text",
-    title: "¿Hay algo que no te guste?",
-    hint: "Sepáralo con comas. Puedes dejarlo vacío y añadirlo después. No sirve para alergias: es una preferencia, no una comprobación de seguridad.",
+    title: "¿Hay algo que no te guste?", titleKey: "ui.ob_dislikes_titulo",
+    hint: "Sepáralo con comas. Puedes dejarlo vacío y añadirlo después. No sirve para alergias: es una preferencia, no una comprobación de seguridad.", hintKey: "ui.ob_dislikes_pista",
     placeholder: "cebolla, queso azul, salmón"
   }
 ];

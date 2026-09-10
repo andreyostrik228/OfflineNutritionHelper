@@ -92,6 +92,7 @@ function _obCacheEls() {
     error:       _obEl("onboardingIntakeError"),
     backBtn:     _obEl("onboardingBackBtn"),
     nextBtn:     _obEl("onboardingNextBtn"),
+    skipQuestionsBtn: _obEl("onboardingSkipQuestionsBtn"),
     legalDialog: _obEl("legalDialog"),
     legalBody:   _obEl("legalDialogBody"),
     legalClose:  _obEl("legalDialogCloseBtn")
@@ -249,6 +250,41 @@ function _obBudgetAmount(step, value) {
   return preset ? "€" + preset.amount + t("ui.por_dia") : "";
 }
 
+/**
+ * Traduce por clave, y sin clave (o sin traducción) se queda con el
+ * castellano original. `t()` devuelve la clave cuando no la conoce, y eso
+ * aquí no sirve: pintaría "ui.en_que_idioma" en mitad del alta.
+ *
+ * @param {string} [clave]
+ * @param {string} original
+ * @returns {string}
+ */
+function _obT(clave, original) {
+  if (!clave || typeof t !== "function") return original;
+  var traducido = t(clave);
+  return (traducido && traducido !== clave) ? traducido : original;
+}
+
+/**
+ * Las opciones de un paso. Casi siempre son las que trae escritas; el paso
+ * del idioma las pide a availableLangs(), que solo devuelve los idiomas que
+ * de verdad tienen tabla cargada.
+ *
+ * Los nombres van en su PROPIO idioma ("English", no "Inglés"): quien está
+ * eligiendo todavía no lee el idioma actual, y por eso mismo está aquí.
+ *
+ * @param {object} step
+ * @returns {object[]}
+ */
+function _obOpciones(step) {
+  if (step.optionsFrom !== "langs") return step.options || [];
+  if (typeof availableLangs !== "function") return [];
+  return availableLangs().map(function (lang) {
+    var nombre = (typeof LANG_NAMES !== "undefined" && LANG_NAMES[lang]) || lang;
+    return { value: lang, label: nombre };
+  });
+}
+
 function _obRenderStep() {
   var steps = _obSteps();
   var step = steps[_onboardingIndex];
@@ -258,13 +294,19 @@ function _obRenderStep() {
   var pct = Math.round((_onboardingIndex / steps.length) * 100);
   if (e.progressBar) e.progressBar.style.width = pct + "%";
   if (e.progressLbl) {
-    e.progressLbl.textContent = "Pregunta " + (_onboardingIndex + 1) + " de " + steps.length;
+    e.progressLbl.textContent = _obT("ui.pregunta_n_de_m", "Pregunta {n} de {total}")
+      .replace("{n}", _onboardingIndex + 1)
+      .replace("{total}", steps.length);
   }
 
-  if (e.question) e.question.textContent = step.title;
+  // El castellano vive en ONBOARDING_STEPS, junto al comentario que explica
+  // para qué sirve cada pregunta; la traducción se busca por la clave.
+  // Misma decisión que TOUR_STEPS y LEGAL_SUMMARY.
+  if (e.question) e.question.textContent = _obT(step.titleKey, step.title);
   if (e.hint) {
-    e.hint.textContent = step.hint || "";
-    e.hint.hidden = !step.hint;
+    var pista = step.hint ? _obT(step.hintKey, step.hint) : "";
+    e.hint.textContent = pista;
+    e.hint.hidden = !pista;
   }
   if (e.error) e.error.hidden = true;
   if (e.backBtn) e.backBtn.disabled = (_onboardingIndex === 0);
@@ -273,7 +315,9 @@ function _obRenderStep() {
     // genera el plan y arranca el recorrido (ver onFinish en app.js).
     // "Terminar" dejaba al usuario delante de un formulario relleno sin
     // decirle que faltaba un paso mas.
-    e.nextBtn.textContent = (_onboardingIndex === steps.length - 1) ? "Generar plan" : "Siguiente";
+    e.nextBtn.textContent = (_onboardingIndex === steps.length - 1)
+      ? _obT("ui.generar_plan", "Generar plan")
+      : _obT("ui.siguiente", "Siguiente");
   }
 
   var box = e.answer;
@@ -283,7 +327,9 @@ function _obRenderStep() {
 
   if (step.kind === "choice") {
     box.className = "onboarding__answer onboarding__answer--choices";
-    step.options.forEach(function (opt) {
+    var opciones = _obOpciones(step);
+    if (step.id === "lang" && typeof getLang === "function") current = getLang();
+    opciones.forEach(function (opt) {
       var btn = document.createElement("button");
       btn.type = "button";
       btn.className = "onboarding__choice";
@@ -294,7 +340,7 @@ function _obRenderStep() {
 
       var label = document.createElement("span");
       label.className = "onboarding__choice-label";
-      label.textContent = opt.label;
+      label.textContent = _obT(opt.labelKey, opt.label);
       btn.appendChild(label);
 
       // El importe del presupuesto se lee de BUDGET_PRESETS, la MISMA
@@ -313,7 +359,7 @@ function _obRenderStep() {
       if (opt.note) {
         var note = document.createElement("span");
         note.className = "onboarding__choice-note";
-        note.textContent = opt.note;
+        note.textContent = _obT(opt.noteKey, opt.note);
         btn.appendChild(note);
       }
 
@@ -401,6 +447,14 @@ function _obRenderStep() {
  * contestado.
  */
 function _obWriteAnswer(step, value) {
+  // El idioma no es un dato del perfil: no va al formulario ni a los
+  // ajustes, va a saveLang(). Y se aplica AL INSTANTE, porque lo siguiente
+  // que verá quien acaba de elegirlo son las otras doce preguntas.
+  if (step.id === "lang") {
+    if (typeof saveLang === "function") saveLang(value);
+    if (typeof applyI18nToDom === "function") applyI18nToDom();
+    return;
+  }
   if (step.field === "budgetMode") {
     var radio = document.querySelector('input[name="budgetMode"][value="' + value + '"]');
     if (radio) {
@@ -840,6 +894,16 @@ function _obWire() {
   }
   if (e.nextBtn) e.nextBtn.addEventListener("click", _obNext);
   if (e.backBtn) e.backBtn.addEventListener("click", _obBack);
+
+  // Saltar las preguntas: el alta se da por hecha y el plan se genera con
+  // los valores que ya trae el formulario, que son un perfil valido. No se
+  // pide confirmacion -- todo esto se puede cambiar despues en el panel, y
+  // un "¿seguro?" delante de una salida la convierte en otra pregunta mas.
+  if (e.skipQuestionsBtn) {
+    e.skipQuestionsBtn.addEventListener("click", function () {
+      _obFinishIntake();
+    });
+  }
 }
 
 /**

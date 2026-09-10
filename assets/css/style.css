@@ -4727,6 +4727,31 @@ body.is-onboarding {
   min-width: 110px;
 }
 
+/* ── "Saltar preguntas" ──────────────────────────────────────────────
+   Pequeño a propósito: es una salida, no una opción que competir con
+   las respuestas. Va debajo de la navegación, centrado y sin fondo,
+   para que se vea quien lo busca y no lo pulse quien no.
+   Aun así respeta los 44px de alto táctil: pequeño de aspecto no
+   significa imposible de acertar con el pulgar. */
+.onboarding__skip-questions {
+  display: block;
+  margin: var(--space-4) auto 0;
+  padding: var(--space-2) var(--space-3);
+  min-height: 44px;
+  border: 0;
+  background: none;
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.onboarding__skip-questions:hover,
+.onboarding__skip-questions:focus-visible {
+  color: var(--ink);
+}
+
 /* ── Texto legal completo ────────────────────────────────────────── */
 .legal-dialog {
   max-width: 640px;
