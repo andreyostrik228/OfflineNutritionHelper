@@ -16,6 +16,23 @@
  */
 
 registerI18nTable("es", {
+  "ui.sin_cocinar_2": "Sin cocinar",
+  "ui.despensa_2": "Despensa",
+  "html.catalogo_de_productos": "Catálogo de <em>productos</em>",
+  "html.configura_tus_datos_en_el_panel_lateral_y_pu": "Configura tus datos en el panel lateral y pulsa <strong>Generar plan</strong>.",
+  "html.es_distinto_del_objetivo_de_arriba_aquel_fij": "Es distinto del objetivo de arriba: aquel fija <strong>cuántas</strong> calorías, este con <strong>qué</strong> se llenan. Se aplica a los dos modos, con platos y sin cocinar.",
+  "html.es_una_preferencia_no_un_filtro_lo_que_elija": "Es una <strong>preferencia, no un filtro</strong>: lo que elijas sale más a menudo, pero el resto sigue apareciendo.",
+  "html.esperando_parametros": "<em>Esperando parámetros…</em>",
+  "html.esta_aplicacion_calcula_tus_menus_y_su_preci": "Esta aplicación calcula tus menús y su precio <strong>dentro de tu navegador</strong>, sin enviar nada a ningún servidor. Por eso necesita JavaScript para funcionar: sin él no hay nada que mostrar.",
+  "html.lista_de_la_compra": "Lista de la <em>compra</em>",
+  "html.lo_que_tengas_guardado_en_este_navegador_no_": "Lo que tengas guardado en <strong>este navegador</strong> no se toca: podrás seguir usando la aplicación sin cuenta, igual que antes de crearla.",
+  "html.los_precios_son_de_mercadona_por_ahora_es_la": "Los precios son de <strong>Mercadona</strong>. Por ahora es la única tienda con precios reales, así que no hay nada que elegir.",
+  "html.mis_planes": "Mis <em>planes</em>",
+  "html.plan_sin_cocinar": "Plan <em>sin cocinar</em>",
+  "html.separa_con_comas_se_descarta_cualquier_produ": "Separa con comas. Se descarta cualquier producto o plato cuyo nombre o ingredientes coincidan. <strong>No sirve para alergias:</strong> es una preferencia, no una comprobación de seguridad.",
+  "html.tu_despensa": "Tu <em>despensa</em>",
+  "html.tu_despensa_esta_vacia_aqui_guardas_lo_que_y": "<strong>Tu despensa está vacía.</strong> Aquí guardas lo que ya tienes en casa, para que el sitio no te lo vuelva a pedir comprar. Añade tu primer producto arriba &uarr;",
+  "html.tu_plan_de_hoy": "Tu <em>plan de hoy</em>",
   "ui.no_gracias": "No, gracias",
   "ui.esta_pagina_ya_existe_en": "Weekplate ya está traducido a {idioma} a mano. La traducción automática también cambia los nombres de los productos, y entonces la lista de la compra deja de coincidir con la etiqueta.",
   "ui.usar_la_version_en": "Usar la versión en {idioma}",

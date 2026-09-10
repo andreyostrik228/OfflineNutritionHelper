@@ -75,6 +75,21 @@ function applyI18nToDom(lang) {
   // sílabas, las comillas tipográficas y qué voz usa un lector de pantalla.
   document.documentElement.setAttribute("lang", idioma);
 
+  // Frases con etiquetas dentro ("Es una <strong>preferencia</strong>: …").
+  // Van enteras porque una frase partida en trozos no se traduce: el orden
+  // de las palabras cambia con el idioma y los trozos no se pueden mover.
+  //
+  // Es innerHTML, así que el marcado SOLO se pone en elementos cuyo interior
+  // es texto y etiquetas inertes -- nada con id, ni botones, ni campos: al
+  // sustituir el interior se destruiría el elemento y con él su manejador,
+  // y eso es un botón que deja de funcionar sin dar ningún error. Lo
+  // garantiza el script que puso las marcas. Las tablas son ficheros
+  // nuestros; aquí no entra nada escrito por un usuario.
+  var conHtml = document.querySelectorAll("[data-i18n-html]");
+  for (var h = 0; h < conHtml.length; h++) {
+    conHtml[h].innerHTML = t(conHtml[h].getAttribute("data-i18n-html"), idioma);
+  }
+
   var nodos = document.querySelectorAll("[data-i18n]");
   for (var i = 0; i < nodos.length; i++) {
     // Guarda: `textContent` sobre un elemento con hijos se los lleva por

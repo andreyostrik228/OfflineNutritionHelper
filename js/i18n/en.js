@@ -18,6 +18,23 @@
  */
 
 registerI18nTable("en", {
+  "ui.sin_cocinar_2": "No cooking",
+  "ui.despensa_2": "Pantry",
+  "html.catalogo_de_productos": "Product <em>catalogue</em>",
+  "html.configura_tus_datos_en_el_panel_lateral_y_pu": "Fill in your details in the side panel and press <strong>Generate plan</strong>.",
+  "html.es_distinto_del_objetivo_de_arriba_aquel_fij": "This is different from the goal above: that one sets <strong>how many</strong> calories, this one sets <strong>what</strong> fills them. It applies to both modes, with dishes and without cooking.",
+  "html.es_una_preferencia_no_un_filtro_lo_que_elija": "It is a <strong>preference, not a filter</strong>: what you pick comes up more often, but the rest still appears.",
+  "html.esperando_parametros": "<em>Waiting for your details…</em>",
+  "html.esta_aplicacion_calcula_tus_menus_y_su_preci": "This app works out your meals and their price <strong>inside your browser</strong>, without sending anything to any server. That is why it needs JavaScript: without it there is nothing to show.",
+  "html.lista_de_la_compra": "Shopping <em>list</em>",
+  "html.lo_que_tengas_guardado_en_este_navegador_no_": "Whatever you have saved in <strong>this browser</strong> is left alone: you can keep using the app without an account, just as before you created one.",
+  "html.los_precios_son_de_mercadona_por_ahora_es_la": "Prices come from <strong>Mercadona</strong>. For now it is the only shop with real prices, so there is nothing to choose.",
+  "html.mis_planes": "My <em>plans</em>",
+  "html.plan_sin_cocinar": "No-cook <em>plan</em>",
+  "html.separa_con_comas_se_descarta_cualquier_produ": "Separate with commas. Any product or dish whose name or ingredients match is dropped. <strong>Not a safety check for allergies:</strong> it is a preference, not a guarantee.",
+  "html.tu_despensa": "Your <em>pantry</em>",
+  "html.tu_despensa_esta_vacia_aqui_guardas_lo_que_y": "<strong>Your pantry is empty.</strong> This is where you keep what you already have at home, so the site does not ask you to buy it again. Add your first item above &uarr;",
+  "html.tu_plan_de_hoy": "Today's <em>plan</em>",
   "ui.no_gracias": "No, thanks",
   "ui.esta_pagina_ya_existe_en": "Weekplate is already translated into {idioma} by hand. Automatic translation also rewrites the product names, and then the shopping list stops matching the label.",
   "ui.usar_la_version_en": "Use the {idioma} version",

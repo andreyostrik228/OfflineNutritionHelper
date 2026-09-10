@@ -67,7 +67,7 @@
        .css. Si se olvida, lo peor que pasa es lo de siempre; si se sube,
        no hay mezcla posible.
        ══════════════════════════════════════════════════════════════════ -->
-  <link rel="stylesheet" href="assets/css/style.css?v=20260910l">
+  <link rel="stylesheet" href="assets/css/style.css?v=20260910n">
 
   <!-- ══ ANTES DE PINTAR NADA ══════════════════════════════════════════
        Decide, de forma SÍNCRONA y antes del primer pintado, si este
@@ -234,8 +234,8 @@
   <noscript>
     <div class="sin-js">
       <h1 data-i18n="ui.hace_falta_javascript">Hace falta JavaScript</h1>
-      <p>
-        Esta aplicaci&oacute;n calcula tus men&uacute;s y su precio <strong data-i18n="ui.dentro_de_tu_navegador">dentro de tu
+      <p data-i18n-html="html.esta_aplicacion_calcula_tus_menus_y_su_preci">
+        Esta aplicaci&oacute;n calcula tus men&uacute;s y su precio <strong>dentro de tu
         navegador</strong>, sin enviar nada a ning&uacute;n servidor. Por eso necesita
         JavaScript para funcionar: sin &eacute;l no hay nada que mostrar.
       </p>
@@ -527,8 +527,8 @@
 
       <section class="ajustes-group">
         <h3 class="ajustes-group__title" data-i18n="ui.tienda">Tienda</h3>
-        <p class="ajustes-group__hint" id="ajustesTiendaHint">
-          Los precios son de <strong data-i18n="ui.mercadona">Mercadona</strong>. Por ahora es la
+        <p class="ajustes-group__hint" id="ajustesTiendaHint" data-i18n-html="html.los_precios_son_de_mercadona_por_ahora_es_la">
+          Los precios son de <strong>Mercadona</strong>. Por ahora es la
           &uacute;nica tienda con precios reales, as&iacute; que no hay nada que elegir.
         </p>
       </section>
@@ -626,8 +626,8 @@
           Se borran ahora mismo y para siempre tu cuenta y todo lo que tuvieras
           guardado en la nube: tu perfil, tu despensa y tus planes. No se puede deshacer.
         </p>
-        <p class="delete-dialog__note">
-          Lo que tengas guardado en <strong data-i18n="ui.este_navegador">este navegador</strong> no se toca:
+        <p class="delete-dialog__note" data-i18n-html="html.lo_que_tengas_guardado_en_este_navegador_no_">
+          Lo que tengas guardado en <strong>este navegador</strong> no se toca:
           podr&aacute;s seguir usando la aplicaci&oacute;n sin cuenta, igual que antes de crearla.
         </p>
         <!-- Escribir la palabra para poder borrar. Dos toques seguidos son
@@ -729,8 +729,8 @@
              fija el CSS (`aspect-ratio`), no estos atributos, para que el
              hueco se reserve antes de que baje la imagen. -->
         <picture>
-          <source media="(min-width: 720px)" srcset="assets/img/hero-weekplate.jpg?v=20260910l">
-          <img class="hero__img" src="assets/img/og-weekplate.jpg?v=20260910l"
+          <source media="(min-width: 720px)" srcset="assets/img/hero-weekplate.jpg?v=20260910n">
+          <img class="hero__img" src="assets/img/og-weekplate.jpg?v=20260910n"
                decoding="async"
                data-i18n-alt="ui.weekplate_planificador_de_menus_con_precios_" alt="Weekplate &mdash; planificador de men&uacute;s con precios reales">
         </picture>
@@ -890,8 +890,8 @@
                 <option value="espanola" data-i18n="ui.mas_espanola">M&aacute;s espa&ntilde;ola</option>
                 <option value="internacional" data-i18n="ui.mas_internacional">M&aacute;s internacional</option>
               </select>
-              <p class="field-hint">
-                Es una <strong data-i18n="ui.preferencia_no_un_filtro">preferencia, no un filtro</strong>: lo que elijas
+              <p class="field-hint" data-i18n-html="html.es_una_preferencia_no_un_filtro_lo_que_elija">
+                Es una <strong>preferencia, no un filtro</strong>: lo que elijas
                 sale m&aacute;s a menudo, pero el resto sigue apareciendo.
               </p>
             </div>
@@ -910,9 +910,9 @@
                 <option value="satiety" data-i18n="ui.llenarme_mas_comida_por_euro">Llenarme &mdash; m&aacute;s comida por euro</option>
                 <option value="protein" data-i18n="ui.maxima_proteina">M&aacute;xima prote&iacute;na</option>
               </select>
-              <p class="field-hint">
-                Es distinto del objetivo de arriba: aquel fija <strong data-i18n="ui.cuantas">cu&aacute;ntas</strong>
-                calor&iacute;as, este con <strong data-i18n="ui.que">qu&eacute;</strong> se llenan. Se aplica a los dos
+              <p class="field-hint" data-i18n-html="html.es_distinto_del_objetivo_de_arriba_aquel_fij">
+                Es distinto del objetivo de arriba: aquel fija <strong>cu&aacute;ntas</strong>
+                calor&iacute;as, este con <strong>qu&eacute;</strong> se llenan. Se aplica a los dos
                 modos, con platos y sin cocinar.
               </p>
             </div>
@@ -931,10 +931,10 @@
               <label for="dislikes" data-i18n="ui.alimentos_que_no_te_gustan">Alimentos que no te gustan</label>
               <input type="text" id="dislikes" autocomplete="off"
                      data-i18n-placeholder="ui.cebolla_queso_azul_salmon" placeholder="cebolla, queso azul, salm&oacute;n" />
-              <p class="field-hint" id="dislikesHint">
+              <p class="field-hint" id="dislikesHint" data-i18n-html="html.separa_con_comas_se_descarta_cualquier_produ">
                 Separa con comas. Se descarta cualquier producto o plato cuyo
                 nombre o ingredientes coincidan.
-                <strong data-i18n="ui.no_sirve_para_alergias">No sirve para alergias:</strong> es una preferencia, no
+                <strong>No sirve para alergias:</strong> es una preferencia, no
                 una comprobaci&oacute;n de seguridad.
               </p>
             </div>
@@ -1002,12 +1002,12 @@
                dejaba leerlo. Los otros tres se desplazan con la pagina y se
                leen enteros al llegar abajo. ══ -->
           <div class="actions">
-            <button type="submit" class="btn-primary"><svg width="16" height="16"><use href="#icon-chef"/></svg> Generar plan</button>
+            <button type="submit" class="btn-primary"><svg width="16" height="16"><use href="#icon-chef"/></svg> <span data-i18n="ui.generar_plan">Generar plan</span></button>
           </div>
 
           <div class="actions-secondary">
-            <button type="button" class="btn-secondary btn-nocook" id="noCookBtn"><svg width="16" height="16"><use href="#icon-bolt"/></svg> Sin cocinar</button>
-            <button type="button" class="btn-secondary" id="despensaBtn"><svg width="16" height="16"><use href="#icon-cart"/></svg> Despensa <span class="despensa-btn__count">(<span id="pantryCount">0</span>)</span></button>
+            <button type="button" class="btn-secondary btn-nocook" id="noCookBtn"><svg width="16" height="16"><use href="#icon-bolt"/></svg> <span data-i18n="ui.sin_cocinar_2">Sin cocinar</span></button>
+            <button type="button" class="btn-secondary" id="despensaBtn"><svg width="16" height="16"><use href="#icon-cart"/></svg> <span data-i18n="ui.despensa_2">Despensa</span> <span class="despensa-btn__count">(<span id="pantryCount">0</span>)</span></button>
             <button type="button" class="btn-secondary" id="resetBtn" data-i18n="ui.resetear">Resetear</button>
           </div>
 
@@ -1039,7 +1039,7 @@
       <section class="panel panel--results">
         <div class="output-top">
           <div>
-            <h2>Tu <em data-i18n="ui.plan_de_hoy">plan de hoy</em></h2>
+            <h2 data-i18n-html="html.tu_plan_de_hoy">Tu <em>plan de hoy</em></h2>
             <span class="eyebrow" data-i18n="ui.personalizado_para_tus_objetivos_fisicos">Personalizado para tus objetivos físicos</span>
           </div>
           <div class="badge"><svg class="icon" width="14" height="14"><use href="#icon-chef"/></svg> 100% offline</div>
@@ -1108,8 +1108,8 @@
           <div class="meal-card meal-card--empty" data-empty>
             <div class="meal-body">
               <span class="empty-icon"><svg width="28" height="28"><use href="#icon-search"/></svg></span>
-              <p><em data-i18n="ui.esperando_parametros">Esperando parámetros&hellip;</em></p>
-              <p>Configura tus datos en el panel lateral y pulsa <strong data-i18n="ui.generar_plan">Generar plan</strong>.</p>
+              <p data-i18n-html="html.esperando_parametros"><em>Esperando parámetros&hellip;</em></p>
+              <p data-i18n-html="html.configura_tus_datos_en_el_panel_lateral_y_pu">Configura tus datos en el panel lateral y pulsa <strong>Generar plan</strong>.</p>
             </div>
           </div>
           </div>
@@ -1126,7 +1126,7 @@
     <section class="shopping-panel" id="shoppingPanel" hidden>
       <div class="shopping-panel__head">
         <div>
-          <h2>Lista de la <em data-i18n="ui.compra">compra</em></h2>
+          <h2 data-i18n-html="html.lista_de_la_compra">Lista de la <em>compra</em></h2>
           <span class="eyebrow" id="shoppingEyebrow" data-i18n="ui.todo_lo_que_necesitas_comprar_para_el_plan_d">Todo lo que necesitas comprar para el plan de hoy</span>
         </div>
         <div class="badge"><svg class="icon" width="14" height="14"><use href="#icon-cart"/></svg> <span id="shoppingCount">0</span> productos</div>
@@ -1173,7 +1173,7 @@
     <section class="today-plans-panel" id="todayPlansPanel">
       <div class="today-plans-panel__head verified-panel__head">
         <div>
-          <h2>Mis <em data-i18n="ui.planes">planes</em></h2>
+          <h2 data-i18n-html="html.mis_planes">Mis <em>planes</em></h2>
           <span class="eyebrow" data-i18n="ui.elige_un_dia_para_ver_o_gestionar_ese_plan">Elige un día para ver o gestionar ese plan</span>
         </div>
       </div>
@@ -1197,7 +1197,7 @@
          presenta. ══ -->
     <dialog class="auth-dialog despensa-dialog" id="pantryPanel" aria-labelledby="pantryPanelTitle">
       <div class="auth-dialog__head">
-        <h2 id="pantryPanelTitle">Tu <em data-i18n="ui.despensa">despensa</em></h2>
+        <h2 id="pantryPanelTitle" data-i18n-html="html.tu_despensa">Tu <em>despensa</em></h2>
         <button type="button" class="auth-dialog__close" id="pantryCloseBtn" data-i18n-aria-label="ui.cerrar" aria-label="Cerrar">&times;</button>
       </div>
 
@@ -1215,7 +1215,7 @@
         <ul class="pantry-list" id="pantryListContainer"></ul>
         <div class="pantry-empty" id="pantryEmpty" hidden>
           <svg width="26" height="26"><use href="#icon-cart"/></svg>
-          <p><strong data-i18n="ui.tu_despensa_esta_vacia">Tu despensa est&aacute; vac&iacute;a.</strong> Aqu&iacute; guardas lo que ya tienes en casa, para que el sitio no te lo vuelva a pedir comprar. A&ntilde;ade tu primer producto arriba &uarr;</p>
+          <p data-i18n-html="html.tu_despensa_esta_vacia_aqui_guardas_lo_que_y"><strong>Tu despensa est&aacute; vac&iacute;a.</strong> Aqu&iacute; guardas lo que ya tienes en casa, para que el sitio no te lo vuelva a pedir comprar. A&ntilde;ade tu primer producto arriba &uarr;</p>
         </div>
       </div>
     </dialog>
@@ -1227,7 +1227,7 @@
     <section class="nocook-panel" id="noCookPanel" hidden>
       <div class="nocook-panel__head">
         <div>
-          <h2>Plan <em data-i18n="ui.sin_cocinar">sin cocinar</em></h2>
+          <h2 data-i18n-html="html.plan_sin_cocinar">Plan <em>sin cocinar</em></h2>
           <span class="eyebrow" data-i18n="ui.productos_reales_de_tu_supermercado_comprar_">Productos reales de tu supermercado &mdash; comprar, abrir o calentar r&aacute;pido, comer</span>
         </div>
         <div class="badge"><svg class="icon" width="14" height="14"><use href="#icon-flame"/></svg> <span id="noCookCount">0</span> productos elegibles</div>
@@ -1248,7 +1248,7 @@
       <summary>
         <div class="verified-panel__head">
           <div>
-            <h2>Cat&aacute;logo de <em data-i18n="ui.productos">productos</em></h2>
+            <h2 data-i18n-html="html.catalogo_de_productos">Cat&aacute;logo de <em>productos</em></h2>
             <span class="eyebrow" data-i18n="ui.productos_reales_de_tu_supermercado_nombre_m">Productos reales de tu supermercado &mdash; nombre, marca y precio reales; nutrici&oacute;n cuando est&aacute; disponible</span>
           </div>
           <div class="badge"><svg class="icon" width="14" height="14"><use href="#icon-search"/></svg> <span id="verifiedCount">0</span> productos</div>
@@ -1331,17 +1331,17 @@
        js/core/supabase-client.js. -->
  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.min.js"></script>
 
-<script src="js/data/supabase-config.js?v=20260910l"></script>
-<script src="js/data/legal.js?v=20260910l"></script>
-<script src="js/data/onboarding-steps.js?v=20260910l"></script>
-<script src="js/data/tour-steps.js?v=20260910l"></script>
-<script src="js/data/dishes.js?v=20260910l"></script>
+<script src="js/data/supabase-config.js?v=20260910n"></script>
+<script src="js/data/legal.js?v=20260910n"></script>
+<script src="js/data/onboarding-steps.js?v=20260910n"></script>
+<script src="js/data/tour-steps.js?v=20260910n"></script>
+<script src="js/data/dishes.js?v=20260910n"></script>
 <!-- dish-instructions.js: pasos/equipo/dificultad, ADITIVO y opcional.
      Un plato sin entrada aqui se comporta exactamente como antes -- por
      eso dishes.js no se toca y los golden-master no se mueven. -->
-<script src="js/data/dish-instructions.js?v=20260910l"></script>
-<script src="js/data/dish-cuisine.js?v=20260910l"></script>
-<script src="js/data/real-products.js?v=20260910l"></script>
+<script src="js/data/dish-instructions.js?v=20260910n"></script>
+<script src="js/data/dish-cuisine.js?v=20260910n"></script>
+<script src="js/data/real-products.js?v=20260910n"></script>
 <!-- Alcampo y Carrefour se cayeron el 2026-09-07: 103 KB que viajaban a
      cada visitante sin que NADIE los leyera. Comprobado antes de quitarlos:
      ningun fichero fuera de ellos mismos menciona REAL_PRODUCTS_ALCAMPO ni
@@ -1349,88 +1349,88 @@
      js/data/prices/ solo existe mercadona.js -- asi que ni con precios
      habrian servido. Si algun dia vuelve el selector de tienda, vuelven
      desde git; ver la cabecera de js/core/pricing.js para el porque. -->
-<script src="js/data/packaging.js?v=20260910l"></script>
-<script src="js/data/real-ingredient-matches.js?v=20260910l"></script>
-<script src="js/data/product-links.js?v=20260910l"></script>
-<script src="js/data/ingredient-nutrition.js?v=20260910l"></script>
-<script src="js/data/no-cook-classifier.js?v=20260910l"></script>
+<script src="js/data/packaging.js?v=20260910n"></script>
+<script src="js/data/real-ingredient-matches.js?v=20260910n"></script>
+<script src="js/data/product-links.js?v=20260910n"></script>
+<script src="js/data/ingredient-nutrition.js?v=20260910n"></script>
+<script src="js/data/no-cook-classifier.js?v=20260910n"></script>
 <!-- Raciones/papeles de cada producto y formas de comida del modo "sin
      cocinar" (2026-09-01). serving-sizes.js antes que el generador: sin el
      ANTES no habia gramos por racion y los macros en pantalla eran los de
      100 g. -->
-<script src="js/data/serving-sizes.js?v=20260910l"></script>
-<script src="js/data/no-cook-templates.js?v=20260910l"></script>
-<script src="js/data/prices/mercadona.js?v=20260910l"></script>
-<script src="js/data/budget-presets.js?v=20260910l"></script>
-<script src="js/data/dislike-groups.js?v=20260910l"></script>
-<script src="js/data/shelf-life.js?v=20260910l"></script>
+<script src="js/data/serving-sizes.js?v=20260910n"></script>
+<script src="js/data/no-cook-templates.js?v=20260910n"></script>
+<script src="js/data/prices/mercadona.js?v=20260910n"></script>
+<script src="js/data/budget-presets.js?v=20260910n"></script>
+<script src="js/data/dislike-groups.js?v=20260910n"></script>
+<script src="js/data/shelf-life.js?v=20260910n"></script>
 <!-- Conservación REAL publicada por Mercadona (generado por
      PythonProject/scripts/export_product_storage.py). Tiene prioridad
      sobre shelf-life.js, que es estimación nuestra. -->
-<script src="js/data/product-storage.js?v=20260910l"></script>
+<script src="js/data/product-storage.js?v=20260910n"></script>
 <!-- Alergenos declarados en la etiqueta de Mercadona (generado por
      scratchpad/gen_allergens.js). Solo para MOSTRAR en las tarjetas de
      "sin cocinar" -- no es un filtro, ver js/core/allergens.js. -->
-<script src="js/data/product-allergens.js?v=20260910l"></script>
+<script src="js/data/product-allergens.js?v=20260910n"></script>
 <!-- Estado del tema. Sin DOM: solo guarda, valida y resuelve.
      Antes que cualquier ui/ porque render-menu.js lo usa. -->
-<script src="js/core/theme.js?v=20260910l"></script>
+<script src="js/core/theme.js?v=20260910n"></script>
 <!-- Idioma. i18n.js ANTES que las tablas: son ellas las que llaman a
      registerI18nTable(). Y las tablas antes que cualquier ui/, que es
      quien pinta. Se cargan TODAS y no solo la elegida: cargarla despues
      de pintar hace parpadear la pagina del espanol al idioma elegido, y
      esconderla hasta que llegue es lo que prohibe 7.2. -->
-<script src="js/core/i18n.js?v=20260910l"></script>
-<script src="js/i18n/es.js?v=20260910l"></script>
-<script src="js/i18n/en.js?v=20260910l"></script>
-<script src="js/core/utils.js?v=20260910l"></script>
-<script src="js/core/pricing.js?v=20260910l"></script>
-<script src="js/core/nutrition.js?v=20260910l"></script>
+<script src="js/core/i18n.js?v=20260910n"></script>
+<script src="js/i18n/es.js?v=20260910n"></script>
+<script src="js/i18n/en.js?v=20260910n"></script>
+<script src="js/core/utils.js?v=20260910n"></script>
+<script src="js/core/pricing.js?v=20260910n"></script>
+<script src="js/core/nutrition.js?v=20260910n"></script>
 <!-- expiry.js despues de pricing.js (usa normalizeIngredientKey) y de
      shelf-life.js (usa getShelfLife); antes de pantry.js, que lo consulta
      desde listPantryEntries(). Los tres son opcionales: si expiry.js
      faltara, la despensa sigue funcionando sin columna de caducidad. -->
-<script src="js/core/expiry.js?v=20260910l"></script>
+<script src="js/core/expiry.js?v=20260910n"></script>
 <!-- preferences.js despues de pricing.js (reutiliza
      normalizeIngredientKey para no tener dos normalizaciones que puedan
      divergir). Es SOLO preferencias blandas ("no me gusta"); las alergias
      son una restriccion de seguridad y viviran en su propio archivo, a
      proposito -- ver la cabecera de preferences.js. -->
-<script src="js/core/preferences.js?v=20260910l"></script>
+<script src="js/core/preferences.js?v=20260910n"></script>
 <!-- allergens.js: MOSTRAR alergenos de etiqueta, nunca filtrar. Aparte de
      preferences.js a proposito (ver cabecera de ambos). Despues de
      product-allergens.js (usa PRODUCT_ALLERGENS) y utils.js (escapeHtml). -->
-<script src="js/core/allergens.js?v=20260910l"></script>
-<script src="js/core/pantry.js?v=20260910l"></script>
-<script src="js/core/budget.js?v=20260910l"></script>
-<script src="js/core/calculator.js?v=20260910l"></script>
-<script src="js/core/meal-helpers.js?v=20260910l"></script>
-<script src="js/core/meal-schedule.js?v=20260910l"></script>
-<script src="js/core/supabase-client.js?v=20260910l"></script>
-<script src="js/core/settings.js?v=20260910l"></script>
-<script src="js/core/onboarding.js?v=20260910l"></script>
-<script src="js/core/auth.js?v=20260910l"></script>
-<script src="js/core/cloud-sync.js?v=20260910l"></script>
-<script src="js/core/migration.js?v=20260910l"></script>
-<script src="js/engine/dish-selector.js?v=20260910l"></script>
-<script src="js/engine/plan-generator.js?v=20260910l"></script>
-<script src="js/engine/no-cook-generator.js?v=20260910l"></script>
-<script src="js/ui/render.js?v=20260910l"></script>
-<script src="js/ui/render-schedule.js?v=20260910l"></script>
-<script src="js/ui/render-shopping-list.js?v=20260910l"></script>
-<script src="js/ui/render-pantry.js?v=20260910l"></script>
-<script src="js/ui/render-insights.js?v=20260910l"></script>
-<script src="js/ui/render-real-products.js?v=20260910l"></script>
-<script src="js/ui/render-no-cook.js?v=20260910l"></script>
-<script src="js/ui/render-auth.js?v=20260910l"></script>
-<script src="js/ui/onboarding-ui.js?v=20260910l"></script>
-<script src="js/ui/tour.js?v=20260910l"></script>
-<script src="js/ui/ingredient-suggest.js?v=20260910l"></script>
-<script src="js/ui/animations.js?v=20260910l"></script>
+<script src="js/core/allergens.js?v=20260910n"></script>
+<script src="js/core/pantry.js?v=20260910n"></script>
+<script src="js/core/budget.js?v=20260910n"></script>
+<script src="js/core/calculator.js?v=20260910n"></script>
+<script src="js/core/meal-helpers.js?v=20260910n"></script>
+<script src="js/core/meal-schedule.js?v=20260910n"></script>
+<script src="js/core/supabase-client.js?v=20260910n"></script>
+<script src="js/core/settings.js?v=20260910n"></script>
+<script src="js/core/onboarding.js?v=20260910n"></script>
+<script src="js/core/auth.js?v=20260910n"></script>
+<script src="js/core/cloud-sync.js?v=20260910n"></script>
+<script src="js/core/migration.js?v=20260910n"></script>
+<script src="js/engine/dish-selector.js?v=20260910n"></script>
+<script src="js/engine/plan-generator.js?v=20260910n"></script>
+<script src="js/engine/no-cook-generator.js?v=20260910n"></script>
+<script src="js/ui/render.js?v=20260910n"></script>
+<script src="js/ui/render-schedule.js?v=20260910n"></script>
+<script src="js/ui/render-shopping-list.js?v=20260910n"></script>
+<script src="js/ui/render-pantry.js?v=20260910n"></script>
+<script src="js/ui/render-insights.js?v=20260910n"></script>
+<script src="js/ui/render-real-products.js?v=20260910n"></script>
+<script src="js/ui/render-no-cook.js?v=20260910n"></script>
+<script src="js/ui/render-auth.js?v=20260910n"></script>
+<script src="js/ui/onboarding-ui.js?v=20260910n"></script>
+<script src="js/ui/tour.js?v=20260910n"></script>
+<script src="js/ui/ingredient-suggest.js?v=20260910n"></script>
+<script src="js/ui/animations.js?v=20260910n"></script>
 <!-- El menu de ajustes. Despues de onboarding-ui.js (usa
      openLegalDialog) y de tour.js (usa startTour via app.js). -->
-<script src="js/ui/render-menu.js?v=20260910l"></script>
-<script src="js/app.js?v=20260910l"></script>
+<script src="js/ui/render-menu.js?v=20260910n"></script>
+<script src="js/app.js?v=20260910n"></script>
 
 <!-- ══ OFFLINE DE VERDAD (2026-09-07) ═══════════════════════════════════
      Se registra al final y envuelto en try: si el navegador no soporta
