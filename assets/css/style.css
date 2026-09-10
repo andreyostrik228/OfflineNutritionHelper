@@ -327,6 +327,75 @@ body {
    solo oculto) ni las formas decorativas (ruido visual innecesario a
    este tamaño). Reutiliza el mismo fondo/color de .hero -- ver
    index.html para el modificador aplicado. */
+/* ── Cabecera con la imagen de marca (2026-09-10) ──────────────────────
+   Sin panel verde: la imagen ya es el bloque de color, y el crema del
+   fondo de la ilustracion es el mismo --paper de la pagina, asi que
+   apoyarla sobre el degradado la dejaria como un parche.
+
+   `.hero` pone `color: var(--hero-ink)`, que es crema y existe para leerse
+   SOBRE el verde. Aqui no hay verde, asi que la tinta vuelve a la normal;
+   sin esto el distintivo se quedaba crema sobre crema, invisible. */
+.hero--imagen {
+  padding: 0;
+  background: none;
+  color: var(--ink);
+  align-items: stretch;
+  gap: var(--space-3);
+  margin-bottom: var(--space-8);
+}
+
+.hero--imagen::before,
+.hero--imagen::after {
+  display: none;
+}
+
+/* `.hero--imagen .hero__marca` y no `.hero__marca` a secas: la regla que
+   hay que ganar es `.hero h1` (0,1,1 -- clase MAS elemento), y una sola
+   clase (0,1,0) pierde. Medido: con el selector corto el titulo se quedaba
+   en 532px dentro de un contenedor de 832. */
+.hero--imagen .hero__marca {
+  margin: 0;
+  /* La imagen es un elemento en linea: sin esto el <h1> le reserva sitio
+     para las colas de las letras y deja una franja bajo la foto. */
+  line-height: 0;
+  /* `.hero h1` lleva `max-width: 14ch`, que es la medida de linea del
+     titulo de TEXTO que habia antes. Sobre una imagen no significa nada. */
+  max-width: none;
+  font-size: 0;
+}
+
+.hero__img {
+  display: block;
+  /* Con `width:100%` a secas, en un contenedor de 1.280px la imagen salia
+     a 1.280x671: media pantalla de portatil ocupada por una cabecera que
+     no es accionable, que es justo lo que se quito en 2026-08-23 cuando la
+     "portada" era un h1 gigante. Aqui es una MARCA, no una portada.
+
+     El tope va en px y el ancho en %, no al reves: por debajo de 520px
+     manda el %, asi que en el movil sigue ocupando el ancho entero sin
+     necesitar una media query. */
+  width: 100%;
+  max-width: 520px;
+  height: auto;
+  border-radius: var(--radius-xl);
+}
+
+.hero--imagen .brand-eyebrow {
+  transform: none;
+  /* Debajo de la imagen y alineado con ella. A la derecha del todo se
+     quedaba flotando lejos de la marca en cuanto la imagen dejo de
+     ocupar el ancho completo. */
+  align-self: flex-start;
+}
+
+.hero--imagen .brand-eyebrow .badge-text {
+  font-size: 10px;
+  padding: 4px 10px;
+  color: var(--ink-faint);
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+}
+
 .hero--compact {
   flex-direction: row;
   align-items: center;

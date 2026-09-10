@@ -82,7 +82,10 @@ function renderInsights(profile, result, data) {
     capStatus,
     "Presupuesto diario: €" + round2(data.budget) + ". Compra necesaria: €" + round2(purchaseCost) +
       " (margen: €" + Math.max(0, budgetGap) + "). Consumo real de ingredientes: €" + round2(total.cost) + ".",
-    "Tiempo medio de preparación por bloque: " + avgPrep + " min. Motor: platos reales de DISH_DB."
+    // "DISH_DB" era el nombre de una variable interna asomando en pantalla.
+    // Lo que le importa a quien lee esto es que los platos son recetas de
+    // verdad y no combinaciones sueltas de alimentos.
+    "Tiempo medio de preparación por bloque: " + avgPrep + " min. Los platos son recetas completas, no alimentos sueltos."
   ];
 
   insightsList.innerHTML = notes.map(function (n) {

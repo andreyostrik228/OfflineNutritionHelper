@@ -845,10 +845,14 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
   // ── Contador informativo de la base de platos ────────────────────────
+  // Dos sitios lo enseñan y NINGUNO puede llevar el número a mano: el de
+  // "Notas del plan" decía 334 con el catálogo ya en 434, porque una cifra
+  // escrita en el HTML no se entera de que los datos crecen.
   safeInit("food-count", function () {
-    if (foodCountEl && typeof DISH_DB !== "undefined") {
-      foodCountEl.textContent = DISH_DB.length;
-    }
+    if (typeof DISH_DB === "undefined") return;
+    if (foodCountEl) foodCountEl.textContent = DISH_DB.length;
+    var enNotas = document.getElementById("insightsDishCount");
+    if (enNotas) enNotas.textContent = DISH_DB.length;
   });
 
   // ── Selector de tienda: RETIRADO (2026-08-25) ───────────────────────

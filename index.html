@@ -67,7 +67,7 @@
        .css. Si se olvida, lo peor que pasa es lo de siempre; si se sube,
        no hay mezcla posible.
        ══════════════════════════════════════════════════════════════════ -->
-  <link rel="stylesheet" href="assets/css/style.css?v=20260910b">
+  <link rel="stylesheet" href="assets/css/style.css?v=20260910f">
 
   <!-- ══ ANTES DE PINTAR NADA ══════════════════════════════════════════
        Decide, de forma SÍNCRONA y antes del primer pintado, si este
@@ -658,11 +658,24 @@
          título de una sola fila (icono + h1 pequeño + badge), sin párrafo
          (eliminado del todo, no oculto) -- ver .hero--compact en
          style.css. ══ -->
-    <section class="hero hero--compact">
-      <div class="hero__title-group">
-        <div class="brand-mark"><svg width="18" height="18"><use href="#icon-chef"/></svg></div>
-        <h1>Planificador de <span class="hero__serif">nutrición</span></h1>
-      </div>
+    <!-- ══ CABECERA con la imagen de marca (2026-09-10) ══════════════════
+         Antes era una barra de titulo que decia "Planificador de nutricion"
+         mientras la aplicacion se llama Weekplate desde el 2026-09-08: el
+         nombre solo aparecia en la pestana y en la tarjeta al compartir.
+         Ahora la cabecera es esa misma imagen, que ya trae el nombre.
+
+         El <h1> se queda (con la imagen dentro) porque una pagina sin h1
+         pierde su estructura para un lector de pantalla y para un buscador;
+         el `alt` lleva el texto que antes era el titulo.
+
+         `width`/`height` reales para que el hueco se reserve antes de que
+         baje la imagen y la pagina no de un salto. ══════════════════════ -->
+    <section class="hero hero--imagen">
+      <h1 class="hero__marca">
+        <img class="hero__img" src="assets/img/og-weekplate.jpg?v=20260910f"
+             width="1732" height="908" decoding="async"
+             alt="Weekplate &mdash; planificador de men&uacute;s con precios reales">
+      </h1>
       <span class="brand-eyebrow"><span class="badge-text">Motor de reglas &middot; 100% offline</span></span>
     </section>
 
@@ -1206,7 +1219,13 @@
     <div class="insights" id="insightsBox">
       <h3><span class="icon-badge"><svg width="14" height="14"><use href="#icon-search"/></svg></span> Notas del plan</h3>
       <ul id="insightsList">
-        <li>Motor: platos reales de DISH_DB (334 platos, 18 fuentes proteicas).</li>
+        <!-- El numero lo pone app.js desde DISH_DB.length. Escrito a mano
+             decia 334 cuando el catalogo ya iba por 434: una cifra a mano
+             en el HTML no se entera de que los datos crecen. Y "DISH_DB"
+             era el nombre de una variable interna, en pantalla, para el
+             usuario. -->
+        <li>Recetas de verdad: <span id="insightsDishCount">&hellip;</span> platos con
+            ingredientes, pesos y precios reales.</li>
         <li>Garantiza ≥3 fuentes de proteína y ≥3 de carbohidratos al día.</li>
         <li>Ningún alimento puede superar el 25% de las calorías diarias.</li>
         <li>Sin dependencias externas — 100% offline.</li>
@@ -1253,17 +1272,17 @@
        js/core/supabase-client.js. -->
  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.min.js"></script>
 
-<script src="js/data/supabase-config.js?v=20260910b"></script>
-<script src="js/data/legal.js?v=20260910b"></script>
-<script src="js/data/onboarding-steps.js?v=20260910b"></script>
-<script src="js/data/tour-steps.js?v=20260910b"></script>
-<script src="js/data/dishes.js?v=20260910b"></script>
+<script src="js/data/supabase-config.js?v=20260910f"></script>
+<script src="js/data/legal.js?v=20260910f"></script>
+<script src="js/data/onboarding-steps.js?v=20260910f"></script>
+<script src="js/data/tour-steps.js?v=20260910f"></script>
+<script src="js/data/dishes.js?v=20260910f"></script>
 <!-- dish-instructions.js: pasos/equipo/dificultad, ADITIVO y opcional.
      Un plato sin entrada aqui se comporta exactamente como antes -- por
      eso dishes.js no se toca y los golden-master no se mueven. -->
-<script src="js/data/dish-instructions.js?v=20260910b"></script>
-<script src="js/data/dish-cuisine.js?v=20260910b"></script>
-<script src="js/data/real-products.js?v=20260910b"></script>
+<script src="js/data/dish-instructions.js?v=20260910f"></script>
+<script src="js/data/dish-cuisine.js?v=20260910f"></script>
+<script src="js/data/real-products.js?v=20260910f"></script>
 <!-- Alcampo y Carrefour se cayeron el 2026-09-07: 103 KB que viajaban a
      cada visitante sin que NADIE los leyera. Comprobado antes de quitarlos:
      ningun fichero fuera de ellos mismos menciona REAL_PRODUCTS_ALCAMPO ni
@@ -1271,80 +1290,80 @@
      js/data/prices/ solo existe mercadona.js -- asi que ni con precios
      habrian servido. Si algun dia vuelve el selector de tienda, vuelven
      desde git; ver la cabecera de js/core/pricing.js para el porque. -->
-<script src="js/data/packaging.js?v=20260910b"></script>
-<script src="js/data/real-ingredient-matches.js?v=20260910b"></script>
-<script src="js/data/product-links.js?v=20260910b"></script>
-<script src="js/data/ingredient-nutrition.js?v=20260910b"></script>
-<script src="js/data/no-cook-classifier.js?v=20260910b"></script>
+<script src="js/data/packaging.js?v=20260910f"></script>
+<script src="js/data/real-ingredient-matches.js?v=20260910f"></script>
+<script src="js/data/product-links.js?v=20260910f"></script>
+<script src="js/data/ingredient-nutrition.js?v=20260910f"></script>
+<script src="js/data/no-cook-classifier.js?v=20260910f"></script>
 <!-- Raciones/papeles de cada producto y formas de comida del modo "sin
      cocinar" (2026-09-01). serving-sizes.js antes que el generador: sin el
      ANTES no habia gramos por racion y los macros en pantalla eran los de
      100 g. -->
-<script src="js/data/serving-sizes.js?v=20260910b"></script>
-<script src="js/data/no-cook-templates.js?v=20260910b"></script>
-<script src="js/data/prices/mercadona.js?v=20260910b"></script>
-<script src="js/data/budget-presets.js?v=20260910b"></script>
-<script src="js/data/dislike-groups.js?v=20260910b"></script>
-<script src="js/data/shelf-life.js?v=20260910b"></script>
+<script src="js/data/serving-sizes.js?v=20260910f"></script>
+<script src="js/data/no-cook-templates.js?v=20260910f"></script>
+<script src="js/data/prices/mercadona.js?v=20260910f"></script>
+<script src="js/data/budget-presets.js?v=20260910f"></script>
+<script src="js/data/dislike-groups.js?v=20260910f"></script>
+<script src="js/data/shelf-life.js?v=20260910f"></script>
 <!-- Conservación REAL publicada por Mercadona (generado por
      PythonProject/scripts/export_product_storage.py). Tiene prioridad
      sobre shelf-life.js, que es estimación nuestra. -->
-<script src="js/data/product-storage.js?v=20260910b"></script>
+<script src="js/data/product-storage.js?v=20260910f"></script>
 <!-- Alergenos declarados en la etiqueta de Mercadona (generado por
      scratchpad/gen_allergens.js). Solo para MOSTRAR en las tarjetas de
      "sin cocinar" -- no es un filtro, ver js/core/allergens.js. -->
-<script src="js/data/product-allergens.js?v=20260910b"></script>
+<script src="js/data/product-allergens.js?v=20260910f"></script>
 <!-- Estado del tema. Sin DOM: solo guarda, valida y resuelve.
      Antes que cualquier ui/ porque render-menu.js lo usa. -->
-<script src="js/core/theme.js?v=20260910b"></script>
-<script src="js/core/utils.js?v=20260910b"></script>
-<script src="js/core/pricing.js?v=20260910b"></script>
-<script src="js/core/nutrition.js?v=20260910b"></script>
+<script src="js/core/theme.js?v=20260910f"></script>
+<script src="js/core/utils.js?v=20260910f"></script>
+<script src="js/core/pricing.js?v=20260910f"></script>
+<script src="js/core/nutrition.js?v=20260910f"></script>
 <!-- expiry.js despues de pricing.js (usa normalizeIngredientKey) y de
      shelf-life.js (usa getShelfLife); antes de pantry.js, que lo consulta
      desde listPantryEntries(). Los tres son opcionales: si expiry.js
      faltara, la despensa sigue funcionando sin columna de caducidad. -->
-<script src="js/core/expiry.js?v=20260910b"></script>
+<script src="js/core/expiry.js?v=20260910f"></script>
 <!-- preferences.js despues de pricing.js (reutiliza
      normalizeIngredientKey para no tener dos normalizaciones que puedan
      divergir). Es SOLO preferencias blandas ("no me gusta"); las alergias
      son una restriccion de seguridad y viviran en su propio archivo, a
      proposito -- ver la cabecera de preferences.js. -->
-<script src="js/core/preferences.js?v=20260910b"></script>
+<script src="js/core/preferences.js?v=20260910f"></script>
 <!-- allergens.js: MOSTRAR alergenos de etiqueta, nunca filtrar. Aparte de
      preferences.js a proposito (ver cabecera de ambos). Despues de
      product-allergens.js (usa PRODUCT_ALLERGENS) y utils.js (escapeHtml). -->
-<script src="js/core/allergens.js?v=20260910b"></script>
-<script src="js/core/pantry.js?v=20260910b"></script>
-<script src="js/core/budget.js?v=20260910b"></script>
-<script src="js/core/calculator.js?v=20260910b"></script>
-<script src="js/core/meal-helpers.js?v=20260910b"></script>
-<script src="js/core/meal-schedule.js?v=20260910b"></script>
-<script src="js/core/supabase-client.js?v=20260910b"></script>
-<script src="js/core/settings.js?v=20260910b"></script>
-<script src="js/core/onboarding.js?v=20260910b"></script>
-<script src="js/core/auth.js?v=20260910b"></script>
-<script src="js/core/cloud-sync.js?v=20260910b"></script>
-<script src="js/core/migration.js?v=20260910b"></script>
-<script src="js/engine/dish-selector.js?v=20260910b"></script>
-<script src="js/engine/plan-generator.js?v=20260910b"></script>
-<script src="js/engine/no-cook-generator.js?v=20260910b"></script>
-<script src="js/ui/render.js?v=20260910b"></script>
-<script src="js/ui/render-schedule.js?v=20260910b"></script>
-<script src="js/ui/render-shopping-list.js?v=20260910b"></script>
-<script src="js/ui/render-pantry.js?v=20260910b"></script>
-<script src="js/ui/render-insights.js?v=20260910b"></script>
-<script src="js/ui/render-real-products.js?v=20260910b"></script>
-<script src="js/ui/render-no-cook.js?v=20260910b"></script>
-<script src="js/ui/render-auth.js?v=20260910b"></script>
-<script src="js/ui/onboarding-ui.js?v=20260910b"></script>
-<script src="js/ui/tour.js?v=20260910b"></script>
-<script src="js/ui/ingredient-suggest.js?v=20260910b"></script>
-<script src="js/ui/animations.js?v=20260910b"></script>
+<script src="js/core/allergens.js?v=20260910f"></script>
+<script src="js/core/pantry.js?v=20260910f"></script>
+<script src="js/core/budget.js?v=20260910f"></script>
+<script src="js/core/calculator.js?v=20260910f"></script>
+<script src="js/core/meal-helpers.js?v=20260910f"></script>
+<script src="js/core/meal-schedule.js?v=20260910f"></script>
+<script src="js/core/supabase-client.js?v=20260910f"></script>
+<script src="js/core/settings.js?v=20260910f"></script>
+<script src="js/core/onboarding.js?v=20260910f"></script>
+<script src="js/core/auth.js?v=20260910f"></script>
+<script src="js/core/cloud-sync.js?v=20260910f"></script>
+<script src="js/core/migration.js?v=20260910f"></script>
+<script src="js/engine/dish-selector.js?v=20260910f"></script>
+<script src="js/engine/plan-generator.js?v=20260910f"></script>
+<script src="js/engine/no-cook-generator.js?v=20260910f"></script>
+<script src="js/ui/render.js?v=20260910f"></script>
+<script src="js/ui/render-schedule.js?v=20260910f"></script>
+<script src="js/ui/render-shopping-list.js?v=20260910f"></script>
+<script src="js/ui/render-pantry.js?v=20260910f"></script>
+<script src="js/ui/render-insights.js?v=20260910f"></script>
+<script src="js/ui/render-real-products.js?v=20260910f"></script>
+<script src="js/ui/render-no-cook.js?v=20260910f"></script>
+<script src="js/ui/render-auth.js?v=20260910f"></script>
+<script src="js/ui/onboarding-ui.js?v=20260910f"></script>
+<script src="js/ui/tour.js?v=20260910f"></script>
+<script src="js/ui/ingredient-suggest.js?v=20260910f"></script>
+<script src="js/ui/animations.js?v=20260910f"></script>
 <!-- El menu de ajustes. Despues de onboarding-ui.js (usa
      openLegalDialog) y de tour.js (usa startTour via app.js). -->
-<script src="js/ui/render-menu.js?v=20260910b"></script>
-<script src="js/app.js?v=20260910b"></script>
+<script src="js/ui/render-menu.js?v=20260910f"></script>
+<script src="js/app.js?v=20260910f"></script>
 
 <!-- ══ OFFLINE DE VERDAD (2026-09-07) ═══════════════════════════════════
      Se registra al final y envuelto en try: si el navegador no soporta
