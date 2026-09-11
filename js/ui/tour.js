@@ -307,6 +307,91 @@ function _tourAltoMaxMarco(alLado) {
 }
 
 /**
+ * Cuando lo señalado NO CABE y no tiene contexto, el primer trozo suyo que
+ * si quepa.
+ *
+ * El paso "tu dia de comidas" apunta a `#mealsContainer`, que mide 1.971 px:
+ * no cabe, asi que se recortaba a la banda y el resultado era un recuadro de
+ * 924x696 -- el 64% de la pantalla. Eso no señala una zona, señala casi
+ * todo, y el dueno lo dijo: "неправильную зону показывает".
+ *
+ * Bajando hasta la primera tarjeta de comida se enmarca algo que cabe
+ * entero y que ademas se lee como lo que es. Es la misma forma que el dueno
+ * aprobo en el paso de "Cambiar": una tarjeta, no una franja.
+ *
+ * Baja en cadena porque la estructura tiene capas intermedias que tampoco
+ * caben (`#mealsContainer` > `.day-slide` de 1.861 > `.meals-grid` >
+ * `.meal-card` de 695).
+ *
+ * @param {Element} el
+ * @param {number} altoMax
+ * @returns {Element|null} el trozo, o null si no hay ninguno que quepa
+ */
+function _tourPrimerTrozoQueCabe(el, altoMax) {
+  var actual = el;
+  // Tope de profundidad: sin el, una estructura muy anidada acabaria
+  // señalando una palabra suelta en vez de un bloque.
+  for (var nivel = 0; nivel < 4; nivel++) {
+    var hijos = actual.children;
+    if (!hijos || !hijos.length) return null;
+    var elegido = null;
+    for (var i = 0; i < hijos.length; i++) {
+      var hr = hijos[i].getBoundingClientRect();
+      // Se salta lo decorativo y lo vacio: una franja de 20 px no es un
+      // trozo del contenido, es una linea o un titulo suelto.
+      if (hr.height < 120) continue;
+      elegido = hijos[i];
+      break;
+    }
+    if (!elegido) return null;
+    // Con un margen ancho, no al pixel. Dos medidas lo fijan: en el portatil
+    // una tarjeta de comida de 695 px quedaba fuera de una banda de 696 por
+    // quince pixeles; en el movil, una de 627 en una banda de 529 se
+    // rechazaba y se bajaba un nivel mas, hasta `.meal-body` -- el cuerpo de
+    // la tarjeta SIN su titulo, que es justo lo que dice de que comida se
+    // trata.
+    //
+    // Recortada por doscientos pixeles una tarjeta se sigue leyendo como una
+    // tarjeta. Mas alla de eso vuelve a ser una losa, y entonces si conviene
+    // bajar.
+    if (elegido.getBoundingClientRect().height <= altoMax + 200) return elegido;
+    actual = elegido;
+  }
+  return null;
+}
+
+/**
+ * QUE se enmarca y QUE no puede quedar fuera del marco.
+ *
+ * Las tres funciones que colocan el recorrido (`_tourRender`,
+ * `_tourPosition` y `_tourDestino`) tienen que partir de la misma respuesta,
+ * o una centra una cosa y otra pinta otra.
+ *
+ * @param {Element} objetivo
+ * @returns {{marco: Element, dentro: Element, contexto: Element|null}}
+ */
+function _tourQueEnmarcar(objetivo) {
+  var contexto = _tourContexto(objetivo);
+  if (contexto) return { marco: contexto, dentro: objetivo, contexto: contexto };
+
+  var r = objetivo.getBoundingClientRect();
+  var left = Math.max(TOUR_MARGEN, r.left - TOUR_PAD);
+  var right = Math.min(window.innerWidth - TOUR_MARGEN, r.right + TOUR_PAD);
+  var altoMax = _tourAltoMaxMarco(_tourNotaAlLado({ left: left, right: right }));
+
+  if (r.height + TOUR_PAD * 2 <= altoMax) {
+    return { marco: objetivo, dentro: objetivo, contexto: null };
+  }
+
+  // No cabe: mejor un trozo entero que una franja de algo enorme.
+  var trozo = _tourPrimerTrozoQueCabe(objetivo, altoMax);
+  if (trozo) return { marco: trozo, dentro: trozo, contexto: null };
+
+  // Ni eso: se recorta el objetivo, como se hacia siempre.
+  return { marco: objetivo, dentro: objetivo, contexto: null };
+}
+
+/**
  * La tarjeta o el panel donde vive lo que se explica.
  *
  * Sirve para que el usuario vea DONDE esta lo que se le senala: sin esto,
@@ -324,10 +409,19 @@ function _tourContexto(el) {
 
   // "No cabe por poco" y "no cabe ni de lejos" son cosas distintas: la
   // tarjeta recortada sigue leyendose como una tarjeta, y el formulario
-  // entero (1.689 px) no se lee como nada. De ahi el margen de vez y media,
-  // topado por la pantalla para que el marco nunca la desborde entera.
-  var altoMaxDebajo = Math.min(_tourAltoMaxMarco(false) * 1.5, window.innerHeight - 24);
-  var altoMaxAlLado = _tourAltoMaxMarco(true);
+  // entero (1.689 px) no se lee como nada.
+  //
+  // El margen es el MISMO para la nota al lado y para la nota debajo, y el
+  // mismo que usa _tourPrimerTrozoQueCabe. Antes el de al lado no tenia
+  // ninguno, y eso hacia que el resultado dependiera del plan que hubiera
+  // salido: con una tarjeta de comida de 712 px y una banda de 644 se
+  // rechazaba por 68 px y el paso de "Cambiar" bajaba a `.meal-head`, en vez
+  // de enmarcar la tarjeta que el dueno aprobo como referencia. Con otro
+  // plan la misma pantalla daba la tarjeta. Un recorrido no puede cambiar de
+  // forma segun los platos que toquen.
+  var TOLERANCIA = 200;
+  var altoMaxDebajo = _tourAltoMaxMarco(false) + TOLERANCIA;
+  var altoMaxAlLado = _tourAltoMaxMarco(true) + TOLERANCIA;
   var anchoMax = window.innerWidth - 24;
 
   var r = el.getBoundingClientRect();
@@ -423,9 +517,11 @@ function _tourPosition() {
   var objetivo = document.querySelector(step.target);
   if (!objetivo) return;
 
-  // El hueco oscuro enmarca el CONTEXTO; el foco gris, el objetivo.
-  var contexto = _tourContexto(objetivo);
-  var el = contexto || objetivo;
+  // El hueco oscuro enmarca el CONTEXTO; el foco gris, el objetivo. Sin
+  // contexto se enmarca el objetivo, o un trozo suyo si no cabe entero.
+  var queEnmarcar = _tourQueEnmarcar(objetivo);
+  var contexto = queEnmarcar.contexto;
+  var el = queEnmarcar.marco;
 
   var r = el.getBoundingClientRect();
   var pad = TOUR_PAD;
@@ -463,7 +559,12 @@ function _tourPosition() {
   // y _tourDestino tiene que llegar a la misma conclusion que esta funcion
   // ANTES de mover nada. Con un criterio en coordenadas de pantalla, las
   // dos discrepaban durante la animacion y el marco daba un salto al final.
-  var ro0 = objetivo.getBoundingClientRect();
+  // `dentro` es lo que no puede quedar fuera del marco: el objetivo cuando
+  // hay contexto, y el propio marco cuando se ha bajado a un trozo (ahi el
+  // objetivo entero es mas grande que el marco a proposito, y exigir
+  // contenerlo devolveria la franja de pantalla completa que se acaba de
+  // quitar).
+  var ro0 = queEnmarcar.dentro.getBoundingClientRect();
   var recorta = (r.height + pad * 2) > _tourAltoMaxMarco(alLado);
   var frac = (ro0.top + ro0.height / 2 - r.top) / Math.max(1, r.height);
   var notaArriba = !alLado && recorta && frac > 0.55;
@@ -890,7 +991,8 @@ function _tourRender() {
   // error son 60 px de descuadre.
   _tourPintarTextos();
 
-  var el = _tourContexto(objetivo) || objetivo;
+  var queEnmarcar = objetivo ? _tourQueEnmarcar(objetivo) : null;
+  var el = queEnmarcar ? queEnmarcar.marco : null;
   if (el && typeof el.scrollIntoView === "function") {
     // El hueco se reserva con `scroll-margin-top` y NO restando píxeles
     // después: así la cuenta la hace el navegador dentro del propio
@@ -905,7 +1007,7 @@ function _tourRender() {
     // El destino lo calcula _tourDestino: centra el bloque, y con algo mas
     // alto que la pantalla enseña su comienzo (o su final, si es ahi donde
     // esta lo señalado) en vez de un trozo cualquiera de la mitad.
-    _tourScrollSuave(el, objetivo);
+    _tourScrollSuave(el, queEnmarcar.dentro);
   }
 
   // El desplazamiento suave tarda: se recoloca al terminar, y además en
