@@ -344,17 +344,18 @@ function _tourPrimerTrozoQueCabe(el, altoMax) {
       break;
     }
     if (!elegido) return null;
-    // Con un margen ancho, no al pixel. Dos medidas lo fijan: en el portatil
-    // una tarjeta de comida de 695 px quedaba fuera de una banda de 696 por
-    // quince pixeles; en el movil, una de 627 en una banda de 529 se
-    // rechazaba y se bajaba un nivel mas, hasta `.meal-body` -- el cuerpo de
-    // la tarjeta SIN su titulo, que es justo lo que dice de que comida se
-    // trata.
+    // El marco enseña siempre el PRINCIPIO de lo que enmarca, asi que un
+    // trozo recortado sigue mostrando su cabecera -- en una tarjeta de
+    // comida, la hora y el nombre del plato. Por eso no hace falta que quepa
+    // entero: basta con que ya no sea una losa.
     //
-    // Recortada por doscientos pixeles una tarjeta se sigue leyendo como una
-    // tarjeta. Mas alla de eso vuelve a ser una losa, y entonces si conviene
-    // bajar.
-    if (elegido.getBoundingClientRect().height <= altoMax + 200) return elegido;
+    // Con un margen estrecho pasaba justo lo contrario. Una tarjeta un poco
+    // mas alta de la cuenta se rechazaba, se bajaba un nivel mas y se
+    // acababa enmarcando `.meal-body`: los ingredientes SIN el titulo. El
+    // dueno lo describio exacto -- "он только ингридиенты показывает".
+    // Y el filtro de altura minima de aqui arriba empeoraba la caida,
+    // porque `.meal-head` mide 118 px y se saltaba por poco.
+    if (elegido.getBoundingClientRect().height <= altoMax * 2.5) return elegido;
     actual = elegido;
   }
   return null;
@@ -379,11 +380,20 @@ function _tourQueEnmarcar(objetivo) {
   var right = Math.min(window.innerWidth - TOUR_MARGEN, r.right + TOUR_PAD);
   var altoMax = _tourAltoMaxMarco(_tourNotaAlLado({ left: left, right: right }));
 
-  if (r.height + TOUR_PAD * 2 <= altoMax) {
+  // Cabe entero, o se pasa por poco: se enmarca tal cual. Recortado enseña
+  // su PRINCIPIO, que es donde esta su cabecera -- la hora y el nombre del
+  // plato en una tarjeta, el titulo y el total en la lista de la compra.
+  //
+  // Bajar aqui seria peor, no mejor: los hijos que empiezan un bloque son
+  // justamente los pequeños (una cabecera mide 87 px, un resumen 77), asi
+  // que el primer hijo "grande" es siempre el CUERPO, y enmarcarlo deja el
+  // titulo fuera. Es lo que pasaba con `.meal-body` y con `.shopping-list`.
+  if (r.height <= altoMax * 2.5) {
     return { marco: objetivo, dentro: objetivo, contexto: null };
   }
 
-  // No cabe: mejor un trozo entero que una franja de algo enorme.
+  // Ya no es un bloque grande, es una losa: ahi si compensa bajar hasta un
+  // trozo que se lea como algo (una tarjeta de comida dentro del carrusel).
   var trozo = _tourPrimerTrozoQueCabe(objetivo, altoMax);
   if (trozo) return { marco: trozo, dentro: trozo, contexto: null };
 
@@ -603,6 +613,13 @@ function _tourPosition() {
   // En el portatil no pasaba porque el centrado deja otros restos.
   if (!recorta) {
     // Cabe entero: no hay nada que deslizar ni que estirar.
+  } else if (!contexto) {
+    // Lo enmarcado ES lo señalado: se enseña su PRINCIPIO y punto. Deslizar
+    // aqui es lo que dejaba fuera la hora y el nombre del plato y empezaba
+    // el marco en los ingredientes. Sin contexto no hay un objetivo pequeño
+    // al que perseguir dentro del marco -- el objetivo es el marco.
+    top = Math.max(bandaTop, r.top - pad);
+    bottom = Math.min(bandaBottom, top + altoMax);
   } else if (ro0.bottom + pad > bottom && ro0.top - pad < top) {
     // El objetivo es MAS alto que la banda: no hay nada que deslizar.
     top = bandaTop;
