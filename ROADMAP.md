@@ -1,5 +1,51 @@
 # Nutrition Planner — Roadmap
 
+## Estado y prioridades al 2026-09-13 (esto primero)
+
+**Weekplate.** La carpeta buena sigue siendo
+`Desktop\Offline Nutrition Helper\nutrition-planner` (la única con git).
+**640 tests en verde. Desplegado y empujado, sello `20260913c`.**
+
+Lo que se cerró estos días: **la aplicación entera funciona en inglés,
+incluidas las 434 recetas** (1.682 pasos distintos, 2.101 apariciones,
+100%). El idioma es ahora la primera pregunta de la bienvenida. El
+recorrido está reescrito y el scroll se bloquea mientras está abierto.
+Detalle y cifras en `STATE.md` → "UPDATE 2026-09-13"; el *cómo* en
+`HANDOFF.md` §10 y en `scripts/i18n/LEEME.md`.
+
+### Lo siguiente, en orden
+
+1. **P1 — los 72 literales en español incrustados en el código.** Es lo
+   único que un usuario en inglés todavía se encuentra. `node
+   scripts/i18n/inventario.js` los lista por fichero; los gordos son
+   `plan-generator.js` (17 avisos del generador), `render-no-cook.js` (14),
+   `render-pantry.js` (11) y `auth.js` (11). Los tres primeros son texto
+   que sale en pantalla; `auth.js` son mensajes de error de la cuenta.
+
+2. **P2 — cada vez que crezca el catálogo, volver a pasar por la
+   traducción.** El generador de platos escribe pasos nuevos y `tStep()`
+   devuelve el original en español cuando no los conoce: un plato recién
+   generado aparece en español dentro de la interfaz inglesa. No rompe
+   nada, pero se nota. El ciclo está en `scripts/i18n/LEEME.md` y son tres
+   comandos.
+
+3. **P3 — los iconos no llevan sello y `icon.svg` no lo referencia nadie.**
+   `apple-touch-icon.png`, `icon-32.png`, `icon-192.png` y los cuatro del
+   `manifest.webmanifest` van sin `?v=`, así que un cambio de icono se
+   queda cacheado en los clientes que ya lo tienen. Y `icon.svg` (1.785
+   bytes en la raíz) no aparece ni en `index.html`, ni en el manifiesto, ni
+   en `sw.js` — pero sí se copia en cada despliegue.
+
+4. **P3 — el paso 1 del recorrido parte filas** cuando enmarca el
+   contenedor entero de comidas (1.899 px). El usuario no lo ha señalado y
+   los pasos que sí señaló están arreglados; queda anotado por si vuelve.
+
+5. **Sigue abierto de antes:** la recuperación de contraseña está
+   desplegada pero **inerte hasta configurar Supabase** (`HANDOFF.md` §9), y
+   el preset de 8 € no da un solo día "perfect" en ninguno de los tres
+   perfiles (medido el 2026-09-09).
+
+
 ## Estado y prioridades al 2026-08-31 (leer antes que nada de lo de abajo)
 
 **La carpeta buena es `Desktop\Offline Nutrition Helper\nutrition-planner`.**

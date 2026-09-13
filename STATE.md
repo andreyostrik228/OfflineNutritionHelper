@@ -5,6 +5,153 @@
 > Escrito para alguien que llega SIN NINGÚN contexto previo. Si solo lees
 > una parte de este archivo, que sea esta.
 >
+> ### ⏩ UPDATE 2026-09-13 — la aplicación entera en dos idiomas, y el recorrido reescrito
+>
+> **640 tests en verde. Desplegado y empujado, sello `20260913c`.** Cinco días
+> de trabajo que se resumen en una frase: la aplicación se puede usar de punta
+> a punta en inglés, **incluidas las 434 recetas**.
+>
+> #### Las cifras
+>
+> ```
+>   tabla                   claves   qué es
+>   js/i18n/es.js              356   interfaz, español (idioma por defecto)
+>   js/i18n/en.js              381   interfaz, inglés (+ las 22 del recorrido)
+>   js/i18n/food-en.js         293   nombres de alimento e ingrediente
+>   js/i18n/packages-en.js      42   etiquetas de envase (singular Y plural)
+>   js/i18n/steps-en.js      1.682   pasos de receta  <-- GENERADO
+> ```
+>
+> Recetas: **1.682 de 1.682 pasos distintos, 2.101 de 2.101 apariciones en
+> pantalla. 100%.** Veintiuna tandas de traducción, **cero claves fantasma**.
+> Comprobado con `tStep()` sobre los 434 platos, no con grep, y con un barrido
+> de los 1.682 valores ingleses buscando palabras españolas que se hubieran
+> colado: 0.
+>
+> #### Cómo está montado (el detalle vive en `scripts/i18n/LEEME.md`)
+>
+> `js/core/i18n.js` expone `t()` (interfaz), `tFood()` (alimentos), `tDish()`
+> (nombres de plato, **compositivo**: descompone "Pollo a la plancha con
+> arroz" en palabras + método), `tStep()` (pasos) y `tPackageLabel(label, n)`
+> (envases).
+>
+> **`tPackageLabel` lleva las dos formas** porque el inglés no hace el plural
+> añadiendo una "s": `barra` es `loaf`/`loaves`, `caja` es `box`/`boxes`.
+> Cuarenta y dos etiquetas, ochenta y cuatro formas, escritas a mano.
+>
+> Tres decisiones que hay que entender antes de tocar nada:
+>
+> 1. **Una clave que no casa letra por letra no traduce y NO da error.** El
+>    texto sale en español dentro de la interfaz inglesa, sin aviso en
+>    consola y con los tests en verde. Por eso el generador de `steps-en.js`
+>    **se niega a escribir el fichero** ante una sola clave fantasma, una
+>    duplicada entre tandas, una vacía o una idéntica al español.
+> 2. **Se traduce al PINTAR, no al guardar.** `item.name` y `meal.dishName`
+>    son a la vez texto y clave de búsqueda; traducirlos al generar el plan
+>    rompería despensa, compra y precio.
+> 3. **Sin traducción se devuelve el original en español, no un hueco.** El
+>    generador de platos escribe pasos nuevos, así que eso va a pasar: un
+>    plato recién generado sale en español dentro de una interfaz inglesa.
+>    Feo, pero se cocina.
+>
+> El patrón **"origen fuera de es.js"** (ya usado por `LEGAL_SUMMARY`) se
+> extiende al recorrido: el español vive en `js/data/tour-steps.js` junto al
+> comentario que lo justifica, y en `en.js` hay claves que solo existen en
+> inglés (`tour.<id>_titulo` / `_cuerpo`). Lo vigila `CLAVES_CON_ORIGEN_FUERA`
+> en `tests/i18n.test.js`.
+>
+> #### El barrido: contar nodos de texto, no hacer grep
+>
+> Para saber qué quedaba sin traducir no se buscó en el código: se **abrió la
+> aplicación en inglés y se recorrieron todos los nodos de texto visibles**,
+> agrupados por ruta del DOM. Resultado: **223 fragmentos en 27 sitios → 76 →
+> 5**, y tres de esos cinco eran falsos positivos del propio detector sobre la
+> palabra "sautéed".
+>
+> **103 fragmentos se quedan en español a propósito**: nombres comerciales de
+> Mercadona y lo que está impreso en el envase. La regla del usuario, textual:
+> *"если это именно испанское слово там упаковки то оставляй, но если это там
+> авокадо или помидор то оно должно быть переведено"*. Traducir el nombre de
+> estantería hace imposible encontrar el producto en la tienda.
+>
+> #### Lo que queda sin traducir
+>
+> **72 literales en español incrustados en el código** que llegan a pantalla.
+> `node scripts/i18n/inventario.js` los lista por fichero:
+>
+> ```
+>   17  js/engine/plan-generator.js    (los avisos del generador)
+>   14  js/ui/render-no-cook.js
+>   11  js/ui/render-pantry.js
+>   11  js/core/auth.js
+>    5  js/core/calculator.js
+>    4  js/core/allergens.js
+>    3  js/ui/onboarding-ui.js
+>    2  js/ui/render-insights.js, 2 js/core/utils.js, 2 js/ui/tour.js
+>    1  js/engine/dish-selector.js
+> ```
+>
+> #### El idioma es ahora la PRIMERA pregunta
+>
+> Antes se elegía idioma en el menú, después de un cuestionario de bienvenida
+> que solo existía en español. Ahora `js/data/onboarding-steps.js` abre con un
+> paso `lang` (`kind: "choice"`, `optionsFrom: "langs"`) que se rellena desde
+> `availableLangs()` + `LANG_NAMES`, y `_obWriteAnswer` lo trata aparte:
+> guarda el idioma y repinta la interfaz en el acto. Además hay un botón
+> **muy pequeño** para saltarse las preguntas.
+>
+> Eso rompió cuatro tests de onboarding, y **los cuatro tenían razón**: la
+> premisa "todos los pasos escriben en un campo del perfil" dejó de ser
+> cierta. Se corrigió la premisa con una lista blanca `PASOS_META = ["lang"]`
+> y `if (step.optionsFrom) return;`, no aflojando las aserciones.
+>
+> #### El recorrido, reescrito
+>
+> `js/ui/tour.js`. Lo que hay que saber:
+>
+> - **La nota reserva su banda ANTES de elegir el marco.** Al revés dejaba la
+>   nota tapando su propio marco por **28.023 px²** en el móvil.
+> - **`_tourInset()` está cacheado a propósito.** Recorre 2.514 elementos;
+>   llamarlo desde `_tourPosition` (≈4 veces por evento de scroll) puso el
+>   móvil en **12,84 ms por evento**. Con caché: **0,08 ms**.
+> - **El centrado solo se aplica desde 900 px de ancho**, el punto de ruptura
+>   que ya usaba la hoja de estilos. Aplicarlo en todas partes descolocó el
+>   móvil entero.
+> - **Bloqueo de scroll durante el recorrido**, con `passive: false` (sin eso
+>   `preventDefault()` no hace nada). La nota sí se puede desplazar por
+>   dentro y la barra espaciadora sigue funcionando sobre los botones.
+>   `stopTour` desbloquea **sin condiciones**.
+>
+> #### Tres trampas que costaron caro (§7.13, §7.14, §7.15 de HANDOFF.md)
+>
+> - **Lo que medí era el paso anterior.** El panel de vista previa informa
+>   `document.hidden === true` aunque esté al frente: sin reloj de animación
+>   las transiciones CSS se congelan en su valor inicial, y
+>   `getBoundingClientRect()` devolvía la geometría del paso ANTERIOR. Le
+>   entregué al usuario una tabla de once veredictos **desplazada en uno** y
+>   la retiré entera.
+> - **El recorrido cambiaba de forma según lo que hubiera para cenar.** Una
+>   asimetría de tolerancia en `_tourContexto()` (1,5× debajo, CERO al lado)
+>   hacía que la misma pantalla enmarcara la tarjeta entera o se cayera a
+>   `.meal-head` según el plan generado.
+> - **25 etiquetas `mainProt` cayeron en el objeto equivocado** de
+>   `registerDishWords`: "atun" quedó registrado como una *manera de cocinar*.
+>   El fichero cargaba, los tests pasaban, la página se pintaba.
+>
+> Y una cuarta, de herramienta: **`sed -i` se come el CR**. Subir el sello con
+> un `sed` de una línea reescribió las 1.487 líneas de `index.html` de CRLF a
+> LF, y `git diff` no lo enseña porque los blobs se guardan en LF de todas
+> formas.
+>
+> #### Lo reproducible
+>
+> El pipeline de traducción **está en el repositorio**, no en un scratchpad:
+> `scripts/i18n/` con las 21 tandas, el generador que valida, el que lista lo
+> que falta y el inventario. Cada vez que crezca `dish-instructions.js` hay
+> que volver a pasar por ahí, y `node scripts/i18n/inventario.js` lo dice en
+> una línea.
+>
+>
 > ### ⏩ UPDATE 2026-09-09 — un `undefined` publicado, y dos textos que nadie veía
 >
 > **596 tests en verde. Desplegado (`dd2151df`), sello `20260909a`, y `main`

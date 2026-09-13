@@ -1,5 +1,28 @@
 # Nutrition Planner — Project Context
 
+## Estado al 2026-09-13 — qué es esto hoy
+
+**Weekplate**, planificador de comidas que funciona sin conexión. Estático:
+HTML + CSS + JavaScript ES5 servido tal cual, **sin paso de compilación**,
+con 57+ `<script>` ordenados a mano en `index.html`. Supabase solo para las
+cuentas. Cloudflare Pages por subida directa (hacer push NO despliega).
+
+- **434 platos** con receta, macros calculadas desde los ingredientes y
+  precio real de Mercadona (almacén 3968, Granada).
+- **Dos idiomas, español e inglés.** Interfaz, alimentos, nombres de plato,
+  etiquetas de envase y **las 1.682 frases de las recetas**. El idioma es
+  la primera pregunta de la bienvenida. Cómo está montado y qué lo rompe:
+  `scripts/i18n/LEEME.md` y `HANDOFF.md` §10.
+- **640 tests** (`node tests/run-tests.js`), sello desplegado `20260913c`.
+
+Lo que queda sin traducir son **72 literales incrustados en el código**;
+`node scripts/i18n/inventario.js` los lista.
+
+Orden de lectura para alguien que llega sin contexto: `HANDOFF.md` (el
+cómo y las trampas) → el bloque "EMPIEZA AQUÍ" de `STATE.md` (lo último,
+con cifras) → este fichero → `ROADMAP.md` (qué toca ahora).
+
+
 ## Dónde vive esto y qué hay nuevo (2026-08-27, commiteado 2026-08-31)
 
 **Ruta buena:** `C:\Users\andre\Desktop\Offline Nutrition Helper\nutrition-planner`.

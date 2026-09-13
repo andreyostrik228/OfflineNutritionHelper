@@ -103,6 +103,22 @@ Renormalizar CRLF, el comando exacto:
 node -e 'const fs=require("fs");const f="RUTA";let t=fs.readFileSync(f,"latin1");t=t.replace(/\r\n/g,"\n").replace(/\r/g,"\n").replace(/\n/g,"\r\n");fs.writeFileSync(f,t,"latin1");'
 ```
 
+### Y `sed -i` SE COME EL CR (comprobado 2026-09-13)
+
+Subir el sello `?v=` con un `sed -i` de una línea reescribió las **1.487
+líneas de `index.html` de CRLF a LF**. Comprobado aparte:
+
+```
+printf 'aaa v=1\r\nbbb\r\n' | tee t.txt ; sed -i 's/v=1/v=2/' t.txt ; od -c t.txt
+0000000   a  a  a     v  =  2  \n  b  b  b  \n          <- los \r ya no estan
+```
+
+**Git no lo enseña.** Con `* text=auto eol=crlf` los blobs se guardan en LF
+de todas formas, así que `git diff` sale limpio y el único sitio donde está
+mal es el árbol de trabajo — justo contra la regla que pide CRLF. Se detecta
+contando bytes, no leyendo el diff. Después de cualquier `sed -i` sobre un
+fichero del repo, renormaliza con el comando de arriba y cuenta.
+
 ---
 
 ## 3. El código en un vistazo
@@ -753,6 +769,58 @@ arreglo no es un límite mejor, es otra palabra.**
 Uno de los tests que ya existía pasaba por el motivo equivocado: "Champú
 anticaspa" devolvía `null` no porque se excluyera, sino porque no casaba
 con nada.
+
+### 7.13 Lo que medí no era el paso que creía: era el anterior
+
+Es la §7.1 otra vez, con otra cara, y volvió a costar caro. El panel de
+vista previa **informa `document.hidden === true` aunque acabes de traerlo
+al frente**. Sin reloj de animación no hay `requestAnimationFrame`, los
+`setTimeout` se estrangulan y —esto es lo que muerde— **las transiciones CSS
+se quedan congeladas en su valor inicial**.
+
+Así que `getBoundingClientRect()` sobre el marco del recorrido devolvía la
+geometría del paso ANTERIOR. Le entregué al usuario una tabla de veredictos
+de los once pasos **desplazada en uno**, y la retiré entera. Se demostró en
+un minuto: poner `transition: none`, forzar un reflujo y volver a medir —el
+rectángulo saltó de `1292x53` a `97x38`.
+
+**La regla:** en ese panel no se espera a que algo termine, se mata la
+transición y se fuerza el reflujo (`void document.documentElement.offsetHeight`).
+Y si una medición encaja sospechosamente bien con el estado anterior,
+comprueba eso antes que cualquier otra hipótesis.
+
+### 7.14 El recorrido cambiaba de forma según lo que hubiera para cenar
+
+El mismo paso, la misma pantalla, dos planes generados distintos: en uno el
+marco rodeaba la tarjeta entera del plato y en el otro se caía a `.meal-head`.
+La causa era una asimetría en `_tourContexto()`: **1,5× de tolerancia cuando
+la nota va debajo y CERO cuando va al lado**. Una tarjeta de 712 px en una
+banda de 644 quedaba rechazada por 68 px.
+
+Lo caro no es el fallo, es la clase: **un umbral geométrico medido contra
+contenido que varía** —y aquí el contenido lo escribe un generador— produce
+una interfaz distinta para cada usuario y un informe de fallo que no se puede
+reproducir. Arreglado unificando la tolerancia (`+200` en los dos casos).
+
+El hermano del mismo día: al descender buscando un trozo que quepa, el filtro
+`height < 120` **descarta siempre a los hijos que EMPIEZAN un bloque**
+(`.meal-head` mide 118, la cabecera de la compra 87, el resumen 77), así que
+el primer hijo "suficientemente grande" es SIEMPRE el cuerpo. El usuario lo
+dijo mejor que la medición: *"он только ингридиенты показывает"*. Un filtro
+por tamaño mínimo nunca elige una cabecera.
+
+### 7.15 Que el fichero cargue y los tests pasen no dice dónde cayó el dato
+
+Veinticinco etiquetas `mainProt` entraron en el **objeto equivocado** de
+`registerDishWords`: en el de métodos de cocción en vez de en el de palabras.
+O sea que "atun" quedó registrado como una *manera de cocinar*.
+
+No falló nada. El fichero cargaba, los 640 tests pasaban, la página se
+pintaba. Solo apareció al **inspeccionar la tabla ya cargada** en el
+navegador. Para datos que se registran en bloque, la comprobación útil no es
+"¿carga?" sino "¿cuántas entradas tiene cada una de las dos tablas, y son
+las que espero?".
+
 ---
 
 ## 8. Lo que queda abierto
@@ -1073,3 +1141,74 @@ por los otros tres modos, no de punta a punta. Los otros tres sí, con
 clics reales sobre los botones de la interfaz: `login → recover → login →
 register` cambian título, botón, campos visibles y el `autocomplete` del
 campo de contraseña como toca.
+
+---
+
+## 10. Los dos idiomas y el recorrido
+
+### 10.1 Traducción — dónde está y qué la rompe
+
+**El documento de verdad es `scripts/i18n/LEEME.md`.** Aquí solo lo que hay
+que saber antes de abrir nada.
+
+Cinco tablas: `js/i18n/es.js` (interfaz, 356 claves), `en.js` (381, incluye
+las del recorrido), `food-en.js` (293 alimentos), `packages-en.js` (42
+etiquetas de envase, con singular Y plural porque el inglés no hace el plural
+añadiendo una "s": `barra` es `loaf`/`loaves`) y `steps-en.js` (1.682 pasos
+de receta, **generado**). Las funciones están en `js/core/i18n.js`.
+
+Tres cosas que no son evidentes y cuestan medio día cada una:
+
+1. **Una clave que no casa letra por letra no traduce y NO da error.** Sale
+   en español dentro de la interfaz en inglés, sin aviso, con los tests en
+   verde. Por eso `construir-steps-en.js` se niega a escribir el fichero si
+   encuentra una sola clave fantasma.
+2. **Se traduce al PINTAR, no al guardar.** `item.name` y `meal.dishName`
+   son a la vez texto y *clave de búsqueda*: traducirlos al generar el plan
+   rompe despensa, compra y precio.
+3. **Sin traducción se devuelve el original en español**, no un hueco. El
+   generador de platos escribe pasos nuevos constantemente; un plato recién
+   generado saldrá en español y se podrá cocinar igual.
+
+Estado al 2026-09-13: **recetas al 100%** (1.682 de 1.682 distintas, 2.101
+de 2.101 apariciones). Quedan **72 literales en español incrustados en el
+código** que llegan a pantalla; `node scripts/i18n/inventario.js` los lista
+por fichero. Los mayores: `plan-generator.js` 17, `render-no-cook.js` 14,
+`render-pantry.js` 11, `auth.js` 11.
+
+**Cada vez que crezca `dish-instructions.js` hay que volver a pasar por el
+ciclo de tandas.** Es una línea: `node scripts/i18n/inventario.js`.
+
+### 10.2 El recorrido — el modelo de bandas
+
+`js/ui/tour.js`. Lo que hay que entender antes de tocar la geometría:
+
+**La nota reserva su banda ANTES de elegir el marco.** No al revés. Hacerlo
+al revés fue lo que dejó la nota tapando su propio marco por 28.023 px² en
+el móvil. Tres funciones tienen que estar de acuerdo sobre el espacio
+disponible, así que el cálculo vive en helpers compartidos —`_tourInset()`,
+`_tourCentrar()`, `_tourNotaAlLado()`, `_tourAltoMaxMarco()`— y ninguna lo
+recalcula por su cuenta.
+
+**`_tourInset()` está cacheado a propósito.** Recorre 2.514 elementos; al
+llamarlo desde `_tourPosition` (unas 4 veces por evento de scroll) el móvil
+pasó a **12,84 ms por evento**. Con caché, **0,08 ms**. Si alguien lo
+"limpia" quitando el caché, el móvil vuelve a ir a tirones.
+
+**El centrado solo se aplica a partir de 900 px de ancho**, que es el punto
+de ruptura que ya usaba la hoja de estilos. Aplicarlo en todas partes
+descolocó el móvil entero.
+
+**`passive: false` es obligatorio** en `wheel` y `touchmove` para que el
+bloqueo de scroll durante el recorrido pueda llamar a `preventDefault()`.
+`_tourDentroDeLaNota()` deja pasar el scroll dentro de la nota y la barra
+espaciadora sobre los botones. `stopTour` desbloquea **sin condiciones**:
+una salida por un camino no previsto que deje la página bloqueada es peor
+que cualquier fallo de geometría.
+
+Los textos del recorrido viven en `js/data/tour-steps.js` **en español**,
+junto al comentario que los justifica, y el inglés está en `en.js` con
+claves `tour.<id>_titulo` / `tour.<id>_cuerpo`. Es el mismo patrón que
+`LEGAL_SUMMARY` y lo vigila `CLAVES_CON_ORIGEN_FUERA` en `tests/i18n.test.js`.
+El recorrido no lleva marcas `data-i18n` (se pinta desde JavaScript), así que
+`applyI18nToDom()` termina llamando a `refreshTourTexts()`.
