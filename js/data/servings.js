@@ -65,7 +65,7 @@
  * ─────────────────────────────────────────────────────────────────────────
  */
 
-var SERVING_UNITS = {
+var SERVING_UNITS_MERCADONA = {
 
   // ── Lo que no se parte ────────────────────────────────────────────────
   // Los gramos salen del propio envase de packaging.js, dividido por las
@@ -80,8 +80,49 @@ var SERVING_UNITS = {
   "jamon cocido extra":        { g: 25,  label: "loncha",     split: "entera" },
   "pavo loncheado":            { g: 25,  label: "loncha",     split: "entera" },
   "jamon serrano":             { g: 15,  label: "loncha",     split: "entera" },  // el serrano se corta mas fino
-  "pan integral":              { g: 30,  label: "rebanada",   split: "entera" },
-  "pan blanco":                { g: 25,  label: "rebanada",   split: "entera" },
+  // `comoPlato`: la MISMA comida medida de otra forma cuando ES el plato.
+  //
+  // El pan tiene dos papeles y una sola unidad no sirve para los dos. Medido
+  // sobre los 30 platos que llevan pan integral: en 28 es guarnición de
+  // 20-70 g (pan con la sopa, con la ensalada, picatostes en el gazpacho) y
+  // ahí la rebanada es correcta; en 2 es un bocadillo de 90-100 g, y ahí un
+  // bocadillo "de 3 rebanadas" es tan absurdo como lo era el de nueve.
+  //
+  // NO se deduce del gramaje. La idea tentadora era "a partir de 90 g es el
+  // plato", y el reparto la desmonta: hay NUEVE platos en 80 g, justo debajo
+  // del umbral. Alguien edita una receta de 80 a 90 y la unidad se da la
+  // vuelta sola, sin error y sin aviso -- la clase de fallo que este
+  // proyecto lleva pagando desde §7.6. El papel lo DECLARA el plato
+  // (`papel: "plato"` en su item, ver js/data/dishes.js), igual que en el
+  // proyecto de formas coherentes la composición se declara en vez de
+  // buscarse.
+  "pan integral":              { g: 30,  label: "rebanada",   split: "entera",
+                                 comoPlato: { g: 350, label: "barra", split: "cuarto" } },
+  // ── La barra NO se vende en rebanadas (2026-09-14) ────────────────────
+  // Lo cazó el usuario mirando una tarjeta que se contradecía sola:
+  // "Pan blanco -- 9 rebanadas (225 g)" junto al paso 2 de esa misma
+  // receta, que dice "Abre el pan por la mitad sin llegar a separarlo del
+  // todo". Un bocadillo de nueve rebanadas. Y 225 g de una barra de 250 es
+  // el 90% de la barra: "casi una barra entera" es lo honesto.
+  //
+  // Una barra se parte, no se rebana; rebanadas tienen el pan de molde y la
+  // hogaza, y esos dos ya estaban bien. Se pasa a cuartos de barra, que es
+  // como lo pidió el usuario ("por partes de 4, o sea 1/2 son 2/4").
+  // `split: "cuarto"` admite además tercios, así que un tercio de barra
+  // sale solo cuando cae más cerca.
+  //
+  // SOLO el pan blanco. `pan integral` es también una barra y NO se toca:
+  // está en 30 platos y en 28 de ellos es una GUARNICIÓN de 20-70 g -- pan
+  // con la sopa, con la ensalada, picatostes en el gazpacho. Con cuartos de
+  // barra el mínimo servible sería 87,5 g, y ocho de esos usos se
+  // hincharían 1,5 veces o más; los picatostes del gazpacho, 3,5 veces.
+  // Medido, no supuesto. El pan tiene DOS papeles -- es el plato o es el
+  // acompañamiento -- y una sola unidad no sirve para los dos. Esa decisión
+  // está esperando al usuario.
+  //
+  // El pan blanco no tiene ese problema: sus 4 platos son todos "el pan ES
+  // el plato" (100-130 g), así que un cuarto de barra siempre le queda bien.
+  "pan blanco":                { g: 250, label: "barra",      split: "cuarto" },
   "pan de molde integral":     { g: 26,  label: "rebanada",   split: "entera" },  // 460 g / 18 rebanadas
   "pan de centeno":            { g: 35,  label: "rebanada",   split: "entera" },
   "tortillas de trigo":        { g: 60,  label: "tortilla",   split: "entera" },  // 360 g / 6
@@ -177,4 +218,45 @@ var SERVING_UNITS = {
 var SERVING_PLURALS = {
   "calabacín": "calabacines",
   "yogur":     "yogures"
+};
+
+// ── Registro por tienda ──────────────────────────────────────────────────
+// Mismo patrón que PACKAGING_CATALOGS y PRICE_CATALOGS.
+//
+// ── QUÉ DE UNA RACIÓN DEPENDE DE LA TIENDA, Y QUÉ NO ────────────────────
+// No es obvio y conviene dejarlo escrito, porque la respuesta intuitiva
+// falla en la mitad de los casos.
+//
+// NO depende de la tienda lo que es una medida de COCINA o una pieza de
+// fruta: una cucharada son ~15 g de avena en cualquier sitio, y un plátano
+// pesa lo que pesa un plátano. Esas entradas podrían compartirse.
+//
+// SÍ depende de la tienda todo lo que sale de un envase, y son mayoría
+// aquí: el yogur son 125 g porque el pack de Mercadona trae 6 x 125; la
+// lata de atún son 60 g escurridos porque ese es su formato; la rebanada
+// son 30 g porque la barra pesa 350.
+//
+// El caso de la REBANADA merece una nota, porque se propuso como ejemplo de
+// medida independiente y los datos dicen lo contrario: el pan de molde de
+// Dia pesa 820 g y el de Mercadona 460 g. Si las dos traen un número
+// parecido de rebanadas, la rebanada NO puede pesar lo mismo. No se toca
+// hoy —no hay datos de Dia y este cambio no añade tiendas— pero queda
+// dicho para que nadie lo dé por evidente.
+//
+// Por eso la tabla entera se registra como de Mercadona, sin partirla en
+// "compartido" y "propio". Partirla exige decidir 65 casos uno a uno, y
+// hacerlo sin una segunda tienda delante sería inventar la mitad. Cuando
+// exista la segunda, la comparación dirá cuáles coinciden de verdad.
+//
+// `SERVING_PLURALS` se queda GLOBAL a propósito: es gramática española, no
+// tiene nada que ver con el supermercado.
+var SERVING_CATALOGS = (typeof SERVING_CATALOGS === "undefined") ? {} : SERVING_CATALOGS;
+
+SERVING_CATALOGS.mercadona = {
+  storeId:   "mercadona",
+  storeName: "Mercadona",
+  sourceNote:
+    "Raciones derivadas de los envases de Mercadona (ver PACKAGING_CATALOGS) " +
+    "y de medidas de cocina. Las que salen del envase cambian con la tienda.",
+  units:     SERVING_UNITS_MERCADONA
 };

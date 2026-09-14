@@ -14,7 +14,7 @@
  *                            que usan budget.js/la lista de la compra/el
  *                            recorte de presupuesto) — ver "Coste de uso
  *                            vs. de compra" abajo
- *   js/data/packaging.js    (PACKAGING_INFO) — opcional; si no está
+ *   js/data/packaging.js    (PACKAGING_CATALOGS) — opcional; si no está
  *                            cargado, se muestra todo en gramos como antes.
  *
  * ── Coste de uso vs. de compra, por ingrediente (2026-08-08b, corregido 2026-08-13b) ─
@@ -457,8 +457,8 @@ function etiquetaDeEquipo(clave) {
  * @returns {string}
  */
 function renderFoodRow(item, storeId) {
-  var info = lookupPackagingInfo(item.name);
-  var realMatch = lookupRealMatch(item.name);
+  var info = lookupPackagingInfo(item.name, storeId);
+  var realMatch = lookupRealMatch(item.name, storeId);
   var purchase = (typeof resolvePurchaseCost === "function")
     ? resolvePurchaseCost(item.name, item.grams, storeId || (typeof DEFAULT_STORE_ID !== "undefined" ? DEFAULT_STORE_ID : "mercadona"))
     : null;
@@ -473,7 +473,7 @@ function renderFoodRow(item, storeId) {
         // no falla nada, simplemente deja de encontrar.
         '<div class="food-name">' + escapeHtml(nombreComida(item.name)) + '</div>' +
         '<div class="food-meta">' +
-          formatQuantityPhrase(item.grams, info, item.name) +
+          formatQuantityPhrase(item.grams, info, item.name, storeId, item.papel) +
           (hasRealMacros
             ? ' &mdash; P ' + round1(item.protein) + ' g / C ' + round1(item.carbs) + ' g / G ' + round1(item.fat) + ' g' +
               // "real" no dice nada por sí solo, y su explicación estaba en
@@ -507,11 +507,11 @@ function renderFoodRow(item, storeId) {
  * @param {string} name
  * @returns {object|null}
  */
-function lookupPackagingInfo(name) {
-  if (typeof PACKAGING_INFO === "undefined" || typeof normalizeIngredientKey !== "function") {
+function lookupPackagingInfo(name, storeId) {
+  if (typeof packagingCatalogFor !== "function" || typeof normalizeIngredientKey !== "function") {
     return null;
   }
-  return PACKAGING_INFO[normalizeIngredientKey(name)] || null;
+  return packagingCatalogFor(storeId).packages[normalizeIngredientKey(name)] || null;
 }
 
 /**
@@ -522,11 +522,11 @@ function lookupPackagingInfo(name) {
  * @param {string} name
  * @returns {object|null}
  */
-function lookupRealMatch(name) {
-  if (typeof REAL_INGREDIENT_MATCHES === "undefined" || typeof normalizeIngredientKey !== "function") {
+function lookupRealMatch(name, storeId) {
+  if (typeof realMatchesFor !== "function" || typeof normalizeIngredientKey !== "function") {
     return null;
   }
-  return REAL_INGREDIENT_MATCHES[normalizeIngredientKey(name)] || null;
+  return realMatchesFor(storeId).matches[normalizeIngredientKey(name)] || null;
 }
 
 /**
@@ -651,11 +651,11 @@ function etiquetaDeRacion(label, n) {
  * macros de al lado sigan siendo verificables.
  *
  * @param {number} grams
- * @param {object|null} info – entrada de PACKAGING_INFO, o null
+ * @param {object|null} info – entrada de envases de la tienda, o null
  * @param {string} [name] – nombre del ingrediente, para buscar su ración
  * @returns {string}
  */
-function formatQuantityPhrase(grams, info, name) {
+function formatQuantityPhrase(grams, info, name, storeId, papel) {
   if (info && info.type === "spoonable") {
     var tbsp = grams / info.tablespoonG;
     if (tbsp >= 0.75) {
@@ -692,7 +692,7 @@ function formatQuantityPhrase(grams, info, name) {
   // línea hiciera su propia cuenta, la pantalla podría decir "4 yogures"
   // sobre unos macros de 568 g y nadie se enteraría (HANDOFF §7.10).
   if (typeof resolveServingUnit === "function") {
-    var unit = resolveServingUnit(name);
+    var unit = resolveServingUnit(name, storeId, papel);
     if (unit && unit.g > 0) {
       var raciones = servingCountFor(grams, unit);
       if (raciones > 0) {
@@ -759,10 +759,10 @@ function etiquetaDeEnvase(label, n) {
  * precisamente lo que causó que el precio mostrado no coincidiera con lo
  * que de verdad hacía falta comprar).
  *
- * @param {object|null} info – entrada de PACKAGING_INFO (solo para el
+ * @param {object|null} info – entrada de envases de la tienda (solo para el
  *   tamaño/etiqueta cuando NO hay match real; el nº de paquetes y precio
  *   vienen de `purchase`, no de aquí)
- * @param {object|null} realMatch – entrada de REAL_INGREDIENT_MATCHES
+ * @param {object|null} realMatch – entrada de REAL_MATCH_CATALOGS
  * @param {object|null} purchase – resultado de resolvePurchaseCost()
  *   (pricing.js) para los gramos de ESTA fila — fuente única de verdad de
  *   `packagesToBuy`/`purchaseCost`
@@ -787,7 +787,7 @@ function formatPurchaseLine(info, realMatch, purchase) {
 
 /**
  * Línea de compra cuando SÍ hay un producto real verificado por EAN.
- * @param {object} realMatch – entrada de REAL_INGREDIENT_MATCHES
+ * @param {object} realMatch – entrada de REAL_MATCH_CATALOGS
  * @param {object|null} purchase – ver formatPurchaseLine()
  * @returns {string}
  */

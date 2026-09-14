@@ -441,12 +441,12 @@ function renderExpiryBadge(entry) {
  * @param {string} name
  * @returns {string|null}
  */
-function cantidadDeCasa(grams, name) {
+function cantidadDeCasa(grams, name, storeId) {
   if (typeof resolveServingUnit !== "function" ||
       typeof servingCountFor !== "function" ||
       typeof formatServingFraction !== "function") return null;
 
-  var unit = resolveServingUnit(name);
+  var unit = resolveServingUnit(name, storeId);
   if (!unit || !(unit.g > 0) || !(grams > 0)) return null;
 
   var raciones = servingCountFor(grams, unit);
@@ -499,6 +499,9 @@ function renderPantryRow(entry) {
   // es estrecho y comparte fila con el nombre y la "x" de quitar. Meterle
   // las dos cosas es como se provocó el desbordamiento horizontal de
   // 2026-08-20b. Al pulsarlo sigue abriendo el editor en gramos.
+  // El stock guardado no lleva tienda (la despensa es de casa, no de un
+  // supermercado), asi que la racion se lee con la tienda por defecto. Si
+  // algun dia el stock recuerda donde se compro, se pasa aqui.
   var deCasa = cantidadDeCasa(entry.grams, entry.name);
   var etiquetaBoton = deCasa || (round0(entry.grams) + " g");
 
@@ -856,7 +859,7 @@ function renderPurchaseChecklist(entry, aggregated) {
     // Lo que ya hay en casa se dice como se sirve, igual que en el bloque de
     // stock de arriba; lo que hay que comprar, en envases (abajo). Son dos
     // preguntas distintas y llevan dos unidades distintas a propósito.
-    var cubiertoTexto = (cantidadDeCasa(covered, item.name) || (round0(covered) + " g"));
+    var cubiertoTexto = (cantidadDeCasa(covered, item.name, entry.store) || (round0(covered) + " g"));
     var cantidadCompra = cantidadDeCompra(item.requiredGrams, item.name, entry.store) ||
                          (round0(item.requiredGrams) + " g");
     var pantryNote = covered > 0

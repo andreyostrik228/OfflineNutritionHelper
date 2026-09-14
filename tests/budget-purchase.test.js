@@ -103,7 +103,7 @@ function injectSyntheticIngredient(sandbox, opts) {
   var key = opts.key;
   sandbox.PRICE_CATALOGS.mercadona.pricesPer100g[key] = opts.pricePer100g;
   if (opts.packageSize) {
-    sandbox.PACKAGING_INFO[key] = { type: "fixedPackage", packageG: opts.packageSize, packageLabel: opts.label || "envase" };
+    sandbox.PACKAGING_CATALOGS.mercadona.packages[key] = { type: "fixedPackage", packageG: opts.packageSize, packageLabel: opts.label || "envase" };
   }
 }
 

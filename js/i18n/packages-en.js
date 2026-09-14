@@ -71,7 +71,7 @@ registerPackageTable("en", {
   // Estas NO son etiquetas de envase: son la unidad en la que uno SIRVE.
   // Comparten tabla porque comparten funcion (`tPackageLabel`) y porque las
   // piezas de fruta de arriba ya hacian de las dos cosas. `tests/servings.
-  // test.js` exige que toda etiqueta de SERVING_UNITS este aqui: sin
+  // test.js` exige que toda etiqueta de SERVING_CATALOGS este aqui: sin
   // traduccion saldria en español dentro de la interfaz inglesa, sin dar
   // ningun error (scripts/i18n/LEEME.md, la regla que lo explica todo).
   "bola":       ["ball", "balls"],

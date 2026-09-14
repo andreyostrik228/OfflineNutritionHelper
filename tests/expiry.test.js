@@ -67,7 +67,12 @@ function sandboxWithBridge(storeData, products, matches) {
   vm.createContext(s);
   s.PRODUCT_STORAGE = storeData;
   s.REAL_PRODUCTS = products;
-  s.REAL_INGREDIENT_MATCHES = matches;
+  // Se monta el registro con la MISMA forma que crea
+  // js/data/real-ingredient-matches.js, pero con datos sintéticos: el
+  // contexto está vacío, así que no hay registro al que añadirse.
+  s.REAL_MATCH_CATALOGS = {
+    mercadona: { storeId: "mercadona", storeName: "Mercadona", matches: matches }
+  };
   [
     "js/core/utils.js",
     "js/data/shelf-life.js",

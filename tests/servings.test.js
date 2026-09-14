@@ -11,8 +11,8 @@
  *      primer intento usó la caja de avena (800 g) como unidad, así que la
  *      ración mínima pasó a 200 g -- 760 kcal de desayuno -- y el día se
  *      iba a +9,3% de kcal, con la avena sola aportando el 46% del exceso.
- *   2. Dos tablas con las mismas claves se desincronizan. `SERVING_UNITS` y
- *      `PACKAGING_INFO` viven en ficheros distintos a propósito, y esa
+ *   2. Dos tablas con las mismas claves se desincronizan. `SERVING_CATALOGS` y
+ *      `PACKAGING_CATALOGS` viven en ficheros distintos a propósito, y esa
  *      decisión solo es defendible si un test las ata.
  *   3. Una etiqueta sin traducir sale en español dentro de la interfaz
  *      inglesa, sin aviso y con los tests en verde (scripts/i18n/LEEME.md).
@@ -93,8 +93,8 @@ function run(t) {
 
   t.test("la ración MÍNIMA servible no puede ser mucho mayor que una ración normal", function () {
     var malos = [];
-    Object.keys(s.SERVING_UNITS).forEach(function (k) {
-      var u = s.SERVING_UNITS[k];
+    Object.keys(s.SERVING_CATALOGS.mercadona.units).forEach(function (k) {
+      var u = s.SERVING_CATALOGS.mercadona.units[k];
       var mediana = medianaDe(k);
       if (!mediana) return;
       var minimo = u.g * SUELO[u.split];
@@ -107,21 +107,21 @@ function run(t) {
   });
 
   t.test("todo ingrediente con ración aparece de verdad en algún plato", function () {
-    var huerfanos = Object.keys(s.SERVING_UNITS).filter(function (k) { return !medianaDe(k); });
+    var huerfanos = Object.keys(s.SERVING_CATALOGS.mercadona.units).filter(function (k) { return !medianaDe(k); });
     assert.deepStrictEqual(huerfanos, [],
       "una ración para un ingrediente que ningún plato usa es peso muerto que nadie va a revisar");
   });
 
   // ── 2. Las dos tablas no se pueden desincronizar ──────────────────────
 
-  t.test("cada clave de SERVING_UNITS existe también en PACKAGING_INFO", function () {
-    var sueltas = Object.keys(s.SERVING_UNITS).filter(function (k) { return !s.PACKAGING_INFO[k]; });
+  t.test("cada clave de SERVING_CATALOGS existe también en PACKAGING_CATALOGS", function () {
+    var sueltas = Object.keys(s.SERVING_CATALOGS.mercadona.units).filter(function (k) { return !s.PACKAGING_CATALOGS.mercadona.packages[k]; });
     assert.deepStrictEqual(sueltas, [],
       "servings.js y packaging.js están separados a propósito; separarlos solo vale si esto los ata");
   });
 
   t.test("cada clave está normalizada, o no casaría nunca", function () {
-    var raras = Object.keys(s.SERVING_UNITS).filter(function (k) {
+    var raras = Object.keys(s.SERVING_CATALOGS.mercadona.units).filter(function (k) {
       return s.normalizeIngredientKey(k) !== k;
     });
     assert.deepStrictEqual(raras, [],
@@ -129,16 +129,16 @@ function run(t) {
   });
 
   t.test("split solo puede ser una de las tres formas conocidas", function () {
-    var malas = Object.keys(s.SERVING_UNITS).filter(function (k) {
-      return !SUELO.hasOwnProperty(s.SERVING_UNITS[k].split);
+    var malas = Object.keys(s.SERVING_CATALOGS.mercadona.units).filter(function (k) {
+      return !SUELO.hasOwnProperty(s.SERVING_CATALOGS.mercadona.units[k].split);
     });
     assert.deepStrictEqual(malas, [],
       "un split desconocido cae al caso por defecto (mitades) sin avisar");
   });
 
   t.test("los gramos de cada ración son un número positivo", function () {
-    var malos = Object.keys(s.SERVING_UNITS).filter(function (k) {
-      var g = s.SERVING_UNITS[k].g;
+    var malos = Object.keys(s.SERVING_CATALOGS.mercadona.units).filter(function (k) {
+      var g = s.SERVING_CATALOGS.mercadona.units[k].g;
       return !(typeof g === "number" && isFinite(g) && g > 0);
     });
     assert.deepStrictEqual(malos, []);
@@ -153,8 +153,8 @@ function run(t) {
       projPath("js/i18n/packages-en.js")
     ]);
     var sinTraducir = [];
-    Object.keys(s.SERVING_UNITS).forEach(function (k) {
-      var label = s.SERVING_UNITS[k].label;
+    Object.keys(s.SERVING_CATALOGS.mercadona.units).forEach(function (k) {
+      var label = s.SERVING_CATALOGS.mercadona.units[k].label;
       if (sinTraducir.indexOf(label) !== -1) return;
       // El idioma va explícito: `tPackageLabel` devuelve null cuando el
       // idioma activo YA es el español, que es lo que ve un test.
@@ -200,6 +200,58 @@ function run(t) {
     assert.strictEqual(Math.round(s.quantizeGramsToServing(568, "Yogur griego ligero")), 625);
   });
 
+  // ── El PAPEL del ingrediente dentro de la receta ──────────────────────
+  // El pan tiene dos papeles: guarnición al lado de la sopa (una rebanada)
+  // o el plato entero (un bocadillo, medio pan). Lo declara el plato en su
+  // item, NO se deduce de los gramos -- había nueve recetas en 80 g justo
+  // debajo del umbral tentador, y una edición de 80 a 90 habría dado la
+  // vuelta a la unidad en silencio.
+
+  t.test("sin papel declarado, el pan es una rebanada", function () {
+    var u = s.resolveServingUnit("Pan integral", "mercadona");
+    assert.strictEqual(u.label, "rebanada");
+    assert.strictEqual(u.g, 30);
+  });
+
+  t.test('con papel "plato", el mismo pan pasa a cuartos de barra', function () {
+    var u = s.resolveServingUnit("Pan integral", "mercadona", "plato");
+    assert.strictEqual(u.label, "barra");
+    assert.strictEqual(u.g, 350);
+    assert.strictEqual(u.split, "cuarto");
+  });
+
+  t.test("un papel que la comida no declara NO cambia nada", function () {
+    // El yogur no tiene `comoPlato`: pedirlo no puede inventar una unidad.
+    var normal = s.resolveServingUnit("Yogur griego ligero", "mercadona");
+    var comoPlato = s.resolveServingUnit("Yogur griego ligero", "mercadona", "plato");
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(comoPlato)), JSON.parse(JSON.stringify(normal)));
+  });
+
+  t.test("los platos que declaran papel son los que se decidieron, ni uno más", function () {
+    var conPapel = [];
+    s.DISH_DB.forEach(function (d) {
+      (d.items || []).forEach(function (i) {
+        if (i.papel) conPapel.push(d.name + " :: " + i.name + " = " + i.papel);
+      });
+    });
+    conPapel.sort();
+    assert.deepStrictEqual(conPapel, [
+      "Bocadillo de pavo con queso y verduras :: Pan integral = plato",
+      "Bocadillo integral de atún y tomate :: Pan integral = plato"
+    ], "marcar un plato de más cambia su gramaje: que sea una decisión, no un descuido");
+  });
+
+  t.test("el papel llega hasta el plato generado, no se pierde por el camino", function () {
+    // `buildMealFromDish` copia el item; si olvidara `papel`, el motor
+    // redondearía el bocadillo a rebanadas y nadie se enteraría.
+    var e = freshEngineSandbox();
+    var dish = e.DISH_DB.filter(function (d) { return d.name === "Bocadillo integral de atún y tomate"; })[0];
+    var target = { kcal: dish.kcal, protein: dish.protein, carbs: dish.carbs, fat: dish.fat };
+    var meal = e.buildMealFromDish(dish, "comida", "Comida", target, "mercadona", 1);
+    var pan = meal.items.filter(function (i) { return i.name === "Pan integral"; })[0];
+    assert.strictEqual(pan.papel, "plato", "el item del plan perdió el papel que declara la receta");
+  });
+
   t.test("lo que no tiene ración honesta se queda en gramos", function () {
     // Carne y pescado frescos: se compran y se cortan al peso.
     ["Lomo de cerdo", "Pechuga de pollo", "Salmón", "Coliflor"].forEach(function (n) {
@@ -210,10 +262,10 @@ function run(t) {
 
   t.test("perUnit y spoonable se DERIVAN de packaging.js, no se copian", function () {
     var huevo = s.resolveServingUnit("Huevos enteros");
-    assert.strictEqual(huevo.g, s.PACKAGING_INFO["huevos enteros"].gramsPerUnit,
+    assert.strictEqual(huevo.g, s.PACKAGING_CATALOGS.mercadona.packages["huevos enteros"].gramsPerUnit,
       "copiar el gramaje del huevo en dos ficheros es cómo empiezan las desincronizaciones");
     var aceite = s.resolveServingUnit("Aceite de oliva");
-    assert.strictEqual(aceite.g, s.PACKAGING_INFO["aceite de oliva"].teaspoonG);
+    assert.strictEqual(aceite.g, s.PACKAGING_CATALOGS.mercadona.packages["aceite de oliva"].teaspoonG);
   });
 
   // ── 5. El motor de verdad, de punta a punta ───────────────────────────
@@ -236,7 +288,7 @@ function run(t) {
       var plan = e.generateDietPlan(profile, data);
       (plan.meals || []).forEach(function (meal) {
         (meal.items || []).forEach(function (item) {
-          var u = e.resolveServingUnit(item.name);
+          var u = e.resolveServingUnit(item.name, "mercadona", item.papel);
           if (!u || !(item.grams > 0)) return;
           revisadas++;
           // Idempotencia: volver a cuantizar algo ya cuantizado no puede
@@ -245,7 +297,11 @@ function run(t) {
           // el modo "cuarto" admite TERCIOS, así que 2/3 de un bote de 400 g
           // son 267 g, que no es múltiplo de 100 y es perfectamente legal.
           // Se admite 1 g de holgura porque los gramos se guardan enteros.
-          var otraVez = e.quantizeGramsToServing(item.grams, item.name);
+          // El PAPEL viaja con el item: el mismo pan es rebanada de
+          // guarnicion o cuarto de barra cuando ES el bocadillo. Sin
+          // pasarlo aqui, este test compararia contra la rejilla
+          // equivocada justo en los platos que declaran papel.
+          var otraVez = e.quantizeGramsToServing(item.grams, item.name, "mercadona", item.papel);
           if (Math.abs(otraVez - item.grams) > 1.001) {
             malas.push(item.name + " " + item.grams + " g -> " + Math.round(otraVez) + " g");
           }

@@ -252,7 +252,12 @@ function renderShoppingList(meals, storeId, days) {
       : t("ui.todo_lo_que_necesitas_comprar_para_el_plan_d");
   }
 
-  shoppingListContainer.innerHTML = items.map(renderShoppingRow).join("");
+  // Envuelto a propósito y no `items.map(renderShoppingRow)`: `map` pasa
+  // (elemento, ÍNDICE, array), así que el segundo parámetro recibiría el
+  // índice en vez de la tienda.
+  shoppingListContainer.innerHTML = items.map(function (entry) {
+    return renderShoppingRow(entry, storeId);
+  }).join("");
 }
 
 /**
@@ -276,7 +281,7 @@ function renderShoppingList(meals, storeId, days) {
  *      CONCRETO del que sale el precio de ese rol, elegido a mano al
  *      reconstruir los precios contra la API de Mercadona. Trae id, así
  *      que el botón abre la ficha exacta. Cubre 76 de los 83 roles.
- *   2. REAL_INGREDIENT_MATCHES — los 12 emparejamientos verificados por
+ *   2. REAL_MATCH_CATALOGS — los 12 emparejamientos verificados por
  *      EAN de 2026-08. Traen EAN pero no id: se busca en el catálogo.
  *      Se conserva como respaldo y porque además alimenta el PRECIO.
  *
@@ -288,9 +293,10 @@ function renderShoppingList(meals, storeId, days) {
  * decir "esto es lo que buscas".
  *
  * @param {string} ingredientName
+ * @param {string} [storeId] - la tienda del plan; sin ella, DEFAULT_STORE_ID
  * @returns {{id:(string|null), name:string, brand:(string|null)}}
  */
-function resolveShoppingProduct(ingredientName) {
+function resolveShoppingProduct(ingredientName, storeId) {
   var out = { id: null, name: ingredientName, brand: null };
   if (typeof normalizeIngredientKey !== "function") return out;
   var key = normalizeIngredientKey(ingredientName);
@@ -300,8 +306,8 @@ function resolveShoppingProduct(ingredientName) {
     return { id: link.id, name: link.name || ingredientName, brand: null };
   }
 
-  if (typeof REAL_INGREDIENT_MATCHES === "undefined") return out;
-  var match = REAL_INGREDIENT_MATCHES[key];
+  if (typeof realMatchesFor !== "function") return out;
+  var match = realMatchesFor(storeId).matches[key];
   if (!match) return out;
 
   if (match.productName) out.name = match.productName;
@@ -374,7 +380,7 @@ function shoppingListAsText(items, dias) {
   return lineas.join("\n");
 }
 
-function renderShoppingRow(entry) {
+function renderShoppingRow(entry, storeId) {
   var p = entry.purchase;
   var usedText = t("ui.usado") + ": " + round0(entry.requiredGrams) + " g";
 
@@ -416,7 +422,7 @@ function renderShoppingRow(entry) {
         // encontrar el producto real de Mercadona.
         '<div class="shopping-item__name">' + escapeHtml(nombreComida(entry.name)) +
           (typeof renderProductFindBtn === "function"
-            ? renderProductFindBtn(resolveShoppingProduct(entry.name)) : "") +
+            ? renderProductFindBtn(resolveShoppingProduct(entry.name, storeId)) : "") +
         '</div>' +
         '<div class="shopping-item__meta">' + escapeHtml(usedText) + '</div>' +
         pantryNote +

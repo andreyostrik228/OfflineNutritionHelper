@@ -24,13 +24,48 @@ con violación, recomp igual, volumen 5,0% → 2,5%; días "perfect" +9,5 y
    interfaz inglesa decía "1 y 1/2 huevos"), pero el grueso está donde
    estaba. `node scripts/i18n/inventario.js` los lista.
 
-2. **P2 — generar un plan cuesta 28,7 ms más en el perfil de corte** (+46%;
-   en un móvil son ~145 ms). Medido, y la causa está localizada:
-   `enforceBudgetInServings` llama a `computeDayPurchaseCost` una vez por
-   candidato y por iteración, hasta ~96 veces por plan. Se arregla
-   evaluando el ahorro una sola vez y recalculando solo el ingrediente que
-   se mueve — con cuidado de NO reimplementar el cálculo de paquetes (ver
-   §6, el bug de 2026-08-13b).
+2. ~~**P2 — optimizar `enforceBudgetInServings`**~~ — **CERRADO el
+   2026-09-14: la tarea culpaba a la función equivocada.** Se deja escrito
+   en vez de borrarlo, porque si solo se tacha alguien vuelve a abrirlo
+   dentro de un mes.
+
+   Lo que decía: "generar un plan cuesta 28,7 ms más en corte (+46%), la
+   causa es que `enforceBudgetInServings` llama a `computeDayPurchaseCost`
+   hasta ~96 veces por plan".
+
+   Lo que salió al medirlo, apagando esa función entera:
+
+   ```
+                    corte      recomp     volumen
+     serie A       +1,5 ms    +1,5 ms     +0,7 ms
+     serie B       +1,4 ms    -0,3 ms     -0,8 ms
+   ```
+
+   Dos series independientes. **Un milisegundo y pico, no 28,7.** A las ~96
+   llamadas no se llega casi nunca: la función sale antes por
+   `if (coste <= budget) return 0`, y ese es el caso normal. En recomp y
+   volumen el efecto ni siquiera tiene signo estable — está por debajo del
+   ruido, y ninguna de las dos series lo resuelve.
+
+   Los 28,7 ms eran reales pero medían otra cosa: "motor sin raciones
+   contra árbol con raciones", una combinación que hoy ya no se puede
+   montar (los datos salen siempre del árbol, y el motor viejo no conoce
+   los registros por tienda).
+
+   **Dónde estaba el tiempo de verdad:** `normalizeIngredientKey`, la
+   función más llamada del motor con diferencia — entre 15.000 y 89.000
+   veces por plan, contra 38 de `resolveServingUnit`. Memoizada el
+   2026-09-14 (ver la cabecera de `js/core/pricing.js`): **-18 ms en corte,
+   -13 en recomp, -15 en volumen, un 25-28% en los tres.** El plan generado
+   es idéntico; es una función pura de su cadena.
+
+   **Decisión del dueño: no se optimiza.** Complejidad añadida a una
+   función que cuenta dinero, a cambio de un milisegundo. El diseño quedó
+   pensado por si algún día cambia de opinión: el ahorro de un candidato no
+   varía cuando se mueve OTRO ingrediente (los paquetes se cuentan por
+   ingrediente, independientes), así que bastaría recalcular las filas del
+   mismo nombre — n+k llamadas en vez de n×iteraciones, y es equivalencia
+   exacta, no aproximación.
 
 3. **P3 — coliflor y carne picada siguen en gramos.** No tienen unidad de
    casa honesta: la pieza de coliflor son 1.040 g y la ración mediana 178,

@@ -87,8 +87,15 @@ function getStoreDaysAfterOpening(productId) {
 var _puenteRolProducto = null;
 
 function _idDeProductoParaRol(key) {
-  if (typeof REAL_INGREDIENT_MATCHES === "undefined") return null;
+  if (typeof realMatchesFor !== "function") return null;
   if (typeof REAL_PRODUCTS === "undefined") return null;
+
+  // Sin `storeId`: este puente sirve para la CADUCIDAD, que no depende del
+  // supermercado (un brik de leche dura lo que dura). `realMatchesFor(null)`
+  // cae a DEFAULT_STORE_ID, que es el comportamiento de siempre. Si algún
+  // día la caducidad pasara a depender de la tienda, hay que pasarla aquí y
+  // memoizar por tienda -- el caché de abajo es global a propósito.
+  var matches = realMatchesFor(null).matches;
 
   if (!_puenteRolProducto) {
     var porEan = {};
@@ -97,8 +104,8 @@ function _idDeProductoParaRol(key) {
       if (p && p.ean) porEan[String(p.ean)] = String(p.id);
     }
     _puenteRolProducto = {};
-    Object.keys(REAL_INGREDIENT_MATCHES).forEach(function (rol) {
-      var m = REAL_INGREDIENT_MATCHES[rol];
+    Object.keys(matches).forEach(function (rol) {
+      var m = matches[rol];
       var id = (m && m.ean) ? porEan[String(m.ean)] : null;
       if (id) _puenteRolProducto[rol] = id;
     });

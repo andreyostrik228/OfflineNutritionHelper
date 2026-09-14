@@ -871,7 +871,7 @@ function attemptPlanAtTier(profile, data, tier, pantryState) {
   //
   // Y ANTES de verifyPlanFeasibility, para que el informe juzgue el plan que
   // el usuario va a ver y no uno que ya no existe (§7.10).
-  var raciones = applyServingQuantization(meals);
+  var raciones = applyServingQuantization(meals, store);
   if (raciones.changed) {
     // El techo de compra primero y las garantías de applyPortionSanity
     // DESPUÉS: los dos recortan, pero recortar por dinero puede dejar un
@@ -1070,7 +1070,7 @@ function applyPortionSanity(meals, storeId, targetKcal) {
  * @param {object[]} meals
  * @returns {{changed: boolean, adjusted: object[]}}
  */
-function applyServingQuantization(meals) {
+function applyServingQuantization(meals, storeId) {
   var result = { changed: false, adjusted: [] };
   if (!meals || !meals.length) return result;
 
@@ -1082,7 +1082,7 @@ function applyServingQuantization(meals) {
 
   meals.forEach(function (meal) {
     (meal.items || []).forEach(function (item) {
-      var unit = resolveServingUnit(item.name);
+      var unit = resolveServingUnit(item.name, storeId, item.papel);
       if (!unit || !(unit.g > 0) || !(item.grams > 0)) return;
 
       var destino = Math.round(quantizeServingCount(item.grams / unit.g, unit.split) * unit.g);
@@ -1126,12 +1126,12 @@ function applyServingQuantization(meals) {
  * @param {number} targetG
  * @returns {number} pasos quitados
  */
-function trimIngredientToServings(meals, name, targetG) {
+function trimIngredientToServings(meals, name, targetG, storeId) {
   var filas = [];
   meals.forEach(function (meal) {
     (meal.items || []).forEach(function (item) {
       if (item.name !== name) return;
-      var unit = resolveServingUnit(item.name);
+      var unit = resolveServingUnit(item.name, storeId, item.papel);
       if (!unit || !(unit.g > 0)) return;
       filas.push({ item: item });
     });
@@ -1148,7 +1148,7 @@ function trimIngredientToServings(meals, name, targetG) {
     // fijo produce cantidades que no existen (333 g de un bote de 400).
     var f = null, anterior = null;
     for (var i = 0; i < filas.length; i++) {
-      var cand = previousServingGrams(filas[i].item.grams, filas[i].item.name);
+      var cand = previousServingGrams(filas[i].item.grams, filas[i].item.name, storeId, filas[i].item.papel);
       if (cand !== null) { f = filas[i]; anterior = cand; break; }
     }
     if (!f) break;
@@ -1251,7 +1251,7 @@ function restoreServingInvariants(meals, storeId, targetKcal) {
           var destino = item.grams;
           var quitados = 0;
           while (destino * kcalPorGramo > tope && quitados < MAX_RECORTES_RACION) {
-            var anterior = previousServingGrams(destino, item.name);
+            var anterior = previousServingGrams(destino, item.name, storeId, item.papel);
             if (anterior === null) break;
             destino = anterior;
             quitados++;
@@ -1281,7 +1281,7 @@ function restoreServingInvariants(meals, storeId, targetKcal) {
   var totals = sumIngredientGrams(meals);
   Object.keys(totals).forEach(function (name) {
     var tope = Math.min(caps[name] != null ? caps[name] : Infinity, 800);
-    if (totals[name] > tope) pasos += trimIngredientToServings(meals, name, tope);
+    if (totals[name] > tope) pasos += trimIngredientToServings(meals, name, tope, storeId);
   });
 
   // (b) Borde de envase. Recalculado DESPUÉS de (a), como en
@@ -1300,7 +1300,7 @@ function restoreServingInvariants(meals, storeId, targetKcal) {
 
     // Bajar hasta caber en un paquete menos. Bajar menos sería PEOR: el
     // paquete abierto se aprovecharía todavía menos.
-    pasos += trimIngredientToServings(meals, name, (packs - 1) * size);
+    pasos += trimIngredientToServings(meals, name, (packs - 1) * size, storeId);
   });
 
   if (pasos) {
@@ -1363,12 +1363,12 @@ function enforceBudgetInServings(meals, budget, storeId, pantryState) {
   var candidatos = [];
   meals.forEach(function (meal) {
     (meal.items || []).forEach(function (item) {
-      var unit = resolveServingUnit(item.name);
+      var unit = resolveServingUnit(item.name, storeId, item.papel);
       if (!unit || !(unit.g > 0) || !(item.grams > 0)) return;
       // Bajar no puede dejar la fila por debajo de UNA ración: un
       // ingrediente de la receta que desaparece no es un plan más barato,
       // es otro plato. `previousServingGrams` devuelve null justo ahí.
-      if (previousServingGrams(item.grams, item.name) === null) return;
+      if (previousServingGrams(item.grams, item.name, storeId, item.papel) === null) return;
       candidatos.push({ item: item });
     });
   });
@@ -1378,7 +1378,7 @@ function enforceBudgetInServings(meals, budget, storeId, pantryState) {
     var mejor = null;
 
     candidatos.forEach(function (c) {
-      var anterior = previousServingGrams(c.item.grams, c.item.name);
+      var anterior = previousServingGrams(c.item.grams, c.item.name, storeId, c.item.papel);
       if (anterior === null) return;
       var destino = Math.round(anterior);
       var gramosOriginales = c.item.grams;

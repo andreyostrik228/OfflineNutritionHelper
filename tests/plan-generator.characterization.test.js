@@ -727,11 +727,22 @@ function run(t) {
     // de lo que quita en un día pequeño. Medido sobre 200 semillas el
     // perfil ENTERO no empeora -- días "perfect" 64% -> 70% --, así que
     // esta semilla concreta cae del lado malo del redondeo.
-    assert.strictEqual(result.total.kcal, 3655.9);
-    assert.strictEqual(result.total.protein, 232.7);
-    assert.strictEqual(result.total.carbs, 451.40000000000003);
-    assert.strictEqual(result.total.fat, 99);
-    assert.strictEqual(result.total.cost, 9.46);
+    // ── RECAPTURADO el 2026-09-14: la barra se mide por cuartos ────────
+    // `pan blanco` pasa de "rebanada de 25 g" a "cuarto de barra" (ver
+    // js/data/servings.js). Esta semilla lleva pan blanco en la cena, así
+    // que su ración se redondea a otra cantidad: ahora sale 1 barra entera.
+    // Cambio DELIBERADO de datos, se recaptura a propósito.
+    //
+    // Y MEJORA, que es lo que hay que mirar:
+    //   kcal   3655,9 -> 3723,9  (objetivo 3871: -5,6% -> -3,8%)
+    //   prot    232,7 ->  235,4  (objetivo 171, de sobra las dos veces)
+    //   compra  19,15 ->  19,15  (tope 20, ni un céntimo de diferencia)
+    // Sigue "perfect"/tier 0 y sin violaciones.
+    assert.strictEqual(result.total.kcal, 3723.9);
+    assert.strictEqual(result.total.protein, 235.4);
+    assert.strictEqual(result.total.carbs, 464.4);
+    assert.strictEqual(result.total.fat, 99.6);
+    assert.strictEqual(result.total.cost, 9.51);
     assert.strictEqual(result.total.purchaseCost, 19.15);
     assert.strictEqual(result.report.status, "perfect");
     assert.strictEqual(result.report.tierUsed, 0);

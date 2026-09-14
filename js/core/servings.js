@@ -17,9 +17,13 @@
  * La respuesta sale de TRES sitios, en este orden, y el primero que
  * conteste gana:
  *
- *   1. `SERVING_UNITS` (js/data/servings.js) — la tabla explícita.
- *   2. `PACKAGING_INFO` type "perUnit"  — ya tiene gramsPerUnit/unitLabel.
- *   3. `PACKAGING_INFO` type "spoonable" — la cucharadita.
+ *   1. `SERVING_CATALOGS[tienda].units` — la tabla explícita.
+ *   2. `PACKAGING_CATALOGS[tienda]` type "perUnit"  — gramsPerUnit/unitLabel.
+ *   3. `PACKAGING_CATALOGS[tienda]` type "spoonable" — la cucharadita.
+ *
+ * Los tres llevan TIENDA desde el 2026-09-14: la ración sale del envase, y
+ * el envase es de un supermercado concreto. Quien no pase `storeId` recibe
+ * el de DEFAULT_STORE_ID, igual que hacen los precios desde siempre.
  *
  * 2 y 3 se DERIVAN en vez de copiarse a la tabla: duplicar el gramaje del
  * huevo en dos ficheros es justo cómo empiezan las desincronizaciones.
@@ -44,16 +48,45 @@
  * @param {string} name - nombre del ingrediente tal cual viene del plato
  * @returns {{g: number, label: string, split: string}|null}
  */
-function resolveServingUnit(name) {
+function servingCatalogFor(storeId) {
+  var registro = (typeof SERVING_CATALOGS !== "undefined") ? SERVING_CATALOGS : {};
+  var porDefecto = (typeof DEFAULT_STORE_ID !== "undefined") ? DEFAULT_STORE_ID : "mercadona";
+  var propio = registro[storeId];
+  var usado = propio || registro[porDefecto];
+  return {
+    units: (usado && usado.units) || {},
+    storeId: (usado && usado.storeId) || porDefecto,
+    inherited: !propio
+  };
+}
+
+/**
+ * @param {string} name
+ * @param {string} [storeId]
+ * @param {string} [papel] - "plato" cuando ESTE ingrediente ES el plato en
+ *   ESTA receta (lo declara el item en js/data/dishes.js). Un mismo
+ *   alimento se mide distinto según su papel: el pan es una rebanada al
+ *   lado de la sopa y media barra cuando es el bocadillo.
+ */
+function resolveServingUnit(name, storeId, papel) {
   if (typeof normalizeIngredientKey !== "function") return null;
   var key = normalizeIngredientKey(name);
 
-  if (typeof SERVING_UNITS !== "undefined" && SERVING_UNITS[key]) {
-    return SERVING_UNITS[key];
+  var propias = servingCatalogFor(storeId).units;
+  if (propias[key]) {
+    var u = propias[key];
+    // El papel manda solo si esa comida declara una unidad para él. Sin
+    // `comoPlato` se usa la de siempre: un plato marcado no puede pedir
+    // una unidad que no existe.
+    if (papel === "plato" && u.comoPlato) return u.comoPlato;
+    return u;
   }
 
-  if (typeof PACKAGING_INFO === "undefined") return null;
-  var info = PACKAGING_INFO[key];
+  // Derivado del ENVASE de esa misma tienda, no de una tabla global: un
+  // huevo pesa lo que pesa, pero "una cucharadita de aceite" sale de la
+  // ficha del aceite que vende ESTA tienda.
+  if (typeof packagingCatalogFor !== "function") return null;
+  var info = packagingCatalogFor(storeId).packages[key];
   if (!info) return null;
 
   if (info.type === "perUnit" && info.gramsPerUnit > 0) {
@@ -105,8 +138,8 @@ function quantizeServingCount(count, split) {
  * @param {string} name
  * @returns {number}
  */
-function quantizeGramsToServing(grams, name) {
-  var unit = resolveServingUnit(name);
+function quantizeGramsToServing(grams, name, storeId, papel) {
+  var unit = resolveServingUnit(name, storeId, papel);
   if (!unit || !(unit.g > 0) || !(grams > 0)) return grams;
   return quantizeServingCount(grams / unit.g, unit.split) * unit.g;
 }
@@ -154,8 +187,8 @@ function previousServingCount(count, split) {
  * @param {string} name
  * @returns {number|null}
  */
-function previousServingGrams(grams, name) {
-  var unit = resolveServingUnit(name);
+function previousServingGrams(grams, name, storeId, papel) {
+  var unit = resolveServingUnit(name, storeId, papel);
   if (!unit || !(unit.g > 0) || !(grams > 0)) return null;
 
   // Se baja por la rejilla hasta que el resultado sea de verdad MENOR en

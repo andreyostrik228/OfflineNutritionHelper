@@ -44,7 +44,7 @@
  * ─────────────────────────────────────────────────────────────────────────
  */
 
-var PACKAGING_INFO = {
+var PACKAGING_MERCADONA = {
 
   // ── 1. Ingredientes "de cucharada" ──────────────────────────────────────
   // Aceite de oliva (2026-08-26): se mide a chorro y a cucharadas, nunca
@@ -204,4 +204,36 @@ var PACKAGING_INFO = {
   "pechuga de pollo":            { type: "fixedPackage", packageG: 558, packageLabel: "bandeja (media de 4 cortes)" },  // media de 4 cortes reales, 7,975 EUR/kg
   "solomillo de ternera":        { type: "fixedPackage", packageG: 300, packageLabel: "bandeja" },  // Solomillo de vacuno añojo para plancha, 40,7 EUR/kg
   "ternera magra":               { type: "fixedPackage", packageG: 533, packageLabel: "bandeja (media de 3 cortes)" },  // media de 3 cortes reales, 17,467 EUR/kg
+};
+
+// ── Registro por tienda ──────────────────────────────────────────────────
+// Mismo patrón que PRICE_CATALOGS (js/data/prices/mercadona.js): un
+// supermercado, un archivo, que se autoregistra aquí.
+//
+// POR QUÉ ESTO NO ERA ASÍ Y AHORA SÍ (2026-09-14). `resolvePackageInfo`
+// recibe `storeId` desde siempre, pero el tamaño de envase salía de una
+// tabla global — o sea, de Mercadona, para cualquier tienda. Mientras el
+// catálogo tuviera una sola tienda daba igual; con dos deja de darlo, y
+// falla del peor modo: el bote de lentejas SÍ coincide entre Dia y
+// Mercadona (400 g), el arroz también (1 kg) y el pack de yogur griego
+// también (6 x 125 g) -- pero la bolsa de verdura congelada no (1 kg / 400 g
+// contra 600 g) ni el pan de molde (820 g contra 460 g). Que coincidan A
+// MENUDO es justo lo que hace el fallo invisible: el presupuesto sale
+// verosímil y equivocado, y en este motor el presupuesto se calcula desde
+// el coste de COMPRA (ver "Budget = purchase cost" en PROJECT.md).
+//
+// La resolución cae a DEFAULT_STORE_ID igual que hacen los precios desde
+// siempre (`PRICE_CATALOGS[storeId] || PRICE_CATALOGS[DEFAULT_STORE_ID]`),
+// pero `resolvePackageInfo` ahora DICE en `packageStore` de qué tienda
+// salió el envase, para que un dato heredado no se confunda con uno propio.
+var PACKAGING_CATALOGS = (typeof PACKAGING_CATALOGS === "undefined") ? {} : PACKAGING_CATALOGS;
+
+PACKAGING_CATALOGS.mercadona = {
+  storeId:   "mercadona",
+  storeName: "Mercadona",
+  sourceNote:
+    "Tamaños de envase de Mercadona/Hacendado, Granada (CP 18012, wh 3968). " +
+    "Estimados a partir del formato más habitual salvo donde el comentario " +
+    "cita la ficha real; ver la cabecera de este archivo.",
+  packages:  PACKAGING_MERCADONA
 };

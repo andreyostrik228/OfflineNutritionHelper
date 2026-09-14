@@ -118,7 +118,7 @@ function extractUniqueIngredientNames(dishDb) {
 // una entrada de envase a la clave corrupta, que habría tapado el síntoma
 // equivocado.
 // 2026-09-02: entra "Pechuga de pollo". Su tamaño de envase venía de
-// REAL_INGREDIENT_MATCHES, que ya no decide el precio (ver la cascada en
+// REAL_MATCH_CATALOGS, que ya no decide el precio (ver la cascada en
 // pricing.js: el catálogo reconstruido contra la API manda). Sin ese
 // tamaño cae donde caen las otras once carnes y pescados frescos: se
 // compra al peso. Es lo COHERENTE -- era la única carne fresca con un

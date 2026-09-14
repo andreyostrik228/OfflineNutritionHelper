@@ -29,7 +29,7 @@
  * selección sin tocar esto.
  *
  * Resolución de precio de un ingrediente, en cascada:
- *   0. Producto real verificado por EAN (REAL_INGREDIENT_MATCHES, js/data/
+ *   0. Producto real verificado por EAN (REAL_MATCH_CATALOGS, js/data/
  *      real-ingredient-matches.js) — solo para los ~12 ingredientes con un
  *      match curado a mano y priceIsUsable !== false
  *   1. Coincidencia exacta en el catálogo de la tienda activa
@@ -47,8 +47,8 @@
  *   js/data/prices/*.js              (PRICE_CATALOGS)
  *   js/data/real-products*.js        (REAL_PRODUCTS_CATALOGS) — opcional,
  *                                     solo para getRealProductsForStore()
- *   js/data/real-ingredient-matches.js (REAL_INGREDIENT_MATCHES) — opcional
- *   js/data/packaging.js             (PACKAGING_INFO) — opcional, solo para
+ *   js/data/real-ingredient-matches.js (REAL_MATCH_CATALOGS) — opcional
+ *   js/data/packaging.js             (PACKAGING_CATALOGS) — opcional, solo para
  *                                     resolvePackageInfo/resolvePurchaseCost
  *   js/core/utils.js                 (round2)
  *
@@ -115,7 +115,80 @@ var DEFAULT_FALLBACK_PRICE_PER_100G = 0.25; // verdura/hortaliza genérica u "ot
  * @param {string} name
  * @returns {string}
  */
+// Memoria de claves ya normalizadas. Ver normalizeIngredientKey.
+//
+// `Object.create(null)` y NO `{}`: un objeto literal hereda de
+// Object.prototype, así que `memo["constructor"]` no vale `undefined` --
+// vale la función Object. Con `{}` esta memoria devolvía una FUNCIÓN donde
+// promete una cadena para "constructor", "toString", "valueOf",
+// "hasOwnProperty", "isPrototypeOf", "propertyIsEnumerable",
+// "toLocaleString" y "__proto__".
+//
+// Y no era un valor raro y ya está: reventaba. `resolveIngredientPrice`
+// hace `key.indexOf(...)` sobre el resultado, así que salía
+// "key.indexOf is not a function" -- una excepción de verdad, alcanzable
+// desde el teclado. El nombre de un ingrediente de la despensa lo ESCRIBE
+// el usuario (js/core/pantry.js), igual que el campo "no me gusta", y
+// "constructor" es una palabra española corriente.
+//
+// Un objeto sin prototipo no tiene ninguna clave heredada, así que la
+// comprobación `!== undefined` vuelve a significar lo que dice.
+var _memoClaveIngrediente = Object.create(null);
+
 function normalizeIngredientKey(name) {
+  var bruto = String(name);
+  var memo = _memoClaveIngrediente[bruto];
+  if (memo !== undefined) return memo;
+  return (_memoClaveIngrediente[bruto] = _normalizarClaveIngrediente(bruto));
+}
+
+/**
+ * El trabajo de verdad. Separado para que la memoria de arriba no tenga que
+ * repetirlo.
+ *
+ * \u2500\u2500 POR QU\u00c9 SE MEMOIZA (medido 2026-09-14) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+ * Es la funci\u00f3n m\u00e1s llamada del motor con diferencia. Contadas sobre 30
+ * semillas del perfil de corte, llamadas POR PLAN:
+ *
+ *     normalizeIngredientKey   15.287 .. 88.629   (mediana 68.158)
+ *
+ * Var\u00eda mucho de un plan a otro -- depende de cu\u00e1ntos tiers prueba el bucle
+ * y de cu\u00e1ntos candidatos eval\u00faa el selector -- as\u00ed que el rango importa
+ * m\u00e1s que cualquier cifra suelta. Lo que no var\u00eda es el ORDEN de magnitud
+ * frente a todo lo dem\u00e1s; en un plan concreto (semilla 1..40 promediadas):
+ *
+ *     56.037   normalizeIngredientKey
+ *     18.506   resolvePackageInfo
+ *      9.227   resolvePurchaseCost
+ *         38   resolveServingUnit
+ *         16   computeDayPurchaseCost
+ *
+ * Y cada llamada hac\u00eda un `normalize("NFD")` m\u00e1s tres expresiones
+ * regulares, sobre una cadena que sale siempre del mismo pu\u00f1ado de nombres:
+ * los 83 roles del cat\u00e1logo y los productos reales. El resultado no puede
+ * cambiar para una misma entrada, as\u00ed que no hay nada que invalidar.
+ *
+ * Medido con 150 generaciones por perfil, mediana de ms por plan:
+ *
+ *     corte     89,2 -> 66,6   (-22,6 ms, -25%)
+ *     recomp    45,2 -> 34,0   (-11,2 ms, -25%)
+ *     volumen   52,6 -> 39,7   (-12,9 ms, -25%)
+ *
+ * El plan generado es ID\u00c9NTICO: es una funci\u00f3n pura de su cadena, no
+ * cambia ninguna decisi\u00f3n. Comprobado con los 657 tests y con
+ * probar_motor.js, que no mueve una cifra.
+ *
+ * \u2500\u2500 Y POR QU\u00c9 NO SE OPTIMIZ\u00d3 enforceBudgetInServings \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+ * Que era lo que ped\u00eda ROADMAP P2, culpando a sus ~96 llamadas a
+ * computeDayPurchaseCost. Medido apagando esa funci\u00f3n entera: **1,5 ms** en
+ * corte, no los 28,7 que se le atribu\u00edan. No llega a 96 llamadas porque
+ * sale antes por `if (coste <= budget) return 0`, y eso es lo normal.
+ * El tiempo estaba aqu\u00ed.
+ *
+ * @param {string} name
+ * @returns {string}
+ */
+function _normalizarClaveIngrediente(name) {
   return String(name)
     .toLowerCase()
     .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
@@ -185,12 +258,57 @@ function getRealProductsForStore(storeId) {
  * @param {string} [storeId] - por defecto DEFAULT_STORE_ID
  * @returns {{ pricePer100g: number, source: 'real_product'|'catalog'|'category'|'default', group: string|null }}
  */
+/**
+ * Los ENVASES de una tienda, con la misma caída a DEFAULT_STORE_ID que
+ * usan los precios desde siempre.
+ *
+ * Devuelve también de QUÉ tienda salió, porque heredar los envases de
+ * Mercadona y creer que son los tuyos es un error caro y silencioso: el
+ * presupuesto de este motor se calcula desde el coste de COMPRA, así que un
+ * tamaño de envase prestado produce un número verosímil y falso.
+ *
+ * @param {string} [storeId]
+ * @returns {{ packages: object, storeId: string, inherited: boolean }}
+ */
+function packagingCatalogFor(storeId) {
+  var registro = (typeof PACKAGING_CATALOGS !== "undefined") ? PACKAGING_CATALOGS : {};
+  var propio = registro[storeId];
+  var usado = propio || registro[DEFAULT_STORE_ID];
+  return {
+    packages: (usado && usado.packages) || {},
+    storeId: (usado && usado.storeId) || DEFAULT_STORE_ID,
+    inherited: !propio
+  };
+}
+
+/**
+ * Los productos reales verificados por EAN de una tienda. Misma caída.
+ *
+ * Un EAN es de un producto concreto de un supermercado concreto, así que
+ * heredarlo es todavía menos defendible que heredar un tamaño de envase --
+ * pero la caída existe igual, para que una tienda nueva sin esta tabla
+ * siga funcionando en vez de romperse.
+ *
+ * @param {string} [storeId]
+ * @returns {{ matches: object, storeId: string, inherited: boolean }}
+ */
+function realMatchesFor(storeId) {
+  var registro = (typeof REAL_MATCH_CATALOGS !== "undefined") ? REAL_MATCH_CATALOGS : {};
+  var propio = registro[storeId];
+  var usado = propio || registro[DEFAULT_STORE_ID];
+  return {
+    matches: (usado && usado.matches) || {},
+    storeId: (usado && usado.storeId) || DEFAULT_STORE_ID,
+    inherited: !propio
+  };
+}
+
 function resolveIngredientPrice(name, storeId) {
   var store = PRICE_CATALOGS[storeId] || PRICE_CATALOGS[DEFAULT_STORE_ID];
   var key = normalizeIngredientKey(name);
 
   // ── El catálogo de la tienda manda (2026-09-02) ───────────────────────
-  // Hasta hoy, los 12 REAL_INGREDIENT_MATCHES iban PRIMERO. Tenía sentido
+  // Hasta hoy, los 12 productos reales por EAN iban PRIMERO. Tenía sentido
   // cuando el catálogo de precios era mayoritariamente estimado: un
   // producto verificado por EAN valía más que una estimación.
   //
@@ -205,18 +323,16 @@ function resolveIngredientPrice(name, storeId) {
   // 250 g, tres veces más cara que comprar quinoa seca, que es lo que la
   // receta manda hacer.
   //
-  // REAL_INGREDIENT_MATCHES sigue vivo para lo que sí aporta: nombre y
+  // La tabla por EAN sigue viva para lo que sí aporta: nombre y
   // tamaño reales del producto en la ficha de compra. Solo deja de decidir
   // el PRECIO, y pasa a cubrir únicamente lo que el catálogo no tenga.
   if (store && store.pricesPer100g && typeof store.pricesPer100g[key] === "number") {
     return { pricePer100g: store.pricesPer100g[key], source: "catalog", group: null };
   }
 
-  if (typeof REAL_INGREDIENT_MATCHES !== "undefined") {
-    var realMatch = REAL_INGREDIENT_MATCHES[key];
-    if (realMatch && realMatch.priceIsUsable !== false && typeof realMatch.pricePer100g === "number") {
-      return { pricePer100g: realMatch.pricePer100g, source: "real_product", group: null };
-    }
+  var realMatch = realMatchesFor(storeId).matches[key];
+  if (realMatch && realMatch.priceIsUsable !== false && typeof realMatch.pricePer100g === "number") {
+    return { pricePer100g: realMatch.pricePer100g, source: "real_product", group: null };
   }
 
   for (var i = 0; i < CATEGORY_FALLBACK_RULES.length; i++) {
@@ -286,14 +402,14 @@ function proteinPerEuro(dish, storeId) {
  * Resuelve el tamaño y precio del envase/unidad COMPRABLE de un
  * ingrediente — el tamaño viene SIEMPRE de la misma fuente que el precio
  * que ya devuelve resolveIngredientPrice(), nunca se mezclan (un tamaño de
- * PACKAGING_INFO con un precio de REAL_INGREDIENT_MATCHES daría un coste
+ * PACKAGING_CATALOGS con un precio de REAL_MATCH_CATALOGS daría un coste
  * de paquete incoherente con el producto real, o viceversa):
  *
  *   - source === "real_product": el tamaño es el sizeG del propio
- *     REAL_INGREDIENT_MATCHES (el mismo producto real cuyo pricePer100g
+ *     el producto real por EAN (el mismo cuyo pricePer100g
  *     ya se está usando).
  *   - cualquier otro source (catalog/category/default): el tamaño viene de
- *     PACKAGING_INFO (envase/ración genérica estimada), si existe una
+ *     PACKAGING_CATALOGS (envase/ración genérica estimada), si existe una
  *     entrada para este ingrediente.
  *   - si ninguna de las dos tiene un tamaño (ej. carne/pescado fresco, que
  *     se compra al peso real): packageSizeG es null — NUNCA se inventa un
@@ -315,18 +431,27 @@ function resolvePackageInfo(name, storeId) {
   var key = normalizeIngredientKey(name);
   var packageSizeG = null;
   var packageLabel = null;
+  // De qué tienda salió el envase, y si se heredó. Se rellena abajo.
+  var packageStore = null;
+  var packageInherited = false;
 
-  if (priced.source === "real_product" && typeof REAL_INGREDIENT_MATCHES !== "undefined") {
-    var realMatch = REAL_INGREDIENT_MATCHES[key];
+  if (priced.source === "real_product") {
+    var reales = realMatchesFor(storeId);
+    var realMatch = reales.matches[key];
     if (realMatch && typeof realMatch.sizeG === "number" && realMatch.sizeG > 0) {
       packageSizeG = realMatch.sizeG;
       packageLabel = realMatch.productName || null;
+      packageStore = reales.storeId;
+      packageInherited = reales.inherited;
     }
   }
 
-  if (packageSizeG === null && typeof PACKAGING_INFO !== "undefined") {
-    var info = PACKAGING_INFO[key];
+  var envases = packagingCatalogFor(storeId);
+  if (packageSizeG === null) {
+    var info = envases.packages[key];
     if (info) {
+      packageStore = envases.storeId;
+      packageInherited = envases.inherited;
       if (typeof info.packageG === "number" && info.packageG > 0) {
         packageSizeG = info.packageG;
         packageLabel = info.packageLabel || null;
@@ -357,7 +482,15 @@ function resolvePackageInfo(name, storeId) {
     source: priced.source,
     packageSizeG: packageSizeG,
     packageLabel: packageLabel,
-    packagePrice: packagePrice
+    packagePrice: packagePrice,
+    // Trazabilidad de la TIENDA del envase, igual que `source` lo es del
+    // precio. `packageInherited: true` significa que esta tienda no declara
+    // envases y se están usando los de DEFAULT_STORE_ID -- un dato prestado,
+    // no propio. Hoy siempre es false porque solo existe Mercadona; existe
+    // para que el día que haya una segunda tienda el préstamo se vea en vez
+    // de colarse.
+    packageStore: packageStore,
+    packageInherited: packageInherited
   };
 }
 

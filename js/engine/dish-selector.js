@@ -1052,6 +1052,13 @@ function buildMealFromDish(dish, mealKey, mealLabel, target, storeId, forcedScal
       prep:    dish.prep,
       ready:   false,
       taste:   dish.taste,
+      // El PAPEL del ingrediente EN ESTA receta, si el plato lo declara
+      // (js/data/dishes.js). Viaja con el item porque quien lo necesita
+      // -- el redondeo a raciones y la pantalla -- ya no tiene el plato
+      // delante. Sin declarar queda undefined, y entonces la ración es la
+      // de siempre: el pan es rebanada salvo que la receta diga que ES el
+      // bocadillo.
+      papel:   ingredient.papel,
       priceSource: priceInfo.source, // 'catalog' | 'category' | 'default' — trazabilidad de confianza del PRECIO
       nutritionSource: nutrition.nutritionSource // 'real' | 'estimated' — trazabilidad de confianza de los MACROS (ver js/core/nutrition.js)
     });

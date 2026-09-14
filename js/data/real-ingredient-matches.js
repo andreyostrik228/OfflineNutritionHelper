@@ -42,7 +42,7 @@
  * ─────────────────────────────────────────────────────────────────────────
  */
 
-var REAL_INGREDIENT_MATCHES = {
+var REAL_MATCHES_MERCADONA = {
 
   "tortillas de trigo":         { productName: "Tortillas de trigo Hacendado",                     brand: "Hacendado", sizeG: 360,  ean: "8480000808592", pricePer100g: 0.32,  priceIsUsable: true },
   "jamon cocido extra":         { productName: "Jamón cocido extra Noel lonchas",                  brand: "Noel",       sizeG: 200,  ean: "8410783320813", pricePer100g: 1.125, priceIsUsable: true },
@@ -72,4 +72,25 @@ var REAL_INGREDIENT_MATCHES = {
   //   lomo de cerdo         -> matcheaba con chuletas de aguja (corte distinto)
   //   sardinas en lata      -> matcheaba con "Ensalada ensatún" (atún, no sardina)
   //   verduras congeladas   -> matcheaba con verduras ASADAS, no congeladas salteadas
+};
+
+// ── Registro por tienda ──────────────────────────────────────────────────
+// Mismo patrón que PACKAGING_CATALOGS y PRICE_CATALOGS.
+//
+// Esta tabla es la MÁS específica de tienda de las tres, aunque sea la más
+// pequeña: cada entrada lleva un EAN y una marca concretos ("Tortillas de
+// trigo Hacendado", 8480000808592). Un EAN no se hereda entre supermercados
+// ni por aproximación.
+//
+// Y es la que más importaba arreglar, porque `resolvePackageInfo` la
+// consulta ANTES que PACKAGING_CATALOGS cuando el precio viene de un
+// producto real: si se hubieran añadido tiendas a las otras dos y no a
+// esta, el defecto habría sobrevivido justo en la rama con PRIORIDAD.
+var REAL_MATCH_CATALOGS = (typeof REAL_MATCH_CATALOGS === "undefined") ? {} : REAL_MATCH_CATALOGS;
+
+REAL_MATCH_CATALOGS.mercadona = {
+  storeId:   "mercadona",
+  storeName: "Mercadona",
+  sourceNote: "Productos reales de Mercadona verificados por EAN, curados a mano.",
+  matches:   REAL_MATCHES_MERCADONA
 };

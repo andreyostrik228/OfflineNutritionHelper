@@ -415,7 +415,7 @@ var DISH_DB = [
   { name:"Cerdo con cuscús y zanahoria",                 category:"comida", kcal:543, protein:42.8, carbs:52.6, fat:17.4, cost:1.54, prep:25, mainProt:"cerdo",    taste:"savory",
     items:[{name:"Lomo de cerdo",g:190},{name:"Cuscús cocido",g:200},{name:"Zanahoria",g:80}] },
   { name:"Bocadillo integral de atún y tomate",          category:"comida", kcal:408, protein:42.9, carbs:46, fat:3.6, cost:2.34, prep:5,  mainProt:"atun",     taste:"savory",
-    items:[{name:"Pan integral",g:100},{name:"Atún al natural",g:150},{name:"Tomate",g:80}] },
+    items:[{name:"Pan integral",g:100,papel:"plato"},{name:"Atún al natural",g:150},{name:"Tomate",g:80}] },
   { name:"Merluza con quinoa y tomate",                  category:"comida", kcal:401, protein:46, carbs:40.3, fat:4.1, cost:3.04, prep:20, mainProt:"merluza",  taste:"savory",
     items:[{name:"Merluza",g:220},{name:"Quinoa cocida",g:180},{name:"Tomate",g:80}] },
   { name:"Bacalao con garbanzos y espinacas",            category:"comida", kcal:348, protein:48.2, carbs:17.8, fat:5.8, cost:4.52, prep:20, mainProt:"merluza",  taste:"savory",
@@ -431,7 +431,7 @@ var DISH_DB = [
   { name:"Arroz con pollo y pimiento",                   category:"comida", kcal:536, protein:49.3, carbs:68.5, fat:5.4, cost:1.83, prep:25, mainProt:"pollo",    taste:"savory",
     items:[{name:"Pechuga de pollo",g:190},{name:"Arroz blanco cocido",g:220},{name:"Maíz dulce",g:60}] },
   { name:"Bocadillo de pavo con queso y verduras",       category:"comida", kcal:474, protein:49.5, carbs:40.6, fat:10.8, cost:1.94, prep:5,  mainProt:"pavo",     taste:"savory",
-    items:[{name:"Pan integral",g:90},{name:"Pechuga de pavo",g:120},{name:"Queso light",g:40},{name:"Tomate",g:60}] },
+    items:[{name:"Pan integral",g:90,papel:"plato"},{name:"Pechuga de pavo",g:120},{name:"Queso light",g:40},{name:"Tomate",g:60}] },
 
   // ══════════════════════════════════════════════════════
   //  CENAS ADICIONALES

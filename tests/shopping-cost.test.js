@@ -11,7 +11,7 @@
  * module.exports — ver tests/lib/load-browser-globals.js), igual que ya
  * hace poc/tests/. Para los casos numéricos exactos que pide la corrección
  * (23g/250g, 270g/250g, 150ml/1L, 1.2L/1L, 2 huevos/pack de 6...) se
- * inyectan entradas SINTÉTICAS de PACKAGING_INFO/precio en el propio
+ * inyectan entradas SINTÉTICAS de PACKAGING_CATALOGS/precio en el propio
  * sandbox — nunca se edita packaging.js/mercadona.js reales, y nunca se
  * inventa un tamaño de envase en el código de producción para un
  * ingrediente que no lo tiene.
@@ -85,14 +85,14 @@ function freshFullEngineSandbox() {
 /**
  * Inyecta un ingrediente sintético de prueba en el sandbox: registra un
  * precio por 100 "unidad" en PRICE_CATALOGS.mercadona y, si se pide, un
- * tamaño de envase en PACKAGING_INFO. Nombre único por test para no
+ * tamaño de envase en PACKAGING_CATALOGS. Nombre único por test para no
  * chocar entre sí ni con datos reales.
  */
 function injectSyntheticIngredient(sandbox, opts) {
   var key = opts.key; // ya normalizado (minúsculas, sin acentos)
   sandbox.PRICE_CATALOGS.mercadona.pricesPer100g[key] = opts.pricePer100Units;
   if (opts.packageSize) {
-    sandbox.PACKAGING_INFO[key] = { type: "fixedPackage", packageG: opts.packageSize, packageLabel: opts.label || "envase" };
+    sandbox.PACKAGING_CATALOGS.mercadona.packages[key] = { type: "fixedPackage", packageG: opts.packageSize, packageLabel: opts.label || "envase" };
   }
 }
 
@@ -273,7 +273,7 @@ function run(t) {
   // ── 13. Sin packaging metadata válido -> nunca se inventa un tamaño ───
   t.test("un producto sin packaging metadata conocido no recibe un tamaño de envase inventado", function () {
     var s = freshPricingSandbox();
-    // "salmon" no tiene entrada en PACKAGING_INFO ni en REAL_INGREDIENT_MATCHES
+    // "salmon" no tiene entrada en PACKAGING_CATALOGS ni en REAL_MATCH_CATALOGS
     // (se compra al peso real en el mostrador) -- ver js/data/packaging.js.
     var pkg = s.resolvePackageInfo("salmon", "mercadona");
     assert.strictEqual(pkg.packageSizeG, null);

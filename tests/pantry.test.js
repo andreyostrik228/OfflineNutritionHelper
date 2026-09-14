@@ -83,7 +83,7 @@ function injectSyntheticIngredient(sandbox, opts) {
   var key = opts.key;
   sandbox.PRICE_CATALOGS.mercadona.pricesPer100g[key] = opts.pricePer100Units;
   if (opts.packageSize) {
-    sandbox.PACKAGING_INFO[key] = { type: "fixedPackage", packageG: opts.packageSize, packageLabel: opts.label || "envase" };
+    sandbox.PACKAGING_CATALOGS.mercadona.packages[key] = { type: "fixedPackage", packageG: opts.packageSize, packageLabel: opts.label || "envase" };
   }
 }
 
@@ -254,7 +254,7 @@ function run(t) {
 
   t.test("ingrediente SIN envase fijo (carne/pescado fresco): la despensa manual sigue reduciendo stillNeeded", function () {
     var s = freshPantrySandbox();
-    s.setStock("Salmón", 100); // salmón no tiene entrada en PACKAGING_INFO
+    s.setStock("Salmón", 100); // salmón no tiene entrada en PACKAGING_CATALOGS
     var r = s.resolvePurchaseCostWithPantry("Salmón", 180, "mercadona");
     assert.strictEqual(r.hasFixedPackage, false);
     assert.strictEqual(r.coveredFromPantry, 100);
