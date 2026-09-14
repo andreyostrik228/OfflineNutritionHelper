@@ -1351,6 +1351,20 @@ button:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
+/* La ración de casa ("4 yogures", "1/2 bote") y sus gramos.
+   .food-meta entera va en --ink-faint, así que la cantidad que de verdad se
+   sirve se sube a --ink: es lo primero que hay que leer de la fila. Los
+   gramos se quedan atrás, disponibles para quien pese, sin competir. */
+.food-qty {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.food-qty__grams {
+  font-weight: 400;
+  color: var(--ink-faint);
+}
+
 .food-macro__badge {
   display: inline-block;
   margin-left: 4px;
@@ -2983,7 +2997,15 @@ button:focus-visible {
 
 .pantry-purchase-row {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  /* La tercera columna lleva un TECHO (42%), no `auto`. Con `auto` la
+     columna se queda todo lo que pide su contenido, y desde que dice el
+     envase ese contenido puede ser "1 x paquete de 500 g (rinde 1,35 kg
+     cocido)": medido a 375 px, dejaba el nombre del ingrediente en 9 px.
+     Poner `minmax(0, 1fr)` en el nombre no bastó -- eso deja que el nombre
+     encoja hasta cero, que es justo el lado equivocado. El techo es lo que
+     obliga a encoger a la de la derecha, que es la que sí se puede recortar
+     sin perder nada (lo importante, "1 x paquete", va al principio). */
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 42%);
   align-items: center;
   gap: var(--space-2);
   padding: 3px 0;
@@ -3035,12 +3057,26 @@ button:focus-visible {
   color: var(--ink);
 }
 
+/* Desde que esta columna dice el ENVASE y no los gramos, su texto puede ser
+   largo de verdad: "1 x paquete de 500 g (rinde 1,35 kg cocido)". La columna
+   era `auto` en el grid, así que se quedaba todo el ancho que pedía y dejaba
+   el NOMBRE del ingrediente en 9 px -- medido a 375 px, con "Quinoa cocida"
+   ilegible. La página no desbordaba, así que no saltaba ninguna alarma.
+
+   Mismo arreglo que .pantry-meal-chip en 2026-08-20b: dejar que encoja
+   (`minmax(0, auto)` en el grid + `min-width: 0`) y recortar con puntos
+   suspensivos. Lo que importa va al principio ("1 x paquete"), así que el
+   recorte se come justo la parte prescindible, y el texto entero sigue
+   estando en el `title`. */
 .pantry-purchase-row__grams {
   font-family: var(--font-mono);
   font-size: 11.5px;
   color: var(--ink-faint);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Chips de comida -- una fila compacta que envuelve, en vez de 5 filas

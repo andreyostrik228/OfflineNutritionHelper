@@ -64,6 +64,7 @@ var suites = [
   "plan-generator.characterization.test",
   "plan-report.test",
   "ingredient-packaging-coverage.test",
+  "servings.test",
   "pantry.test",
   "expiry.test",
   "preferences.test",

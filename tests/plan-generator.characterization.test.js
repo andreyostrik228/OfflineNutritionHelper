@@ -52,6 +52,7 @@ var ENGINE_FILES = [
   projPath("js/data/dishes.js"),
   projPath("js/data/real-products.js"),
   projPath("js/data/packaging.js"),
+  projPath("js/data/servings.js"),
   projPath("js/data/real-ingredient-matches.js"),
   projPath("js/data/ingredient-nutrition.js"),
   projPath("js/data/no-cook-classifier.js"),
@@ -59,6 +60,7 @@ var ENGINE_FILES = [
   projPath("js/data/budget-presets.js"),
   projPath("js/core/utils.js"),
   projPath("js/core/pricing.js"),
+  projPath("js/core/servings.js"),
   projPath("js/core/nutrition.js"),
   projPath("js/core/budget.js"),
   projPath("js/core/calculator.js"),
@@ -627,17 +629,35 @@ function run(t) {
     // 154,7 -> 157,6 g y dias "perfect" 60% -> 68%. El motor declara la
     // violacion en vez de esconderla, que es el contrato.
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 3, 3, 2, 2]);
-    assert.strictEqual(result.total.kcal, 2752.1000000000004);
-    assert.strictEqual(result.total.protein, 197.39999999999998);
-    assert.strictEqual(result.total.carbs, 254.50000000000003);
-    assert.strictEqual(result.total.fat, 95.5);
+    // ── RECAPTURADO el 2026-09-13: raciones que se pueden servir ───────
+    // applyServingQuantization() redondea cada fila a una ración de casa
+    // (un yogur, media pieza, un cuarto de bote) y el redondeo es REAL: los
+    // macros y el precio salen de la cantidad redondeada. Cambio deliberado
+    // del algoritmo, así que se recaptura a propósito.
+    //
+    // Esta semilla MEJORA en lo que de verdad apretaba, el dinero:
+    //   compra     16,77 ->  16,26 EUR (tope 16: se pasa de 0,77 a 0,26)
+    //   kcal      2752,1 -> 2756,7  (objetivo 2822: -2,5% -> -2,3%)
+    //   prot       197,4 ->  197,2  (objetivo 156, de sobra las dos veces)
+    // Sigue "minimal"/tier 0 con su violación de presupuesto, un tercio de
+    // grande. La otra semilla empeora -- ver su propio comentario, no se
+    // compensan entre ellas.
+    //
+    // Recapturado una segunda vez el 2026-09-14, al bajar el puñado de
+    // almendras de 25 g a 20 para que cuadre con lo que dice una receta ya
+    // publicada (ver js/data/servings.js). Cambia la ración de almendras,
+    // así que la lotería reparte distinto para la MISMA semilla.
+    assert.strictEqual(result.total.kcal, 2756.7);
+    assert.strictEqual(result.total.protein, 197.2);
+    assert.strictEqual(result.total.carbs, 242.40000000000003);
+    assert.strictEqual(result.total.fat, 101.1);
     assert.strictEqual(result.total.cost, 8.49);
-    assert.strictEqual(result.total.purchaseCost, 16.77);
+    assert.strictEqual(result.total.purchaseCost, 16.26);
     assert.strictEqual(result.report.status, "minimal");
     assert.strictEqual(result.report.tierUsed, 0);
     assert.deepStrictEqual(
       JSON.parse(JSON.stringify(result.report.violations)),
-      [{ type: "budget", exceededBy: 0.77, purchaseCost: 16.77, usageCost: 8.49 }]);
+      [{ type: "budget", exceededBy: 0.26, purchaseCost: 16.26, usageCost: 8.49 }]);
   });
 
   t.test("golden-master (seed=7): volumen alto/Amplio -- agregados exactos del resultado actual", function () {
@@ -693,12 +713,26 @@ function run(t) {
     // proteina y por tanto mas caros por kcal, y un dia de 3871 kcal con
     // 20 EUR va justo. Esta semilla tiene suerte; el perfil paga un poco.
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 3, 3, 2, 2]);
-    assert.strictEqual(result.total.kcal, 3871.1000000000004);
-    assert.strictEqual(result.total.protein, 240.99999999999997);
-    assert.strictEqual(result.total.carbs, 487.8);
-    assert.strictEqual(result.total.fat, 103.60000000000001);
-    assert.strictEqual(result.total.cost, 9.68);
-    assert.strictEqual(result.total.purchaseCost, 19.5);
+    // ── RECAPTURADO el 2026-09-13: raciones que se pueden servir ───────
+    // Mismo cambio que en el golden-master de seed=42, y aquí EMPEORA. Se
+    // escribe con su cifra porque es la verdad y porque el otro mejora: no
+    // se compensan, son dos hechos.
+    //   kcal    3871,1 -> 3655,9  (objetivo 3871: exacto -> -5,6%)
+    //   compra   19,50 ->  19,15 EUR (tope 20, sigue por debajo)
+    //   prot     241,0 ->  232,7 g   (objetivo 171, de sobra las dos veces)
+    // Sigue "perfect"/tier 0 y sin violaciones: -5,6% cabe en la tolerancia
+    // de kcal del tramo más estricto (10%). El motivo es estructural y no
+    // se puede afinar con una constante: un día de 3.871 kcal se arma con
+    // raciones grandes, y redondear cada una a la unidad de casa quita más
+    // de lo que quita en un día pequeño. Medido sobre 200 semillas el
+    // perfil ENTERO no empeora -- días "perfect" 64% -> 70% --, así que
+    // esta semilla concreta cae del lado malo del redondeo.
+    assert.strictEqual(result.total.kcal, 3655.9);
+    assert.strictEqual(result.total.protein, 232.7);
+    assert.strictEqual(result.total.carbs, 451.40000000000003);
+    assert.strictEqual(result.total.fat, 99);
+    assert.strictEqual(result.total.cost, 9.46);
+    assert.strictEqual(result.total.purchaseCost, 19.15);
     assert.strictEqual(result.report.status, "perfect");
     assert.strictEqual(result.report.tierUsed, 0);
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.report.violations)), []);

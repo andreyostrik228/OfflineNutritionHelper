@@ -849,6 +849,43 @@ function attemptPlanAtTier(profile, data, tier, pantryState) {
     total.cost = repricedPurchase.usageCost;
   }
 
+  // ── Raciones que se pueden servir (2026-09-13) ────────────────────────
+  // Último paso que toca gramos, y va DENTRO del intento, no fuera.
+  //
+  // ── POR QUÉ AQUÍ, que es lo contrario de lo que parece ──────────────
+  // Se probó sacarlo fuera del bucle de tiers, para redondear solo al plan
+  // ganador y no perturbar la selección. Suena mejor y MIDE PEOR, en los
+  // tres perfiles a la vez (200 semillas, días con violación):
+  //
+  //     dentro del bucle    corte 21,5%   recomp  6,0%   volumen 4,0%
+  //     fuera del bucle     corte 23,5%   recomp 10,0%   volumen 6,0%
+  //
+  // El motivo es que ahí arriba hay un `if (attempt.violations.length === 0)
+  // break` y una escalera de relajación. Si redondear saca el día de
+  // tolerancia, el bucle NO corta, sube de tier y busca otro plan que
+  // aguante el redondeo. Fuera del bucle esa reacción no existe: se redondea
+  // un plan ya cerrado y lo que se rompa, roto se queda.
+  //
+  // O sea que el bucle no era un estorbo que perturbaba la medición, era la
+  // red que absorbe el redondeo -- justo para lo que existe la escalera.
+  //
+  // Y ANTES de verifyPlanFeasibility, para que el informe juzgue el plan que
+  // el usuario va a ver y no uno que ya no existe (§7.10).
+  var raciones = applyServingQuantization(meals);
+  if (raciones.changed) {
+    // El techo de compra primero y las garantías de applyPortionSanity
+    // DESPUÉS: los dos recortan, pero recortar por dinero puede dejar un
+    // ingrediente justo por encima del borde de un envase, y entonces nadie
+    // volvería a mirarlo. Al revés no pasa -- restoreServingInvariants solo
+    // baja, y bajar nunca encarece.
+    enforceBudgetInServings(meals, data.budget, store, pantryState);
+    restoreServingInvariants(meals, store, total.kcal);
+    total = sumMeals(meals);
+    var compraTrasRaciones = computeDayPurchaseCost(meals, store, pantryState);
+    total.purchaseCost = compraTrasRaciones.purchaseCost;
+    total.cost = compraTrasRaciones.usageCost;
+  }
+
   var violations = verifyPlanFeasibility(meals, total, profile, data);
 
   placeholderInfo.forEach(function (p) {
@@ -969,6 +1006,411 @@ function applyPortionSanity(meals, storeId, targetKcal) {
   }
 
   return result;
+}
+
+/**
+ * Redondea cada fila del plan a una ración que se puede servir de verdad:
+ * yogures enteros, latas enteras, medio plátano, un cuarto de bote.
+ *
+ * ── POR QUÉ AQUÍ Y NO AL PINTAR ─────────────────────────────────────────
+ * Porque si solo se redondeara al pintar, la pantalla diría "4 yogures" al
+ * lado de unas kcal y un precio calculados sobre 568 g. Dos respuestas a
+ * "¿cuánto es esto?", y la que manda sería la que el usuario no ve.
+ * Cuantizando aquí, los gramos redondeados SON los gramos, y todo lo que
+ * viene después -- macros, coste, informe, despensa, lista de la compra --
+ * habla de la misma comida.
+ *
+ * ── LO QUE CUESTA, MEDIDO ANTES DE ESCRIBIR ESTO ────────────────────────
+ * Redondear mueve las kcal del día, y la pregunta era cuánto. Sobre 100
+ * semillas x 3 perfiles, con las unidades de `js/data/servings.js`:
+ *
+ *     corte    +0,6%      recomp   -0,1%      volumen  -0,2%
+ *
+ * Se cancelan solas porque un día tiene ~12 filas y unas suben y otras
+ * bajan. NO fue así en el primer intento: usando el ENVASE como unidad
+ * para lo seco ("1/4 de caja de avena" = 200 g) salía +9,3% / +11,6% /
+ * +7,0%, y la avena sola era el 46% del exceso. El número de arriba
+ * depende de que las unidades sigan siendo del tamaño de una ración; si
+ * alguien añade una y el día se desplaza, esa es la causa.
+ *
+ * Es POR FILA y no por ingrediente-del-día a propósito: lo que el usuario
+ * sirve es "4 yogures EN ESTA TOMA". Sumar el día y repartir después
+ * devolvería cantidades partidas a cada toma, que es justo lo que se
+ * intenta quitar.
+ *
+ * ── LO QUE SE PROBÓ PARA COMPENSAR Y SALIÓ PEOR ─────────────────────────
+ * Redondear cada fila por su cuenta es insesgado pero RUIDOSO, y se midió
+ * que el ruido hace daño: en corte la proteína media SUBÍA (131,8 -> 132,5)
+ * y aun así las violaciones de proteína pasaban de 24 a 33 — la firma de
+ * §7.9, ensanchar la distribución en vez de desplazarla.
+ *
+ * Así que se escribió un compensador: cada ración tiene dos redondeos
+ * legales, y en vez de coger siempre el más cercano, elegía el lado que
+ * acercaba el día entero a lo que el motor había calculado antes de
+ * redondear. Movía raciones enteras, así que nada dejaba de ser servible.
+ * Suena bien y era la propuesta del propio usuario ("se compensa donde se
+ * pueda").
+ *
+ * **Medido con 200 semillas, era PEOR en los tres perfiles:**
+ *
+ *     días con violación      corte    recomp   volumen
+ *       con compensador       20,0%     8,5%      5,0%
+ *       sin compensador       19,5%     6,0%      4,5%
+ *
+ * Media punto, dos y medio, media. Ninguna diferencia pasa el ruido de 3,5
+ * puntos por separado, pero **las tres apuntan al mismo lado**, y eso sí es
+ * señal (§7.8 bis: vale el efecto que se repite, no el que sale grande una
+ * vez). El motivo, al mirarlo: perseguía kcal y proteína sin mirar precio
+ * ni el tope del 25%, así que devolvía la presión que el recorte de
+ * presupuesto tenía luego que deshacer.
+ *
+ * Se borró. Queda escrito porque la idea es tentadora y volverá a
+ * proponerse.
+ *
+ * @param {object[]} meals
+ * @returns {{changed: boolean, adjusted: object[]}}
+ */
+function applyServingQuantization(meals) {
+  var result = { changed: false, adjusted: [] };
+  if (!meals || !meals.length) return result;
+
+  // Si js/core/servings.js no está cargado, el plan sale en gramos: el
+  // comportamiento de siempre. `tests/servings.test.js` comprueba que sí
+  // lo está, porque degradar en silencio es cómodo y es cómo se publican
+  // los fallos que nadie ve (HANDOFF §7.15).
+  if (typeof resolveServingUnit !== "function") return result;
+
+  meals.forEach(function (meal) {
+    (meal.items || []).forEach(function (item) {
+      var unit = resolveServingUnit(item.name);
+      if (!unit || !(unit.g > 0) || !(item.grams > 0)) return;
+
+      var destino = Math.round(quantizeServingCount(item.grams / unit.g, unit.split) * unit.g);
+      if (destino <= 0 || destino === item.grams) return;
+
+      // El factor se saca de los gramos REDONDEADOS, no del destino
+      // exacto: así los macros describen la cantidad que se enseña, no una
+      // fracción de gramo que nadie va a servir.
+      var factor = destino / item.grams;
+      result.adjusted.push({ name: item.name, from: item.grams, to: destino });
+
+      item.grams   = destino;
+      item.kcal    = round1(item.kcal    * factor);
+      item.protein = round1(item.protein * factor);
+      item.carbs   = round1(item.carbs   * factor);
+      item.fat     = round1(item.fat     * factor);
+      item.cost    = round2(item.cost    * factor);
+      result.changed = true;
+    });
+  });
+
+  if (result.changed) {
+    meals.forEach(function (meal) { meal.total = getMealTotals(meal); });
+  }
+
+  return result;
+}
+
+
+/**
+ * Baja las filas de UN ingrediente, de paso de ración en paso de ración,
+ * hasta que su total del día no pase de `targetG`.
+ *
+ * Empieza por la fila más grande: es la que más sobra y la que menos se
+ * nota al recortarla. Nunca deja una fila por debajo de una ración -- un
+ * ingrediente de la receta que desaparece no es un plato más barato, es
+ * otro plato.
+ *
+ * @param {object[]} meals
+ * @param {string} name
+ * @param {number} targetG
+ * @returns {number} pasos quitados
+ */
+function trimIngredientToServings(meals, name, targetG) {
+  var filas = [];
+  meals.forEach(function (meal) {
+    (meal.items || []).forEach(function (item) {
+      if (item.name !== name) return;
+      var unit = resolveServingUnit(item.name);
+      if (!unit || !(unit.g > 0)) return;
+      filas.push({ item: item });
+    });
+  });
+  if (!filas.length) return 0;
+
+  var total = filas.reduce(function (a, f) { return a + f.item.grams; }, 0);
+  var pasos = 0;
+
+  while (total > targetG && pasos < MAX_RECORTES_RACION * 2) {
+    filas.sort(function (a, b) { return b.item.grams - a.item.grams; });
+    // La ración anterior la dice la rejilla (`previousServingGrams`), no una
+    // resta: en modo "cuarto" conviven cuartos y tercios y restar un paso
+    // fijo produce cantidades que no existen (333 g de un bote de 400).
+    var f = null, anterior = null;
+    for (var i = 0; i < filas.length; i++) {
+      var cand = previousServingGrams(filas[i].item.grams, filas[i].item.name);
+      if (cand !== null) { f = filas[i]; anterior = cand; break; }
+    }
+    if (!f) break;
+
+    var destino = Math.round(anterior);
+    var factor = destino / f.item.grams;
+    f.item.kcal    = round1(f.item.kcal    * factor);
+    f.item.protein = round1(f.item.protein * factor);
+    f.item.carbs   = round1(f.item.carbs   * factor);
+    f.item.fat     = round1(f.item.fat     * factor);
+    f.item.cost    = round2(f.item.cost    * factor);
+    total -= (f.item.grams - destino);
+    f.item.grams = destino;
+    pasos++;
+  }
+
+  // ── Y el gramo que sobra ──────────────────────────────────────────────
+  // Los gramos se guardan por fila y REDONDEADOS a entero, así que tres
+  // tomas de medio tomate (125 g) suman 376 y no 375. Ese gramo abre un
+  // paquete entero, y hay un test de invariante que lo caza sin ninguna
+  // tolerancia. Es exactamente el mismo gramo que `scaleIngredientAcrossMeals`
+  // ya cuadra desde 2026-08-26 -- se reintrodujo aquí y volvió a salir:
+  // "Tomate pide 376 g con envases de 125 g, abre un paquete para usar 1 g".
+  //
+  // Se quita de la fila más grande. Deja esa fila un par de gramos fuera de
+  // su múltiplo exacto, y eso da igual: en pantalla se sigue leyendo "3
+  // tomates", porque la cuenta redondea.
+  if (total > targetG) {
+    filas.sort(function (a, b) { return b.item.grams - a.item.grams; });
+    var mayor = filas[0].item;
+    var sobra = total - targetG;
+    if (mayor.grams - sobra > 0) {
+      var f2 = (mayor.grams - sobra) / mayor.grams;
+      mayor.grams   = Math.round(mayor.grams - sobra);
+      mayor.kcal    = round1(mayor.kcal    * f2);
+      mayor.protein = round1(mayor.protein * f2);
+      mayor.carbs   = round1(mayor.carbs   * f2);
+      mayor.fat     = round1(mayor.fat     * f2);
+      mayor.cost    = round2(mayor.cost    * f2);
+      pasos++;
+    }
+  }
+
+  return pasos;
+}
+
+/**
+ * Devuelve el plan dentro de las reglas de las que `applyPortionSanity` ya
+ * lo había sacado, pero moviendo RACIONES enteras.
+ *
+ * ── POR QUÉ HACE FALTA ──────────────────────────────────────────────────
+ * `applyPortionSanity` corre ANTES de redondear y deja dos garantías:
+ * ningún ingrediente pasa de 2,5x su mayor ración curada, y ninguno abre un
+ * paquete para usar menos del 20% de él. Redondear hacia arriba rompe las
+ * dos -- y las dos tienen test de invariante desde 2026-08-26, así que se
+ * vio enseguida. La queja original detrás de la primera fue real: el
+ * usuario recibió un plan con 1.020 g de patata.
+ *
+ * No se puede arreglar volviendo a llamar a `applyPortionSanity`: aquella
+ * reescala por un factor cualquiera y dejaría "3,4 yogures". Esta hace el
+ * mismo trabajo con la única herramienta que conserva raciones servibles,
+ * que es quitar pasos enteros.
+ *
+ * @param {object[]} meals
+ * @param {string} storeId
+ * @param {number} [targetKcal] - kcal del día, para el tope del 25%
+ * @returns {number} pasos quitados en total
+ */
+function restoreServingInvariants(meals, storeId, targetKcal) {
+  if (typeof resolveServingUnit !== "function") return 0;
+  var pasos = 0;
+
+  // (0) El tope del 25% por ítem.
+  //
+  // Se descubrió por el camino más caro: al mover el redondeo FUERA del
+  // bucle de tiers, las violaciones de cap25 de recomposición pasaron de 1
+  // a 27. Dentro del bucle no se veían porque el bucle hacía de red sin que
+  // nadie lo hubiera decidido -- una violación nueva le impedía cortar,
+  // subía de tier, y los tiers altos permiten un cap25 más flojo, así que
+  // el destrozo se tapaba solo. Quitar la red dejó el fallo a la vista.
+  //
+  // Es el mismo caso que (a) y (b): una garantía que ya existía y que
+  // redondear hacia arriba rompe. Se arregla igual, quitando raciones.
+  var kcalDia = (typeof targetKcal === "number" && targetKcal > 0)
+    ? targetKcal
+    : sumMeals(meals).kcal;
+  if (kcalDia > 0) {
+    var tope = kcalDia * 0.25;
+    // Dos pasadas: bajar un ítem baja también las kcal del día, así que el
+    // tope se mueve. Dos bastan -- la segunda casi nunca encuentra nada.
+    for (var vuelta = 0; vuelta < 2; vuelta++) {
+      var tocado = false;
+      meals.forEach(function (meal) {
+        (meal.items || []).forEach(function (item) {
+          if (!(item.kcal > tope) || !(item.grams > 0)) return;
+          // Se baja ración a ración por la rejilla real (`previousServingGrams`),
+          // no restando un paso fijo: en modo "cuarto" la rejilla mezcla
+          // cuartos y tercios y restar a mano deja cantidades que no existen.
+          var kcalPorGramo = item.kcal / item.grams;
+          var destino = item.grams;
+          var quitados = 0;
+          while (destino * kcalPorGramo > tope && quitados < MAX_RECORTES_RACION) {
+            var anterior = previousServingGrams(destino, item.name);
+            if (anterior === null) break;
+            destino = anterior;
+            quitados++;
+          }
+          if (!quitados) return;
+
+          var gramosFinal = Math.round(destino);
+          var factor = gramosFinal / item.grams;
+          item.grams   = gramosFinal;
+          item.kcal    = round1(item.kcal    * factor);
+          item.protein = round1(item.protein * factor);
+          item.carbs   = round1(item.carbs   * factor);
+          item.fat     = round1(item.fat     * factor);
+          item.cost    = round2(item.cost    * factor);
+          pasos += quitados;
+          tocado = true;
+        });
+      });
+      if (!tocado) break;
+    }
+  }
+
+  // (a) Tope de cordura por ingrediente. El 800 absoluto es el mismo que
+  // vigila el test de invariantes: un tope curado puede quedar por encima
+  // si la ración más grande del catálogo es generosa.
+  var caps = getCuratedPortionCaps();
+  var totals = sumIngredientGrams(meals);
+  Object.keys(totals).forEach(function (name) {
+    var tope = Math.min(caps[name] != null ? caps[name] : Infinity, 800);
+    if (totals[name] > tope) pasos += trimIngredientToServings(meals, name, tope);
+  });
+
+  // (b) Borde de envase. Recalculado DESPUÉS de (a), como en
+  // applyPortionSanity: los gramos han cambiado y es el número final el que
+  // decide cuántos paquetes hacen falta.
+  totals = sumIngredientGrams(meals);
+  Object.keys(totals).forEach(function (name) {
+    var pkg = (typeof resolvePackageInfo === "function") ? resolvePackageInfo(name, storeId) : null;
+    if (!pkg || !pkg.packageSizeG) return;
+
+    var size = pkg.packageSizeG;
+    var need = totals[name];
+    var packs = Math.ceil(need / size);
+    if (packs < 2) return;
+    if (need - (packs - 1) * size > size * PACKAGE_TRIM_RATIO) return;
+
+    // Bajar hasta caber en un paquete menos. Bajar menos sería PEOR: el
+    // paquete abierto se aprovecharía todavía menos.
+    pasos += trimIngredientToServings(meals, name, (packs - 1) * size);
+  });
+
+  if (pasos) {
+    meals.forEach(function (meal) { meal.total = getMealTotals(meal); });
+  }
+  return pasos;
+}
+
+/**
+ * Cuántas raciones puede quitar como mucho `enforceBudgetInServings`.
+ *
+ * Se declara aquí, junto a su único consumidor, y no arriba con las demás
+ * constantes de ajuste: ese bloque tiene HOY siete símbolos declarados dos
+ * veces (`PORTION_CAP_MULTIPLIER`, `PACKAGE_TRIM_RATIO`, `MEAL_DEFS`...),
+ * con los mismos valores en ambas copias, así que la segunda gana en
+ * silencio. Añadir ahí una constante nueva es invitar a que alguien edite
+ * la copia muerta. Cuando eso se limpie, esta se puede mudar con ellas.
+ *
+ * Ocho es holgado: al plan que más le costó entrar le bastaron tres pasos.
+ */
+var MAX_RECORTES_RACION = 8;
+
+/**
+ * Devuelve el plan bajo su techo de compra quitando RACIONES enteras.
+ *
+ * Es el hermano de `enforcePurchaseBudgetCap` para el mundo de las
+ * raciones. Aquel recorta con un factor cualquiera, que es justo lo que
+ * aquí no se puede hacer: dejaría "3,4 yogures". Este solo sabe quitar un
+ * paso de ración (un yogur, medio plátano, un cuarto de bote), que es la
+ * única unidad en la que se puede deshacer lo que hizo el redondeo.
+ *
+ * ── POR QUÉ HACE FALTA ──────────────────────────────────────────────────
+ * El tope de compra se hace cumplir ANTES de redondear, y redondear hacia
+ * arriba puede abrir un paquete entero. Medido sobre 565 planes de corte:
+ * el 28% sube de precio al redondear (+0,095 EUR de media) y 26 cruzaban el
+ * techo, porque `enforcePurchaseBudgetCap` deja muchos planes pegados al
+ * límite -- el 17% estaba a menos de 0,30 EUR de él.
+ *
+ * Elige por AHORRO POR GRAMO DE PROTEÍNA sacrificado: entre dos raciones
+ * que ahorran lo mismo, se quita la que menos proteína cuesta. Sin ese
+ * desempate el recorte se llevaba por delante justo lo que sostiene el día.
+ *
+ * No es un bucle abierto: como mucho `MAX_RECORTES_RACION` pasos, y para en
+ * cuanto cabe. Si no cabe, se va SIN tocar más y el informe lo dirá --
+ * mentir sobre el presupuesto es peor que un plan caro (ver la cabecera).
+ *
+ * @param {object[]} meals
+ * @param {number} budget
+ * @param {string} storeId
+ * @param {object} [pantryState]
+ * @returns {number} raciones quitadas
+ */
+function enforceBudgetInServings(meals, budget, storeId, pantryState) {
+  if (!(budget > 0) || typeof resolveServingUnit !== "function") return 0;
+  if (typeof computeDayPurchaseCost !== "function") return 0;
+
+  var coste = computeDayPurchaseCost(meals, storeId, pantryState).purchaseCost;
+  if (coste <= budget) return 0;
+
+  var candidatos = [];
+  meals.forEach(function (meal) {
+    (meal.items || []).forEach(function (item) {
+      var unit = resolveServingUnit(item.name);
+      if (!unit || !(unit.g > 0) || !(item.grams > 0)) return;
+      // Bajar no puede dejar la fila por debajo de UNA ración: un
+      // ingrediente de la receta que desaparece no es un plan más barato,
+      // es otro plato. `previousServingGrams` devuelve null justo ahí.
+      if (previousServingGrams(item.grams, item.name) === null) return;
+      candidatos.push({ item: item });
+    });
+  });
+
+  var quitadas = 0;
+  while (quitadas < MAX_RECORTES_RACION && coste > budget) {
+    var mejor = null;
+
+    candidatos.forEach(function (c) {
+      var anterior = previousServingGrams(c.item.grams, c.item.name);
+      if (anterior === null) return;
+      var destino = Math.round(anterior);
+      var gramosOriginales = c.item.grams;
+      c.item.grams = destino;
+      var nuevo = computeDayPurchaseCost(meals, storeId, pantryState).purchaseCost;
+      c.item.grams = gramosOriginales;
+
+      var ahorro = coste - nuevo;
+      if (ahorro <= 0.001) return;
+      var proteinaPerdida = c.item.protein * (1 - destino / gramosOriginales);
+      var ratio = ahorro / Math.max(0.1, proteinaPerdida);
+      if (!mejor || ratio > mejor.ratio) mejor = { c: c, ratio: ratio, nuevo: nuevo, destino: destino };
+    });
+
+    if (!mejor) break;
+
+    var it = mejor.c.item;
+    var factor = mejor.destino / it.grams;
+    it.grams   = mejor.destino;
+    it.kcal    = round1(it.kcal    * factor);
+    it.protein = round1(it.protein * factor);
+    it.carbs   = round1(it.carbs   * factor);
+    it.fat     = round1(it.fat     * factor);
+    it.cost    = round2(it.cost    * factor);
+    coste = mejor.nuevo;
+    quitadas++;
+  }
+
+  if (quitadas) {
+    meals.forEach(function (meal) { meal.total = getMealTotals(meal); });
+  }
+  return quitadas;
 }
 
 /** Gramos totales por ingrediente en todo el día. */

@@ -426,12 +426,87 @@ function renderExpiryBadge(entry) {
     'aria-label="Caducidad de ' + name + ': ' + escapeHtml(title) + '">' + escapeHtml(label) + '</button>';
 }
 
+/**
+ * Los gramos de la despensa dichos como se sirven: "1 y 1/2 botes".
+ *
+ * Reutiliza las funciones de js/ui/render.js (cargado antes que este
+ * fichero) en vez de rehacer la cuenta: si la despensa redondeara por su
+ * cuenta, podría decir "2 botes" donde la tarjeta del plato dice "1 y 1/2",
+ * y sería el mismo plato. Es la regla de §7.10, que aquí sale barata.
+ *
+ * Devuelve null cuando el ingrediente no tiene ración de casa (carne y
+ * pescado al peso), y entonces quien llama se queda en gramos.
+ *
+ * @param {number} grams
+ * @param {string} name
+ * @returns {string|null}
+ */
+function cantidadDeCasa(grams, name) {
+  if (typeof resolveServingUnit !== "function" ||
+      typeof servingCountFor !== "function" ||
+      typeof formatServingFraction !== "function") return null;
+
+  var unit = resolveServingUnit(name);
+  if (!unit || !(unit.g > 0) || !(grams > 0)) return null;
+
+  var raciones = servingCountFor(grams, unit);
+  if (!(raciones > 0)) return null;
+
+  var etiqueta = (typeof etiquetaDeRacion === "function")
+    ? etiquetaDeRacion(unit.label, raciones)
+    : unit.label;
+  return formatServingFraction(raciones) + " " + etiqueta;
+}
+
+/**
+ * Lo que hay que COMPRAR, en envases: "2 x bote".
+ *
+ * En la lista de la compra esto ya se dice así, y es lo correcto para estar
+ * de pie en la tienda: nadie compra 3/4 de bote. Por eso aquí NO se usa
+ * `cantidadDeCasa` -- la ración es lo que se come, el envase es lo que se
+ * paga, y confundirlos es el error que este proyecto lleva arreglando desde
+ * "Budget = purchase cost, not usage cost".
+ *
+ * El número de paquetes sale SIEMPRE de `resolvePurchaseCost()`, la misma
+ * función que usan la lista de la compra y las tarjetas. Nunca se recalcula
+ * aquí (ver el bug de 2026-08-13b: dos cuentas de paquetes independientes).
+ *
+ * @param {number} grams
+ * @param {string} name
+ * @param {string} [storeId] - la tienda del plan guardado (`entry.store`)
+ * @returns {string|null}
+ */
+function cantidadDeCompra(grams, name, storeId) {
+  if (typeof resolvePurchaseCost !== "function" || !(grams > 0)) return null;
+
+  // La tienda sale del plan GUARDADO, no de la que esté elegida ahora: un
+  // plan confirmado la semana pasada se compró donde se compró, y sus
+  // envases son los de esa tienda.
+  var store = storeId ||
+    (typeof DEFAULT_STORE_ID !== "undefined" ? DEFAULT_STORE_ID : "mercadona");
+
+  var compra = resolvePurchaseCost(name, grams, store);
+  if (!compra || !compra.hasFixedPackage || !(compra.packagesToBuy > 0)) return null;
+
+  var etiqueta = (typeof etiquetaDeEnvase === "function")
+    ? etiquetaDeEnvase(compra.packageLabel, compra.packagesToBuy)
+    : compra.packageLabel;
+  return compra.packagesToBuy + " × " + etiqueta;
+}
+
 function renderPantryRow(entry) {
+  // La ración manda y los gramos exactos viven en el aria-label: el botón
+  // es estrecho y comparte fila con el nombre y la "x" de quitar. Meterle
+  // las dos cosas es como se provocó el desbordamiento horizontal de
+  // 2026-08-20b. Al pulsarlo sigue abriendo el editor en gramos.
+  var deCasa = cantidadDeCasa(entry.grams, entry.name);
+  var etiquetaBoton = deCasa || (round0(entry.grams) + " g");
+
   return (
     '<li class="pantry-item" data-key="' + escapeHtml(entry.key) + '" data-name="' + escapeHtml(entry.name) + '">' +
       '<span class="pantry-item__name">' + escapeHtml(entry.name) + '</span>' +
       renderExpiryBadge(entry) +
-      '<button type="button" class="pantry-item__amount" data-action="edit" aria-label="Editar cantidad de ' + escapeHtml(entry.name) + '">' + round0(entry.grams) + ' g</button>' +
+      '<button type="button" class="pantry-item__amount" data-action="edit" aria-label="Editar cantidad de ' + escapeHtml(entry.name) + ': ' + round0(entry.grams) + ' g">' + escapeHtml(etiquetaBoton) + '</button>' +
       '<button type="button" class="pantry-item__remove" data-action="remove" aria-label="Quitar ' + escapeHtml(entry.name) + '">&times;</button>' +
     '</li>'
   );
@@ -778,8 +853,14 @@ function renderPurchaseSection(entry, aggregated) {
 function renderPurchaseChecklist(entry, aggregated) {
   var rows = aggregated.map(function (item) {
     var covered = (typeof getStock === "function") ? Math.min(item.requiredGrams, getStock(item.name)) : 0;
+    // Lo que ya hay en casa se dice como se sirve, igual que en el bloque de
+    // stock de arriba; lo que hay que comprar, en envases (abajo). Son dos
+    // preguntas distintas y llevan dos unidades distintas a propósito.
+    var cubiertoTexto = (cantidadDeCasa(covered, item.name) || (round0(covered) + " g"));
+    var cantidadCompra = cantidadDeCompra(item.requiredGrams, item.name, entry.store) ||
+                         (round0(item.requiredGrams) + " g");
     var pantryNote = covered > 0
-      ? '<span class="pantry-purchase-row__pantry-note">' + round0(covered) + ' g ya en despensa</span>'
+      ? '<span class="pantry-purchase-row__pantry-note">' + escapeHtml(cubiertoTexto) + ' ya en despensa</span>'
       : '';
     return (
       '<li class="pantry-purchase-row" data-name="' + escapeHtml(item.name) + '">' +
@@ -788,7 +869,11 @@ function renderPurchaseChecklist(entry, aggregated) {
           '<span class="pantry-purchase-row__name">' + escapeHtml(item.name) + '</span>' +
           pantryNote +
         '</span>' +
-        '<span class="pantry-purchase-row__grams">' + round0(item.requiredGrams) + ' g</span>' +
+        // El texto entero va en el `title` porque la columna lo recorta con
+        // puntos suspensivos cuando el envase trae su aclaración larga.
+        '<span class="pantry-purchase-row__grams" title="' + escapeHtml(cantidadCompra) + '">' +
+          escapeHtml(cantidadCompra) +
+        '</span>' +
       '</li>'
     );
   }).join("");

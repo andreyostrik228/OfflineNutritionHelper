@@ -13,7 +13,12 @@ cuentas. Cloudflare Pages por subida directa (hacer push NO despliega).
   etiquetas de envase y **las 1.682 frases de las recetas**. El idioma es
   la primera pregunta de la bienvenida. Cómo está montado y qué lo rompe:
   `scripts/i18n/LEEME.md` y `HANDOFF.md` §10.
-- **640 tests** (`node tests/run-tests.js`), sello desplegado `20260913c`.
+- **Raciones de casa, no gramos.** El plan dice "4 yogures", "1/3 de bote",
+  "3 cucharadas de avena", y el redondeo es REAL: macros, precio e informe
+  salen de esa cantidad. Las unidades están en `js/data/servings.js` y la
+  cuenta, en un solo sitio, en `js/core/servings.js`. Lo que se compra al
+  peso (carne y pescado frescos) sigue en gramos a propósito.
+- **657 tests** (`node tests/run-tests.js`), sello desplegado `20260914c`.
 
 Lo que queda sin traducir son **72 literales incrustados en el código**;
 `node scripts/i18n/inventario.js` los lista.

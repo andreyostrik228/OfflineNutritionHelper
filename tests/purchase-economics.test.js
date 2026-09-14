@@ -44,9 +44,11 @@ function freshBudgetSandbox() {
   return loadBrowserGlobals([
     projPath("js/core/utils.js"),
     projPath("js/data/packaging.js"),
+    projPath("js/data/servings.js"),
     projPath("js/data/real-ingredient-matches.js"),
     projPath("js/data/prices/mercadona.js"),
     projPath("js/core/pricing.js"),
+    projPath("js/core/servings.js"),
     projPath("js/core/budget.js")
   ]);
 }
@@ -55,9 +57,11 @@ function freshBudgetPantrySandbox() {
   return loadBrowserGlobals([
     projPath("js/core/utils.js"),
     projPath("js/data/packaging.js"),
+    projPath("js/data/servings.js"),
     projPath("js/data/real-ingredient-matches.js"),
     projPath("js/data/prices/mercadona.js"),
     projPath("js/core/pricing.js"),
+    projPath("js/core/servings.js"),
     projPath("js/core/pantry.js"),
     projPath("js/core/budget.js")
   ]);
@@ -68,6 +72,7 @@ function freshFullEngineSandbox() {
     projPath("js/data/dishes.js"),
     projPath("js/data/real-products.js"),
     projPath("js/data/packaging.js"),
+    projPath("js/data/servings.js"),
     projPath("js/data/real-ingredient-matches.js"),
     projPath("js/data/ingredient-nutrition.js"),
     projPath("js/data/no-cook-classifier.js"),
@@ -75,6 +80,7 @@ function freshFullEngineSandbox() {
     projPath("js/data/budget-presets.js"),
     projPath("js/core/utils.js"),
     projPath("js/core/pricing.js"),
+    projPath("js/core/servings.js"),
     projPath("js/core/nutrition.js"),
     projPath("js/core/pantry.js"),
     projPath("js/core/budget.js"),

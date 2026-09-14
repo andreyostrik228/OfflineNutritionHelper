@@ -31,9 +31,11 @@ var seedRandomInContext = require(path.join(REPO, "tests/lib/seed-random")).seed
 // tests/plan-generator.characterization.test.js. Si ese cambia, este tambien.
 var FICHEROS = [
   "js/data/real-products.js", "js/data/packaging.js",
+  "js/data/real-products.js", "js/data/servings.js",
   "js/data/real-ingredient-matches.js", "js/data/ingredient-nutrition.js",
   "js/data/no-cook-classifier.js", "js/data/prices/mercadona.js",
   "js/data/budget-presets.js", "js/core/utils.js", "js/core/pricing.js",
+  "js/data/budget-presets.js", "js/core/utils.js", "js/core/servings.js",
   "js/core/nutrition.js", "js/core/pantry.js", "js/core/budget.js",
   "js/core/calculator.js", "js/core/meal-helpers.js",
   "js/engine/dish-selector.js", "js/engine/plan-generator.js"

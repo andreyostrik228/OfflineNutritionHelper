@@ -25,6 +25,7 @@ function sandbox() {
     projPath("js/core/utils.js"),
     projPath("js/data/shelf-life.js"),
     projPath("js/core/pricing.js"),
+    projPath("js/core/servings.js"),
     projPath("js/core/expiry.js")
   ]);
 }
@@ -36,8 +37,10 @@ function costSandbox() {
     projPath("js/core/utils.js"),
     projPath("js/data/shelf-life.js"),
     projPath("js/data/packaging.js"),
+    projPath("js/data/servings.js"),
     projPath("js/data/prices/mercadona.js"),
     projPath("js/core/pricing.js"),
+    projPath("js/core/servings.js"),
     projPath("js/core/expiry.js"),
     projPath("js/core/pantry.js"),
     projPath("js/core/budget.js")
@@ -69,6 +72,7 @@ function sandboxWithBridge(storeData, products, matches) {
     "js/core/utils.js",
     "js/data/shelf-life.js",
     "js/core/pricing.js",
+    "js/core/servings.js",
     "js/core/expiry.js"
   ].forEach(function (rel) {
     vm.runInContext(fs.readFileSync(projPath(rel), "utf8"), s, { filename: rel });
@@ -86,6 +90,7 @@ function sandboxWithStore(storeData) {
     "js/core/utils.js",
     "js/data/shelf-life.js",
     "js/core/pricing.js",
+    "js/core/servings.js",
     "js/core/expiry.js"
   ].forEach(function (rel) {
     vm.runInContext(fs.readFileSync(projPath(rel), "utf8"), s, { filename: rel });
@@ -675,6 +680,7 @@ function run(t) {
       projPath("js/data/dishes.js"),
       projPath("js/data/real-products.js"),
       projPath("js/data/packaging.js"),
+      projPath("js/data/servings.js"),
       projPath("js/data/real-ingredient-matches.js"),
       projPath("js/data/ingredient-nutrition.js"),
       projPath("js/data/no-cook-classifier.js"),
@@ -683,6 +689,7 @@ function run(t) {
       projPath("js/data/shelf-life.js"),
       projPath("js/core/utils.js"),
       projPath("js/core/pricing.js"),
+      projPath("js/core/servings.js"),
       projPath("js/core/nutrition.js"),
       projPath("js/core/expiry.js"),
       projPath("js/core/budget.js"),

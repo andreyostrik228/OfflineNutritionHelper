@@ -30,6 +30,10 @@ registerI18nTable("es", {
   "ui.con_1_dia_pagas_paquetes_enteros": "Con 1 día pagas paquetes enteros para un solo día. Medido: sale entre un",
   "ui.confianza": "confianza",
   "ui.consumo_etiqueta": "consumo",
+  // Lo que va entre la parte entera y la fracción de una ración: en español
+  // "1 y 1/2 tarrinas", en inglés "1 1/2 tubs" (sin "and"). Es una clave y
+  // no una constante porque estaba escrito a pelo y salía "1 y 1/2 cups".
+  "ui.fraccion_conector": " y ",
   "ui.contrasena_cambiada_ya_has_entrado": "Contraseña cambiada. Ya has entrado con ella.",
   "ui.coste": "Coste",
   "ui.coste_de_compra": "Coste de compra",

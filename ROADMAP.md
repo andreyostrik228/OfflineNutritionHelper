@@ -1,6 +1,53 @@
 # Nutrition Planner — Roadmap
 
-## Estado y prioridades al 2026-09-13 (esto primero)
+## Estado y prioridades al 2026-09-14 (esto primero)
+
+**657 tests en verde. Desplegado y empujado, sello `20260914c`.**
+
+El plan se dice en **raciones de casa** y no en gramos: "4 yogures", "1/3 de
+bote", "3 cucharadas de avena". El redondeo es real (macros, precio e
+informe salen de la cantidad redondeada), y la despensa lo acompaña — stock
+en raciones, check-list de la compra en ENVASES. Cifras y decisiones en
+`STATE.md` → "UPDATE 2026-09-14"; las dos lecciones caras, en `HANDOFF.md`
+§7.16 y §7.17.
+
+Efecto en el motor (200 semillas, ruido ±3,5): corte 15,5% → 17,5% de días
+con violación, recomp igual, volumen 5,0% → 2,5%; días "perfect" +9,5 y
++14,5 puntos en recomp y volumen. Las violaciones de `cap25` se fueron a
+**cero en los tres perfiles**.
+
+### Lo siguiente, en orden
+
+1. **P1 — los 72 literales en español incrustados en el código.** Sigue
+   siendo lo único que un usuario en inglés se encuentra, y bajó poco: de
+   paso se arreglaron el conector " y " y la etiqueta de `perUnit` (la
+   interfaz inglesa decía "1 y 1/2 huevos"), pero el grueso está donde
+   estaba. `node scripts/i18n/inventario.js` los lista.
+
+2. **P2 — generar un plan cuesta 28,7 ms más en el perfil de corte** (+46%;
+   en un móvil son ~145 ms). Medido, y la causa está localizada:
+   `enforceBudgetInServings` llama a `computeDayPurchaseCost` una vez por
+   candidato y por iteración, hasta ~96 veces por plan. Se arregla
+   evaluando el ahorro una sola vez y recalculando solo el ingrediente que
+   se mueve — con cuidado de NO reimplementar el cálculo de paquetes (ver
+   §6, el bug de 2026-08-13b).
+
+3. **P3 — coliflor y carne picada siguen en gramos.** No tienen unidad de
+   casa honesta: la pieza de coliflor son 1.040 g y la ración mediana 178,
+   así que ni un cuarto se le acerca. Es una decisión, no un olvido.
+
+4. **P3 — el envase largo se recorta en el check-list de la compra.** "1 x
+   paquete de 500 g (rinde 1,35 kg cocido)" no cabe en 375 px y se corta con
+   puntos suspensivos; el texto entero vive en el `title`, que **en un móvil
+   no existe**. Si molesta, lo suave es quitar la aclaración entre
+   paréntesis solo en esa columna.
+
+5. **Sigue abierto de antes:** la recuperación de contraseña está desplegada
+   pero **inerte hasta configurar Supabase** (`HANDOFF.md` §9), y el preset
+   de 8 € no da un solo día "perfect" en ninguno de los tres perfiles.
+
+
+## Estado y prioridades al 2026-09-13
 
 **Weekplate.** La carpeta buena sigue siendo
 `Desktop\Offline Nutrition Helper\nutrition-planner` (la única con git).

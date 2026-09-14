@@ -20,10 +20,12 @@ var M = require(path.join(__dirname, "medir_perfiles.js"));
 
 // Ficheros del motor que se toman de una version u otra. El resto (datos)
 // sale siempre del arbol, para que lo unico que cambie sea el motor.
-var MOTOR = ["js/core/pricing.js", "js/core/nutrition.js", "js/core/budget.js",
+var MOTOR = ["js/core/pricing.js", "js/core/servings.js", "js/core/nutrition.js",
+  "js/core/budget.js",
   "js/core/calculator.js", "js/core/meal-helpers.js",
   "js/engine/dish-selector.js", "js/engine/plan-generator.js"];
 var DATOS = ["js/data/dishes.js", "js/data/real-products.js", "js/data/packaging.js",
+  "js/data/servings.js",
   "js/data/real-ingredient-matches.js", "js/data/ingredient-nutrition.js",
   "js/data/no-cook-classifier.js", "js/data/prices/mercadona.js",
   "js/data/budget-presets.js", "js/core/utils.js", "js/core/pantry.js"];
@@ -37,7 +39,18 @@ if (ref.indexOf("^") !== -1) {
 
 function fuente(rel, desdeRef) {
   if (!desdeRef) return fs.readFileSync(path.join(REPO, rel), "utf8");
-  return cp.execSync("git show " + ref + ":" + rel, { cwd: REPO, maxBuffer: 1 << 26 }).toString("utf8");
+  try {
+    return cp.execSync("git show " + ref + ":" + rel, { cwd: REPO, maxBuffer: 1 << 26 }).toString("utf8");
+  } catch (err) {
+    // Un fichero del motor que TODAVIA NO EXISTIA en esa version. No es un
+    // error: es justo lo que se quiere medir. Cargar vacio reproduce el
+    // motor de entonces, que se comportaba como si ese fichero no
+    // estuviera -- cada consumidor comprueba `typeof` antes de llamarlo.
+    // Sin esto, comparar contra cualquier commit anterior a un fichero
+    // nuevo se cae, que es exactamente cuando mas falta hace medir.
+    console.log("  (" + rel + " no existe en " + ref + ": se carga vacio)");
+    return "";
+  }
 }
 
 function sandbox(motorDesdeRef) {

@@ -5,9 +5,108 @@
 > Escrito para alguien que llega SIN NINGÚN contexto previo. Si solo lees
 > una parte de este archivo, que sea esta.
 >
+> ### ⏩ UPDATE 2026-09-14 — el plan se dice en raciones, no en gramos
+>
+> **657 tests en verde. Desplegado y empujado, sello `20260914c`.**
+>
+> El usuario lo planteó así: *"скушай 568г хотя каждая пачка 150г — это тупо,
+> нужно чтобы говорилось скушай 4 пачки йогурта"*. Medido antes de tocar
+> nada: **el 93,6% de las filas que ve un usuario eran gramos secos** (3.565
+> filas, 100 semillas x 3 perfiles). Ahora es el 2%, y lo que queda son carne
+> y pescado frescos, donde el gramo SÍ es la unidad correcta.
+>
+> El redondeo es REAL, no cosmético: los macros, el precio y el informe
+> salen de la cantidad redondeada. Dos respuestas a "¿cuánto es esto?" ya
+> costaron caro una vez (§7.10).
+>
+> #### Lo que hay
+>
+> ```
+>   js/data/servings.js    65 raciones de casa: yogur 125 g, lata 60 g,
+>                          rebanada 30 g, cucharada de avena 15 g, vaso de
+>                          arroz 180 g. Tres formas de partir: entera /
+>                          media / cuarto (que admite cuartos Y tercios).
+>   js/core/servings.js    quien contesta "¿cuánto es UNA de estas?" -- el
+>                          motor y la pantalla preguntan aquí, los dos.
+>   plan-generator.js      applyServingQuantization + tres reparaciones.
+>   tests/servings.test.js 17 tests.
+> ```
+>
+> #### La unidad tiene que ser del tamaño de una RACIÓN, no del envase
+>
+> El primer intento usó el envase también para lo seco: "1/4 de la caja de
+> avena" son 200 g, o sea 760 kcal de desayuno. El día entero se iba a
+> **+9,3% / +11,6% / +7,0%** de kcal, y **la avena sola era el 46%** de ese
+> exceso. Con cucharada, puñado y vaso: **+0,6% / -0,1% / -0,2%**. Los
+> redondeos hacia arriba y hacia abajo se cancelan entre las ~12 filas de un
+> día. Si alguien añade una ración nueva y el día se desplaza, esa es la
+> causa; hay un test que lo vigila (la ración mínima no puede pasar de 3x la
+> ración mediana de la receta).
+>
+> #### Lo que costó, y lo que ganó
+>
+> ```
+>                    violan            perfect
+>                  antes -> ahora    antes -> ahora
+>     corte         15,5% -> 17,5%    36,5% -> 37,0%
+>     recomp         5,5% ->  5,5%    68,0% -> 77,5%
+>     volumen        5,0% ->  2,5%    64,0% -> 78,5%
+> ```
+>
+> 200 semillas, ruido ±3,5 puntos. Corte sube 2 puntos, dentro del ruido;
+> los otros dos MEJORAN, y bastante. Las violaciones de cap25 pasan de
+> 4/0/1 a **cero en los tres**, incluidas las que ya existían antes.
+>
+> Eso último no salió de buscarlo, salió de un experimento fallido — ver
+> §7.16 de HANDOFF, que es la lección que de verdad merece leerse.
+>
+> #### Tres cosas que se probaron y NO están en el código
+>
+> - **Un compensador de dirección de redondeo** (elegir el lado que acerca
+>   el día a lo que el motor calculó). Era la propuesta del propio usuario y
+>   funcionaba; medido, salía PEOR en los tres perfiles (20,0/8,5/5,0 contra
+>   19,5/6,0/4,5). Borrado, con el porqué escrito en el código.
+> - **Redondear fuera del bucle de tiers**, para no perturbar la selección.
+>   Suena mejor y mide peor: 23,5/10,0/6,0. Ver §7.16.
+> - **Compensar con los ingredientes al peso** (subir el pollo para
+>   recuperar la proteína que quita el redondeo). Muerto antes de
+>   escribirlo: **35 de los 36 días que fallan proteína en corte no tienen
+>   NINGÚN ingrediente al peso**.
+>
+> #### La despensa: dos preguntas, dos unidades
+>
+> El stock dice raciones ("1 y 1/2 botes") porque es lo que se come; el
+> check-list de la compra dice ENVASES ("1 x tarrina") porque es lo que se
+> paga y nadie compra 3/4 de bote. Es la misma distinción que "Budget =
+> purchase cost, not usage cost".
+>
+> Al hacerlo se metió una regresión y se cazó midiendo: el envase con su
+> aclaración larga ("1 x paquete de 500 g (rinde 1,35 kg cocido)") dejaba el
+> NOMBRE del ingrediente en **9 px** a 375 px de ancho. La página no
+> desbordaba, así que no saltaba ninguna alarma. Arreglado con un techo del
+> 42% a esa columna y puntos suspensivos — mismo patrón que
+> `.pantry-meal-chip` en 2026-08-20b.
+>
+> #### Dos fallos viejos que salieron de paso
+>
+> - La interfaz inglesa decía **"1 y 1/2 huevos"**: la rama `perUnit` de
+>   `formatQuantityPhrase` escribía la etiqueta española a pelo, y el
+>   conector " y " estaba escrito dentro del código. Los dos arreglados;
+>   "huevo", "cebolla" y "cucharadita" ya están en `packages-en.js`.
+> - El puñado de almendras valía 25 g en la tabla y **una receta publicada
+>   dice 20** ("Un puñado de almendras son unos 20 gramos"). Se cambió el
+>   DATO, nunca el paso: la clave de traducción es la frase entera.
+>
+> #### Lo que NO se tocó, a propósito
+>
+> Los pasos de receta. Se comprobó antes de suponer: de 2.101 pasos solo 10
+> llevan una cantidad, y las diez son proporciones ("un litro de agua por
+> cada 100 g de pasta"), no raciones. No había nada que arreglar ahí.
+>
+>
 > ### ⏩ UPDATE 2026-09-13 — la aplicación entera en dos idiomas, y el recorrido reescrito
 >
-> **640 tests en verde. Desplegado y empujado, sello `20260913c`.** Cinco días
+> **640 tests en verde. Desplegado y empujado, sello `20260913d`.** Cinco días
 > de trabajo que se resumen en una frase: la aplicación se puede usar de punta
 > a punta en inglés, **incluidas las 434 recetas**.
 >

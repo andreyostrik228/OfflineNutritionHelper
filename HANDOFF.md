@@ -42,6 +42,8 @@ Estas no se negocian y romperlas ya ha costado disgustos.
 | **Nunca un trailer `Co-Authored-By`.** | Está en `~/CLAUDE.md`. La plantilla del Bash tool lo sugiere; ignórala. |
 | **Nunca commitear secretos.** La clave de USDA vive solo en el scratchpad. | La anon key de Supabase SÍ es pública por diseño (RLS es la seguridad real). |
 | **Deja el árbol limpio al terminar**, y `git push` a mano cuando él lo autorice. | Ver la corrección de abajo: **nadie empuja por ti**. |
+| **Toda respuesta que cambie algo termina con una lista de comprobación**: qué cambiaste, qué tiene que mirar él, con la cifra de antes y después y **dónde** mirarlo (móvil / portátil / producción). Y aparte, qué NO pudiste comprobar. | Lo pidió el 2026-09-13, textual: *"если что-то поменял то говоришь поменял это это проверите пожалуйста"*. Nace de un caso real: le mandé a probar el recorrido en inglés cuando **nunca lo había desplegado**. Decir QUÉ cambió sin decir DÓNDE mirarlo le hace perder el viaje. |
+| **Una sola sesión. No generes agentes.** | Lo dijo explícitamente: *"Работаем в ОДНОЙ сессии. Агентов не плодить."* Un agente arranca en frío y vuelve a deducir el contexto que aquí ya está; y la aprobación de otra sesión no sustituye a la suya (ver la primera fila). |
 
 ### El hook que "commitea y empuja solo" NO EXISTE (comprobado 2026-09-09)
 
@@ -820,6 +822,89 @@ pintaba. Solo apareció al **inspeccionar la tabla ya cargada** en el
 navegador. Para datos que se registran en bloque, la comprobación útil no es
 "¿carga?" sino "¿cuántas entradas tiene cada una de las dos tablas, y son
 las que espero?".
+
+### 7.16 El bucle que yo tomaba por ruido era la red de seguridad
+
+Al redondear las raciones a cantidades servibles (2026-09-14), el perfil de
+corte empeoró: los días con violación pasaban de 15,5% a 21,5%. Mirando
+CUÁNTO fallaban, salió algo que no encajaba: a los 14 días nuevos les
+faltaban **22,7 g de proteína de mediana**, con una tolerancia de 10 g. Y
+redondear mueve 2-5 g por fila.
+
+La cuenta no cuadraba, así que instrumenté los tres pasos nuevos por
+separado. En conjunto **SUMABAN 2,06 g de media**, y solo 9 planes de 200
+perdían más de 10 g. Imposible que eso abriera un agujero de 22,7 g.
+
+La explicación era que yo estaba comparando dos planes DISTINTOS y llamando
+a la diferencia "degradación". `attemptPlanAtTier` corre dentro de un bucle
+que tiene esto:
+
+```js
+    if (attempt.violations.length === 0) break;
+```
+
+Redondear ANTES de esa línea puede añadir una violación, el bucle deja de
+cortar, sube de tier y acaba eligiendo otro plato. Misma semilla, plan
+completamente distinto.
+
+**Y entonces me equivoqué de arreglo.** Saqué el redondeo fuera del bucle,
+para no perturbar la selección. Es lo que dicta la intuición de "no toques
+lo que estás midiendo", y **midió peor en los tres perfiles a la vez**:
+
+```
+                     corte   recomp   volumen
+    dentro del bucle  21,5%    6,0%     4,0%
+    fuera del bucle   23,5%   10,0%     6,0%
+```
+
+El motivo, al mirar QUÉ violaciones aparecían: `cap25` se disparaba de 1 a
+27 en recomposición. Dentro del bucle eso no se veía porque el bucle hacía
+de red **sin que nadie lo hubiera decidido** — una violación nueva le impedía
+cortar, subía a un tier con el tope del 25% más flojo, y el destrozo se
+tapaba solo. Quitar la red no causó el fallo: lo destapó.
+
+Dos cosas que llevarse:
+
+1. **La escalera de relajación no es un estorbo para medir, es un
+   amortiguador.** Un paso nuevo que rompa una garantía va mejor DENTRO,
+   donde el motor puede reaccionar.
+2. **Un fallo que solo aparece al limpiar el diseño ya estaba ahí.** Al
+   arreglar el cap25 a propósito (reparándolo en raciones enteras), las
+   violaciones de cap25 se fueron a CERO en los tres perfiles — incluidas
+   las 4 que existían antes de todo esto. El experimento equivocado fue lo
+   que encontró el arreglo bueno.
+
+La regla general, que es §7.5 otra vez desde otro lado: **cuando una
+medición no cuadra con el mecanismo que crees tener, el que está mal es el
+mecanismo, no la medición.** Y la forma barata de saberlo es instrumentar
+cada paso por separado en vez de discutir sobre el total.
+
+### 7.17 Una rejilla irregular no se recorre restando
+
+`js/data/servings.js` tiene un modo de partir que admite **cuartos Y
+tercios** (un tercio de bote se sirve igual de fácil que un cuarto, y tener
+las dos opciones reduce a la mitad el error del redondeo). O sea que la
+rejilla legal de un bote de 400 g es 100, 133, 200, 267, 300, 400... — no es
+regular.
+
+Tres funciones bajaban raciones restando "un paso" fijo de 0,25. Restarle
+dos pasos a 4/3 de bote (533 g) da 333 g, **que no es ni un tercio ni un
+cuarto de nada**. El test de "cada fila cae en una ración servible" lo cazó;
+sin ese test habría salido en pantalla como "333 g de lentejas" dentro de
+una interfaz que presume de no usar gramos.
+
+Y el hermano del mismo día, más tonto y peor: `previousServingGrams(221)`
+para los huevos (63 g) devolvía 220,5 — que **vuelve a redondear a 221**. El
+paso no daba ningún paso. Quien llamaba se quedaba en bucle creyendo que
+bajaba, agotaba su tope de intentos y terminaba recortando 5 g a pelo,
+dejando 216 g. El síntoma (una cantidad rara en una fila de yogur) estaba
+lejísimos de la causa.
+
+**La regla:** quien conoce la rejilla es el fichero que la define. Si hay
+que moverse por ella, se le pregunta (`previousServingGrams`), no se
+reconstruye con aritmética en el sitio donde hace falta. Y un "siguiente" o
+un "anterior" tiene que garantizar que de verdad AVANZA, sobre todo cuando
+el valor se guarda redondeado a entero y la rejilla no lo está.
 
 ---
 

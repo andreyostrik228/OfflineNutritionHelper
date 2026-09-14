@@ -473,7 +473,7 @@ function renderFoodRow(item, storeId) {
         // no falla nada, simplemente deja de encontrar.
         '<div class="food-name">' + escapeHtml(nombreComida(item.name)) + '</div>' +
         '<div class="food-meta">' +
-          formatQuantityPhrase(item.grams, info) +
+          formatQuantityPhrase(item.grams, info, item.name) +
           (hasRealMacros
             ? ' &mdash; P ' + round1(item.protein) + ' g / C ' + round1(item.carbs) + ' g / G ' + round1(item.fat) + ' g' +
               // "real" no dice nada por sí solo, y su explicación estaba en
@@ -549,7 +549,26 @@ function formatHalfFraction(value) {
   var hasHalf = value - whole > 0;
   if (!hasHalf) return String(whole);
   if (whole === 0) return "1/2";
-  return whole + " y 1/2";
+  return whole + conectorDeFraccion() + "1/2";
+}
+
+/**
+ * Lo que va entre la parte entera y la fracción: " y " en español,
+ * " " en inglés ("1 1/2 cups", nunca "1 and 1/2 cups").
+ *
+ * Era una cadena escrita a pelo aquí dentro, y se vio en pantalla: el
+ * inglés decía "1 y 1/2 cups". Es el fallo de siempre -- una palabra
+ * española en el código no da ningún error, solo sale mal (ROADMAP P1).
+ *
+ * @returns {string}
+ */
+function conectorDeFraccion() {
+  if (typeof t !== "function") return " y ";
+  var s = t("ui.fraccion_conector");
+  // `t()` devuelve la CLAVE cuando no hay traducción, para que se vea. Aquí
+  // eso pondría "ui.fraccion_conector" en medio de la cantidad, así que se
+  // comprueba.
+  return (s && s.indexOf("ui.") !== 0) ? s : " y ";
 }
 
 /**
@@ -566,6 +585,66 @@ function pluralize(word, count) {
 }
 
 /**
+ * Escribe un número de raciones como fracción de cocina: 0.25 → "1/4",
+ * 1.5 → "1 y 1/2", 2.75 → "2 y 3/4".
+ *
+ * Cubre cuartos Y tercios porque `quantizeServingCount` los produce los dos
+ * (un tercio de bote es tan fácil de servir como un cuarto, y tener las dos
+ * opciones reduce a la mitad el error del redondeo). Cualquier otro decimal
+ * cae a un número normal en vez de inventarse una fracción rara: si algún
+ * día aparece, se verá "1,2 botes", que es feo pero honesto.
+ *
+ * @param {number} value
+ * @returns {string}
+ */
+function formatServingFraction(value) {
+  var whole = Math.floor(value + 1e-9);
+  var rest  = value - whole;
+  var frac  = "";
+
+  if (rest > 1e-9) {
+    if      (Math.abs(rest - 0.25)   < 0.02) frac = "1/4";
+    else if (Math.abs(rest - 1 / 3)  < 0.02) frac = "1/3";
+    else if (Math.abs(rest - 0.5)    < 0.02) frac = "1/2";
+    else if (Math.abs(rest - 2 / 3)  < 0.02) frac = "2/3";
+    else if (Math.abs(rest - 0.75)   < 0.02) frac = "3/4";
+    // Con punto, como TODO lo demás que imprime esta pantalla ("P 12.8 g",
+    // "€1.5"). Esta línea ponía coma, y era la única: en español queda más
+    // correcto, pero mezclar las dos notaciones en la misma tarjeta es peor
+    // que elegir una. Además era coma fija, o sea que en inglés también.
+    else return String(Math.round(value * 10) / 10);
+  }
+
+  if (!frac) return String(whole);
+  if (whole === 0) return frac;
+  return whole + conectorDeFraccion() + frac;
+}
+
+/**
+ * La etiqueta de una RACIÓN en el idioma de ahora, singular o plural.
+ *
+ * Hermana de `etiquetaDeEnvase`, y por el mismo camino: primero el
+ * diccionario inglés (`packages-en.js`, que trae las dos formas porque el
+ * inglés no pluraliza con una "s"), y si no está, el español con sus
+ * irregulares en `SERVING_PLURALS` ("calabacín" → "calabacines", que una
+ * regla automática convertiría en "calabacíns").
+ *
+ * @param {string} label
+ * @param {number} n
+ * @returns {string}
+ */
+function etiquetaDeRacion(label, n) {
+  if (typeof tPackageLabel === "function") {
+    var traducida = tPackageLabel(label, n);
+    if (traducida) return traducida;
+  }
+  if (typeof pluralizeServingLabel === "function") {
+    return pluralizeServingLabel(label, n);
+  }
+  return pluralize(label, n);
+}
+
+/**
  * Genera la frase de cantidad para food-meta: gramos por defecto, o una
  * medida práctica (cucharadas/unidades) cuando packaging.js lo indica.
  * Los gramos reales siempre se muestran entre paréntesis para que los
@@ -573,30 +652,57 @@ function pluralize(word, count) {
  *
  * @param {number} grams
  * @param {object|null} info – entrada de PACKAGING_INFO, o null
+ * @param {string} [name] – nombre del ingrediente, para buscar su ración
  * @returns {string}
  */
-function formatQuantityPhrase(grams, info) {
-  if (!info) {
-    return round0(grams) + " g";
-  }
-
-  if (info.type === "spoonable") {
+function formatQuantityPhrase(grams, info, name) {
+  if (info && info.type === "spoonable") {
     var tbsp = grams / info.tablespoonG;
     if (tbsp >= 0.75) {
       var roundedTbsp = roundToHalf(tbsp);
-      return "&asymp; " + formatHalfFraction(roundedTbsp) + " " + pluralize("cucharada", roundedTbsp) + " (" + round0(grams) + "g)";
+      return "&asymp; " + formatHalfFraction(roundedTbsp) + " " +
+        escapeHtml(etiquetaDeRacion("cucharada", roundedTbsp)) + " (" + round0(grams) + "g)";
     }
     var roundedTsp = roundToHalf(grams / info.teaspoonG);
-    return "&asymp; " + formatHalfFraction(roundedTsp) + " " + pluralize("cucharadita", roundedTsp) + " (" + round0(grams) + "g)";
+    return "&asymp; " + formatHalfFraction(roundedTsp) + " " +
+      escapeHtml(etiquetaDeRacion("cucharadita", roundedTsp)) + " (" + round0(grams) + "g)";
   }
 
-  if (info.type === "perUnit") {
+  if (info && info.type === "perUnit") {
     var roundedUnits = roundToHalf(grams / info.gramsPerUnit);
-    return "&asymp; " + formatHalfFraction(roundedUnits) + " " + pluralize(info.unitLabel, roundedUnits) + " (" + round0(grams) + "g)";
+    // `etiquetaDeRacion` y no `pluralize`: esta rama llevaba desde siempre
+    // escribiendo la etiqueta española tal cual, así que la interfaz en
+    // inglés decía "1 y 1/2 huevos". No daba ningún error -- es la misma
+    // clase de fallo que persigue el punto 1 del ROADMAP.
+    return "&asymp; " + formatHalfFraction(roundedUnits) + " " +
+      escapeHtml(etiquetaDeRacion(info.unitLabel, roundedUnits)) + " (" + round0(grams) + "g)";
   }
 
-  // fixedPackage: los gramos son la unidad correcta para lo que se USA
-  // (el paquete que hay que COMPRAR se muestra aparte, en formatPurchaseLine).
+  // El resto pasa por la RACIÓN de casa (js/data/servings.js): "4 yogures",
+  // "media lata", "1/4 de bote". Hasta el 2026-09-13 esto devolvía gramos
+  // secos y era el 93,6% de las filas que ve el usuario — medido sobre 3.565
+  // filas de 100 semillas x 3 perfiles.
+  //
+  // Los gramos NO desaparecen, van entre paréntesis: quien pesa sigue
+  // teniendo su número, y los macros de al lado siguen siendo comprobables.
+  // Es la misma forma que ya tenían las cucharadas y los huevos.
+  //
+  // La cuenta la hace `servingCountFor` (js/core/servings.js), la MISMA
+  // función que usa el motor para cuantizar. No se redondea aquí: si esta
+  // línea hiciera su propia cuenta, la pantalla podría decir "4 yogures"
+  // sobre unos macros de 568 g y nadie se enteraría (HANDOFF §7.10).
+  if (typeof resolveServingUnit === "function") {
+    var unit = resolveServingUnit(name);
+    if (unit && unit.g > 0) {
+      var raciones = servingCountFor(grams, unit);
+      if (raciones > 0) {
+        return '<span class="food-qty">' + formatServingFraction(raciones) + " " +
+          escapeHtml(etiquetaDeRacion(unit.label, raciones)) + "</span>" +
+          ' <span class="food-qty__grams">(' + round0(grams) + " g)</span>";
+      }
+    }
+  }
+
   return round0(grams) + " g";
 }
 

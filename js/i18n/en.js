@@ -32,6 +32,7 @@ registerI18nTable("en", {
   "ui.con_1_dia_pagas_paquetes_enteros": "With 1 day you pay for whole packs to cover a single day. Measured: it works out between",
   "ui.confianza": "confidence",
   "ui.consumo_etiqueta": "use",
+  "ui.fraccion_conector": " ",
   "ui.contrasena_cambiada_ya_has_entrado": "Password changed. You are now signed in with it.",
   "ui.coste": "Cost",
   "ui.coste_de_compra": "Shopping cost",
