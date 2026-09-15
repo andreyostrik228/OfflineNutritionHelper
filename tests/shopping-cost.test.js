@@ -359,6 +359,64 @@ function run(t) {
     assert.ok(/Total: 0\.00 EUR/.test(txt), txt);
   });
 
+  // ── La etiqueta larga confunde en la lista ───────────────────────────
+  //
+  // El dueño, mirando la lista en su móvil: "если название слишком
+  // длинное то это путает". La fila es estrecha y la etiqueta entera se
+  // cortaba con puntos suspensivos, con el texto completo en el `title`,
+  // que en un móvil NO EXISTE -- o sea que no se leía en ninguna parte.
+
+  t.test("la lista de la compra quita la aclaración entre paréntesis", function () {
+    var s = freshShoppingListSandbox();
+    assert.strictEqual(s.sinAclaracion("paquete de 1 kg (rinde 2,8 kg cocido)"), "paquete de 1 kg");
+    assert.strictEqual(s.sinAclaracion("bandeja (media de 5 cortes)"), "bandeja");
+    assert.strictEqual(s.sinAclaracion("pack de 6 (escurrido)"), "pack de 6");
+    assert.strictEqual(s.sinAclaracion("barra"), "barra", "sin paréntesis no toca nada");
+  });
+
+  t.test("una etiqueta que es SOLO un paréntesis se queda como estaba", function () {
+    // Recortarla dejaría la celda vacía, que es peor que larga.
+    var s = freshShoppingListSandbox();
+    assert.strictEqual(s.sinAclaracion("(a granel)"), "(a granel)");
+  });
+
+  t.test("los gramos se siguen omitiendo cuando la etiqueta cuenta piezas", function () {
+    // El detalle fino: si el test de dígitos mirara la etiqueta RECORTADA,
+    // "docena (12 huevos)" pasaría a "docena", ya sin dígito, y volvería a
+    // aparecer el "(756 g)" que ese test existe para evitar.
+    //
+    // Pintar una fila necesita `etiquetaDeEnvase`, que vive en render.js;
+    // el sandbox de esta suite no lo trae porque los demás tests solo
+    // calculan. Se añade aquí en vez de en el sandbox común para no
+    // cambiarle las dependencias a nadie más.
+    var s = freshShoppingListSandbox();
+    require("vm").runInContext(
+      require("fs").readFileSync(projPath("js/ui/render.js"), "utf8"),
+      s, { filename: "js/ui/render.js" });
+    var html = s.renderShoppingRow({
+      name: "Huevos enteros", requiredGrams: 300,
+      purchase: { hasFixedPackage: true, packagesToBuy: 1, packageSizeG: 756,
+                  packageLabel: "docena (12 huevos)", purchaseCost: 2.1 }
+    }, "mercadona");
+    assert.ok(html.indexOf("docena") !== -1, "la etiqueta corta sigue ahí");
+    assert.strictEqual(html.indexOf("12 huevos"), -1, "la aclaración se recorta");
+    assert.strictEqual(html.indexOf("756"), -1,
+      "y los gramos NO vuelven: el dígito se busca en la etiqueta entera, no en la recortada");
+  });
+
+  t.test("la exportación en texto plano conserva la etiqueta ENTERA", function () {
+    // Se pega en notas o en un SMS: ahí no hay ancho que valga y saber
+    // cuánto rinde cocido sí ayuda. El recorte es solo de la pantalla.
+    var s = freshShoppingListSandbox();
+    var texto = s.shoppingListAsText([{
+      name: "Arroz blanco cocido", requiredGrams: 900,
+      purchase: { hasFixedPackage: true, packagesToBuy: 1, packageSizeG: 1000,
+                  packageLabel: "paquete de 1 kg (rinde 2,8 kg cocido)", purchaseCost: 1.2 }
+    }], 1);
+    assert.ok(texto.indexOf("rinde 2,8 kg cocido") !== -1,
+      "el texto plano no se recorta: " + texto);
+  });
+
 }
 
 module.exports = { run: run };

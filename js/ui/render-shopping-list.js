@@ -380,6 +380,40 @@ function shoppingListAsText(items, dias) {
   return lineas.join("\n");
 }
 
+/**
+ * La etiqueta de envase sin su aclaración entre paréntesis.
+ * ───────────────────────────────────────────────────────────────────────
+ * En la lista de la compra la fila es estrecha y comparte sitio con el
+ * nombre, la casilla y el precio. Las etiquetas largas se cortan con
+ * puntos suspensivos y el texto entero se va al `title`, que **en un móvil
+ * no existe** -- o sea que no se lee en ninguna parte. El dueño lo dijo
+ * así: "если название слишком длинное то это путает".
+ *
+ * Las culpables son siempre las aclaraciones:
+ *
+ *     "paquete de 500 g (rinde 1,35 kg cocido)"   39 caracteres -> 16
+ *     "bandeja (media de 5 cortes)"               27            ->  7
+ *     "pack de 6 (escurrido)"                     21            ->  9
+ *
+ * Y ninguna de las tres sirve DENTRO de la tienda: cuánto rinde cocido, de
+ * cuántos cortes es la media o si el peso es escurrido son cosas del plato,
+ * no del estante. Lo que hay que buscar es "bandeja" o "paquete de 500 g".
+ *
+ * Se recorta SOLO aquí. La exportación en texto plano se pega en notas o
+ * en un SMS, donde no hay ancho que valga y la aclaración sí ayuda, así
+ * que allí se queda entera.
+ *
+ * @param {string} label
+ * @returns {string}
+ */
+function sinAclaracion(label) {
+  if (typeof label !== "string") return label;
+  var corto = label.replace(/\s*\([^)]*\)\s*$/, "").trim();
+  // Si la etiqueta ENTERA era un paréntesis no queda nada: mejor la
+  // original larga que una celda vacía.
+  return corto || label;
+}
+
 function renderShoppingRow(entry, storeId) {
   var p = entry.purchase;
   var usedText = t("ui.usado") + ": " + round0(entry.requiredGrams) + " g";
@@ -394,10 +428,15 @@ function renderShoppingRow(entry, storeId) {
     // se vende ("docena", "bandeja"): es lo que hay que buscar en la
     // tienda, así que no se traduce.
     var label = p.packageLabel
-      ? escapeHtml(etiquetaDeEnvase(p.packageLabel, p.packagesToBuy))
+      ? escapeHtml(etiquetaDeEnvase(sinAclaracion(p.packageLabel), p.packagesToBuy))
       : t("ui.envase");
     // Si la etiqueta ya nombra un número de piezas ("docena (12 huevos)"),
     // el "(756 g)" no le dice nada a quien compra -- se omite.
+    //
+    // OJO: se mira la etiqueta ENTERA, no la recortada. Es la aclaración
+    // entre paréntesis la que suele traer el número, así que probar sobre
+    // el recorte haría aparecer "docena (756 g)" justo donde este test
+    // existe para evitarlo.
     var withGrams = !/\d/.test(p.packageLabel || "");
     buyText = t("ui.comprar") + ": " + p.packagesToBuy + " &times; " + label +
       (withGrams ? " (" + round0(p.packageSizeG) + "g)" : "");
