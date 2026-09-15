@@ -334,6 +334,79 @@ function run(t) {
       pasados + " de " + n + " planes se pasan del presupuesto; el tope de compra se hace cumplir ANTES de redondear, " +
       "así que subir una ración puede abrir un paquete y nadie lo volvería a mirar");
   });
+
+  // ── El stock no se dice como una ración ──────────────────────────────
+  //
+  // El dueño lo vio en la despensa: "нужно писать упаковками или граммами,
+  // или штуками, как будет логичнее". Lo que había era la ración, y para
+  // lo que se mide a cuchara daba frases que nadie dice.
+
+  t.test("SERVING_MEASURES solo nombra etiquetas que alguien devuelve de verdad", function () {
+    // Una errata aquí no rompe nada: la etiqueta sigue contándose como
+    // pieza y el fallo es justo el que se venía a arreglar.
+    //
+    // Se comprueba contra lo que RESUELVE `resolveServingUnit`, no contra
+    // la tabla de raciones: "cucharadita" no está en esa tabla, sale del
+    // `teaspoonG` de packaging.js. Mirar solo una de las dos fuentes daba
+    // este test por roto estando el dato bien.
+    var s = freshSandbox();
+    var salen = {};
+    [s.SERVING_CATALOGS.mercadona.units,
+     s.PACKAGING_CATALOGS.mercadona.packages].forEach(function (tabla) {
+      Object.keys(tabla).forEach(function (k) {
+        var u = s.resolveServingUnit(k);
+        if (u && u.label) salen[u.label] = true;
+      });
+    });
+    var fantasma = s.SERVING_MEASURES.filter(function (l) { return !salen[l]; });
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(fantasma)), [],
+      "estas medidas no las devuelve resolveServingUnit para ningún ingrediente: " + fantasma.join(", "));
+  });
+
+  t.test("mide lo que se mide y cuenta lo que se cuenta", function () {
+    var s = freshSandbox();
+    ["cucharada", "cucharadita", "vaso", "puñado"].forEach(function (l) {
+      assert.strictEqual(s.isServingMeasure(l), true, l + " mide, no cuenta");
+    });
+    ["lata", "yogur", "barra", "plátano", "loncha"].forEach(function (l) {
+      assert.strictEqual(s.isServingMeasure(l), false, l + " se cuenta, no se mide");
+    });
+  });
+
+  t.test("el aceite deja de tener 43 cucharaditas y pasa a gramos", function () {
+    // El caso que lo destapó, con su cifra: 200 g de aceite salían como
+    // "43 y 1/2 cucharaditas" porque la ración es la cucharadita.
+    var s = freshEngineSandbox();
+    var unidad = s.resolveServingUnit("Aceite de oliva");
+    assert.ok(unidad && s.isServingMeasure(unidad.label),
+      "el aceite se mide a cucharaditas; si deja de ser así, este test ya no prueba nada");
+    assert.strictEqual(s.stockAmountFor(200, "Aceite de oliva"), null,
+      "sin envase redondo, el stock se queda en gramos");
+  });
+
+  t.test("un litro de leche es 1 brick, no 5 vasos", function () {
+    var s = freshEngineSandbox();
+    var r = s.stockAmountFor(1000, "Leche semidesnatada");
+    assert.ok(r, "1 kg de leche es exactamente un brick y tiene que decirse así");
+    assert.strictEqual(r.kind, "packages");
+    assert.strictEqual(r.n, 1);
+  });
+
+  t.test("medio envase NO se redondea a uno entero", function () {
+    // "1 botella" con 200 g dentro sería mentira, y la despensa es donde
+    // esa mentira estropea la lista de la compra.
+    var s = freshEngineSandbox();
+    assert.strictEqual(s.stockAmountFor(500, "Leche semidesnatada"), null,
+      "medio brick no es un brick");
+  });
+
+  t.test("lo que se cuenta por piezas sigue contándose igual", function () {
+    var s = freshSandbox();
+    var r = s.stockAmountFor(500, "Yogur griego ligero");
+    assert.ok(r && r.kind === "pieces", "los yogures se cuentan");
+    assert.strictEqual(r.n, 4);
+    assert.strictEqual(r.label, "yogur");
+  });
 }
 
 module.exports = { run: run };

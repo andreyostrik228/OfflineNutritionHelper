@@ -220,6 +220,29 @@ var SERVING_PLURALS = {
   "yogur":     "yogures"
 };
 
+/**
+ * Las etiquetas que son una MEDIDA DE COCINA, no una pieza contable.
+ * ───────────────────────────────────────────────────────────────────────
+ * Una ración es lo que se COME de una sentada; la despensa es lo que se
+ * TIENE. Para casi todo dan la misma frase y sale bien ("4 yogures", "3
+ * latas", "1 barra"), pero para lo que se mide a cuchara o a vaso el
+ * resultado es absurdo, y el dueño lo vio en pantalla:
+ *
+ *     200 g de aceite  ->  "43 y 1/2 cucharaditas"
+ *     500 g de avena   ->  "33 cucharadas"
+ *     1 kg de leche    ->  "5 vasos"
+ *
+ * Nadie dice que tiene cuarenta y tres cucharaditas de aceite: tiene un
+ * bote a medias. Estas cuatro etiquetas son las únicas que miden en vez de
+ * contar, y en la despensa se cambian por el envase entero (cuando el
+ * stock es un número redondo de envases) o por gramos.
+ *
+ * Es GLOBAL como `SERVING_PLURALS` y por el mismo motivo: una cucharada
+ * mide lo que mide en cualquier supermercado. Lo que cambia de una tienda
+ * a otra es cuántos gramos tiene esa cuchara, no que sea una cuchara.
+ */
+var SERVING_MEASURES = ["vaso", "cucharada", "cucharadita", "puñado"];
+
 // ── Registro por tienda ──────────────────────────────────────────────────
 // Mismo patrón que PACKAGING_CATALOGS y PRICE_CATALOGS.
 //

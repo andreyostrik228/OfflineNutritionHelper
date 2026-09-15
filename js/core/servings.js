@@ -240,3 +240,72 @@ function pluralizeServingLabel(label, n) {
   }
   return label + "s";
 }
+
+/**
+ * ¿Esta etiqueta MIDE en vez de contar?
+ *
+ * "cucharada" y "vaso" miden; "lata" y "plátano" cuentan. La diferencia
+ * importa fuera del plato: contar raciones en la despensa da frases como
+ * "43 y 1/2 cucharaditas" de aceite. La lista y el porqué están en
+ * `SERVING_MEASURES` (js/data/servings.js).
+ *
+ * @param {string} label
+ * @returns {boolean}
+ */
+function isServingMeasure(label) {
+  if (typeof label !== "string" || !label) return false;
+  if (typeof SERVING_MEASURES === "undefined") return false;
+  return SERVING_MEASURES.indexOf(label) !== -1;
+}
+
+/**
+ * En qué se dice el STOCK de la despensa, que no es en lo que se dice una
+ * ración.
+ * ───────────────────────────────────────────────────────────────────────
+ * Una ración es lo que se come de una sentada; la despensa es lo que se
+ * tiene en casa. Coinciden para lo que se cuenta por piezas ("4 yogures",
+ * "3 latas") y no coinciden para lo que se mide a cuchara o a vaso, que
+ * daba frases como "43 y 1/2 cucharaditas" de aceite o "5 vasos" de leche.
+ *
+ * Orden de preferencia:
+ *   1. PIEZAS   si la ración cuenta en vez de medir.
+ *   2. ENVASES  si el stock es un número redondo de ellos (±8%): 1 kg de
+ *      leche es "1 brick". Se exige que sea redondo porque "1 botella" con
+ *      200 g de aceite dentro sería mentira, y la despensa es justo donde
+ *      esa mentira estropea la lista de la compra.
+ *   3. null     y quien llama se queda en gramos, que nunca mienten.
+ *
+ * Vive AQUÍ y no en la despensa a propósito: es una decisión, y las
+ * decisiones en `js/ui/*` son las que los tests no alcanzan (§3 de
+ * HANDOFF.md). Esta función no toca el DOM y devuelve la etiqueta en
+ * crudo; ponerla en plural y traducirla es cosa de quien pinta.
+ *
+ * @param {number} grams
+ * @param {string} name
+ * @param {string} [storeId]
+ * @returns {{kind:"pieces"|"packages", n:number, label:string}|null}
+ */
+function stockAmountFor(grams, name, storeId) {
+  if (!(grams > 0)) return null;
+
+  var unit = resolveServingUnit(name, storeId);
+  if (unit && unit.g > 0 && !isServingMeasure(unit.label)) {
+    var piezas = servingCountFor(grams, unit);
+    if (piezas > 0) return { kind: "pieces", n: piezas, label: unit.label };
+  }
+
+  if (typeof resolvePackageInfo === "function") {
+    var tienda = storeId ||
+      (typeof DEFAULT_STORE_ID !== "undefined" ? DEFAULT_STORE_ID : "mercadona");
+    var info = resolvePackageInfo(name, tienda);
+    if (info && info.packageSizeG > 0 && info.packageLabel) {
+      var n = grams / info.packageSizeG;
+      var entero = Math.round(n);
+      if (entero >= 1 && Math.abs(n - entero) <= 0.08) {
+        return { kind: "packages", n: entero, label: info.packageLabel };
+      }
+    }
+  }
+
+  return null;
+}

@@ -459,6 +459,50 @@ function cantidadDeCasa(grams, name, storeId) {
 }
 
 /**
+ * Lo mismo, pero para el STOCK, que no se dice igual.
+ * ───────────────────────────────────────────────────────────────────────
+ * Una ración es lo que se come de una sentada; la despensa es lo que se
+ * tiene en casa. Para lo que se cuenta por piezas las dos frases coinciden
+ * y la de arriba vale ("4 yogures", "3 latas", "1 barra"). Para lo que se
+ * mide a cuchara o a vaso, no:
+ *
+ *     200 g de aceite  ->  "43 y 1/2 cucharaditas"   <- lo que decía
+ *     1 kg de leche    ->  "5 vasos"
+ *
+ * Orden de preferencia, y es el que pidió el dueño —"упаковками или
+ * граммами, или штуками, как будет логичнее"—:
+ *
+ *   1. PIEZAS, si la ración cuenta en vez de medir.
+ *   2. ENVASES, si el stock es un número redondo de ellos: 1 kg de leche
+ *      es "1 brick", no "1000 g". Se exige que sea redondo (±8%) porque
+ *      "1 botella" con 200 g de aceite dentro sería mentira, y la despensa
+ *      es justo el sitio donde esa mentira estropea la lista de la compra.
+ *   3. GRAMOS, que nunca mienten.
+ *
+ * @param {number} grams
+ * @param {string} name
+ * @returns {string|null}  null = quien llama se queda en gramos
+ */
+function cantidadDeDespensa(grams, name) {
+  if (typeof stockAmountFor !== "function") return cantidadDeCasa(grams, name);
+
+  var cuanto = stockAmountFor(grams, name);
+  if (!cuanto) return null;
+
+  if (cuanto.kind === "pieces") {
+    var etiquetaPieza = (typeof etiquetaDeRacion === "function")
+      ? etiquetaDeRacion(cuanto.label, cuanto.n)
+      : cuanto.label;
+    return formatServingFraction(cuanto.n) + " " + etiquetaPieza;
+  }
+
+  var etiquetaEnvase = (typeof etiquetaDeEnvase === "function")
+    ? etiquetaDeEnvase(cuanto.label, cuanto.n)
+    : cuanto.label;
+  return cuanto.n + " " + etiquetaEnvase;
+}
+
+/**
  * Lo que hay que COMPRAR, en envases: "2 x bote".
  *
  * En la lista de la compra esto ya se dice así, y es lo correcto para estar
@@ -502,7 +546,7 @@ function renderPantryRow(entry) {
   // El stock guardado no lleva tienda (la despensa es de casa, no de un
   // supermercado), asi que la racion se lee con la tienda por defecto. Si
   // algun dia el stock recuerda donde se compro, se pasa aqui.
-  var deCasa = cantidadDeCasa(entry.grams, entry.name);
+  var deCasa = cantidadDeDespensa(entry.grams, entry.name);
   var etiquetaBoton = deCasa || (round0(entry.grams) + " g");
 
   return (
