@@ -45,9 +45,12 @@ function readForm() {
     budgetMode:   budgetModeInput ? budgetModeInput.value : null,
     budgetCustom: budgetCustomEl ? Number(budgetCustomEl.value) : NaN,
     cookTime: Number(document.getElementById("cookTime").value),
-    // Sin `store` (2026-08-25): el selector de tienda se retiró de la UI
-    // y sanitizeInputs() (plan-generator.js) ya cae en DEFAULT_STORE_ID
-    // cuando data.store viene undefined -- el motor no cambia.
+    // Tienda (vuelve el 2026-09-15). Opcional igual que `cuisine`: si el
+    // <select> no existiera, `sanitizeInputs()` (plan-generator.js) cae en
+    // DEFAULT_STORE_ID y el motor se comporta como antes. Las opciones las
+    // rellena app.js desde listAvailableStores(), no el HTML, para que una
+    // tienda nueva aparezca sola sin tocar la plantilla.
+    store:    (document.getElementById("store") || {}).value || undefined,
     taste:    document.getElementById("taste").value,
     // Estilo de cocina (2026-08-26). Opcional a propósito: si el <select>
     // no existiera (una versión vieja del HTML cacheada, por ejemplo),

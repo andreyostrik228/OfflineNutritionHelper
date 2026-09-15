@@ -341,6 +341,8 @@ registerI18nTable("en", {
   "ui.poco_lt_20_min": "Little (<= 20 min)",
   "ui.preferencia_de_comida": "Food preference",
   "ui.preferencia_no_un_filtro": "a preference, not a filter",
+  "ui.donde_compras": "Where you shop",
+  "ui.de_momento_solo_mercadona": "Mercadona only for now: the prices and the pack sizes are theirs.",
   "ui.presupuesto_diario": "Daily budget",
   "ui.presupuesto_exacto_dia": "Exact budget (€/day)",
   "ui.productos": "products",

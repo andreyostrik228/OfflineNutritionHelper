@@ -677,13 +677,23 @@ main:focus { outline: none; }
    at every width the form uses a 2-col grid (i.e. always — this isn't
    mobile-only). Positions below are nth-child in DOM/source order:
    1 age, 2 sex, 3 weight, 4 height, 5 activity, 6 workouts, 7 goal,
-   8 budget (full), 9 cookTime, 10 wakeTime, 11 sleepTime, 12 taste (full). */
+   8 store (full), 9 budget (full), 10 cookTime, 11 wakeTime,
+   12 sleepTime, 13 taste (full).
+
+   ⚠ ESTO SE ROMPE AL INSERTAR UN CAMPO, Y SIN DAR NINGÚN ERROR. Los
+   números son posiciones, así que meter un campo en medio corre todos los
+   de abajo y la página se repinta con cuatro campos en el sitio
+   equivocado, sin fallar nada. Pasó el 2026-09-15 al añadir el selector de
+   tienda en la posición 8: "Dónde compras" acabó partiendo la pareja
+   despertar/dormir. Si añades un campo, RENUMERA esta lista y mira el
+   formulario con los ojos, no solo los tests. */
 .form-grid .field:nth-child(7)  { order: 1; } /* goal */
-.form-grid .field:nth-child(9)  { order: 2; } /* cookTime — moved up, pairs with goal */
-.form-grid .field:nth-child(10) { order: 3; } /* wakeTime — pairs with sleepTime */
-.form-grid .field:nth-child(11) { order: 4; } /* sleepTime */
-.form-grid .field:nth-child(8)  { order: 5; } /* budget (full) — moved after the half-width fields */
-.form-grid .field:nth-child(12) { order: 6; } /* taste (full) */
+.form-grid .field:nth-child(10) { order: 2; } /* cookTime — moved up, pairs with goal */
+.form-grid .field:nth-child(11) { order: 3; } /* wakeTime — pairs with sleepTime */
+.form-grid .field:nth-child(12) { order: 4; } /* sleepTime */
+.form-grid .field:nth-child(8)  { order: 5; } /* store (full) — el precio que el presupuesto de abajo mide */
+.form-grid .field:nth-child(9)  { order: 6; } /* budget (full) — moved after the half-width fields */
+.form-grid .field:nth-child(13) { order: 7; } /* taste (full) */
 
 label {
   font-size: 11px;

@@ -336,6 +336,8 @@ registerI18nTable("es", {
   "ui.poco_lt_20_min": "Poco (<= 20 min)",
   "ui.preferencia_de_comida": "Preferencia de comida",
   "ui.preferencia_no_un_filtro": "preferencia, no un filtro",
+  "ui.donde_compras": "Dónde compras",
+  "ui.de_momento_solo_mercadona": "De momento solo Mercadona: los precios y los tamaños de envase son los suyos.",
   "ui.presupuesto_diario": "Presupuesto diario",
   "ui.presupuesto_exacto_dia": "Presupuesto exacto (€/día)",
   "ui.productos": "productos",

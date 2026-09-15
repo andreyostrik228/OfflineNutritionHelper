@@ -703,6 +703,7 @@ document.addEventListener("DOMContentLoaded", function () {
     setVal("taste", settings.taste);
     setVal("cuisine", settings.cuisine);
     setVal("priority", settings.priority);
+    setVal("store", settings.store);
     setVal("wakeTime", settings.wakeTime);
     setVal("sleepTime", settings.sleepTime);
 
@@ -874,6 +875,50 @@ document.addEventListener("DOMContentLoaded", function () {
   //    guardado en ESTE navegador (invitado) -- si hay sesión iniciada, se
   //    vuelve a aplicar tras la reconciliación con la nube (puede llegar
   //    un instante más tarde, ver handleAuthDataReconciled/render-auth.js).
+  // ── Selector de tienda ────────────────────────────────────────────────
+  //
+  // Las opciones salen de `listAvailableStores()` y NO del HTML: el día que
+  // entre una segunda tienda aparece sola, sin tocar la plantilla. El
+  // <option> que trae index.html es el repliegue para cuando esto no
+  // llegue a ejecutarse.
+  //
+  // `data-store` en <html> lo pone ya el IIFE de la cabecera al cargar (así
+  // el tema no parpadea); aquí solo se reacciona al CAMBIO. El precio no se
+  // repinta al vuelo a propósito: los platos que hay en pantalla se
+  // generaron con la tienda anterior y sus envases son los de esa tienda
+  // -- mentir sobre eso es justo el bug de §7.10. La tienda nueva entra en
+  // el siguiente plan, que es cuando `readForm()` la lee.
+  function poblarSelectorDeTienda() {
+    var sel = document.getElementById("store");
+    if (!sel || typeof listAvailableStores !== "function") return;
+
+    var tiendas = listAvailableStores();
+    if (!tiendas || !tiendas.length) return;
+
+    var elegida = sel.value;
+    sel.innerHTML = "";
+    tiendas.forEach(function (t) {
+      var op = document.createElement("option");
+      op.value = t.storeId;
+      op.textContent = t.storeName;
+      sel.appendChild(op);
+    });
+    // Se conserva lo que hubiera si sigue existiendo; si no, la primera.
+    sel.value = elegida;
+    if (!sel.value) sel.value = tiendas[0].storeId;
+
+    // Con una sola tienda el desplegable no elige nada, y decirlo es más
+    // honesto que ofrecer una elección que no existe.
+    var pista = document.getElementById("storeHint");
+    if (pista) pista.hidden = tiendas.length > 1;
+
+    sel.addEventListener("change", function () {
+      document.documentElement.setAttribute("data-store", sel.value);
+    });
+  }
+
+  safeInit("store-selector", poblarSelectorDeTienda);
+
   safeInit("settings-prefill", function () {
     if (typeof getSettings === "function") applySettingsToForm(getSettings());
   });

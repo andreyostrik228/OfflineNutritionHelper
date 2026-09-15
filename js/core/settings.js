@@ -37,9 +37,12 @@ var SETTINGS_STORAGE_KEY = "nutritionPlanner.settings.v1";
 var _settingsMemoryState = null;
 
 var SETTINGS_NUMERIC_FIELDS = ["age", "weight", "height", "activity", "workouts", "budgetCustom", "cookTime", "maxDifficulty", "planDays"];
-// "store" retirado 2026-08-25 junto con el selector de tienda. Un ajuste
-// guardado de antes simplemente se ignora al sanear -- no rompe nada.
-var SETTINGS_STRING_FIELDS  = ["sex", "goal", "budgetMode", "taste", "wakeTime", "sleepTime", "cuisine", "priority"];
+// "store" volvió el 2026-09-15 con el selector de tienda, que se había
+// retirado el 2026-08-25. Un ajuste guardado con una tienda que ya no
+// exista no rompe nada: `sanitizeInputs()` (plan-generator.js) solo
+// acepta `data.store` si está en PRICE_CATALOGS, y si no cae en
+// DEFAULT_STORE_ID.
+var SETTINGS_STRING_FIELDS  = ["sex", "goal", "budgetMode", "taste", "wakeTime", "sleepTime", "cuisine", "priority", "store"];
 
 // Ajustes de SI/NO. Hasta 2026-09-08 no habia ninguno, asi que sanear un
 // booleano es nuevo: un  es un valor legitimo y hay que guardarlo,
