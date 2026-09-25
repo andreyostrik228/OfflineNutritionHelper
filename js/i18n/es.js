@@ -16,7 +16,6 @@
  */
 
 registerI18nTable("es", {
-  "ui.abrelo_en_este_mismo_movil": "Ábrelo en este mismo móvil y podrás poner una contraseña nueva.",
   "ui.atencion_alimentos_mas_del_25": "Atención — alimentos con más del 25% de las calorías (tras ajuste):",
   "ui.cada_uno": "cada uno",
   "ui.calorias": "Calorías",
@@ -34,23 +33,17 @@ registerI18nTable("es", {
   // "1 y 1/2 tarrinas", en inglés "1 1/2 tubs" (sin "and"). Es una clave y
   // no una constante porque estaba escrito a pelo y salía "1 y 1/2 cups".
   "ui.fraccion_conector": " y ",
-  "ui.contrasena_cambiada_ya_has_entrado": "Contraseña cambiada. Ya has entrado con ella.",
   "ui.coste": "Coste",
   "ui.coste_de_compra": "Coste de compra",
-  "ui.cuenta_creada_revisa_tu_correo": "Cuenta creada -- revisa tu correo para confirmarla antes de iniciar sesión.",
   "ui.de_contador": "de",
   "ui.dia": "Día",
   "ui.dias": "días",
   "ui.diez_minutos_o_menos": "10 minutos o menos",
-  "ui.elige_una_contrasena_nueva": "Elige una contraseña nueva",
   "ui.en_que_idioma": "¿En qué idioma?",
   "ui.enviar_enlace": "Enviar enlace",
-  "ui.escribe_la_contrasena_nueva": "Escribe la contraseña nueva.",
-  "ui.escribe_una_contrasena_nueva_para_tu_cuenta": "Escribe una contraseña nueva para tu cuenta.",
   "ui.este_navegador_no_deja_compartir_ni_copiar": "Este navegador no deja compartir ni copiar.",
   "ui.genera_un_plan_primero": "Genera un plan primero.",
   "ui.grasas": "Grasas",
-  "ui.guardar_contrasena": "Guardar contraseña",
   "ui.ha_ocurrido_un_error_generando_el_plan": "Ha ocurrido un error generando el plan. Revisa los datos introducidos.",
   "ui.hasta_20_minutos": "Hasta 20 minutos",
   "ui.hasta_35_minutos": "Hasta 35 minutos",

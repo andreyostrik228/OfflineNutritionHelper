@@ -5,6 +5,72 @@
 > Escrito para alguien que llega SIN NINGÚN contexto previo. Si solo lees
 > una parte de este archivo, que sea esta.
 >
+> ### ⏩ UPDATE 2026-09-25 — las cuentas pasan de Supabase a Firebase
+>
+> **707 tests en verde (eran 679). Desplegado, sello `20260925b`**
+> (`https://8880cd14.offline-nutrition-helper.pages.dev`; 67 ficheros
+> comparados por hash con el repo, 0 difieren; los dos de Supabase dan 404).
+> **Commiteado pero NO empujado:** el dueño pidió "commit y deploy", sin push.
+>
+> Por qué: el proyecto gratuito de Supabase **se pausa tras 7 días sin
+> uso**. El 2026-09-25 su dominio ni resolvía en DNS -- entrar, registrarse
+> y sincronizar llevaban caídos en producción sin que nadie lo supiera. El
+> dueño lo reactivó y pidió cambiar de proveedor igualmente. No hay
+> usuarios, así que no se migra ninguna cuenta.
+>
+> Qué hay (detalle en `HANDOFF.md` §9):
+>
+> ```
+>   js/data/firebase-config.js   proyecto weekplate-146b0 -- apiKey/appId
+>                                TODAVÍA de plantilla (ver "falta", abajo)
+>   js/core/firebase-client.js   sustituye a supabase-client.js
+>   js/core/auth.js              Firebase por dentro, forma de Supabase por
+>                                fuera: user.id, INITIAL_SESSION/SIGNED_IN/
+>                                SIGNED_OUT. Nadie más ha tenido que cambiar.
+>   js/core/cloud-sync.js        Firestore por REST (fetch + token), sin su
+>                                SDK de 548 KB. Un documento por usuario,
+>                                cuatro campos de texto JSON.
+>   firebase/firestore.rules     sustituye a supabase/*.sql
+>   _headers, sw.js              CSP y "no cachear" con los hosts de Google
+> ```
+>
+> **Bug real arreglado de paso (existía con Supabase):** si la lectura de la
+> nube FALLABA, `pullCloudUserData()` devolvía null, y migration.js lo
+> trataba como "nube vacía": un usuario con sesión que abría la app sin
+> cobertura (o con Supabase en pausa) se quedaba con la despensa, el
+> historial y los ajustes en blanco. Ahora 404 = fila vacía, fallo = null,
+> y con null `runReconciliation()` no toca nada (`cloud_unavailable`).
+> Tres tests; comprobado que fallan con el código viejo.
+>
+> **Lo que cambia para el usuario:** Google entra por ventana emergente, no
+> por redirección (la redirección de Firebase a otro dominio falla en
+> silencio en los navegadores actuales). La contraseña olvidada se cambia
+> en una página de Firebase, en el idioma de la app, no en nuestro
+> diálogo -- el modo `reset` del formulario desapareció, y con él 7 claves
+> de traducción. Registrarse ya no pide confirmar el correo. Las
+> condiciones pasan a la versión 1.1 (cambia quién guarda los datos), así
+> que se vuelven a pedir.
+>
+> Hecho en la consola: proveedores, dominio, Firestore en Madrid, reglas
+> publicadas (verificado: sin sesión todo da 403) y app web registrada.
+> `apiKey` y `appId` puestos; la clave, comprobada contra Google (devuelve
+> este proyecto y sus dominios autorizados).
+>
+> **La CSP, comprobada EN PRODUCCIÓN desde la propia página** (sin iniciar
+> sesión): identitytoolkit 200, firestore 403 (lo niegan las reglas, no la
+> CSP), securetoken 400, script de apis.google.com carga, iframe del
+> dominio de auth sin violación. Y los controles fallan como deben:
+> example.com (fetch e iframe) y gstatic.com (script) BLOQUEADOS.
+>
+> **Falta:**
+>
+> 1. Probar de verdad: registro, entrar, Google, sincronizar entre dos
+>    navegadores, olvidé mi contraseña, borrar la cuenta. Nada de eso se ha
+>    visto funcionar todavía contra Firebase real -- solo con los dobles de
+>    los tests.
+> 2. `git push`: el commit está hecho y desplegado, pero origin/main
+>    sigue en `9c1347e` hasta que el dueño diga "push".
+>
 > ### ⏩ UPDATE 2026-09-14 — el plan se dice en raciones, no en gramos
 >
 > **657 tests en verde. Desplegado y empujado, sello `20260914c`.**

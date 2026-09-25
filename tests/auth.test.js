@@ -1,11 +1,14 @@
 /**
  * tests/auth.test.js
  * ─────────────────────────────────────────────────────────────────────────
- * Tests de js/core/auth.js -- delegación en `supabase.auth`, el fan-out de
- * onAuthStateChange a varios listeners propios, y authErrorMessage(). Carga
- * el código de PRODUCCIÓN real (vm, sin copiar) e inyecta un cliente
- * Supabase simulado (mismo patrón de inyección post-carga que
- * createFakeLocalStorage() en pantry.test.js).
+ * Tests de js/core/auth.js -- delegación en Firebase Auth, la traducción de
+ * su forma (uid, un solo callback sin nombre de evento) a la que espera el
+ * resto de la app (id, INITIAL_SESSION/SIGNED_IN/SIGNED_OUT), el fan-out de
+ * onAuthStateChange a varios listeners propios, el orden de borrado de
+ * deleteOwnAccount() y authErrorMessage(). Carga el código de PRODUCCIÓN
+ * real (vm, sin copiar) e inyecta una instancia de auth simulada (mismo
+ * patrón de inyección post-carga que createFakeLocalStorage() en
+ * pantry.test.js).
  * ─────────────────────────────────────────────────────────────────────────
  */
 
@@ -18,245 +21,531 @@ function projPath(rel) {
 }
 
 function freshAuthSandbox() {
-  return loadBrowserGlobals([projPath("js/core/auth.js")]);
+  var s = loadBrowserGlobals([projPath("js/core/auth.js")]);
+  s.console = { error: function () {}, log: function () {} };
+  // Lo mínimo del global `firebase` que usa auth.js: el constructor del
+  // proveedor de Google para la ventana emergente.
+  s.firebase = { auth: { GoogleAuthProvider: function () { this.providerId = "google.com"; } } };
+  return s;
 }
 
 /**
- * Cliente Supabase simulado -- expone solo `auth.{signUp,signInWithPassword,
- * signInWithOAuth,signOut,onAuthStateChange}`, todas devolviendo promesas
- * igual que el SDK real. `triggerAuthEvent()` deja que un test dispare un
- * evento como si el SDK real lo hubiera emitido.
+ * Instancia de firebase.auth() simulada -- solo lo que auth.js usa, todo
+ * devolviendo promesas igual que el SDK real. `emit(fbUser)` dispara
+ * onAuthStateChanged como si el SDK hubiera cambiado de usuario.
+ * Las respuestas se pasan como FUNCIONES (`impl.*`), no como promesas ya
+ * creadas: una promesa rechazada creada de antemano y no usada en un test
+ * dispara un aviso de rechazo no gestionado.
  */
-function createFakeSupabaseAuthClient(opts) {
-  opts = opts || {};
-  var calls = { signUp: [], signInWithPassword: [], signInWithOAuth: [], signOut: [], subscribeCount: 0 };
+function createFakeAuth(impl) {
+  impl = impl || {};
+  var calls = { create: [], signIn: [], popup: [], reset: [], signOut: 0, subscribeCount: 0 };
   var listeners = [];
-
-  return {
-    calls: calls,
-    triggerAuthEvent: function (event, session) {
-      listeners.forEach(function (fn) { fn(event, session); });
+  var auth = {
+    currentUser: impl.currentUser || null,
+    languageCode: null,
+    onAuthStateChanged: function (cb) {
+      calls.subscribeCount++;
+      listeners.push(cb);
+      return function () {};
     },
-    client: {
-      auth: {
-        signUp: function (creds) {
-          calls.signUp.push(creds);
-          return Promise.resolve(opts.signUpResult || { data: { user: { id: "u1", email: creds.email } }, error: null });
-        },
-        signInWithPassword: function (creds) {
-          calls.signInWithPassword.push(creds);
-          return Promise.resolve(opts.signInResult || { data: { user: { id: "u1", email: creds.email } }, error: null });
-        },
-        signInWithOAuth: function (params) {
-          calls.signInWithOAuth.push(params);
-          return Promise.resolve(opts.oauthResult || { data: {}, error: null });
-        },
-        signOut: function () {
-          calls.signOut.push(true);
-          return Promise.resolve(opts.signOutResult || { error: null });
-        },
-        onAuthStateChange: function (cb) {
-          calls.subscribeCount++;
-          listeners.push(cb);
-          return { data: { subscription: { unsubscribe: function () {} } } };
-        }
-      },
-      // Añadido 2026-09-02 para poder probar deleteOwnAccount(), que no va
-      // por `auth` sino por una función de Postgres (ver
-      // supabase/delete-account.sql).
-      rpc: function (name) {
-        calls.rpc = calls.rpc || [];
-        calls.rpc.push(name);
-        return Promise.resolve(opts.rpcResult || { data: null, error: null });
-      }
+    createUserWithEmailAndPassword: function (email, password) {
+      calls.create.push({ email: email, password: password });
+      return impl.create ? impl.create(email, password) : Promise.resolve({ user: { uid: "u1", email: email } });
+    },
+    signInWithEmailAndPassword: function (email, password) {
+      calls.signIn.push({ email: email, password: password });
+      return impl.signIn ? impl.signIn(email, password) : Promise.resolve({ user: { uid: "u1", email: email } });
+    },
+    signInWithPopup: function (provider) {
+      calls.popup.push(provider);
+      return impl.popup ? impl.popup(provider) : Promise.resolve({ user: { uid: "u1" } });
+    },
+    sendPasswordResetEmail: function (email, settings) {
+      calls.reset.push({ email: email, settings: settings, lang: auth.languageCode });
+      return impl.reset ? impl.reset(email, settings) : Promise.resolve();
+    },
+    signOut: function () {
+      calls.signOut++;
+      return impl.signOut ? impl.signOut() : Promise.resolve();
     }
   };
+  return {
+    auth: auth,
+    calls: calls,
+    emit: function (fbUser) { listeners.forEach(function (fn) { fn(fbUser); }); }
+  };
+}
+
+/** Un firebase.User mínimo, con delete() y getIdToken() espiables. */
+function createFakeFbUser(impl) {
+  impl = impl || {};
+  var u = {
+    uid: impl.uid || "u1",
+    email: impl.email || "a@b.c",
+    displayName: impl.displayName || null,
+    deleteCalls: 0,
+    "delete": function () {
+      u.deleteCalls++;
+      if (impl.log) impl.log.push("cuenta");
+      return impl.del ? impl.del() : Promise.resolve();
+    },
+    getIdToken: function () {
+      return impl.token ? impl.token() : Promise.resolve("tok-123");
+    }
+  };
+  return u;
 }
 
 function run(t) {
 
   // ── Delegación en el SDK ──────────────────────────────────────────────
 
-  t.test("signUpWithEmail() delega en supabase.auth.signUp() con email+password", function () {
+  t.test("signUpWithEmail() delega en createUserWithEmailAndPassword() y devuelve el usuario con `id`, no `uid`", function () {
     var s = freshAuthSandbox();
-    var fake = createFakeSupabaseAuthClient();
-    s.getSupabaseClient = function () { return fake.client; };
+    var fake = createFakeAuth();
+    s.getFirebaseAuth = function () { return fake.auth; };
 
-    return s.signUpWithEmail("nueva@example.com", "secreto123").then(function (result) {
-      assert.strictEqual(fake.calls.signUp.length, 1);
-      assert.strictEqual(fake.calls.signUp[0].email, "nueva@example.com");
-      assert.strictEqual(fake.calls.signUp[0].password, "secreto123");
-      assert.strictEqual(result.user.id, "u1");
+    return s.signUpWithEmail("a@b.c", "secret123").then(function (result) {
+      assert.deepStrictEqual(JSON.parse(JSON.stringify(fake.calls.create)), [{ email: "a@b.c", password: "secret123" }]);
       assert.strictEqual(result.error, null);
+      assert.strictEqual(result.user.id, "u1");
+      assert.strictEqual(result.user.email, "a@b.c");
     });
   });
 
-  t.test("signInWithEmail() delega en supabase.auth.signInWithPassword()", function () {
+  t.test("signInWithEmail() delega en signInWithEmailAndPassword()", function () {
     var s = freshAuthSandbox();
-    var fake = createFakeSupabaseAuthClient();
-    s.getSupabaseClient = function () { return fake.client; };
+    var fake = createFakeAuth();
+    s.getFirebaseAuth = function () { return fake.auth; };
 
-    return s.signInWithEmail("existente@example.com", "secreto123").then(function (result) {
-      assert.strictEqual(fake.calls.signInWithPassword.length, 1);
-      assert.strictEqual(fake.calls.signInWithPassword[0].email, "existente@example.com");
-      assert.strictEqual(result.user.email, "existente@example.com");
+    return s.signInWithEmail("a@b.c", "pw").then(function (result) {
+      assert.strictEqual(fake.calls.signIn.length, 1);
+      assert.strictEqual(fake.calls.signIn[0].email, "a@b.c");
+      assert.strictEqual(result.user.id, "u1");
     });
   });
 
-  t.test("signInWithGoogle() delega en supabase.auth.signInWithOAuth() con provider:'google'", function () {
+  t.test("un error del SDK vuelve como {user:null, error}, nunca como rechazo", function () {
     var s = freshAuthSandbox();
-    var fake = createFakeSupabaseAuthClient();
-    s.getSupabaseClient = function () { return fake.client; };
+    var fake = createFakeAuth({
+      signIn: function () { return Promise.reject({ code: "auth/invalid-credential" }); }
+    });
+    s.getFirebaseAuth = function () { return fake.auth; };
+
+    return s.signInWithEmail("a@b.c", "mala").then(function (result) {
+      assert.strictEqual(result.user, null);
+      assert.strictEqual(result.error.code, "auth/invalid-credential");
+    });
+  });
+
+  t.test("un SDK que LANZA síncronamente (argumentos inválidos) tampoco escapa", function () {
+    var s = freshAuthSandbox();
+    var fake = createFakeAuth({ create: function () { throw { code: "auth/invalid-email" }; } });
+    s.getFirebaseAuth = function () { return fake.auth; };
+
+    return s.signUpWithEmail("", "x").then(function (result) {
+      assert.strictEqual(result.error.code, "auth/invalid-email");
+    });
+  });
+
+  t.test("signInWithGoogle() abre la ventana emergente con el proveedor de Google", function () {
+    var s = freshAuthSandbox();
+    var fake = createFakeAuth();
+    s.getFirebaseAuth = function () { return fake.auth; };
 
     return s.signInWithGoogle().then(function (result) {
-      assert.strictEqual(fake.calls.signInWithOAuth.length, 1);
-      assert.strictEqual(fake.calls.signInWithOAuth[0].provider, "google");
+      assert.strictEqual(fake.calls.popup.length, 1);
+      assert.strictEqual(fake.calls.popup[0].providerId, "google.com");
       assert.strictEqual(result.error, null);
     });
   });
 
-  t.test("signOut() delega en supabase.auth.signOut() -- y NUNCA toca despensa/settings (responsabilidad de migration.onAuthSignOut, no de auth.js)", function () {
+  t.test("signInWithGoogle(): cerrar la ventana sin elegir cuenta NO es un error", function () {
+    var s = freshAuthSandbox();
+    var fake = createFakeAuth({ popup: function () { return Promise.reject({ code: "auth/popup-closed-by-user" }); } });
+    s.getFirebaseAuth = function () { return fake.auth; };
+
+    return s.signInWithGoogle().then(function (result) {
+      assert.strictEqual(result.error, null);
+      assert.strictEqual(result.cancelled, true);
+    });
+  });
+
+  t.test("signInWithGoogle(): una ventana BLOQUEADA sí es un error, y con mensaje propio", function () {
+    var s = freshAuthSandbox();
+    var fake = createFakeAuth({ popup: function () { return Promise.reject({ code: "auth/popup-blocked" }); } });
+    s.getFirebaseAuth = function () { return fake.auth; };
+
+    return s.signInWithGoogle().then(function (result) {
+      assert.strictEqual(result.error.code, "auth/popup-blocked");
+      assert.ok(s.authErrorMessage(result.error).indexOf("ventanas emergentes") !== -1);
+    });
+  });
+
+  t.test("sendPasswordReset() manda el correo en el idioma de la app", function () {
+    var s = freshAuthSandbox();
+    var fake = createFakeAuth();
+    s.getFirebaseAuth = function () { return fake.auth; };
+    s.getLang = function () { return "ru"; };
+
+    return s.sendPasswordReset("a@b.c").then(function (result) {
+      assert.strictEqual(result.error, null);
+      assert.strictEqual(fake.calls.reset.length, 1);
+      assert.strictEqual(fake.calls.reset[0].email, "a@b.c");
+      assert.strictEqual(fake.calls.reset[0].lang, "ru");
+    });
+  });
+
+  t.test("sendPasswordReset(): sin i18n cargado, el idioma cae a español", function () {
+    var s = freshAuthSandbox();
+    var fake = createFakeAuth();
+    s.getFirebaseAuth = function () { return fake.auth; };
+
+    return s.sendPasswordReset("a@b.c").then(function () {
+      assert.strictEqual(fake.calls.reset[0].lang, "es");
+    });
+  });
+
+  t.test("sendPasswordReset(): el botón 'Continuar' de Firebase vuelve al origen de la app", function () {
+    var s = freshAuthSandbox();
+    var fake = createFakeAuth();
+    s.getFirebaseAuth = function () { return fake.auth; };
+    s.window = { location: { protocol: "https:", origin: "https://offline-nutrition-helper.pages.dev" } };
+
+    return s.sendPasswordReset("a@b.c").then(function () {
+      assert.strictEqual(fake.calls.reset[0].settings.url, "https://offline-nutrition-helper.pages.dev/");
+    });
+  });
+
+  t.test("signOut() delega en auth.signOut() -- y NUNCA toca despensa/settings (responsabilidad de migration.onAuthSignOut, no de auth.js)", function () {
     var s = freshAuthSandbox();
     // A propósito: no se inyecta getPantryState/savePantryState/getSettings/
     // etc. en este sandbox -- si signOut() los llamara, esto lanzaría un
     // ReferenceError y el test fallaría. Que no falle ES la prueba del
     // límite de responsabilidad.
-    var fake = createFakeSupabaseAuthClient();
-    s.getSupabaseClient = function () { return fake.client; };
+    var fake = createFakeAuth();
+    s.getFirebaseAuth = function () { return fake.auth; };
 
     return s.signOut().then(function (result) {
-      assert.strictEqual(fake.calls.signOut.length, 1);
+      assert.strictEqual(fake.calls.signOut, 1);
       assert.strictEqual(result.error, null);
     });
   });
 
-  // ── Sin Supabase configurado: nunca lanza, nunca rechaza ─────────────
+  // ── Sin Firebase configurado: nunca lanza, nunca rechaza ─────────────
 
-  t.test("todas las funciones resuelven con error 'not_configured' (nunca lanzan) cuando no hay cliente", function () {
+  t.test("todas las funciones resuelven con error 'not_configured' (nunca lanzan) cuando no hay Firebase", function () {
     var s = freshAuthSandbox();
-    s.getSupabaseClient = function () { return null; };
+    s.getFirebaseAuth = function () { return null; };
 
     return Promise.all([
-      s.signUpWithEmail("a@b.com", "12345678").then(function (r) {
-        assert.strictEqual(r.user, null);
+      s.signUpWithEmail("a@b.c", "x"),
+      s.signInWithEmail("a@b.c", "x"),
+      s.signInWithGoogle(),
+      s.sendPasswordReset("a@b.c"),
+      s.deleteOwnAccount()
+    ]).then(function (results) {
+      results.forEach(function (r) {
         assert.strictEqual(r.error.message, "not_configured");
-      }),
-      s.signInWithEmail("a@b.com", "12345678").then(function (r) {
-        assert.strictEqual(r.error.message, "not_configured");
-      }),
-      s.signInWithGoogle().then(function (r) {
-        assert.strictEqual(r.error.message, "not_configured");
-      }),
-      s.signOut().then(function (r) {
-        // Cerrar sesión sin cliente/sesión es un no-op trivialmente exitoso,
-        // no un error -- no hay nada que "fallara".
-        assert.strictEqual(r.error, null);
-      })
-    ]);
+      });
+      return s.signOut();
+    }).then(function (r) {
+      // Cerrar sesión sin cuentas no es un error: no había nada que cerrar.
+      assert.strictEqual(r.error, null);
+    });
   });
 
-  t.test("isAuthAvailable() refleja si hay cliente Supabase configurado", function () {
+  t.test("isAuthAvailable() refleja si hay Firebase configurado", function () {
     var s = freshAuthSandbox();
-    s.getSupabaseClient = function () { return null; };
+    s.getFirebaseAuth = function () { return null; };
     assert.strictEqual(s.isAuthAvailable(), false);
-
-    s.getSupabaseClient = function () { return createFakeSupabaseAuthClient().client; };
+    var fake = createFakeAuth();
+    s.getFirebaseAuth = function () { return fake.auth; };
     assert.strictEqual(s.isAuthAvailable(), true);
   });
 
-  // ── onAuthStateChange(): fan-out a varios listeners, una sola suscripción ─
+  // ── onAuthStateChange: de un callback sin nombre a eventos con nombre ─
 
-  t.test("onAuthStateChange(): varios listeners propios se suscriben, pero al SDK real solo UNA vez", function () {
+  t.test("onAuthStateChange(): varios listeners propios se suscriben, pero al SDK solo UNA vez", function () {
     var s = freshAuthSandbox();
-    var fake = createFakeSupabaseAuthClient();
-    s.getSupabaseClient = function () { return fake.client; };
+    var fake = createFakeAuth();
+    s.getFirebaseAuth = function () { return fake.auth; };
 
-    var eventsL1 = [];
-    var eventsL2 = [];
-    s.onAuthStateChange(function (event, user) { eventsL1.push([event, user]); });
-    s.onAuthStateChange(function (event, user) { eventsL2.push([event, user]); });
+    var a = [], b = [];
+    s.onAuthStateChange(function (ev) { a.push(ev); });
+    s.onAuthStateChange(function (ev) { b.push(ev); });
+    fake.emit(null);
 
-    assert.strictEqual(fake.calls.subscribeCount, 1, "solo debe suscribirse una vez al SDK, sin importar cuántos listeners propios haya");
-
-    fake.triggerAuthEvent("SIGNED_IN", { user: { id: "u1", email: "a@b.com" } });
-
-    assert.strictEqual(eventsL1.length, 1);
-    assert.strictEqual(eventsL2.length, 1);
-    assert.strictEqual(eventsL1[0][0], "SIGNED_IN");
-    assert.strictEqual(eventsL1[0][1].id, "u1");
-    assert.strictEqual(s.getCurrentUser().id, "u1");
+    assert.strictEqual(fake.calls.subscribeCount, 1);
+    assert.deepStrictEqual(a, ["INITIAL_SESSION"]);
+    assert.deepStrictEqual(b, ["INITIAL_SESSION"]);
   });
 
-  t.test("onAuthStateChange(): SIGNED_OUT (session null) deja getCurrentUser() en null", function () {
+  t.test("la PRIMERA llamada es INITIAL_SESSION, haya sesión o no", function () {
+    [null, { uid: "u1", email: "a@b.c" }].forEach(function (fbUser) {
+      var s = freshAuthSandbox();
+      var fake = createFakeAuth();
+      s.getFirebaseAuth = function () { return fake.auth; };
+      var eventos = [];
+      s.onAuthStateChange(function (ev) { eventos.push(ev); });
+      fake.emit(fbUser);
+      assert.deepStrictEqual(eventos, ["INITIAL_SESSION"]);
+    });
+  });
+
+  t.test("nadie → alguien es SIGNED_IN; alguien → nadie es SIGNED_OUT", function () {
     var s = freshAuthSandbox();
-    var fake = createFakeSupabaseAuthClient();
-    s.getSupabaseClient = function () { return fake.client; };
+    var fake = createFakeAuth();
+    s.getFirebaseAuth = function () { return fake.auth; };
+    var eventos = [];
+    s.onAuthStateChange(function (ev, user) { eventos.push(ev + ":" + (user ? user.id : "-")); });
 
-    s.onAuthStateChange(function () {});
-    fake.triggerAuthEvent("SIGNED_IN", { user: { id: "u1" } });
-    assert.strictEqual(s.getCurrentUser().id, "u1");
+    fake.emit(null);
+    fake.emit({ uid: "u1" });
+    fake.emit(null);
 
-    fake.triggerAuthEvent("SIGNED_OUT", null);
+    assert.deepStrictEqual(eventos, ["INITIAL_SESSION:-", "SIGNED_IN:u1", "SIGNED_OUT:-"]);
     assert.strictEqual(s.getCurrentUser(), null);
+  });
+
+  t.test("de una persona a OTRA es SIGNED_IN (render-auth reconcilia con la nueva); la misma otra vez no es un inicio de sesión", function () {
+    var s = freshAuthSandbox();
+    var fake = createFakeAuth();
+    s.getFirebaseAuth = function () { return fake.auth; };
+    var eventos = [];
+    s.onAuthStateChange(function (ev, user) { eventos.push(ev + ":" + (user ? user.id : "-")); });
+
+    fake.emit({ uid: "u1" });
+    fake.emit({ uid: "u1" });
+    fake.emit({ uid: "u2" });
+
+    assert.deepStrictEqual(eventos, ["INITIAL_SESSION:u1", "USER_UPDATED:u1", "SIGNED_IN:u2"]);
+  });
+
+  t.test("el usuario que ve la app tiene la forma de siempre: id, email, user_metadata.full_name", function () {
+    var s = freshAuthSandbox();
+    var fake = createFakeAuth();
+    s.getFirebaseAuth = function () { return fake.auth; };
+    s.onAuthStateChange(function () {});
+    fake.emit({ uid: "abc", email: "x@y.z", displayName: "Andrey" });
+
+    var u = s.getCurrentUser();
+    assert.strictEqual(u.id, "abc");
+    assert.strictEqual(u.email, "x@y.z");
+    assert.strictEqual(u.user_metadata.full_name, "Andrey");
+    assert.strictEqual(u.uid, undefined, "nadie fuera de auth.js debe poder depender de `uid`");
   });
 
   t.test("onAuthStateChange(): un listener que lanza no impide que los demás reciban el evento", function () {
     var s = freshAuthSandbox();
-    var fake = createFakeSupabaseAuthClient();
-    s.getSupabaseClient = function () { return fake.client; };
+    var fake = createFakeAuth();
+    s.getFirebaseAuth = function () { return fake.auth; };
 
-    var goodCalled = false;
-    s.onAuthStateChange(function () { throw new Error("listener roto"); });
-    s.onAuthStateChange(function () { goodCalled = true; });
-
-    fake.triggerAuthEvent("SIGNED_IN", { user: { id: "u1" } });
-    assert.strictEqual(goodCalled, true);
+    var llegó = false;
+    s.onAuthStateChange(function () { throw new Error("roto"); });
+    s.onAuthStateChange(function () { llegó = true; });
+    fake.emit(null);
+    assert.strictEqual(llegó, true);
   });
 
   t.test("onAuthStateChange(): la función de baja deja de recibir eventos", function () {
     var s = freshAuthSandbox();
-    var fake = createFakeSupabaseAuthClient();
-    s.getSupabaseClient = function () { return fake.client; };
+    var fake = createFakeAuth();
+    s.getFirebaseAuth = function () { return fake.auth; };
 
-    var count = 0;
-    var unsubscribe = s.onAuthStateChange(function () { count++; });
-    fake.triggerAuthEvent("SIGNED_IN", { user: { id: "u1" } });
-    assert.strictEqual(count, 1);
-
-    unsubscribe();
-    fake.triggerAuthEvent("SIGNED_IN", { user: { id: "u1" } });
-    assert.strictEqual(count, 1, "no debe recibir el segundo evento tras darse de baja");
+    var n = 0;
+    var baja = s.onAuthStateChange(function () { n++; });
+    fake.emit(null);
+    baja();
+    fake.emit({ uid: "u1" });
+    assert.strictEqual(n, 1);
   });
 
-  // ── authErrorMessage() -- traducción pura a español ──────────────────
+  t.test("isAuthSessionResolved() es false hasta que llega el primer evento", function () {
+    var s = freshAuthSandbox();
+    var fake = createFakeAuth();
+    s.getFirebaseAuth = function () { return fake.auth; };
+    s.onAuthStateChange(function () {});
+
+    assert.strictEqual(s.isAuthSessionResolved(), false);
+    fake.emit(null);
+    assert.strictEqual(s.isAuthSessionResolved(), true);
+  });
+
+  t.test("isAuthSessionResolved() distingue sesión ausente de sesión presente", function () {
+    var s = freshAuthSandbox();
+    var fake = createFakeAuth();
+    s.getFirebaseAuth = function () { return fake.auth; };
+    s.onAuthStateChange(function () {});
+    fake.emit({ uid: "u1" });
+
+    assert.strictEqual(s.isAuthSessionResolved(), true);
+    assert.strictEqual(s.getCurrentUser().id, "u1");
+  });
+
+  t.test("sin cuentas configuradas, la sesión se considera resuelta al instante", function () {
+    var s = freshAuthSandbox();
+    s.getFirebaseAuth = function () { return null; };
+    assert.strictEqual(s.isAuthSessionResolved(), true);
+  });
+
+  // ── Token para la API REST ────────────────────────────────────────────
+
+  t.test("getAuthIdToken(): el token del usuario con sesión; null sin sesión", function () {
+    var s = freshAuthSandbox();
+    var fake = createFakeAuth();
+    s.getFirebaseAuth = function () { return fake.auth; };
+
+    return s.getAuthIdToken().then(function (sinSesion) {
+      assert.strictEqual(sinSesion, null);
+      fake.auth.currentUser = createFakeFbUser();
+      return s.getAuthIdToken();
+    }).then(function (tok) {
+      assert.strictEqual(tok, "tok-123");
+    });
+  });
+
+  t.test("getAuthIdToken(): si renovar el token falla (sin red), null -- nunca rechaza", function () {
+    var s = freshAuthSandbox();
+    var fake = createFakeAuth();
+    fake.auth.currentUser = createFakeFbUser({ token: function () { return Promise.reject(new Error("offline")); } });
+    s.getFirebaseAuth = function () { return fake.auth; };
+
+    return s.getAuthIdToken().then(function (tok) {
+      assert.strictEqual(tok, null);
+    });
+  });
+
+  // ── deleteOwnAccount: el ORDEN es la parte importante ─────────────────
+
+  t.test("deleteOwnAccount() borra los datos de la nube ANTES que la cuenta", function () {
+    var s = freshAuthSandbox();
+    var log = [];
+    var fake = createFakeAuth();
+    fake.auth.currentUser = createFakeFbUser({ log: log });
+    s.getFirebaseAuth = function () { return fake.auth; };
+    s.deleteCloudUserData = function () { log.push("datos"); return Promise.resolve({ error: null }); };
+
+    return s.deleteOwnAccount().then(function (result) {
+      assert.strictEqual(result.error, null);
+      assert.deepStrictEqual(log, ["datos", "cuenta"],
+        "al revés, sin sesión las reglas ya no dejarían borrar los datos: se quedarían huérfanos");
+    });
+  });
+
+  t.test("deleteOwnAccount() cierra la sesión después de borrar", function () {
+    var s = freshAuthSandbox();
+    var fake = createFakeAuth();
+    fake.auth.currentUser = createFakeFbUser();
+    s.getFirebaseAuth = function () { return fake.auth; };
+    s.deleteCloudUserData = function () { return Promise.resolve({ error: null }); };
+
+    return s.deleteOwnAccount().then(function () {
+      assert.strictEqual(fake.calls.signOut, 1);
+    });
+  });
+
+  t.test("si NO se pueden borrar los datos, la cuenta no se toca", function () {
+    var s = freshAuthSandbox();
+    var fake = createFakeAuth();
+    var fbUser = createFakeFbUser();
+    fake.auth.currentUser = fbUser;
+    s.getFirebaseAuth = function () { return fake.auth; };
+    s.deleteCloudUserData = function () { return Promise.resolve({ error: { status: 503, message: "HTTP 503" } }); };
+
+    return s.deleteOwnAccount().then(function (result) {
+      assert.strictEqual(result.error.status, 503);
+      assert.strictEqual(fbUser.deleteCalls, 0);
+    });
+  });
+
+  t.test("si Firebase pide volver a entrar, los datos se SUBEN otra vez y se pide iniciar sesión", function () {
+    var s = freshAuthSandbox();
+    var fake = createFakeAuth();
+    fake.auth.currentUser = createFakeFbUser({
+      del: function () { return Promise.reject({ code: "auth/requires-recent-login" }); }
+    });
+    s.getFirebaseAuth = function () { return fake.auth; };
+    var subidas = 0;
+    s.deleteCloudUserData = function () { return Promise.resolve({ error: null }); };
+    s.pushAllToCloud = function () { subidas++; return Promise.resolve({ error: null, skipped: false }); };
+
+    return s.deleteOwnAccount().then(function (result) {
+      assert.strictEqual(subidas, 1, "la cuenta sigue viva: sus datos tienen que volver a la nube");
+      assert.strictEqual(result.error.message, "not_authenticated");
+      assert.ok(s.authErrorMessage(result.error).indexOf("vuelve a iniciarla") !== -1);
+      assert.strictEqual(fake.calls.signOut, 0, "no se cierra la sesión de una cuenta que no se ha borrado");
+    });
+  });
+
+  t.test("deleteOwnAccount() propaga un fallo real del servidor sin fingir éxito", function () {
+    var s = freshAuthSandbox();
+    var fake = createFakeAuth();
+    fake.auth.currentUser = createFakeFbUser({
+      del: function () { return Promise.reject({ code: "auth/internal-error" }); }
+    });
+    s.getFirebaseAuth = function () { return fake.auth; };
+    s.deleteCloudUserData = function () { return Promise.resolve({ error: null }); };
+    s.pushAllToCloud = function () { return Promise.resolve({ error: null }); };
+
+    return s.deleteOwnAccount().then(function (result) {
+      assert.strictEqual(result.error.code, "auth/internal-error");
+    });
+  });
+
+  t.test("si la cuenta se borra pero falla el cierre de sesión, se informa de ÉXITO", function () {
+    var s = freshAuthSandbox();
+    var fake = createFakeAuth({ signOut: function () { return Promise.reject(new Error("x")); } });
+    fake.auth.currentUser = createFakeFbUser();
+    s.getFirebaseAuth = function () { return fake.auth; };
+    s.deleteCloudUserData = function () { return Promise.resolve({ error: null }); };
+
+    return s.deleteOwnAccount().then(function (result) {
+      assert.strictEqual(result.error, null, "la cuenta YA no existe: decir que falló sería mentir");
+    });
+  });
+
+  t.test("deleteOwnAccount() sin sesión devuelve not_authenticated, sin tocar nada", function () {
+    var s = freshAuthSandbox();
+    var fake = createFakeAuth();
+    s.getFirebaseAuth = function () { return fake.auth; };
+    var tocado = false;
+    s.deleteCloudUserData = function () { tocado = true; return Promise.resolve({ error: null }); };
+
+    return s.deleteOwnAccount().then(function (result) {
+      assert.strictEqual(result.error.message, "not_authenticated");
+      assert.strictEqual(tocado, false);
+    });
+  });
+
+  // ── authErrorMessage ─────────────────────────────────────────────────
 
   t.test("authErrorMessage(null) es una cadena vacía", function () {
     var s = freshAuthSandbox();
     assert.strictEqual(s.authErrorMessage(null), "");
   });
 
-  t.test("authErrorMessage(): credenciales inválidas", function () {
+  t.test("authErrorMessage(): credenciales inválidas, en sus cuatro códigos", function () {
     var s = freshAuthSandbox();
-    var msg = s.authErrorMessage({ message: "Invalid login credentials" });
-    assert.ok(msg.indexOf("incorrectos") !== -1);
+    ["auth/invalid-credential", "auth/invalid-login-credentials", "auth/wrong-password", "auth/user-not-found"]
+      .forEach(function (code) {
+        assert.strictEqual(s.authErrorMessage({ code: code }), "Email o contraseña incorrectos.", code);
+      });
   });
 
-  t.test("authErrorMessage(): email sin confirmar", function () {
+  t.test("authErrorMessage(): cuenta ya registrada, email inválido, contraseña débil, demasiados intentos", function () {
     var s = freshAuthSandbox();
-    var msg = s.authErrorMessage({ message: "Email not confirmed" });
-    assert.ok(msg.indexOf("Confirma tu email") !== -1);
+    assert.ok(s.authErrorMessage({ code: "auth/email-already-in-use" }).indexOf("Ya existe una cuenta") !== -1);
+    assert.ok(s.authErrorMessage({ code: "auth/invalid-email" }).indexOf("no parece válido") !== -1);
+    assert.ok(s.authErrorMessage({ code: "auth/weak-password" }).indexOf("6 caracteres") !== -1);
+    assert.ok(s.authErrorMessage({ code: "auth/too-many-requests" }).indexOf("Demasiados intentos") !== -1);
   });
 
-  t.test("authErrorMessage(): cuenta ya registrada", function () {
+  t.test("authErrorMessage(): sin red, un mensaje de conexión", function () {
     var s = freshAuthSandbox();
-    var msg = s.authErrorMessage({ message: "User already registered" });
-    assert.ok(msg.indexOf("Ya existe una cuenta") !== -1);
-  });
-
-  t.test("authErrorMessage(): rate limit", function () {
-    var s = freshAuthSandbox();
-    var msg = s.authErrorMessage({ message: "Email rate limit exceeded" });
-    assert.ok(msg.indexOf("Demasiados intentos") !== -1);
+    assert.ok(s.authErrorMessage({ code: "auth/network-request-failed" }).indexOf("conexión") !== -1);
+    assert.ok(s.authErrorMessage(new TypeError("Failed to fetch")).indexOf("conexión") !== -1);
   });
 
   t.test("authErrorMessage(): not_configured tiene su propio mensaje sobre cuentas no disponibles", function () {
@@ -265,141 +554,20 @@ function run(t) {
     assert.ok(msg.indexOf("todavía no están disponibles") !== -1);
   });
 
-  // ── "No hay sesión" NO es lo mismo que "todavía no lo sé" ───────────
-  // getCurrentUser() devuelve null en las dos situaciones. Confundirlas
-  // costó un fallo que el usuario vio enseguida: la pantalla de
-  // bienvenida decide si enseñarse mirando si hay cuenta, lo preguntaba
-  // en el arranque -- antes de que Supabase hubiera contestado -- y a
-  // quien tenía la sesión iniciada le pedía iniciar sesión en cada
-  // recarga. No era intermitente: la carrera la perdía siempre el mismo.
-
-  t.test("isAuthSessionResolved() es false hasta que llega el primer evento", function () {
+  t.test("authErrorMessage(): not_configured SIN red dice que falta internet, no que no hay cuentas", function () {
     var s = freshAuthSandbox();
-    var fake = createFakeSupabaseAuthClient();
-    s.getSupabaseClient = function () { return fake.client; };
-
-    // Suscribirse no basta: hay que ESPERAR al evento.
-    s.onAuthStateChange(function () {});
-    assert.strictEqual(s.isAuthSessionResolved(), false,
-      "antes del primer evento no se sabe nada");
-    assert.strictEqual(s.getCurrentUser(), null,
-      "y getCurrentUser() da null, que es justo lo que confunde");
-
-    fake.triggerAuthEvent("INITIAL_SESSION", null);
-    assert.strictEqual(s.isAuthSessionResolved(), true,
-      "tras el primer evento ya se sabe: en este caso, que no hay sesión");
-  });
-
-  t.test("isAuthSessionResolved() distingue sesión ausente de sesión presente", function () {
-    var s = freshAuthSandbox();
-    var fake = createFakeSupabaseAuthClient();
-    s.getSupabaseClient = function () { return fake.client; };
-    s.onAuthStateChange(function () {});
-
-    fake.triggerAuthEvent("INITIAL_SESSION", { user: { id: "u1", email: "a@b.c" } });
-    assert.strictEqual(s.isAuthSessionResolved(), true);
-    assert.strictEqual(s.getCurrentUser().id, "u1");
-  });
-
-  // Sin Supabase configurado no hay nada que esperar: la respuesta
-  // definitiva es "no hay sesión" y se sabe desde el primer instante. Si
-  // esto devolviera false, la bienvenida se quedaría esperando un evento
-  // que no va a llegar nunca.
-  t.test("sin cuentas configuradas, la sesión se considera resuelta al instante", function () {
-    var s = freshAuthSandbox();
-    s.getSupabaseClient = function () { return null; };
-    assert.strictEqual(s.isAuthSessionResolved(), true);
+    s.navigator = { onLine: false };
+    var msg = s.authErrorMessage({ message: "not_configured" });
+    assert.ok(msg.indexOf("Sin conexión") !== -1);
   });
 
   t.test("authErrorMessage(): un error desconocido cae en un mensaje genérico, nunca expone el mensaje crudo del SDK", function () {
     var s = freshAuthSandbox();
-    var msg = s.authErrorMessage({ message: "some_internal_supabase_code_xyz" });
+    var msg = s.authErrorMessage({ code: "auth/something-new", message: "Firebase: Error (auth/something-new)." });
+    assert.strictEqual(msg.indexOf("Firebase"), -1);
+    assert.strictEqual(msg.indexOf("something-new"), -1);
     assert.ok(msg.length > 0);
-    assert.strictEqual(msg.indexOf("some_internal_supabase_code_xyz"), -1);
   });
-
-  // ── Borrar la cuenta ────────────────────────────────────────────────
-  // Es la única operación irreversible de toda la aplicación, y además la
-  // que las condiciones de uso prometen que existe. Lo que se protege aquí
-  // es que nunca diga algo distinto de lo que ha pasado de verdad.
-
-  t.test("deleteOwnAccount() llama a la función delete_own_account() de Postgres", function () {
-    var s = freshAuthSandbox();
-    var fake = createFakeSupabaseAuthClient();
-    s.getSupabaseClient = function () { return fake.client; };
-
-    return s.deleteOwnAccount().then(function (result) {
-      assert.deepStrictEqual(JSON.parse(JSON.stringify(fake.calls.rpc)), ["delete_own_account"]);
-      assert.strictEqual(result.error, null);
-    });
-  });
-
-  t.test("deleteOwnAccount() cierra la sesión después de borrar", function () {
-    var s = freshAuthSandbox();
-    var fake = createFakeSupabaseAuthClient();
-    s.getSupabaseClient = function () { return fake.client; };
-
-    return s.deleteOwnAccount().then(function () {
-      assert.strictEqual(fake.calls.signOut.length, 1,
-        "la cuenta ya no existe: dejar la sesión viva hasta que caduque el token sería un estado fantasma");
-    });
-  });
-
-  // Si el SQL no se ha ejecutado en el proyecto, Postgres responde que la
-  // función no existe. Traducirlo a "error inesperado" dejaría al usuario
-  // sin saber si sus datos siguen ahí.
-  t.test("deleteOwnAccount() distingue \"todavía no instalado\" de un fallo real", function () {
-    var s = freshAuthSandbox();
-    var fake = createFakeSupabaseAuthClient({
-      rpcResult: { data: null, error: { code: "42883", message: "Could not find the function public.delete_own_account" } }
-    });
-    s.getSupabaseClient = function () { return fake.client; };
-
-    return s.deleteOwnAccount().then(function (result) {
-      assert.strictEqual(result.error.message, "not_installed");
-      assert.strictEqual(fake.calls.signOut.length, 0, "no se ha borrado nada: no hay que cerrar la sesión");
-      var msg = s.authErrorMessage(result.error);
-      assert.ok(msg.indexOf("siguen intactos") !== -1,
-        "el mensaje tiene que decirle al usuario que sus datos NO se han tocado");
-    });
-  });
-
-  t.test("deleteOwnAccount() propaga un fallo real del servidor sin fingir éxito", function () {
-    var s = freshAuthSandbox();
-    var fake = createFakeSupabaseAuthClient({
-      rpcResult: { data: null, error: { code: "P0001", message: "not_authenticated" } }
-    });
-    s.getSupabaseClient = function () { return fake.client; };
-
-    return s.deleteOwnAccount().then(function (result) {
-      assert.ok(result.error, "un fallo del servidor no puede convertirse en 'cuenta borrada'");
-      assert.strictEqual(fake.calls.signOut.length, 0);
-    });
-  });
-
-  // El orden importa: si el borrado fue bien y lo que falla es el cierre de
-  // sesión, la cuenta YA no existe. Decir "no se pudo borrar" sería mentir
-  // y empujar al usuario a intentarlo otra vez sobre algo que ya no está.
-  t.test("si la cuenta se borra pero falla el cierre de sesión, se informa de ÉXITO", function () {
-    var s = freshAuthSandbox();
-    var fake = createFakeSupabaseAuthClient({
-      signOutResult: { error: { message: "network down" } }
-    });
-    s.getSupabaseClient = function () { return fake.client; };
-
-    return s.deleteOwnAccount().then(function (result) {
-      assert.strictEqual(result.error, null);
-    });
-  });
-
-  t.test("deleteOwnAccount() sin Supabase configurado devuelve not_configured, no una excepción", function () {
-    var s = freshAuthSandbox();
-    s.getSupabaseClient = function () { return null; };
-    return s.deleteOwnAccount().then(function (result) {
-      assert.strictEqual(result.error.message, "not_configured");
-    });
-  });
-
 }
 
 module.exports = { run: run };

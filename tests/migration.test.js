@@ -321,6 +321,56 @@ function run(t) {
 
   // ── resolveConflict*() ────────────────────────────────────────────────
 
+  // ── La nube ILEGIBLE no es la nube VACÍA (bug real, 2026-09-25) ───────
+  // pullCloudUserData() devuelve null cuando NO PUDO LEER (sin red, token
+  // caducado, servidor caído). Antes eso se trataba como "nube vacía": un
+  // usuario con sesión que abría la app sin cobertura pasaba por
+  // 'already_synced', se hidrataba desde null y se quedaba con la
+  // despensa, el historial y los ajustes en blanco.
+
+  t.test("runReconciliation(): sesión ya sincronizada y nube ILEGIBLE -> 'cloud_unavailable', lo local INTACTO", function () {
+    var s = freshMigrationSandbox();
+    s.localStorage = createFakeLocalStorage();
+    s.setStock("Arroz blanco cocido", 150);
+    installFakeCloud(s, "user-1");
+    s.setCloudSyncedUserId("user-1");
+    s.pullCloudUserData = function () { return Promise.resolve(null); };
+
+    return s.runReconciliation().then(function (result) {
+      assert.strictEqual(result.status, "cloud_unavailable");
+      assert.strictEqual(s.getPantryState()[s.normalizeIngredientKey("Arroz blanco cocido")].grams, 150,
+        "la despensa no puede vaciarse por no haber podido leer la nube");
+      assert.strictEqual(s.getCloudSyncedUserId(), "user-1");
+    });
+  });
+
+  t.test("runReconciliation(): navegador nuevo con datos y nube ILEGIBLE -> no se empuja nada a ciegas ni se fija el marcador", function () {
+    var s = freshMigrationSandbox();
+    s.localStorage = createFakeLocalStorage();
+    s.setStock("Arroz blanco cocido", 150);
+    var fake = installFakeCloud(s, "user-1");
+    s.pullCloudUserData = function () { return Promise.resolve(null); };
+
+    return s.runReconciliation().then(function (result) {
+      assert.strictEqual(result.status, "cloud_unavailable");
+      assert.strictEqual(fake.pushCalls, 0, "sin saber qué hay en la nube, pisarla con lo local podría borrar datos de otro dispositivo");
+      assert.strictEqual(s.getCloudSyncedUserId(), null);
+    });
+  });
+
+  t.test("resolveConflictKeepCloud(): con la nube ILEGIBLE no sustituye lo local por nada", function () {
+    var s = freshMigrationSandbox();
+    s.localStorage = createFakeLocalStorage();
+    s.setStock("Arroz blanco cocido", 150);
+    installFakeCloud(s, "user-1");
+    s.pullCloudUserData = function () { return Promise.resolve(null); };
+
+    return s.resolveConflictKeepCloud().then(function () {
+      assert.strictEqual(s.getPantryState()[s.normalizeIngredientKey("Arroz blanco cocido")].grams, 150);
+      assert.strictEqual(s.getCloudSyncedUserId(), null, "el conflicto sigue abierto");
+    });
+  });
+
   t.test("resolveConflictKeepCloud(): descarta lo local, adopta la nube, fija el marcador", function () {
     var s = freshMigrationSandbox();
     s.localStorage = createFakeLocalStorage();

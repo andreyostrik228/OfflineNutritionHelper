@@ -40,7 +40,7 @@ Estas no se negocian y romperlas ya ha costado disgustos.
 | **Solo Mercadona** como tienda, salvo que él diga lo contrario. | Decisión de producto, no técnica. |
 | **CRLF en todo el repositorio.** Después de cada `Write`/`Edit`, renormaliza. | `.gitattributes` fuerza `eol=crlf`; sin renormalizar, cada edición ensucia el diff entero. |
 | **Nunca un trailer `Co-Authored-By`.** | Está en `~/CLAUDE.md`. La plantilla del Bash tool lo sugiere; ignórala. |
-| **Nunca commitear secretos.** La clave de USDA vive solo en el scratchpad. | La anon key de Supabase SÍ es pública por diseño (RLS es la seguridad real). |
+| **Nunca commitear secretos.** La clave de USDA vive solo en el scratchpad. | La `apiKey` de Firebase (`js/data/firebase-config.js`) SÍ es pública por diseño: la seguridad real son las reglas de Firestore (`firebase/firestore.rules`). Antes lo mismo valía para la anon key de Supabase. |
 | **Deja el árbol limpio al terminar**, y `git push` a mano cuando él lo autorice. | Ver la corrección de abajo: **nadie empuja por ti**. |
 | **Toda respuesta que cambie algo termina con una lista de comprobación**: qué cambiaste, qué tiene que mirar él, con la cifra de antes y después y **dónde** mirarlo (móvil / portátil / producción). Y aparte, qué NO pudiste comprobar. | Lo pidió el 2026-09-13, textual: *"если что-то поменял то говоришь поменял это это проверите пожалуйста"*. Nace de un caso real: le mandé a probar el recorrido en inglés cuando **nunca lo había desplegado**. Decir QUÉ cambió sin decir DÓNDE mirarlo le hace perder el viaje. |
 | **Una sola sesión por defecto. No generes agentes.** | *"Работаем в ОДНОЙ сессии. Агентов не плодить."* Un agente arranca en frío y vuelve a deducir el contexto que aquí ya está. |
@@ -128,7 +128,7 @@ fichero del repo, renormaliza con el comando de arriba y cuenta.
 
 Sitio web estático puro: HTML + CSS + JavaScript **ES5 con globales de
 navegador**, sin build, sin módulos, sin dependencias. `index.html` carga
-58 scripts (dos de ellos externos: GSAP y el SDK de Supabase) **en orden manual de dependencia** — si añades uno, colócalo
+67 scripts (tres de ellos externos: GSAP y los dos del SDK de Firebase, núcleo y auth) **en orden manual de dependencia** — si añades uno, colócalo
 donde toca o no existirá cuando lo llamen.
 
 ```
@@ -1196,37 +1196,88 @@ el valor se guarda redondeado a entero y la rejilla no lo está.
 
 ---
 
-## 9. Recuperación de contraseña — lo que falta hacer en Supabase
+## 9. Cuentas: Firebase (desde 2026-09-25) — qué está configurado y dónde
 
-El código está entero (`sendPasswordReset()` y `updatePassword()` en
-`js/core/auth.js`; los cuatro modos del formulario en
-`js/ui/render-auth.js`). Lo que NO se puede hacer desde el repo es la
-configuración del proyecto de Supabase. Sin estos pasos el correo no sale,
-o el enlace devuelve al usuario a una URL que Supabase rechaza.
+Hasta el 2026-09-25 las cuentas iban con Supabase. Se cambió porque el
+proyecto gratuito de Supabase **se pausa tras 7 días sin uso**: el
+2026-09-25 el dominio del proyecto ni siquiera resolvía en DNS, y con eso
+el inicio de sesión, el registro y la sincronización llevaban caídos en
+producción sin que nadie lo supiera. Firebase en el plan gratuito (Spark)
+no se duerme.
 
-1. **Authentication → URL Configuration → Site URL:**
-   `https://offline-nutrition-helper.pages.dev`
-2. **Redirect URLs** — añadir:
-   `https://offline-nutrition-helper.pages.dev/**` y, solo para probar en
-   local, `http://localhost:8000/**`. `sendPasswordReset()` manda
-   `redirectTo: window.location.origin`; si ese origen no está en la lista,
-   Supabase no redirige.
-3. **Authentication → Email Templates → Reset Password:** comprobar que
-   está activada.
+**Proyecto:** `weekplate-146b0`, cuenta de Google del dueño. Plan Spark,
+sin tarjeta. Google Analytics y Gemini **desactivados** al crearlo.
 
-**El correo de cortesía son ~2 mensajes por hora.** Es límite de Supabase,
-no del código, así que no se puede depurar a base de reintentos. Si
-estorba, la salida es SMTP propio en Authentication → SMTP Settings: Brevo
-da ~300 al día gratis y **no exige dominio propio**, que era la pega de las
-demás. Lo sensato es comprobar primero que llega UN correo, y montar SMTP
-solo si de verdad se topa con el límite.
+**Lo que está hecho en la consola** (todo con clics, 2026-09-25):
 
-**Lo que no se ha verificado aquí:** el modo `reset` (volver desde el
-enlace) necesita un correo de verdad, así que está probado por lectura y
-por los otros tres modos, no de punta a punta. Los otros tres sí, con
-clics reales sobre los botones de la interfaz: `login → recover → login →
-register` cambian título, botón, campos visibles y el `autocomplete` del
-campo de contraseña como toca.
+1. **Authentication → Método de acceso:** correo/contraseña y Google,
+   activados. El "vínculo por correo sin contraseña", NO.
+2. **Authentication → Configuración:**
+   - dominios autorizados: `localhost`, los dos de Firebase, y
+     `offline-nutrition-helper.pages.dev` (añadido a mano);
+   - vinculación de cuentas: "vincular cuentas que usen el mismo correo"
+     (entrar con Google y con contraseña con el mismo email es UNA cuenta);
+   - acciones del usuario: registro sí, **autoeliminación sí** (sin eso
+     "Borrar mi cuenta" no funciona), **protección contra la enumeración de
+     correos sí** -- por eso Firebase contesta `auth/invalid-credential`
+     tanto si el email no existe como si la contraseña está mal.
+3. **Firestore:** base `(default)`, edición Standard, **`europe-southwest1`
+   (Madrid) -- no se puede cambiar nunca**, modo producción (todo cerrado
+   hasta publicar reglas).
+
+4. **Firestore → Reglas:** publicado `firebase/firestore.rules`, copia
+   byte a byte (sha256 `3e01e5c3…` en el fichero y en el editor de la
+   consola). Comprobado en vivo: leer, escribir u otra colección SIN sesión
+   → **403 PERMISSION_DENIED**.
+5. **Configuración del proyecto → Tus apps → Web:** app `Weekplate web`,
+   sin Firebase Hosting. `appId` ya está en `js/data/firebase-config.js`.
+
+**La `apiKey`** la pegó el dueño (2026-09-25): la extensión de Chrome con
+la que se configuró todo la tapa (`[BLOCKED: Sensitive key]`) y no se le
+dio la vuelta. Si hay que volver a sacarla: Configuración del proyecto →
+Tus apps → Weekplate web → Config. Se comprueba sin iniciar sesión con
+`GET https://identitytoolkit.googleapis.com/v1/projects?key=<apiKey>`:
+tiene que devolver `authorizedDomains` con el dominio de producción.
+
+**Lo que se intentó y NO funciona:** "URL de acción personalizada" en
+Authentication → Plantillas (para que el enlace del correo de "olvidé mi
+contraseña" abriera esta app en vez de la página de Firebase). La consola
+devolvió **400 dos veces**, con y sin barra final, sin decir por qué. No
+hace falta: la página de Firebase
+(`weekplate-146b0.firebaseapp.com/__/auth/action`) pide la contraseña
+nueva ella sola, en el idioma de la app (`auth.languageCode`), y su botón
+"Continuar" vuelve aquí. Por eso desapareció el modo `reset` del
+formulario de render-auth.js.
+
+### 9.1 Cómo está montado, en tres frases
+
+- **Entrar:** solo el SDK de *autenticación* (compat, 173 KB con el núcleo,
+  desde jsdelivr). El de Firestore pesa 548 KB y NO se carga.
+- **Datos:** un documento `user_data/{uid}` por la **API REST** de
+  Firestore, con `fetch` y el token del usuario. Cuatro campos, todos
+  **texto JSON** (Firestore no admite arrays anidados; así lo que se lee es
+  exactamente lo que se escribió). 30 planes = 67 KB; el límite es 1 MiB.
+- **El resto de la app no sabe que cambió nada:** `auth.js` traduce Firebase
+  a la forma de Supabase (`user.id`, eventos `INITIAL_SESSION` /
+  `SIGNED_IN` / `SIGNED_OUT`). Si alguna vez se cambia de proveedor otra
+  vez, ese es el contrato.
+
+### 9.2 Tres cosas que muerden
+
+- **CSP (`_headers`):** si Firebase empieza a pedir otro dominio, la
+  consola del navegador lo dice como "Refused to connect/load". La lista
+  actual: `apis.google.com` (script), `identitytoolkit`/`securetoken`/
+  `firestore.googleapis.com` (conexión), `weekplate-146b0.firebaseapp.com`
+  (iframe). **Solo se aplica en Cloudflare**, no en local.
+- **`sw.js`** no cachea nada de esos hosts (`esCuentaOSincronizacion`).
+  Ojo: `fonts.googleapis.com` SÍ se cachea; no generalizar a
+  "todo googleapis.com".
+- **Borrar la cuenta son dos pasos** (datos, luego cuenta) porque en Spark
+  no hay código de servidor. El orden está explicado en
+  `deleteOwnAccount()`; al revés dejaría datos huérfanos para siempre.
+
+**Supabase:** el proyecto viejo (`tizrdycctkiwdcmlyqku`) sigue existiendo
+en la cuenta del dueño. No tiene usuarios. Borrarlo es cosa suya.
 
 ---
 

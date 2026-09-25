@@ -321,7 +321,7 @@ function run(t) {
       ["orientativ", "que los precios son orientativos"],
       ["mercadona", "de dónde salen los precios"],
       ["navegador", "dónde se guardan los datos sin cuenta"],
-      ["supabase", "quién guarda los datos con cuenta"],
+      ["firebase", "quién guarda los datos con cuenta"],
       ["borrar", "cómo borrar los datos"]
     ].forEach(function (pair) {
       assert.ok(todo.indexOf(pair[0]) !== -1, "falta " + pair[1] + " (\"" + pair[0] + "\")");

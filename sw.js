@@ -28,14 +28,41 @@
  * quedaria desincronizada el primer dia con prisa.
  *
  * ── LO QUE NO SE CACHEA, A PROPOSITO ────────────────────────────────────
- * Supabase (cuentas, sincronizacion) y cualquier peticion que no sea GET.
- * Servir una respuesta de autenticacion desde cache es una forma excelente
- * de dejar a alguien dentro de una sesion que ya no existe.
+ * Cuentas y sincronizacion (Firebase, ver esCuentaOSincronizacion) y
+ * cualquier peticion que no sea GET. Servir una respuesta de autenticacion
+ * desde cache es una forma excelente de dejar a alguien dentro de una
+ * sesion que ya no existe; y la lectura de Firestore trae los datos de UNA
+ * persona, que no tienen por que quedarse en una cache del navegador.
  */
 "use strict";
 
 var PREFIJO = "onh-";
 var CACHE_FUENTES = "onh-fuentes-v1";
+
+/**
+ * Hosts de cuentas y datos de usuario: NUNCA pasan por la cache.
+ *
+ * Con Supabase bastaba con buscar "supabase" en el nombre. Con Firebase no
+ * hay una palabra comun, y ojo con la tentacion de "todo googleapis.com":
+ * fonts.googleapis.com SI se cachea (mas abajo), a proposito.
+ * El resto de peticiones GET cae en "red, y cache si no hay red", que para
+ * una lectura de Firestore significaria guardar los datos de alguien y
+ * servirlos viejos sin avisar -- y migration.js decidiria con ellos.
+ */
+var HOSTS_DE_CUENTA = [
+  "firestore.googleapis.com",
+  "identitytoolkit.googleapis.com",
+  "securetoken.googleapis.com",
+  "www.googleapis.com",
+  "apis.google.com",
+  "accounts.google.com"
+];
+function esCuentaOSincronizacion(url) {
+  if (HOSTS_DE_CUENTA.indexOf(url.hostname) !== -1) return true;
+  // El dominio de auth del proyecto (ventana de Google, pagina de nueva
+  // contrasena): <proyecto>.firebaseapp.com y <proyecto>.web.app.
+  return /\.firebaseapp\.com$|\.web\.app$/.test(url.hostname);
+}
 
 /** Saca el sello `?v=...` del HTML para nombrar la cache de esta version. */
 function selloDe(html) {
@@ -173,7 +200,7 @@ self.addEventListener("fetch", function (e) {
   try { url = new URL(req.url); } catch (err) { return; }
 
   // Cuentas y sincronizacion NUNCA se cachean.
-  if (url.hostname.indexOf("supabase") !== -1) return;
+  if (esCuentaOSincronizacion(url)) return;
 
   // La entrada: red primero, cache como red de seguridad.
   if (req.mode === "navigate") {
@@ -229,11 +256,11 @@ self.addEventListener("fetch", function (e) {
     return;
   }
 
-  // Tipografias de Google y el SDK de Supabase: URLs ya versionadas por
+  // Tipografias de Google y el SDK de Firebase: URLs ya versionadas por
   // quien las publica, asi que valen las mismas reglas que un recurso con
   // sello propio.
   //
-  // El SDK importa mas de lo que parece. Sin el, getSupabaseClient()
+  // El SDK importa mas de lo que parece. Sin el, getFirebaseAuth()
   // devuelve null y la aplicacion contesta "las cuentas todavia no estan
   // disponibles en este sitio" -- que sin red es sencillamente falso: lo que
   // falta es la conexion, no la funcion. Guardandolo, quien ya entro una vez

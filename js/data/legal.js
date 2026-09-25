@@ -21,7 +21,7 @@
  * datos es comprobable en el código:
  *   - "solo en tu navegador"  -> js/core/settings.js y js/core/pantry.js
  *                                (localStorage, claves nutritionPlanner.*)
- *   - "si creas cuenta, ..."   -> js/core/cloud-sync.js + supabase/schema.sql
+ *   - "si creas cuenta, ..."   -> js/core/cloud-sync.js + firebase/firestore.rules
  *   - "puedes borrarlo"        -> botón Resetear y cierre de sesión
  *                                (js/core/migration.js, onAuthSignOut)
  * Si el comportamiento cambia, este texto cambia con él.
@@ -37,7 +37,9 @@
  * ─────────────────────────────────────────────────────────────────────────
  */
 
-var LEGAL_VERSION = "1.0";
+// 1.1 (2026-09-25): las cuentas pasan de Supabase a Google Firebase. Quién
+// guarda tus datos es justo lo que obliga a volver a pedir la aceptación.
+var LEGAL_VERSION = "1.1";
 var LEGAL_UPDATED_AT = "2 de septiembre de 2026";
 
 /**
@@ -90,7 +92,7 @@ var LEGAL_SECTIONS = [
     title: "Qué datos se guardan, y dónde",
     paragraphs: [
       "Sin cuenta: todo se guarda únicamente en el almacenamiento local de este navegador (tus datos de perfil, tu despensa y tu plan del día). No se envía a ningún servidor, no hay analítica, no hay cookies de seguimiento y no hay publicidad. Si borras los datos del navegador, desaparecen; nadie tiene otra copia.",
-      "Con cuenta: para poder recuperar tus ajustes en otro dispositivo se guardan, en un proyecto de Supabase, tu correo electrónico y esos mismos datos de perfil, despensa y plan. Nada más. No se guarda tu contraseña en claro (de eso se encarga Supabase) y no se comparte ni se vende nada a terceros.",
+      "Con cuenta: para poder recuperar tus ajustes en otro dispositivo se guardan, en un proyecto de Google Firebase, tu correo electrónico y esos mismos datos de perfil, despensa y plan. Nada más. Los datos de perfil, despensa y plan están en Cloud Firestore, en servidores de Google en Madrid; el correo y el acceso los gestiona Firebase Authentication. No se guarda tu contraseña en claro (de eso se encarga Firebase) y no se comparte ni se vende nada a terceros.",
       "Crear la cuenta es opcional y siempre lo será. La aplicación funciona entera sin ella."
     ]
   },
@@ -105,7 +107,7 @@ var LEGAL_SECTIONS = [
   {
     title: "Servicios de terceros",
     paragraphs: [
-      "Si creas una cuenta, la autenticación y el almacenamiento los proporciona Supabase, y quedan sujetos a sus propias condiciones y política de privacidad. Si entras con Google, Google recibe la información propia de ese proceso de identificación.",
+      "Si creas una cuenta, la autenticación y el almacenamiento los proporciona Google Firebase (Firebase Authentication y Cloud Firestore), y quedan sujetos a sus propias condiciones y política de privacidad. Si entras con Google, Google recibe la información propia de ese proceso de identificación.",
       "Sin cuenta, la aplicación no contacta con ningún tercero para funcionar."
     ]
   },

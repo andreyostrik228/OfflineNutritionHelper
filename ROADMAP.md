@@ -77,9 +77,11 @@ con violación, recomp igual, volumen 5,0% → 2,5%; días "perfect" +9,5 y
    no existe**. Si molesta, lo suave es quitar la aclaración entre
    paréntesis solo en esa columna.
 
-5. **Sigue abierto de antes:** la recuperación de contraseña está desplegada
-   pero **inerte hasta configurar Supabase** (`HANDOFF.md` §9), y el preset
-   de 8 € no da un solo día "perfect" en ninguno de los tres perfiles.
+5. **Sigue abierto de antes:** el preset de 8 € no da un solo día
+   "perfect" en ninguno de los tres perfiles. (La recuperación de contraseña
+   que estaba "inerte hasta configurar Supabase" ya no depende de nada:
+   desde 2026-09-25 las cuentas son Firebase y el correo lo manda él, sin
+   configurar SMTP -- `HANDOFF.md` §9.)
 
 
 ## Estado y prioridades al 2026-09-13
@@ -122,10 +124,9 @@ Detalle y cifras en `STATE.md` → "UPDATE 2026-09-13"; el *cómo* en
    contenedor entero de comidas (1.899 px). El usuario no lo ha señalado y
    los pasos que sí señaló están arreglados; queda anotado por si vuelve.
 
-5. **Sigue abierto de antes:** la recuperación de contraseña está
-   desplegada pero **inerte hasta configurar Supabase** (`HANDOFF.md` §9), y
-   el preset de 8 € no da un solo día "perfect" en ninguno de los tres
-   perfiles (medido el 2026-09-09).
+5. **Sigue abierto de antes:** el preset de 8 € no da un solo día
+   "perfect" en ninguno de los tres perfiles (medido el 2026-09-09). (La
+   recuperación de contraseña ya no está inerte: ver el punto 5 de arriba.)
 
 
 ## Estado y prioridades al 2026-08-31 (leer antes que nada de lo de abajo)

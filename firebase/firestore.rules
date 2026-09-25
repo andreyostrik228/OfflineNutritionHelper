@@ -1,0 +1,45 @@
+rules_version = '2';
+
+// Reglas de Cloud Firestore del proyecto weekplate-146b0.
+//
+// ESTE fichero es la fuente de verdad: lo publicado en la consola de
+// Firebase (Firestore -> Reglas) tiene que ser copia literal de esto. Si
+// alguien las cambia en la consola, que lo traiga aqui en el mismo momento.
+//
+// El modelo es el mismo que tenia Supabase con Row Level Security: un
+// documento por usuario en `user_data/{uid}`, y solo su dueno lo lee, lo
+// escribe o lo borra. La clave `apiKey` de js/data/firebase-config.js es
+// publica por diseno; la seguridad la dan estas reglas, no ocultar la clave.
+//
+// Los cuatro campos son TEXTO JSON (ver js/core/cloud-sync.js): Firestore
+// no admite arrays anidados ni `undefined`, y guardar el JSON tal cual
+// garantiza que lo que se lee es exactamente lo que se escribio.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /user_data/{userId} {
+      function esSuyo() {
+        return request.auth != null && request.auth.uid == userId;
+      }
+
+      function campoOk(nombre) {
+        return !(nombre in request.resource.data) || request.resource.data[nombre] is string;
+      }
+
+      allow read, delete: if esSuyo();
+
+      allow create, update: if esSuyo()
+        && request.resource.data.keys().hasOnly(['pantry_state', 'pantry_history', 'settings', 'migrated_at'])
+        && campoOk('pantry_state')
+        && campoOk('pantry_history')
+        && campoOk('settings')
+        && campoOk('migrated_at');
+    }
+
+    // Todo lo demas, cerrado.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -117,7 +117,7 @@ function initAuthRefs(refs) {
   if (authUnavailableBox) authUnavailableBox.hidden = available;
   if (authAvailableBox)   authAvailableBox.hidden = !available;
 
-  // Pinta el botón de perfil de inmediato ("Invitado" si Supabase no está
+  // Pinta el botón de perfil de inmediato ("Invitado" si las cuentas no están
   // configurado, o mientras llega el primer evento de sesión) -- sin esto
   // se quedaría en "…" para siempre cuando no hay cliente, porque
   // handleAuthStateChange (la única otra vía que pinta el botón) solo se
@@ -160,33 +160,6 @@ function initAuthRefs(refs) {
 
 function handleAuthStateChange(event, user) {
   renderProfileButton(user);
-
-  // ── Se vuelve del enlace del correo ────────────────────────────────────
-  //
-  // El SDK ya ha canjeado el token y HAY SESION. Sin interceptarlo aqui, el
-  // usuario entraria como si hubiera iniciado sesion normalmente y seguiria
-  // sin saber su contrasena: pidio recuperarla y acabaria dentro sin
-  // haberla cambiado. Asi que se le pide la nueva antes de nada.
-  //
-  // Va ANTES del bloque de SIGNED_IN/INITIAL_SESSION a proposito: ahi se
-  // lanza el cuestionario y la reconciliacion con la nube, y ninguna de las
-  // dos cosas es lo que toca en mitad de un cambio de contrasena.
-  //
-  // El dialogo se abre con showModal(), que lo pone en la capa superior del
-  // navegador -- por encima de la bienvenida (z-index 200) y del recorrido
-  // (210). Importa: se vuelve del correo con una CARGA NUEVA de la pagina,
-  // y a un invitado la bienvenida le sale siempre. Sin la capa superior,
-  // esto quedaria tapado justo cuando hace falta.
-  if (event === "PASSWORD_RECOVERY") {
-    if (authDialogEl && !authDialogEl.open) {
-      if (typeof authDialogEl.showModal === "function") authDialogEl.showModal();
-      else authDialogEl.setAttribute("open", "");
-    }
-    clearAuthFeedback();
-    setAuthMode("reset");
-    showAuthNotice(t("ui.escribe_una_contrasena_nueva_para_tu_cuenta"));
-    return;
-  }
 
   if (!user) {
     _reconciledForUserId = null;
@@ -288,7 +261,7 @@ function handleLogoutClick() {
 // Lo prometen las condiciones de uso ("entra en tu menú de usuario y pulsa
 // Borrar mi cuenta"), así que este botón no es un extra: es la forma en que
 // esta aplicación cumple el derecho a que borren tus datos. Ver
-// js/core/auth.js (deleteOwnAccount) y supabase/delete-account.sql.
+// js/core/auth.js (deleteOwnAccount), que explica en qué orden se borra.
 
 function openDeleteAccountDialog() {
   if (authUserMenu) authUserMenu.hidden = true;
@@ -387,7 +360,7 @@ function handleDeleteAccountConfirm() {
 function openAuthDialog(mode) {
   if (!authDialogEl) return;
   // Abrir esto es siempre una petición deliberada de entrar. Sirve para
-  // que el alta sepa distinguirla de una sesión que Supabase restaura
+  // que el alta sepa distinguirla de una sesión que Firebase restaura
   // sola al cargar la página -- las dos llegan como SIGNED_IN.
   if (typeof markSignInRequested === "function") markSignInRequested();
   setAuthMode(mode === "register" ? "register" : "login");
@@ -408,22 +381,25 @@ function closeAuthDialog() {
   }
 }
 
-/** Mínimo que exige Supabase por defecto. Se comprueba AQUÍ además de en
- *  el servidor: el formulario es `novalidate`, así que el `minlength` del
- *  HTML no lo aplica nadie, y una contraseña corta viajaba hasta Supabase
- *  para volver como un error en inglés. */
+/** Mínimo que exige Firebase (auth/weak-password). Se comprueba AQUÍ además
+ *  de en el servidor: el formulario es `novalidate`, así que el `minlength`
+ *  del HTML no lo aplica nadie, y una contraseña corta viajaba hasta el
+ *  servidor para volver como un error. */
 var AUTH_MIN_PASSWORD = 6;
 
 /**
- * Cuatro estados, un solo formulario.
+ * Tres estados, un solo formulario.
  *
  *   login     email + contrasena
  *   register  email + contrasena + repetir
  *   recover   SOLO email -- "mandame el enlace"
- *   reset     SOLO contrasena + repetir -- al volver del correo
+ *
+ * Habia un cuarto, `reset` (poner la contrasena nueva al volver del
+ * correo). Desde 2026-09-25 eso se hace en la pagina de Firebase, no aqui
+ * -- ver sendPasswordReset() en js/core/auth.js.
  *
  * Todo se decide aqui, en un sitio, en vez de repartir `hidden` por los
- * manejadores: con cuatro modos y seis trozos que aparecen y desaparecen,
+ * manejadores: con tres modos y seis trozos que aparecen y desaparecen,
  * el reparto es como se acaba llegando a un formulario que pide la
  * contrasena para mandarte un enlace.
  */
@@ -431,29 +407,24 @@ function setAuthMode(mode) {
   _authMode = mode;
   var isRegister = mode === "register";
   var isRecover  = mode === "recover";
-  var isReset    = mode === "reset";
 
   var titulo = isRegister ? t("ui.crear_cuenta")
              : isRecover  ? t("ui.recuperar_contrasena")
-             : isReset    ? t("ui.elige_una_contrasena_nueva")
              : t("ui.iniciar_sesion");
   var boton  = isRegister ? t("ui.crear_cuenta")
              : isRecover  ? t("ui.enviar_enlace")
-             : isReset    ? t("ui.guardar_contrasena")
              : t("ui.iniciar_sesion");
 
   if (authDialogTitle) authDialogTitle.textContent = titulo;
   if (authSubmitBtn)   authSubmitBtn.textContent = boton;
 
-  // El email no se pide al poner la contrasena nueva: ahi ya se sabe quien
-  // eres (hay sesion), y volver a pedirlo solo da ocasion de equivocarse.
-  if (authEmailField)    authEmailField.hidden = isReset;
+  if (authEmailField)    authEmailField.hidden = false;
   // La contrasena no se pide para MANDAR el enlace, que es justo lo que
   // se pide cuando no se recuerda.
   if (authPasswordField) authPasswordField.hidden = isRecover;
   // Repetirla, solo donde se escribe una nueva.
-  if (authPassword2Field) authPassword2Field.hidden = !(isRegister || isReset);
-  if (authPasswordHint)   authPasswordHint.hidden   = !(isRegister || isReset);
+  if (authPassword2Field) authPassword2Field.hidden = !isRegister;
+  if (authPasswordHint)   authPasswordHint.hidden   = !isRegister;
   // Y el enlace de "la he olvidado" solo al iniciar sesion: en el resto de
   // pasos o no hay contrasena todavia, o se esta poniendo una.
   if (authForgotRow) authForgotRow.hidden = (mode !== "login");
@@ -463,12 +434,11 @@ function setAuthMode(mode) {
   // Desde "recover" lo util es volver, no crear otra cuenta.
   if (authSwitchModeBtn && isRecover) authSwitchModeBtn.textContent = t("ui.volver_a_iniciar_sesion");
   if (authSwitchPrompt && isRecover)  authSwitchPrompt.textContent = "";
-  // Al poner la contrasena nueva no hay a donde ir: primero se guarda.
-  if (authSwitchRow) authSwitchRow.hidden = isReset;
+  if (authSwitchRow) authSwitchRow.hidden = false;
 
   // Se vacia lo que deja de verse: un campo oculto con algo escrito dentro
   // acaba viajando en un envio que nadie esperaba.
-  if (authPassword2Input && !(isRegister || isReset)) authPassword2Input.value = "";
+  if (authPassword2Input && !isRegister) authPassword2Input.value = "";
   if (authPasswordInput && isRecover) authPasswordInput.value = "";
 
   // `autocomplete` correcto para cada modo. No es cosmetico: con
@@ -477,7 +447,7 @@ function setAuthMode(mode) {
   // guardarla.
   if (authPasswordInput) {
     authPasswordInput.setAttribute("autocomplete",
-      (isRegister || isReset) ? "new-password" : "current-password");
+      isRegister ? "new-password" : "current-password");
   }
 }
 
@@ -517,32 +487,12 @@ function handleGoogleClick() {
   if (typeof signInWithGoogle !== "function") return;
   setAuthBusy(true);
   signInWithGoogle().then(function (result) {
-    // Un signInWithOAuth con éxito normalmente ya redirigió la página
-    // entera antes de que esto llegue a ejecutarse -- si llegamos aquí
-    // con error, es que ni siquiera pudo iniciar la redirección.
+    // Ventana emergente, sin recargar: si sale bien, onAuthStateChange
+    // ('SIGNED_IN') cierra el diálogo y sigue. Si el usuario la cerró sin
+    // elegir cuenta, `cancelled` y ningún error -- cambiar de idea no lo es.
     setAuthBusy(false);
     if (result.error) showAuthError(authErrorMessage(result.error));
   });
-}
-
-/**
- * Quita de la URL el token que trae el enlace del correo.
- *
- * Supabase lo deja en el hash (`#access_token=...&type=recovery`). Si se
- * queda ahi: se guarda en el historial, viaja si alguien comparte el
- * enlace, y al recargar vuelve a disparar PASSWORD_RECOVERY -- volviendo a
- * pedir una contrasena nueva a quien acaba de ponerla.
- *
- * `replaceState` y no `location.hash = ""`: lo segundo recarga y anade una
- * entrada al historial, y este proyecto ya sabe lo que cuesta una recarga
- * inesperada a mitad de un flujo (ver HANDOFF.md 7.1).
- */
-function _limpiarTokenDeLaUrl() {
-  try {
-    if (window.history && typeof window.history.replaceState === "function") {
-      window.history.replaceState(null, "", window.location.pathname + window.location.search);
-    }
-  } catch (err) { /* sin historial manipulable, el token se queda: no es fatal */ }
 }
 
 function handleEmailFormSubmit(event) {
@@ -561,38 +511,10 @@ function handleEmailFormSubmit(event) {
       if (result.error) { showAuthError(authErrorMessage(result.error)); return; }
       // A proposito NO se dice si ese email tiene cuenta: contestarlo
       // convertiria esto en una forma de averiguar quien esta registrado.
-      showAuthNotice(t("ui.si_esa_direccion_tiene_cuenta") + " " +
-                     t("ui.abrelo_en_este_mismo_movil"));
-    });
-    return;
-  }
-
-  // ── "Pon una contrasena nueva" (se vuelve del correo) ──────────────────
-  if (_authMode === "reset") {
-    var nueva = password;
-    var nueva2 = authPassword2Input ? authPassword2Input.value : "";
-    if (!nueva) { showAuthError(t("ui.escribe_la_contrasena_nueva")); return; }
-    if (nueva.length < AUTH_MIN_PASSWORD) {
-      showAuthError(t("ui.la_contrasena_necesita_al_menos") + " " + AUTH_MIN_PASSWORD + " caracteres.");
-      return;
-    }
-    if (nueva !== nueva2) {
-      showAuthError(t("ui.las_dos_contrasenas_no_coinciden"));
-      if (authPassword2Input) { authPassword2Input.value = ""; authPassword2Input.focus(); }
-      return;
-    }
-    setAuthBusy(true);
-    updatePassword(nueva).then(function (result) {
-      setAuthBusy(false);
-      if (result.error) { showAuthError(authErrorMessage(result.error)); return; }
-      // La sesion ya esta activa (la creo el enlace), asi que aqui se acaba:
-      // se limpia la URL para que el token no se quede en el historial ni
-      // vuelva a dispararse al recargar.
-      _limpiarTokenDeLaUrl();
-      if (authPasswordInput)  authPasswordInput.value = "";
-      if (authPassword2Input) authPassword2Input.value = "";
-      showAuthNotice(t("ui.contrasena_cambiada_ya_has_entrado"));
-      window.setTimeout(closeAuthDialog, 1400);
+      // Antes seguía "ábrelo en este mismo móvil": el enlace de Supabase
+      // abría la sesión en el navegador donde se pulsaba. El de Firebase
+      // lleva a su propia página y vale desde cualquier dispositivo.
+      showAuthNotice(t("ui.si_esa_direccion_tiene_cuenta"));
     });
     return;
   }
@@ -632,18 +554,11 @@ function handleEmailFormSubmit(event) {
       return;
     }
 
-    // Registro con confirmación de email activada (por defecto en
-    // Supabase): hay `user` pero SIN sesión activa todavía -- distinto de
-    // un error, necesita su propio aviso en vez de cerrarse como si ya
-    // hubiera iniciado sesión.
-    if (_authMode === "register" && result.user && !result.user.email_confirmed_at) {
-      showAuthNotice(t("ui.cuenta_creada_revisa_tu_correo"));
-      return;
-    }
-
-    // Login (o registro sin confirmación de email requerida): el propio
-    // onAuthStateChange('SIGNED_IN') cierra el diálogo y dispara la
-    // reconciliación -- ver handleAuthStateChange.
+    // Login o registro: el propio onAuthStateChange('SIGNED_IN') cierra el
+    // diálogo y dispara la reconciliación -- ver handleAuthStateChange.
+    // Firebase no pide confirmar el email antes de entrar, así que un alta
+    // es ya una sesión (Supabase sí lo pedía, y aquí había un aviso de
+    // "revisa tu correo" que ya no tiene caso).
   });
 }
 

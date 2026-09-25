@@ -15,14 +15,14 @@
  * Por eso la guarda real de idempotencia/propiedad es un marcador POR
  * NAVEGADOR (`nutritionPlanner.cloudSyncedUserId.v1`, ver
  * getCloudSyncedUserId/setCloudSyncedUserId más abajo) que registra a
- * QUÉ usuario pertenece la caché local actual -- `migrated_at` en la
- * tabla `user_data` (ver supabase/schema.sql) es solo un dato de
+ * QUÉ usuario pertenece la caché local actual -- `migrated_at` en el
+ * documento `user_data/{uid}` (ver firebase/firestore.rules) es solo un dato de
  * auditoría ("¿cuándo dejó de estar vacía esta cuenta?"), nunca la
  * condición que decide nada aquí.
  *
  * classifySyncState() es una función PURA (nada de DOM/red/localStorage
  * dentro de ella) para poder testear cada rama de la máquina de estados
- * sin un cliente Supabase real -- ver tests/migration.test.js. La
+ * sin una nube real -- ver tests/migration.test.js. La
  * orquestación (runReconciliation, resolveConflict*) sí toca
  * pantry.js/settings.js/cloud-sync.js, pero delega toda decisión "qué
  * hacer" a classifySyncState().
@@ -256,6 +256,15 @@ function runReconciliation() {
 
   return Promise.resolve((typeof pullCloudUserData === "function") ? pullCloudUserData() : null)
     .then(function (cloudRow) {
+      // null = la nube NO SE HA PODIDO LEER (sin red, token caducado, error
+      // del servidor). Nube vacía es otra cosa: una fila vacía. Tratar las
+      // dos igual vaciaba lo local -- con sesión y sin cobertura, la rama
+      // 'already_synced' hidrataba desde null y dejaba despensa, historial
+      // y ajustes en blanco. Sin saber qué hay en la nube no se decide
+      // nada: lo local se queda como está y se vuelve a intentar en el
+      // próximo inicio de sesión o recarga.
+      if (!cloudRow) return { status: "cloud_unavailable" };
+
       var syncedUserId = getCloudSyncedUserId();
       var localSnapshot = _readLocalSnapshot();
       var state = classifySyncState(localSnapshot, cloudRow, syncedUserId, user.id);
@@ -310,6 +319,10 @@ function resolveConflictKeepCloud() {
 
   return Promise.resolve((typeof pullCloudUserData === "function") ? pullCloudUserData() : null)
     .then(function (cloudRow) {
+      // Misma regla que en runReconciliation(): sin poder leer la nube, NO
+      // se sustituye lo local por nada. El conflicto sigue sin resolver y
+      // volverá a salir en el próximo inicio de sesión.
+      if (!cloudRow) return;
       _hydrateLocalFrom(cloudRow);
       setCloudSyncedUserId(user.id);
     });

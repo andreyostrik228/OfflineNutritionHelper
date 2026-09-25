@@ -1,34 +1,43 @@
 /**
  * js/core/auth.js
  * ─────────────────────────────────────────────────────────────────────────
- * Envoltorio fino sobre `supabase.auth` -- ningún otro módulo llama al SDK
- * de autenticación directamente. Nunca lanza: cada función async siempre
- * RESUELVE (nunca rechaza) con `{ ..., error }`, incluso si Supabase no
- * está configurado todavía (getSupabaseClient() === null) -- en ese caso
- * `error.message === "not_configured"`, para que render-auth.js pueda
- * distinguir "credenciales mal" de "las cuentas no existen todavía en
- * este sitio" y mostrar el estado correcto (ver requisito de UI "estado
- * offline/no disponible").
+ * Envoltorio fino sobre Firebase Authentication -- ningún otro módulo llama
+ * al SDK de autenticación directamente. Nunca lanza: cada función async
+ * siempre RESUELVE (nunca rechaza) con `{ ..., error }`, incluso si
+ * Firebase no está configurado todavía (getFirebaseAuth() === null) -- en
+ * ese caso `error.message === "not_configured"`, para que render-auth.js
+ * pueda distinguir "credenciales mal" de "las cuentas no existen todavía
+ * en este sitio".
+ *
+ * ── La forma que ve el resto de la app NO es la de Firebase ─────────────
+ * Hasta 2026-09-25 esto hablaba con Supabase, y render-auth.js,
+ * migration.js y onboarding-ui.js se escribieron contra SU forma: el
+ * usuario trae `id` (no `uid`) y `user_metadata.full_name`, y los eventos
+ * se llaman INITIAL_SESSION / SIGNED_IN / SIGNED_OUT. Este módulo traduce
+ * a esa forma en un solo sitio (_normalizarUsuario, _alCambiarUsuario), y
+ * así el cambio de proveedor no ha tocado a nadie más. Si algún día se
+ * cambia otra vez, el contrato a respetar es ese, no el del SDK nuevo.
  *
  * Deliberadamente NO decide qué hacer con los datos locales al iniciar/
- * cerrar sesión -- eso es responsabilidad de js/core/migration.js
- * (runReconciliation/onSignOut), orquestado desde js/ui/render-auth.js al
- * reaccionar a los eventos de onAuthStateChange. Mantiene este archivo
- * sobre UNA sola responsabilidad (hablar con Supabase Auth), igual que
- * pricing.js es agnóstico de dishes.js.
+ * cerrar sesión -- eso es de js/core/migration.js, orquestado desde
+ * js/ui/render-auth.js al reaccionar a los eventos.
  *
  * Depende de:
- *   js/core/supabase-client.js (getSupabaseClient)
+ *   js/core/firebase-client.js (getFirebaseAuth)
+ *   js/core/cloud-sync.js      (deleteCloudUserData, pushAllToCloud) -- solo en deleteOwnAccount()
  *
  * Expone (globales):
  *   isAuthAvailable()
- *   isAuthSessionResolved()                 → boolean
- *   getCurrentUser()                  → user | null (último conocido, síncrono)
+ *   isAuthSessionResolved()           → boolean
+ *   getCurrentUser()                  → {id, email, user_metadata} | null (último conocido, síncrono)
+ *   getAuthIdToken()                  → Promise<string|null> -- para la API REST de Firestore
  *   onAuthStateChange(listener)       → función para darse de baja
  *   signUpWithEmail(email, password)  → Promise<{user, error}>
  *   signInWithEmail(email, password)  → Promise<{user, error}>
- *   signInWithGoogle()                → Promise<{error}> (redirige la página)
+ *   signInWithGoogle()                → Promise<{error, cancelled?}> (ventana emergente)
+ *   sendPasswordReset(email)          → Promise<{error}>
  *   signOut()                         → Promise<{error}>
+ *   deleteOwnAccount()                → Promise<{error}>
  *   authErrorMessage(error)           → string en español, seguro de mostrar
  * ─────────────────────────────────────────────────────────────────────────
  */
@@ -39,18 +48,31 @@ var _authResolved = false;
 var _authSubscribed = false;
 
 /**
- * Reenvía un evento de Supabase a todos los listeners registrados,
- * aislando el fallo de uno de ellos del resto (mismo principio que
- * safeInit() en app.js).
- * @param {string} event
- * @param {object|null} session
+ * La forma de usuario que el resto de la app espera (ver cabecera).
+ * @param {object|null} fbUser - firebase.User
+ * @returns {{id:string, email:string|null, user_metadata:{full_name:string|null}}|null}
  */
-function _notifyAuthListeners(event, session) {
-  _authCurrentUser = (session && session.user) ? session.user : null;
+function _normalizarUsuario(fbUser) {
+  if (!fbUser) return null;
+  return {
+    id: fbUser.uid,
+    email: fbUser.email || null,
+    user_metadata: { full_name: fbUser.displayName || null }
+  };
+}
+
+/**
+ * Reenvía un evento a todos los listeners registrados, aislando el fallo
+ * de uno de ellos del resto (mismo principio que safeInit() en app.js).
+ * @param {string} event
+ * @param {object|null} user - ya normalizado
+ */
+function _notifyAuthListeners(event, user) {
+  _authCurrentUser = user;
   // A partir del primer evento ya se SABE si hay sesión o no. Antes, la
-  // ausencia de usuario solo significaba "todavía no ha contestado
-  // Supabase" -- y confundir las dos cosas hacía que a un usuario con la
-  // sesión iniciada se le pidiera iniciar sesión en cada recarga.
+  // ausencia de usuario solo significaba "todavía no ha contestado" -- y
+  // confundir las dos cosas hacía que a un usuario con la sesión iniciada
+  // se le pidiera iniciar sesión en cada recarga.
   _authResolved = true;
   _authListeners.forEach(function (fn) {
     try {
@@ -62,25 +84,49 @@ function _notifyAuthListeners(event, session) {
 }
 
 /**
+ * Firebase avisa con un solo callback, `onAuthStateChanged(user)`, sin
+ * decir QUÉ ha pasado. El nombre del evento se deduce comparando con el
+ * usuario anterior:
+ *
+ *   primera llamada           → INITIAL_SESSION (con usuario o sin él)
+ *   nadie → alguien           → SIGNED_IN
+ *   alguien → nadie           → SIGNED_OUT
+ *   alguien → otra persona    → SIGNED_IN
+ *   la misma persona otra vez → USER_UPDATED (nadie lo escucha: no pasa nada)
+ *
+ * La primera llamada llega SIEMPRE, también sin sesión, porque Firebase
+ * tiene que mirar lo guardado antes de contestar -- es el equivalente
+ * exacto del INITIAL_SESSION de Supabase.
+ * @param {object|null} fbUser
+ */
+function _alCambiarUsuario(fbUser) {
+  var nuevo = _normalizarUsuario(fbUser);
+  var evento;
+  if (!_authResolved) evento = "INITIAL_SESSION";
+  else if (!_authCurrentUser && nuevo) evento = "SIGNED_IN";
+  else if (_authCurrentUser && !nuevo) evento = "SIGNED_OUT";
+  else if (_authCurrentUser && nuevo && _authCurrentUser.id !== nuevo.id) evento = "SIGNED_IN";
+  else evento = "USER_UPDATED";
+  _notifyAuthListeners(evento, nuevo);
+}
+
+/**
  * Se suscribe UNA sola vez al SDK, sin importar cuántos listeners propios
- * se registren después -- Supabase emite `INITIAL_SESSION` nada más
- * suscribirse, que es lo que rellena _authCurrentUser la primera vez.
+ * se registren después.
  */
 function _ensureSubscribed() {
   if (_authSubscribed) return;
-  var client = getSupabaseClient();
-  if (!client) return;
+  var auth = getFirebaseAuth();
+  if (!auth) return;
   _authSubscribed = true;
-  client.auth.onAuthStateChange(function (event, session) {
-    _notifyAuthListeners(event, session);
-  });
+  auth.onAuthStateChanged(_alCambiarUsuario);
 }
 
 /**
  * ¿Se sabe ya si hay sesión?
  *
  * `getCurrentUser()` devuelve null en dos situaciones que no se parecen
- * en nada: "no hay sesión" y "Supabase todavía no ha contestado". Quien
+ * en nada: "no hay sesión" y "Firebase todavía no ha contestado". Quien
  * tenga que decidir algo importante con eso -- por ejemplo si enseñar la
  * pantalla de bienvenida -- necesita poder distinguirlas.
  *
@@ -94,16 +140,37 @@ function isAuthSessionResolved() {
 }
 
 function isAuthAvailable() {
-  return getSupabaseClient() !== null;
+  return getFirebaseAuth() !== null;
 }
 
 /**
- * @returns {object|null} - el usuario del último evento de auth conocido.
- *   null antes de que llegue el primer evento (breve, ver INITIAL_SESSION
- *   arriba) o si nunca hubo sesión / Supabase no está configurado.
+ * @returns {object|null} - el usuario del último evento de auth conocido,
+ *   en la forma de _normalizarUsuario().
  */
 function getCurrentUser() {
   return _authCurrentUser;
+}
+
+/**
+ * Token de identidad del usuario con sesión, para mandarlo como
+ * `Authorization: Bearer` a la API REST de Firestore. El SDK lo renueva
+ * solo cuando caduca (dura una hora). null si no hay sesión o si falla.
+ * @returns {Promise<string|null>}
+ */
+function getAuthIdToken() {
+  var auth = getFirebaseAuth();
+  var fbUser = auth ? auth.currentUser : null;
+  if (!fbUser || typeof fbUser.getIdToken !== "function") return Promise.resolve(null);
+  try {
+    return Promise.resolve(fbUser.getIdToken()).then(function (token) {
+      return token || null;
+    }, function (err) {
+      console.error("[auth] no se pudo obtener el token:", err);
+      return null;
+    });
+  } catch (err) {
+    return Promise.resolve(null);
+  }
 }
 
 /**
@@ -125,185 +192,201 @@ function _notConfiguredResult(extra) {
   return extra ? Object.assign(result, extra) : result;
 }
 
-function signUpWithEmail(email, password) {
-  var client = getSupabaseClient();
-  if (!client) return Promise.resolve(_notConfiguredResult({ user: null }));
-
-  return client.auth.signUp({ email: email, password: password })
-    .then(function (result) {
-      return { user: (result.data && result.data.user) || null, error: result.error || null };
-    })
-    .catch(function (err) {
+/**
+ * Llama al SDK sin que nada pueda escapar: ni un rechazo ni un `throw`
+ * síncrono (el SDK lanza en el acto con argumentos inválidos).
+ * @param {function(): Promise} llamada
+ * @returns {Promise<{user:object|null, error:object|null}>}
+ */
+function _conCredencial(llamada) {
+  try {
+    return Promise.resolve(llamada()).then(function (cred) {
+      return { user: _normalizarUsuario(cred && cred.user), error: null };
+    }, function (err) {
       return { user: null, error: err };
     });
+  } catch (err) {
+    return Promise.resolve({ user: null, error: err });
+  }
+}
+
+/**
+ * Firebase NO pide confirmar el email para entrar: al crear la cuenta la
+ * sesión ya está iniciada, y onAuthStateChanged emite SIGNED_IN. (Supabase
+ * sí lo pedía por defecto; por eso render-auth.js tenía un aviso de "revisa
+ * tu correo" que ya no hace falta.)
+ */
+function signUpWithEmail(email, password) {
+  var auth = getFirebaseAuth();
+  if (!auth) return Promise.resolve(_notConfiguredResult({ user: null }));
+  return _conCredencial(function () { return auth.createUserWithEmailAndPassword(email, password); });
 }
 
 function signInWithEmail(email, password) {
-  var client = getSupabaseClient();
-  if (!client) return Promise.resolve(_notConfiguredResult({ user: null }));
-
-  return client.auth.signInWithPassword({ email: email, password: password })
-    .then(function (result) {
-      return { user: (result.data && result.data.user) || null, error: result.error || null };
-    })
-    .catch(function (err) {
-      return { user: null, error: err };
-    });
+  var auth = getFirebaseAuth();
+  if (!auth) return Promise.resolve(_notConfiguredResult({ user: null }));
+  return _conCredencial(function () { return auth.signInWithEmailAndPassword(email, password); });
 }
 
 /**
- * Redirige la página entera a Google y vuelve con la sesión ya activa
- * (Supabase gestiona todo el intercambio del callback) -- por eso esta
- * función normalmente no llega a resolver antes de que la navegación
- * ocurra; el resultado solo importa si Supabase rechaza la llamada antes
- * de redirigir (config OAuth incompleta, red caída).
- * @returns {Promise<{error: object|null}>}
+ * Abre la ventana de Google y vuelve con la sesión hecha, SIN recargar la
+ * página (onAuthStateChanged emite SIGNED_IN aquí mismo).
+ *
+ * ── Por qué ventana emergente y no redirección ──────────────────────────
+ * La redirección de Firebase pasa por su propio dominio
+ * (weekplate-146b0.firebaseapp.com), y los navegadores actuales bloquean
+ * el almacenamiento de terceros que necesita para volver con la sesión:
+ * se vuelve a la app SIN haber entrado y sin ningún error. La ventana
+ * emergente no tiene ese problema. Lo que puede pasarle es que el
+ * navegador la bloquee -- eso sí se dice (auth/popup-blocked).
+ *
+ * Cerrar la ventana sin elegir cuenta no es un error: es cambiar de idea.
+ * Se resuelve sin error y con `cancelled: true`.
+ * @returns {Promise<{error: object|null, cancelled?: boolean}>}
  */
 function signInWithGoogle() {
-  var client = getSupabaseClient();
-  if (!client) return Promise.resolve(_notConfiguredResult());
+  var auth = getFirebaseAuth();
+  if (!auth) return Promise.resolve(_notConfiguredResult());
 
-  return client.auth.signInWithOAuth({
-    provider: "google",
-    options: { redirectTo: (typeof window !== "undefined" && window.location) ? window.location.origin : undefined }
-  })
-    .then(function (result) {
-      return { error: result.error || null };
-    })
-    .catch(function (err) {
+  try {
+    var provider = new firebase.auth.GoogleAuthProvider();
+    return Promise.resolve(auth.signInWithPopup(provider)).then(function () {
+      return { error: null };
+    }, function (err) {
+      var code = err && err.code;
+      if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
+        return { error: null, cancelled: true };
+      }
       return { error: err };
     });
+  } catch (err) {
+    return Promise.resolve({ error: err });
+  }
 }
 
 /**
- * Pide a Supabase que mande el correo de "he olvidado la contrasena".
+ * Pide a Firebase que mande el correo de "he olvidado la contraseña".
  *
  * ── Nunca dice si ese email tiene cuenta o no ───────────────────────────
- * Supabase responde igual exista o no, y la interfaz tambien: contestar
- * "ese correo no esta registrado" convierte el formulario en una forma de
- * averiguar quien tiene cuenta aqui. Se avisa siempre de lo mismo: "si esa
- * direccion tiene cuenta, te llega un correo".
+ * Con la "protección contra la enumeración de correos" del proyecto
+ * activada (lo está, Authentication → Configuración → Acciones del
+ * usuario), Firebase responde igual exista o no la cuenta, y la interfaz
+ * también: "si esa dirección tiene cuenta, te llega un correo".
  *
- * `redirectTo` es el origen de la aplicacion. Al volver desde el enlace,
- * el SDK detecta el token en la URL, crea sesion y emite
- * PASSWORD_RECOVERY -- ver handleAuthStateChange() en render-auth.js, que
- * es quien tiene que interceptarlo para pedir la contrasena nueva. Sin esa
- * intercepcion el usuario entraria "con sesion" sin haber cambiado nada y
- * seguiria sin saber su contrasena.
+ * ── Dónde se pone la contraseña nueva ───────────────────────────────────
+ * En la página de Firebase (weekplate-146b0.firebaseapp.com/__/auth/
+ * action), no en esta aplicación. Se intentó que el enlace del correo
+ * apuntara aquí ("URL de acción personalizada") y la consola lo rechazó
+ * dos veces con un 400 sin explicación (2026-09-25). La página de Firebase
+ * funciona sin configurar nada; `url` es a dónde lleva su botón
+ * "Continuar" al terminar, y `languageCode` hace que el correo y esa
+ * página salgan en el idioma de la app.
  *
  * @param {string} email
  * @returns {Promise<{error: object|null}>}
  */
 function sendPasswordReset(email) {
-  var client = getSupabaseClient();
-  if (!client) return Promise.resolve(_notConfiguredResult());
+  var auth = getFirebaseAuth();
+  if (!auth) return Promise.resolve(_notConfiguredResult());
 
-  return client.auth.resetPasswordForEmail(email, {
-    redirectTo: (typeof window !== "undefined" && window.location) ? window.location.origin : undefined
-  })
-    .then(function (result) {
-      return { error: result.error || null };
-    })
-    .catch(function (err) {
+  try {
+    // Los diez idiomas de la app (js/core/i18n.js, LANGS) los tiene
+    // también Firebase para este correo y para su página.
+    auth.languageCode = (typeof getLang === "function" && getLang()) || "es";
+    var ajustes = (typeof window !== "undefined" && window.location && /^https?:$/.test(window.location.protocol))
+      ? { url: window.location.origin + "/" }
+      : undefined;
+    return Promise.resolve(auth.sendPasswordResetEmail(email, ajustes)).then(function () {
+      return { error: null };
+    }, function (err) {
       return { error: err };
     });
-}
-
-/**
- * Cambia la contrasena del usuario que tiene sesion AHORA.
- *
- * Se usa al final del camino de recuperacion: al volver del correo hay
- * sesion (la creo el token del enlace), asi que esto basta y no hace falta
- * la contrasena anterior -- que es justo la que no se recuerda.
- *
- * @param {string} password
- * @returns {Promise<{user: object|null, error: object|null}>}
- */
-function updatePassword(password) {
-  var client = getSupabaseClient();
-  if (!client) return Promise.resolve(_notConfiguredResult({ user: null }));
-
-  return client.auth.updateUser({ password: password })
-    .then(function (result) {
-      return { user: (result.data && result.data.user) || null, error: result.error || null };
-    })
-    .catch(function (err) {
-      return { user: null, error: err };
-    });
+  } catch (err) {
+    return Promise.resolve({ error: err });
+  }
 }
 
 function signOut() {
-  var client = getSupabaseClient();
-  if (!client) return Promise.resolve({ error: null });
+  var auth = getFirebaseAuth();
+  if (!auth) return Promise.resolve({ error: null });
 
-  return client.auth.signOut()
-    .then(function (result) {
-      return { error: result.error || null };
-    })
-    .catch(function (err) {
+  try {
+    return Promise.resolve(auth.signOut()).then(function () {
+      return { error: null };
+    }, function (err) {
       return { error: err };
     });
+  } catch (err) {
+    return Promise.resolve({ error: err });
+  }
 }
 
 /**
  * Borra la cuenta del usuario y todos sus datos en la nube, y cierra la
  * sesión. Irreversible.
  *
- * ── Por qué pasa por una función de Postgres ────────────────────────────
- * El cliente puede borrar su fila de `public.user_data` (hay política
- * DELETE), pero NO puede tocar `auth.users`: ese esquema no se expone al
- * cliente y la API de administración exige la service_role key, que nunca
- * puede vivir en un frontend público. `delete_own_account()` es una
- * función `security definer` que borra exclusivamente la fila de
- * `auth.uid()` -- no acepta parámetros, así que no hay forma de pedirle
- * que borre la cuenta de otro. Ver supabase/delete-account.sql.
+ * ── El orden importa, y por qué ─────────────────────────────────────────
+ * Son DOS borrados que no pueden ir juntos (con Supabase los hacía una
+ * función de Postgres de una vez; en el plan gratuito de Firebase no hay
+ * código de servidor que haga lo mismo):
  *
- * ── Si la función todavía no está instalada ─────────────────────────────
- * El SQL hay que ejecutarlo a mano una vez en el proyecto Supabase. Si no
- * se ha hecho, Postgres responde que la función no existe: eso se traduce
- * a `not_installed` para que la interfaz pueda decir la verdad ("esto
- * todavía no está disponible") en lugar de un "error inesperado" que
- * dejaría al usuario sin saber si sus datos se han borrado o no.
+ *   1. el documento user_data/{uid}  -- las reglas lo permiten SOLO con
+ *                                       la sesión de su dueño
+ *   2. la cuenta                     -- currentUser.delete()
+ *
+ * Al revés (cuenta primero) saldría mal sin arreglo posible: sin cuenta ya
+ * no hay sesión, las reglas ya no dejan tocar el documento, y los datos se
+ * quedarían en la nube para siempre sin nadie que pueda borrarlos.
+ *
+ * Así que primero los datos. Y como Firebase exige haber entrado HACE
+ * POCO para borrar una cuenta (auth/requires-recent-login), si el paso 2
+ * falla, el documento ya está borrado: se vuelve a subir desde este
+ * dispositivo -- que sigue teniendo la copia local, todavía no se ha
+ * vaciado nada -- y se pide al usuario que vuelva a entrar. La cuenta
+ * queda como estaba, con sus datos.
  *
  * @returns {Promise<{error: object|null}>}
  */
 function deleteOwnAccount() {
-  var client = getSupabaseClient();
-  if (!client) return Promise.resolve(_notConfiguredResult());
+  var auth = getFirebaseAuth();
+  if (!auth) return Promise.resolve(_notConfiguredResult());
+  var fbUser = auth.currentUser;
+  if (!fbUser) return Promise.resolve({ error: { message: "not_authenticated" } });
 
-  return client.rpc("delete_own_account")
-    .then(function (result) {
-      if (result && result.error) {
-        var raw = String(result.error.message || "").toLowerCase();
-        // 42883 = undefined_function. También se comprueba el texto porque
-        // el código no siempre viaja en el error del SDK.
-        if (result.error.code === "42883" ||
-            raw.indexOf("could not find the function") !== -1 ||
-            raw.indexOf("does not exist") !== -1) {
-          return { error: { message: "not_installed" } };
-        }
-        return { error: result.error };
-      }
-      // La cuenta ya no existe; la sesión local sobreviviría hasta que
-      // caducase el token, así que se cierra explícitamente. Si esto
-      // fallara, la cuenta YA está borrada -- se informa de éxito igual,
-      // porque decir "no se pudo borrar" sería mentir.
-      return signOut().then(function () {
-        return { error: null };
+  var borrarDatos = (typeof deleteCloudUserData === "function")
+    ? deleteCloudUserData()
+    : Promise.resolve({ error: null });
+
+  return Promise.resolve(borrarDatos).then(function (datos) {
+    if (datos && datos.error) {
+      // Ni siquiera se han podido borrar los datos: no se toca la cuenta.
+      return { error: datos.error };
+    }
+    return Promise.resolve().then(function () { return fbUser["delete"](); }).then(function () {
+      // La cuenta ya no existe. onAuthStateChanged emite SIGNED_OUT por su
+      // cuenta; signOut() es solo por si acaso, y si fallara la cuenta YA
+      // está borrada -- se informa de éxito igual, porque decir "no se pudo
+      // borrar" sería mentir.
+      return signOut().then(function () { return { error: null }; }, function () { return { error: null }; });
+    }, function (err) {
+      var restaurar = (typeof pushAllToCloud === "function") ? pushAllToCloud() : Promise.resolve(null);
+      return Promise.resolve(restaurar).then(function () {
+        if (err && err.code === "auth/requires-recent-login") return { error: { message: "not_authenticated" } };
+        return { error: err };
       }, function () {
-        return { error: null };
+        return { error: err };
       });
-    })
-    .catch(function (err) {
-      return { error: err };
     });
+  }).then(null, function (err) {
+    return { error: err };
+  });
 }
 
 /**
- * Traduce un error de Supabase Auth a un mensaje en español, seguro de
+ * Traduce un error de Firebase Auth a un mensaje en español, seguro de
  * mostrar tal cual en la UI -- nunca expone el mensaje crudo del SDK
- * (puede filtrar detalles internos o venir en inglés sin contexto).
- * @param {{message?:string, error_description?:string}|Error|null} error
+ * (viene en inglés y con el código entre paréntesis).
+ * @param {{code?:string, message?:string}|Error|null} error
  * @returns {string}
  */
 function authErrorMessage(error) {
@@ -320,34 +403,37 @@ function authErrorMessage(error) {
     }
     return "Las cuentas todavía no están disponibles en este sitio -- puedes seguir usándolo como invitado.";
   }
-  if (error.message === "not_installed") {
-    return "Borrar la cuenta todavía no está activado en este servidor. Tus datos siguen intactos.";
-  }
   if (error.message === "not_authenticated") {
     return "Tu sesión ha caducado -- vuelve a iniciarla e inténtalo otra vez.";
   }
 
-  var msg = String(error.message || error.error_description || error).toLowerCase();
+  switch (error.code) {
+    // Con la protección contra la enumeración de correos activada, Firebase
+    // ya no distingue "no existe" de "contraseña mala": los dos llegan como
+    // invalid-credential. Los otros dos se dejan por si algún día se
+    // desactiva.
+    case "auth/invalid-credential":
+    case "auth/invalid-login-credentials":
+    case "auth/wrong-password":
+    case "auth/user-not-found":
+      return "Email o contraseña incorrectos.";
+    case "auth/email-already-in-use":
+      return "Ya existe una cuenta con ese email -- prueba a iniciar sesión.";
+    case "auth/invalid-email":
+      return "Ese email no parece válido -- revísalo.";
+    case "auth/weak-password":
+      return "La contraseña debe tener al menos 6 caracteres.";
+    case "auth/too-many-requests":
+      return "Demasiados intentos -- espera un momento y vuelve a intentarlo.";
+    case "auth/popup-blocked":
+      return "El navegador ha bloqueado la ventana de Google -- permite las ventanas emergentes para este sitio e inténtalo otra vez.";
+    case "auth/requires-recent-login":
+      return "Tu sesión ha caducado -- vuelve a iniciarla e inténtalo otra vez.";
+    case "auth/network-request-failed":
+      return "No se pudo conectar -- revisa tu conexión a internet e inténtalo de nuevo.";
+  }
 
-  if (msg.indexOf("invalid login credentials") !== -1) {
-    return "Email o contraseña incorrectos.";
-  }
-  if (msg.indexOf("email not confirmed") !== -1) {
-    return "Confirma tu email antes de iniciar sesión -- revisa tu bandeja de entrada.";
-  }
-  if (msg.indexOf("already registered") !== -1 || msg.indexOf("user already registered") !== -1) {
-    return "Ya existe una cuenta con ese email -- prueba a iniciar sesión.";
-  }
-  if (msg.indexOf("should be different from the old password") !== -1 ||
-      msg.indexOf("same as the old password") !== -1) {
-    return "Esa es la contraseña que ya tenías -- elige una distinta.";
-  }
-  if (msg.indexOf("rate limit") !== -1 || msg.indexOf("too many requests") !== -1) {
-    return "Demasiados intentos -- espera un momento y vuelve a intentarlo.";
-  }
-  if (msg.indexOf("password") !== -1 && (msg.indexOf("6 characters") !== -1 || msg.indexOf("at least") !== -1)) {
-    return "La contraseña debe tener al menos 6 caracteres.";
-  }
+  var msg = String(error.message || error).toLowerCase();
   if ((typeof TypeError !== "undefined" && error instanceof TypeError) ||
       msg.indexOf("failed to fetch") !== -1 || msg.indexOf("network") !== -1) {
     return "No se pudo conectar -- revisa tu conexión a internet e inténtalo de nuevo.";
