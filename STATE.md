@@ -5,6 +5,28 @@
 > Escrito para alguien que llega SIN NINGÚN contexto previo. Si solo lees
 > una parte de este archivo, que sea esta.
 >
+> ### ⏩ UPDATE 2026-09-28 — la flecha del carrusel de días vuelve a ser una flecha
+>
+> **707 tests en verde. Desplegado, sello `20260928a`**
+> (`https://3d2e78a2.offline-nutrition-helper.pages.dev`; 70 ficheros
+> comparados por hash con el repo, 0 difieren). Commit `eb65d75`.
+> **Commiteado pero NO empujado**, igual que `8fa4c24`: el dueño pidió
+> "arregla y despliega".
+>
+> Desde `a8ccf2b` (2026-09-01) `.days-carousel__hint::after` llevaba el byte
+> 0x11 seguido de "92" en vez de la secuencia `\2192`, y en producción salía
+> "Desliza para ver los demás días ▯92". Lo destapó una captura de pantalla,
+> no un test. Era el único byte de control entre los 70 ficheros servidos.
+>
+> **Al arreglarlo mordió otra vez:** el primer intento con `node -e` volvió a
+> escribir 0x11, porque por el camino se pierde una barra y JavaScript lee
+> `\21` como escape octal. Se arregló construyendo la barra con
+> `String.fromCharCode(92)`. Vale para cualquier escape `\XXXX` de CSS.
+>
+> Aparte, y sin relación: `node poc/tests/run-tests.js` da **19 de 23** (4
+> fallan desde los roles nuevos del 2026-08-31). Nadie lo corre; los
+> documentos que dicen "0 failures" en `poc/` están desfasados.
+>
 > ### ⏩ UPDATE 2026-09-25 — las cuentas pasan de Supabase a Firebase
 >
 > **707 tests en verde (eran 679). Desplegado, sello `20260925b`**
