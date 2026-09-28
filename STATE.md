@@ -5,6 +5,37 @@
 > Escrito para alguien que llega SIN NINGÚN contexto previo. Si solo lees
 > una parte de este archivo, que sea esta.
 >
+> ### ⏩ UPDATE 2026-09-28 (b) — diseño nuevo ("mercado")
+>
+> **707 tests en verde. Desplegado, sello `20260928b`**
+> (`https://e3d1868f.offline-nutrition-helper.pages.dev`; 71 ficheros
+> comparados por hash con el repo, 0 difieren). Commit `28e17cc`. NO empujado.
+>
+> Pedido del dueño: "haz un diseño nuevo, cámbialo como quieras". Fondo claro
+> con un punto de verde, tarjetas blancas con sombra, verde de hoja + tomate,
+> Bricolage Grotesque (títulos y cifras grandes) + Inter. La cabecera deja de
+> ser la imagen de marca: nombre y promesa en TEXTO dentro del `<h1>`, la
+> ilustración al lado recortada a la comida, sin foto en el móvil.
+>
+> **Dónde vive:** tokens nuevos en `:root` y en el bloque oscuro (cada par de
+> texto medido, peor caso 4,59:1; en claro `--on-green` es blanco y el oscuro
+> declara su propio `--green-bright`) + una capa de componentes AL FINAL de
+> `style.css` ("DISEÑO 2026-09-28 — capa de componentes"). Esa capa no toca
+> rejillas, carrusel, barras fijas ni nada con `hidden`; repite al final las
+> reglas de móvil que pisa. Quitarla devuelve la forma vieja con los colores
+> nuevos.
+>
+> **Dos trampas que salieron en las capturas:** (1) Bricolage es variable y sus
+> contornos se solapan: con un color SEMITRANSPARENTE los solapes se ven más
+> oscuros y una cifra parece tachada → `--hero-ink-soft` es opaco; no uses
+> `rgba()` para texto en `--font-display`. (2) Con cifras a 24 px el resumen
+> de la compra se salía por la derecha a 390 px → en móvil 20 px y `flex-wrap`.
+>
+> Verificación: el MISMO plan (Math.random sembrado) antes y después en
+> 1440x900 y 390x844, claro y oscuro; las 20 secciones a 640 px sin desbordar.
+> Una primera comprobación por hash dio 41 "distintos" que eran fallos de red
+> de curl: con reintentos, 0.
+>
 > ### ⏩ UPDATE 2026-09-28 — la flecha del carrusel de días vuelve a ser una flecha
 >
 > **707 tests en verde. Desplegado, sello `20260928a`**
