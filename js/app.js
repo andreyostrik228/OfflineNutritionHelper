@@ -1288,6 +1288,16 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   });
 
+  // ── Controles táctiles y pestañas del móvil (2026-09-28) ─────────────
+  // Mejora progresiva: si cualquiera de los dos falla, el formulario y la
+  // página siguen funcionando como antes (ver sus cabeceras).
+  safeInit("form-controls", function () {
+    if (typeof initFormControls === "function") initFormControls();
+  });
+  safeInit("pestanas", function () {
+    if (typeof initPestanas === "function") initPestanas();
+  });
+
   // ── Despensa: sincronización y Etapa 1 (guardar el plan del día) ──────
 
   // Se llama tras cualquier mutación de la despensa (guardar plan, marcar

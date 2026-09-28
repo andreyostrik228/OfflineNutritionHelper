@@ -368,5 +368,18 @@ registerI18nTable("es", {
   "ui.weekplate": "Weekplate",
   "ui.weekplate_planificador_de_menus_con_precios_": "Weekplate — planificador de menús con precios reales",
   "ui.ya_tengo_cuenta": "Ya tengo cuenta",
-  "ui.ya_tienes_un_plan_activo_hoy": "Ya tienes un plan activo hoy"
+  "ui.ya_tienes_un_plan_activo_hoy": "Ya tienes un plan activo hoy",
+  "ui.en_el_carrito": "{n} de {total} en el carrito",
+  "ui.todo_en_el_carrito": "Todo en el carrito",
+  "ui.toca_un_producto_para_marcarlo": "Toca un producto para marcarlo como comprado",
+  "ui.marcar_como_comprado": "{producto}: marcar como comprado",
+  "ui.pestana_menu": "Menú",
+  "ui.pestana_compra": "Compra",
+  "ui.pestana_planes": "Mis planes",
+  "ui.pestana_datos": "Mis datos",
+  "ui.secciones": "Secciones",
+  "ui.cambiar_mis_datos": "Cambiar mis datos",
+  "ui.n_anos": "{n} años",
+  "ui.quitar_uno": "{campo}: menos",
+  "ui.sumar_uno": "{campo}: más"
 });

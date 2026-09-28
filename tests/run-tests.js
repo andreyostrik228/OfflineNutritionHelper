@@ -60,6 +60,7 @@ var suites = [
   "theme.test",
   "i18n.test",
   "shopping-cost.test",
+  "shopping-checks.test",
   "budget-mode.test",
   "plan-generator.characterization.test",
   "plan-report.test",

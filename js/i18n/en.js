@@ -402,5 +402,18 @@ registerI18nTable("en", {
   "tour.saved_titulo": "The days you have already saved",
   "tour.saved_cuerpo": "This is where the plans you confirm stay. You can open them again, tick off what you have eaten and change a single meal.",
   "tour.today_titulo": "Set today's plan",
-  "tour.today_cuerpo": "Saves this plan as today's. When you come back tomorrow it will be waiting, with the time for each meal."
+  "tour.today_cuerpo": "Saves this plan as today's. When you come back tomorrow it will be waiting, with the time for each meal.",
+  "ui.en_el_carrito": "{n} of {total} in the basket",
+  "ui.todo_en_el_carrito": "Everything is in the basket",
+  "ui.toca_un_producto_para_marcarlo": "Tap an item to tick it off",
+  "ui.marcar_como_comprado": "{producto}: mark as bought",
+  "ui.pestana_menu": "Menu",
+  "ui.pestana_compra": "Shopping",
+  "ui.pestana_planes": "My plans",
+  "ui.pestana_datos": "My details",
+  "ui.secciones": "Sections",
+  "ui.cambiar_mis_datos": "Change my details",
+  "ui.n_anos": "{n} years old",
+  "ui.quitar_uno": "{campo}: less",
+  "ui.sumar_uno": "{campo}: more"
 });

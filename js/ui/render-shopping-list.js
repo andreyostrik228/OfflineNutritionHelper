@@ -31,6 +31,8 @@
  *   js/core/budget.js  (aggregateMealItems, computeDayPurchaseCost)
  *   js/ui/render.js    (renderProductFindBtn) — opcional: sin él, la lista
  *                      se pinta igual pero sin el botón de ver la foto
+ *   js/core/shopping-checks.js (marcas de "ya en el carrito") — opcional:
+ *                      sin él, las casillas vuelven a ser solo dibujo
  *
  * Inicialización obligatoria:
  *   Llamar a initShoppingListRefs(refs) desde js/app.js antes de usar.
@@ -48,6 +50,16 @@ var shoppingPanel, shoppingSummaryEl, shoppingCountEl, shoppingListContainer, sh
 // tenga que volver a recorrer el DOM ni recalcular precios.
 var _ultimaListaTexto = "";
 
+// Ultima lista pintada, en DATOS (2026-09-28): marcar un producto vuelve a
+// pintar las filas en su nuevo orden sin recalcular paquetes ni precios.
+var _ultimosItems = [];
+var _ultimaTienda = null;
+
+/** Las marcas son opcionales: sin js/core/shopping-checks.js la lista se pinta igual, sin casillas vivas. */
+function _hayMarcas() {
+  return typeof leerMarcasCompra === "function" && typeof claveDeArticulo === "function";
+}
+
 /**
  * Conecta los nodos DOM necesarios para este módulo.
  * @param {object} refs
@@ -59,6 +71,74 @@ function initShoppingListRefs(refs) {
   shoppingCountEl = refs.shoppingCountEl;
   shoppingListContainer = refs.shoppingListContainer;
   cablearAccionesDeLista();
+  cablearMarcas();
+}
+
+/**
+ * Tocar CUALQUIER punto de una fila la marca o desmarca (2026-09-28). Antes
+ * la casilla era un dibujo con `aria-hidden` y no hacía nada. Un solo
+ * escuchador en la lista, no uno por fila: las filas se repintan enteras.
+ * El 📷 de la fila es un enlace a Mercadona y NO marca.
+ */
+function cablearMarcas() {
+  if (!shoppingListContainer || shoppingListContainer._marcasCableadas || !_hayMarcas()) return;
+  shoppingListContainer._marcasCableadas = true;
+  shoppingListContainer.addEventListener("click", function (ev) {
+    if (ev.target.closest && ev.target.closest("a")) return;
+    var fila = ev.target.closest ? ev.target.closest(".shopping-item") : null;
+    if (!fila || !fila.getAttribute("data-clave")) return;
+    var claves = _ultimosItems.map(claveDeArticulo);
+    alternarMarcaCompra(fila.getAttribute("data-clave"), claves);
+    pintarFilasDeCompra();
+    // El foco vuelve a la casilla de ESA fila, que tras reordenar está en
+    // otro sitio: sin esto, quien navega con teclado pierde dónde estaba.
+    var clave = fila.getAttribute("data-clave");
+    var nueva = Array.prototype.find.call(shoppingListContainer.querySelectorAll(".shopping-item"), function (li) {
+      return li.getAttribute("data-clave") === clave;
+    });
+    if (nueva && ev.detail === 0) {
+      var casilla = nueva.querySelector(".shopping-item__check");
+      if (casilla) casilla.focus();
+    }
+  });
+}
+
+/** Repinta las filas con las marcas de este dispositivo: lo cogido, abajo. */
+function pintarFilasDeCompra() {
+  if (!shoppingListContainer) return;
+  var items = _ultimosItems;
+  var marcas = {};
+  if (_hayMarcas()) {
+    // Se guarda al pintar para podar las marcas de productos que ya no
+    // están en la lista (plan nuevo): si no, se acumularía basura.
+    marcas = guardarMarcasCompra(leerMarcasCompra(), items.map(claveDeArticulo));
+    items = ordenarPorMarca(items, marcas);
+  }
+  // Envuelto a propósito y no `items.map(renderShoppingRow)`: `map` pasa
+  // (elemento, ÍNDICE, array), así que el segundo parámetro recibiría el
+  // índice en vez de la tienda.
+  shoppingListContainer.innerHTML = items.map(function (entry) {
+    return renderShoppingRow(entry, _ultimaTienda, _hayMarcas() && marcas[claveDeArticulo(entry)] === true);
+  }).join("");
+  pintarProgresoDeCompra(marcas);
+}
+
+function pintarProgresoDeCompra(marcas) {
+  var caja = document.getElementById("shoppingProgress");
+  var texto = document.getElementById("shoppingProgressTexto");
+  var relleno = document.getElementById("shoppingProgressRelleno");
+  if (!caja || !texto || !relleno) return;
+  if (!_hayMarcas() || _ultimosItems.length === 0) { caja.hidden = true; return; }
+  var total = _ultimosItems.length;
+  var hechos = _ultimosItems.filter(function (e) { return marcas[claveDeArticulo(e)] === true; }).length;
+  caja.hidden = false;
+  texto.textContent = hechos === 0
+    ? t("ui.toca_un_producto_para_marcarlo")
+    : hechos === total
+      ? t("ui.todo_en_el_carrito")
+      : t("ui.en_el_carrito").replace("{n}", hechos).replace("{total}", total);
+  relleno.style.width = Math.round((hechos / total) * 100) + "%";
+  caja.classList.toggle("is-completo", hechos === total);
 }
 
 /**
@@ -212,6 +292,9 @@ function renderShoppingList(meals, storeId, days) {
   var n = getShoppingDays();
   var items = buildShoppingItems(meals || [], storeId);
 
+  _ultimosItems = items;
+  _ultimaTienda = storeId;
+
   if (items.length === 0) {
     shoppingPanel.hidden = true;
     _ultimaListaTexto = "";
@@ -252,12 +335,7 @@ function renderShoppingList(meals, storeId, days) {
       : t("ui.todo_lo_que_necesitas_comprar_para_el_plan_d");
   }
 
-  // Envuelto a propósito y no `items.map(renderShoppingRow)`: `map` pasa
-  // (elemento, ÍNDICE, array), así que el segundo parámetro recibiría el
-  // índice en vez de la tienda.
-  shoppingListContainer.innerHTML = items.map(function (entry) {
-    return renderShoppingRow(entry, storeId);
-  }).join("");
+  pintarFilasDeCompra();
 }
 
 /**
@@ -414,7 +492,7 @@ function sinAclaracion(label) {
   return corto || label;
 }
 
-function renderShoppingRow(entry, storeId) {
+function renderShoppingRow(entry, storeId, marcado) {
   var p = entry.purchase;
   var usedText = t("ui.usado") + ": " + round0(entry.requiredGrams) + " g";
 
@@ -452,9 +530,18 @@ function renderShoppingRow(entry, storeId) {
         + round0(p.coveredFromPantry) + ' g</div>'
     : '';
 
+  // La casilla es un <button role="checkbox"> de verdad: se alcanza con el
+  // teclado y un lector de pantalla dice si está marcada. La fila entera
+  // también marca (ver cablearMarcas), pero el control accesible es este.
+  var casilla = _hayMarcas()
+    ? '<button type="button" class="shopping-item__check" role="checkbox" aria-checked="' + (marcado ? "true" : "false") + '"' +
+        ' aria-label="' + escapeHtml(t("ui.marcar_como_comprado").replace("{producto}", nombreComida(entry.name))) + '"></button>'
+    : '<span class="shopping-item__check" aria-hidden="true"></span>';
+
   return (
-    '<li class="shopping-item">' +
-      '<span class="shopping-item__check" aria-hidden="true"></span>' +
+    '<li class="shopping-item' + (marcado ? ' is-comprado' : '') + '"' +
+      (_hayMarcas() ? ' data-clave="' + escapeHtml(claveDeArticulo(entry)) + '"' : '') + '>' +
+      casilla +
       '<div class="shopping-item__main">' +
         // El nombre se traduce al PINTAR; `entry.name` sigue en español
         // dentro de resolveShoppingProduct(), que lo usa como clave para
