@@ -52,103 +52,74 @@
 
 /* ══ Tokens ═════════════════════════════════════════════════ */
 :root {
-  /* Color — warm neutrals + one dominant brand color + one contrast accent.
-     Ink/paper/line shifted from cool grey to warm (coffee/parchment) so the
-     canvas reads as a considered material, not default SaaS white/grey. */
-  --ink: #211a14;
-  --ink-soft: #5c5045;
-  /* Aclarado a proposito NO: oscurecido. #8a7c6d daba 3,60:1 sobre --paper,
-     por debajo del 4,5:1 que pide WCAG para texto normal, y se usa en 562
-     elementos visibles a 9-12px: las etiquetas de los macros, los importes
-     de presupuesto, las pistas del formulario. Justo lo que se lee de pie en
-     el supermercado. #786c5f da 4,54:1 y no cambia el tono. */
-  --ink-faint: #786c5f;
+  /* ══ Diseño 2026-09-28 ("mercado") ════════════════════════════════════
+     Fuera el papel crema y la tinta café: fondo claro con un punto de
+     verde, tarjetas blancas que flotan con sombra suave, un verde de hoja
+     como único color de marca y tomate como acento. Todos los pares de
+     texto se midieron con la fórmula de WCAG antes de escribirlos; las
+     cifras van al lado de cada token. */
+  --ink: #14201a;          /* 15,40:1 sobre --paper */
+  --ink-soft: #45534b;     /*  7,43:1 */
+  /* Se usa en cientos de etiquetas de 11-13 px que se leen de pie en el
+     supermercado: no puede bajar de 4,5:1. 4,62 sobre --paper, 5,04 sobre
+     tarjeta blanca. */
+  --ink-faint: #65726a;
   /* Lo que dibuja EL NAVEGADOR y no esta hoja: desplegables, el reloj del
-     campo de hora, las barras de desplazamiento. Sin declararlo, un movil
-     con el sistema en oscuro los pintaba oscuros sobre papel crema. Tiene
-     que seguir al tema ELEGIDO, no al del sistema; el gemelo oscuro esta
-     en el bloque `[data-theme="oscuro"]`. */
+     campo de hora, las barras de desplazamiento. Tiene que seguir al tema
+     ELEGIDO, no al del sistema; el gemelo oscuro esta en el bloque
+     `[data-theme="oscuro"]`. */
   color-scheme: light;
 
-  --paper: #f7f1e5;
-  --paper-raised: #fffdf8;
-  --line: #e6dcc7;
-  --line-strong: #d2c2a3;
+  --paper: #f3f6f1;
+  --paper-raised: #ffffff;
+  --line: #e1e7e0;
+  --line-strong: #c7d1c8;
 
-  /* Color de marca. Se usa con intencion en unos pocos sitios de impacto
-     (panel del heroe, boton principal), nunca como fondo repetido de
-     tarjeta.
+  /* `--green` hace de TEXTO (enlaces, cifras destacadas): 4,97:1 sobre
+     --paper, 5,41 sobre blanco. Los FONDOS verdes van con --green-bright y
+     su tinta --on-green, que en claro es blanca: 4,83:1 el boton, 6,62 en
+     el hover. El hover OSCURECE (con tinta blanca aclarar la hundiria). */
+  --green: #0b7a43;
+  --green-bright: #0a8347;
+  --green-bright-hi: #076b3a;
+  --green-deep: #07512c;   /* 8,16:1 sobre --green-wash */
+  --green-wash: #e3f2e8;
 
-     2026-09-09: el verde pasa de un forestal azulado (#1c5c40, tono 154º)
-     a uno mas vivo y algo mas calido (tono 148º, saturacion del 53% al
-     72%) — el verde fresco de fruteria que se pide para una compra, no el
-     de un club de campo.
+  /* Acento tomate: calorias, la hora de cada toma, el modo sin cocinar.
+     4,82:1 sobre --paper; --clay-deep sobre --clay-wash, 7,02. */
+  --clay: #c23e18;
+  --clay-deep: #8f2c0f;
+  --clay-wash: #fde8df;
 
-     Por que no es el verde vivo tal cual: `--green` hace DOS trabajos a la
-     vez (26 usos como TEXTO sobre papel, 12 como FONDO bajo --on-green), y
-     un verde de supermercado de verdad se queda en 2,5:1 en las dos
-     direcciones. Este mantiene 5,62:1 como tinta sobre --paper y 6,32:1
-     bajo el blanco. Se pierde algo del margen de antes (7,03 y 7,91) y
-     sigue holgadamente sobre el 4,5:1 de WCAG. */
-  --green: #126e3d;
+  /* Los otros dos macros, solo para distinguirlos: 5,09 y 6,46 sobre
+     tarjeta blanca. */
+  --grain: #94650f;
+  --grain-wash: #f8eed8;
+  --slate: #4f616a;
+  --slate-wash: #e6edf1;
 
-  /* El verde VIVO, y solo para FONDOS (2026-09-09). Nace porque --green
-     no puede serlo: hace de texto en 27 sitios y sobre --paper un verde
-     de supermercado da 4,11:1, por debajo del 4,5:1 de WCAG. El fondo si
-     puede, con la tinta oscura de --on-green: 4,85:1 medido.
-
-     --green-bright-hi es el hover, y ACLARA en vez de oscurecer: sobre el
-     --green-deep de antes la tinta oscura se quedaba en 3,35:1. */
-  --green-bright: #00a650;
-  --green-bright-hi: #33c47a;
-  --green-deep: #0a4526;
-  --green-wash: #e2efe4;
-
-  /* Warm contrast accent — terracotta. Energy/calories, and the hero's
-     secondary headline color. */
-  /* #bd4e28 daba 4,36:1 sobre --paper y se usa como texto a 18px (la palabra
-     destacada del titulo): justo por debajo del 4,5:1. Dos puntos mas oscuro
-     lo cruza sin que se note el cambio de tono. */
-  --clay: #b94c27;
-  --clay-deep: #87381a;
-  --clay-wash: #f6e3d2;
-
-  /* Muted earth-tone macro identifiers — exist because 4 macros need 4
-     distinct signals, not for decoration. Warmed to sit with the palette
-     above instead of reading as a cool, unrelated grey. */
-  --grain: #8a6a2c;
-  --grain-wash: #f1e6ce;
-
-  --slate: #5d6b58;
-  --slate-wash: #e7ebe1;
-
-  /* Texto que va ENCIMA de un fondo de color. Existe porque en modo oscuro
-     el verde se aclara —es sobre todo un color de TEXTO: 26 usos como texto
-     frente a 12 como fondo— y entonces el blanco sobre el deja 2,16:1. El
-     color del texto tiene que viajar con su fondo, no estar escrito a mano. */
-  /* Texto sobre un panel INVERTIDO (fondo --ink, como el resumen de la
-     compra). Mismo motivo que --on-green: en oscuro el panel se voltea y el
-     literal casi blanco que habia escrito a mano se quedaba, dando 1,08:1. */
+  /* Texto que va ENCIMA de un fondo de color: viaja con su fondo, no se
+     escribe a mano (en oscuro el verde se aclara y el blanco dejaria 2:1). */
   --on-ink-faint: rgba(246, 245, 241, 0.6);
   --on-ink-soft: rgba(246, 245, 241, 0.75);
-
-  --on-green: #0a2a16;
+  --on-green: #ffffff;
   --on-danger: #fff;
 
   --danger: #b3261e;
   --danger-wash: #fbeae8;
   --danger-border: #f0c9c4;
 
-  /* Hero panel — the one large expressive color block on the page.
-     Sigue al verde de marca: mismo tono nuevo, un punto mas vivo arriba y
-     mas profundo abajo para que el degradado siga leyendose. */
-  --hero-bg-start: #156a3b;
-  --hero-bg-end: #08301c;
-  --hero-ink: #f7f1e5;
-  --hero-ink-soft: rgba(247, 241, 229, 0.76);
+  /* El unico bloque grande de color: resumen de la compra y degradados. */
+  --hero-bg-start: #0b7a43;
+  --hero-bg-end: #064a29;
+  --hero-ink: #f3f6f1;
+  /* OPACO a proposito: Bricolage es variable y sus contornos se solapan;
+     con un color semitransparente los solapes se ven mas oscuros y la
+     cifra parece tachada ("Coste de uso" en el resumen de la compra).
+     4,59:1 en la esquina mas clara del degradado. */
+  --hero-ink-soft: #e4efe8;
 
-  /* Per-macro identity — restrained: protein reuses the brand accent
-     (deliberate — protein is the hero macro of a training planner) */
+  /* Identidad de cada macro */
   --accent-calories: var(--clay);
   --accent-calories-bg: var(--clay-wash);
   --accent-protein: var(--green);
@@ -158,10 +129,14 @@
   --accent-fat: var(--slate);
   --accent-fat-bg: var(--slate-wash);
 
-  /* Type — display carries personality, mono carries every number */
-  --font-display: 'Space Grotesk', 'Arial Narrow', sans-serif;
+  /* Tipografia: Bricolage Grotesque para titulos y cifras grandes (tiene
+     caracter sin dejar de leerse), Inter para todo lo demas. Las cifras ya
+     no van en monoespaciada: Inter con `tabular-nums` (ver body) alinea
+     igual y no parece una terminal. `--font-mono` se queda como nombre
+     para no tocar sus 20 usos. */
+  --font-display: 'Bricolage Grotesque', 'Inter', system-ui, sans-serif;
   --font-body: 'Inter', system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  --font-mono: 'Inter', system-ui, -apple-system, "Segoe UI", sans-serif;
 
   /* Spacing */
   --space-1: 4px;
@@ -174,15 +149,15 @@
   --space-10: 40px;
   --space-12: 48px;
 
-  /* Radius — cards/inputs get modest, confident corners; primary actions
-     are NOT full pills (that reads as marketing-site, not product) */
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 20px;
+  /* Esquinas mas redondas y sombras en capas: las tarjetas se separan del
+     fondo por la sombra, no por un borde marron. */
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
 
-  --shadow-sm: 0 1px 2px rgba(20, 23, 26, 0.06);
-  --shadow-md: 0 10px 28px rgba(20, 23, 26, 0.10);
+  --shadow-sm: 0 1px 2px rgba(18, 38, 28, 0.05), 0 2px 8px rgba(18, 38, 28, 0.05);
+  --shadow-md: 0 18px 40px -18px rgba(18, 38, 28, 0.28), 0 2px 6px rgba(18, 38, 28, 0.04);
 }
 
 /* ══ Reset / Base ═══════════════════════════════════════════ */
@@ -1502,7 +1477,7 @@ button:focus-visible {
    Franja compacta arriba del todo (justo debajo de las 4 tarjetas de
    macros) con la hora de cada toma, más el badge de hora dentro de cada
    meal-card. Clases generadas por js/ui/render-schedule.js. Los tiempos
-   en sí van en JetBrains Mono, igual que kcal/gramos/precios — coherente
+   en sí van en --font-mono, igual que kcal/gramos/precios — coherente
    con el resto del sistema de tipografía (ver cabecera del archivo). */
 .schedule-timeline {
   margin-bottom: var(--space-5);
@@ -5699,46 +5674,43 @@ dialog.ajustes-dialog::backdrop {
   /* Gemelo de la declaracion de :root: los controles del navegador tienen
      que voltear con el tema elegido, no con el del sistema. */
   color-scheme: dark;
-
-  --ink: #f2ece2;
-  --ink-soft: #cabfb1;
-  --ink-faint: #a2978a;
-  --paper: #17130f;
-  --paper-raised: #1f1a15;
-  --line: #332b22;
-  --line-strong: #4a3f32;
-
-  /* El mismo giro de tono que en claro (2026-09-09): mas vivo y algo mas
-     calido. En oscuro el verde se ACLARA, asi que --on-green se oscurece
-     con el; medido, no supuesto: 8,28:1 el boton, 8,97:1 como texto. */
-  --green: #5ec98a;
-  --green-deep: #8fdcac;
-  --green-wash: #14291d;
-
-  --clay: #f0906a;
-  --clay-deep: #f7b195;
-  --clay-wash: #2e1d15;
-
-  --grain: #d4ad63;
-  --grain-wash: #2b2317;
-
-  --slate: #a3b89b;
-  --slate-wash: #1e241c;
-
+  /* Diseño 2026-09-28: verde casi negro en vez de marron. Medido: tinta
+     16,19:1, --ink-faint 6,54 sobre --paper y 5,99 sobre tarjeta. */
+  --ink: #e8f0eb;
+  --ink-soft: #b7c5bd;
+  --ink-faint: #8d9c93;
+  --paper: #0d1310;
+  --paper-raised: #151d18;
+  --line: #222d26;
+  --line-strong: #33423a;
+  /* En oscuro el verde se ACLARA y su tinta se oscurece: --green como texto
+     9,39:1; boton --green-bright con --on-green 9,11:1 (10,76 en hover).
+     --green-bright tiene que declararse aqui: el de claro es oscuro y con
+     tinta oscura encima no se leeria. */
+  --green: #4cce88;
+  --green-bright: #3dd68c;
+  --green-bright-hi: #6ee3aa;
+  --green-deep: #8ae2b2;
+  --green-wash: #10271a;
+  --clay: #ff8a66;
+  --clay-deep: #ffb49c;
+  --clay-wash: #2b1912;
+  --grain: #e2b660;
+  --grain-wash: #2a2113;
+  --slate: #a2b6bf;
+  --slate-wash: #19232a;
   --danger: #f08a80;
   --danger-wash: #2a1512;
   --danger-border: #5c2b26;
-
   /* Sobre un fondo claro de color, la tinta se oscurece. */
-  --on-ink-faint: rgba(23, 19, 15, 0.66);
-  --on-ink-soft: rgba(23, 19, 15, 0.8);
-  --on-green: #06210f;
+  --on-ink-faint: rgba(13, 19, 16, 0.66);
+  --on-ink-soft: rgba(13, 19, 16, 0.8);
+  --on-green: #04210f;
   --on-danger: #2a0f0d;
-
-  /* El heroe ya era verde oscuro con texto claro: sigue siendolo, solo
-     gira al tono nuevo. */
-  --hero-bg-start: #0e2a1b;
-  --hero-bg-end: #071a10;
+  --hero-bg-start: #0f3b26;
+  --hero-bg-end: #072113;
+  --hero-ink: #e8f0eb;
+  --hero-ink-soft: #b8cabe;
 }
 
 
@@ -5830,3 +5802,506 @@ dialog.ajustes-dialog::backdrop {
    cada tienda sale de la paleta de este producto, no del manual de marca
    del supermercado.
    ======================================================================== */
+
+/* ══ DISEÑO 2026-09-28 — capa de componentes ══════════════════════════════
+   Los tokens del principio cambian color, letra, esquinas y sombras en toda
+   la hoja. Esta capa cambia la FORMA de las piezas que más se ven: campos,
+   presupuesto, botones, resumen de macros, horario, tarjetas de comida y
+   lista de la compra. Va al FINAL a propósito: gana por orden, sin subir
+   la especificidad de nada.
+
+   Lo que NO toca: rejillas, carrusel de días, barras fijas y todo lo que
+   se esconde con `hidden` (ver tests/css-visibility.test.js). Eso ya está
+   medido donde vive y aquí no se repite. Las reglas del móvil que esta
+   capa pisaría se repiten abajo, en su propio bloque de 640 px. ══════════ */
+
+body {
+  font-variant-numeric: tabular-nums;
+  background-color: var(--paper);
+  /* Un halo verde muy suave arriba: da profundidad sin un solo píxel de
+     color fuerte. En oscuro --green-wash es casi negro y el halo apenas se
+     nota, que es lo que se busca. */
+  background-image: radial-gradient(1100px 440px at 50% -180px, var(--green-wash), transparent 72%);
+  background-repeat: no-repeat;
+}
+
+/* ── Títulos ─────────────────────────────────────────────────────────── */
+.panel h2,
+.shopping-panel__head h2 {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+}
+
+/* ── Cabecera ────────────────────────────────────────────────────────── */
+.topbar__menu-btn,
+.topbar__profile-btn {
+  border-color: var(--line);
+  box-shadow: var(--shadow-sm);
+}
+.topbar__menu-btn {
+  border-radius: var(--radius-md);
+}
+/* ── Formulario ──────────────────────────────────────────────────────── */
+/* En el portátil el formulario pasa a ser una tarjeta propia, y la columna
+   crece 40 px para que la tarjeta no le quite sitio a los campos. En el
+   móvil sigue plano: ahí la barra fija de "Generar plan" funde con el
+   fondo de la página y una tarjeta la cortaría. */
+@media (min-width: 1025px) {
+  .grid {
+    grid-template-columns: 380px 1fr;
+  }
+  .grid > .panel:not(.panel--results) {
+    padding: var(--space-6) var(--space-6) var(--space-5);
+    background: var(--paper-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-sm);
+  }
+  .grid > .panel:not(.panel--results) > .form-section-label:first-child {
+    margin-top: 0;
+  }
+}
+
+.form-section-label {
+  color: var(--green);
+  font-size: 11.5px;
+  letter-spacing: 0.1em;
+}
+
+/* Etiquetas en minúscula normal y un punto más grandes: en mayúsculas de
+   11 px se leían como un formulario de hacienda. */
+.field > label,
+.budget-group-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-soft);
+}
+
+input:not([type="checkbox"]):not([type="radio"]),
+select {
+  padding: 12px 14px;
+  border: 1.5px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background-color: var(--paper-raised);
+  font-family: var(--font-body);
+  font-size: 15px;
+}
+select {
+  padding-right: var(--space-8);
+}
+input:not([type="checkbox"]):not([type="radio"]):focus,
+select:focus {
+  border-color: var(--green);
+  box-shadow: 0 0 0 4px var(--green-wash);
+}
+
+/* ── Presupuesto: cuatro tarjetas en 2x2, la elegida llena de verde ──── */
+.budget-modes {
+  grid-template-columns: repeat(2, 1fr);
+}
+.budget-chip {
+  align-items: flex-start;
+  text-align: left;
+  padding: 12px 14px;
+  border-width: 1.5px;
+  border-radius: var(--radius-md);
+}
+.budget-chip__title {
+  font-size: 13.5px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.budget-chip__amount {
+  font-size: 12px;
+}
+.visually-hidden:checked + .budget-chip {
+  background: var(--green-bright);
+  border-color: var(--green-bright);
+  box-shadow: 0 10px 20px -12px rgba(8, 122, 66, 0.9);
+}
+.visually-hidden:checked + .budget-chip .budget-chip__title,
+.visually-hidden:checked + .budget-chip .budget-chip__amount {
+  color: var(--on-green);
+}
+
+/* ── Botones ─────────────────────────────────────────────────────────── */
+.btn-primary,
+.btn-secondary,
+.btn-nocook {
+  border-radius: 999px;
+}
+.btn-primary {
+  padding: 14px 24px;
+  font-size: 15px;
+  font-weight: 700;
+  box-shadow: 0 12px 24px -14px rgba(8, 122, 66, 0.85);
+}
+@media (hover: hover) {
+  .btn-primary:hover {
+    box-shadow: 0 16px 28px -14px rgba(8, 122, 66, 0.95);
+  }
+}
+.btn-secondary {
+  border: 1.5px solid var(--line-strong);
+  color: var(--ink);
+}
+.btn-nocook {
+  border: 1.5px solid transparent;
+}
+.plan-days__btn {
+  border-width: 1.5px;
+  border-radius: 999px;
+  font-weight: 700;
+}
+.plan-days__btn.is-active {
+  background: var(--green-bright);
+  border-color: var(--green-bright);
+}
+
+/* ── Resumen de macros: cuatro tarjetas sueltas en vez de una tira ───── */
+.nutrition-strip {
+  gap: var(--space-3);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
+}
+.nutrition-strip > .summary-card {
+  padding: var(--space-4);
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+/* La raya de color de arriba se cambia por una pastilla con el icono. */
+.summary-card::before {
+  display: none;
+}
+.summary-card--calories { --card-wash: var(--accent-calories-bg); }
+.summary-card--protein { --card-wash: var(--accent-protein-bg); }
+.summary-card--carbs { --card-wash: var(--accent-carbs-bg); }
+.summary-card--fat { --card-wash: var(--accent-fat-bg); }
+.summary-card h3 {
+  color: var(--ink-soft);
+  font-size: 11px;
+}
+.summary-card h3 .icon-badge {
+  width: 26px;
+  height: 26px;
+  border-radius: 9px;
+  background: var(--card-wash, var(--green-wash));
+}
+.summary-card .big {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(24px, 2.4vw, 32px);
+  letter-spacing: -0.02em;
+}
+/* El destello al llegar un plan nuevo terminaba en `transparent`; sobre
+   una tarjeta blanca eso era un parpadeo. Ahora termina en la tarjeta. */
+@keyframes cardLandingTarjeta {
+  0% { background: var(--card-accent-bg, var(--paper-raised)); }
+  100% { background: var(--paper-raised); }
+}
+.summary-card.pulse {
+  animation-name: cardLandingTarjeta;
+}
+
+/* ── Horario del día ─────────────────────────────────────────────────── */
+.schedule-timeline__item {
+  border-color: var(--line);
+  box-shadow: var(--shadow-sm);
+}
+.schedule-timeline__item--next {
+  background: var(--green-bright);
+  border-color: var(--green-bright);
+}
+.schedule-timeline__item--next .schedule-timeline__time,
+.schedule-timeline__item--next .schedule-timeline__label,
+.schedule-timeline__item--next .schedule-timeline__next-tag {
+  color: var(--on-green);
+}
+
+/* ── Tarjetas de comida ──────────────────────────────────────────────── */
+.meal-card {
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-sm);
+}
+@media (hover: hover) {
+  .meal-card:hover {
+    border-color: var(--line-strong);
+  }
+}
+.meal-head {
+  padding: var(--space-4) var(--space-5);
+  background: var(--paper-raised);
+}
+.meal-head h3 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+.meal-head .meal-kcal {
+  color: var(--ink);
+  font-weight: 700;
+}
+.meal-time-badge {
+  font-weight: 700;
+}
+
+/* Los ingredientes dejan de ser cajitas beis dentro de la tarjeta: son
+   renglones de ticket separados por una línea fina. */
+.meal-items {
+  gap: 0;
+}
+.food-row {
+  padding: 12px 2px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+}
+.food-row:last-child {
+  border-bottom: 0;
+}
+@media (hover: hover) {
+  .food-row:hover {
+    background: transparent;
+  }
+}
+.food-macro__badge,
+.food-purchase__badge {
+  background: var(--green-wash);
+  color: var(--green-deep);
+  font-size: 9.5px;
+}
+
+/* ── Lista de la compra ──────────────────────────────────────────────── */
+/* El resumen era un bloque negro; ahora es el único bloque verde de la
+   página. Los colores del texto van con el degradado y no con --on-ink:
+   en oscuro --on-ink se oscurece y sobre verde oscuro no se leería. */
+.shopping-summary {
+  background: linear-gradient(135deg, var(--hero-bg-start), var(--hero-bg-end));
+  color: var(--hero-ink);
+  box-shadow: var(--shadow-md);
+}
+.shopping-summary__stat span {
+  color: var(--hero-ink-soft);
+}
+.shopping-summary__stat strong {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 24px;
+  letter-spacing: -0.01em;
+}
+.shopping-summary__stat--muted strong {
+  font-size: 17px;
+  color: var(--hero-ink-soft);
+}
+.shopping-list {
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+.shopping-item {
+  padding: var(--space-3) var(--space-4);
+}
+.shopping-item:last-child {
+  border-bottom: 0;
+}
+.shopping-item__check {
+  width: 20px;
+  height: 20px;
+  border-radius: 7px;
+}
+
+/* ── Móvil: lo que la capa pisaría de "Mobile: a denser recomposition" ─ */
+@media (max-width: 640px) {
+  /* 16 px o iOS amplía la página al tocar un campo. */
+  input:not([type="checkbox"]):not([type="radio"]),
+  select {
+    font-size: 16px;
+  }
+  .nutrition-strip {
+    gap: var(--space-2);
+  }
+  .nutrition-strip > .summary-card {
+    padding: 12px;
+  }
+  .meal-head {
+    padding: 12px 14px;
+  }
+  .food-row {
+    padding: 10px 0;
+  }
+  .shopping-item {
+    padding: 10px 12px;
+  }
+  .btn-primary {
+    padding: 14px 20px;
+  }
+  /* Con las cifras a 24 px, "Coste de uso" se salía por la derecha a
+     390 px: se cortaba en "€19.3". */
+  .shopping-summary {
+    flex-wrap: wrap;
+    row-gap: var(--space-2);
+  }
+  .shopping-summary__stat strong {
+    font-size: 20px;
+  }
+  .shopping-summary__stat--muted strong {
+    font-size: 15px;
+  }
+}
+
+/* ── Cabecera "mercado" (index.html, .hero--mercado) ─────────────────── */
+/* Especificidad: `.hero h1` (0,1,1) le pondría al título 84 px y 14ch;
+   por eso los selectores de aquí van con `.hero--mercado` delante. */
+.hero--mercado {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-8);
+  margin: 0 0 var(--space-8);
+  padding: clamp(24px, 4vw, 44px) clamp(24px, 4.5vw, 52px);
+  border-radius: var(--radius-xl);
+  background: linear-gradient(135deg, var(--hero-bg-start) 0%, var(--hero-bg-end) 100%);
+  color: var(--hero-ink);
+  box-shadow: var(--shadow-md);
+}
+.hero--mercado::before {
+  top: -45%;
+  right: 18%;
+  width: 520px;
+  height: 520px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0) 65%);
+}
+.hero--mercado .brand-eyebrow {
+  transform: none;
+}
+.hero--mercado .brand-eyebrow .badge-text {
+  padding: 5px 12px 5px 10px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  color: var(--hero-ink);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+}
+.hero--mercado .brand-eyebrow .badge-text::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 7px;
+  border-radius: 50%;
+  background: #7cf2b0;
+  vertical-align: 1px;
+}
+.hero--mercado .hero__titulo {
+  margin: var(--space-4) 0 0;
+  max-width: none;
+  font-family: var(--font-display);
+  color: var(--hero-ink);
+  line-height: 1;
+}
+.hero--mercado .hero__nombre {
+  display: block;
+  font-size: clamp(40px, 5.6vw, 72px);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 0.95;
+}
+.hero--mercado .hero__lema {
+  display: block;
+  max-width: 30ch;
+  margin-top: var(--space-3);
+  font-size: clamp(17px, 1.8vw, 24px);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--hero-ink-soft);
+}
+/* Melocotón sobre el verde: 3,9:1 en el punto más claro del degradado, y
+   el lema es texto GRANDE (24 px, seminegrita), para el que WCAG pide 3:1. */
+.hero--mercado .hero__lema-acento {
+  color: #ffd2ae;
+}
+/* La ilustración, recortada a la comida (el rótulo de la izquierda ya lo
+   dice el <h1>) y girada un poco, como una foto sobre la mesa. */
+.hero--mercado .hero__foto {
+  width: clamp(170px, 21vw, 270px);
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 5px solid rgba(255, 255, 255, 0.92);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 22px 44px -22px rgba(0, 0, 0, 0.55);
+  transform: rotate(2.5deg);
+}
+.hero--mercado .hero__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  aspect-ratio: auto;
+  object-fit: cover;
+  /* Pegada a la derecha y un 12% más grande: a 92% asomaban por la
+     izquierda restos del rótulo del dibujo ("e", "reales"). */
+  object-position: 100% 50%;
+  transform: scale(1.12);
+  transform-origin: 100% 50%;
+  border-radius: 0;
+}
+@media (max-width: 640px) {
+  .hero--mercado {
+    grid-template-columns: 1fr;
+    gap: 0;
+    margin-bottom: var(--space-5);
+    padding: 20px 20px 22px;
+  }
+  .hero--mercado .hero__foto {
+    display: none;
+  }
+  .hero--mercado .hero__titulo {
+    margin-top: var(--space-3);
+  }
+  .hero--mercado .hero__lema {
+    margin-top: var(--space-2);
+  }
+}
+
+/* ── Bienvenida (primera visita) ─────────────────────────────────────── */
+/* Era texto suelto sobre el papel; ahora una tarjeta que flota sobre el
+   fondo con el mismo halo verde que la página. Solo color y forma: nada
+   de `display`, que aquí decide cuándo se ve (ver "La bienvenida se ve
+   SIN JavaScript" más arriba). */
+.onboarding {
+  background-color: var(--paper);
+  background-image: radial-gradient(900px 520px at 50% -12%, var(--green-wash), transparent 70%);
+  background-repeat: no-repeat;
+}
+.onboarding__card {
+  padding: clamp(24px, 5vw, 44px);
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
+}
+.onboarding__brand {
+  margin-bottom: var(--space-6);
+}
+.onboarding__brand-mark {
+  border-radius: var(--radius-md);
+}
+.onboarding__title {
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+.onboarding__summary li::before {
+  border-radius: 50%;
+}

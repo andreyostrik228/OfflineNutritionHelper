@@ -54,7 +54,7 @@
   <meta name="twitter:description" content="Menús de una semana con lo que cuestan de verdad. Funciona sin conexión.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <!-- ══ VERSION DE LOS RECURSOS ═══════════════════════════════════════
        El `?v=` de cada script y de la hoja de estilos existe porque el
        movil del usuario se quedo servido con una copia vieja de
@@ -67,7 +67,7 @@
        .css. Si se olvida, lo peor que pasa es lo de siempre; si se sube,
        no hay mezcla posible.
        ══════════════════════════════════════════════════════════════════ -->
-  <link rel="stylesheet" href="assets/css/style.css?v=20260928a">
+  <link rel="stylesheet" href="assets/css/style.css?v=20260928b">
 
   <!-- ══ ANTES DE PINTAR NADA ══════════════════════════════════════════
        Decide, de forma SÍNCRONA y antes del primer pintado, si este
@@ -707,44 +707,27 @@
     <div class="next-meal-sticky" id="nextMealSticky" hidden></div>
     <main id="mainContent" tabindex="-1">
 
-    <!-- ══ CABECERA compacta (2026-08-23, simplificación visual) -- antes
-         "portada" con h1 gigante + párrafo + círculo decorativo, dominaba
-         toda la primera pantalla sin ser accionable. Ahora es una barra de
-         título de una sola fila (icono + h1 pequeño + badge), sin párrafo
-         (eliminado del todo, no oculto) -- ver .hero--compact en
-         style.css. ══ -->
-    <!-- ══ CABECERA con la imagen de marca (2026-09-10) ══════════════════
-         Antes era una barra de titulo que decia "Planificador de nutricion"
-         mientras la aplicacion se llama Weekplate desde el 2026-09-08: el
-         nombre solo aparecia en la pestana y en la tarjeta al compartir.
-         Ahora la cabecera es esa misma imagen, que ya trae el nombre.
-
-         El <h1> se queda (con la imagen dentro) porque una pagina sin h1
-         pierde su estructura para un lector de pantalla y para un buscador;
-         el `alt` lleva el texto que antes era el titulo.
-
-         `width`/`height` reales para que el hueco se reserve antes de que
-         baje la imagen y la pagina no de un salto. ══════════════════════ -->
-    <section class="hero hero--imagen">
-      <h1 class="hero__marca">
-        <!-- Dos imagenes, no una. Una imagen tiene proporcion FIJA y el
-             contenedor va de 359 px en un movil a 1.280 en un portatil: la
-             misma ilustracion no puede ser una franja ancha arriba y algo
-             legible abajo. La ancha (3,05:1) a 359 px de ancho se quedaria
-             en 118 px de alto, y la del movil (1,9:1) a 1.280 daria 671 px
-             de alto -- que es lo que ya se rechazo por gigante.
-             El corte esta en 720 px, que es donde el contenedor empieza a
-             ser mas ancho que alto el dibujo. La proporcion de cada una la
-             fija el CSS (`aspect-ratio`), no estos atributos, para que el
-             hueco se reserve antes de que baje la imagen. -->
-        <picture>
-          <source media="(min-width: 720px)" srcset="assets/img/hero-weekplate.jpg?v=20260928a">
-          <img class="hero__img" src="assets/img/og-weekplate.jpg?v=20260928a"
-               decoding="async"
-               data-i18n-alt="ui.weekplate_planificador_de_menus_con_precios_" alt="Weekplate &mdash; planificador de men&uacute;s con precios reales">
-        </picture>
-      </h1>
-      <span class="brand-eyebrow"><span class="badge-text" data-i18n="ui.motor_de_reglas_100_offline">Motor de reglas &middot; 100% offline</span></span>
+    <!-- ══ CABECERA "mercado" (2026-09-28) ══════════════════════════════════
+         Sustituye a la imagen de marca como cabecera. El nombre y la promesa
+         van en TEXTO dentro del <h1> (se traducen con las mismas claves de
+         la bienvenida y los lee un lector de pantalla); la ilustración se
+         queda al lado, recortada a la comida, sin el rótulo que ya dice el
+         <h1>, y por eso con `alt` vacío: es decoración.
+         Historia que manda sobre el tamaño: una cabecera gigante ya se
+         rechazó el 2026-08-23 por comerse la primera pantalla sin ser
+         accionable. En el móvil la foto se esconde y el bloque se queda en
+         unos 170 px (ver .hero--mercado en style.css). ════════════════════ -->
+    <section class="hero hero--mercado">
+      <div class="hero__texto">
+        <span class="brand-eyebrow"><span class="badge-text" data-i18n="ui.motor_de_reglas_100_offline">Motor de reglas &middot; 100% offline</span></span>
+        <h1 class="hero__titulo">
+          <span class="hero__nombre" data-i18n="ui.weekplate">Weekplate</span>
+          <span class="hero__lema"><span data-i18n="ui.menus_de_una_semana">Men&uacute;s de una semana,</span> <span class="hero__lema-acento" data-i18n="ui.con_lo_que_cuestan_de_verdad">con lo que cuestan de verdad</span></span>
+        </h1>
+      </div>
+      <div class="hero__foto" aria-hidden="true">
+        <img class="hero__img" src="assets/img/og-weekplate.jpg?v=20260928b" alt="" width="1732" height="908" decoding="async">
+      </div>
     </section>
 
     <div class="grid">
@@ -1371,17 +1354,17 @@
  <script src="https://cdn.jsdelivr.net/npm/firebase@12.19.0/firebase-app-compat.js"></script>
  <script src="https://cdn.jsdelivr.net/npm/firebase@12.19.0/firebase-auth-compat.js"></script>
 
-<script src="js/data/firebase-config.js?v=20260928a"></script>
-<script src="js/data/legal.js?v=20260928a"></script>
-<script src="js/data/onboarding-steps.js?v=20260928a"></script>
-<script src="js/data/tour-steps.js?v=20260928a"></script>
-<script src="js/data/dishes.js?v=20260928a"></script>
+<script src="js/data/firebase-config.js?v=20260928b"></script>
+<script src="js/data/legal.js?v=20260928b"></script>
+<script src="js/data/onboarding-steps.js?v=20260928b"></script>
+<script src="js/data/tour-steps.js?v=20260928b"></script>
+<script src="js/data/dishes.js?v=20260928b"></script>
 <!-- dish-instructions.js: pasos/equipo/dificultad, ADITIVO y opcional.
      Un plato sin entrada aqui se comporta exactamente como antes -- por
      eso dishes.js no se toca y los golden-master no se mueven. -->
-<script src="js/data/dish-instructions.js?v=20260928a"></script>
-<script src="js/data/dish-cuisine.js?v=20260928a"></script>
-<script src="js/data/real-products.js?v=20260928a"></script>
+<script src="js/data/dish-instructions.js?v=20260928b"></script>
+<script src="js/data/dish-cuisine.js?v=20260928b"></script>
+<script src="js/data/real-products.js?v=20260928b"></script>
 <!-- Alcampo y Carrefour se cayeron el 2026-09-07: 103 KB que viajaban a
      cada visitante sin que NADIE los leyera. Comprobado antes de quitarlos:
      ningun fichero fuera de ellos mismos menciona REAL_PRODUCTS_ALCAMPO ni
@@ -1389,106 +1372,106 @@
      js/data/prices/ solo existe mercadona.js -- asi que ni con precios
      habrian servido. Si algun dia vuelve el selector de tienda, vuelven
      desde git; ver la cabecera de js/core/pricing.js para el porque. -->
-<script src="js/data/packaging.js?v=20260928a"></script>
-<script src="js/data/servings.js?v=20260928a"></script>
-<script src="js/data/real-ingredient-matches.js?v=20260928a"></script>
-<script src="js/data/product-links.js?v=20260928a"></script>
-<script src="js/data/ingredient-nutrition.js?v=20260928a"></script>
-<script src="js/data/no-cook-classifier.js?v=20260928a"></script>
+<script src="js/data/packaging.js?v=20260928b"></script>
+<script src="js/data/servings.js?v=20260928b"></script>
+<script src="js/data/real-ingredient-matches.js?v=20260928b"></script>
+<script src="js/data/product-links.js?v=20260928b"></script>
+<script src="js/data/ingredient-nutrition.js?v=20260928b"></script>
+<script src="js/data/no-cook-classifier.js?v=20260928b"></script>
 <!-- Raciones/papeles de cada producto y formas de comida del modo "sin
      cocinar" (2026-09-01). serving-sizes.js antes que el generador: sin el
      ANTES no habia gramos por racion y los macros en pantalla eran los de
      100 g. -->
-<script src="js/data/serving-sizes.js?v=20260928a"></script>
-<script src="js/data/no-cook-templates.js?v=20260928a"></script>
-<script src="js/data/prices/mercadona.js?v=20260928a"></script>
-<script src="js/data/budget-presets.js?v=20260928a"></script>
-<script src="js/data/dislike-groups.js?v=20260928a"></script>
-<script src="js/data/shelf-life.js?v=20260928a"></script>
+<script src="js/data/serving-sizes.js?v=20260928b"></script>
+<script src="js/data/no-cook-templates.js?v=20260928b"></script>
+<script src="js/data/prices/mercadona.js?v=20260928b"></script>
+<script src="js/data/budget-presets.js?v=20260928b"></script>
+<script src="js/data/dislike-groups.js?v=20260928b"></script>
+<script src="js/data/shelf-life.js?v=20260928b"></script>
 <!-- Conservación REAL publicada por Mercadona (generado por
      PythonProject/scripts/export_product_storage.py). Tiene prioridad
      sobre shelf-life.js, que es estimación nuestra. -->
-<script src="js/data/product-storage.js?v=20260928a"></script>
+<script src="js/data/product-storage.js?v=20260928b"></script>
 <!-- Alergenos declarados en la etiqueta de Mercadona (generado por
      scratchpad/gen_allergens.js). Solo para MOSTRAR en las tarjetas de
      "sin cocinar" -- no es un filtro, ver js/core/allergens.js. -->
-<script src="js/data/product-allergens.js?v=20260928a"></script>
+<script src="js/data/product-allergens.js?v=20260928b"></script>
 <!-- Estado del tema. Sin DOM: solo guarda, valida y resuelve.
      Antes que cualquier ui/ porque render-menu.js lo usa. -->
-<script src="js/core/theme.js?v=20260928a"></script>
+<script src="js/core/theme.js?v=20260928b"></script>
 <!-- Idioma. i18n.js ANTES que las tablas: son ellas las que llaman a
      registerI18nTable(). Y las tablas antes que cualquier ui/, que es
      quien pinta. Se cargan TODAS y no solo la elegida: cargarla despues
      de pintar hace parpadear la pagina del espanol al idioma elegido, y
      esconderla hasta que llegue es lo que prohibe 7.2. -->
-<script src="js/core/i18n.js?v=20260928a"></script>
-<script src="js/i18n/es.js?v=20260928a"></script>
-<script src="js/i18n/en.js?v=20260928a"></script>
+<script src="js/core/i18n.js?v=20260928b"></script>
+<script src="js/i18n/es.js?v=20260928b"></script>
+<script src="js/i18n/en.js?v=20260928b"></script>
 <!-- Los nombres de comida van aparte de las cadenas de interfaz: son un
      diccionario, no una lista de frases, y el que traduce nombres de plato
      se compone de piezas para que los platos NUEVOS del generador salgan
      traducidos solos. -->
-<script src="js/i18n/food-en.js?v=20260928a"></script>
+<script src="js/i18n/food-en.js?v=20260928b"></script>
 <!-- Los pasos de las recetas: 1.682 frases distintas, tabla propia. Van
      por la frase española entera, igual que los nombres, para que el
      fichero se pueda revisar en paralelo con dish-instructions.js. -->
-<script src="js/i18n/steps-en.js?v=20260928a"></script>
+<script src="js/i18n/steps-en.js?v=20260928b"></script>
 <!-- Las etiquetas de envase ("barra", "tarro", "bandeja"): describen CÓMO
      se compra algo, no el nombre comercial, así que sí se traducen. Llevan
      singular y plural porque en inglés no basta con añadir una "s". -->
-<script src="js/i18n/packages-en.js?v=20260928a"></script>
-<script src="js/core/utils.js?v=20260928a"></script>
-<script src="js/core/pricing.js?v=20260928a"></script>
+<script src="js/i18n/packages-en.js?v=20260928b"></script>
+<script src="js/core/utils.js?v=20260928b"></script>
+<script src="js/core/pricing.js?v=20260928b"></script>
 <!-- servings.js despues de pricing.js (usa normalizeIngredientKey) y de
      data/servings.js + packaging.js, de donde saca las unidades; antes de
      dish-selector/plan-generator y de render.js, que son quienes preguntan. -->
-<script src="js/core/servings.js?v=20260928a"></script>
-<script src="js/core/nutrition.js?v=20260928a"></script>
+<script src="js/core/servings.js?v=20260928b"></script>
+<script src="js/core/nutrition.js?v=20260928b"></script>
 <!-- expiry.js despues de pricing.js (usa normalizeIngredientKey) y de
      shelf-life.js (usa getShelfLife); antes de pantry.js, que lo consulta
      desde listPantryEntries(). Los tres son opcionales: si expiry.js
      faltara, la despensa sigue funcionando sin columna de caducidad. -->
-<script src="js/core/expiry.js?v=20260928a"></script>
+<script src="js/core/expiry.js?v=20260928b"></script>
 <!-- preferences.js despues de pricing.js (reutiliza
      normalizeIngredientKey para no tener dos normalizaciones que puedan
      divergir). Es SOLO preferencias blandas ("no me gusta"); las alergias
      son una restriccion de seguridad y viviran en su propio archivo, a
      proposito -- ver la cabecera de preferences.js. -->
-<script src="js/core/preferences.js?v=20260928a"></script>
+<script src="js/core/preferences.js?v=20260928b"></script>
 <!-- allergens.js: MOSTRAR alergenos de etiqueta, nunca filtrar. Aparte de
      preferences.js a proposito (ver cabecera de ambos). Despues de
      product-allergens.js (usa PRODUCT_ALLERGENS) y utils.js (escapeHtml). -->
-<script src="js/core/allergens.js?v=20260928a"></script>
-<script src="js/core/pantry.js?v=20260928a"></script>
-<script src="js/core/budget.js?v=20260928a"></script>
-<script src="js/core/calculator.js?v=20260928a"></script>
-<script src="js/core/meal-helpers.js?v=20260928a"></script>
-<script src="js/core/meal-schedule.js?v=20260928a"></script>
-<script src="js/core/firebase-client.js?v=20260928a"></script>
-<script src="js/core/settings.js?v=20260928a"></script>
-<script src="js/core/onboarding.js?v=20260928a"></script>
-<script src="js/core/auth.js?v=20260928a"></script>
-<script src="js/core/cloud-sync.js?v=20260928a"></script>
-<script src="js/core/migration.js?v=20260928a"></script>
-<script src="js/engine/dish-selector.js?v=20260928a"></script>
-<script src="js/engine/plan-generator.js?v=20260928a"></script>
-<script src="js/engine/no-cook-generator.js?v=20260928a"></script>
-<script src="js/ui/render.js?v=20260928a"></script>
-<script src="js/ui/render-schedule.js?v=20260928a"></script>
-<script src="js/ui/render-shopping-list.js?v=20260928a"></script>
-<script src="js/ui/render-pantry.js?v=20260928a"></script>
-<script src="js/ui/render-insights.js?v=20260928a"></script>
-<script src="js/ui/render-real-products.js?v=20260928a"></script>
-<script src="js/ui/render-no-cook.js?v=20260928a"></script>
-<script src="js/ui/render-auth.js?v=20260928a"></script>
-<script src="js/ui/onboarding-ui.js?v=20260928a"></script>
-<script src="js/ui/tour.js?v=20260928a"></script>
-<script src="js/ui/ingredient-suggest.js?v=20260928a"></script>
-<script src="js/ui/animations.js?v=20260928a"></script>
+<script src="js/core/allergens.js?v=20260928b"></script>
+<script src="js/core/pantry.js?v=20260928b"></script>
+<script src="js/core/budget.js?v=20260928b"></script>
+<script src="js/core/calculator.js?v=20260928b"></script>
+<script src="js/core/meal-helpers.js?v=20260928b"></script>
+<script src="js/core/meal-schedule.js?v=20260928b"></script>
+<script src="js/core/firebase-client.js?v=20260928b"></script>
+<script src="js/core/settings.js?v=20260928b"></script>
+<script src="js/core/onboarding.js?v=20260928b"></script>
+<script src="js/core/auth.js?v=20260928b"></script>
+<script src="js/core/cloud-sync.js?v=20260928b"></script>
+<script src="js/core/migration.js?v=20260928b"></script>
+<script src="js/engine/dish-selector.js?v=20260928b"></script>
+<script src="js/engine/plan-generator.js?v=20260928b"></script>
+<script src="js/engine/no-cook-generator.js?v=20260928b"></script>
+<script src="js/ui/render.js?v=20260928b"></script>
+<script src="js/ui/render-schedule.js?v=20260928b"></script>
+<script src="js/ui/render-shopping-list.js?v=20260928b"></script>
+<script src="js/ui/render-pantry.js?v=20260928b"></script>
+<script src="js/ui/render-insights.js?v=20260928b"></script>
+<script src="js/ui/render-real-products.js?v=20260928b"></script>
+<script src="js/ui/render-no-cook.js?v=20260928b"></script>
+<script src="js/ui/render-auth.js?v=20260928b"></script>
+<script src="js/ui/onboarding-ui.js?v=20260928b"></script>
+<script src="js/ui/tour.js?v=20260928b"></script>
+<script src="js/ui/ingredient-suggest.js?v=20260928b"></script>
+<script src="js/ui/animations.js?v=20260928b"></script>
 <!-- El menu de ajustes. Despues de onboarding-ui.js (usa
      openLegalDialog) y de tour.js (usa startTour via app.js). -->
-<script src="js/ui/render-menu.js?v=20260928a"></script>
-<script src="js/app.js?v=20260928a"></script>
+<script src="js/ui/render-menu.js?v=20260928b"></script>
+<script src="js/app.js?v=20260928b"></script>
 
 <!-- ══ OFFLINE DE VERDAD (2026-09-07) ═══════════════════════════════════
      Se registra al final y envuelto en try: si el navegador no soporta
