@@ -5,6 +5,30 @@
 > Escrito para alguien que llega SIN NINGÚN contexto previo. Si solo lees
 > una parte de este archivo, que sea esta.
 >
+> ### ⏩ UPDATE 2026-09-28 (c) — botones cómodos, pestañas en el móvil, casillas vivas
+>
+> **716 tests en verde (eran 707). Desplegado, sello `20260928c`**
+> (`https://d3500249.offline-nutrition-helper.pages.dev`; 73 ficheros por hash,
+> 0 difieren). Commit `2dba23d`. NO empujado.
+>
+> El dueño, tras la paleta: "esperaba botones más cómodos, no solo colores".
+> Medido antes en 390 px con plan: 167/190 controles bajo 44 px y la página en
+> 9.486 px. Hecho (detalle en el mensaje del commit): zonas táctiles de 44 px;
+> casillas de la compra que marcan de verdad (`js/core/shopping-checks.js`,
+> clave = ingrediente + envases, 9 tests con mutaciones comprobadas); baldosas
+> y − / + en el formulario (`js/ui/form-controls.js`, intercepta el setter de
+> `value` del select); pestañas Menú / Compra / Mis planes / Mis datos solo en
+> el móvil (`js/ui/pestanas.js`), escondidas con `main[data-pestana]`, nunca con
+> `hidden`. Pestaña más larga: 5.318 px.
+>
+> **Trampas de PRUEBA que costaron tiempo (el código estaba bien):** (1) la
+> bienvenida pone `inert` en todo lo de debajo: al saltarla en una prueba hay
+> que quitarlo o ningún clic llega (`elementFromPoint` devuelve `MAIN`);
+> (2) `html { scroll-behavior: smooth }` hace que las coordenadas medidas justo
+> tras `scrollIntoView()` sean las de ANTES de desplazar: usar `behavior:
+> "instant"`. (3) La tarjeta vacía "Esperando parámetros" TAMBIÉN es
+> `.meal-card`: para saber si hay plan, `.meal-card:not(.meal-card--empty)`.
+>
 > ### ⏩ UPDATE 2026-09-28 (b) — diseño nuevo ("mercado")
 >
 > **707 tests en verde. Desplegado, sello `20260928b`**
