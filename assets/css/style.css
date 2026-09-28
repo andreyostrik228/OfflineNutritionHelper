@@ -4188,7 +4188,7 @@ dialog.despensa-dialog[open] {
    es justo lo que hay que dejar claro. Se detiene si el usuario pide
    menos movimiento. */
 .days-carousel__hint::after {
-  content: " 92";
+  content: " \2192";
   display: inline-block;
   animation: dayHintNudge 1.4s ease-in-out infinite;
 }
