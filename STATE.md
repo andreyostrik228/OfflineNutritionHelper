@@ -5,6 +5,40 @@
 > Escrito para alguien que llega SIN NINGÚN contexto previo. Si solo lees
 > una parte de este archivo, que sea esta.
 >
+> ### ⏩ UPDATE 2026-10-05 — rama `diseno-en-blanco`: SIN diseño, para construirlo de nuevo
+>
+> El dueño quiere que otro chat construya un diseño nuevo desde cero. El
+> diseño anterior ("mercado") está a salvo de tres maneras: etiqueta
+> `diseno-mercado-2026-09-28` (commit `5252e20`), la rama `main` (que es la
+> DESPLEGADA) y la copia `disenos/mercado-2026-09-28/style.css`. En esta rama
+> `assets/css/style.css` es un comentario y nada más; el HTML, los scripts y
+> las imágenes de `assets/img` no se han tocado. Sello `?v=20261005a`.
+>
+> **NO desplegar desde esta rama** hasta que el diseño esté hecho: sin
+> estilos la web publicada sale como un documento sin formato. Para volver:
+> `git checkout main`.
+>
+> **5 tests en rojo A PROPÓSITO** (720 de 725): `pageIn anima el
+> desplazamiento, nunca la opacidad`, `la bienvenida tampoco depende de que
+> su animación corra`, `los tokens de marca existen en :root y en el bloque
+> oscuro`, `--on-green sobre los verdes de FONDO cumple 4,5:1…` y `--green
+> sobre --paper cumple 4,5:1…`. Leen el CSS viejo y sus nombres de token. Son
+> el contrato del diseño nuevo: se adaptan a los tokens nuevos conservando
+> la regla (contraste 4,5:1, nada que dependa de una animación para verse).
+> Fuera de esos cinco, `css-visibility` pasa en vacío con el CSS en blanco;
+> volverá a vigilar de verdad en cuanto haya CSS.
+>
+> **Lo que el diseño nuevo hereda y debe respetar:** `hidden` NO se usa para
+> las pestañas del móvil sino `main[data-pestana]` + CSS (`js/ui/pestanas.js`);
+> la bienvenida pone `inert` en todo lo de debajo; el recorrido guiado se
+> ve entero con `body:has(#tour:not([hidden]))`; las casillas de compra son
+> `<button role="checkbox">`; las baldosas y los − / + los pinta
+> `js/ui/form-controls.js` sobre el `<select>` y el `<input>`, que siguen
+> siendo la fuente de verdad; zonas táctiles de 44 px; hay modo oscuro
+> (`:root[data-theme="oscuro"]`). Lo que NO pide el diseño: nombres de clase
+> concretos — el HTML se puede reestructurar si se mantienen los `id` y los
+> `data-i18n*` de los que dependen los scripts.
+>
 > ### ⏩ UPDATE 2026-09-28 (d) — la app entera en RUSO, y la tubería de traducción ya sirve para cualquier idioma
 >
 > **725 tests en verde (eran 716). Sello `20260928d`. Commit `b6881bc`,
