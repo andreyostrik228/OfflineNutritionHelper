@@ -7,7 +7,27 @@
 >
 > ### ⏩ UPDATE 2026-10-06 (h) — alimentos «traducción / original», y las cifras del resumen de la compra ya no se parten
 >
-> **789 tests en verde (eran 788). Sello `20261006b`.**
+> **789 tests en verde (eran 788). Sello `20261006b`. DESPLEGADO en Cloudflare**
+> (commit `429bac9`, `https://34aa597b.offline-nutrition-helper.pages.dev`, 186
+> ficheros por md5, 0 difieren). NO empujado a GitHub: `main` allí sigue en
+> `c2d669f`.
+>
+> **BUG ANTIGUO ENCONTRADO, SIN ARREGLAR en producción (decide el dueño):** a
+> partir de la SEGUNDA carga, cuando el service worker ya controla la página,
+> `gsap` y `firebase` quedan `undefined`: las tres peticiones a
+> `cdnjs.cloudflare.com` y `cdn.jsdelivr.net` fallan con `net::ERR_FAILED`
+> (el SW las reenvía con `fetch()` y la política `connect-src` de `_headers`,
+> que no nombra esos dos servidores, se lo impide). Consecuencia: sin animaciones
+> y sin la función de cuentas en las visitas repetidas (la app diría "las cuentas
+> todavía no están disponibles"). Reproducido con Chrome sin interfaz también en
+> los despliegues del 28 de septiembre (`d3500249`, `717bb87c`), o sea que no lo
+> introdujo el diseño nuevo. **Arreglo comprobado en una copia de prueba**
+> (`https://prueba-cdn.offline-nutrition-helper.pages.dev`): añadir
+> `https://cdn.jsdelivr.net https://cdnjs.cloudflare.com` a `connect-src` en
+> `_headers`; con eso `firebase=object gsap=object` y 0 fallos en las cargas 1, 2
+> y 3. Falta aplicarlo a `_headers`, commitear y desplegar. Se mide con
+> `scratchpad/i18n/red.mjs` (dos cargas seguidas, la segunda ya con el SW).
+>
 >
 > **1. Los alimentos se leen «traducción / original».** Pedido del dueño: en
 > ruso `Яйца / Huevos enteros`; si el idioma es español, solo `Huevos enteros`;
