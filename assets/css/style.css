@@ -584,14 +584,17 @@ body.con-pestanas { padding-bottom: calc(var(--dock) + 16px + env(safe-area-inse
 .site-footer__link:hover { text-decoration-color: var(--ink); }
 
 /* ══ 5. Cabecera (hero) ═════════════════════════════════════════════════
-   Marca y promesa en TEXTO dentro del <h1>, centradas. El nombre ocupa todo
-   el ancho que da la tarjeta: su tamaño se calcula con el ancho de la propia
-   cabecera (`cqw`), no con el de la pantalla, porque en el móvil la tarjeta
-   mide 358 px y en el escritorio 1.200. 4,2 es lo que ocupa "WEEKPLATE" en
-   Sofia Sans Extra Condensed negra (3,97 por tamaño de letra) con un margen
-   para que la fuente de reserva, algo más ancha, no se corte. */
+   Solo el nombre, centrado, con un margen justo arriba y abajo y una cinta de
+   franjas inclinadas en cada borde. La plaquita "motor de reglas" y la
+   promesa SALEN de la vista (la cabecera ocupaba media pantalla); la promesa
+   sigue dentro del <h1> para los lectores de pantalla.
+
+   El tamaño del nombre sale del ancho de la propia cabecera (`cqw`), no del
+   de la pantalla: en el móvil la tarjeta mide 358 px y en el escritorio
+   1.200. 4,2 es lo que ocupa "WEEKPLATE" en Sofia Sans Extra Condensed negra
+   (3,97 por tamaño de letra) con un margen para que la fuente de reserva,
+   algo más ancha, no se corte. */
 .hero {
-  position: relative;
   display: grid;
   overflow: hidden;
   container-type: inline-size;
@@ -599,54 +602,51 @@ body.con-pestanas { padding-bottom: calc(var(--dock) + 16px + env(safe-area-inse
   background: var(--ink);
   color: var(--on-ink);
 }
-/* Cinta de marca: franjas inclinadas por el borde de abajo, lejos del texto. */
+/* Las dos cintas son elementos de la cuadrícula (arriba y abajo), no capas
+   superpuestas: así el texto nunca puede chocar con ellas. La de abajo se
+   inclina al revés, para que las dos juntas formen una "V". */
+.hero::before,
 .hero::after {
   content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 14px;
-  background: repeating-linear-gradient(115deg, var(--volt) 0 12px, transparent 12px 24px);
+  /* Separadas de las esquinas: el radio del borde las recortaría a media raya. */
+  margin-inline: 20px;
+  height: 10px;
+  background: repeating-linear-gradient(115deg, var(--volt) 0 10px, transparent 10px 20px);
+}
+.hero::after {
+  background: repeating-linear-gradient(65deg, var(--volt) 0 10px, transparent 10px 20px);
 }
 .hero__texto {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 18px;
-  padding: 30px 12px 44px;
+  justify-content: center;
+  padding: 14px 12px 16px;
   text-align: center;
 }
-.brand-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  height: 28px;
-  padding: 0 12px;
-  border-radius: 999px;
-  background: var(--volt);
-  color: var(--on-volt);
-  font: 800 14px/1 var(--font-display);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-.hero__titulo { display: flex; flex-direction: column; align-items: center; gap: 14px; width: 100%; }
+/* Fuera de la vista, pero no del documento (lector de pantalla). */
+.brand-eyebrow { display: none; }
+.hero__titulo { width: 100%; }
 .hero__nombre {
+  display: block;
   font: 900 clamp(56px, calc((100cqw - 24px) / 4.2), 200px) / 0.84 var(--font-display);
   letter-spacing: 0.01em;
   text-transform: uppercase;
   white-space: nowrap;
 }
 .hero__lema {
-  max-width: 28ch;
-  font: 500 clamp(17px, 4.6cqw, 28px) / 1.3 var(--font-body);
-  color: #d5d9e0;
-  text-wrap: balance;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
-.hero__lema-acento { color: var(--volt); font-weight: 700; }
 
 @container (min-width: 600px) {
-  .hero__texto { gap: 22px; padding: 48px 32px 62px; }
-  .hero::after { height: 18px; }
+  .hero::before,
+  .hero::after { height: 14px; }
+  .hero__texto { padding: 20px 32px 24px; }
 }
 
 /* ══ 6. Panel del formulario ════════════════════════════════════════════ */

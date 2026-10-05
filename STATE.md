@@ -7,7 +7,7 @@
 >
 > ### ⏩ UPDATE 2026-10-05 (e) — diseño "training": `style.css` reescrito desde cero
 >
-> **726 tests en verde (eran 725). Sello `20261005b`. SIN DESPLEGAR** (solo
+> **726 tests en verde (eran 725). Sello `20261005c`. SIN DESPLEGAR** (solo
 > está en la rama `claude/amazing-bell-9sw8xk`; el último despliegue sigue
 > siendo el de (d)).
 >
@@ -26,11 +26,18 @@
 > Sofia Sans Extra Condensed (titulares y cifras) + Onest (texto), las dos con
 > cirílico. Barra inferior flotante negra con la pestaña activa en volt.
 >
-> **Cabecera:** centrada y sin imagen (el dueño pidió quitar lo que quedaba
-> del diseño anterior, la ilustración recortada de la derecha). El nombre
-> ocupa todo el ancho de la tarjeta: su tamaño sale del ancho de la propia
-> cabecera (`cqw`, factor 4,2 = lo que ocupa "WEEKPLATE" en Sofia Sans negra
-> más margen). `assets/img/og-weekplate.jpg` sigue, solo para `og:image`.
+> **Cabecera:** compacta, sin imagen. Solo el nombre centrado, un margen justo
+> arriba y abajo y una cinta de franjas inclinadas en cada borde (la de abajo
+> al revés, juntas hacen una "V"). El dueño pidió quitar lo que quedaba del
+> diseño anterior (la ilustración de la derecha) y luego que la cabecera no
+> ocupara media pantalla: la plaquita "motor de reglas" y la promesa salen de
+> la vista (la promesa sigue en el `<h1>`, visualmente oculta, para lectores de
+> pantalla). 117 px de alto en el móvil (eran ~460). El tamaño del nombre sale
+> del ancho de la propia cabecera (`cqw`, factor 4,2 = lo que ocupa
+> "WEEKPLATE" en Sofia Sans negra más margen); en un escritorio ancho llega a
+> 200 px y la cabecera mide ~230 px. Si pareciera mucho, bajar el tope de
+> `clamp()` en `.hero__nombre`. `assets/img/og-weekplate.jpg` sigue, solo para
+> `og:image`.
 >
 > **Cosas que cambian fuera de `style.css`:**
 > - **Tipografías alojadas en `assets/fonts/`** (8 `.woff2`, latino, latino
