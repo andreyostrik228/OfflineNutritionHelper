@@ -51,7 +51,8 @@ var LOOKS = [
   { id: "pegatinas",  file: "assets/css/temas/pegatinas.css",  color: "#FFF1CC", dark: false },
   { id: "mercadillo", file: "assets/css/temas/mercadillo.css", color: "#D2B68E", dark: false },
   { id: "revista",    file: "assets/css/temas/revista.css",    color: "#F6F1E8", dark: false },
-  { id: "noche",      file: "assets/css/temas/noche.css",      color: "#0C1713", dark: true }
+  { id: "noche",      file: "assets/css/temas/noche.css",      color: "#0C1713", dark: true },
+  { id: "kitty",      file: "assets/css/temas/kitty.css",      color: "#FFE8F0", dark: false }
 ];
 
 // Igual que en settings.js y theme.js: solo se usa cuando no hay localStorage

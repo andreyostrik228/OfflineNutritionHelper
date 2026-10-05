@@ -17,6 +17,7 @@ Los demás son hojas de `assets/css/temas/` que se cargan **encima** de `style.c
 | `mercadillo` | Рынок | papel de estraza, toldo, tickets, etiqueta nutricional |
 | `revista` | Журнал | revista de cocina: papel, filetes, cifras en serif |
 | `noche` | Ночной лес | oscuro, curvas de nivel, brillo menta |
+| `kitty` | Китти | rosa «kawaii»: lazos, corazones, lunares, gingham y orejitas (el ambiente de Hello Kitty, **sin dibujar el personaje ni su nombre**: es una marca de Sanrio) |
 
 ## Cómo se genera una hoja
 

@@ -434,6 +434,7 @@ registerI18nTable("ru", {
   "ui.aspecto_mercadillo": "Рынок",
   "ui.aspecto_revista": "Журнал",
   "ui.aspecto_noche": "Ночной лес",
+  "ui.aspecto_kitty": "Китти",
   "ui.aspecto_puesto": "Оформление: {nombre}",
   "ui.aspecto_sin_red": "Не удалось загрузить это оформление. Проверьте соединение и попробуйте ещё раз.",
   // Unidades (js/core/i18n.js: tUnit, fmtUnit, fmtUnitJunto, fmtUnitHtml). Una unidad es una palabra del

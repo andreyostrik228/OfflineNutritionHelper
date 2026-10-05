@@ -430,6 +430,7 @@ registerI18nTable("en", {
   "ui.aspecto_mercadillo": "Market",
   "ui.aspecto_revista": "Magazine",
   "ui.aspecto_noche": "Night forest",
+  "ui.aspecto_kitty": "Kitty",
   "ui.aspecto_puesto": "Appearance: {nombre}",
   "ui.aspecto_sin_red": "Couldn't load this look. Check your connection and try again.",
   // Unidades (js/core/i18n.js: tUnit, fmtUnit, fmtUnitJunto, fmtUnitHtml). Una unidad es una palabra del

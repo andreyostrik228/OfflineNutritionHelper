@@ -14,6 +14,7 @@ Alojadas aquí para que la aplicación se vea igual sin conexión. Las dos prime
 | Oswald, IBM Plex Mono, Source Sans 3 | aspecto *mercadillo* | https://fonts.google.com/specimen/Oswald · /IBM+Plex+Mono | SIL Open Font License 1.1 |
 | Cormorant Garamond, Inter | aspecto *revista* | https://fonts.google.com/specimen/Cormorant+Garamond · /Inter | SIL Open Font License 1.1 |
 | Exo 2, Onest | aspecto *noche* | https://fonts.google.com/specimen/Exo+2 | SIL Open Font License 1.1 |
+| M PLUS Rounded 1c, Nunito | aspecto *kitty* | https://fonts.google.com/specimen/M+PLUS+Rounded+1c | SIL Open Font License 1.1 |
 
 Los `.woff2` son los que sirve Google Fonts (los de los aspectos llevan un sufijo de 6 letras: es el hash de la URL de origen), subconjuntos `latin`, `latin-ext`, `cyrillic` y `cyrillic-ext` (fuentes variables: Onest 400–700, Sofia Sans Extra Condensed 700–900). Texto de la licencia: https://openfontlicense.org
 
