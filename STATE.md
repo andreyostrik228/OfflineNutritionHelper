@@ -5,6 +5,83 @@
 > Escrito para alguien que llega SIN NINGÚN contexto previo. Si solo lees
 > una parte de este archivo, que sea esta.
 >
+> ### ⏩ UPDATE 2026-10-06 (f) — «Aspecto»: el usuario elige entre 10 diseños (el base no cambia)
+>
+> **770 tests en verde (eran 726). Sello `20261006a`. SIN DESPLEGAR** (solo en la
+> rama `claude/amazing-bell-9sw8xk`; el último despliegue sigue siendo el de (d)).
+>
+> Pedido del dueño, tras ver 8 propuestas de estilo (A–H) y no decidirse: un
+> botón en el menú para que **cada usuario elija su aspecto**, el diseño actual
+> sigue siendo el **por defecto** («lo principal déjalo como estaba»), el por
+> defecto es **la primera tarjeta, arriba a la izquierda**, y **uno más inspirado
+> en Hello Kitty**.
+>
+> **Qué hay.** ☰ → Ajustes → grupo «Aspecto / Оформление» (`#ajustesAspecto`,
+> justo antes de «Idioma»): una rejilla de tarjetas con miniatura
+> (`assets/img/aspectos/<id>.webp`, 300×250) y nombre; al pulsar, la app cambia
+> en vivo. 10 aspectos: `entreno` (el base, = `style.css` sin hoja propia),
+> `hojas`, `cristal`, `avena`, `relieve`, `pegatinas`, `mercadillo`, `revista`,
+> `noche`, `kitty`. El grupo «Tema» claro/oscuro sigue `hidden` (no tocarlo).
+>
+> **Cómo funciona (los 5 archivos que importan).**
+> - `js/core/look.js` — sin DOM: `LOOKS` (id, hoja, color de la barra del
+>   navegador, `dark`), `getLook/saveLook/sanitizeLook/lookCssHref`. Clave PROPIA
+>   `nutritionPlanner.look.v1` (no va en los ajustes, por lo mismo que el tema:
+>   `saveSettings()` reemplaza el objeto entero).
+> - `index.html` (`<head>`) — IIFE «ASPECTO» que lee la clave y escribe con
+>   `document.write` un `<link id="aspectoCss">` ANTES del primer pintado (sin
+>   parpadeo), con el mismo sello `?v=` que `style.css`. Pone `data-look` en
+>   `<html>` y el `theme-color`. **La lista de ids/colores está repetida allí a
+>   propósito**; `tests/look.test.js` comprueba que no se separa de `look.js`.
+> - `js/ui/render-menu.js` — pinta las tarjetas (`_menuPintarAspectos`) y
+>   `applyLookToDom(id)` (promesa): añade el `<link>` nuevo, quita el viejo en su
+>   `load`, guarda SOLO si cargó. Sin red y sin esa hoja en caché: mensaje
+>   `ui.aspecto_sin_red` y se queda el aspecto anterior.
+> - `assets/css/temas/<id>.css` — **generadas**, no se editan: ver
+>   `scripts/temas/LEEME.md` (fuente en `scripts/temas/aspectos/<id>.py`,
+>   `python3 scripts/temas/construir.py`; ahí también cómo añadir un aspecto).
+> - `assets/css/style.css` — el diseño base, **sin cambio visual** (verificado
+>   por volcado de estilos computados antes/después: 0 diferencias salvo las
+>   correcciones de maquetación pedidas). Se le añadieron TOKENS (`--primary`,
+>   `--surface-rgb`, `--volt-rgb`, `--volt-hi-rgb`, `--active-accent`, `--pill`,
+>   `--shadow-rgb`) para que las hojas puedan sobrescribir, y la sección 13
+>   (`.aspecto-lista`, `.aspecto-card`).
+>
+> **Offline.** `sw.js` NO cambió: las hojas llevan `?v=` → «recurso con sello:
+> cache primero» y se guardan la primera vez que se piden; las fuentes de
+> `/assets/fonts/` van a la caché permanente de fuentes. Consecuencia: **un
+> aspecto funciona sin red solo después de haberlo usado una vez con red.**
+>
+> **Trampas.**
+> 1. `neutralizar()` (en `nucleo.py`) se calcula LEYENDO `style.css`: si se toca
+>    `style.css`, hay que volver a generar las 9 hojas (`construir.py`) o
+>    arrastrarán reglas viejas.
+> 2. Las unidades de las cifras (`ккал`, `г`, `кг`, `мин`) salen en
+>    `<span class="u">` (`js/core/i18n.js`, helpers de unidades) para que cada
+>    aspecto las pueda hacer más pequeñas que el número; en el base,
+>    `.u { margin-left: .22em }` evita «2499ккал».
+> 3. Un aspecto nuevo = editar a la vez `look.js`, el IIFE del `<head>`, tres
+>    tablas i18n (`ui.aspecto_<id>`), la miniatura y `tests/look.test.js`
+>    (el test de contraste WCAG 4.5:1 recorre los `:root` de cada hoja).
+> 4. Las hojas se generan en CRLF como el resto del repo (`.gitattributes`).
+> 5. Los adornos decorativos (`body::before/::after`) se ocultan en `@media print`.
+> 6. **Kitty y propiedad intelectual.** `kitty` evoca el ambiente (rosa, lazo
+>    rojo, corazones, lunares, gingham, orejitas) pero **no dibuja el personaje,
+>    su cara ni su logo y no escribe «Hello Kitty»** (marca de Sanrio). Se llama
+>    «Kitty / Китти». No añadir el personaje sin permiso del titular.
+> 7. Tipografías: ver `assets/fonts/LEEME.md` (licencias). `kitty` usa M PLUS
+>    Rounded 1c + Nunito (con cirílico); Comfortaa se descartó porque `л д г`
+>    salían ilegibles.
+>
+> **Traducción incluida en esta tanda** (rama de traducción fusionada): unidades,
+> «Invitado» → «Гость/Guest», avisos del motor de reglas en el idioma de la
+> pantalla, textos españoles que quedaban en «Mis planes». **Pendiente de
+> decisión del dueño:** los nombres de producto de Mercadona se dejan en español
+> (como en el envase); si prefiere traducirlos, es un cambio aparte.
+>
+> **Pendiente menor:** `#onboardingOpenTerms` es un enlace en línea de <40 px en
+> escritorio (solo lo marca la auditoría de tamaño de toque; ignorable).
+>
 > ### ⏩ UPDATE 2026-10-05 (e) — diseño "training": `style.css` reescrito desde cero
 >
 > **726 tests en verde (eran 725). Sello `20261005c`. SIN DESPLEGAR** (solo
