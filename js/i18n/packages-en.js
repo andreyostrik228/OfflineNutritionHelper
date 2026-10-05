@@ -46,6 +46,9 @@ registerPackageTable("en", {
   "paquete":    ["pack", "packs"],
   "tarrina":    ["tub", "tubs"],
   "tarro":      ["jar", "jars"],
+  // Faltaba: los huevos se compran por docenas y la linea de la compra
+  // decia "1 docena (12 huevos)" en medio del ingles.
+  "docena (12 huevos)": ["dozen (12 eggs)", "dozen (12 eggs each)"],
 
   // ── Con aclaracion: el peso escurrido, los cortes, lo que rinde ──────
   "bola (peso escurrido)":          ["ball (drained weight)", "balls (drained weight)"],

@@ -475,7 +475,12 @@ function renderFoodRow(item, storeId) {
         '<div class="food-meta">' +
           formatQuantityPhrase(item.grams, info, item.name, storeId, item.papel) +
           (hasRealMacros
-            ? ' &mdash; P ' + round1(item.protein) + ' g / C ' + round1(item.carbs) + ' g / G ' + round1(item.fat) + ' g' +
+            // Las letras pasan por t(): "P / C / G" son iniciales españolas
+            // (en inglés la grasa es F, en ruso es Б / У / Ж) y estaban
+            // escritas aquí a pelo, en todas las filas de ingrediente.
+            ? ' &mdash; ' + escapeHtml(t("ui.abrev_proteina")) + ' ' + round1(item.protein) + ' g / ' +
+              escapeHtml(t("ui.abrev_carbos")) + ' ' + round1(item.carbs) + ' g / ' +
+              escapeHtml(t("ui.abrev_grasas")) + ' ' + round1(item.fat) + ' g' +
               // "real" no dice nada por sí solo, y su explicación estaba en
               // un `title`: en un móvil no hay puntero con el que sacarla.
               // Una palabra que se explica sola vale más que un texto

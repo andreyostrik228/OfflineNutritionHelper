@@ -12,9 +12,9 @@
  * plato recien generado sale en español dentro de una interfaz en ingles.
  * Feo, pero se cocina. Un hueco no.
  *
- * GENERADO por scripts/i18n/construir-steps-en.js a partir de las tandas
- * de traduccion (scripts/i18n/tandas/). Si se edita a mano, que sea ahi:
- * una clave que deje de casar letra por letra no traduce y no avisa.
+ * GENERADO por scripts/i18n/construir-steps.js a partir de las tandas
+ * de traduccion (scripts/i18n/tandas/en/). Si se edita a mano, que sea
+ * ahi: una clave que deje de casar letra por letra no traduce y no avisa.
  * ────────────────────────────────────────────────────────────────────────
  */
 

@@ -503,10 +503,13 @@ function renderShoppingRow(entry, storeId, marcado) {
     buyText = t("ui.ya_tienes_suficiente_en_tu_despensa");
   } else if (p.hasFixedPackage) {
     // `packageLabel` viene de packaging.js y describe el ENVASE tal y como
-    // se vende ("docena", "bandeja"): es lo que hay que buscar en la
-    // tienda, así que no se traduce.
+    // se vende ("docena", "bandeja"). Se traduce (no es un nombre
+    // comercial) y DESPUÉS se recorta la aclaración, en ese orden: el
+    // diccionario va por la etiqueta ENTERA, así que recortar primero
+    // buscaba "docena" o "paquete de 1 kg", que no existen, y la lista en
+    // inglés o en ruso decía "2 × docenas" sin dar ningún error.
     var label = p.packageLabel
-      ? escapeHtml(etiquetaDeEnvase(sinAclaracion(p.packageLabel), p.packagesToBuy))
+      ? escapeHtml(sinAclaracion(etiquetaDeEnvase(p.packageLabel, p.packagesToBuy)))
       : t("ui.envase");
     // Si la etiqueta ya nombra un número de piezas ("docena (12 huevos)"),
     // el "(756 g)" no le dice nada a quien compra -- se omite.

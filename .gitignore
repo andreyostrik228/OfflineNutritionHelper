@@ -43,4 +43,4 @@ Thumbs.db
 scripts/generar-platos/lote_platos.json
 
 # salida de la herramienta de traduccion (se regenera)
-scripts/i18n/pendientes.json
+scripts/i18n/pendientes*.json

@@ -26,6 +26,17 @@ function freshI18nSandbox() {
   return loadBrowserGlobals([projPath("js/core/i18n.js")]);
 }
 
+/**
+ * Los idiomas que la aplicación SIRVE hoy, sacados de los ficheros y no de
+ * una lista a mano: existe `js/i18n/<idioma>.js`, luego se ofrece en el
+ * selector, luego tiene que estar entero. Con una lista a mano, un idioma
+ * nuevo entraba en la web sin que ningún test mirara si le faltaba algo.
+ */
+var IDIOMAS_HECHOS = require("fs").readdirSync(projPath("js/i18n"))
+  .map(function (f) { var m = /^([a-z]{2})\.js$/.exec(f); return m && m[1]; })
+  .filter(function (l) { return l && l !== "es"; })
+  .sort();
+
 function createFakeLocalStorage() {
   var data = {};
   return {
@@ -159,6 +170,100 @@ function run(t) {
     return loadBrowserGlobals(ficheros);
   }
 
+  /** i18n.js con el diccionario de comida de cada idioma servido. */
+  function sandboxDeComida() {
+    return loadBrowserGlobals([projPath("js/core/i18n.js")].concat(
+      IDIOMAS_HECHOS.map(function (l) { return projPath("js/i18n/food-" + l + ".js"); })));
+  }
+
+  /** El catálogo de platos, con sus ingredientes. */
+  function catalogoDePlatos() {
+    var vm = require("vm");
+    var c = {}; vm.createContext(c);
+    vm.runInContext(require("fs").readFileSync(projPath("js/data/dishes.js"), "utf8"), c);
+    return c;
+  }
+
+  t.test("tPackageLabel: con formas de CLDR, la que toca según el número", function () {
+    // El ruso no tiene UN plural: 1 банка, 2 банки, 5 банок, 21 банка, y
+    // la fracción otra vez "банки". Con [singular, plural] salía "5 банки".
+    var s = freshI18nSandbox();
+    s.registerPackageTable("ru", { "lata": { one: "банка", few: "банки", many: "банок", other: "банки" } });
+    var sale = [1, 2, 4, 5, 11, 12, 21, 22, 25, 0.5, 1.5].map(function (n) {
+      return n + " " + s.tPackageLabel("lata", n, "ru");
+    });
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(sale)), [
+      "1 банка", "2 банки", "4 банки", "5 банок", "11 банок", "12 банок",
+      "21 банка", "22 банки", "25 банок", "0.5 банки", "1.5 банки"]);
+    // Si falta la forma que toca, "other"; nunca null ni undefined.
+    s.registerPackageTable("ru", { "lata": { one: "банка", other: "банки" } });
+    assert.strictEqual(s.tPackageLabel("lata", 5, "ru"), "банки");
+    // Y el par de siempre sigue igual.
+    s.registerPackageTable("en", { "barra": ["loaf", "loaves"] });
+    assert.strictEqual(s.tPackageLabel("barra", 1, "en"), "loaf");
+    assert.strictEqual(s.tPackageLabel("barra", 1.5, "en"), "loaves");
+  });
+
+  t.test("cada idioma traduce los MISMOS envases que el inglés", function () {
+    // El inglés es la referencia: sus etiquetas las vigila tests/servings
+    // y el uso de años. Una que falte aquí sale en español ("2 barra")
+    // dentro de la lista de la compra traducida, sin ningún error.
+    var s = loadBrowserGlobals([projPath("js/core/i18n.js")].concat(
+      IDIOMAS_HECHOS.map(function (l) { return projPath("js/i18n/packages-" + l + ".js"); })));
+    var ref = Object.keys(s.PACKAGE_TABLES["en"]).sort();
+    IDIOMAS_HECHOS.forEach(function (lang) {
+      var suyas = Object.keys(s.PACKAGE_TABLES[lang] || {}).sort();
+      var faltan = ref.filter(function (k) { return suyas.indexOf(k) === -1; });
+      var sobran = suyas.filter(function (k) { return ref.indexOf(k) === -1; });
+      assert.deepStrictEqual(faltan.concat(sobran.map(function (k) { return "+" + k; })), [],
+        lang + ": envases que faltan (o sobran, con +): " + faltan.concat(sobran).join(", "));
+    });
+  });
+
+  t.test("cada etiqueta de envase de packaging.js tiene traducción en inglés", function () {
+    // El inglés es la referencia de los demás (test de arriba), así que
+    // tiene que estar completo contra los DATOS, no contra sí mismo. Se
+    // escapó "docena (12 huevos)": la compra de huevos salía en español.
+    var s = loadBrowserGlobals([projPath("js/core/i18n.js"), projPath("js/i18n/packages-en.js"),
+      projPath("js/data/packaging.js")]);
+    var faltan = [];
+    function mira(o) {
+      if (!o || typeof o !== "object") return;
+      Object.keys(o).forEach(function (k) {
+        var v = o[k];
+        if (typeof v === "string" && /label/i.test(k)) {
+          if (!s.PACKAGE_TABLES["en"][v] && faltan.indexOf(v) === -1) faltan.push(v);
+        } else if (v && typeof v === "object") mira(v);
+      });
+    }
+    mira(s.PACKAGING_CATALOGS);
+    assert.deepStrictEqual(faltan, [], "sin traducción en packages-en.js: " + faltan.join(", "));
+  });
+
+  t.test("cada envase de un idioma de varios plurales trae TODAS sus formas", function () {
+    // Una forma que falta cae a "other" en silencio: "5 банки" se lee,
+    // pero está mal, y lo ve cualquiera que hable ruso.
+    var FORMAS = { ru: ["one", "few", "many", "other"], uk: ["one", "few", "many", "other"],
+      pl: ["one", "few", "many", "other"], ro: ["one", "few", "other"] };
+    var s = loadBrowserGlobals([projPath("js/core/i18n.js")].concat(
+      IDIOMAS_HECHOS.map(function (l) { return projPath("js/i18n/packages-" + l + ".js"); })));
+    var malas = [];
+    IDIOMAS_HECHOS.forEach(function (lang) {
+      var tabla = s.PACKAGE_TABLES[lang] || {};
+      Object.keys(tabla).forEach(function (k) {
+        var v = tabla[k];
+        if (FORMAS[lang]) {
+          FORMAS[lang].forEach(function (f) {
+            if (!v || typeof v[f] !== "string" || !v[f]) malas.push(lang + " " + k + " sin " + f);
+          });
+        } else if (Object.prototype.toString.call(v) !== "[object Array]" || !v[0] || !v[1]) {
+          malas.push(lang + " " + k + " no es [singular, plural]");
+        }
+      });
+    });
+    assert.deepStrictEqual(malas, [], malas.slice(0, 8).join(" | "));
+  });
+
   t.test("el español carga y trae cadenas", function () {
     var s = sandboxConTablas(["es"]);
     var claves = Object.keys(s.I18N_TABLES["es"] || {});
@@ -169,7 +274,7 @@ function run(t) {
     // El repliegue al español existe para que un hueco no se vea en
     // pantalla, no para que nadie lo arregle. Este test es quien lo
     // convierte en trabajo pendiente en vez de en deuda invisible.
-    var IDIOMAS_HECHOS = ["en"];
+    assert.ok(IDIOMAS_HECHOS.indexOf("en") !== -1, "no se ha encontrado ni el inglés: " + IDIOMAS_HECHOS);
     var s = sandboxConTablas(["es"].concat(IDIOMAS_HECHOS));
     var claveEs = Object.keys(s.I18N_TABLES["es"]);
     IDIOMAS_HECHOS.forEach(function (lang) {
@@ -224,22 +329,26 @@ function run(t) {
   t.test("una traducción no inventa claves que el español no tiene", function () {
     // Una clave de más es una cadena que ya no se usa y que nadie borra, o
     // una errata en el nombre que hace que la traducción no salga nunca.
-    var s = sandboxConTablas(["es", "en"]);
+    var s = sandboxConTablas(["es"].concat(IDIOMAS_HECHOS));
     var claveEs = Object.keys(s.I18N_TABLES["es"]);
-    var sobran = Object.keys(s.I18N_TABLES["en"]).filter(function (k) {
-      return claveEs.indexOf(k) === -1 && CLAVES_CON_ORIGEN_FUERA.indexOf(k) === -1;
+    IDIOMAS_HECHOS.forEach(function (lang) {
+      var sobran = Object.keys(s.I18N_TABLES[lang]).filter(function (k) {
+        return claveEs.indexOf(k) === -1 && CLAVES_CON_ORIGEN_FUERA.indexOf(k) === -1;
+      });
+      assert.deepStrictEqual(JSON.parse(JSON.stringify(sobran)), [],
+        lang + " tiene claves que es no: " + sobran.join(", "));
     });
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(sobran)), [],
-      "en tiene claves que es no: " + sobran.join(", "));
   });
 
   t.test("las claves con el origen fuera están TODAS traducidas", function () {
     // Estas no las cubre el test de cobertura, porque no están en es.js.
     // Sin este test serían el único hueco que nadie vigila.
-    var s = sandboxConTablas(["es", "en"]);
-    CLAVES_CON_ORIGEN_FUERA.forEach(function (k) {
-      assert.strictEqual(typeof s.I18N_TABLES["en"][k], "string",
-        "en no traduce " + k);
+    var s = sandboxConTablas(["es"].concat(IDIOMAS_HECHOS));
+    IDIOMAS_HECHOS.forEach(function (lang) {
+      CLAVES_CON_ORIGEN_FUERA.forEach(function (k) {
+        assert.strictEqual(typeof s.I18N_TABLES[lang][k], "string",
+          lang + " no traduce " + k);
+      });
     });
   });
 
@@ -248,15 +357,17 @@ function run(t) {
     // enseñaría a escribir "onion" en un campo donde "onion" no encuentra
     // nada. Lo que NO puede quedarse sin traducir es la frase alrededor:
     // "¿Qué tienes?" sí se traduce, "Arroz blanco cocido" no.
-    var s = sandboxConTablas(["es", "en"]);
+    var s = sandboxConTablas(["es"].concat(IDIOMAS_HECHOS));
     var ejemplos = {
       "ui.cebolla_queso_azul_salmon": "cebolla, queso azul, salmón",
       "ui.que_tienes_ej_arroz_blanco_cocido": "Arroz blanco cocido"
     };
-    Object.keys(ejemplos).forEach(function (k) {
-      assert.ok(s.I18N_TABLES["en"][k].indexOf(ejemplos[k]) !== -1,
-        k + ": el ejemplo español tiene que sobrevivir en la traducción, y pone "
-        + JSON.stringify(s.I18N_TABLES["en"][k]));
+    IDIOMAS_HECHOS.forEach(function (lang) {
+      Object.keys(ejemplos).forEach(function (k) {
+        assert.ok(s.I18N_TABLES[lang][k].indexOf(ejemplos[k]) !== -1,
+          lang + " " + k + ": el ejemplo español tiene que sobrevivir en la traducción, y pone "
+          + JSON.stringify(s.I18N_TABLES[lang][k]));
+      });
     });
   });
 
@@ -265,8 +376,10 @@ function run(t) {
     // Traducir la etiqueta sin traducir la comprobación deja la cuenta
     // imposible de borrar: el usuario teclea lo que pone en pantalla y no
     // pasa nada, para siempre.
-    var s = sandboxConTablas(["es", "en"]);
-    assert.strictEqual(s.I18N_TABLES["en"]["ui.borrar"], s.I18N_TABLES["es"]["ui.borrar"]);
+    var s = sandboxConTablas(["es"].concat(IDIOMAS_HECHOS));
+    IDIOMAS_HECHOS.forEach(function (lang) {
+      assert.strictEqual(s.I18N_TABLES[lang]["ui.borrar"], s.I18N_TABLES["es"]["ui.borrar"], lang);
+    });
   });
 
   // ── Declarado no es lo mismo que disponible ────────────────────────────
@@ -291,8 +404,29 @@ function run(t) {
   });
 
   t.test("los idiomas que HOY se sirven están disponibles de verdad", function () {
-    var s = sandboxConTablas(["es", "en"]);
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(s.availableLangs())), ["es", "en"]);
+    var s = sandboxConTablas(["es"].concat(IDIOMAS_HECHOS));
+    var esperados = s.LANGS.filter(function (l) { return l === "es" || IDIOMAS_HECHOS.indexOf(l) !== -1; });
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(s.availableLangs())), JSON.parse(JSON.stringify(esperados)));
+  });
+
+  t.test("cada idioma servido trae sus cuatro tablas, no solo la interfaz", function () {
+    // Sin esto, un ru.js suelto pone "Русский" en el selector con la
+    // interfaz traducida y los platos, las raciones y las recetas en
+    // español, y ningún test lo ve: todos los repliegues callan.
+    var fs = require("fs");
+    var faltan = [];
+    IDIOMAS_HECHOS.forEach(function (lang) {
+      ["food-", "packages-", "steps-"].forEach(function (pre) {
+        if (!fs.existsSync(projPath("js/i18n/" + pre + lang + ".js"))) faltan.push(pre + lang + ".js");
+      });
+    });
+    var html = fs.readFileSync(projPath("index.html"), "utf8");
+    IDIOMAS_HECHOS.forEach(function (lang) {
+      ["", "food-", "packages-", "steps-"].forEach(function (pre) {
+        if (html.indexOf('src="js/i18n/' + pre + lang + '.js') === -1) faltan.push("<script> de " + pre + lang + ".js");
+      });
+    });
+    assert.deepStrictEqual(faltan, [], "le falta a algún idioma: " + faltan.join(", "));
   });
 
   // ── Los nombres de comida ──────────────────────────────────────────────
@@ -301,23 +435,66 @@ function run(t) {
     // Sin este test, un ingrediente nuevo entra en el catálogo y aparece en
     // español dentro de una lista en inglés sin que nadie se entere: tFood()
     // devuelve el original y no falla nada.
-    var vm = require("vm");
-    var fs = require("fs");
-    var s = loadBrowserGlobals([
-      projPath("js/core/i18n.js"), projPath("js/i18n/food-en.js")
-    ]);
-    var c = {}; vm.createContext(c);
-    vm.runInContext(fs.readFileSync(projPath("js/data/dishes.js"), "utf8"), c);
+    var s = sandboxDeComida();
+    var c = catalogoDePlatos();
 
     var ingredientes = {};
     c.DISH_DB.forEach(function (d) {
       (d.items || []).forEach(function (i) { ingredientes[i.name] = 1; });
     });
-    var faltan = Object.keys(ingredientes).filter(function (n) {
-      return typeof s.FOOD_TABLES["en"][n] !== "string";
-    }).sort();
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(faltan)), [],
-      faltan.length + " ingredientes sin traducir: " + faltan.slice(0, 8).join(" | "));
+    IDIOMAS_HECHOS.forEach(function (lang) {
+      var faltan = Object.keys(ingredientes).filter(function (n) {
+        return typeof s.FOOD_TABLES[lang][n] !== "string";
+      }).sort();
+      assert.deepStrictEqual(JSON.parse(JSON.stringify(faltan)), [],
+        lang + ": " + faltan.length + " ingredientes sin traducir: " + faltan.slice(0, 8).join(" | "));
+    });
+  });
+
+  t.test("donde el nombre del plato NO se compone, TODOS los platos van enteros", function () {
+    // El inglés compone el nombre pieza a pieza (tDish). Los demás no
+    // pueden -- en ruso "con arroz" es "с рисом", con la palabra en otro
+    // caso -- y llevan cada plato entero en food-<idioma>.js. Sin este
+    // test, un plato nuevo del generador sale en español dentro del ruso y
+    // no se entera nadie. Con él, el plato nuevo es trabajo pendiente.
+    var s = sandboxDeComida();
+    var c = catalogoDePlatos();
+    IDIOMAS_HECHOS.filter(function (l) { return !s.DISH_COMPOSABLE[l]; }).forEach(function (lang) {
+      var faltan = c.DISH_DB.map(function (d) { return d.name; }).filter(function (n) {
+        return typeof s.FOOD_TABLES[lang][n] !== "string";
+      });
+      assert.deepStrictEqual(JSON.parse(JSON.stringify(faltan)), [],
+        lang + ": " + faltan.length + " platos sin nombre traducido: " + faltan.slice(0, 6).join(" | "));
+    });
+  });
+
+  t.test("fuera del inglés tDish NO compone: o el nombre entero o el original", function () {
+    // Los conectores de la composición son ingleses. Componer en ruso
+    // daba "Курица with рис".
+    var s = freshI18nSandbox();
+    s.registerDishWords("ru", { "pollo": "курица", "arroz": "рис" });
+    assert.strictEqual(s.tDish("Pollo con arroz", "ru"), "Pollo con arroz");
+    // La pieza suelta sí: es como llegan las fuentes de proteína a las notas.
+    assert.strictEqual(s.tDish("pollo", "ru"), "курица");
+    s.registerFoodTable("ru", { "Pollo con arroz": "Курица с рисом" });
+    assert.strictEqual(s.tDish("Pollo con arroz", "ru"), "Курица с рисом");
+  });
+
+  t.test("las fuentes de proteína de las notas del plan salen traducidas", function () {
+    // `mainProt` ("pollo", "legumbre") pasa por tDish como pieza suelta.
+    // Sin su entrada, las notas decían "Fuentes de proteína: pollo, atun"
+    // en medio de una frase en otro idioma.
+    var s = sandboxDeComida();
+    var c = catalogoDePlatos();
+    var etiquetas = {};
+    c.DISH_DB.forEach(function (d) { if (d.mainProt) etiquetas[d.mainProt] = 1; });
+    IDIOMAS_HECHOS.forEach(function (lang) {
+      // Se mira que haya ENTRADA, no que cambie: "tofu" es "tofu" en inglés.
+      var palabras = s.DISH_WORD_TABLES[lang] || {};
+      var faltan = Object.keys(etiquetas).filter(function (p) { return typeof palabras[p] !== "string"; });
+      assert.deepStrictEqual(JSON.parse(JSON.stringify(faltan)), [],
+        lang + ": fuentes de proteína sin traducir: " + faltan.join(", "));
+    });
   });
 
   t.test("tFood devuelve el ORIGINAL cuando no hay traducción, no un hueco", function () {
@@ -352,24 +529,21 @@ function run(t) {
     // Lo que sí se puede comprobar aquí: que no se haya colado nada que no
     // sea un nombre del catálogo de platos, o sea que el diccionario no
     // crezca por su cuenta con cosas que nadie usa.
-    var vm = require("vm");
-    var fs = require("fs");
-    var s = loadBrowserGlobals([
-      projPath("js/core/i18n.js"), projPath("js/i18n/food-en.js")
-    ]);
-    var c = {}; vm.createContext(c);
-    vm.runInContext(fs.readFileSync(projPath("js/data/dishes.js"), "utf8"), c);
+    var s = sandboxDeComida();
+    var c = catalogoDePlatos();
 
     var delCatalogo = {};
     c.DISH_DB.forEach(function (d) {
       delCatalogo[d.name] = 1;
       (d.items || []).forEach(function (i) { delCatalogo[i.name] = 1; });
     });
-    var sobran = Object.keys(s.FOOD_TABLES["en"]).filter(function (n) {
-      return !delCatalogo[n];
+    IDIOMAS_HECHOS.forEach(function (lang) {
+      var sobran = Object.keys(s.FOOD_TABLES[lang]).filter(function (n) {
+        return !delCatalogo[n];
+      });
+      assert.deepStrictEqual(JSON.parse(JSON.stringify(sobran)), [],
+        lang + ": el diccionario traduce nombres que no están en el catálogo: " + sobran.slice(0, 6).join(" | "));
     });
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(sobran)), [],
-      "el diccionario traduce nombres que no están en el catálogo: " + sobran.slice(0, 6).join(" | "));
   });
 
   t.test("el código que pinta PRODUCTOS no pasa por el diccionario", function () {

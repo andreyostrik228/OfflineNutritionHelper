@@ -415,5 +415,8 @@ registerI18nTable("en", {
   "ui.cambiar_mis_datos": "Change my details",
   "ui.n_anos": "{n} years old",
   "ui.quitar_uno": "{campo}: less",
-  "ui.sumar_uno": "{campo}: more"
+  "ui.sumar_uno": "{campo}: more",
+  "ui.abrev_proteina": "P",
+  "ui.abrev_carbos": "C",
+  "ui.abrev_grasas": "F"
 });

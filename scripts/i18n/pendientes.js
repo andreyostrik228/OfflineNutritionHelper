@@ -2,21 +2,26 @@
 /**
  * scripts/i18n/pendientes.js
  * ──────────────────────────────────────────────────────────────────────
- * Vuelca en `pendientes.json` los pasos que AÚN no tienen traducción, en
+ * Vuelca en `pendientes-<idioma>.json` los pasos que AÚN no tienen traducción, en
  * orden de frecuencia (primero los que más veces salen en pantalla), con
  * el valor vacío listo para rellenar.
  *
- * Ese fichero se rellena a mano y se guarda como `tandas/tanda-NN.json`;
- * luego `construir-steps-en.js` lo valida y regenera js/i18n/steps-en.js.
+ * Ese fichero se rellena a mano y se guarda como `tandas/<idioma>/tanda-NN.json`;
+ * luego `construir-steps.js <idioma>` lo valida y regenera js/i18n/steps-<idioma>.js.
  *
- * Uso:  node scripts/i18n/pendientes.js [cuantos]      (por defecto 80)
+ * Uso:  node scripts/i18n/pendientes.js <idioma> [cuantos]   (por defecto 80)
  * ──────────────────────────────────────────────────────────────────────
  */
 var fs = require("fs");
 var path = require("path");
 var AQUI = __dirname;
 var REPO = path.resolve(AQUI, "..", "..");
-var TANDAS = path.join(AQUI, "tandas");
+var LANG = process.argv[2];
+if (!/^[a-z]{2}$/.test(LANG || "")) {
+  console.log("Uso: node scripts/i18n/pendientes.js <idioma> [cuantos]");
+  process.exit(1);
+}
+var TANDAS = path.join(AQUI, "tandas", LANG);
 var loadBrowserGlobals = require(path.join(REPO, "tests/lib/load-browser-globals")).loadBrowserGlobals;
 
 var s = loadBrowserGlobals([path.join(REPO, "js/data/dish-instructions.js")]);
@@ -30,7 +35,7 @@ Object.keys(DI).forEach(function (p) {
 });
 
 var hechas = {};
-fs.readdirSync(TANDAS)
+(fs.existsSync(TANDAS) ? fs.readdirSync(TANDAS) : [])
   .filter(function (f) { return /^tanda-\d+\.json$/.test(f); })
   .forEach(function (f) {
     var o = JSON.parse(fs.readFileSync(path.join(TANDAS, f), "utf8"));
@@ -40,10 +45,11 @@ fs.readdirSync(TANDAS)
 orden.sort(function (a, b) { return reales[b] - reales[a]; });
 var faltan = orden.filter(function (k) { return !hechas[k]; });
 
-var n = parseInt(process.argv[2] || "80", 10);
+var n = parseInt(process.argv[3] || "80", 10);
 var salida = {};
 faltan.slice(0, n).forEach(function (k) { salida[k] = ""; });
-fs.writeFileSync(path.join(AQUI, "pendientes.json"), JSON.stringify(salida, null, 2), "utf8");
+var destino = "pendientes-" + LANG + ".json";
+fs.writeFileSync(path.join(AQUI, destino), JSON.stringify(salida, null, 2), "utf8");
 
 console.log("faltan " + faltan.length + " de " + orden.length +
-  "; volcadas " + Math.min(n, faltan.length) + " en scripts/i18n/pendientes.json");
+  "; volcadas " + Math.min(n, faltan.length) + " en scripts/i18n/" + destino);

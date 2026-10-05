@@ -404,6 +404,41 @@ function run(t) {
       "y los gramos NO vuelven: el dígito se busca en la etiqueta entera, no en la recortada");
   });
 
+  t.test("la etiqueta se TRADUCE entera y luego se recorta, no al revés", function () {
+    // Recortando primero se buscaba "docena" o "paquete de 1 kg" en el
+    // diccionario, que va por la etiqueta entera: no casaba, no daba
+    // error, y la lista en inglés y en ruso decía "2 × docenas". Visto en
+    // Chrome con la app en ruso, 2026-09-28.
+    var s = freshShoppingListSandbox();
+    var vm = require("vm"), fs = require("fs");
+    ["js/ui/render.js", "js/i18n/packages-en.js", "js/i18n/packages-ru.js"].forEach(function (rel) {
+      vm.runInContext(fs.readFileSync(projPath(rel), "utf8"), s, { filename: rel });
+    });
+    function fila(label, n) {
+      return s.renderShoppingRow({
+        name: "Arroz blanco cocido", requiredGrams: 900,
+        purchase: { hasFixedPackage: true, packagesToBuy: n, packageSizeG: 1000,
+                    packageLabel: label, purchaseCost: 1.2 }
+      }, "mercadona");
+    }
+    var casos = [
+      ["en", "docena (12 huevos)", 2, "dozen"],
+      ["en", "paquete de 1 kg (rinde 2,3 kg cocido)", 1, "1 kg pack"],
+      ["ru", "docena (12 huevos)", 2, "упаковки по 12 шт."],
+      ["ru", "paquete de 1 kg (rinde 2,3 kg cocido)", 1, "упаковка по 1 кг"],
+      ["ru", "bandeja (media de 5 cortes)", 5, "лотков"]
+    ];
+    casos.forEach(function (c) {
+      s.saveLang(c[0]);
+      // Solo la línea de compra: el nombre del ingrediente va aparte.
+      var html = (/shopping-item__buy">([^<]*)</.exec(fila(c[1], c[2])) || [])[1] || "";
+      assert.ok(html.indexOf(c[3]) !== -1, c[0] + " " + c[1] + ": espera " + c[3] + " en " + html);
+      assert.strictEqual(/docena|paquete|bandeja/.test(html), false, c[0] + ": se cuela el español en " + html);
+      assert.strictEqual(/rinde|cocido|готовом|в среднем/.test(html), false, "la aclaración se recorta: " + html);
+    });
+    s.saveLang("es");
+  });
+
   t.test("la exportación en texto plano conserva la etiqueta ENTERA", function () {
     // Se pega en notas o en un SMS: ahí no hay ancho que valga y saber
     // cuánto rinde cocido sí ayuda. El recorte es solo de la pantalla.

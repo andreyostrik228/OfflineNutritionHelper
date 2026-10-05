@@ -17,15 +17,21 @@ encuentra una sola clave fantasma.
 
 ---
 
-## Las cinco tablas
+## Las tablas
 
-| fichero | función | clave | entradas (2026-09-13) |
-|---|---|---|---|
-| `js/i18n/es.js` | interfaz, español (idioma por defecto) | `ui.*` | 356 |
-| `js/i18n/en.js` | interfaz, inglés | `ui.*`, `tour.*` | 381 |
-| `js/i18n/food-en.js` | nombres de alimento e ingrediente | palabra española | 293 |
-| `js/i18n/packages-en.js` | etiquetas de envase | palabra española | 42 |
-| `js/i18n/steps-en.js` | pasos de receta (GENERADO) | la frase entera | 1682 |
+Por cada idioma `xx` hay CUATRO ficheros, y los tests los exigen todos en
+cuanto existe `js/i18n/xx.js` (los idiomas servidos se sacan de los
+ficheros, no de una lista):
+
+| fichero | función | clave |
+|---|---|---|
+| `js/i18n/xx.js` | interfaz | `ui.*`, `tour.*` |
+| `js/i18n/food-xx.js` | ingredientes, y en todo idioma menos el inglés los 434 platos ENTEROS | nombre español |
+| `js/i18n/packages-xx.js` | etiquetas de envase y de ración | etiqueta española entera |
+| `js/i18n/steps-xx.js` | pasos de receta (GENERADO) | la frase entera |
+
+Hechos: `en` (2026-09-13) y `ru` (2026-09-28). Cada uno necesita además sus
+cuatro `<script>` en `index.html`, junto a los del inglés.
 
 Las funciones viven en `js/core/i18n.js`: `t()` para la interfaz, `tFood()`
 para alimentos, `tDish()` para nombres de plato (**compositivo**: descompone
@@ -34,7 +40,24 @@ pasos y `tPackageLabel(label, n)` para los envases.
 
 **`tPackageLabel` lleva singular Y plural** en cada entrada, porque el inglés
 no forma el plural añadiendo una "s": `barra` → `loaf` / `loaves`, `caja` →
-`box` / `boxes`. Cuarenta y dos etiquetas, ochenta y cuatro formas.
+`box` / `boxes`.
+
+Donde el plural no es uno solo (ruso, ucraniano, polaco; el rumano añade "de"
+desde 20) la entrada es `{one, few, many, other}`, las categorías de CLDR, y
+se elige con `Intl.PluralRules`: 1 банка, 2 банки, 5 банок, 1,5 банки. El test
+exige las cuatro. Mira el `_ruFormas` de `packages-ru.js`.
+
+**`tDish` solo COMPONE en inglés.** Sus conectores (" with ", " and ", " of ")
+son ingleses, y en ruso la pieza cambia de caso tras "con" ("arroz" es "рис",
+"con arroz" es "с рисом"). En los demás idiomas los 434 platos van enteros en
+`food-xx.js`, y del vocabulario de piezas solo se usan las etiquetas de
+proteína (`mainProt`: "pollo", "legumbre") que salen sueltas en las notas del
+plan.
+
+**La lista de la compra traduce la etiqueta ENTERA y después recorta el
+paréntesis.** Al revés buscaba "docena" y no casaba. Por eso en un idioma
+nuevo lo que importa de verdad no puede ir entre paréntesis al final: se
+recorta en pantalla.
 
 ### Dos decisiones que parecen raras y no lo son
 
@@ -77,22 +100,28 @@ El recorrido no lleva marcas (se pinta desde JavaScript), así que
 ## Los pasos de receta: el ciclo
 
 ```bash
-# 1. qué falta, por frecuencia de aparición en pantalla
-node scripts/i18n/pendientes.js 90        # -> scripts/i18n/pendientes.json
+# 1. qué falta en ese idioma, por frecuencia de aparición en pantalla
+node scripts/i18n/pendientes.js ru 90     # -> scripts/i18n/pendientes-ru.json
 
-# 2. rellenar los valores a mano y guardar como tandas/tanda-NN.json
+# 2. rellenar los valores y guardar como tandas/ru/tanda-NN.json
 
-# 3. validar y regenerar js/i18n/steps-en.js
-node scripts/i18n/construir-steps-en.js
+# 3. validar y regenerar js/i18n/steps-ru.js
+node scripts/i18n/construir-steps.js ru
 
 # 4. si tocó un .js, subir el sello ?v= en index.html, tests, desplegar
 node tests/run-tests.js
 ```
 
-`construir-steps-en.js` **se niega a escribir** si encuentra claves fantasma
+`construir-steps.js` **se niega a escribir** si encuentra claves fantasma
 (no casan con ningún paso real), claves duplicadas entre tandas,
-traducciones vacías o traducciones idénticas al español. En las 21 tandas no
-hubo ni una sola clave fantasma, y esa es la razón.
+traducciones vacías, traducciones idénticas al español o, en ruso y
+ucraniano, frases sin una sola letra cirílica. En las 21 tandas del inglés y
+las 20 del ruso no hubo ni una sola clave fantasma, y esa es la razón.
+
+Para el ruso las claves NO se copiaron a mano: se tradujo por número (paso 1
+a 1.682, en el orden de los platos, para tener la receta entera delante) y un
+script puso la frase española exacta como clave. Copiar 1.682 claves a mano
+es la manera segura de meter una coma distinta.
 
 `node scripts/i18n/inventario.js` da el estado completo: tamaño de las
 tablas, cobertura real de los pasos medida con `tStep` (no con grep) y los

@@ -144,24 +144,32 @@ function run(t) {
     assert.deepStrictEqual(malos, []);
   });
 
-  // ── 3. Ninguna etiqueta se queda sin inglés ───────────────────────────
+  // ── 3. Ninguna etiqueta se queda sin traducir ─────────────────────────
 
-  t.test("cada etiqueta de ración tiene traducción al inglés", function () {
+  t.test("cada etiqueta de ración tiene traducción en cada idioma servido", function () {
+    // Los idiomas salen de los ficheros (js/i18n/<idioma>.js), igual que en
+    // tests/i18n.test.js: un idioma que se sirve tiene que estar entero.
+    var idiomas = require("fs").readdirSync(projPath("js/i18n"))
+      .map(function (f) { var m = /^([a-z]{2}).js$/.exec(f); return m && m[1]; })
+      .filter(function (l) { return l && l !== "es"; });
+    assert.ok(idiomas.indexOf("en") !== -1, "no se ha encontrado ni el inglés");
     var tablas = loadBrowserGlobals([
       projPath("js/core/i18n.js"),
-      projPath("js/i18n/es.js"),
-      projPath("js/i18n/packages-en.js")
-    ]);
+      projPath("js/i18n/es.js")
+    ].concat(idiomas.map(function (l) { return projPath("js/i18n/packages-" + l + ".js"); })));
     var sinTraducir = [];
-    Object.keys(s.SERVING_CATALOGS.mercadona.units).forEach(function (k) {
-      var label = s.SERVING_CATALOGS.mercadona.units[k].label;
-      if (sinTraducir.indexOf(label) !== -1) return;
-      // El idioma va explícito: `tPackageLabel` devuelve null cuando el
-      // idioma activo YA es el español, que es lo que ve un test.
-      if (!tablas.tPackageLabel(label, 1, "en") || !tablas.tPackageLabel(label, 2, "en")) sinTraducir.push(label);
+    idiomas.forEach(function (lang) {
+      Object.keys(s.SERVING_CATALOGS.mercadona.units).forEach(function (k) {
+        var label = s.SERVING_CATALOGS.mercadona.units[k].label;
+        if (sinTraducir.indexOf(lang + " " + label) !== -1) return;
+        // El idioma va explícito: `tPackageLabel` devuelve null cuando el
+        // idioma activo YA es el español, que es lo que ve un test.
+        if (!tablas.tPackageLabel(label, 1, lang) || !tablas.tPackageLabel(label, 2, lang) ||
+            !tablas.tPackageLabel(label, 5, lang)) sinTraducir.push(lang + " " + label);
+      });
     });
     assert.deepStrictEqual(sinTraducir, [],
-      "sin par [singular, plural] en packages-en.js la etiqueta sale en español dentro del inglés, en silencio");
+      "sin su entrada en packages-<idioma>.js la etiqueta sale en español dentro de la traducción, en silencio");
   });
 
   t.test("el plural español irregular está escrito, no deducido", function () {

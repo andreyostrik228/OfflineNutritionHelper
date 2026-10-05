@@ -167,8 +167,11 @@ registerDishWords("en", {
   "muesli": "muesli",
   "cereales": "cereal",
   "copos": "flakes",
-  "tortitas": "pancakes",
-  "tortita": "pancake",
+  // Tampoco a secas: en los cuatro platos que dicen "tortitas" o "tortita"
+  // el ingrediente es "Tortitas de arroz" (js/data/dishes.js). Decía
+  // "Peanut butter with pancakes" sobre unas tortas de arroz.
+  "tortitas": "rice cakes",
+  "tortita": "rice cake",
   // Compuesto: despiezado daba "Rice pancakes", y no son tortitas de
   // desayuno sino las tortas secas de arroz que se compran en paquete.
   "tortitas de arroz": "rice cakes",
@@ -252,6 +255,8 @@ registerDishWords("en", {
   "aceite de oliva": "olive oil",
   "cacao": "cocoa",
   "canela": "cinnamon",
+  // Faltaba: "Edamame con sal" salía "Edamame with sal".
+  "sal": "salt",
   "puñado": "handful",
 
   // ── Huevo y lácteos ─────────────────────────────────────────────────

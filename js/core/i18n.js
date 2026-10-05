@@ -241,6 +241,9 @@ var DISH_WORD_TABLES = {};
 /** Métodos de cocción: en español van detrás, en inglés delante. */
 var DISH_METHODS = {};
 
+/** Idiomas cuyos nombres de plato se componen pieza a pieza (ver tDish). */
+var DISH_COMPOSABLE = { en: true };
+
 function registerDishWords(lang, palabras, metodos) {
   if (LANGS.indexOf(lang) === -1) return;
   if (palabras && typeof palabras === "object") DISH_WORD_TABLES[lang] = palabras;
@@ -314,6 +317,19 @@ function tDish(nombre, lang) {
 
   var palabras = DISH_WORD_TABLES[idioma];
   if (!palabras) return nombre;
+
+  // Fuera del inglés NO se compone. Los conectores de abajo (" with ",
+  // " and ", " of ") son ingleses, y en ruso o en polaco la pieza además
+  // cambia de caso detrás de "con": "arroz" es "рис", "con arroz" es
+  // "с рисом". Ahí los platos van ENTEROS en food-<lang>.js, y lo que se
+  // busca en el vocabulario es solo una pieza suelta entera (las fuentes de
+  // proteína de las notas del plan: "pollo", "legumbre"). Un plato nuevo
+  // sin traducir sale en español, que se entiende; "Курица with рис", no.
+  if (!DISH_COMPOSABLE[idioma]) {
+    var sola = nombre.trim();
+    return (typeof palabras[sola.toLowerCase()] === "string")
+      ? _piezaTraducida(sola, palabras) : nombre;
+  }
   var metodos = DISH_METHODS[idioma] || {};
 
   var resto = nombre, metodo = "";
@@ -417,7 +433,40 @@ function registerPackageTable(lang, tabla) {
 }
 
 /**
+ * La categoría de plural de CLDR para un número: "one", "few", "many",
+ * "other"… Es la que decide, en ruso, entre "1 банка", "2 банки",
+ * "5 банок" y "1,5 банки".
+ *
+ * `Intl.PluralRules` la da hecha y con las reglas de verdad (21 es "one"
+ * en ruso, 12 es "many", 1,5 es "other"). Sin Intl, que hoy es un
+ * navegador muy viejo, se cae a lo mínimo: 1 es "one" y lo demás "other".
+ *
+ * @param {number} n
+ * @param {string} lang
+ * @returns {string}
+ */
+function _categoriaDePlural(n, lang) {
+  try {
+    if (typeof Intl !== "undefined" && Intl.PluralRules) {
+      return new Intl.PluralRules(lang).select(n);
+    }
+  } catch (e) { /* idioma que este Intl no conoce: al repliegue */ }
+  return n === 1 ? "one" : "other";
+}
+
+/**
  * La etiqueta de un envase, en singular o plural segun cuantos sean.
+ *
+ * Cada entrada viene de una de dos formas:
+ *
+ *   ["loaf", "loaves"]                                  singular y plural
+ *   {one: "банка", few: "банки", many: "банок", other: "банки"}
+ *
+ * La segunda es para los idiomas donde el plural no es uno solo. En ruso,
+ * ucraniano y polaco la palabra cambia con el número (1, 2-4, 5-20, y otra
+ * más para las fracciones), y en rumano a partir de 20 lleva "de" delante
+ * ("20 de ouă"). Las claves son las categorías de CLDR, y `other` es la de
+ * repliegue cuando falta la que toca.
  *
  * Sin traduccion devuelve null, para que quien llama use lo que ya hacia
  * con el español (incluido su plural).
@@ -434,6 +483,11 @@ function tPackageLabel(label, n, lang) {
   var tabla = PACKAGE_TABLES[idioma];
   var par = tabla && tabla[label];
   if (!par) return null;
+  if (Object.prototype.toString.call(par) !== "[object Array]") {
+    var cuantos = (typeof n === "number" && isFinite(n)) ? n : 1;
+    var forma = par[_categoriaDePlural(cuantos, idioma)];
+    return (typeof forma === "string" && forma) ? forma : (par.other || par.one || null);
+  }
   var plural = (typeof n === "number" && n > 1);
   return plural ? (par[1] || par[0]) : par[0];
 }

@@ -5,6 +5,50 @@
 > Escrito para alguien que llega SIN NINGÚN contexto previo. Si solo lees
 > una parte de este archivo, que sea esta.
 >
+> ### ⏩ UPDATE 2026-09-28 (d) — la app entera en RUSO, y la tubería de traducción ya sirve para cualquier idioma
+>
+> **725 tests en verde (eran 716). Sello `20260928d`. SIN desplegar ni
+> commitear todavía** (a la espera del "деплой" del dueño).
+>
+> El dueño pidió los ocho idiomas declarados, uno detrás de otro; el ruso
+> primero. Hecho en ruso: interfaz (`js/i18n/ru.js`, todas las claves más el
+> recorrido y el resumen legal), los 83 ingredientes y los **434 platos con su
+> nombre ENTERO** (`food-ru.js`), envases con sus cuatro formas de plural
+> (`packages-ru.js`) y los **1.682 pasos de receta** (`steps-ru.js`, 20 tandas
+> en `scripts/i18n/tandas/ru/`).
+>
+> **Tres cambios de mecanismo que valen para los idiomas que faltan:**
+> (1) `tDish` ya NO compone fuera del inglés: sus conectores eran ingleses
+> ("Курица with рис") y en ruso la pieza cambia de caso tras "con". Los demás
+> idiomas llevan los platos enteros, y un test exige los 434. (2)
+> `tPackageLabel` acepta `{one, few, many, other}` además del par, y elige con
+> `Intl.PluralRules` (1 банка, 2 банки, 5 банок, 1,5 банки). (3) Los tests de
+> traducción sacan los idiomas de los FICHEROS (`js/i18n/<xx>.js`) y exigen a
+> cada uno sus cuatro tablas, sus `<script>`, todas las claves, todos los
+> ingredientes, platos, envases y formas: nueve mutaciones, nueve cazadas.
+>
+> **Fallos encontrados por el camino, arreglados también para el inglés:** la
+> lista de la compra recortaba "(12 huevos)" ANTES de traducir, así que
+> buscaba "docena" en el diccionario y salía "2 × docenas" en inglés y en
+> ruso (ahora traduce y luego recorta; test); faltaba "docena (12 huevos)" en
+> `packages-en.js` (test contra `packaging.js`); "tortitas" salía "pancakes"
+> en platos que son tortas de arroz; "Edamame with sal"; las letras de macros
+> "P / C / G" estaban escritas a pelo (ahora `ui.abrev_*`: F en inglés, Б/У/Ж
+> en ruso).
+>
+> **Comprobado en Chrome sin interfaz, 390 px y 1280 px, en ruso:** plan,
+> receta, compra, notas y datos sin una sola palabra española fuera de los
+> nombres de producto de Mercadona (que se quedan a propósito); sin desborde
+> lateral; ningún error. Primera visita con navegador en ruso: la pregunta 1
+> ofrece "Русский" y el resto del alta sale en ruso. OJO: `detectLang()`
+> existe pero NADIE lo llama, así que la bienvenida sale siempre en español
+> hasta elegir; cablearlo es decisión del dueño.
+>
+> **Peso:** cada idioma son ~390 KB sin comprimir (los pasos, 340 KB). Con los
+> ocho serían ~3 MB que se cargan TODOS al abrir (decisión de i18n.js contra
+> el parpadeo). Antes del cuarto o quinto idioma conviene cargar solo el
+> elegido con un `<script>` síncrono desde el `<head>`, como ya dice i18n.js.
+>
 > ### ⏩ UPDATE 2026-09-28 (c) — botones cómodos, pestañas en el móvil, casillas vivas
 >
 > **716 tests en verde (eran 707). Desplegado, sello `20260928c`**
