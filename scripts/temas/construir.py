@@ -42,7 +42,7 @@ def main(argv):
             if not os.path.exists(os.path.join(FUENTES, f)):
                 raise SystemExit("%s: falta assets/fonts/%s" % (id_, f))
         destino = os.path.join(SALIDA, id_ + ".css")
-        with open(destino, "w", encoding="utf-8", newline="\n") as fh:
+        with open(destino, "w", encoding="utf-8", newline="\r\n") as fh:
             fh.write(css)
         print("%-12s %6.1f KB  -> %s" % (id_, len(css.encode("utf-8")) / 1024, os.path.relpath(destino, nucleo.RAIZ)))
 
