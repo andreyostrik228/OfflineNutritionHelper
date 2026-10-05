@@ -57,7 +57,7 @@ var ES_PALABRAS = ["de", "la", "el", "los", "las", "con", "para", "que", "sin", 
  * basta: hacen falta dos juntas para sospechar de español.
  */
 var ES_AMBIGUAS = ["lo", "se", "es", "te", "mi", "si", "ha", "han", "fue", "son", "pon", "hora",
-  "plan", "cena", "comida", "ajustado", "objetivo", "ver", "foto", "email", "compra", "cuenta",
+  "cena", "comida", "ajustado", "objetivo", "ver", "foto", "email", "compra", "cuenta",
   "ficha", "media", "medio", "fecha", "no"];
 
 /** Quita del texto los ejemplos que se teclean y se quedan en español. */

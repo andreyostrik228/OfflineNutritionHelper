@@ -509,6 +509,56 @@ function t(clave, lang) {
   return clave;
 }
 
+/**
+ * Como t(), pero lo que NO está en ninguna tabla devuelve `original` en vez de
+ * la clave. Es para el texto que vive en español junto a su dato (los pasos
+ * del recorrido, las plantillas de «sin cocinar»): el español no está en
+ * es.js, y ver «ui.x» donde hay una frase española perfectamente buena sería
+ * peor que el hueco que `t()` quiere evitar.
+ *
+ * @param {string} clave
+ * @param {string} original - el texto español que acompaña al dato
+ * @param {string} [lang]
+ * @returns {string}
+ */
+function tOr(clave, original, lang) {
+  var idioma = (typeof lang === "string") ? sanitizeLang(lang) : getLang();
+  var tabla = I18N_TABLES[idioma];
+  if (tabla && typeof tabla[clave] === "string") return tabla[clave];
+  var origen = I18N_TABLES[DEFAULT_LANG];
+  if (origen && typeof origen[clave] === "string") return origen[clave];
+  return original;
+}
+
+/**
+ * Las claves de traducción del nombre de cada toma. La clave de la toma
+ * ("breakfast") no cambia con el idioma; su nombre sí.
+ *
+ * Vive aquí y no en js/ui porque lo piden tres capas: las tarjetas
+ * (render.js), "Mis planes" (render-pantry.js) y el informe del motor
+ * (plan-generator.js, "Desayuno necesita 7 min más…").
+ */
+var MEAL_LABEL_KEYS = {
+  breakfast: "ui.desayuno", lunch: "ui.comida", dinner: "ui.cena",
+  snack: "ui.snack_1", snack2: "ui.snack_2"
+};
+
+/**
+ * El nombre de una toma en el idioma de ahora ("Desayuno" / "Завтрак").
+ * `meal.label` está guardado en español (también en los planes del historial),
+ * así que la etiqueta se vuelve a pedir por la CLAVE de la toma; si la clave
+ * no se conoce se devuelve `fallback`, que es la etiqueta española guardada.
+ * @param {string} key - "breakfast", "lunch", "dinner", "snack", "snack2"
+ * @param {string} [fallback]
+ * @param {string} [lang]
+ * @returns {string}
+ */
+function tMeal(key, fallback, lang) {
+  var clave = MEAL_LABEL_KEYS[key];
+  if (!clave) return (typeof fallback === "string") ? fallback : String(key);
+  return tOr(clave, (typeof fallback === "string") ? fallback : String(key), lang);
+}
+
 // ── Cadenas con huecos: t() + {parámetros} ───────────────────────────────
 //
 // Hasta ahora cada sitio hacía `t(clave).replace("{n}", n)` a mano, con
@@ -530,13 +580,29 @@ function t(clave, lang) {
  * Un hueco sin valor en `params` se deja tal cual ("{n}"), igual que una
  * clave sin traducción se deja ver: un fallo tiene que notarse.
  *
+ * Un valor que sea un objeto `{key, params}` es otro mensaje y se traduce antes
+ * de meterlo (ver más abajo).
+ *
  * @param {string} clave
  * @param {Object<string, *>} [params]
  * @param {string} [lang] - por defecto, el elegido
  * @returns {string}
  */
 function tFormat(clave, params, lang) {
-  return _rellenarHuecos(t(clave, lang), params);
+  var valores = params;
+  if (params && typeof params === "object") {
+    // Un parámetro puede ser a su vez un mensaje, {key, params}: una frase que
+    // se mete dentro de otra ("Con {margen} no ha sido posible…"). Se traduce
+    // primero, en el mismo idioma. Así el motor guarda claves y números, no
+    // texto ya traducido.
+    valores = {};
+    Object.keys(params).forEach(function (nombre) {
+      var v = params[nombre];
+      valores[nombre] = (v && typeof v === "object" && typeof v.key === "string")
+        ? tFormat(v.key, v.params, lang) : v;
+    });
+  }
+  return _rellenarHuecos(t(clave, lang), valores);
 }
 
 /** Sustituye cada {nombre} de `texto` por `params.nombre`, si existe. */

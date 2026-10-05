@@ -335,7 +335,8 @@ function check25PercentRule(meals, dailyKcal) {
   meals.forEach(function (meal) {
     meal.items.forEach(function (item) {
       if (item.kcal / dailyKcal > 0.25) {
-        violations.push(item.name + " (" + Math.round(item.kcal / dailyKcal * 100) + "%)");
+        // El nombre se traduce al PINTAR (aquí es texto de una nota).
+        violations.push(nombreComida(item.name) + " (" + Math.round(item.kcal / dailyKcal * 100) + "%)");
       }
     });
   });

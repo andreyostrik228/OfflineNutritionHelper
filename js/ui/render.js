@@ -102,10 +102,7 @@ function nombrePlato(n) {
 }
 
 /** Nombre de cada toma por su clave. La clave no cambia con el idioma. */
-var CLAVES_DE_TOMA = {
-  breakfast: "ui.desayuno", lunch: "ui.comida", dinner: "ui.cena",
-  snack: "ui.snack_1", snack2: "ui.snack_2"
-};
+var CLAVES_DE_TOMA = (typeof MEAL_LABEL_KEYS !== "undefined") ? MEAL_LABEL_KEYS : {};
 
 /**
  * El titulo de una tarjeta: "Desayuno — Wrap con claras".
