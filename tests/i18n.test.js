@@ -149,6 +149,116 @@ function run(t) {
     assert.strictEqual(s.t("saludo"), "Bonjour");
   });
 
+  // ── Cadenas con huecos: tFormat ────────────────────────────────────────
+
+  t.test("tFormat rellena TODAS las apariciones de un hueco, no solo la primera", function () {
+    // `"a {n} b {n}".replace("{n}", 3)` con una cadena solo cambia la
+    // primera. Era la trampa de los `.replace` encadenados a mano.
+    var s = freshI18nSandbox();
+    s.registerI18nTable("es", { "x": "{n} de {total}, otra vez {n}" });
+    assert.strictEqual(s.tFormat("x", { n: 2, total: 5 }, "es"), "2 de 5, otra vez 2");
+  });
+
+  t.test("tFormat deja a la vista un hueco sin valor, y no toca lo que no es hueco", function () {
+    var s = freshI18nSandbox();
+    s.registerI18nTable("es", { "x": "Faltan {n} g ({otro}) {} { n }" });
+    // Un hueco sin valor se queda tal cual: un fallo tiene que notarse.
+    assert.strictEqual(s.tFormat("x", { n: 3 }, "es"), "Faltan 3 g ({otro}) {} { n }");
+    // Sin parámetros, la cadena sale igual que t().
+    assert.strictEqual(s.tFormat("x", undefined, "es"), s.t("x", "es"));
+    // Una clave que no existe se devuelve entera, con sus llaves si las lleva.
+    assert.strictEqual(s.tFormat("no.existe", { n: 1 }, "es"), "no.existe");
+  });
+
+  t.test("tFormat inserta el valor LITERAL: un \"$&\" no reescribe la frase", function () {
+    // Un nombre de producto con "$&" o "$1" no puede interpretarse como patrón
+    // de reemplazo. Con `String.prototype.replace` y una cadena de reemplazo
+    // sí lo sería.
+    var s = freshI18nSandbox();
+    s.registerI18nTable("es", { "x": "Ver {producto} en Mercadona" });
+    assert.strictEqual(s.tFormat("x", { producto: "Oferta $& $1 $$" }, "es"), "Ver Oferta $& $1 $$ en Mercadona");
+  });
+
+  t.test("tFormat usa el idioma pedido y repliega al español como t()", function () {
+    var s = freshI18nSandbox();
+    s.registerI18nTable("es", { "a": "Hola {n}", "b": "Solo en español {n}" });
+    s.registerI18nTable("en", { "a": "Hello {n}" });
+    assert.strictEqual(s.tFormat("a", { n: 1 }, "en"), "Hello 1");
+    assert.strictEqual(s.tFormat("b", { n: 1 }, "en"), "Solo en español 1");
+  });
+
+  // ── Unidades ───────────────────────────────────────────────────────────
+
+  /** Las unidades de verdad: i18n.js más las tablas de cada idioma servido. */
+  function sandboxDeUnidades() {
+    return sandboxConTablas(["es"].concat(IDIOMAS_HECHOS));
+  }
+
+  t.test("cada unidad está traducida en cada idioma servido", function () {
+    var s = sandboxDeUnidades();
+    s.UNIT_CODES.forEach(function (code) {
+      ["es"].concat(IDIOMAS_HECHOS).forEach(function (lang) {
+        var u = s.tUnit(code, lang);
+        assert.ok(u && u !== "unit." + code, lang + ": la unidad «" + code + "» no está en la tabla");
+      });
+    });
+    // El separador de la unidad pegada tiene que existir en TODOS (puede ser "").
+    ["es"].concat(IDIOMAS_HECHOS).forEach(function (lang) {
+      assert.strictEqual(typeof s.I18N_TABLES[lang]["unit.sep_pegada"], "string", lang + ": falta unit.sep_pegada");
+    });
+  });
+
+  t.test("las unidades en ruso son rusas y las de español e inglés se quedan como estaban", function () {
+    var s = sandboxDeUnidades();
+    var ru = {};
+    s.UNIT_CODES.forEach(function (code) { ru[code] = s.tUnit(code, "ru"); });
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(ru)),
+      { kcal: "ккал", g: "г", kg: "кг", min: "мин", ml: "мл", cm: "см" });
+    ["es", "en"].forEach(function (lang) {
+      s.UNIT_CODES.forEach(function (code) {
+        assert.strictEqual(s.tUnit(code, lang), code, lang + " " + code);
+      });
+    });
+  });
+
+  t.test("fmtUnit separa con espacio; fmtUnitJunto conserva la unidad pegada en es y en", function () {
+    var s = sandboxDeUnidades();
+    assert.strictEqual(s.fmtUnit(840, "g", "es"), "840 g");
+    assert.strictEqual(s.fmtUnit(840, "g", "en"), "840 g");
+    assert.strictEqual(s.fmtUnit(840, "g", "ru"), "840 г");
+    assert.strictEqual(s.fmtUnit(2499, "kcal", "ru"), "2499 ккал");
+    // Donde iba pegada ("(500g)") sigue pegada en español e inglés...
+    assert.strictEqual(s.fmtUnitJunto(500, "g", "es"), "500g");
+    assert.strictEqual(s.fmtUnitJunto(0.25, "kg", "en"), "0.25kg");
+    // ...y en ruso se escribe con espacio.
+    assert.strictEqual(s.fmtUnitJunto(500, "g", "ru"), "500 г");
+  });
+
+  t.test("fmtUnitHtml: número, y pegada detrás la unidad en <span class=\"u\">, sin espacios", function () {
+    var s = sandboxDeUnidades();
+    assert.strictEqual(s.fmtUnitHtml(2499, "kcal", "ru"), '2499<span class="u">ккал</span>');
+    assert.strictEqual(s.fmtUnitHtml(70, "g", "es"), '70<span class="u">g</span>');
+    assert.strictEqual(s.fmtUnitHtml(2, "min", "en"), '2<span class="u">min</span>');
+    // «Sin ningún carácter de espacio»: ni dentro del span ni entre el número
+    // y el span (el hueco lo pone el CSS). `\s` incluye el espacio duro.
+    ["es", "en", "ru"].forEach(function (lang) {
+      s.UNIT_CODES.forEach(function (code) {
+        var h = s.fmtUnitHtml(123, code, lang);
+        assert.strictEqual(/\s/.test(h.replace('<span class="u">', "")), false, lang + " " + code + ": hay un espacio en " + JSON.stringify(h));
+        assert.ok(/^123<span class="u">[^<>]+<\/span>$/.test(h), lang + " " + code + ": forma inesperada " + h);
+      });
+    });
+  });
+
+  t.test("fmtUnitHtml escapa: el valor y la unidad acaban en innerHTML", function () {
+    var s = freshI18nSandbox();
+    s.registerI18nTable("es", { "unit.g": "<img src=x onerror=alert(1)>" });
+    var h = s.fmtUnitHtml('<b>7</b>', "g", "es");
+    assert.strictEqual(h.indexOf("<img"), -1, h);
+    assert.strictEqual(h.indexOf("<b>"), -1, h);
+    assert.strictEqual(h, '&lt;b&gt;7&lt;/b&gt;<span class="u">&lt;img src=x onerror=alert(1)&gt;</span>');
+  });
+
   // ── Registro de tablas ─────────────────────────────────────────────────
 
   t.test("registerI18nTable rechaza idiomas desconocidos y valores que no son tabla", function () {

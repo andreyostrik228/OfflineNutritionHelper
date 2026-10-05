@@ -422,5 +422,16 @@ registerI18nTable("ru", {
   // Белки / углеводы / жиры: el orden ruso de siempre, "БЖУ".
   "ui.abrev_proteina": "Б",
   "ui.abrev_carbos": "У",
-  "ui.abrev_grasas": "Ж"
+  "ui.abrev_grasas": "Ж",
+  // Unidades (js/core/i18n.js: tUnit, fmtUnit, fmtUnitJunto, fmtUnitHtml). Una unidad es una palabra del
+  // idioma: en ruso ккал, г, кг, мин, мл, см.
+  "unit.kcal": "ккал",
+  "unit.g": "г",
+  "unit.kg": "кг",
+  "unit.min": "мин",
+  "unit.ml": "мл",
+  "unit.cm": "см",
+  // Lo que va entre el número y la unidad donde esta se escribía PEGADA ("500g"): nada en español y en
+  // inglés, que así lo escribían; un espacio en ruso ("500 г").
+  "unit.sep_pegada": " "
 });

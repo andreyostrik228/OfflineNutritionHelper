@@ -508,3 +508,127 @@ function t(clave, lang) {
   // Ni traducida ni en el origen: se devuelve la clave para que SE VEA.
   return clave;
 }
+
+// ── Cadenas con huecos: t() + {parámetros} ───────────────────────────────
+//
+// Hasta ahora cada sitio hacía `t(clave).replace("{n}", n)` a mano, con
+// tantos `.replace` encadenados como huecos. Funciona, pero tiene dos
+// trampas que ya han mordido: `replace` con una CADENA solo cambia la primera
+// aparición (una frase que repita {n} se quedaba con la segunda sin cambiar),
+// y un hueco que la traducción no lleva (el ruso reordena y a veces omite)
+// pasa sin ningún aviso.
+//
+// Aquí se sustituyen TODAS las apariciones, de una vez, y el valor entra
+// literal: no se interpreta como patrón (un "$&" en un nombre de producto
+// no puede reescribir la frase).
+
+/**
+ * La cadena de una clave con sus {huecos} rellenos.
+ *
+ *   tFormat("ui.pregunta_n_de_m", { n: 3, total: 16 })   ->  "Pregunta 3 de 16"
+ *
+ * Un hueco sin valor en `params` se deja tal cual ("{n}"), igual que una
+ * clave sin traducción se deja ver: un fallo tiene que notarse.
+ *
+ * @param {string} clave
+ * @param {Object<string, *>} [params]
+ * @param {string} [lang] - por defecto, el elegido
+ * @returns {string}
+ */
+function tFormat(clave, params, lang) {
+  return _rellenarHuecos(t(clave, lang), params);
+}
+
+/** Sustituye cada {nombre} de `texto` por `params.nombre`, si existe. */
+function _rellenarHuecos(texto, params) {
+  if (typeof texto !== "string" || !params || typeof params !== "object") return texto;
+  return texto.replace(/\{([A-Za-z0-9_]+)\}/g, function (hueco, nombre) {
+    return Object.prototype.hasOwnProperty.call(params, nombre) ? String(params[nombre]) : hueco;
+  });
+}
+
+// ── Las UNIDADES ─────────────────────────────────────────────────────────
+//
+// "kcal", "g", "kg", "min", "ml" y "cm" estaban escritos a pelo en ~60 sitios
+// de js/ui ("840 g", " kcal", "2 min"), y por eso en ruso se leía "840 g" y
+// "2499 kcal" junto a una interfaz entera en ruso. Una unidad es una palabra
+// del idioma como cualquier otra (ккал, г, кг, мин, мл), así que vive en las
+// tablas con claves `unit.<código>` y se pide aquí.
+//
+// Hay tres maneras de escribir un valor con su unidad, y cada una existe
+// porque en la pantalla ya había las tres:
+//
+//   fmtUnit(840, "g")        "840 g"    texto corrido, atributos, texto plano
+//   fmtUnitJunto(500, "g")   "500g"     donde la unidad iba pegada: "(500g)"
+//   fmtUnitHtml(841, "kcal") "841<span class="u">kcal</span>"   una CIFRA
+//
+// La tercera es para las cifras grandes (resumen del día, kcal de cada toma,
+// totales del pie de la tarjeta): el número y, PEGADA detrás y sin ningún
+// espacio, la unidad en un <span class="u"> para que el tema visual pueda
+// hacerla más pequeña que el número. El hueco entre los dos lo pone el CSS
+// (margin), no un carácter: un espacio dentro del span se heredaría al
+// copiar el texto y se partiría en dos al ajustar la línea.
+//
+// El español y el inglés conservan EXACTAMENTE lo que ya se veía: la unidad
+// pegada sigue pegada ("500g"). El ruso la separa ("500 г") porque así se
+// escribe: lo decide `unit.sep_pegada`, no el código.
+
+/** Las unidades que existen. Un test comprueba que cada una está traducida. */
+var UNIT_CODES = ["kcal", "g", "kg", "min", "ml", "cm"];
+
+/**
+ * La unidad sola, en el idioma de ahora ("kcal" / "ккал").
+ * @param {string} code - uno de UNIT_CODES
+ * @param {string} [lang]
+ * @returns {string}
+ */
+function tUnit(code, lang) {
+  return t("unit." + code, lang);
+}
+
+/**
+ * Valor y unidad como TEXTO, separados por un espacio: "840 g".
+ * @param {number|string} value
+ * @param {string} code
+ * @param {string} [lang]
+ * @returns {string}
+ */
+function fmtUnit(value, code, lang) {
+  return String(value) + " " + tUnit(code, lang);
+}
+
+/**
+ * Valor y unidad donde la unidad iba PEGADA al número: "500g" en español y en
+ * inglés, "500 г" en ruso (ver arriba).
+ * @param {number|string} value
+ * @param {string} code
+ * @param {string} [lang]
+ * @returns {string}
+ */
+function fmtUnitJunto(value, code, lang) {
+  return String(value) + t("unit.sep_pegada", lang) + tUnit(code, lang);
+}
+
+/**
+ * Una CIFRA con su unidad, para pintar con innerHTML: el número y, detrás y
+ * sin espacios, `<span class="u">unidad</span>`. Todo va escapado -- el valor
+ * porque esto acaba en innerHTML, la unidad porque viene de una tabla de
+ * traducción y no hay motivo para fiarse de lo que lleve dentro.
+ * @param {number|string} value
+ * @param {string} code
+ * @param {string} [lang]
+ * @returns {string}
+ */
+function fmtUnitHtml(value, code, lang) {
+  return _escaparHtml(String(value)) + '<span class="u">' + _escaparHtml(tUnit(code, lang)) + "</span>";
+}
+
+/** Escapado mínimo, propio: este módulo no depende de utils.js (se carga antes). */
+function _escaparHtml(s) {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}

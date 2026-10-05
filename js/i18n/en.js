@@ -418,5 +418,16 @@ registerI18nTable("en", {
   "ui.sumar_uno": "{campo}: more",
   "ui.abrev_proteina": "P",
   "ui.abrev_carbos": "C",
-  "ui.abrev_grasas": "F"
+  "ui.abrev_grasas": "F",
+  // Unidades (js/core/i18n.js: tUnit, fmtUnit, fmtUnitJunto, fmtUnitHtml). Una unidad es una palabra del
+  // idioma: en ruso ккал, г, кг, мин, мл, см.
+  "unit.kcal": "kcal",
+  "unit.g": "g",
+  "unit.kg": "kg",
+  "unit.min": "min",
+  "unit.ml": "ml",
+  "unit.cm": "cm",
+  // Lo que va entre el número y la unidad donde esta se escribía PEGADA ("500g"): nada en español y en
+  // inglés, que así lo escribían; un espacio en ruso ("500 г").
+  "unit.sep_pegada": ""
 });
