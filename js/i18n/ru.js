@@ -55,7 +55,6 @@ registerI18nTable("ru", {
   "ui.hint_presupuesto_muy_ajustado": "Когда потолок — это действительно потолок. На полноценный день не хватает: ингредиенты повторяются, перекусов нет, и белка обычно недобор. Если что-то уже есть дома, отметьте это в кладовой — именно там цена и снижается.",
   "ui.introduce_email_y_contrasena": "Введите e-mail и пароль.",
   "ui.introduce_tu_email": "Введите e-mail.",
-  "ui.la_contrasena_necesita_al_menos": "В пароле должно быть не меньше",
   "ui.las_dos_contrasenas_no_coinciden": "Пароли не совпадают.",
   "ui.lista_copiada_al_portapapeles": "Список скопирован в буфер обмена.",
   "ui.lista_de_la_compra": "Список покупок",
@@ -634,5 +633,22 @@ registerI18nTable("ru", {
   "nocook.snack_dulce_nombre": "Что-нибудь сладкое",
   "nocook.snack_dulce_montaje": "Прямо из упаковки.",
   "nocook.snack_salado_nombre": "Солёная закуска",
-  "nocook.snack_salado_montaje": "Прямо из упаковки."
+  "nocook.snack_salado_montaje": "Прямо из упаковки.",
+  // Acceso y cuentas (js/core/auth.js: authErrorMessage; js/ui/render-auth.js).
+  "ui.continuar_con_google": "Продолжить через Google",
+  "ui.borrando": "Удаление…",
+  "ui.la_contrasena_necesita_n_caracteres": "В пароле должно быть не меньше {n} символов.",
+  // Los mensajes de error de authErrorMessage(): el español de cada uno también está en auth.js (que se prueba
+  // sin tablas), y tests/auth.test.js comprueba que los dos dicen lo mismo.
+  "ui.auth_sin_conexion": "Нет соединения: для аккаунтов нужен интернет. Вы можете продолжать пользоваться приложением как гость — всё сохраняется на этом устройстве.",
+  "ui.auth_cuentas_no_disponibles": "Аккаунты на этом сайте пока недоступны — вы можете продолжать пользоваться им как гость.",
+  "ui.auth_sesion_caducada": "Ваш сеанс истёк — войдите снова и повторите попытку.",
+  "ui.auth_credenciales_incorrectas": "Неверный email или пароль.",
+  "ui.auth_email_en_uso": "Аккаунт с таким email уже существует — попробуйте войти.",
+  "ui.auth_email_invalido": "Этот email выглядит неверно — проверьте его.",
+  "ui.auth_contrasena_debil": "Пароль должен содержать не менее 6 символов.",
+  "ui.auth_demasiados_intentos": "Слишком много попыток — подождите немного и повторите.",
+  "ui.auth_popup_bloqueado": "Браузер заблокировал окно Google — разрешите всплывающие окна для этого сайта и повторите попытку.",
+  "ui.auth_sin_red": "Не удалось подключиться — проверьте интернет-соединение и повторите попытку.",
+  "ui.auth_error_generico": "Не удалось выполнить операцию. Повторите попытку."
 });

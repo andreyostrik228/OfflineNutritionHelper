@@ -172,6 +172,44 @@ function run(t) {
     assert.strictEqual(s.authProfileLabel.getAttribute("data-i18n"), null);
   });
 
+  t.test("el diálogo de acceso: contraseña corta, «Borrando…» y errores del servidor salen en el idioma de la pantalla", function () {
+    var s = loadBrowserGlobals(archivos(["js/core/auth.js", "js/ui/render-auth.js"]));
+    var corta = {
+      es: "La contraseña necesita al menos 6 caracteres.",
+      en: "The password needs at least 6 characters.",
+      ru: "В пароле должно быть не меньше 6 символов."
+    };
+    // Un idioma detrás de otro: el borrado contesta en un microtask y la
+    // lengua de la pantalla tiene que seguir siendo la de ese idioma.
+    var cadena = Promise.resolve();
+    ["es", "en", "ru"].forEach(function (lang) {
+      cadena = cadena.then(function () {
+        s.saveLang(lang);
+        // Crear cuenta con una contraseña de 3 letras: el aviso sale sin ir a la red.
+        s.authErrorEl = elementoFalso();
+        s.authNoticeEl = elementoFalso();
+        s.authEmailInput = { value: "ana@example.com", focus: function () {} };
+        s.authPasswordInput = { value: "abc", focus: function () {}, setAttribute: function () {} };
+        s._authMode = "register";
+        s.handleEmailFormSubmit({ preventDefault: function () {} });
+        assert.strictEqual(s.authErrorEl.textContent, corta[lang], lang);
+
+        // Borrar la cuenta: mientras se borra, y si el servidor contesta con un error.
+        s.authDeleteConfirmInput = { value: "BORRAR" };
+        s.authDeleteConfirmBtn = elementoFalso();
+        s.authDeleteErrorEl = elementoFalso();
+        s.deleteOwnAccount = function () { return Promise.resolve({ error: { code: "auth/requires-recent-login" } }); };
+        s.handleDeleteAccountConfirm();
+        assert.strictEqual(s.authDeleteConfirmBtn.textContent, s.t("ui.borrando", lang), lang + ": «Borrando…»");
+        return Promise.resolve().then(function () {}).then(function () {}).then(function () {
+          assert.strictEqual(s.authDeleteErrorEl.textContent, s.t("ui.auth_sesion_caducada", lang), lang + ": error del borrado");
+          assert.strictEqual(s.authDeleteConfirmBtn.textContent, s.t("ui.si_borrar_mi_cuenta", lang), lang);
+        });
+      });
+    });
+    return cadena.then(function () { s.saveLang("es"); });
+  });
+
   // ── Unidades y cifras ──────────────────────────────────────────────────
   //
   // La unidad de una cifra grande va en <span class="u"> detrás del número,

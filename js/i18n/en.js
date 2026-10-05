@@ -53,7 +53,6 @@ registerI18nTable("en", {
   "ui.hint_presupuesto_muy_ajustado": "For when the cap really is the cap. It does not stretch to a full day: it repeats ingredients, drops the snacks and usually falls short on protein. If you already have things at home, tick them off in the pantry — that is where the price actually comes down.",
   "ui.introduce_email_y_contrasena": "Enter your email and password.",
   "ui.introduce_tu_email": "Enter your email.",
-  "ui.la_contrasena_necesita_al_menos": "The password needs at least",
   "ui.las_dos_contrasenas_no_coinciden": "The two passwords do not match.",
   "ui.lista_copiada_al_portapapeles": "List copied to the clipboard.",
   "ui.lista_de_la_compra": "Shopping list",
@@ -630,5 +629,22 @@ registerI18nTable("en", {
   "nocook.snack_dulce_nombre": "Something sweet",
   "nocook.snack_dulce_montaje": "Straight from the packet.",
   "nocook.snack_salado_nombre": "Savoury nibbles",
-  "nocook.snack_salado_montaje": "Straight from the packet."
+  "nocook.snack_salado_montaje": "Straight from the packet.",
+  // Acceso y cuentas (js/core/auth.js: authErrorMessage; js/ui/render-auth.js).
+  "ui.continuar_con_google": "Continue with Google",
+  "ui.borrando": "Deleting…",
+  "ui.la_contrasena_necesita_n_caracteres": "The password needs at least {n} characters.",
+  // Los mensajes de error de authErrorMessage(): el español de cada uno también está en auth.js (que se prueba
+  // sin tablas), y tests/auth.test.js comprueba que los dos dicen lo mismo.
+  "ui.auth_sin_conexion": "No connection: accounts need internet. You can keep using the app as a guest — everything is saved on this device.",
+  "ui.auth_cuentas_no_disponibles": "Accounts are not available on this site yet — you can keep using it as a guest.",
+  "ui.auth_sesion_caducada": "Your session has expired — sign in again and try once more.",
+  "ui.auth_credenciales_incorrectas": "Incorrect email or password.",
+  "ui.auth_email_en_uso": "An account with that email already exists — try signing in.",
+  "ui.auth_email_invalido": "That email does not look valid — please check it.",
+  "ui.auth_contrasena_debil": "The password must be at least 6 characters long.",
+  "ui.auth_demasiados_intentos": "Too many attempts — wait a moment and try again.",
+  "ui.auth_popup_bloqueado": "The browser blocked the Google window — allow pop-ups for this site and try again.",
+  "ui.auth_sin_red": "Could not connect — check your internet connection and try again.",
+  "ui.auth_error_generico": "The operation could not be completed. Please try again."
 });

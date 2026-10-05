@@ -54,7 +54,6 @@ registerI18nTable("es", {
   "ui.hint_presupuesto_muy_ajustado": "Para cuando el tope es el tope. No llega a cubrir el día entero: repite ingredientes, quita los snacks y suele quedarse corto de proteína. Si ya tienes cosas en casa, márcalas en la despensa — ahí es donde baja el precio de verdad.",
   "ui.introduce_email_y_contrasena": "Introduce email y contraseña.",
   "ui.introduce_tu_email": "Introduce tu email.",
-  "ui.la_contrasena_necesita_al_menos": "La contraseña necesita al menos",
   "ui.las_dos_contrasenas_no_coinciden": "Las dos contraseñas no coinciden.",
   "ui.lista_copiada_al_portapapeles": "Lista copiada al portapapeles.",
   "ui.lista_de_la_compra": "Lista de la compra",
@@ -561,8 +560,22 @@ registerI18nTable("es", {
   "ui.nocook_proteina_corta": "Este plan se queda en {obtenida} de proteína, por debajo de tus {objetivo}. Sin cocinar es un techo real: los productos listos para comer rinden poca proteína por caloría{barato}. Para llegar más arriba hace falta cocinar.",
   "ui.nocook_proteina_corta_barato": ", y con la prioridad en «lo más barato» baja todavía más",
   "ui.nocook_envase": "Envase: {tamano}",
-  "ui.nocook_envase_entero": "Envase entero"
-  // Las plantillas de «sin cocinar»: nocook.<clave>_nombre y nocook.<clave>_montaje. Solo están en en y ru: su
-  // español vive en js/data/no-cook-templates.js, junto a lo que explica cada plantilla (como los pasos del
-  // recorrido). Las claves se derivan de NO_COOK_TEMPLATES y un test exige que no falte ninguna.
+  "ui.nocook_envase_entero": "Envase entero",
+  // Acceso y cuentas (js/core/auth.js: authErrorMessage; js/ui/render-auth.js).
+  "ui.continuar_con_google": "Continuar con Google",
+  "ui.borrando": "Borrando…",
+  "ui.la_contrasena_necesita_n_caracteres": "La contraseña necesita al menos {n} caracteres.",
+  // Los mensajes de error de authErrorMessage(): el español de cada uno también está en auth.js (que se prueba
+  // sin tablas), y tests/auth.test.js comprueba que los dos dicen lo mismo.
+  "ui.auth_sin_conexion": "Sin conexión: las cuentas necesitan internet. Puedes seguir usando la aplicación como invitado -- todo se guarda en este dispositivo.",
+  "ui.auth_cuentas_no_disponibles": "Las cuentas todavía no están disponibles en este sitio -- puedes seguir usándolo como invitado.",
+  "ui.auth_sesion_caducada": "Tu sesión ha caducado -- vuelve a iniciarla e inténtalo otra vez.",
+  "ui.auth_credenciales_incorrectas": "Email o contraseña incorrectos.",
+  "ui.auth_email_en_uso": "Ya existe una cuenta con ese email -- prueba a iniciar sesión.",
+  "ui.auth_email_invalido": "Ese email no parece válido -- revísalo.",
+  "ui.auth_contrasena_debil": "La contraseña debe tener al menos 6 caracteres.",
+  "ui.auth_demasiados_intentos": "Demasiados intentos -- espera un momento y vuelve a intentarlo.",
+  "ui.auth_popup_bloqueado": "El navegador ha bloqueado la ventana de Google -- permite las ventanas emergentes para este sitio e inténtalo otra vez.",
+  "ui.auth_sin_red": "No se pudo conectar -- revisa tu conexión a internet e inténtalo de nuevo.",
+  "ui.auth_error_generico": "No se pudo completar la operación. Inténtalo de nuevo."
 });
