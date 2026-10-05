@@ -224,26 +224,42 @@ function initPantryRefs(refs) {
  * que aparecen en DISH_DB, deduplicados por clave normalizada y
  * ordenados alfabéticamente, y guarda el mapa clave→nombre canónico para
  * poder resolver luego lo que el usuario haya tecleado literalmente.
+ *
+ * Las sugerencias salen en el IDIOMA de la pantalla ("Рис отварной") y lo que
+ * se teclea se resuelve tanto contra el nombre traducido como contra el
+ * español de siempre: la despensa guarda el nombre CANÓNICO en español (es la
+ * clave con la que se busca el precio y el envase), pero obligar a quien lee
+ * en ruso a teclear "Arroz blanco cocido" para añadir arroz no tenía sentido
+ * -- y la lista de debajo ya lo enseña traducido.
  */
 function populatePantryIngredientOptions() {
   pantryIngredientByKey = {};
   if (typeof DISH_DB === "undefined" || typeof normalizeIngredientKey !== "function") return;
 
   var names = [];
+  var visibles = {};   // nombre canónico -> el que se enseña en este idioma
   DISH_DB.forEach(function (dish) {
     (dish.items || []).forEach(function (ingredient) {
       var key = normalizeIngredientKey(ingredient.name);
       if (!pantryIngredientByKey[key]) {
         pantryIngredientByKey[key] = ingredient.name;
         names.push(ingredient.name);
+        visibles[ingredient.name] = nombreComida(ingredient.name);
       }
     });
   });
-  names.sort(function (a, b) { return a.localeCompare(b, "es"); });
+  // También el nombre traducido lleva a su canónico. Si dos ingredientes
+  // compartieran traducción, gana el primero (el orden de DISH_DB).
+  names.forEach(function (canonico) {
+    var traducido = normalizeIngredientKey(visibles[canonico]);
+    if (!pantryIngredientByKey[traducido]) pantryIngredientByKey[traducido] = canonico;
+  });
+  var idioma = (typeof getLocale === "function") ? getLocale() : "es";
+  names.sort(function (a, b) { return visibles[a].localeCompare(visibles[b], idioma); });
 
   if (pantryIngredientOptionsList) {
     pantryIngredientOptionsList.innerHTML = names.map(function (name) {
-      return '<option value="' + escapeHtml(name) + '"></option>';
+      return '<option value="' + escapeHtml(visibles[name]) + '"></option>';
     }).join("");
   }
 }
@@ -271,13 +287,13 @@ function handleManualAdd(event) {
 
     var canonicalName = resolveTypedIngredientName(typed);
     if (!canonicalName) {
-      showAddError('No encontramos "' + typed + '" en la lista -- elige una de las sugerencias mientras escribes.');
+      showAddError(tFormat("ui.despensa_no_encontrado", { nombre: typed }));
       return;
     }
 
     var grams = parseFloat(pantryAddGrams.value);
     if (!isFinite(grams) || grams <= 0) {
-      showAddError("Indica cuántos gramos tienes.");
+      showAddError(t("ui.despensa_indica_gramos"));
       return;
     }
 
@@ -365,12 +381,11 @@ function renderPantryPanel() {
  * @returns {string} HTML
  */
 function renderExpiryBadge(entry) {
-  var name = escapeHtml(entry.name);
-
   if (!entry.expiryDate) {
     return '<button type="button" class="pantry-item__expiry pantry-item__expiry--none" ' +
-      'data-action="expiry" title="Sin fecha de caducidad. Pulsa para ponerla." ' +
-      'aria-label="Añadir fecha de caducidad de ' + name + '">+ fecha</button>';
+      'data-action="expiry" title="' + escapeHtml(t("ui.caducidad_sin_fecha_titulo")) + '" ' +
+      'aria-label="' + escapeHtml(tFormat("ui.caducidad_anadir", { nombre: nombreComida(entry.name) })) + '">' +
+      escapeHtml(t("ui.caducidad_mas_fecha")) + '</button>';
   }
 
   var estimated = entry.expirySource === "estimated";
@@ -378,9 +393,15 @@ function renderExpiryBadge(entry) {
   var d = entry.expiryDaysLeft;
   var text;
 
-  if (d < 0) text = "caducado";
-  else if (d === 0) text = "hoy";
-  else text = d + " d";
+  if (d < 0) text = t("ui.caducidad_caducado");
+  else if (d === 0) text = t("ui.caducidad_hoy");
+  else text = tFormat("ui.caducidad_dias_cortos", { n: d });
+
+  // Dónde se guarda ("en nevera"): el dato es una palabra española cerrada
+  // (nevera, congelador, despensa). Una que no se conozca se deja como viene.
+  var lugar = entry.storage
+    ? tOr("ui.lugar_" + entry.storage, "en " + entry.storage)
+    : "";
 
   // Solo la ESTIMACIÓN lleva "~". Los días publicados por la tienda son un
   // dato del fabricante, no una aproximación nuestra, así que se muestran
@@ -394,20 +415,23 @@ function renderExpiryBadge(entry) {
 
   var title;
   if (estimated && abierto) {
-    title = "Abierto el " + entry.openedAt.slice(0, 10) + ". Caducidad ESTIMADA ("
-      + entry.expiryDate + "): una vez abierto conviene gastarlo en pocos días"
-      + (entry.storage ? ", en " + entry.storage : "") + ". No es la fecha del envase. Pulsa para poner la real.";
+    title = tFormat("ui.caducidad_abierto_estimada", {
+      abierto: entry.openedAt.slice(0, 10), caduca: entry.expiryDate,
+      lugar: lugar ? ", " + lugar : ""
+    });
   } else if (estimated) {
-    title = "Caducidad ESTIMADA (" + entry.expiryDate + ") a partir de la fecha de compra y la vida útil típica"
-      + (entry.storage ? " en " + entry.storage : "") + ". No es la fecha del envase. Pulsa para poner la real.";
+    title = tFormat("ui.caducidad_estimada", {
+      caduca: entry.expiryDate, lugar: lugar ? " " + lugar : ""
+    });
   } else if (fromStore) {
     // expiryTotalDays son los días que PUBLICA la tienda; expiryDaysLeft son
     // los que quedan. La frase promete lo primero, así que usa lo primero.
-    title = "Mercadona indica consumir en " + entry.expiryTotalDays + " días desde la apertura"
-      + (entry.storage ? " (conservar en " + entry.storage + ")" : "")
-      + ". Pulsa para poner la fecha del envase.";
+    title = tFormat("ui.caducidad_de_tienda", {
+      dias: entry.expiryTotalDays,
+      conservar: lugar ? " (" + t("ui.caducidad_conservar") + " " + lugar + ")" : ""
+    });
   } else {
-    title = "Caduca el " + entry.expiryDate + " (fecha introducida a mano). Pulsa para cambiarla.";
+    title = tFormat("ui.caducidad_manual", { caduca: entry.expiryDate });
   }
 
   // Ventana de frescura (perecederos): pasada la mitad de su vida útil, el
@@ -415,15 +439,14 @@ function renderExpiryBadge(entry) {
   // sin esto, "13 d" resaltado parecería un error de la app.
   if (entry.expiryTier === "pasado") {
     var used = (typeof entry.expiryTotalDays === "number" && typeof entry.expiryDaysLeft === "number")
-      ? (entry.expiryTotalDays - entry.expiryDaysLeft) + " de " + entry.expiryTotalDays + " días"
-      : "más de la mitad de su vida útil";
-    title = "Fresco a medias: lleva " + used + ". Aún no caduca ("
-      + entry.expiryDate + "), pero conviene gastarlo pronto. " + title;
+      ? tFormat("ui.caducidad_usado_dias", { n: entry.expiryTotalDays - entry.expiryDaysLeft, total: entry.expiryTotalDays })
+      : t("ui.caducidad_mas_de_la_mitad");
+    title = tFormat("ui.caducidad_fresco_a_medias", { usado: used, caduca: entry.expiryDate }) + " " + title;
   }
 
   return '<button type="button" class="pantry-item__expiry pantry-item__expiry--' + escapeHtml(entry.expiryTier) + '" ' +
     'data-action="expiry" title="' + escapeHtml(title) + '" ' +
-    'aria-label="Caducidad de ' + name + ': ' + escapeHtml(title) + '">' + escapeHtml(label) + '</button>';
+    'aria-label="' + escapeHtml(tFormat("ui.caducidad_de", { nombre: nombreComida(entry.name), detalle: title })) + '">' + escapeHtml(label) + '</button>';
 }
 
 /**
@@ -547,14 +570,19 @@ function renderPantryRow(entry) {
   // supermercado), asi que la racion se lee con la tienda por defecto. Si
   // algun dia el stock recuerda donde se compro, se pasa aqui.
   var deCasa = cantidadDeDespensa(entry.grams, entry.name);
-  var etiquetaBoton = deCasa || (round0(entry.grams) + " g");
+  var etiquetaBoton = deCasa || fmtUnit(round0(entry.grams), "g");
+  // `data-name` es la CLAVE (el nombre canónico en español: con él se busca el
+  // stock, el precio y el envase); lo que se lee es el nombre traducido.
+  var nombre = nombreComida(entry.name);
 
   return (
     '<li class="pantry-item" data-key="' + escapeHtml(entry.key) + '" data-name="' + escapeHtml(entry.name) + '">' +
-      '<span class="pantry-item__name">' + escapeHtml(entry.name) + '</span>' +
+      '<span class="pantry-item__name">' + escapeHtml(nombre) + '</span>' +
       renderExpiryBadge(entry) +
-      '<button type="button" class="pantry-item__amount" data-action="edit" aria-label="Editar cantidad de ' + escapeHtml(entry.name) + ': ' + round0(entry.grams) + ' g">' + escapeHtml(etiquetaBoton) + '</button>' +
-      '<button type="button" class="pantry-item__remove" data-action="remove" aria-label="Quitar ' + escapeHtml(entry.name) + '">&times;</button>' +
+      '<button type="button" class="pantry-item__amount" data-action="edit" aria-label="' +
+        escapeHtml(tFormat("ui.despensa_editar_cantidad", { nombre: nombre, cantidad: fmtUnit(round0(entry.grams), "g") })) + '">' + escapeHtml(etiquetaBoton) + '</button>' +
+      '<button type="button" class="pantry-item__remove" data-action="remove" aria-label="' +
+        escapeHtml(tFormat("ui.despensa_quitar", { nombre: nombre })) + '">&times;</button>' +
     '</li>'
   );
 }
@@ -602,7 +630,7 @@ function beginEditPantryRow(btn) {
   input.inputMode = "numeric";
   input.className = "pantry-item__amount-input";
   input.value = currentGrams;
-  input.setAttribute("aria-label", "Cantidad de " + name + " en gramos");
+  input.setAttribute("aria-label", tFormat("ui.despensa_cantidad_en_gramos", { nombre: nombreComida(name) }));
 
   btn.replaceWith(input);
   input.focus();
@@ -658,7 +686,7 @@ function beginEditExpiryRow(btn) {
   input.type = "date";
   input.className = "pantry-item__expiry-input";
   input.value = current;
-  input.setAttribute("aria-label", "Fecha de caducidad de " + name + ". Vacío para volver a la estimación.");
+  input.setAttribute("aria-label", tFormat("ui.caducidad_editar", { nombre: nombreComida(name) }));
 
   btn.replaceWith(input);
   input.focus();
@@ -721,7 +749,7 @@ function renderPantryHistorySections() {
 
   var html = safeRenderRows(active, renderActiveEntryCard, "active");
   if (completed.length > 0) {
-    html += '<div class="pantry-history-heading">Completado</div>' +
+    html += '<div class="pantry-history-heading">' + escapeHtml(t("ui.planes_completado")) + '</div>' +
       '<ul class="pantry-history">' + safeRenderRows(completed, renderCompletedEntryRow, "history") + '</ul>';
   }
 
@@ -749,7 +777,7 @@ function renderDateStrip(todayKey) {
   dateStripEl.innerHTML = allDates.map(function (dateKey, index) {
     var isToday = dateKey === todayKey;
     var inputId = "dateChip" + index;
-    var label = isToday ? "Hoy" : formatDateChipLabel(dateKey);
+    var label = escapeHtml(isToday ? t("ui.hoy") : formatDateChipLabel(dateKey));
     var checkedAttr = dateKey === _selectedPlanDate ? " checked" : "";
     var todayClass = isToday ? " date-chip--today" : "";
     return (
@@ -769,7 +797,7 @@ function formatDateChipLabel(dateKey) {
   try {
     var parts = dateKey.split("-").map(Number);
     var d = new Date(parts[0], parts[1] - 1, parts[2]);
-    return d.toLocaleDateString("es-ES", { day: "2-digit", month: "short" });
+    return d.toLocaleDateString(getLocale(), { day: "2-digit", month: "short" });
   } catch (err) {
     return dateKey;
   }
@@ -840,7 +868,7 @@ function sumPantryCoverageGrams(aggregated) {
 function renderDeletePlanBtn(entry) {
   return '<button type="button" class="pantry-active-card__delete"' +
     ' data-action="delete-plan" data-id="' + escapeHtml(entry.id) + '"' +
-    ' aria-label="Borrar este plan">Borrar</button>';
+    ' aria-label="' + escapeHtml(t("ui.planes_borrar_este_plan")) + '">' + escapeHtml(t("ui.planes_borrar")) + '</button>';
 }
 
 function renderActiveEntryCard(entry) {
@@ -850,14 +878,15 @@ function renderActiveEntryCard(entry) {
   var aggregated = aggregatePlanMealItems(entry.meals);
   var coveredGrams = sumPantryCoverageGrams(aggregated);
   var pantryNote = coveredGrams > 0
-    ? ' <span class="pantry-active-card__pantry-note">&middot; ' + round0(coveredGrams) + ' g ya en tu despensa</span>'
+    ? ' <span class="pantry-active-card__pantry-note">&middot; ' +
+      escapeHtml(tFormat("ui.planes_ya_en_tu_despensa_nota", { cantidad: fmtUnit(round0(coveredGrams), "g") })) + '</span>'
     : '';
 
   return (
     '<div class="pantry-active-card" data-id="' + escapeHtml(entry.id) + '">' +
       '<div class="pantry-active-card__head">' +
         '<span class="pantry-active-card__date">' + dateLabel + '</span>' +
-        '<span class="pantry-active-card__summary">' + aggregated.length + ' ingredientes' + (entry.store ? ' &mdash; ' + escapeHtml(entry.store) : '') + pantryNote + '</span>' +
+        '<span class="pantry-active-card__summary">' + escapeHtml(tFormat("ui.planes_n_ingredientes", { n: aggregated.length })) + (entry.store ? ' &mdash; ' + escapeHtml(entry.store) : '') + pantryNote + '</span>' +
         renderDeletePlanBtn(entry) +
       '</div>' +
       renderPurchaseSection(entry, aggregated) +
@@ -874,16 +903,16 @@ function renderPurchaseSection(entry, aggregated) {
     var costNote = lastRun ? ' (&euro;' + round2(lastRun.totals.purchaseCost) + ')' : '';
     return (
       '<div class="pantry-active-card__purchase pantry-active-card__purchase--done">' +
-        '<span class="pantry-active-card__purchase-status">&#10003; Ya compraste esto' + costNote + '</span>' +
-        '<button type="button" class="pantry-link-btn" data-action="toggle-checklist" data-id="' + escapeHtml(entry.id) + '">Registrar otra compra</button>' +
+        '<span class="pantry-active-card__purchase-status">&#10003; ' + escapeHtml(t("ui.planes_ya_compraste_esto")) + costNote + '</span>' +
+        '<button type="button" class="pantry-link-btn" data-action="toggle-checklist" data-id="' + escapeHtml(entry.id) + '">' + escapeHtml(t("ui.planes_registrar_otra_compra")) + '</button>' +
       '</div>' + checklist
     );
   }
 
   return (
     '<div class="pantry-active-card__purchase">' +
-      '<button type="button" class="btn-primary pantry-active-card__buy-btn" data-action="confirm-purchase-all" data-id="' + escapeHtml(entry.id) + '">Ya compr&eacute; todo esto</button>' +
-      '<button type="button" class="pantry-link-btn" data-action="toggle-checklist" data-id="' + escapeHtml(entry.id) + '">&iquest;Te falt&oacute; algo?</button>' +
+      '<button type="button" class="btn-primary pantry-active-card__buy-btn" data-action="confirm-purchase-all" data-id="' + escapeHtml(entry.id) + '">' + escapeHtml(t("ui.planes_ya_compre_todo")) + '</button>' +
+      '<button type="button" class="pantry-link-btn" data-action="toggle-checklist" data-id="' + escapeHtml(entry.id) + '">' + escapeHtml(t("ui.planes_te_falto_algo")) + '</button>' +
     '</div>' + checklist
   );
 }
@@ -903,17 +932,19 @@ function renderPurchaseChecklist(entry, aggregated) {
     // Lo que ya hay en casa se dice como se sirve, igual que en el bloque de
     // stock de arriba; lo que hay que comprar, en envases (abajo). Son dos
     // preguntas distintas y llevan dos unidades distintas a propósito.
-    var cubiertoTexto = (cantidadDeCasa(covered, item.name, entry.store) || (round0(covered) + " g"));
+    var cubiertoTexto = (cantidadDeCasa(covered, item.name, entry.store) || fmtUnit(round0(covered), "g"));
     var cantidadCompra = cantidadDeCompra(item.requiredGrams, item.name, entry.store) ||
-                         (round0(item.requiredGrams) + " g");
+                         fmtUnit(round0(item.requiredGrams), "g");
     var pantryNote = covered > 0
-      ? '<span class="pantry-purchase-row__pantry-note">' + escapeHtml(cubiertoTexto) + ' ya en despensa</span>'
+      ? '<span class="pantry-purchase-row__pantry-note">' + escapeHtml(tFormat("ui.planes_ya_en_despensa", { cantidad: cubiertoTexto })) + '</span>'
       : '';
+    // `data-name` sigue siendo la clave en español; el nombre que se lee, no.
+    var nombre = nombreComida(item.name);
     return (
       '<li class="pantry-purchase-row" data-name="' + escapeHtml(item.name) + '">' +
-        '<button type="button" class="pantry-purchase-row__check" role="checkbox" aria-checked="true" data-action="toggle-purchase-check" aria-label="' + escapeHtml(item.name) + '"></button>' +
+        '<button type="button" class="pantry-purchase-row__check" role="checkbox" aria-checked="true" data-action="toggle-purchase-check" aria-label="' + escapeHtml(nombre) + '"></button>' +
         '<span class="pantry-purchase-row__main">' +
-          '<span class="pantry-purchase-row__name">' + escapeHtml(item.name) + '</span>' +
+          '<span class="pantry-purchase-row__name">' + escapeHtml(nombre) + '</span>' +
           pantryNote +
         '</span>' +
         // El texto entero va en el `title` porque la columna lo recorta con
@@ -927,9 +958,9 @@ function renderPurchaseChecklist(entry, aggregated) {
 
   return (
     '<div class="pantry-purchase-checklist-wrap" hidden>' +
-      '<p class="pantry-purchase-checklist-hint">Desmarca lo que NO compraste:</p>' +
+      '<p class="pantry-purchase-checklist-hint">' + escapeHtml(t("ui.planes_desmarca_lo_no_comprado")) + '</p>' +
       '<ul class="pantry-purchase-checklist">' + rows + '</ul>' +
-      '<button type="button" class="pantry-active-card__buy-btn pantry-active-card__buy-btn--secondary" data-action="confirm-purchase-partial" data-id="' + escapeHtml(entry.id) + '">Confirmar compra</button>' +
+      '<button type="button" class="pantry-active-card__buy-btn pantry-active-card__buy-btn--secondary" data-action="confirm-purchase-partial" data-id="' + escapeHtml(entry.id) + '">' + escapeHtml(t("ui.planes_confirmar_compra")) + '</button>' +
     '</div>'
   );
 }
@@ -952,9 +983,14 @@ function renderMealChips(entry) {
     var timeBadge = typeof meal.time === "string"
       ? '<span class="pantry-meal-chip__time">' + escapeHtml(meal.time) + '</span>'
       : '';
+    // `meal.label` se guardó en español ("Desayuno — Porridge de avena…") y no
+    // se puede traducir pegado: se recompone con la clave de la toma y el nombre
+    // del plato (tituloDeToma, render.js). Un plan guardado sin `dishName` se
+    // queda con su etiqueta de siempre.
+    var etiquetaToma = tituloDeToma(meal);
     var chip = (
-      '<button type="button" class="pantry-meal-chip' + cookedClass + '" data-action="toggle-meal-cooked" data-id="' + escapeHtml(entry.id) + '" data-meal-key="' + escapeHtml(meal.key) + '" title="' + escapeHtml(meal.label) + '">' +
-        timeBadge + (meal.cooked ? "&#10003; " : "") + escapeHtml(meal.label) +
+      '<button type="button" class="pantry-meal-chip' + cookedClass + '" data-action="toggle-meal-cooked" data-id="' + escapeHtml(entry.id) + '" data-meal-key="' + escapeHtml(meal.key) + '" title="' + escapeHtml(etiquetaToma) + '">' +
+        timeBadge + (meal.cooked ? "&#10003; " : "") + escapeHtml(etiquetaToma) +
       '</button>'
     );
 
@@ -965,13 +1001,13 @@ function renderMealChips(entry) {
     // botón es preferible a mostrarlo y que falle -- ver cabecera de
     // regenerateSingleMeal() en plan-generator.js.
     var swapBtn = (!meal.cooked && typeof entry.budget === "number" && meal.total)
-      ? '<button type="button" class="pantry-link-btn" data-action="regenerate-single-meal" data-id="' + escapeHtml(entry.id) + '" data-meal-key="' + escapeHtml(meal.key) + '">cambiar</button>'
+      ? '<button type="button" class="pantry-link-btn" data-action="regenerate-single-meal" data-id="' + escapeHtml(entry.id) + '" data-meal-key="' + escapeHtml(meal.key) + '">' + escapeHtml(t("ui.planes_cambiar")) + '</button>'
       : '';
 
     return '<span class="pantry-meal-chip-group">' + chip + swapBtn + '</span>';
   }).join("");
 
-  return '<div class="pantry-meal-chips"><span class="pantry-meal-chips__label">Comidas</span>' + chips + '</div>';
+  return '<div class="pantry-meal-chips"><span class="pantry-meal-chips__label">' + escapeHtml(t("ui.planes_comidas")) + '</span>' + chips + '</div>';
 }
 
 // ── "Sin cocinar" (2026-08-20f, known issue #9) ──────────────────────────
@@ -994,17 +1030,17 @@ function renderNoCookActiveCard(entry) {
 
   var purchaseBlock = entry.purchase.done
     ? '<div class="pantry-active-card__purchase pantry-active-card__purchase--done">' +
-        '<span class="pantry-active-card__purchase-status">&#10003; Ya compraste esto</span>' +
+        '<span class="pantry-active-card__purchase-status">&#10003; ' + escapeHtml(t("ui.planes_ya_compraste_esto")) + '</span>' +
       '</div>'
     : '<div class="pantry-active-card__purchase">' +
-        '<button type="button" class="btn-primary pantry-active-card__buy-btn" data-action="confirm-nocook-purchase" data-id="' + escapeHtml(entry.id) + '">Ya compr&eacute; todo esto</button>' +
+        '<button type="button" class="btn-primary pantry-active-card__buy-btn" data-action="confirm-nocook-purchase" data-id="' + escapeHtml(entry.id) + '">' + escapeHtml(t("ui.planes_ya_compre_todo")) + '</button>' +
       '</div>';
 
   return (
     '<div class="pantry-active-card" data-id="' + escapeHtml(entry.id) + '">' +
       '<div class="pantry-active-card__head">' +
         '<span class="pantry-active-card__date">' + dateLabel + '</span>' +
-        '<span class="pantry-active-card__summary">' + itemCount + ' productos &mdash; sin cocinar</span>' +
+        '<span class="pantry-active-card__summary">' + escapeHtml(tFormat("ui.planes_n_productos_sin_cocinar", { n: itemCount })) + '</span>' +
         renderDeletePlanBtn(entry) +
       '</div>' +
       purchaseBlock +
@@ -1028,14 +1064,15 @@ function renderNoCookSlotChips(entry) {
     var timeBadge = typeof slot.time === "string"
       ? '<span class="pantry-meal-chip__time">' + escapeHtml(slot.time) + '</span>'
       : '';
+    var etiquetaToma = tMeal(slot.key, slot.label);
     return (
-      '<button type="button" class="pantry-meal-chip' + consumedClass + '" data-action="toggle-nocook-slot-consumed" data-id="' + escapeHtml(entry.id) + '" data-slot-key="' + escapeHtml(slot.key) + '" title="' + escapeHtml(slot.label) + '">' +
-        timeBadge + (slot.consumed ? "&#10003; " : "") + escapeHtml(slot.label) +
+      '<button type="button" class="pantry-meal-chip' + consumedClass + '" data-action="toggle-nocook-slot-consumed" data-id="' + escapeHtml(entry.id) + '" data-slot-key="' + escapeHtml(slot.key) + '" title="' + escapeHtml(etiquetaToma) + '">' +
+        timeBadge + (slot.consumed ? "&#10003; " : "") + escapeHtml(etiquetaToma) +
       '</button>'
     );
   }).join("");
 
-  return '<div class="pantry-meal-chips"><span class="pantry-meal-chips__label">Tomas</span>' + chips + '</div>';
+  return '<div class="pantry-meal-chips"><span class="pantry-meal-chips__label">' + escapeHtml(t("ui.planes_tomas")) + '</span>' + chips + '</div>';
 }
 
 /**
@@ -1048,12 +1085,12 @@ function renderNoCookSlotChips(entry) {
 function renderNoCookCompletedRow(entry) {
   var dateLabel = formatEntryDateTime(entry.createdAt);
   var itemCount = (entry.slots || []).reduce(function (sum, s) { return sum + (s.items || []).length; }, 0);
-  var boughtNote = entry.purchase.done ? "comprado y consumido" : "consumido (sin registrar compra)";
+  var boughtNote = entry.purchase.done ? t("ui.planes_comprado_y_consumido") : t("ui.planes_consumido_sin_compra");
 
   return (
     '<li class="pantry-history-row">' +
-      '<span class="pantry-history-row__date">' + dateLabel + '</span>' +
-      '<span class="pantry-history-row__summary">' + itemCount + ' productos &mdash; ' + boughtNote + ' &#10003;</span>' +
+      '<span class="pantry-history-row__date">' + escapeHtml(dateLabel) + '</span>' +
+      '<span class="pantry-history-row__summary">' + escapeHtml(tFormat("ui.planes_n_productos", { n: itemCount })) + ' &mdash; ' + escapeHtml(boughtNote) + ' &#10003;</span>' +
     '</li>'
   );
 }
@@ -1076,17 +1113,21 @@ function showPlanReplaceDialog(entry) {
 
   var cookedMeals = (entry.meals || []).filter(function (m) { return m.cooked; });
   var pendingMeals = (entry.meals || []).filter(function (m) { return !m.cooked; });
-  var pendingLabels = pendingMeals.map(function (m) { return m.label; }).join(", ");
+  var pendingLabels = pendingMeals.map(function (m) { return tituloDeToma(m); }).join(", ");
 
   var cookedNote = cookedMeals.length > 0
-    ? '<p class="plan-replace-dialog__note">Ya cocinaste ' + escapeHtml(cookedMeals.map(function (m) { return m.label; }).join(", ")) +
-      ' hoy &mdash; eso se mantiene tal cual, solo cambiaría el resto.</p>'
+    ? '<p class="plan-replace-dialog__note">' +
+      escapeHtml(tFormat("ui.planes_reemplazo_ya_cocinaste", { comidas: cookedMeals.map(function (m) { return tituloDeToma(m); }).join(", ") })) + '</p>'
     : '';
 
   if (planReplaceBodyEl) {
+    // El cuerpo lleva <strong>: la plantilla es HTML y lo que se mete en ella
+    // va escapado ANTES (tFormat inserta el valor tal cual).
     planReplaceBodyEl.innerHTML =
-      '<p>Tu plan de ' + escapeHtml(formatEntryDateTime(entry.createdAt)) + ' sigue activo: <strong>' +
-      escapeHtml(pendingLabels) + '</strong> todavía por comprar o cocinar.</p>' + cookedNote;
+      '<p>' + tFormat("html.planes_reemplazo_sigue_activo", {
+        fecha: escapeHtml(formatEntryDateTime(entry.createdAt)),
+        pendientes: escapeHtml(pendingLabels)
+      }) + '</p>' + cookedNote;
   }
 
   if (typeof planReplaceDialogEl.showModal === "function") {
@@ -1147,12 +1188,12 @@ function renderCompletedEntryRow(entry) {
 
   var dateLabel = formatEntryDateTime(entry.createdAt);
   var aggregated = aggregatePlanMealItems(entry.meals);
-  var boughtNote = entry.purchase.done ? "comprado y cocinado" : "cocinado (sin registrar compra)";
+  var boughtNote = entry.purchase.done ? t("ui.planes_comprado_y_cocinado") : t("ui.planes_cocinado_sin_compra");
 
   return (
     '<li class="pantry-history-row">' +
-      '<span class="pantry-history-row__date">' + dateLabel + '</span>' +
-      '<span class="pantry-history-row__summary">' + aggregated.length + ' ingredientes &mdash; ' + boughtNote + ' &#10003;</span>' +
+      '<span class="pantry-history-row__date">' + escapeHtml(dateLabel) + '</span>' +
+      '<span class="pantry-history-row__summary">' + escapeHtml(tFormat("ui.planes_n_ingredientes", { n: aggregated.length })) + ' &mdash; ' + escapeHtml(boughtNote) + ' &#10003;</span>' +
     '</li>'
   );
 }
@@ -1170,14 +1211,14 @@ function renderCompletedEntryRow(entry) {
 function formatEntryDateTime(isoString) {
   try {
     var d = new Date(isoString);
-    var datePart = d.toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" });
+    var datePart = d.toLocaleDateString(getLocale(), { day: "2-digit", month: "short", year: "numeric" });
     // Con segundos, no solo horas:minutos -- probado en vivo (2026-08-14c):
     // guardar dos planes con un par de clics de diferencia bastaba para
     // que ambos cayeran en el mismo minuto y las tarjetas volvieran a
     // verse "iguales" a simple vista, justo lo que esto existe para
     // evitar. Con segundos, dos entradas solo coinciden si se guardaron
     // en la misma llamada de red (imposible, es síncrono y secuencial).
-    var timePart = d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    var timePart = d.toLocaleTimeString(getLocale(), { hour: "2-digit", minute: "2-digit", second: "2-digit" });
     return datePart + ", " + timePart;
   } catch (err) {
     return isoString || "";
@@ -1195,7 +1236,7 @@ function _armDeletePlanBtn(btn) {
   _disarmDeletePlanBtn();
   btn.setAttribute("data-armed", "true");
   btn.classList.add("pantry-active-card__delete--armed");
-  btn.textContent = "¿Seguro?";
+  btn.textContent = t("ui.planes_seguro");
   _armedDeleteBtn = btn;
   // Se desarma solo: un botón que se queda preguntando para siempre acaba
   // pulsándose sin querer en la visita siguiente.
@@ -1208,7 +1249,7 @@ function _disarmDeletePlanBtn() {
   if (_armedDeleteBtn.isConnected) {
     _armedDeleteBtn.removeAttribute("data-armed");
     _armedDeleteBtn.classList.remove("pantry-active-card__delete--armed");
-    _armedDeleteBtn.textContent = "Borrar";
+    _armedDeleteBtn.textContent = t("ui.planes_borrar");
   }
   _armedDeleteBtn = null;
 }
@@ -1314,7 +1355,7 @@ function handleEntryClick(event) {
         : { error: "not_available" };
 
       if (!regen || regen.error) {
-        regenBtn.textContent = "sin alternativa dentro del presupuesto";
+        regenBtn.textContent = t("ui.planes_sin_alternativa");
         regenBtn.disabled = true;
         return;
       }
@@ -1382,34 +1423,38 @@ function renderPlanSavedNotice(entry, historySaved, mode, savedDays) {
   }
 
   var warning = historySaved ? "" :
-    '<p class="confirm-receipt__warning">No se ha podido guardar en este navegador (almacenamiento lleno o deshabilitado) &mdash; los cambios no persistir&aacute;n al recargar.</p>';
+    '<p class="confirm-receipt__warning">' + escapeHtml(t("ui.planes_aviso_no_guardado")) + '</p>';
+
+  // Lo que va en negrita dentro del aviso son los nombres REALES de la pestaña
+  // y del botón, en el idioma de la pantalla: señalar «Ya compré todo esto» en
+  // un aviso cuando el botón dice otra cosa es peor que no señalar nada.
+  var nombres = {
+    planes: escapeHtml(t("ui.pestana_planes")),
+    boton: escapeHtml(t("ui.planes_ya_compre_todo"))
+  };
 
   var title, body;
   if (mode === "active-replaced") {
-    title = "Plan reemplazado";
-    var cookedLabels = (entry.meals || []).filter(function (m) { return m.cooked; }).map(function (m) { return m.label; });
+    title = t("ui.planes_aviso_reemplazado_titulo");
+    var cookedLabels = (entry.meals || []).filter(function (m) { return m.cooked; }).map(function (m) { return tituloDeToma(m); });
     var cookedNote = cookedLabels.length > 0
-      ? ' Lo que ya cocinaste (' + escapeHtml(cookedLabels.join(", ")) + ') se mantuvo tal cual.'
+      ? ' ' + escapeHtml(tFormat("ui.planes_aviso_lo_cocinado", { comidas: cookedLabels.join(", ") }))
       : '';
-    body = '<p>Se actualizó tu plan activo de hoy en <strong>Mis planes</strong>.' + cookedNote +
-      ' Como los ingredientes pueden haber cambiado, marca <strong>Ya compr&eacute; todo esto</strong> de nuevo cuando compres.</p>';
+    body = tFormat("html.planes_aviso_reemplazado", { planes: nombres.planes, boton: nombres.boton, cocinado: cookedNote });
   } else if (mode === "draft-updated") {
-    title = "Plan actualizado";
-    body = '<p>Sigue siendo el mismo plan de hoy en <strong>Mis planes</strong> &mdash; no se ha comprado ni cocinado nada todav&iacute;a, ni se ha a&ntilde;adido nada a tu despensa.</p>';
+    title = t("ui.planes_aviso_actualizado_titulo");
+    body = tFormat("html.planes_aviso_actualizado", { planes: nombres.planes });
   } else if (typeof savedDays === "number" && savedDays > 1) {
     // Un plan de varios días guarda una entrada POR DÍA, y hay que decirlo:
     // si no, se ve solo la de hoy en pantalla y parece que el resto se
     // perdió (que es justo lo que pasaba de verdad antes del 2026-09-03).
-    title = "Plan de " + savedDays + " días confirmado";
-    body = '<p>Se ha guardado un plan para cada uno de los <strong>' + savedDays +
-      ' d&iacute;as</strong>, empezando hoy. Cambia de d&iacute;a con los botones de fecha de ' +
-      '<strong>Mis planes</strong>. Cuando compres, toca <strong>Ya compr&eacute; todo esto</strong> ' +
-      'en el d&iacute;a que corresponda.</p>';
+    title = tFormat("ui.planes_aviso_varios_dias_titulo", { n: savedDays });
+    body = tFormat("html.planes_aviso_varios_dias", { n: savedDays, planes: nombres.planes, boton: nombres.boton });
   } else {
-    title = "Plan confirmado";
-    body = '<p>Cuando compres, toca <strong>Ya compr&eacute; todo esto</strong> ah&iacute; abajo, en <strong>Mis planes</strong> &mdash; as&iacute; no te lo volver&aacute; a pedir la pr&oacute;xima vez.</p>';
+    title = t("ui.planes_aviso_confirmado_titulo");
+    body = tFormat("html.planes_aviso_confirmado", { planes: nombres.planes, boton: nombres.boton });
   }
 
   planSavedNoticeEl.hidden = false;
-  planSavedNoticeEl.innerHTML = '<h4>' + title + '</h4>' + warning + body;
+  planSavedNoticeEl.innerHTML = '<h4>' + escapeHtml(title) + '</h4>' + warning + body;
 }

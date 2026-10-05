@@ -345,7 +345,7 @@ function handleDeleteAccountConfirm() {
   // haya salido bien.
   if (authDeleteConfirmBtn) {
     authDeleteConfirmBtn.disabled = true;
-    authDeleteConfirmBtn.textContent = "Borrando…";
+    authDeleteConfirmBtn.textContent = t("ui.borrando");
   }
   if (authDeleteErrorEl) authDeleteErrorEl.hidden = true;
 
@@ -553,7 +553,7 @@ function handleEmailFormSubmit(event) {
   // servidor ni volver traducido a medias.
   if (_authMode === "register") {
     if (password.length < AUTH_MIN_PASSWORD) {
-      showAuthError(t("ui.la_contrasena_necesita_al_menos") + " " + AUTH_MIN_PASSWORD + " caracteres.");
+      showAuthError(tFormat("ui.la_contrasena_necesita_n_caracteres", { n: AUTH_MIN_PASSWORD }));
       if (authPasswordInput) authPasswordInput.focus();
       return;
     }

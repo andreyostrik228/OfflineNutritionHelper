@@ -68,26 +68,37 @@ function readForm() {
  * @returns {string} mensaje de error, o "" si los datos son válidos
  */
 function validateInput(data) {
-  if (!data.age    || data.age    < 14  || data.age    > 90)  return "Edad no válida.";
-  if (!data.weight || data.weight < 35  || data.weight > 250) return "Peso no válido.";
-  if (!data.height || data.height < 130 || data.height > 230) return "Altura no válida.";
-  if (data.workouts < 0 || data.workouts > 14)                return "Entrenamientos por semana no válidos.";
+  if (!data.age    || data.age    < 14  || data.age    > 90)  return _calcTexto("ui.val_edad", "Edad no válida.");
+  if (!data.weight || data.weight < 35  || data.weight > 250) return _calcTexto("ui.val_peso", "Peso no válido.");
+  if (!data.height || data.height < 130 || data.height > 230) return _calcTexto("ui.val_altura", "Altura no válida.");
+  if (data.workouts < 0 || data.workouts > 14)                return _calcTexto("ui.val_entrenos", "Entrenamientos por semana no válidos.");
 
   if (!data.budgetMode) {
-    return "Elige un presupuesto: Ajustado, Equilibrado, Amplio, o introduce una cantidad exacta.";
+    return _calcTexto("ui.val_elige_presupuesto",
+      "Elige un presupuesto: Ajustado, Equilibrado, Amplio, o introduce una cantidad exacta.");
   }
   if (data.budgetMode === "custom") {
     if (!data.budgetCustom || data.budgetCustom < 2) {
-      return "El presupuesto diario es demasiado bajo para generar un plan realista.";
+      return _calcTexto("ui.val_presupuesto_bajo",
+        "El presupuesto diario es demasiado bajo para generar un plan realista.");
     }
   } else if (!isKnownBudgetPreset(data.budgetMode)) {
     // No debería ocurrir con el HTML actual (solo hay 4 opciones posibles
     // en el grupo de radio), pero si budget-presets.js cambiase de claves
     // sin actualizar el HTML, esto lo detecta en vez de generar un plan
     // con un presupuesto inventado.
-    return "El presupuesto elegido no está disponible. Prueba con una cantidad exacta.";
+    return _calcTexto("ui.val_presupuesto_no_disponible",
+      "El presupuesto elegido no está disponible. Prueba con una cantidad exacta.");
   }
   return "";
+}
+
+/**
+ * Un mensaje de validación en el idioma de la pantalla, o su castellano si no
+ * hay i18n.js (los tests cargan este módulo suelto). Mismo patrón que `_txt`.
+ */
+function _calcTexto(clave, castellano) {
+  return (typeof tOr === "function") ? tOr(clave, castellano) : castellano;
 }
 
 /**

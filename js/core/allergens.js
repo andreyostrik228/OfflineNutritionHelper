@@ -54,6 +54,19 @@ var EU_ALLERGEN_LABELS = {
 };
 
 /**
+ * Una cadena de la interfaz, traducida si hay i18n.js cargado y el idioma la
+ * tiene; si no, el español de siempre. Este módulo se carga (y se prueba) sin
+ * i18n.js, así que no puede dar por hecho que `tOr` exista -- es el mismo
+ * patrón que `_txt` en utils.js.
+ * @param {string} clave
+ * @param {string} original - el español
+ * @returns {string}
+ */
+function _alergenoTexto(clave, original) {
+  return (typeof tOr === "function") ? tOr(clave, original) : original;
+}
+
+/**
  * Alérgenos declarados para un producto.
  *
  * @param {object|string|number} productOrId - un producto (`{id}`) o el id
@@ -78,8 +91,9 @@ function getProductAllergens(productOrId) {
 }
 
 /**
- * Traduce una lista de claves a etiquetas en español, descartando claves
- * desconocidas en silencio (una tabla regenerada con una clave nueva no
+ * Traduce una lista de claves a etiquetas en el idioma de la pantalla
+ * (`ui.alergeno_<clave>`; el español sale de EU_ALLERGEN_LABELS), descartando
+ * claves desconocidas en silencio (una tabla regenerada con una clave nueva no
  * debe romper el render).
  * @param {string[]} keys
  * @returns {string[]}
@@ -89,7 +103,7 @@ function allergenLabels(keys) {
   var out = [];
   for (var i = 0; i < keys.length; i++) {
     var label = EU_ALLERGEN_LABELS[keys[i]];
-    if (label) out.push(label);
+    if (label) out.push(_alergenoTexto("ui.alergeno_" + keys[i], label));
   }
   return out;
 }
@@ -105,8 +119,8 @@ function formatAllergenSummary(info) {
   var parts = [];
   var contains = allergenLabels(info.contains);
   var may = allergenLabels(info.may);
-  if (contains.length) parts.push("Contiene: " + contains.join(", "));
-  if (may.length) parts.push("Puede contener: " + may.join(", "));
+  if (contains.length) parts.push(_alergenoTexto("ui.alergenos_contiene", "Contiene:") + " " + contains.join(", "));
+  if (may.length) parts.push(_alergenoTexto("ui.alergenos_puede_contener", "Puede contener:") + " " + may.join(", "));
   return parts.join(" · ");
 }
 
@@ -131,10 +145,11 @@ function renderAllergenLine(productOrId) {
 
   var bits = [];
   if (contains.length) {
-    bits.push('<strong>Contiene:</strong> ' + esc(contains.join(", ")));
+    bits.push("<strong>" + esc(_alergenoTexto("ui.alergenos_contiene", "Contiene:")) + "</strong> " + esc(contains.join(", ")));
   }
   if (may.length) {
-    bits.push('<span class="nocook-item__allergens-may">Puede contener: ' + esc(may.join(", ")) + "</span>");
+    bits.push('<span class="nocook-item__allergens-may">' +
+      esc(_alergenoTexto("ui.alergenos_puede_contener", "Puede contener:") + " " + may.join(", ")) + "</span>");
   }
   return '<div class="nocook-item__allergens">' + bits.join(" · ") + "</div>";
 }

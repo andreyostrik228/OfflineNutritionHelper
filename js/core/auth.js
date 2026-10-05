@@ -392,6 +392,13 @@ function deleteOwnAccount() {
 function authErrorMessage(error) {
   if (!error) return "";
 
+  // Cada mensaje se pide a las tablas (ui.auth_*) y lleva su español aquí al
+  // lado: este módulo se carga -- y se prueba -- sin i18n.js, y un mensaje de
+  // error que saliera como "ui.auth_x" sería peor que uno en castellano.
+  // tests/auth.test.js comprueba que los dos españoles dicen lo mismo.
+  var msgSinRed = _authTexto("ui.auth_sin_red",
+    "No se pudo conectar -- revisa tu conexión a internet e inténtalo de nuevo.");
+
   if (error.message === "not_configured") {
     // "not_configured" tiene DOS causas que se parecen desde aqui y no se
     // parecen en nada para quien lo lee: que el sitio no tenga cuentas, o
@@ -399,12 +406,14 @@ function authErrorMessage(error) {
     // primero cuando pasa lo segundo es mentir sobre el producto -- las
     // cuentas existen, lo que falta es internet.
     if (typeof navigator !== "undefined" && navigator.onLine === false) {
-      return "Sin conexión: las cuentas necesitan internet. Puedes seguir usando la aplicación como invitado -- todo se guarda en este dispositivo.";
+      return _authTexto("ui.auth_sin_conexion",
+        "Sin conexión: las cuentas necesitan internet. Puedes seguir usando la aplicación como invitado -- todo se guarda en este dispositivo.");
     }
-    return "Las cuentas todavía no están disponibles en este sitio -- puedes seguir usándolo como invitado.";
+    return _authTexto("ui.auth_cuentas_no_disponibles",
+      "Las cuentas todavía no están disponibles en este sitio -- puedes seguir usándolo como invitado.");
   }
   if (error.message === "not_authenticated") {
-    return "Tu sesión ha caducado -- vuelve a iniciarla e inténtalo otra vez.";
+    return _authTexto("ui.auth_sesion_caducada", "Tu sesión ha caducado -- vuelve a iniciarla e inténtalo otra vez.");
   }
 
   switch (error.code) {
@@ -416,28 +425,38 @@ function authErrorMessage(error) {
     case "auth/invalid-login-credentials":
     case "auth/wrong-password":
     case "auth/user-not-found":
-      return "Email o contraseña incorrectos.";
+      return _authTexto("ui.auth_credenciales_incorrectas", "Email o contraseña incorrectos.");
     case "auth/email-already-in-use":
-      return "Ya existe una cuenta con ese email -- prueba a iniciar sesión.";
+      return _authTexto("ui.auth_email_en_uso", "Ya existe una cuenta con ese email -- prueba a iniciar sesión.");
     case "auth/invalid-email":
-      return "Ese email no parece válido -- revísalo.";
+      return _authTexto("ui.auth_email_invalido", "Ese email no parece válido -- revísalo.");
     case "auth/weak-password":
-      return "La contraseña debe tener al menos 6 caracteres.";
+      return _authTexto("ui.auth_contrasena_debil", "La contraseña debe tener al menos 6 caracteres.");
     case "auth/too-many-requests":
-      return "Demasiados intentos -- espera un momento y vuelve a intentarlo.";
+      return _authTexto("ui.auth_demasiados_intentos", "Demasiados intentos -- espera un momento y vuelve a intentarlo.");
     case "auth/popup-blocked":
-      return "El navegador ha bloqueado la ventana de Google -- permite las ventanas emergentes para este sitio e inténtalo otra vez.";
+      return _authTexto("ui.auth_popup_bloqueado",
+        "El navegador ha bloqueado la ventana de Google -- permite las ventanas emergentes para este sitio e inténtalo otra vez.");
     case "auth/requires-recent-login":
-      return "Tu sesión ha caducado -- vuelve a iniciarla e inténtalo otra vez.";
+      return _authTexto("ui.auth_sesion_caducada", "Tu sesión ha caducado -- vuelve a iniciarla e inténtalo otra vez.");
     case "auth/network-request-failed":
-      return "No se pudo conectar -- revisa tu conexión a internet e inténtalo de nuevo.";
+      return msgSinRed;
   }
 
   var msg = String(error.message || error).toLowerCase();
   if ((typeof TypeError !== "undefined" && error instanceof TypeError) ||
       msg.indexOf("failed to fetch") !== -1 || msg.indexOf("network") !== -1) {
-    return "No se pudo conectar -- revisa tu conexión a internet e inténtalo de nuevo.";
+    return msgSinRed;
   }
 
-  return "No se pudo completar la operación. Inténtalo de nuevo.";
+  return _authTexto("ui.auth_error_generico", "No se pudo completar la operación. Inténtalo de nuevo.");
+}
+
+/**
+ * Una cadena de la interfaz en el idioma de la pantalla, o el castellano que
+ * se le pasa cuando no hay i18n.js (los tests cargan auth.js suelto). Mismo
+ * patrón que `_txt` en utils.js, que auth.js no puede usar: se carga antes.
+ */
+function _authTexto(clave, castellano) {
+  return (typeof tOr === "function") ? tOr(clave, castellano) : castellano;
 }

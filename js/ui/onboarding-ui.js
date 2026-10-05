@@ -145,6 +145,23 @@ function _obRenderSummary() {
 }
 
 /**
+ * La fecha de la última revisión del texto legal, escrita en el idioma de la
+ * pantalla ("2 de septiembre de 2026" / "2 сентября 2026 г."). Sin Intl o sin
+ * la fecha ISO, la de siempre.
+ */
+function _obFechaLegal() {
+  if (typeof LEGAL_UPDATED_ISO === "string" && typeof getLocale === "function" && typeof Intl !== "undefined") {
+    try {
+      var d = new Date(LEGAL_UPDATED_ISO + "T12:00:00");
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleDateString(getLocale(), { day: "numeric", month: "long", year: "numeric" });
+      }
+    } catch (err) { /* un Intl que no conoce el idioma: la fecha española */ }
+  }
+  return LEGAL_UPDATED_AT;
+}
+
+/**
  * Vuelca el texto legal completo en su diálogo. Se construye con
  * createElement y textContent -- nunca innerHTML con el texto -- para que
  * un futuro párrafo con un `<` no pueda romper la página.
@@ -156,7 +173,9 @@ function _obRenderLegal() {
 
   var intro = document.createElement("p");
   intro.className = "legal-dialog__version";
-  intro.textContent = "Versión " + LEGAL_VERSION + " · " + LEGAL_UPDATED_AT;
+  intro.textContent = _obFormat("ui.legal_version_linea",
+    { version: LEGAL_VERSION, fecha: _obFechaLegal() },
+    "Versión " + LEGAL_VERSION + " · " + LEGAL_UPDATED_AT);
   body.appendChild(intro);
 
   LEGAL_SECTIONS.forEach(function (section) {
@@ -263,6 +282,21 @@ function _obT(clave, original) {
   if (!clave || typeof t !== "function") return original;
   var traducido = t(clave);
   return (traducido && traducido !== clave) ? traducido : original;
+}
+
+/**
+ * Como `_obT`, pero con {huecos}: la cadena de `clave` con `params`, o el
+ * castellano original si la clave no existe.
+ */
+function _obFormat(clave, params, original) {
+  if (!clave || typeof tFormat !== "function") return original;
+  var traducido = tFormat(clave, params);
+  return (traducido && traducido !== clave) ? traducido : original;
+}
+
+/** La unidad de un paso numérico ("años", "kg"…) en el idioma de la pantalla. */
+function _obUnidad(step) {
+  return _obT(step.unitKey, step.unit || "");
 }
 
 /**
@@ -419,7 +453,7 @@ function _obRenderStep() {
   if (step.unit) {
     var unit = document.createElement("span");
     unit.className = "onboarding__unit";
-    unit.textContent = step.unit;
+    unit.textContent = _obUnidad(step);
     box.appendChild(unit);
   }
   // Sin focus() automático: en móvil abriría el teclado de golpe y taparía
@@ -533,10 +567,12 @@ function _obPersistAnswer(step, value) {
 function _obValidateNumber(step, raw) {
   var n = parseFloat(String(raw).replace(",", "."));
   if (!isFinite(n)) {
-    return "Escribe un número.";
+    return _obT("ui.ob_error_numero", "Escribe un número.");
   }
   if (n < step.min || n > step.max) {
-    return "Tiene que estar entre " + step.min + " y " + step.max + " " + (step.unit || "") + ".";
+    // Sin unidad no debe quedar un hueco delante del punto final.
+    return _obFormat("ui.ob_error_rango", { min: step.min, max: step.max, unidad: _obUnidad(step) },
+      "Tiene que estar entre " + step.min + " y " + step.max + " " + (step.unit || "") + ".").replace(/\s+\.$/, ".");
   }
   return "";
 }
@@ -570,7 +606,7 @@ function _obNext() {
     var valorLibre = libreInput ? String(libreInput.value).trim() : "";
     if (step.kind === "time" && !valorLibre) {
       if (e.error) {
-        e.error.textContent = "Pon una hora para continuar.";
+        e.error.textContent = _obT("ui.ob_error_hora", "Pon una hora para continuar.");
         e.error.hidden = false;
       }
       return;
@@ -591,7 +627,7 @@ function _obNext() {
                   _obEl("onboardingAnswer").querySelector(".is-selected");
     if (!elegido) {
       if (e.error) {
-        e.error.textContent = "Elige una opción para continuar.";
+        e.error.textContent = _obT("ui.ob_error_opcion", "Elige una opción para continuar.");
         e.error.hidden = false;
       }
       return;

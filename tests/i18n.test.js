@@ -441,6 +441,10 @@ function run(t) {
    * Las del recorrido NO se listan a mano: se derivan de TOUR_STEPS, así
    * que un paso nuevo exige su traducción el día que se añade, en vez de
    * salir en castellano hasta que alguien se dé cuenta.
+   *
+   * Con las plantillas de «sin cocinar» (NO_COOK_TEMPLATES) pasa igual: su
+   * nombre y su «cómo se monta» viven junto a la plantilla, y las claves
+   * `nocook.<clave>_nombre` / `_montaje` se derivan de ella.
    */
   function clavesDelRecorrido() {
     var s = loadBrowserGlobals([projPath("js/data/tour-steps.js")]);
@@ -452,8 +456,26 @@ function run(t) {
     return claves;
   }
 
+  function clavesDeSinCocinar() {
+    var s = loadBrowserGlobals([projPath("js/data/no-cook-templates.js")]);
+    var claves = [];
+    (s.NO_COOK_TEMPLATES || []).forEach(function (plantilla) {
+      claves.push("nocook." + plantilla.key + "_nombre");
+      claves.push("nocook." + plantilla.key + "_montaje");
+    });
+    return claves;
+  }
+
   var CLAVES_CON_ORIGEN_FUERA = ["ui.legal_resumen_1", "ui.legal_resumen_2", "ui.legal_resumen_3"]
-    .concat(clavesDelRecorrido());
+    .concat(clavesDelRecorrido(), clavesDeSinCocinar());
+
+  t.test("cada plantilla de «sin cocinar» aporta sus dos claves de traducción", function () {
+    // Mismo motivo que el del recorrido: si NO_COOK_TEMPLATES dejara de cargar,
+    // la lista saldría vacía y los tests de abajo no comprobarían nada.
+    var claves = clavesDeSinCocinar();
+    assert.ok(claves.length >= 32, "solo " + claves.length + " claves derivadas de NO_COOK_TEMPLATES");
+    assert.strictEqual(claves.length % 2, 0, "cada plantilla son dos claves");
+  });
 
   t.test("cada paso del recorrido aporta sus dos claves de traducción", function () {
     // Si TOUR_STEPS deja de cargar en el sandbox, la lista sale vacía y los

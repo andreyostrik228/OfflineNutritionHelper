@@ -104,5 +104,13 @@ registerPackageTable("ru", {
   "tortita":    _ruFormas("хлебец", "хлебца", "хлебцев", "хлебца"),
   "vaso":       _ruFormas("стакан", "стакана", "стаканов", "стакана"),
   "yogur":      _ruFormas("йогурт", "йогурта", "йогуртов", "йогурта"),
-  "zanahoria":  _ruFormas("морковка", "морковки", "морковок", "морковки")
+  "zanahoria":  _ruFormas("морковка", "морковки", "морковок", "морковки"),
+
+  // ── La unidad de consumo de «sin cocinar» (js/data/no-cook-classifier.js) ──
+  // Ver packages-en.js.
+  "porción":    _ruFormas("порция", "порции", "порций", "порции"),
+  "ración":     _ruFormas("порция", "порции", "порций", "порции"),
+  "taza":       _ruFormas("чашка", "чашки", "чашек", "чашки"),
+  "trozo":      _ruFormas("кусок", "куска", "кусков", "куска"),
+  "unidad":     _ruFormas("штука", "штуки", "штук", "штуки")
 });

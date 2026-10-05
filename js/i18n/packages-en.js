@@ -102,5 +102,14 @@ registerPackageTable("en", {
   // cups, y esta linea se lee cocinando. Los gramos exactos van al lado.
   "vaso":       ["cup", "cups"],
   "yogur":      ["yogurt", "yogurts"],
-  "zanahoria":  ["carrot", "carrots"]
+  "zanahoria":  ["carrot", "carrots"],
+
+  // ── La unidad de consumo de «sin cocinar» (js/data/no-cook-classifier.js) ──
+  // «2 porciones · 140 g» en la tarjeta de un producto. `tests/i18n.test.js`
+  // exige que toda unidad del clasificador y de serving-sizes.js esté aquí.
+  "porción":    ["portion", "portions"],
+  "ración":     ["serving", "servings"],
+  "taza":       ["mug", "mugs"],
+  "trozo":      ["piece", "pieces"],
+  "unidad":     ["unit", "units"]
 });

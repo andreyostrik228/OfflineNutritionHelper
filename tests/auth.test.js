@@ -568,6 +568,68 @@ function run(t) {
     assert.strictEqual(msg.indexOf("something-new"), -1);
     assert.ok(msg.length > 0);
   });
+
+  // ── Los mensajes de error, en el idioma de la pantalla ─────────────────
+  //
+  // authErrorMessage() devolvía siempre castellano: en ruso, "Email o
+  // contraseña incorrectos." aparecía en rojo bajo un formulario en ruso.
+
+  var ERRORES_DE_ACCESO = [
+    { code: "auth/invalid-credential" }, { code: "auth/wrong-password" },
+    { code: "auth/email-already-in-use" }, { code: "auth/invalid-email" },
+    { code: "auth/weak-password" }, { code: "auth/too-many-requests" },
+    { code: "auth/popup-blocked" }, { code: "auth/requires-recent-login" },
+    { code: "auth/network-request-failed" },
+    { message: "not_configured" }, { message: "not_authenticated" },
+    { code: "auth/algo-nuevo", message: "Failed to fetch" },     // red sin código
+    { code: "auth/algo-nuevo", message: "Firebase: Error (auth/algo-nuevo)." }   // genérico
+  ];
+
+  function authConTablas() {
+    var s = loadBrowserGlobals([
+      projPath("js/core/i18n.js"), projPath("js/i18n/es.js"), projPath("js/i18n/en.js"),
+      projPath("js/i18n/ru.js"), projPath("js/core/auth.js")
+    ]);
+    s.console = { error: function () {}, log: function () {} };
+    return s;
+  }
+
+  t.test("authErrorMessage(): en español dice EXACTAMENTE lo mismo con las tablas cargadas que sin ellas", function () {
+    // El castellano vive dos veces (en auth.js, que se carga y se prueba suelto,
+    // y en es.js). Este test es lo que impide que se separen.
+    var sin = freshAuthSandbox();
+    var con = authConTablas();
+    con.saveLang("es");
+    [true, false].forEach(function (enLinea) {
+      sin.navigator = { onLine: enLinea };
+      con.navigator = { onLine: enLinea };
+      ERRORES_DE_ACCESO.forEach(function (e) {
+        assert.strictEqual(con.authErrorMessage(e), sin.authErrorMessage(e), JSON.stringify(e) + " en línea=" + enLinea);
+      });
+    });
+  });
+
+  t.test("authErrorMessage(): en ruso y en inglés cada error sale traducido, sin español ni claves", function () {
+    var detector = require("../scripts/i18n/detector");
+    var s = authConTablas();
+    var vistos = {};
+    ["ru", "en"].forEach(function (lang) {
+      s.saveLang(lang);
+      [true, false].forEach(function (enLinea) {
+        s.navigator = { onLine: enLinea };
+        ERRORES_DE_ACCESO.forEach(function (e) {
+          var msg = s.authErrorMessage(e);
+          assert.ok(msg && msg.length > 10, lang + " " + JSON.stringify(e));
+          assert.strictEqual(/\bui\.[a-z_]+/.test(msg), false, lang + ": se ve una clave en «" + msg + "»");
+          var motivos = detector.analizarTexto(msg, lang);
+          assert.deepStrictEqual(motivos, [], lang + " " + JSON.stringify(e) + ": " + motivos.join("; ") + "  <-  " + msg);
+          vistos[lang + "|" + msg] = true;
+        });
+      });
+    });
+    // Y son mensajes distintos entre sí (no todos el genérico).
+    assert.ok(Object.keys(vistos).length >= 20, "pocos mensajes distintos: " + Object.keys(vistos).length);
+  });
 }
 
 module.exports = { run: run };
