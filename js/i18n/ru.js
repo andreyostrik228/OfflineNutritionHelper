@@ -650,5 +650,20 @@ registerI18nTable("ru", {
   "ui.auth_demasiados_intentos": "Слишком много попыток — подождите немного и повторите.",
   "ui.auth_popup_bloqueado": "Браузер заблокировал окно Google — разрешите всплывающие окна для этого сайта и повторите попытку.",
   "ui.auth_sin_red": "Не удалось подключиться — проверьте интернет-соединение и повторите попытку.",
-  "ui.auth_error_generico": "Не удалось выполнить операцию. Повторите попытку."
+  "ui.auth_error_generico": "Не удалось выполнить операцию. Повторите попытку.",
+  // Validaciones del cuestionario (js/ui/onboarding-ui.js) y del formulario (js/core/calculator.js: validateInput).
+  "ui.ob_error_numero": "Введите число.",
+  "ui.ob_error_rango": "Значение должно быть от {min} до {max} {unidad}.",
+  "ui.ob_error_hora": "Укажите время, чтобы продолжить.",
+  "ui.ob_error_opcion": "Выберите вариант, чтобы продолжить.",
+  "ui.ob_unidad_anos": "лет",
+  "ui.ob_unidad_dias": "дней",
+  "ui.legal_version_linea": "Версия {version} · {fecha}",
+  "ui.val_edad": "Некорректный возраст.",
+  "ui.val_peso": "Некорректный вес.",
+  "ui.val_altura": "Некорректный рост.",
+  "ui.val_entrenos": "Некорректное число тренировок в неделю.",
+  "ui.val_elige_presupuesto": "Выберите бюджет: Экономный, Сбалансированный, С запасом — или введите точную сумму.",
+  "ui.val_presupuesto_bajo": "Дневной бюджет слишком мал, чтобы составить реалистичный план.",
+  "ui.val_presupuesto_no_disponible": "Выбранный бюджет недоступен. Попробуйте ввести точную сумму."
 });

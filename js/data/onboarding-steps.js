@@ -107,7 +107,7 @@ var ONBOARDING_STEPS = [
     title: "¿Cuántos años tienes?", titleKey: "ui.ob_edad_titulo",
     min: 14,
     max: 90,
-    unit: "años"
+    unit: "años", unitKey: "ui.ob_unidad_anos"
   },
   {
     id: "weight",
@@ -118,7 +118,7 @@ var ONBOARDING_STEPS = [
     min: 35,
     max: 250,
     step: 0.1,
-    unit: "kg"
+    unit: "kg", unitKey: "unit.kg"
   },
   {
     id: "height",
@@ -127,7 +127,7 @@ var ONBOARDING_STEPS = [
     title: "¿Cuánto mides?", titleKey: "ui.ob_altura_titulo",
     min: 130,
     max: 230,
-    unit: "cm"
+    unit: "cm", unitKey: "unit.cm"
   },
   {
     id: "activity",
@@ -151,7 +151,7 @@ var ONBOARDING_STEPS = [
     hint: "Cuenta solo el entrenamiento de verdad. Si no entrenas, pon 0.", hintKey: "ui.ob_entrenos_pista",
     min: 0,
     max: 14,
-    unit: "días"
+    unit: "días", unitKey: "ui.ob_unidad_dias"
   },
   {
     id: "goal",

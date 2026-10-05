@@ -646,5 +646,20 @@ registerI18nTable("en", {
   "ui.auth_demasiados_intentos": "Too many attempts — wait a moment and try again.",
   "ui.auth_popup_bloqueado": "The browser blocked the Google window — allow pop-ups for this site and try again.",
   "ui.auth_sin_red": "Could not connect — check your internet connection and try again.",
-  "ui.auth_error_generico": "The operation could not be completed. Please try again."
+  "ui.auth_error_generico": "The operation could not be completed. Please try again.",
+  // Validaciones del cuestionario (js/ui/onboarding-ui.js) y del formulario (js/core/calculator.js: validateInput).
+  "ui.ob_error_numero": "Enter a number.",
+  "ui.ob_error_rango": "It has to be between {min} and {max} {unidad}.",
+  "ui.ob_error_hora": "Enter a time to continue.",
+  "ui.ob_error_opcion": "Choose an option to continue.",
+  "ui.ob_unidad_anos": "years",
+  "ui.ob_unidad_dias": "days",
+  "ui.legal_version_linea": "Version {version} · {fecha}",
+  "ui.val_edad": "Invalid age.",
+  "ui.val_peso": "Invalid weight.",
+  "ui.val_altura": "Invalid height.",
+  "ui.val_entrenos": "Invalid number of workouts per week.",
+  "ui.val_elige_presupuesto": "Choose a budget: Tight, Balanced, Generous, or enter an exact amount.",
+  "ui.val_presupuesto_bajo": "The daily budget is too low to generate a realistic plan.",
+  "ui.val_presupuesto_no_disponible": "The chosen budget is not available. Try an exact amount."
 });

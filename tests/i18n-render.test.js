@@ -210,6 +210,47 @@ function run(t) {
     return cadena.then(function () { s.saveLang("es"); });
   });
 
+  t.test("las validaciones del cuestionario y del formulario salen en el idioma de la pantalla; en español, igual", function () {
+    var s = loadBrowserGlobals(archivos(["js/data/budget-presets.js", "js/core/calculator.js",
+      "js/data/onboarding-steps.js", "js/data/legal.js", "js/ui/onboarding-ui.js"]));
+    var edad = s.ONBOARDING_STEPS.filter(function (p) { return p.id === "age"; })[0];
+    var peso = s.ONBOARDING_STEPS.filter(function (p) { return p.id === "weight"; })[0];
+    var malo = { age: 5, weight: 70, height: 170, workouts: 3, budgetMode: "medium" };
+    var sinPresupuesto = { age: 30, weight: 70, height: 170, workouts: 3, budgetMode: null };
+
+    s.saveLang("es");
+    assert.strictEqual(s._obValidateNumber(edad, "abc"), "Escribe un número.");
+    assert.strictEqual(s._obValidateNumber(edad, "5"), "Tiene que estar entre 14 y 90 años.");
+    assert.strictEqual(s._obValidateNumber(peso, "5"), "Tiene que estar entre 35 y 250 kg.");
+    assert.strictEqual(s.validateInput(malo), "Edad no válida.");
+    assert.strictEqual(s.validateInput(sinPresupuesto), "Elige un presupuesto: Ajustado, Equilibrado, Amplio, o introduce una cantidad exacta.");
+
+    var detector2 = detector;
+    ["ru", "en"].forEach(function (lang) {
+      s.saveLang(lang);
+      var base = { age: 30, weight: 70, height: 170, workouts: 3, budgetMode: "medium" };
+      var otros = [{ weight: 5 }, { height: 5 }, { workouts: 40 }, { budgetMode: "custom", budgetCustom: 1 }, { budgetMode: "inventado" }]
+        .map(function (cambio) { return s.validateInput(Object.assign({}, base, cambio)); });
+      otros.forEach(function (m) { assert.ok(m.length > 10, lang + ": mensaje vacío"); });
+      assert.strictEqual(new Set(otros).size, 5, lang + ": mensajes repetidos o sin traducir: " + otros.join(" | "));
+      var textos = [s._obValidateNumber(edad, "abc"), s._obValidateNumber(edad, "5"), s._obValidateNumber(peso, "5"),
+                    s.validateInput(malo), s.validateInput(sinPresupuesto)].concat(otros);
+      textos.forEach(function (txt) {
+        assert.ok(!/\{[a-z]+\}|\bui\./.test(txt), lang + ": hueco o clave en «" + txt + "»");
+        assert.deepStrictEqual(detector2.analizarTexto(txt, lang), [], lang + ": " + txt);
+      });
+      assert.ok(textos[1].indexOf(s.t("ui.ob_unidad_anos", lang)) !== -1, textos[1]);
+      assert.ok(textos[2].indexOf(s.t("unit.kg", lang)) !== -1, textos[2]);
+    });
+    s.saveLang("es");
+  });
+
+  t.test("la fecha de la última revisión del texto legal es la misma en ISO y en castellano", function () {
+    var s = loadBrowserGlobals(archivos(["js/data/legal.js"]));
+    var d = new Date(s.LEGAL_UPDATED_ISO + "T12:00:00");
+    assert.strictEqual(d.toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" }), s.LEGAL_UPDATED_AT);
+  });
+
   // ── Unidades y cifras ──────────────────────────────────────────────────
   //
   // La unidad de una cifra grande va en <span class="u"> detrás del número,

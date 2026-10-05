@@ -31,6 +31,7 @@
  * Expone (globales):
  *   LEGAL_VERSION      → string, la versión que se guarda al aceptar
  *   LEGAL_UPDATED_AT   → string, fecha legible de la última revisión
+ *   LEGAL_UPDATED_ISO  → string, esa misma fecha como AAAA-MM-DD
  *   LEGAL_SECTIONS     → array de { title, paragraphs[] }
  *   LEGAL_SUMMARY      → array de string: el resumen honesto de 3 líneas
  *                        que se ve SIN desplegar nada
@@ -41,6 +42,9 @@
 // guarda tus datos es justo lo que obliga a volver a pedir la aceptación.
 var LEGAL_VERSION = "1.1";
 var LEGAL_UPDATED_AT = "2 de septiembre de 2026";
+// La misma fecha en ISO, para escribirla en el idioma de la pantalla
+// (onboarding-ui.js). Un test comprueba que las dos son el mismo día.
+var LEGAL_UPDATED_ISO = "2026-09-02";
 
 /**
  * Lo que se ve sin abrir nada. Nadie lee doce párrafos antes de probar una

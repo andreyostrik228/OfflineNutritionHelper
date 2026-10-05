@@ -577,5 +577,20 @@ registerI18nTable("es", {
   "ui.auth_demasiados_intentos": "Demasiados intentos -- espera un momento y vuelve a intentarlo.",
   "ui.auth_popup_bloqueado": "El navegador ha bloqueado la ventana de Google -- permite las ventanas emergentes para este sitio e inténtalo otra vez.",
   "ui.auth_sin_red": "No se pudo conectar -- revisa tu conexión a internet e inténtalo de nuevo.",
-  "ui.auth_error_generico": "No se pudo completar la operación. Inténtalo de nuevo."
+  "ui.auth_error_generico": "No se pudo completar la operación. Inténtalo de nuevo.",
+  // Validaciones del cuestionario (js/ui/onboarding-ui.js) y del formulario (js/core/calculator.js: validateInput).
+  "ui.ob_error_numero": "Escribe un número.",
+  "ui.ob_error_rango": "Tiene que estar entre {min} y {max} {unidad}.",
+  "ui.ob_error_hora": "Pon una hora para continuar.",
+  "ui.ob_error_opcion": "Elige una opción para continuar.",
+  "ui.ob_unidad_anos": "años",
+  "ui.ob_unidad_dias": "días",
+  "ui.legal_version_linea": "Versión {version} · {fecha}",
+  "ui.val_edad": "Edad no válida.",
+  "ui.val_peso": "Peso no válido.",
+  "ui.val_altura": "Altura no válida.",
+  "ui.val_entrenos": "Entrenamientos por semana no válidos.",
+  "ui.val_elige_presupuesto": "Elige un presupuesto: Ajustado, Equilibrado, Amplio, o introduce una cantidad exacta.",
+  "ui.val_presupuesto_bajo": "El presupuesto diario es demasiado bajo para generar un plan realista.",
+  "ui.val_presupuesto_no_disponible": "El presupuesto elegido no está disponible. Prueba con una cantidad exacta."
 });
