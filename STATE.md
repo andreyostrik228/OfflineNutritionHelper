@@ -7,7 +7,7 @@
 >
 > ### ⏩ UPDATE 2026-10-06 (f) — «Aspecto»: el usuario elige entre 10 diseños (el base no cambia)
 >
-> **770 tests en verde (eran 726). Sello `20261006a`. SIN DESPLEGAR** (solo en la
+> **788 tests en verde (eran 726). Sello `20261006a`. SIN DESPLEGAR** (solo en la
 > rama `claude/amazing-bell-9sw8xk`; el último despliegue sigue siendo el de (d)).
 >
 > Pedido del dueño, tras ver 8 propuestas de estilo (A–H) y no decidirse: un
@@ -73,11 +73,20 @@
 >    Rounded 1c + Nunito (con cirílico); Comfortaa se descartó porque `л д г`
 >    salían ilegibles.
 >
-> **Traducción incluida en esta tanda** (rama de traducción fusionada): unidades,
-> «Invitado» → «Гость/Guest», avisos del motor de reglas en el idioma de la
-> pantalla, textos españoles que quedaban en «Mis planes». **Pendiente de
-> decisión del dueño:** los nombres de producto de Mercadona se dejan en español
-> (como en el envase); si prefiere traducirlos, es un cambio aparte.
+> **Traducción incluida en esta tanda** (rama de traducción fusionada, 788
+> tests): unidades por idioma (`<span class="u">`), «Invitado» → «Гость/Guest»,
+> avisos del motor de reglas, «Mis planes», despensa, «Sin cocinar», alérgenos,
+> acceso y cuentas, validaciones del cuestionario. Herramienta nueva:
+> `node scripts/i18n/escanear-pantallas.js` recorre la app en un idioma y marca
+> el español que queda. **Sigue en español a propósito:** nombres de producto de
+> Mercadona (el dueño aún no ha contestado si quiere traducirlos). **Sigue en
+> español por falta de tiempo:** el texto legal completo (el resumen sí está),
+> dos `<li>` fijos de `#insightsList`, `#verifiedEmpty`, el `<title>`, los
+> `aria-label` de − / + (`form-controls.js`), «Todos: » (`ingredient-suggest.js`),
+> «Opción no disponible» (`dish-selector.js`) y el texto de compartir la lista.
+> Cambiar de idioma con un plan en pantalla no lo repinta (falta un gancho en
+> `app.js`). La bienvenida dice «Siete preguntas cortas» y hay 16 pasos (error
+> del texto original).
 >
 > **Pendiente menor:** `#onboardingOpenTerms` es un enlace en línea de <40 px en
 > escritorio (solo lo marca la auditoría de tamaño de toque; ignorable).
