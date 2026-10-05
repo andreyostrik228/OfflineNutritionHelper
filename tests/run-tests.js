@@ -60,6 +60,7 @@ var suites = [
   "theme.test",
   "look.test",
   "i18n.test",
+  "i18n-render.test",
   "shopping-cost.test",
   "shopping-checks.test",
   "budget-mode.test",

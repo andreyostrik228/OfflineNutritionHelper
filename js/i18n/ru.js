@@ -435,5 +435,63 @@ registerI18nTable("ru", {
   "ui.aspecto_revista": "Журнал",
   "ui.aspecto_noche": "Ночной лес",
   "ui.aspecto_puesto": "Оформление: {nombre}",
-  "ui.aspecto_sin_red": "Не удалось загрузить это оформление. Проверьте соединение и попробуйте ещё раз."
+  "ui.aspecto_sin_red": "Не удалось загрузить это оформление. Проверьте соединение и попробуйте ещё раз.",
+  // Unidades (js/core/i18n.js: tUnit, fmtUnit, fmtUnitJunto, fmtUnitHtml). Una unidad es una palabra del
+  // idioma: en ruso ккал, г, кг, мин, мл, см.
+  "unit.kcal": "ккал",
+  "unit.g": "г",
+  "unit.kg": "кг",
+  "unit.min": "мин",
+  "unit.ml": "мл",
+  "unit.cm": "см",
+  // Lo que va entre el número y la unidad donde esta se escribía PEGADA ("500g"): nada en español y en
+  // inglés, que así lo escribían; un espacio en ruso ("500 г").
+  "unit.sep_pegada": " ",
+  "ui.invitado": "Гость",
+  // Las dos unidades que trae el catálogo de la tienda en el tamaño de un envase (tPackageUnit).
+  "unit.l": "л",
+  "unit.ud": "шт.",
+  // Nivel de confianza del emparejamiento de la nutrición de un producto (render.js, etiquetaDeConfianza).
+  "ui.confianza_alta": "высокая",
+  "ui.confianza_media": "средняя",
+  "ui.confianza_baja": "низкая",
+  "ui.confianza_muy_baja": "очень низкая",
+  // Ficha de producto del catálogo (render-real-products.js).
+  "ui.kcal_etiqueta": "Ккал",
+  "ui.estimado": "оценка",
+  "ui.mostrando_n_de_m_resultados": "Показано {n} из {total} результатов — уточните запрос, чтобы увидеть остальные.",
+  // Avisos de las tarjetas y de la franja del horario (render-schedule.js).
+  "ui.horario_ajustado_nota": "Плотный график: выбранное вами окно оставляет мало времени между приёмами пищи. Попробуйте встать пораньше или лечь позже, чтобы распределить их удобнее.",
+  "ui.preparalo_la_noche_anterior": "Приготовьте накануне вечером",
+  "ui.necesita_reposar_en_la_nevera": "блюдо должно настояться в холодильнике, сразу его не приготовить",
+  // El informe del motor (js/engine/plan-generator.js: buildCompromiseReport, describePlanReport). El
+  // español de cada clave dice EXACTAMENTE lo mismo que el literal del motor: lo comprueba
+  // tests/plan-report.test.js.
+  "ui.plan_titular_perfecto": "План составлен точно по вашим предпочтениям.",
+  "ui.plan_titular_ajustado": "План составлен с корректировкой некоторых предпочтений, чтобы его удалось завершить.",
+  "ui.plan_titular_minimo": "С имеющимися данными не удалось учесть ваши предпочтения; это лучший из доступных планов.",
+  "ui.plan_titular_error": "Не удалось составить план из-за технической ошибки.",
+  // El margen de presupuesto, que se mete dentro de los dos titulares de abajo ({margen}).
+  "ui.plan_margen_varios_dias": "{porDia} € в день (в плане на {dias} дн. в этот день расход может дойти до {tope} €, потому что упаковки делятся между всеми днями)",
+  "ui.plan_margen_un_dia": "{tope} € на покупки",
+  "ui.plan_titular_presupuesto_imposible": "При бюджете {margen} не удалось составить план, который уложился бы в {tienda}, даже при максимально разумном сокращении порций. Самый экономный из возможных планов требует покупок на {comprar} € (на {falta} € больше, чем доступно; реальный расход ингредиентов — {uso} €, но упаковки, которые нужно купить, стоят дороже).",
+  "ui.plan_titular_presupuesto_justo": "Не удалось уместить все приёмы пищи в бюджет ({margen}), хотя итоговая стоимость покупок ({comprar} €) почти дотягивает до него — проверьте время готовки или предпочтение по вкусу.",
+  // Lo que se relajó para poder montar el plan.
+  "ui.plan_ajuste_sabor": "Включены блюда вне вашего предпочтения по вкусу.",
+  "ui.plan_ajuste_tiempo": "Допущено до {min} мин сверх запрошенного времени на приготовление.",
+  "ui.plan_ajuste_sin_tiempo": "Ограничение по времени приготовления не учитывалось.",
+  "ui.plan_ajuste_tope25": "Допущено, что один продукт даёт больше 25% дневных калорий (до {pct}%).",
+  // Lo que el plan no consiguió (una línea por cada violación).
+  "ui.plan_aviso_sin_platos": "Нет доступных блюд для категории «{categoria}».",
+  "ui.plan_aviso_simplificado": "Для категории «{categoria}» блюдо пришлось упростить, чтобы уложиться в бюджет.",
+  "ui.plan_aviso_tiempo": "{toma}: нужно на {min} мин больше, чем вы просили.",
+  "ui.plan_aviso_tope25": "Один из ингредиентов в приёме пищи «{toma}» ({item}) даёт больше 25% калорий дня.",
+  "ui.plan_aviso_calorias": "Калории дня отклоняются от цели на {pct}%.",
+  "ui.plan_aviso_proteina": "Не хватает {g} г белка до цели на день.",
+  "ui.plan_aviso_desconocido": "Предупреждение без описания: {tipo}.",
+  // La categoría de toma que nombran dos de los avisos de arriba.
+  "ui.plan_categoria_desayuno": "завтрак",
+  "ui.plan_categoria_comida": "обед",
+  "ui.plan_categoria_cena": "ужин",
+  "ui.plan_categoria_snack": "перекус"
 });

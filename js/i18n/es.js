@@ -397,5 +397,63 @@ registerI18nTable("es", {
   "ui.aspecto_revista": "Revista",
   "ui.aspecto_noche": "Bosque de noche",
   "ui.aspecto_puesto": "Aspecto: {nombre}",
-  "ui.aspecto_sin_red": "No se pudo cargar este aspecto. Comprueba la conexión e inténtalo de nuevo."
+  "ui.aspecto_sin_red": "No se pudo cargar este aspecto. Comprueba la conexión e inténtalo de nuevo.",
+  // Unidades (js/core/i18n.js: tUnit, fmtUnit, fmtUnitJunto, fmtUnitHtml). Una unidad es una palabra del
+  // idioma: en ruso ккал, г, кг, мин, мл, см.
+  "unit.kcal": "kcal",
+  "unit.g": "g",
+  "unit.kg": "kg",
+  "unit.min": "min",
+  "unit.ml": "ml",
+  "unit.cm": "cm",
+  // Lo que va entre el número y la unidad donde esta se escribía PEGADA ("500g"): nada en español y en
+  // inglés, que así lo escribían; un espacio en ruso ("500 г").
+  "unit.sep_pegada": "",
+  "ui.invitado": "Invitado",
+  // Las dos unidades que trae el catálogo de la tienda en el tamaño de un envase (tPackageUnit).
+  "unit.l": "l",
+  "unit.ud": "ud",
+  // Nivel de confianza del emparejamiento de la nutrición de un producto (render.js, etiquetaDeConfianza).
+  "ui.confianza_alta": "alta",
+  "ui.confianza_media": "media",
+  "ui.confianza_baja": "baja",
+  "ui.confianza_muy_baja": "muy baja",
+  // Ficha de producto del catálogo (render-real-products.js).
+  "ui.kcal_etiqueta": "Kcal",
+  "ui.estimado": "estimado",
+  "ui.mostrando_n_de_m_resultados": "Mostrando {n} de {total} resultados — afina la búsqueda para ver el resto.",
+  // Avisos de las tarjetas y de la franja del horario (render-schedule.js).
+  "ui.horario_ajustado_nota": "Horario ajustado: la ventana elegida deja poco margen entre tomas. Prueba a adelantar la hora de despertar o retrasar la hora de dormir para un reparto más cómodo.",
+  "ui.preparalo_la_noche_anterior": "Prepáralo la noche anterior",
+  "ui.necesita_reposar_en_la_nevera": "necesita reposar en la nevera, no se hace al momento",
+  // El informe del motor (js/engine/plan-generator.js: buildCompromiseReport, describePlanReport). El
+  // español de cada clave dice EXACTAMENTE lo mismo que el literal del motor: lo comprueba
+  // tests/plan-report.test.js.
+  "ui.plan_titular_perfecto": "Plan generado exactamente según tus preferencias.",
+  "ui.plan_titular_ajustado": "Plan generado ajustando algunas preferencias para poder completarlo.",
+  "ui.plan_titular_minimo": "No fue posible respetar tus preferencias con los datos actuales; este es el mejor plan disponible.",
+  "ui.plan_titular_error": "No se pudo generar el plan por un error técnico.",
+  // El margen de presupuesto, que se mete dentro de los dos titulares de abajo ({margen}).
+  "ui.plan_margen_varios_dias": "{porDia} € al día (en un plan de {dias} días este día puede llegar a {tope} €, porque los paquetes se reparten entre todos)",
+  "ui.plan_margen_un_dia": "{tope} € de presupuesto de compra",
+  "ui.plan_titular_presupuesto_imposible": "Con {margen} no ha sido posible montar un plan que quepa en {tienda}, ni siquiera recortando raciones al máximo razonable. El plan más ajustado que se ha podido construir necesita comprar {comprar} € ({falta} € más de lo disponible; el uso real de ingredientes es de {uso} €, pero los paquetes que hay que comprar cuestan más).",
+  "ui.plan_titular_presupuesto_justo": "No ha sido posible completar todas las tomas dentro de {margen}, aunque el coste de compra final ({comprar} €) prácticamente lo alcanza — revisa el tiempo de cocina o la preferencia de sabor.",
+  // Lo que se relajó para poder montar el plan.
+  "ui.plan_ajuste_sabor": "Se incluyeron platos fuera de tu preferencia de sabor.",
+  "ui.plan_ajuste_tiempo": "Se permitió hasta {min} min más de preparación de lo solicitado.",
+  "ui.plan_ajuste_sin_tiempo": "Se ignoró el límite de tiempo de preparación.",
+  "ui.plan_ajuste_tope25": "Se permitió que un ítem supere el 25% de las kcal diarias (hasta {pct}%).",
+  // Lo que el plan no consiguió (una línea por cada violación).
+  "ui.plan_aviso_sin_platos": "No hay platos disponibles para {categoria}.",
+  "ui.plan_aviso_simplificado": "En {categoria} hubo que simplificar el plato para que cupiera en el presupuesto.",
+  "ui.plan_aviso_tiempo": "{toma} necesita {min} min más de los que pediste.",
+  "ui.plan_aviso_tope25": "Un ingrediente de {toma} ({item}) aporta más del 25% de las calorías del día.",
+  "ui.plan_aviso_calorias": "Las calorías del día se desvían un {pct}% del objetivo.",
+  "ui.plan_aviso_proteina": "Faltan {g} g de proteína para llegar al objetivo del día.",
+  "ui.plan_aviso_desconocido": "Aviso sin describir: {tipo}.",
+  // La categoría de toma que nombran dos de los avisos de arriba.
+  "ui.plan_categoria_desayuno": "desayuno",
+  "ui.plan_categoria_comida": "comida",
+  "ui.plan_categoria_cena": "cena",
+  "ui.plan_categoria_snack": "snack"
 });

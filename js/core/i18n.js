@@ -508,3 +508,210 @@ function t(clave, lang) {
   // Ni traducida ni en el origen: se devuelve la clave para que SE VEA.
   return clave;
 }
+
+/**
+ * Como t(), pero lo que NO está en ninguna tabla devuelve `original` en vez de
+ * la clave. Es para el texto que vive en español junto a su dato (los pasos
+ * del recorrido, las plantillas de «sin cocinar»): el español no está en
+ * es.js, y ver «ui.x» donde hay una frase española perfectamente buena sería
+ * peor que el hueco que `t()` quiere evitar.
+ *
+ * @param {string} clave
+ * @param {string} original - el texto español que acompaña al dato
+ * @param {string} [lang]
+ * @returns {string}
+ */
+function tOr(clave, original, lang) {
+  var idioma = (typeof lang === "string") ? sanitizeLang(lang) : getLang();
+  var tabla = I18N_TABLES[idioma];
+  if (tabla && typeof tabla[clave] === "string") return tabla[clave];
+  var origen = I18N_TABLES[DEFAULT_LANG];
+  if (origen && typeof origen[clave] === "string") return origen[clave];
+  return original;
+}
+
+/**
+ * Las claves de traducción del nombre de cada toma. La clave de la toma
+ * ("breakfast") no cambia con el idioma; su nombre sí.
+ *
+ * Vive aquí y no en js/ui porque lo piden tres capas: las tarjetas
+ * (render.js), "Mis planes" (render-pantry.js) y el informe del motor
+ * (plan-generator.js, "Desayuno necesita 7 min más…").
+ */
+var MEAL_LABEL_KEYS = {
+  breakfast: "ui.desayuno", lunch: "ui.comida", dinner: "ui.cena",
+  snack: "ui.snack_1", snack2: "ui.snack_2"
+};
+
+/**
+ * El nombre de una toma en el idioma de ahora ("Desayuno" / "Завтрак").
+ * `meal.label` está guardado en español (también en los planes del historial),
+ * así que la etiqueta se vuelve a pedir por la CLAVE de la toma; si la clave
+ * no se conoce se devuelve `fallback`, que es la etiqueta española guardada.
+ * @param {string} key - "breakfast", "lunch", "dinner", "snack", "snack2"
+ * @param {string} [fallback]
+ * @param {string} [lang]
+ * @returns {string}
+ */
+function tMeal(key, fallback, lang) {
+  var clave = MEAL_LABEL_KEYS[key];
+  if (!clave) return (typeof fallback === "string") ? fallback : String(key);
+  return tOr(clave, (typeof fallback === "string") ? fallback : String(key), lang);
+}
+
+// ── Cadenas con huecos: t() + {parámetros} ───────────────────────────────
+//
+// Hasta ahora cada sitio hacía `t(clave).replace("{n}", n)` a mano, con
+// tantos `.replace` encadenados como huecos. Funciona, pero tiene dos
+// trampas que ya han mordido: `replace` con una CADENA solo cambia la primera
+// aparición (una frase que repita {n} se quedaba con la segunda sin cambiar),
+// y un hueco que la traducción no lleva (el ruso reordena y a veces omite)
+// pasa sin ningún aviso.
+//
+// Aquí se sustituyen TODAS las apariciones, de una vez, y el valor entra
+// literal: no se interpreta como patrón (un "$&" en un nombre de producto
+// no puede reescribir la frase).
+
+/**
+ * La cadena de una clave con sus {huecos} rellenos.
+ *
+ *   tFormat("ui.pregunta_n_de_m", { n: 3, total: 16 })   ->  "Pregunta 3 de 16"
+ *
+ * Un hueco sin valor en `params` se deja tal cual ("{n}"), igual que una
+ * clave sin traducción se deja ver: un fallo tiene que notarse.
+ *
+ * Un valor que sea un objeto `{key, params}` es otro mensaje y se traduce antes
+ * de meterlo (ver más abajo).
+ *
+ * @param {string} clave
+ * @param {Object<string, *>} [params]
+ * @param {string} [lang] - por defecto, el elegido
+ * @returns {string}
+ */
+function tFormat(clave, params, lang) {
+  var valores = params;
+  if (params && typeof params === "object") {
+    // Un parámetro puede ser a su vez un mensaje, {key, params}: una frase que
+    // se mete dentro de otra ("Con {margen} no ha sido posible…"). Se traduce
+    // primero, en el mismo idioma. Así el motor guarda claves y números, no
+    // texto ya traducido.
+    valores = {};
+    Object.keys(params).forEach(function (nombre) {
+      var v = params[nombre];
+      valores[nombre] = (v && typeof v === "object" && typeof v.key === "string")
+        ? tFormat(v.key, v.params, lang) : v;
+    });
+  }
+  return _rellenarHuecos(t(clave, lang), valores);
+}
+
+/** Sustituye cada {nombre} de `texto` por `params.nombre`, si existe. */
+function _rellenarHuecos(texto, params) {
+  if (typeof texto !== "string" || !params || typeof params !== "object") return texto;
+  return texto.replace(/\{([A-Za-z0-9_]+)\}/g, function (hueco, nombre) {
+    return Object.prototype.hasOwnProperty.call(params, nombre) ? String(params[nombre]) : hueco;
+  });
+}
+
+// ── Las UNIDADES ─────────────────────────────────────────────────────────
+//
+// "kcal", "g", "kg", "min", "ml" y "cm" estaban escritos a pelo en ~60 sitios
+// de js/ui ("840 g", " kcal", "2 min"), y por eso en ruso se leía "840 g" y
+// "2499 kcal" junto a una interfaz entera en ruso. Una unidad es una palabra
+// del idioma como cualquier otra (ккал, г, кг, мин, мл), así que vive en las
+// tablas con claves `unit.<código>` y se pide aquí.
+//
+// Hay tres maneras de escribir un valor con su unidad, y cada una existe
+// porque en la pantalla ya había las tres:
+//
+//   fmtUnit(840, "g")        "840 g"    texto corrido, atributos, texto plano
+//   fmtUnitJunto(500, "g")   "500g"     donde la unidad iba pegada: "(500g)"
+//   fmtUnitHtml(841, "kcal") "841<span class="u">kcal</span>"   una CIFRA
+//
+// La tercera es para las cifras grandes (resumen del día, kcal de cada toma,
+// totales del pie de la tarjeta): el número y, PEGADA detrás y sin ningún
+// espacio, la unidad en un <span class="u"> para que el tema visual pueda
+// hacerla más pequeña que el número. El hueco entre los dos lo pone el CSS
+// (margin), no un carácter: un espacio dentro del span se heredaría al
+// copiar el texto y se partiría en dos al ajustar la línea.
+//
+// El español y el inglés conservan EXACTAMENTE lo que ya se veía: la unidad
+// pegada sigue pegada ("500g"). El ruso la separa ("500 г") porque así se
+// escribe: lo decide `unit.sep_pegada`, no el código.
+
+/**
+ * Las unidades que existen. Un test comprueba que cada una está traducida.
+ * "l" y "ud" son las otras dos que trae el catálogo de la tienda en el tamaño
+ * de un envase (2.240 productos en kg, 735 en l, 19 en ud).
+ */
+var UNIT_CODES = ["kcal", "g", "kg", "min", "ml", "cm", "l", "ud"];
+
+/**
+ * La unidad sola, en el idioma de ahora ("kcal" / "ккал").
+ * @param {string} code - uno de UNIT_CODES
+ * @param {string} [lang]
+ * @returns {string}
+ */
+function tUnit(code, lang) {
+  return t("unit." + code, lang);
+}
+
+/**
+ * La unidad de un TAMAÑO DE ENVASE tal como la trae el catálogo de la tienda
+ * ("kg", "l", "ud"). Si es una que no conocemos se deja como viene: un dato
+ * nuevo del catálogo no puede salir como "unit.xx" en medio de una ficha.
+ * @param {string} code
+ * @param {string} [lang]
+ * @returns {string}
+ */
+function tPackageUnit(code, lang) {
+  if (typeof code !== "string" || UNIT_CODES.indexOf(code) === -1) return code == null ? "" : String(code);
+  return tUnit(code, lang);
+}
+
+/**
+ * Valor y unidad como TEXTO, separados por un espacio: "840 g".
+ * @param {number|string} value
+ * @param {string} code
+ * @param {string} [lang]
+ * @returns {string}
+ */
+function fmtUnit(value, code, lang) {
+  return String(value) + " " + tUnit(code, lang);
+}
+
+/**
+ * Valor y unidad donde la unidad iba PEGADA al número: "500g" en español y en
+ * inglés, "500 г" en ruso (ver arriba).
+ * @param {number|string} value
+ * @param {string} code
+ * @param {string} [lang]
+ * @returns {string}
+ */
+function fmtUnitJunto(value, code, lang) {
+  return String(value) + t("unit.sep_pegada", lang) + tUnit(code, lang);
+}
+
+/**
+ * Una CIFRA con su unidad, para pintar con innerHTML: el número y, detrás y
+ * sin espacios, `<span class="u">unidad</span>`. Todo va escapado -- el valor
+ * porque esto acaba en innerHTML, la unidad porque viene de una tabla de
+ * traducción y no hay motivo para fiarse de lo que lleve dentro.
+ * @param {number|string} value
+ * @param {string} code
+ * @param {string} [lang]
+ * @returns {string}
+ */
+function fmtUnitHtml(value, code, lang) {
+  return _escaparHtml(String(value)) + '<span class="u">' + _escaparHtml(tUnit(code, lang)) + "</span>";
+}
+
+/** Escapado mínimo, propio: este módulo no depende de utils.js (se carga antes). */
+function _escaparHtml(s) {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}

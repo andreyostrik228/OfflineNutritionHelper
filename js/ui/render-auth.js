@@ -227,19 +227,43 @@ function renderProfileButton(user) {
   if (!authProfileLabel) return;
 
   if (!(typeof isAuthAvailable === "function" && isAuthAvailable())) {
-    authProfileLabel.textContent = "Invitado";
+    ponerEtiquetaDePerfil("ui.invitado");
     if (authUserMenu) authUserMenu.hidden = true;
     return;
   }
 
   if (user) {
     var name = (user.user_metadata && user.user_metadata.full_name) ? user.user_metadata.full_name : user.email;
-    authProfileLabel.textContent = name || t("ui.mi_cuenta");
+    if (name) {
+      // El nombre de la persona NO se traduce: sin `data-i18n`, el barrido de
+      // applyI18nToDom() no lo pisa al cambiar de idioma.
+      authProfileLabel.removeAttribute("data-i18n");
+      authProfileLabel.textContent = name;
+    } else {
+      ponerEtiquetaDePerfil("ui.mi_cuenta");
+    }
     if (authUserEmailEl) authUserEmailEl.textContent = user.email || "";
   } else {
-    authProfileLabel.textContent = t("ui.iniciar_sesion");
+    ponerEtiquetaDePerfil("ui.iniciar_sesion");
     if (authUserMenu) authUserMenu.hidden = true;
   }
+}
+
+/**
+ * Escribe en el botón de perfil una etiqueta de la interfaz ("Invitado",
+ * "Iniciar sesión", "Mi cuenta") y deja la clave puesta en `data-i18n`.
+ *
+ * La clave es lo que hace que el botón SIGA el idioma: esta función solo corre
+ * cuando cambia la sesión, y cambiar de idioma en Ajustes no cambia la sesión,
+ * así que el texto se quedaba en el idioma de antes ("Invitado" en una
+ * pantalla ya en ruso). applyI18nToDom() repinta todo lo que lleve
+ * `data-i18n` y no tenga hijos, y este <span> no los tiene.
+ *
+ * @param {string} clave
+ */
+function ponerEtiquetaDePerfil(clave) {
+  authProfileLabel.setAttribute("data-i18n", clave);
+  authProfileLabel.textContent = t(clave);
 }
 
 function handleProfileBtnClick() {

@@ -443,9 +443,9 @@ function shoppingListAsText(items, dias) {
         : t("ui.envase");
       var conGramos = !/\d/.test(p.packageLabel || "");
       cantidad = p.packagesToBuy + " x " + etiqueta
-        + (conGramos && p.packageSizeG ? " (" + Math.round(p.packageSizeG) + " g)" : "");
+        + (conGramos && p.packageSizeG ? " (" + fmtUnit(Math.round(p.packageSizeG), "g") + ")" : "");
     } else {
-      cantidad = Math.round(entry.requiredGrams || 0) + " g " + t("ui.lista_texto_al_peso");
+      cantidad = fmtUnit(Math.round(entry.requiredGrams || 0), "g") + " " + t("ui.lista_texto_al_peso");
     }
     var precio = (typeof p.purchaseCost === "number") ? p.purchaseCost : 0;
     total += precio;
@@ -494,7 +494,7 @@ function sinAclaracion(label) {
 
 function renderShoppingRow(entry, storeId, marcado) {
   var p = entry.purchase;
-  var usedText = t("ui.usado") + ": " + round0(entry.requiredGrams) + " g";
+  var usedText = t("ui.usado") + ": " + fmtUnit(round0(entry.requiredGrams), "g");
 
   var buyText;
   if (typeof p.packagesToBuy === "number" && p.packagesToBuy === 0) {
@@ -520,7 +520,7 @@ function renderShoppingRow(entry, storeId, marcado) {
     // existe para evitarlo.
     var withGrams = !/\d/.test(p.packageLabel || "");
     buyText = t("ui.comprar") + ": " + p.packagesToBuy + " &times; " + label +
-      (withGrams ? " (" + round0(p.packageSizeG) + "g)" : "");
+      (withGrams ? " (" + escapeHtml(fmtUnitJunto(round0(p.packageSizeG), "g")) + ")" : "");
   } else {
     buyText = t("ui.se_compra_al_peso_sin_envase_fijo");
   }
@@ -530,7 +530,7 @@ function renderShoppingRow(entry, storeId, marcado) {
   // cuando no hay despensa activa.
   var pantryNote = (typeof p.coveredFromPantry === "number" && p.coveredFromPantry > 0)
     ? '<div class="shopping-item__pantry">' + escapeHtml(t("ui.ya_en_tu_despensa")) + ': '
-        + round0(p.coveredFromPantry) + ' g</div>'
+        + escapeHtml(fmtUnit(round0(p.coveredFromPantry), "g")) + '</div>'
     : '';
 
   // La casilla es un <button role="checkbox"> de verdad: se alcanza con el

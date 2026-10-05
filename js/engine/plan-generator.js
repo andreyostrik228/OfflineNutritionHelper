@@ -606,6 +606,7 @@ function generateDietPlan(profile, data) {
       report: {
         status: "unavailable",
         headline: "No se pudo generar el plan por un error técnico.",
+        headlineKey: "ui.plan_titular_error", headlineParams: {},
         tierUsed: null,
         store: null,
         relaxations: [],
@@ -1789,6 +1790,13 @@ function scorePlan(attempt, profile, data) {
     - (simplified        * 10);
 }
 
+/** La clave de traducción de cada titular de HEADLINES (más arriba). */
+var HEADLINE_KEYS = {
+  perfect:  "ui.plan_titular_perfecto",
+  adjusted: "ui.plan_titular_ajustado",
+  minimal:  "ui.plan_titular_minimo"
+};
+
 /**
  * Construye el informe transparente que consumirá la UI.
  *
@@ -1801,21 +1809,37 @@ function buildCompromiseReport(attempt, profile, data) {
   var tierDef = RELAXATION_TIERS[attempt.tier];
   var relaxations = [];
 
+  // Cada nota lleva DOS cosas: `note`, el texto en español de siempre, y
+  // `noteKey` + `noteParams`, con lo que la interfaz la dice en el idioma de la
+  // pantalla (describePlanReport). El informe guarda la clave y los números, no
+  // el texto traducido: así sigue valiendo si se cambia de idioma, y el motor
+  // no depende de que haya tablas cargadas. Que `note` y la clave digan lo
+  // mismo en español lo vigila tests/plan-report.test.js.
   if (!tierDef.respectTaste) {
-    relaxations.push({ constraint: "taste", note: "Se incluyeron platos fuera de tu preferencia de sabor." });
+    relaxations.push({
+      constraint: "taste",
+      note: "Se incluyeron platos fuera de tu preferencia de sabor.",
+      noteKey: "ui.plan_ajuste_sabor", noteParams: {}
+    });
   }
   if (tierDef.prepAdd > 0) {
-    relaxations.push({
-      constraint: "time",
-      note: isFinite(tierDef.prepAdd)
-        ? "Se permitió hasta " + tierDef.prepAdd + " min más de preparación de lo solicitado."
-        : "Se ignoró el límite de tiempo de preparación."
-    });
+    relaxations.push(isFinite(tierDef.prepAdd)
+      ? {
+          constraint: "time",
+          note: "Se permitió hasta " + tierDef.prepAdd + " min más de preparación de lo solicitado.",
+          noteKey: "ui.plan_ajuste_tiempo", noteParams: { min: tierDef.prepAdd }
+        }
+      : {
+          constraint: "time",
+          note: "Se ignoró el límite de tiempo de preparación.",
+          noteKey: "ui.plan_ajuste_sin_tiempo", noteParams: {}
+        });
   }
   if (tierDef.cap25 > 0.25) {
     relaxations.push({
       constraint: "cap25",
-      note: "Se permitió que un ítem supere el 25% de las kcal diarias (hasta " + Math.round(tierDef.cap25 * 100) + "%)."
+      note: "Se permitió que un ítem supere el 25% de las kcal diarias (hasta " + Math.round(tierDef.cap25 * 100) + "%).",
+      noteKey: "ui.plan_ajuste_tope25", noteParams: { pct: Math.round(tierDef.cap25 * 100) }
     });
   }
   // El presupuesto NUNCA aparece aquí como "relajación permitida": no se
@@ -1846,6 +1870,8 @@ function buildCompromiseReport(attempt, profile, data) {
   }
 
   var headline = HEADLINES[status];
+  var headlineKey = HEADLINE_KEYS[status];
+  var headlineParams = {};
   if (hasBudgetIssue) {
     var achieved = round2(attempt.total.purchaseCost);
     var shortfall = round2(Math.max(0, achieved - data.budget));
@@ -1853,11 +1879,18 @@ function buildCompromiseReport(attempt, profile, data) {
     // el usuario eligio (ver PLAN_DAYS_BUDGET_3 / _7). Decirle "no cabe en
     // 13,80 €" cuando el eligio 12 seria mentirle con una cifra que no ha
     // visto nunca, asi que se nombran las dos y se explica de donde sale.
-    var elMargen = (data.planDays > 1)
+    var variosDias = data.planDays > 1;
+    var elMargen = variosDias
       ? data.budgetPorDia + " € al día (en un plan de " + data.planDays + " días este día " +
         "puede llegar a " + data.budget + " €, porque los paquetes se reparten entre todos)"
       : data.budget + " € de presupuesto de compra";
-    headline = shortfall > 0.005
+    // El margen es una frase suelta que se mete DENTRO del titular: va como
+    // un mensaje anidado, {key, params}, que tFormat traduce antes de meterlo.
+    var margen = variosDias
+      ? { key: "ui.plan_margen_varios_dias", params: { porDia: data.budgetPorDia, dias: data.planDays, tope: data.budget } }
+      : { key: "ui.plan_margen_un_dia", params: { tope: data.budget } };
+    var enMargen = shortfall > 0.005;
+    headline = enMargen
       ? "Con " + elMargen + " no ha sido posible montar un plan que quepa en " +
         storeName + ", ni siquiera recortando raciones al máximo razonable. El plan más ajustado que se ha " +
         "podido construir necesita comprar " + achieved + " € (" + shortfall + " € más de lo disponible; " +
@@ -1866,11 +1899,17 @@ function buildCompromiseReport(attempt, profile, data) {
       : "No ha sido posible completar todas las tomas dentro de " + elMargen +
         ", aunque el coste de compra final (" + achieved + " €) prácticamente lo alcanza — revisa el " +
         "tiempo de cocina o la preferencia de sabor.";
+    headlineKey = enMargen ? "ui.plan_titular_presupuesto_imposible" : "ui.plan_titular_presupuesto_justo";
+    headlineParams = enMargen
+      ? { margen: margen, tienda: storeName, comprar: achieved, falta: shortfall, uso: round2(attempt.total.cost) }
+      : { margen: margen, comprar: achieved };
   }
 
   return {
     status:      status,
     headline:    headline,
+    headlineKey: headlineKey,
+    headlineParams: headlineParams,
     tierUsed:    attempt.tier,
     store:       data.store,
     storeName:   storeName,
@@ -1894,7 +1933,7 @@ function buildCompromiseReport(attempt, profile, data) {
 // ── Contar al usuario lo que el informe ya sabe ──────────────────────────
 
 /**
- * Traduce un `report` a texto en español para la interfaz.
+ * Traduce un `report` a texto, en el idioma de la pantalla, para la interfaz.
  *
  * Vive AQUÍ, pegado a quien escribe el informe, y no en `js/ui/`, por la
  * regla de "una cosa, un dueño": el motor es el único que sabe qué
@@ -1915,15 +1954,36 @@ function buildCompromiseReport(attempt, profile, data) {
  * (lo que cuesta comprar y lo que se usa de verdad), y repetirlo debajo
  * solo añade ruido.
  *
+ * ── El idioma (2026-10-05) ──────────────────────────────────────────────
+ * El informe llevaba el texto YA escrito en español, y salía así dentro de la
+ * caja amarilla en una pantalla en ruso. Ahora el informe guarda claves y
+ * números (`headlineKey`/`headlineParams`, `noteKey`/`noteParams`, y
+ * `violations`, que ya eran datos) y las frases viven en js/i18n/*.js.
+ * `headline` y `note` SIGUEN con su texto en español: son el repliegue de
+ * esta función cuando no hay tablas cargadas (los tests que cargan solo el
+ * motor) y lo que lee un informe viejo sin claves. `_planTexto` es quien
+ * elige, y tests/plan-report.test.js comprueba que la clave en español y el
+ * literal dicen exactamente lo mismo.
+ *
  * @param {object} report - el `report` que devuelve generateDietPlan()
  * @returns {{ status: string, headline: string, avisos: string[], ajustes: string[] }}
  */
 function describePlanReport(report) {
   if (!report) return { status: "unavailable", headline: "", avisos: [], ajustes: [] };
 
-  var etiquetaToma = {};
-  MEAL_DEFS.forEach(function (d) { etiquetaToma[d.key] = d.label; });
-  function toma(key) { return etiquetaToma[key] || key; }
+  function toma(key) {
+    var def = MEAL_DEFS.filter(function (d) { return d.key === key; })[0];
+    var castellano = def ? def.label : key;
+    return (typeof tMeal === "function") ? tMeal(key, castellano) : castellano;
+  }
+  // La categoría ("desayuno", "snack") que nombra un aviso de «sin platos».
+  function categoria(cat) {
+    return (typeof tOr === "function") ? tOr("ui.plan_categoria_" + cat, cat) : cat;
+  }
+  // El nombre de un ingrediente, traducido al pintar y no antes.
+  function ingrediente(nombre) {
+    return (typeof tFood === "function") ? tFood(nombre) : nombre;
+  }
 
   var avisos = [];
   (report.violations || []).forEach(function (v) {
@@ -1933,39 +1993,69 @@ function describePlanReport(report) {
         // Ya lo cuenta `headline`, con más detalle del que cabe aquí.
         break;
       case "data_unavailable":
-        avisos.push("No hay platos disponibles para " + v.category + ".");
+        avisos.push(_planTexto("ui.plan_aviso_sin_platos", { categoria: categoria(v.category) },
+          "No hay platos disponibles para " + v.category + "."));
         break;
       case "menu_simplified":
-        avisos.push("En " + v.category + " hubo que simplificar el plato para que cupiera en el presupuesto.");
+        avisos.push(_planTexto("ui.plan_aviso_simplificado", { categoria: categoria(v.category) },
+          "En " + v.category + " hubo que simplificar el plato para que cupiera en el presupuesto."));
         break;
       case "time":
-        avisos.push(toma(v.meal) + " necesita " + v.exceededBy + " min más de los que pediste.");
+        avisos.push(_planTexto("ui.plan_aviso_tiempo", { toma: toma(v.meal), min: v.exceededBy },
+          toma(v.meal) + " necesita " + v.exceededBy + " min más de los que pediste."));
         break;
       case "cap25":
-        avisos.push("Un ingrediente de " + toma(v.meal).toLowerCase() + " (" + v.item +
-          ") aporta más del 25% de las calorías del día.");
+        avisos.push(_planTexto("ui.plan_aviso_tope25",
+          { toma: toma(v.meal).toLowerCase(), item: ingrediente(v.item) },
+          "Un ingrediente de " + toma(v.meal).toLowerCase() + " (" + v.item +
+          ") aporta más del 25% de las calorías del día."));
         break;
       case "calories":
-        avisos.push("Las calorías del día se desvían un " + v.deltaPct + "% del objetivo.");
+        avisos.push(_planTexto("ui.plan_aviso_calorias", { pct: v.deltaPct },
+          "Las calorías del día se desvían un " + v.deltaPct + "% del objetivo."));
         break;
       case "protein":
-        avisos.push("Faltan " + v.deltaG + " g de proteína para llegar al objetivo del día.");
+        avisos.push(_planTexto("ui.plan_aviso_proteina", { g: v.deltaG },
+          "Faltan " + v.deltaG + " g de proteína para llegar al objetivo del día."));
         break;
       default:
         // Un tipo nuevo no puede desaparecer en silencio: se enseña crudo.
-        avisos.push("Aviso sin describir: " + v.type + ".");
+        avisos.push(_planTexto("ui.plan_aviso_desconocido", { tipo: v.type },
+          "Aviso sin describir: " + v.type + "."));
     }
   });
 
-  var ajustes = (report.relaxations || []).map(function (r) { return r.note; })
-    .filter(function (n) { return !!n; });
+  var ajustes = (report.relaxations || []).map(function (r) {
+    return r.noteKey ? _planTexto(r.noteKey, r.noteParams, r.note) : r.note;
+  }).filter(function (n) { return !!n; });
 
   return {
     status: report.status,
-    headline: report.headline || "",
+    headline: report.headlineKey
+      ? _planTexto(report.headlineKey, report.headlineParams, report.headline || "")
+      : (report.headline || ""),
     avisos: avisos,
     ajustes: ajustes
   };
+}
+
+/**
+ * Una frase del informe en el idioma de la pantalla: la clave con sus
+ * parámetros, o `castellano` (el literal de siempre) si no hay tablas.
+ *
+ * Sin `tFormat` -- los tests que cargan solo el motor, sin js/core/i18n.js --
+ * se devuelve el español, que es lo que el informe decía antes de tener
+ * claves. Con `tFormat`, sale en el idioma elegido; y si la clave no existe en
+ * ninguna tabla, `t()` devuelve la clave misma para que SE VEA.
+ *
+ * @param {string} clave
+ * @param {object} params
+ * @param {string} castellano
+ * @returns {string}
+ */
+function _planTexto(clave, params, castellano) {
+  if (typeof tFormat !== "function") return castellano;
+  return tFormat(clave, params);
 }
 
 // ── Rebalanceador (sin cambios respecto a la versión anterior) ────────────
