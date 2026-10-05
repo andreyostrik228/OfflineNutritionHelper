@@ -395,5 +395,6 @@ registerI18nTable("es", {
   "unit.cm": "cm",
   // Lo que va entre el número y la unidad donde esta se escribía PEGADA ("500g"): nada en español y en
   // inglés, que así lo escribían; un espacio en ruso ("500 г").
-  "unit.sep_pegada": ""
+  "unit.sep_pegada": "",
+  "ui.invitado": "Invitado"
 });
