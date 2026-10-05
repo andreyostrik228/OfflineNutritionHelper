@@ -5,6 +5,27 @@
 > Escrito para alguien que llega SIN NINGÚN contexto previo. Si solo lees
 > una parte de este archivo, que sea esta.
 >
+> ### ⏩ UPDATE 2026-10-06 (g) — DESPLEGADO el trabajo de la rama `claude/amazing-bell-9sw8xk`
+>
+> Lo descrito en (e) y (f) (diseño "training", 10 aspectos y la traducción de
+> lo que faltaba) está **desplegado**: Cloudflare `offline-nutrition-helper`,
+> sello `20261006a`, 186 ficheros por md5, 0 difieren
+> (`https://c3979f54.offline-nutrition-helper.pages.dev`). `main` avanzó por
+> avance rápido hasta `2af82ca` y se empujó a GitHub (Pages sirve `main`; la
+> reconstrucción hay que pedirla a mano si no arranca sola). Donde (e) y (f)
+> dicen "SIN DESPLEGAR", ya no es verdad. 788 tests en verde.
+>
+> Comprobado en producción con Chrome sin interfaz: móvil 390 px y escritorio
+> 1280 px en el aspecto base, `kitty` en ruso y `noche` en inglés (plan de 15
+> tarjetas, sin errores ni desborde lateral), y un clic real en el selector de
+> Ajustes → «Aspecto»: 10 tarjetas, elegir `hojas` pone `data-look`, lo guarda
+> y carga `temas/hojas.css`. NO se recorrieron los diez aspectos uno a uno en
+> pantalla. La vista previa `https://diseno-training.offline-nutrition-helper.pages.dev`
+> es una versión ANTERIOR (sin aspectos) y se puede ignorar.
+>
+> Las ramas `diseno-en-blanco` (CSS vacío) y la etiqueta
+> `diseno-mercado-2026-09-28` siguen en GitHub; la rama en blanco ya no sirve.
+>
 > ### ⏩ UPDATE 2026-10-06 (f) — «Aspecto»: el usuario elige entre 10 diseños (el base no cambia)
 >
 > **788 tests en verde (eran 726). Sello `20261006a`. SIN DESPLEGAR** (solo en la
