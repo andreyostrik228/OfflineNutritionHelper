@@ -2985,6 +2985,12 @@ body.is-onboarding { overflow: hidden; overscroll-behavior: none; }
    móviles de 320-360 px. Los aspectos de assets/css/temas/ llevan las
    mismas reglas, así que cambiar una aquí es cambiarla también allí. */
 
+/* La unidad de una cifra (ккал, г, мин) la escribe el JavaScript en un
+   <span class="u"> pegado al número, SIN espacio dentro: así un aspecto puede
+   hacerla más pequeña. En el diseño base se queda del tamaño del número y este
+   hueco sustituye al espacio de antes. */
+.u { margin-left: 0.22em; }
+
 /* Filas de ingrediente: el coste de uso y el del paquete comparten UNA fila a
    todo el ancho. Antes el del paquete ensanchaba la segunda columna y el
    NOMBRE se quedaba en una rendija ("Leche / semidesnatada"). En una tarjeta
