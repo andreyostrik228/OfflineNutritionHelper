@@ -56,6 +56,17 @@ var LANG_NAMES = {
   ro: "Română"
 };
 
+/**
+ * La variante regional que se pide a Intl / toLocaleDateString para escribir
+ * una fecha en cada idioma: "05 oct 2026", "05 Oct 2026", "05 окт. 2026 г.".
+ * Las fechas estaban escritas con "es-ES" a pelo, así que el mes salía en
+ * español ("oct") dentro de una pantalla en ruso.
+ */
+var LANG_LOCALES = {
+  es: "es-ES", en: "en-GB", de: "de-DE", fr: "fr-FR", ru: "ru-RU",
+  uk: "uk-UA", it: "it-IT", pt: "pt-PT", pl: "pl-PL", ro: "ro-RO"
+};
+
 /** Tablas de cadenas, que rellenan los ficheros de js/i18n/. */
 var I18N_TABLES = {};
 
@@ -146,6 +157,17 @@ function saveLang(lang) {
     }
   } catch (e) { /* ventana privada: se queda en memoria */ }
   return limpio;
+}
+
+/**
+ * El código de variante regional del idioma elegido ("ru-RU"), para
+ * `toLocaleDateString` y compañía.
+ * @param {string} [lang] - por defecto, el elegido
+ * @returns {string}
+ */
+function getLocale(lang) {
+  var idioma = (typeof lang === "string") ? sanitizeLang(lang) : getLang();
+  return LANG_LOCALES[idioma] || LANG_LOCALES[DEFAULT_LANG];
 }
 
 /**
