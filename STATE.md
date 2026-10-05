@@ -5,6 +5,69 @@
 > Escrito para alguien que llega SIN NINGÚN contexto previo. Si solo lees
 > una parte de este archivo, que sea esta.
 >
+> ### ⏩ UPDATE 2026-10-05 (e) — diseño "training": `style.css` reescrito desde cero
+>
+> **726 tests en verde (eran 725). Sello `20261005a`. SIN DESPLEGAR** (solo
+> está en la rama `claude/amazing-bell-9sw8xk`; el último despliegue sigue
+> siendo el de (d)).
+>
+> Pedido del dueño: un diseño completamente nuevo, "como una app de
+> entrenamiento pero en su apartado de nutrición", móvil primero (tableta y
+> escritorio sin descuidar), sin tema oscuro por ahora. El diseño "mercado" de
+> (b) se SUSTITUYE entero: `assets/css/style.css` se escribió de nuevo (no es
+> una capa encima) a partir de la lista de clases/ids que usan el HTML y el JS,
+> sin copiar valores del anterior. Ningún `.js` cambió.
+>
+> **Lenguaje visual:** lienzo gris frío, tarjetas blancas y UN bloque oscuro
+> por pantalla (marcador de macros, total de la compra, barra inferior);
+> "volt" (lima, `--volt`) como único color de marca, siempre de FONDO con tinta
+> oscura encima (`--on-volt`, 16:1), nunca como texto sobre claro; cada macro
+> con su matiz en dos versiones (viva sobre tinta, profunda sobre blanco);
+> Sofia Sans Extra Condensed (titulares y cifras) + Onest (texto), las dos con
+> cirílico. Barra inferior flotante negra con la pestaña activa en volt.
+>
+> **Cosas que cambian fuera de `style.css`:**
+> - **Tipografías alojadas en `assets/fonts/`** (8 `.woff2`, latino, latino
+>   extendido, cirílico y cirílico extendido; licencia OFL, ver `LEEME.md`).
+>   Fuera `fonts.googleapis.com` / `fonts.gstatic.com` de `index.html` y del
+>   CSP de `_headers`. `sw.js` manda `/assets/fonts/` a la cache permanente de
+>   fuentes (el nombre del fichero es su versión, no llevan sello).
+> - `index.html`: marca en la barra superior (`.topbar__brand`), el grupo
+>   "Tema" de Ajustes queda con `hidden` (el JS de `theme.js` sigue ahí; para
+>   volver al oscuro hay que quitar `hidden` Y escribir el bloque
+>   `:root[data-theme="oscuro"]`), y los cuatro contadores (edad, peso, altura,
+>   entrenamientos) van juntos para que quepan 2x2. `theme-color` y
+>   `manifest.webmanifest` pasan a `#edeff3`; `404.html` al mismo estilo.
+> - `tests/store-theme.test.js`: el contrato de tokens de marca era el del
+>   verde (`--green`, `--on-green`...). Ahora es `--volt`, `--volt-hi`,
+>   `--volt-wash`, `--on-volt`; las exigencias de "gemelo oscuro" solo corren si
+>   existe un bloque oscuro; y un test nuevo mide 24 pares de texto del diseño.
+>
+> **Trampas que salieron en las capturas (para no repetirlas):**
+> 1. `.grid > .panel--results` con `min-width: auto` se ensanchaba hasta lo que
+>    mide el carrusel (que no encoge) y TODA la página desbordaba a la derecha.
+>    Arreglo: `grid-template-columns: minmax(0, 1fr)` y `min-width: 0`.
+> 2. El marcador de macros y el horario se organizan según el ancho de la
+>    COLUMNA de resultados (`container-type: inline-size` en `.panel--results`),
+>    no según la pantalla: a 901 px la columna mide ~440 px y el marcador en
+>    cuatro columnas se rompía en letras verticales.
+> 3. En `.food-row`, `.food-main` y `.food-right` son `display: contents` y
+>    cada pieza va a un `grid-area`; con dos columnas, la celda alta de la
+>    derecha estiraba las filas de la izquierda y dejaba huecos.
+> 4. Las capturas de la sesión no mostraban las fuentes (el navegador sin
+>    interfaz no confía en la CA del proxy y Google Fonts fallaba): alojarlas
+>    arregló el producto Y la verificación.
+> 5. Los scripts de captura que "elegían la primera opción" en la pregunta de
+>    idioma pisaban el ruso con español: elegir el idioma por `data-value`.
+>
+> **Verificado (Chrome sin interfaz):** 390x844 y 320x568 con plan, compra,
+> planes, sin cocinar, despensa, ajustes, bienvenida, cuestionario y recorrido;
+> 768, 901 y 1280 de ancho; es / ru / en. Sin desborde horizontal en 10 anchos
+> x 3 idiomas x 4 pestañas. `axe-core` (WCAG 2.2 AA): 0 fallos de contraste en
+> todas las pantallas. Imprimir saca solo la lista de la compra, aunque la
+> pestaña activa sea otra. Pendiente conocido: el carrusel de días mide lo que
+> el día más largo, así que el día 1 deja un hueco debajo (ya pasaba antes).
+>
 > ### ⏩ UPDATE 2026-09-28 (d) — la app entera en RUSO, y la tubería de traducción ya sirve para cualquier idioma
 >
 > **725 tests en verde (eran 716). Sello `20260928d`. Commit `b6881bc`,

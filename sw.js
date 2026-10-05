@@ -265,9 +265,14 @@ self.addEventListener("fetch", function (e) {
   // disponibles en este sitio" -- que sin red es sencillamente falso: lo que
   // falta es la conexion, no la funcion. Guardandolo, quien ya entro una vez
   // conserva su sesion sin cobertura.
+  // Desde 2026-10-05 las tipografias de la aplicacion viven en /assets/fonts/
+  // (ver style.css, seccion 0) y van a la misma cache permanente: no llevan
+  // sello porque el nombre del fichero ya es su version, y asi un despliegue
+  // no las vuelve a bajar.
   if (url.hostname.indexOf("fonts.googleapis.com") !== -1 ||
       url.hostname.indexOf("fonts.gstatic.com") !== -1 ||
-      url.hostname.indexOf("cdn.jsdelivr.net") !== -1) {
+      url.hostname.indexOf("cdn.jsdelivr.net") !== -1 ||
+      (url.origin === self.location.origin && url.pathname.indexOf("/assets/fonts/") !== -1)) {
     e.respondWith(
       caches.match(req).then(function (hit) {
         if (hit) return hit;

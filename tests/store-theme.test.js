@@ -31,27 +31,27 @@ var assert = require("assert");
 var fs = require("fs");
 var path = require("path");
 
-/** Los únicos tokens que una tienda puede tocar. Ver style.css. */
-var TOKENS_DE_MARCA = [
-  "--green", "--green-deep", "--green-wash", "--on-green",
-  "--hero-bg-start", "--hero-bg-end"
-];
+/**
+ * Los únicos tokens que una tienda puede tocar. Ver style.css.
+ *
+ * Desde el diseño "training" (2026-10-05) la marca es el "volt" (lima), que
+ * va SIEMPRE de fondo con `--on-volt` (tinta oscura) encima. Antes era un
+ * verde repartido en seis tokens, entre ellos uno que hacía de texto.
+ */
+var TOKENS_DE_MARCA = ["--volt", "--volt-hi", "--volt-wash", "--on-volt"];
 
 /**
- * El verde VIVO de los fondos (2026-09-09). Va aparte porque vive SOLO en
- * `:root` y el modo oscuro lo hereda: un vivo con tinta oscura encima
- * funciona igual sobre papel claro que sobre papel oscuro, así que copiarlo
- * al bloque oscuro sería justo la duplicación que se desincroniza sola —
- * la misma razón por la que mercadona no tiene overlay.
- *
- * Por eso NO entra en TOKENS_DE_MARCA, cuya comprobación exige gemelo
- * oscuro. Una tienda sí puede redefinirlo, y si lo hace en claro y también
- * en oscuro, las reglas de overlay de más abajo le aplican igual.
+ * Los fondos de marca: lo que lleva `--on-volt` encima y por tanto tiene
+ * que dar 4,5:1 con él. Una tienda puede redefinirlos, en claro y (si
+ * existe) en oscuro, y las reglas de overlay de más abajo le aplican igual.
  */
-var TOKENS_DE_FONDO = ["--green-bright", "--green-bright-hi"];
+var TOKENS_DE_FONDO = ["--volt", "--volt-hi"];
 
 /** Lo que NINGUNA tienda puede tocar: legibilidad e identidad del producto. */
-var TOKENS_PROHIBIDOS = ["--ink", "--ink-soft", "--ink-faint", "--paper", "--paper-raised", "--line", "--line-strong"];
+var TOKENS_PROHIBIDOS = [
+  "--ink", "--ink-2", "--ink-3", "--text-2", "--text-3",
+  "--canvas", "--surface", "--surface-2", "--line", "--line-strong", "--field-line"
+];
 
 function leer(rel) {
   return fs.readFileSync(path.join(__dirname, "..", rel), "utf8");
@@ -195,44 +195,70 @@ function run(t) {
   });
   var cssClaro = css;
 
+  // La aplicación es clara siempre (el dueño descartó el modo oscuro el
+  // 2026-10-05). Mientras no haya bloque oscuro, las exigencias "y también
+  // en oscuro" no tienen sujeto; el día que vuelva, saltan solas.
+  var hayOscuro = Object.keys(rootOscuro).length > 0;
+
   // ── 1. El contrato existe de verdad ────────────────────────────────────
   // Si alguien renombra --green, el tema de tienda apunta al vacío y no se
   // entera nadie: el overlay simplemente no haría nada.
-  t.test("los tokens de marca existen en :root y en el bloque oscuro", function () {
+  t.test("los tokens de marca existen en :root (y en el bloque oscuro, si lo hay)", function () {
     TOKENS_DE_MARCA.forEach(function (tok) {
       assert.ok(rootClaro[tok], "falta " + tok + " en :root -- ¿renombrado?");
-      assert.ok(rootOscuro[tok], "falta " + tok + " en el bloque oscuro -- ¿renombrado?");
+      if (hayOscuro) assert.ok(rootOscuro[tok], "falta " + tok + " en el bloque oscuro -- ¿renombrado?");
     });
   });
 
-  // ── 2. El tema por defecto se lee, en los dos modos ───────────────────
-  // No es decorativo: --on-green es la TINTA que va sobre un fondo verde, y
-  // ese fondo ya no es --green sino --green-bright (2026-09-09). El cruce de
-  // modos rompió el contraste una vez y por eso se mide, no se supone.
-  t.test("--on-green sobre los verdes de FONDO cumple 4,5:1 en los dos modos", function () {
+  // ── 2. El tema por defecto se lee ─────────────────────────────────────
+  // No es decorativo: --on-volt es la TINTA que va sobre un fondo de marca.
+  // El cruce de modos rompió el contraste una vez en el diseño anterior y
+  // por eso se mide, no se supone.
+  t.test("--on-volt sobre los fondos de marca cumple 4,5:1 (y en oscuro, si lo hay)", function () {
     TOKENS_DE_FONDO.forEach(function (tok) {
       var fondoClaro = rootClaro[tok];
       assert.ok(fondoClaro, "falta " + tok + " en :root -- ¿renombrado?");
-      // El oscuro HEREDA salvo que lo redefina; se comprueba lo que de
-      // verdad se aplicaría en cada modo.
-      var fondoOscuro = rootOscuro[tok] || fondoClaro;
-      var claro = contraste(rootClaro["--on-green"], fondoClaro);
-      var oscuro = contraste(rootOscuro["--on-green"] || rootClaro["--on-green"], fondoOscuro);
-      assert.ok(claro >= 4.5, tok + " en claro da " + claro.toFixed(2) + ":1");
-      assert.ok(oscuro >= 4.5, tok + " en oscuro da " + oscuro.toFixed(2) + ":1");
+      var claro = contraste(rootClaro["--on-volt"], fondoClaro);
+      assert.ok(claro >= 4.5, tok + " en claro da " + (claro && claro.toFixed(2)) + ":1");
+      if (hayOscuro) {
+        // El oscuro HEREDA salvo que lo redefina; se comprueba lo que de
+        // verdad se aplicaría.
+        var oscuro = contraste(rootOscuro["--on-volt"] || rootClaro["--on-volt"], rootOscuro[tok] || fondoClaro);
+        assert.ok(oscuro >= 4.5, tok + " en oscuro da " + (oscuro && oscuro.toFixed(2)) + ":1");
+      }
     });
   });
 
-  // ── 2 bis. Y --green sigue siendo legible como TEXTO ──────────────────
-  // Es su papel desde que el fondo se mudó a --green-bright: 27 usos como
-  // color de texto. Este es EL límite que impide poner el verde vivo aquí
-  // (daría 4,11:1), así que queda medido para que nadie lo intente sin ver
-  // la cifra.
-  t.test("--green sobre --paper cumple 4,5:1 como texto, en los dos modos", function () {
-    var claro = contraste(rootClaro["--green"], rootClaro["--paper"]);
-    var oscuro = contraste(rootOscuro["--green"], rootOscuro["--paper"]);
-    assert.ok(claro >= 4.5, "en claro da " + claro.toFixed(2) + ":1");
-    assert.ok(oscuro >= 4.5, "en oscuro da " + oscuro.toFixed(2) + ":1");
+  // ── 2 bis. Y la marca sigue siendo legible como TEXTO sobre lo oscuro ──
+  // El volt NO se usa como texto sobre claro (no llega a contraste); su papel
+  // de texto es sobre los bloques de tinta: marcador de macros, total de la
+  // compra, barra inferior. Queda medido para que nadie lo ponga sobre claro
+  // sin ver la cifra.
+  t.test("--volt sobre --ink cumple 4,5:1 como texto", function () {
+    var r = contraste(rootClaro["--volt"], rootClaro["--ink"]);
+    assert.ok(r !== null && r >= 4.5, "da " + (r && r.toFixed(2)) + ":1");
+  });
+
+  // Los pares de texto que sostienen toda la lectura de la aplicación.
+  t.test("los pares de texto del diseño cumplen 4,5:1", function () {
+    [
+      ["--ink", "--canvas"], ["--ink", "--surface"],
+      ["--text-2", "--canvas"], ["--text-2", "--surface"], ["--text-2", "--surface-2"],
+      ["--text-3", "--canvas"], ["--text-3", "--surface"], ["--text-3", "--surface-2"],
+      ["--on-ink", "--ink"], ["--on-ink-2", "--ink"], ["--on-ink-2", "--ink-2"],
+      ["--ink", "--volt-wash"], ["--text-2", "--volt-wash"],
+      ["--kcal-deep", "--surface"], ["--protein-deep", "--surface"],
+      ["--carbs-deep", "--surface"], ["--fat-deep", "--surface"],
+      ["--kcal", "--ink"], ["--protein", "--ink"], ["--carbs", "--ink"], ["--fat", "--ink"],
+      ["--ok", "--ok-wash"], ["--warn", "--warn-wash"], ["--danger-deep", "--danger-wash"]
+    ].forEach(function (par) {
+      var r = contraste(rootClaro[par[0]], rootClaro[par[1]]);
+      assert.ok(r !== null, "no se puede medir " + par[0] + " sobre " + par[1]);
+      assert.ok(r >= 4.5, par[0] + " sobre " + par[1] + " da " + r.toFixed(2) + ":1");
+    });
+    // Un borde de campo es lo único que lo delimita: 3:1 contra el blanco.
+    var borde = contraste(rootClaro["--field-line"], rootClaro["--surface"]);
+    assert.ok(borde >= 3, "--field-line sobre --surface da " + borde.toFixed(2) + ":1");
   });
 
   // ── 3. LA TRAMPA: claro sin gemelo oscuro ─────────────────────────────
@@ -244,6 +270,7 @@ function run(t) {
 
   t.test("cada overlay de tienda en claro define los MISMOS tokens en oscuro", function () {
     claros.forEach(function (o) {
+      if (!hayOscuro) return;   // sin modo oscuro no hay gemelo que exigir
       var gemelo = oscurosPorTienda[o.tienda];
       assert.ok(gemelo,
         'la tienda "' + o.tienda + '" tiene tema claro y NO tiene tema oscuro: ' +
@@ -272,11 +299,11 @@ function run(t) {
   });
 
   // ── 5. Y el contraste de cada tienda, medido ──────────────────────────
-  t.test("cada tienda mantiene 4,5:1 de --on-green sobre su verde de fondo", function () {
+  t.test("cada tienda mantiene 4,5:1 de --on-volt sobre su color de marca de fondo", function () {
     claros.forEach(function (o) {
       TOKENS_DE_FONDO.forEach(function (tok) {
         var verde = o.tokens[tok] || rootClaro[tok];
-        var tinta = o.tokens["--on-green"] || rootClaro["--on-green"];
+        var tinta = o.tokens["--on-volt"] || rootClaro["--on-volt"];
         var r = contraste(tinta, verde);
         assert.ok(r !== null, 'colores no interpretables en "' + o.tienda + '" (' + tok + ")");
         assert.ok(r >= 4.5, 'la tienda "' + o.tienda + '" da ' + r.toFixed(2) + ":1 en claro (" + tok + ")");
@@ -286,7 +313,7 @@ function run(t) {
       var tk = oscurosPorTienda[id];
       TOKENS_DE_FONDO.forEach(function (tok) {
         var verde = tk[tok] || rootOscuro[tok] || rootClaro[tok];
-        var tinta = tk["--on-green"] || rootOscuro["--on-green"];
+        var tinta = tk["--on-volt"] || rootOscuro["--on-volt"] || rootClaro["--on-volt"];
         var r = contraste(tinta, verde);
         assert.ok(r !== null, 'colores no interpretables en "' + id + '" (oscuro, ' + tok + ")");
         assert.ok(r >= 4.5, 'la tienda "' + id + '" da ' + r.toFixed(2) + ":1 en oscuro (" + tok + ")");
