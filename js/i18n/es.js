@@ -525,5 +525,44 @@ registerI18nTable("es", {
   "ui.planes_aviso_varios_dias_titulo": "Plan de {n} días confirmado",
   "html.planes_aviso_varios_dias": "<p>Se ha guardado un plan para cada uno de los <strong>{n} días</strong>, empezando hoy. Cambia de día con los botones de fecha de <strong>{planes}</strong>. Cuando compres, toca <strong>{boton}</strong> en el día que corresponda.</p>",
   "ui.planes_aviso_confirmado_titulo": "Plan confirmado",
-  "html.planes_aviso_confirmado": "<p>Cuando compres, toca <strong>{boton}</strong> ahí abajo, en <strong>{planes}</strong> — así no te lo volverá a pedir la próxima vez.</p>"
+  "html.planes_aviso_confirmado": "<p>Cuando compres, toca <strong>{boton}</strong> ahí abajo, en <strong>{planes}</strong> — así no te lo volverá a pedir la próxima vez.</p>",
+  // Alérgenos de la etiqueta (js/core/allergens.js). Las etiquetas españolas de EU_ALLERGEN_LABELS y estas
+  // claves dicen lo mismo: lo comprueba tests/allergens.test.js.
+  "ui.alergenos_contiene": "Contiene:",
+  "ui.alergenos_puede_contener": "Puede contener:",
+  "ui.alergeno_gluten": "gluten",
+  "ui.alergeno_crustaceos": "crustáceos",
+  "ui.alergeno_huevo": "huevo",
+  "ui.alergeno_pescado": "pescado",
+  "ui.alergeno_cacahuetes": "cacahuetes",
+  "ui.alergeno_soja": "soja",
+  "ui.alergeno_lacteos": "lácteos",
+  "ui.alergeno_frutos_cascara": "frutos de cáscara",
+  "ui.alergeno_apio": "apio",
+  "ui.alergeno_mostaza": "mostaza",
+  "ui.alergeno_sesamo": "sésamo",
+  "ui.alergeno_sulfitos": "sulfitos",
+  "ui.alergeno_altramuces": "altramuces",
+  "ui.alergeno_moluscos": "moluscos",
+  // «Sin cocinar» (js/ui/render-no-cook.js).
+  "ui.nocook_nivel_0": "Listo para comer",
+  "ui.nocook_nivel_1": "Preparación mínima",
+  "ui.nocook_nivel_2": "Calentar rápido",
+  "ui.nocook_plan_generado": "Plan sin cocinar generado.",
+  "html.nocook_aviso_alergenos": "Los alérgenos que se muestran vienen de la etiqueta de Mercadona. Que no aparezcan <strong>no</strong> significa que el producto no los lleve — comprueba siempre el envase.",
+  "html.nocook_aviso_aproximado": "Donde pone {marca}, la nutrición se ha buscado por el <strong>nombre</strong> del producto y nadie la ha comprobado: puede no ser la de ese producto exacto. El resto viene del código de barras.",
+  "ui.cambiar_solo_esta_toma_producto_no_en_tu_tienda": "Cambiar solo esta toma (por ejemplo si un producto no está en tu tienda)",
+  "ui.nocook_proteina_linea": "{cantidad} proteína",
+  "html.nocook_compra_linea": "La compra son <strong>&euro;{compra}</strong>{presupuesto} en {n} productos &middot; hoy te comes &euro;{consumo} (el resto queda en la despensa)",
+  "html.nocook_tres_tomas": "Con este presupuesto el plan son <strong>3 tomas</strong> sin snacks: las calorías del día se reparten entre ellas en vez de gastar en picoteo.",
+  "html.nocook_se_pasa": "Este plan se pasa <strong>&euro;{exceso}</strong> de tu presupuesto: con menos no salía una comida completa. {consejo}",
+  "ui.nocook_consejo_barato": "Con este catálogo no se puede bajar más sin dejar una toma coja.",
+  "ui.nocook_consejo_subir": "Prueba a subir el presupuesto, o pon la prioridad en «lo más barato posible».",
+  "ui.nocook_proteina_corta": "Este plan se queda en {obtenida} de proteína, por debajo de tus {objetivo}. Sin cocinar es un techo real: los productos listos para comer rinden poca proteína por caloría{barato}. Para llegar más arriba hace falta cocinar.",
+  "ui.nocook_proteina_corta_barato": ", y con la prioridad en «lo más barato» baja todavía más",
+  "ui.nocook_envase": "Envase: {tamano}",
+  "ui.nocook_envase_entero": "Envase entero"
+  // Las plantillas de «sin cocinar»: nocook.<clave>_nombre y nocook.<clave>_montaje. Solo están en en y ru: su
+  // español vive en js/data/no-cook-templates.js, junto a lo que explica cada plantilla (como los pasos del
+  // recorrido). Las claves se derivan de NO_COOK_TEMPLATES y un test exige que no falte ninguna.
 });

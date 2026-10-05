@@ -42,12 +42,17 @@ var lastNoCookOptions = null;
 // re-pintar tras cambiar una toma necesita recalcularlo entero.
 var lastNoCookPlan = null;
 
-var LEVEL_LABEL = {
-  0: "Listo para comer",
-  1: "Preparación mínima",
-  2: "Calentar rápido",
-};
+// El nombre de cada nivel de preparación se pide a las tablas de traducción en
+// el momento de pintar (ui.nocook_nivel_N): lo que viaja en el plan es el
+// NÚMERO del nivel, nunca el texto.
+var LEVEL_LABEL_KEYS = { 0: "ui.nocook_nivel_0", 1: "ui.nocook_nivel_1", 2: "ui.nocook_nivel_2" };
 var LEVEL_CLASS = { 0: "nocook-level--0", 1: "nocook-level--1", 2: "nocook-level--2" };
+
+/** El nombre de un nivel de preparación en el idioma de ahora ("" si no se conoce). */
+function noCookLevelLabel(level) {
+  var clave = LEVEL_LABEL_KEYS[level];
+  return clave ? t(clave) : "";
+}
 
 /**
  * Conecta los nodos DOM necesarios para este módulo.
@@ -93,7 +98,7 @@ function runNoCookGenerator(storeId, options) {
   }
 
   if (noCookCount) noCookCount.textContent = plan.poolSize;
-  if (noCookStatus) noCookStatus.textContent = "Plan sin cocinar generado.";
+  if (noCookStatus) noCookStatus.textContent = t("ui.nocook_plan_generado");
 
   paintNoCookPlan(plan);
 }
@@ -106,9 +111,7 @@ function runNoCookGenerator(storeId, options) {
  */
 function paintNoCookPlan(plan) {
   var allergenNote = (typeof renderAllergenLine === "function")
-    ? '<p class="nocook-disclaimer">Los alérgenos que se muestran vienen de la ' +
-      'etiqueta de Mercadona. Que no aparezcan <strong>no</strong> significa ' +
-      'que el producto no los lleve — comprueba siempre el envase.</p>'
+    ? '<p class="nocook-disclaimer">' + t("html.nocook_aviso_alergenos") + "</p>"
     : "";
 
   // Qué significa la marca "~ sin verificar" de las tarjetas.
@@ -125,10 +128,9 @@ function paintNoCookPlan(plan) {
     return (s.items || []).some(function (it) { return it.needsReview; });
   });
   var aproxNote = hayAprox
-    ? '<p class="nocook-disclaimer">Donde pone <span class="nutrition-approx">' +
-      '~ sin verificar</span>, la nutrición se ha buscado por el <strong>nombre' +
-      '</strong> del producto y nadie la ha comprobado: puede no ser la de ese ' +
-      'producto exacto. El resto viene del código de barras.</p>'
+    ? '<p class="nocook-disclaimer">' + tFormat("html.nocook_aviso_aproximado", {
+        marca: '<span class="nutrition-approx">' + escapeHtml(t("ui.sin_verificar_tilde")) + "</span>"
+      }) + "</p>"
     : "";
 
   noCookResults.innerHTML =
@@ -153,8 +155,8 @@ function handleSwapNoCookSlot(event) {
   var res = regenerateNoCookSlot(lastNoCookPlan, slotKey, lastNoCookStore, lastNoCookOptions || {});
   if (!res || res.error || !res.slot) {
     btn.disabled = false;
-    btn.textContent = "sin más opciones";
-    setTimeout(function () { btn.innerHTML = "&#8635; Cambiar"; }, 1600);
+    btn.textContent = t("ui.sin_mas_opciones");
+    setTimeout(function () { btn.innerHTML = "&#8635; " + escapeHtml(t("ui.cambiar")); }, 1600);
     return;
   }
 
@@ -224,22 +226,29 @@ function recomputeNoCookPlanTotals(plan) {
  */
 function renderNoCookSummary(plan) {
   if (!plan || !plan.total) return "";
-  var t = plan.total;
+  // `total` y no `t`: la `t` de siempre es la función de traducción.
+  var total = plan.total;
   var target = plan.target || {};
 
-  var kcalLine = round0(t.kcal) + " kcal"
-    + (target.kcal ? ' <span class="nocook-summary__target">de ' + round0(target.kcal) + "</span>" : "");
+  var de = escapeHtml(t("ui.de_contador"));
+  var objetivo = function (valor) {
+    return ' <span class="nocook-summary__target">' + de + " " + valor + "</span>";
+  };
 
-  var proteinLine = round0(t.protein) + " g proteína"
-    + (target.protein ? ' <span class="nocook-summary__target">de ' + round0(target.protein) + "</span>" : "");
+  var kcalLine = escapeHtml(fmtUnit(round0(total.kcal), "kcal"))
+    + (target.kcal ? objetivo(round0(target.kcal)) : "");
+
+  var proteinLine = escapeHtml(tFormat("ui.nocook_proteina_linea", { cantidad: fmtUnit(round0(total.protein), "g") }))
+    + (target.protein ? objetivo(round0(target.protein)) : "");
 
   // La cifra que manda es el TICKET: es lo que se paga hoy en caja y es lo
   // que el presupuesto limita. Lo consumido va detrás, como referencia.
-  var costLine = "La compra son <strong>&euro;" + round2(plan.shoppingCost || 0) + "</strong>"
-    + (plan.budget ? ' <span class="nocook-summary__target">de ' + round2(plan.budget) + "</span>" : "")
-    + " en " + plan.productCount + " productos"
-    + " &middot; hoy te comes &euro;" + round2(plan.consumedCost || 0)
-    + " (el resto queda en la despensa)";
+  var costLine = tFormat("html.nocook_compra_linea", {
+    compra: round2(plan.shoppingCost || 0),
+    presupuesto: plan.budget ? objetivo(round2(plan.budget)) : "",
+    n: plan.productCount,
+    consumo: round2(plan.consumedCost || 0)
+  });
 
   var stats =
     '<div class="nocook-summary__row"><strong>' + kcalLine + "</strong></div>" +
@@ -247,9 +256,7 @@ function renderNoCookSummary(plan) {
     '<div class="nocook-summary__row">' + costLine + "</div>";
 
   if (plan.threeMealDay) {
-    stats += '<div class="nocook-summary__row nocook-summary__note">' +
-      "Con este presupuesto el plan son <strong>3 tomas</strong> sin snacks: " +
-      "las calorías del día se reparten entre ellas en vez de gastar en picoteo.</div>";
+    stats += '<div class="nocook-summary__row nocook-summary__note">' + t("html.nocook_tres_tomas") + "</div>";
   }
 
   var warn = "";
@@ -260,22 +267,20 @@ function renderNoCookSummary(plan) {
     // No sugerir "pon la prioridad en barato" si YA está en barato: es el
     // consejo inútil clásico y hace que el aviso parezca automático.
     var advice = (plan.priority === "cheap")
-      ? " Con este catálogo no se puede bajar más sin dejar una toma coja."
-      : " Prueba a subir el presupuesto, o pon la prioridad en &laquo;lo más barato posible&raquo;.";
-    warn += '<p class="nocook-summary__warn">Este plan se pasa <strong>&euro;' +
-      round2(plan.budgetOverrun) + "</strong> de tu presupuesto: con menos no salía " +
-      "una comida completa." + advice + "</p>";
+      ? t("ui.nocook_consejo_barato")
+      : t("ui.nocook_consejo_subir");
+    warn += '<p class="nocook-summary__warn">' + tFormat("html.nocook_se_pasa", {
+      exceso: round2(plan.budgetOverrun),
+      consejo: escapeHtml(advice)
+    }) + "</p>";
   }
 
-  if (target.protein && t.protein < target.protein * 0.85) {
-    warn += '<p class="nocook-summary__warn">Este plan se queda en ' + round0(t.protein) +
-      " g de proteína, por debajo de tus " + round0(target.protein) + " g. " +
-      "Sin cocinar es un techo real: los productos listos para comer rinden poca " +
-      "proteína por caloría" +
-      (plan.priority === "cheap"
-        ? ", y con la prioridad en «lo más barato» baja todavía más"
-        : "") +
-      ". Para llegar más arriba hace falta cocinar.</p>";
+  if (target.protein && total.protein < target.protein * 0.85) {
+    warn += '<p class="nocook-summary__warn">' + escapeHtml(tFormat("ui.nocook_proteina_corta", {
+      obtenida: fmtUnit(round0(total.protein), "g"),
+      objetivo: fmtUnit(round0(target.protein), "g"),
+      barato: plan.priority === "cheap" ? t("ui.nocook_proteina_corta_barato") : ""
+    })) + "</p>";
   }
 
   return '<div class="nocook-summary">' + stats + warn + "</div>";
@@ -291,33 +296,38 @@ function renderNoCookSlot(slot) {
 
   // Nombre de la plantilla ("Wrap", "Plato preparado"): dice de un vistazo
   // QUÉ es la comida, no solo qué productos la componen.
+  // El español de la plantilla vive junto a ella (no-cook-templates.js); la
+  // traducción, en nocook.<clave>_nombre / _montaje. `tOr` devuelve el español
+  // cuando el idioma no tiene la suya.
   var kind = slot.templateLabel
-    ? '<span class="nocook-slot__kind">' + escapeHtml(slot.templateLabel) + "</span>" : "";
+    ? '<span class="nocook-slot__kind">' +
+      escapeHtml(tOr("nocook." + slot.templateKey + "_nombre", slot.templateLabel)) + "</span>" : "";
 
+  // La cifra con su unidad en un <span class="u">, pegada, para que el tema
+  // la haga más pequeña que el número (ver fmtUnitHtml en i18n.js).
   var kcal = (slot.total && slot.total.kcal)
-    ? '<span class="nocook-slot__kcal">' + round0(slot.total.kcal) + " kcal</span>" : "";
+    ? '<span class="nocook-slot__kcal">' + fmtUnitHtml(round0(slot.total.kcal), "kcal") + "</span>" : "";
 
   var swapBtn = '<button type="button" class="meal-swap-btn" data-action="swap-nocook-slot"' +
     ' data-slot-key="' + escapeHtml(slot.key || "") + '"' +
-    ' title="Cambiar solo esta toma (por ejemplo si un producto no está en tu tienda)">' +
-    "&#8635; Cambiar</button>";
+    ' title="' + escapeHtml(t("ui.cambiar_solo_esta_toma_producto_no_en_tu_tienda")) + '">' +
+    "&#8635; " + escapeHtml(t("ui.cambiar")) + "</button>";
 
   // Aviso "de la noche antes" (plantillas makeAhead: avena remojada). Mismo
   // trato que en el modo cocinado -- solo puede salir en el día 2+ de un
   // plan de varios días, así que hoy no aparece nunca.
-  var makeAheadNote = slot.makeAhead
-    ? '<div class="meal-make-ahead">&#9200; <strong>Prepáralo la noche anterior</strong> ' +
-      '&mdash; necesita reposar en la nevera, no se hace al momento</div>'
-    : "";
+  var makeAheadNote = (slot.makeAhead && typeof renderMakeAheadNote === "function")
+    ? renderMakeAheadNote() : "";
 
   // Cómo se monta, en una línea. Es la diferencia entre una lista de la
   // compra y una comida: el usuario pidió "haz un sándwich y vete".
   var assembly = slot.assembly
-    ? '<p class="nocook-slot__assembly">' + escapeHtml(slot.assembly) + "</p>" : "";
+    ? '<p class="nocook-slot__assembly">' +
+      escapeHtml(tOr("nocook." + slot.templateKey + "_montaje", slot.assembly)) + "</p>" : "";
 
   return (
     '<div class="nocook-slot">' +
-      '<div class="nocook-slot__head">' + timeBadge + "<h3>" + escapeHtml(slot.label) + "</h3>" +
+      '<div class="nocook-slot__head">' + timeBadge + "<h3>" + escapeHtml(tMeal(slot.key, slot.label)) + "</h3>" +
         kind + kcal + swapBtn +
       "</div>" +
       makeAheadNote +
@@ -348,6 +358,18 @@ function pluralizeUnit(unit, count) {
 }
 
 /**
+ * La unidad de consumo ("porción", "unidad", "taza"…) en singular o plural
+ * según cuántas sean, en el idioma de ahora. Las tablas de envases
+ * (packages-*.js) traen las formas de cada idioma -- en ruso son cuatro --; el
+ * español no las necesita y sigue con su propio plural (`pluralizeUnit`).
+ */
+function noCookUnitLabel(unit, count) {
+  var nombre = unit || "ración";
+  var traducida = (typeof tPackageLabel === "function") ? tPackageLabel(nombre, count) : null;
+  return traducida || pluralizeUnit(nombre, count);
+}
+
+/**
  * Genera el HTML de un producto dentro de una toma.
  * Muestra: nivel de preparación, nombre/marca reales, unidad natural de
  * consumo, y el envase real (tamaño + precio) tal cual viene del
@@ -360,11 +382,13 @@ function pluralizeUnit(unit, count) {
 function renderNoCookItem(item) {
   var levelBadge =
     '<span class="nocook-level ' + (LEVEL_CLASS[item.level] || "") + '">' +
-      escapeHtml(LEVEL_LABEL[item.level] || "") +
+      escapeHtml(noCookLevelLabel(item.level)) +
     "</span>";
 
   var packageLine = item.size != null && item.sizeUnit
-    ? "Envase: " + item.size + item.sizeUnit + (item.price != null ? " &mdash; &euro;" + round2(item.price) : "")
+    ? escapeHtml(tFormat("ui.nocook_envase", {
+        tamano: item.size + t("unit.sep_pegada") + tPackageUnit(item.sizeUnit)
+      })) + (item.price != null ? " &mdash; &euro;" + round2(item.price) : "")
     : (item.price != null ? "&euro;" + round2(item.price) : "");
 
   // Los macros son los de LO QUE TE COMES (raciones x gramos), no los de
@@ -380,7 +404,10 @@ function renderNoCookItem(item) {
   var macrosLine = item.kcal != null
     ? '<div class="nocook-item__macros">' +
         (trustBadge ? "~" : "") +
-        round0(item.kcal) + " kcal &mdash; P " + round1(item.protein) + "g / C " + round1(item.carbs) + "g / G " + round1(item.fat) + "g" +
+        escapeHtml(fmtUnit(round0(item.kcal), "kcal")) + " &mdash; " +
+        escapeHtml(t("ui.abrev_proteina")) + " " + escapeHtml(fmtUnitJunto(round1(item.protein), "g")) + " / " +
+        escapeHtml(t("ui.abrev_carbos")) + " " + escapeHtml(fmtUnitJunto(round1(item.carbs), "g")) + " / " +
+        escapeHtml(t("ui.abrev_grasas")) + " " + escapeHtml(fmtUnitJunto(round1(item.fat), "g")) +
         trustBadge +
       "</div>"
     : "";
@@ -395,14 +422,16 @@ function renderNoCookItem(item) {
   // Cantidad real: "2 raciones · 140 g". Antes decía solo "1 ración", que
   // era una etiqueta sin cantidad detrás.
   var servings = (typeof item.servings === "number") ? item.servings : item.quantity;
-  var qtyText = servings + " " + escapeHtml(pluralizeUnit(item.unit, servings));
-  if (typeof item.grams === "number") qtyText += ' <span class="nocook-item__grams">&middot; ' + item.grams + " g</span>";
+  var qtyText = servings + " " + escapeHtml(noCookUnitLabel(item.unit, servings));
+  if (typeof item.grams === "number") {
+    qtyText += ' <span class="nocook-item__grams">&middot; ' + escapeHtml(fmtUnit(item.grams, "g")) + "</span>";
+  }
 
   // "Envase entero": para la pizza y compañía, avisa de que esa toma se
   // acaba el paquete. Es lo que el usuario pidió explícitamente en vez de
   // ir dejando medias raciones sueltas.
   var wholeBadge = item.wholePackage && item.policy === "fresh"
-    ? '<span class="nocook-item__whole">Envase entero</span>' : "";
+    ? '<span class="nocook-item__whole">' + escapeHtml(t("ui.nocook_envase_entero")) + "</span>" : "";
 
   return (
     '<div class="nocook-item">' +

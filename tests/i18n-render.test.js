@@ -477,6 +477,210 @@ function run(t) {
     assert.ok(d.c.opciones.innerHTML.indexOf('value="Arroz blanco cocido"') !== -1);
   });
 
+  // ── «Sin cocinar» ──────────────────────────────────────────────────────
+
+  /** Pinta un plan «sin cocinar» de verdad (motor sembrado) y devuelve el HTML. */
+  function pintaSinCocinar(s, lang, opciones) {
+    s.saveLang(lang);
+    seedRandomInContext(s, 777);
+    var cont = contenedor();
+    var estado = contenedor();
+    s.initNoCookRefs({ noCookResults: cont, noCookCount: contenedor(), noCookStatus: estado });
+    s.runNoCookGenerator("mercadona", opciones || { calories: 2100, protein: 120, budget: 14 });
+    return { html: cont.innerHTML, estado: estado.textContent };
+  }
+
+  /** El resumen del día con TODAS sus ramas (se pasa, proteína corta, 3 tomas). */
+  function planConAvisos(priority, conPresupuesto) {
+    return {
+      total: { kcal: 2100.4, protein: 80.2 }, target: { kcal: 2200, protein: 120 },
+      shoppingCost: 12.5, budget: conPresupuesto ? 14 : 0, productCount: 7, consumedCost: 8.25,
+      threeMealDay: true, budgetOverrun: 2.5, priority: priority, slots: []
+    };
+  }
+
+  t.test("«sin cocinar» en español dice lo de siempre, y solo la kcal de la toma gana su <span class=\"u\">", function () {
+    var s = sandboxCompleto();
+    s.saveLang("es");
+    var resumen = s.renderNoCookSummary(planConAvisos("balanced", true));
+    [
+      '<strong>2100 kcal <span class="nocook-summary__target">de 2200</span></strong>',
+      '80 g proteína <span class="nocook-summary__target">de 120</span>',
+      'La compra son <strong>&euro;12.5</strong> <span class="nocook-summary__target">de 14</span> en 7 productos &middot; hoy te comes &euro;8.25 (el resto queda en la despensa)',
+      'Con este presupuesto el plan son <strong>3 tomas</strong> sin snacks: las calorías del día se reparten entre ellas en vez de gastar en picoteo.',
+      'Este plan se pasa <strong>&euro;2.5</strong> de tu presupuesto: con menos no salía una comida completa. Prueba a subir el presupuesto, o pon la prioridad en «lo más barato posible».',
+      'Este plan se queda en 80 g de proteína, por debajo de tus 120 g. Sin cocinar es un techo real: los productos listos para comer rinden poca proteína por caloría. Para llegar más arriba hace falta cocinar.'
+    ].forEach(function (trozo) {
+      assert.ok(resumen.indexOf(trozo) !== -1, "falta en el resumen: " + trozo + "\n" + resumen);
+    });
+    // Con la prioridad en «barato» el consejo es otro, y la proteína añade su coletilla.
+    var barato = s.renderNoCookSummary(planConAvisos("cheap", false));
+    assert.ok(barato.indexOf("Con este catálogo no se puede bajar más sin dejar una toma coja.") !== -1, barato);
+    assert.ok(barato.indexOf("por caloría, y con la prioridad en «lo más barato» baja todavía más. Para llegar") !== -1, barato);
+    assert.ok(barato.indexOf("nocook-summary__target\">de 14") === -1, "sin presupuesto no hay «de 14»");
+
+    var p = pintaSinCocinar(s, "es");
+    assert.strictEqual(p.estado, "Plan sin cocinar generado.");
+    assert.ok(/<span class="nocook-slot__kcal">\d+<span class="u">kcal<\/span><\/span>/.test(p.html), "la kcal de la toma, con su span");
+    assert.ok(!/<span class="nocook-slot__kcal">[^<]* kcal/.test(p.html), "la kcal de la toma no puede llevar la unidad suelta");
+    ["Envase: ", "Los alérgenos que se muestran vienen de la etiqueta de Mercadona",
+     "&#8635; Cambiar", "Cambiar solo esta toma (por ejemplo si un producto no está en tu tienda)", "Contiene:"].forEach(function (frase) {
+      assert.ok(p.html.indexOf(frase) !== -1, "falta «" + frase + "» en español");
+    });
+    // Qué nivel toca depende de los productos que salgan: basta con que haya alguno.
+    assert.ok(/Listo para comer|Preparación mínima|Calentar rápido/.test(p.html), "ningún nivel de preparación");
+    assert.ok(/&middot; \d+ g<\/span>/.test(p.html) && /P \d+(\.\d)?g \/ C \d+(\.\d)?g \/ G \d+(\.\d)?g/.test(p.html),
+      "los gramos y los macros siguen pegados como siempre");
+  });
+
+  t.test("«sin cocinar» en ruso y en inglés: ni español ni unidades en latín, y la kcal de la toma con su <span class=\"u\">", function () {
+    var s = sandboxCompleto();
+    var casos = [{ calories: 2100, protein: 120, budget: 14 },
+                 { calories: 2600, protein: 190, budget: 6, priority: "cheap" },
+                 { calories: 3000, protein: 100, budget: 30 }];
+    ["ru", "en"].forEach(function (lang) {
+      casos.forEach(function (opciones, i) {
+        var p = pintaSinCocinar(s, lang, opciones);
+        var donde = lang + " caso " + i;
+        assert.ok(p.html.length > 3000, donde + ": no se pintó el plan");
+        assert.ok(!/\{[a-z]+\}/.test(p.html), donde + ": hueco sin rellenar");
+        assert.ok(!/\b(ui|html|nocook|unit)\.[a-z_0-9]+/.test(visible(p.html)), donde + ": se ve una clave de traducción");
+        var malos = detector.analizarTexto(visible(p.html), lang);
+        assert.deepStrictEqual(malos, [], donde + ": " + malos.slice(0, 4).join(" | "));
+        // La unidad de consumo ("2 porciones", "1 unidad"…) también va traducida.
+        var suelta = /\d(?:\.\d+)? (porci[oó]n|porciones|raci[oó]n|raciones|unidad|unidades|trozos?|tazas?|rebanadas?|puñados?|vasos?|latas?|bolsas?|tarrinas?|huevos?)\b/i.exec(visible(p.html));
+        assert.strictEqual(suelta, null, donde + ": unidad de consumo en español: " + (suelta && suelta[0]));
+        assert.strictEqual(p.estado, s.t("ui.nocook_plan_generado", lang), donde);
+        var u = UNIDAD[lang];
+        var kcalToma = p.html.match(/<span class="nocook-slot__kcal">[^]*?<\/span><\/span>/g) || [];
+        assert.ok(kcalToma.length >= 3, donde + ": no hay tomas");
+        kcalToma.forEach(function (d) {
+          assert.ok(new RegExp('^<span class="nocook-slot__kcal">\\d+<span class="u">' + u.kcal + '</span></span>$').test(d), donde + ": " + d);
+        });
+        assert.strictEqual(/\d\s+<span class="u">/.test(p.html), false, donde + ": espacio delante de la unidad");
+      });
+    });
+    s.saveLang("es");
+  });
+
+  t.test("«sin cocinar»: las plantillas, el nivel, la unidad de consumo y los avisos salen en ruso", function () {
+    var s = sandboxCompleto();
+    var p = pintaSinCocinar(s, "ru", { calories: 2100, protein: 120, budget: 14 });
+    // El nombre y el montaje de la plantilla son los de la tabla, no los de la plantilla.
+    var plantillas = s.NO_COOK_TEMPLATES.filter(function (tpl) { return p.html.indexOf(">" + s.t("nocook." + tpl.key + "_nombre", "ru") + "<") !== -1; });
+    assert.ok(plantillas.length >= 3, "ninguna plantilla salió traducida");
+    plantillas.forEach(function (tpl) {
+      assert.ok(p.html.indexOf(">" + tpl.label + "<") === -1, "sigue el nombre español " + tpl.label);
+      assert.ok(p.html.indexOf(tpl.assembly) === -1, "sigue el montaje en español de " + tpl.key);
+    });
+    assert.ok(/Содержит:/.test(p.html), "los alérgenos de la etiqueta, en ruso");
+    assert.ok(/Показанные аллергены/.test(p.html), "el aviso de alérgenos, en ruso");
+    // El resumen con todas sus ramas.
+    ["ru", "en"].forEach(function (lang) {
+      s.saveLang(lang);
+      [planConAvisos("balanced", true), planConAvisos("cheap", false)].forEach(function (plan) {
+        var resumen = s.renderNoCookSummary(plan);
+        var texto = visible(resumen);
+        assert.ok(!/\{[a-z]+\}/.test(resumen), lang + ": hueco sin rellenar en " + resumen);
+        assert.deepStrictEqual(detector.analizarTexto(texto, lang), [], lang + ": " + texto);
+        assert.ok(texto.indexOf(s.fmtUnit(2100, "kcal", lang)) !== -1, lang + ": " + texto);
+        assert.ok(texto.indexOf(s.fmtUnit(80, "g", lang)) !== -1, lang + ": " + texto);
+      });
+    });
+    s.saveLang("es");
+  });
+
+  t.test("«sin cocinar»: el aviso de «~ sin verificar» y el botón de cambiar toma salen en el idioma de la pantalla", function () {
+    var s = sandboxCompleto();
+    ["es", "en", "ru"].forEach(function (lang) {
+      var p = pintaSinCocinar(s, lang);
+      var plan = s.lastNoCookPlan;
+      plan.slots[0].items[0].needsReview = true;
+      plan.slots[0].items[0].wholePackage = true;     // la pizza: la toma se acaba el paquete
+      plan.slots[0].items[0].policy = "fresh";
+      s.paintNoCookPlan(plan);
+      var html = s.noCookResults.innerHTML;
+      assert.ok(html.indexOf('<span class="nocook-item__whole">' + s.t("ui.nocook_envase_entero", lang) + "</span>") !== -1, lang + ": «envase entero»");
+      var marca = '<span class="nutrition-approx">' + s.t("ui.sin_verificar_tilde", lang) + "</span>";
+      assert.ok(html.indexOf(marca) !== -1, lang + ": falta la marca explicada en el aviso");
+      assert.ok(html.indexOf('title="' + s.t("ui.cambiar_solo_esta_toma_producto_no_en_tu_tienda", lang) + '"') !== -1, lang + ": título del botón");
+      assert.ok(html.indexOf("&#8635; " + s.t("ui.cambiar", lang) + "</button>") !== -1, lang + ": texto del botón");
+      if (lang !== "es") assert.deepStrictEqual(detector.analizarTexto(visible(html), lang), [], lang);
+
+      // «sin más opciones» cuando no hay otra toma que ofrecer, y vuelve a «Cambiar».
+      var boton = { dataset: { slotKey: plan.slots[0].key }, disabled: false, textContent: "", innerHTML: "" };
+      var pendiente = null;
+      s.setTimeout = function (fn) { pendiente = fn; };
+      s.regenerateNoCookSlot = function () { return { error: "sin opciones" }; };
+      s.handleSwapNoCookSlot({ target: { closest: function () { return boton; } } });
+      assert.strictEqual(boton.textContent, s.t("ui.sin_mas_opciones", lang), lang);
+      pendiente();
+      assert.strictEqual(boton.innerHTML, "&#8635; " + s.t("ui.cambiar", lang), lang);
+    });
+    s.saveLang("es");
+  });
+
+  t.test("los alérgenos de la etiqueta salen en el idioma de la pantalla; en español, igual que antes", function () {
+    var s = sandboxCompleto();
+    var id = Object.keys(s.PRODUCT_ALLERGENS).filter(function (k) {
+      var e = s.PRODUCT_ALLERGENS[k];
+      return e.contains && e.contains.length && e.may && e.may.length;
+    })[0];
+    assert.ok(id, "ningún producto con «contiene» y «puede contener» en la tabla");
+    var info = s.getProductAllergens(id);
+    var es = function (claves) { return claves.map(function (k) { return s.EU_ALLERGEN_LABELS[k]; }).join(", "); };
+    s.saveLang("es");
+    assert.strictEqual(s.formatAllergenSummary(info), "Contiene: " + es(info.contains) + " · Puede contener: " + es(info.may));
+    assert.strictEqual(s.renderAllergenLine(id),
+      '<div class="nocook-item__allergens"><strong>Contiene:</strong> ' + s.escapeHtml(es(info.contains)) +
+      ' · <span class="nocook-item__allergens-may">Puede contener: ' + s.escapeHtml(es(info.may)) + "</span></div>");
+    ["ru", "en"].forEach(function (lang) {
+      s.saveLang(lang);
+      var linea = visible(s.renderAllergenLine(id));
+      var resumen = s.formatAllergenSummary(info);
+      assert.deepStrictEqual(detector.analizarTexto(linea, lang), [], lang + ": " + linea);
+      assert.deepStrictEqual(detector.analizarTexto(resumen, lang), [], lang + ": " + resumen);
+      assert.ok(resumen.indexOf(s.t("ui.alergenos_contiene", lang)) === 0, lang + ": " + resumen);
+      info.contains.forEach(function (k) {
+        assert.ok(resumen.indexOf(s.t("ui.alergeno_" + k, lang)) !== -1, lang + ": falta " + k);
+      });
+    });
+    s.saveLang("es");
+  });
+
+  t.test("cada alérgeno y cada unidad de consumo de «sin cocinar» tiene su traducción", function () {
+    var s = sandboxCompleto();
+    // Las 14 categorías: la clave existe, en español dice lo que dice EU_ALLERGEN_LABELS, y en ruso y en inglés es otra palabra.
+    Object.keys(s.EU_ALLERGEN_LABELS).forEach(function (k) {
+      assert.strictEqual(s.t("ui.alergeno_" + k, "es"), s.EU_ALLERGEN_LABELS[k], k);
+      ["ru", "en"].forEach(function (lang) {
+        var tr = s.t("ui.alergeno_" + k, lang);
+        assert.notStrictEqual(tr, "ui.alergeno_" + k, lang + " no traduce " + k);
+        if (lang === "ru") assert.notStrictEqual(tr, s.EU_ALLERGEN_LABELS[k], k);
+      });
+    });
+    // Toda unidad que el clasificador o las raciones pueden poner en una tarjeta.
+    var unidades = [];
+    ["js/data/no-cook-classifier.js", "js/data/serving-sizes.js"].forEach(function (f) {
+      var re = /unit: "([^"]+)"/g, m;
+      var src = fs.readFileSync(projPath(f), "utf8");
+      while ((m = re.exec(src))) if (unidades.indexOf(m[1]) === -1) unidades.push(m[1]);
+    });
+    assert.ok(unidades.length >= 10, "solo " + unidades.length + " unidades leídas de los datos");
+    var faltan = [];
+    ["en", "ru"].forEach(function (lang) {
+      unidades.forEach(function (u) {
+        if (s.tPackageLabel(u, 1, lang) === null) faltan.push(lang + " " + u);
+      });
+    });
+    assert.deepStrictEqual(faltan, [], "unidades de consumo sin traducción: " + faltan.join(", "));
+    // Y el plural ruso concuerda con el número.
+    assert.strictEqual(s.tPackageLabel("porción", 1, "ru"), "порция");
+    assert.strictEqual(s.tPackageLabel("porción", 2, "ru"), "порции");
+    assert.strictEqual(s.tPackageLabel("porción", 5, "ru"), "порций");
+    assert.strictEqual(s.tPackageLabel("unidad", 2, "en"), "units");
+  });
+
   t.test("la animación de las cifras escribe lo mismo que renderSummary: con su <span class=\"u\">", function () {
     // animateSummaryNumbers() reescribía la cifra con `n + " kcal"` en cada
     // frame y al terminar. Con GSAP cargado -- o sea, SIEMPRE en producción --
