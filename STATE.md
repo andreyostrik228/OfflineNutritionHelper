@@ -43,8 +43,12 @@
 >
 > **725 tests en verde (eran 716). Sello `20260928d`. Commit `b6881bc`,
 > DESPLEGADO el 2026-10-05** (`https://717bb87c.offline-nutrition-helper.pages.dev`;
-> 85 ficheros por md5, 0 difieren) **y NO empujado** (origin/main sigue en
-> `a9ff02e`).
+> 85 ficheros por md5, 0 difieren) **y EMPUJADO el 2026-10-05**: origin/main =
+> `5252e20`, y GitHub Pages (`andreyostrik228.github.io/OfflineNutritionHelper`,
+> se sirve desde `main`; la reconstrucción hubo que pedirla a mano con
+> `gh api -X POST repos/.../pages/builds`) muestra el mismo sello, 85/85 por md5.
+> La rama `diseno-en-blanco` y la etiqueta `diseno-mercado-2026-09-28` también
+> están en GitHub; la rama NO se publica porque Pages solo mira `main`.
 >
 > El dueño pidió los ocho idiomas declarados, uno detrás de otro; el ruso
 > primero. Hecho en ruso: interfaz (`js/i18n/ru.js`, todas las claves más el
