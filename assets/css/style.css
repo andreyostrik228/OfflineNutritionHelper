@@ -3083,8 +3083,17 @@ body.is-onboarding { overflow: hidden; overscroll-behavior: none; }
   .budget-modes { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
-/* Las tarjetas de cifras de la compra pueden encoger sin desbordar. */
+/* Las tarjetas de cifras de la compra pueden encoger sin desbordar, y la
+   cifra encoge con ellas: tres en fila a 390 px dejan unos 86 px de hueco y
+   "€19.68" a 34 px no cabe (se partía en "€19.6" y "8"). Con la tarjeta como
+   contenedor, la cifra mide como mucho 34 px y como mucho el 33 % de su
+   hueco. La grande (la segunda, el total) no entra: va a ancho completo. */
 .shopping-summary__stat { min-width: 0; }
+.shopping-summary__stat:not(:nth-child(2)) { container-type: inline-size; }
+.shopping-summary__stat:not(:nth-child(2)) strong {
+  font-size: min(34px, 33cqw);
+  white-space: nowrap;
+}
 
 /* ══ 19. Imprimir: solo la lista de la compra ═══════════════════════════ */
 @media print {

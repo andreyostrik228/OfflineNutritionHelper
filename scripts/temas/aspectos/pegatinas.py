@@ -418,7 +418,8 @@ select{background-image:__ARROW__;background-size:30px 30px;background-position:
 .shopping-summary__stat{justify-content:space-between}
 .shopping-summary__stat span{color:#4A3F37;font-size:var(--fs-cap)}
 @media(max-width:359px){.shopping-summary__stat:not(:nth-child(2)){flex:1 1 40%}}
-.shopping-summary__stat:not(:nth-child(2)) strong{font-size:19px}
+/* 19px, o menos si la tarjeta no da: su tipografía es muy ancha y a 360 px "€12.26" se salía. */
+.shopping-summary__stat:not(:nth-child(2)) strong{font-size:min(19px,22cqw)}
 @media(min-width:600px){.shopping-summary__stat:not(:nth-child(2)) strong{font-size:var(--fs-fig-m)}.shopping-summary__stat{padding:14px 16px 15px}}
 .shopping-summary__stat:nth-child(2){padding:16px 18px 18px}
 .shopping-summary__stat:nth-child(2){background:#8DBB4E;transform:rotate(-1deg)}

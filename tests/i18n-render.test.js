@@ -468,12 +468,12 @@ function run(t) {
       });
       assert.deepStrictEqual(malos, [], malos.slice(0, 3).join("\n"));
     });
-    // En ruso, el nombre que se lee es el traducido y la CLAVE sigue en español.
+    // En ruso, el nombre que se lee es «traducción / original» y la CLAVE sigue en español.
     s.saveLang("ru");
     s.renderPantryPanel();
     var lista = d.c.lista.innerHTML;
     assert.ok(/data-name="Arroz blanco cocido"/.test(lista), "la clave tiene que seguir en español");
-    assert.ok(lista.indexOf('pantry-item__name">' + s.tFood("Arroz blanco cocido") + "<") !== -1, lista.slice(0, 500));
+    assert.ok(lista.indexOf('pantry-item__name">' + s.tFood("Arroz blanco cocido") + " / Arroz blanco cocido<") !== -1, lista.slice(0, 500));
     s.saveLang("es");
   });
 

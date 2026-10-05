@@ -439,6 +439,45 @@ function run(t) {
     s.saveLang("es");
   });
 
+  t.test("un alimento se lee «traducción / original»; en español o si es igual, una sola vez", function () {
+    // Quien compra tiene delante una estantería española: la traducción le
+    // dice qué es y el original es lo que va a buscar con los ojos. Pedido
+    // del dueño el 2026-10-06.
+    var s = freshShoppingListSandbox();
+    var vm = require("vm"), fs = require("fs");
+    ["js/ui/render.js", "js/i18n/food-en.js", "js/i18n/food-ru.js"].forEach(function (rel) {
+      vm.runInContext(fs.readFileSync(projPath(rel), "utf8"), s, { filename: rel });
+    });
+    s.saveLang("es");
+    assert.strictEqual(s.nombreComidaDoble("Huevos enteros"), "Huevos enteros", "en español, solo el español");
+    s.saveLang("en");
+    assert.strictEqual(s.nombreComidaDoble("Huevos enteros"), "Whole eggs / Huevos enteros");
+    assert.strictEqual(s.nombreComidaDoble("Hummus"), "Hummus", "traducción igual al original: una sola vez");
+    assert.strictEqual(s.nombreComidaDoble("Kiwi"), "Kiwi");
+    s.saveLang("ru");
+    assert.strictEqual(s.nombreComidaDoble("Huevos enteros"), "Яйца / Huevos enteros");
+    assert.strictEqual(s.nombreComidaDoble("Aguacate"), "Авокадо / Aguacate");
+    // Sin traducción cae al original, sin barra ni hueco.
+    assert.strictEqual(s.nombreComidaDoble("Nombre que no existe"), "Nombre que no existe");
+    assert.strictEqual(s.nombreComidaDoble(""), "");
+    assert.strictEqual(s.nombreComidaDoble(undefined), undefined);
+    // La fila de la compra lo usa, y la clave de búsqueda sigue siendo el original.
+    var html = s.renderShoppingRow({
+      name: "Huevos enteros", requiredGrams: 300,
+      purchase: { hasFixedPackage: true, packagesToBuy: 1, packageSizeG: 756,
+                  packageLabel: "docena (12 huevos)", purchaseCost: 2.1 }
+    }, "mercadona");
+    assert.ok(html.indexOf('shopping-item__name">Яйца / Huevos enteros') !== -1, html.slice(0, 600));
+    s.saveLang("es");
+    html = s.renderShoppingRow({
+      name: "Huevos enteros", requiredGrams: 300,
+      purchase: { hasFixedPackage: true, packagesToBuy: 1, packageSizeG: 756,
+                  packageLabel: "docena (12 huevos)", purchaseCost: 2.1 }
+    }, "mercadona");
+    assert.ok(html.indexOf('shopping-item__name">Huevos enteros<') !== -1, "en español, el nombre solo: " + html.slice(0, 400));
+    assert.strictEqual(html.indexOf("Huevos enteros /"), -1, "y sin barra");
+  });
+
   t.test("la exportación en texto plano conserva la etiqueta ENTERA", function () {
     // Se pega en notas o en un SMS: ahí no hay ancho que valga y saber
     // cuánto rinde cocido sí ayuda. El recorte es solo de la pantalla.

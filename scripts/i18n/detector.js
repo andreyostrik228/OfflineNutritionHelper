@@ -91,6 +91,39 @@ function motivoDeEspanol(texto, lang) {
 }
 
 /**
+ * Los nombres españoles de ingrediente, del catálogo de platos. En pantalla
+ * salen como «traducción / original» (nombreComidaDoble, js/ui/render.js) y
+ * esa segunda mitad ES español a propósito. Se carga la primera vez que hace
+ * falta, de los DATOS, para que un ingrediente nuevo se perdone solo.
+ */
+var _NOMBRES_DE_INGREDIENTE = null;
+function nombresDeIngrediente() {
+  if (_NOMBRES_DE_INGREDIENTE) return _NOMBRES_DE_INGREDIENTE;
+  var lista = [];
+  try {
+    var vm = require("vm"), fs = require("fs"), path = require("path");
+    var ctx = {}; vm.createContext(ctx);
+    vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "..", "js", "data", "dishes.js"), "utf8"), ctx);
+    var vistos = {};
+    (ctx.DISH_DB || []).forEach(function (d) {
+      (d.items || []).forEach(function (i) { if (i && i.name && !vistos[i.name]) { vistos[i.name] = 1; lista.push(i.name); } });
+    });
+  } catch (e) { /* sin catálogo no se perdona nada: peor es callar un fallo */ }
+  // Los largos primero: "Huevos enteros" antes que "Huevos".
+  lista.sort(function (a, b) { return b.length - a.length; });
+  _NOMBRES_DE_INGREDIENTE = lista;
+  return lista;
+}
+
+/** Quita la mitad española de «traducción / original». */
+function quitarOriginales(texto) {
+  var t = String(texto);
+  if (t.indexOf(" / ") === -1) return t;
+  nombresDeIngrediente().forEach(function (n) { t = t.split(" / " + n).join(""); });
+  return t;
+}
+
+/**
  * Todo lo que está mal en `texto` para `lang`: español suelto, unidades
  * latinas pegadas a un número (ruso) o cirílico en inglés.
  * @param {string} texto
@@ -98,7 +131,7 @@ function motivoDeEspanol(texto, lang) {
  * @returns {string[]} motivos; vacío si el texto está bien
  */
 function analizarTexto(texto, lang) {
-  var t = sinEjemplos(String(texto)).replace(/\s+/g, " ").trim();
+  var t = sinEjemplos(quitarOriginales(texto)).replace(/\s+/g, " ").trim();
   if (!t || NOMBRES_DE_IDIOMA.test(t)) return [];
   var problemas = [];
   var sp = motivoDeEspanol(t, lang);
@@ -153,6 +186,7 @@ module.exports = {
   analizarTexto: analizarTexto,
   motivoDeEspanol: motivoDeEspanol,
   textoDeHtml: textoDeHtml,
+  quitarOriginales: quitarOriginales,
   LATINO_PERMITIDO: LATINO_PERMITIDO,
   NOMBRES_DE_IDIOMA: NOMBRES_DE_IDIOMA,
   PRODUCTO_CLASES: PRODUCTO_CLASES

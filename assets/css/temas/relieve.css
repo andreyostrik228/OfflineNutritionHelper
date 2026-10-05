@@ -106,6 +106,8 @@ h2{font:var(--fw-display) var(--fs-h2)/var(--lh-display) var(--font-display);let
 .shopping-summary__stat:nth-child(2) strong,
 .shopping-summary__stat:not(:nth-child(2)) strong{font-size:var(--fs-fig-m);white-space:nowrap;letter-spacing:var(--ls-fig)}
 .shopping-summary__stat:nth-child(2) strong{font-size:var(--fs-fig-xl)}
+.shopping-summary__stat:not(:nth-child(2)){container-type:inline-size}
+.shopping-summary__stat:not(:nth-child(2)) strong{font-size:min(var(--fs-fig-m),28cqw)}
 .nocook-summary__row:first-child{font:var(--fw-fig) var(--fs-fig-l)/1 var(--font-display)}
 .meal-kcal,.nocook-slot__kcal,.shopping-item__price{font:var(--fw-fig) var(--fs-fig-m)/1 var(--font-display);letter-spacing:var(--ls-fig);font-variant-numeric:tabular-nums}
 .shopping-item__price{font-size:22px}

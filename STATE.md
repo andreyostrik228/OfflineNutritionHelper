@@ -5,6 +5,41 @@
 > Escrito para alguien que llega SIN NINGÚN contexto previo. Si solo lees
 > una parte de este archivo, que sea esta.
 >
+> ### ⏩ UPDATE 2026-10-06 (h) — alimentos «traducción / original», y las cifras del resumen de la compra ya no se parten
+>
+> **789 tests en verde (eran 788). Sello `20261006b`.**
+>
+> **1. Los alimentos se leen «traducción / original».** Pedido del dueño: en
+> ruso `Яйца / Huevos enteros`; si el idioma es español, solo `Huevos enteros`;
+> si la traducción es igual al original (`Hummus`, `Kiwi`), una sola vez. Lo hace
+> `nombreComidaDoble()` (`js/ui/render.js`), que compara sin tildes ni
+> mayúsculas. Se usa donde el nombre se LEE: filas de ingrediente de los planes,
+> lista de la compra (texto y `aria-label` de la casilla), despensa (activa y
+> «a comprar») y las notas del plan (fuentes de carbohidratos, avisos del 25 %).
+> NO se usa donde el nombre es clave de búsqueda (`render-pantry.js`,
+> `populatePantryIngredientOptions`) ni con los nombres de producto de Mercadona,
+> que ya van en español. `scripts/i18n/detector.js` (lo comparten los tests y
+> `escanear-pantallas.js`) ahora perdona esa segunda mitad española
+> (`quitarOriginales`, lee los nombres de `js/data/dishes.js`); si no, marcaría
+> como fallo lo que es a propósito.
+>
+> **2. Resumen de la compra a 390 px.** Con tres tarjetas en fila quedan ~86 px
+> de hueco y `€19.68` a 34 px se partía en `€19.6` / `8`; en `hojas` y `kitty`
+> se salía. Ahora la tarjeta es contenedor (`container-type: inline-size`) y la
+> cifra mide `min(34px, 33cqw)`: en `style.css`, en `scripts/temas/nucleo.py`
+> (`min(var(--fs-fig-m), 28cqw)`, para los nueve aspectos) y en
+> `scripts/temas/aspectos/pegatinas.py` (`min(19px, 22cqw)`: su tipografía es
+> muy ancha). Las nueve hojas de `assets/css/temas/` se REGENERARON con
+> `python3 scripts/temas/construir.py`. Medido con Chrome sin interfaz en los
+> diez aspectos: 390 px (ru), 360 px (es), 768 px (en), 1280 px (ru): 0 cifras
+> partidas, salvo UNA que ya estaba en producción y NO se tocó: en `kitty` a
+> 768 px el total grande (`€36.78`, 44 px) sobrepasa su tarjeta por ~5 px.
+>
+> **Trampa:** al escribir scripts de edición con un `node - <<'EOF'` y una
+> plantilla de JS, una `\s` o `\u0300` llega sin la barra (`/s+/g`). Los
+> scripts con expresiones regulares se escriben con la herramienta Write, o la
+> barra se construye con `String.fromCharCode(92)`.
+>
 > ### ⏩ UPDATE 2026-10-06 (g) — DESPLEGADO el trabajo de la rama `claude/amazing-bell-9sw8xk`
 >
 > Lo descrito en (e) y (f) (diseño "training", 10 aspectos y la traducción de

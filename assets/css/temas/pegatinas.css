@@ -110,6 +110,8 @@ h2{font:var(--fw-display) var(--fs-h2)/var(--lh-display) var(--font-display);let
 .shopping-summary__stat:nth-child(2) strong,
 .shopping-summary__stat:not(:nth-child(2)) strong{font-size:var(--fs-fig-m);white-space:nowrap;letter-spacing:var(--ls-fig)}
 .shopping-summary__stat:nth-child(2) strong{font-size:var(--fs-fig-xl)}
+.shopping-summary__stat:not(:nth-child(2)){container-type:inline-size}
+.shopping-summary__stat:not(:nth-child(2)) strong{font-size:min(var(--fs-fig-m),28cqw)}
 .nocook-summary__row:first-child{font:var(--fw-fig) var(--fs-fig-l)/1 var(--font-display)}
 .meal-kcal,.nocook-slot__kcal,.shopping-item__price{font:var(--fw-fig) var(--fs-fig-m)/1 var(--font-display);letter-spacing:var(--ls-fig);font-variant-numeric:tabular-nums}
 .shopping-item__price{font-size:22px}
@@ -367,7 +369,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .shopping-summary__stat{justify-content:space-between}
 .shopping-summary__stat span{color:#4A3F37;font-size:var(--fs-cap)}
 @media(max-width:359px){.shopping-summary__stat:not(:nth-child(2)){flex:1 1 40%}}
-.shopping-summary__stat:not(:nth-child(2)) strong{font-size:19px}
+
+.shopping-summary__stat:not(:nth-child(2)) strong{font-size:min(19px,22cqw)}
 @media(min-width:600px){.shopping-summary__stat:not(:nth-child(2)) strong{font-size:var(--fs-fig-m)}.shopping-summary__stat{padding:14px 16px 15px}}
 .shopping-summary__stat:nth-child(2){padding:16px 18px 18px}
 .shopping-summary__stat:nth-child(2){background:#8DBB4E;transform:rotate(-1deg)}

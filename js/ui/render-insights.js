@@ -86,7 +86,7 @@ function renderInsights(profile, result, data) {
     t("ui.nota_fuentes_proteina").replace("{n}", proteinSources.length)
       .replace("{lista}", proteinSources.map(nombrePlato).join(", ") || "—"),
     t("ui.nota_fuentes_carbos").replace("{n}", carbSources.length)
-      .replace("{lista}", carbSources.map(nombreComida).join(", ") || "—"),
+      .replace("{lista}", carbSources.map(nombreComidaDoble).join(", ") || "—"),
     capStatus,
     t("ui.nota_presupuesto").replace("{presupuesto}", round2(data.budget))
       .replace("{compra}", round2(purchaseCost))
@@ -336,7 +336,7 @@ function check25PercentRule(meals, dailyKcal) {
     meal.items.forEach(function (item) {
       if (item.kcal / dailyKcal > 0.25) {
         // El nombre se traduce al PINTAR (aquí es texto de una nota).
-        violations.push(nombreComida(item.name) + " (" + Math.round(item.kcal / dailyKcal * 100) + "%)");
+        violations.push(nombreComidaDoble(item.name) + " (" + Math.round(item.kcal / dailyKcal * 100) + "%)");
       }
     });
   });

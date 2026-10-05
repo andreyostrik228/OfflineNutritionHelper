@@ -101,6 +101,39 @@ function nombrePlato(n) {
   return (typeof tDish === "function") ? tDish(n) : n;
 }
 
+/** Minúsculas y sin tildes: para decidir si dos nombres son "el mismo". */
+function _nombreSinAcentos(s) {
+  var t = String(s);
+  if (typeof t.normalize === "function") t = t.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  return t.toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+/**
+ * El nombre de un alimento tal y como se LEE en pantalla:
+ *
+ *     "Яйца / Huevos enteros"     traducción / original español
+ *     "Hummus"                    si la traducción es igual, una sola vez
+ *     "Huevos enteros"            en español, solo el español
+ *
+ * Quien compra tiene delante la estantería de un supermercado español: la
+ * traducción le dice QUÉ es y el original es lo que va a buscar con los ojos.
+ * Por eso se enseñan los dos. Es solo para pintar: `item.name` sigue siendo
+ * la clave de búsqueda y no se toca (ver arriba).
+ *
+ * Los nombres de producto de Mercadona (real-products.js) no pasan por aquí:
+ * ya están en español y se quedan tal cual.
+ *
+ * @param {string} n - el nombre en español
+ * @returns {string}
+ */
+function nombreComidaDoble(n) {
+  if (typeof n !== "string" || !n) return n;
+  var traducido = nombreComida(n);
+  if (typeof traducido !== "string" || !traducido) return n;
+  if (_nombreSinAcentos(traducido) === _nombreSinAcentos(n)) return n;
+  return traducido + " / " + n;
+}
+
 /** Nombre de cada toma por su clave. La clave no cambia con el idioma. */
 var CLAVES_DE_TOMA = (typeof MEAL_LABEL_KEYS !== "undefined") ? MEAL_LABEL_KEYS : {};
 
@@ -486,7 +519,7 @@ function renderFoodRow(item, storeId) {
         // clave con la que se busca el envase, el precio y el producto real
         // (las tres lineas de arriba): traducirlo antes las rompe todas y
         // no falla nada, simplemente deja de encontrar.
-        '<div class="food-name">' + escapeHtml(nombreComida(item.name)) + '</div>' +
+        '<div class="food-name">' + escapeHtml(nombreComidaDoble(item.name)) + '</div>' +
         '<div class="food-meta">' +
           formatQuantityPhrase(item.grams, info, item.name, storeId, item.papel) +
           (hasRealMacros

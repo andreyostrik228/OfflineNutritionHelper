@@ -538,7 +538,7 @@ function renderShoppingRow(entry, storeId, marcado) {
   // también marca (ver cablearMarcas), pero el control accesible es este.
   var casilla = _hayMarcas()
     ? '<button type="button" class="shopping-item__check" role="checkbox" aria-checked="' + (marcado ? "true" : "false") + '"' +
-        ' aria-label="' + escapeHtml(t("ui.marcar_como_comprado").replace("{producto}", nombreComida(entry.name))) + '"></button>'
+        ' aria-label="' + escapeHtml(t("ui.marcar_como_comprado").replace("{producto}", nombreComidaDoble(entry.name))) + '"></button>'
     : '<span class="shopping-item__check" aria-hidden="true"></span>';
 
   return (
@@ -549,7 +549,7 @@ function renderShoppingRow(entry, storeId, marcado) {
         // El nombre se traduce al PINTAR; `entry.name` sigue en español
         // dentro de resolveShoppingProduct(), que lo usa como clave para
         // encontrar el producto real de Mercadona.
-        '<div class="shopping-item__name">' + escapeHtml(nombreComida(entry.name)) +
+        '<div class="shopping-item__name">' + escapeHtml(nombreComidaDoble(entry.name)) +
           (typeof renderProductFindBtn === "function"
             ? renderProductFindBtn(resolveShoppingProduct(entry.name, storeId)) : "") +
         '</div>' +

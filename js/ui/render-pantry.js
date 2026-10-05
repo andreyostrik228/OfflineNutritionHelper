@@ -573,7 +573,7 @@ function renderPantryRow(entry) {
   var etiquetaBoton = deCasa || fmtUnit(round0(entry.grams), "g");
   // `data-name` es la CLAVE (el nombre canónico en español: con él se busca el
   // stock, el precio y el envase); lo que se lee es el nombre traducido.
-  var nombre = nombreComida(entry.name);
+  var nombre = nombreComidaDoble(entry.name);
 
   return (
     '<li class="pantry-item" data-key="' + escapeHtml(entry.key) + '" data-name="' + escapeHtml(entry.name) + '">' +
@@ -939,7 +939,7 @@ function renderPurchaseChecklist(entry, aggregated) {
       ? '<span class="pantry-purchase-row__pantry-note">' + escapeHtml(tFormat("ui.planes_ya_en_despensa", { cantidad: cubiertoTexto })) + '</span>'
       : '';
     // `data-name` sigue siendo la clave en español; el nombre que se lee, no.
-    var nombre = nombreComida(item.name);
+    var nombre = nombreComidaDoble(item.name);
     return (
       '<li class="pantry-purchase-row" data-name="' + escapeHtml(item.name) + '">' +
         '<button type="button" class="pantry-purchase-row__check" role="checkbox" aria-checked="true" data-action="toggle-purchase-check" aria-label="' + escapeHtml(nombre) + '"></button>' +
