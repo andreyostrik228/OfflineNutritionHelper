@@ -396,5 +396,21 @@ registerI18nTable("es", {
   // Lo que va entre el número y la unidad donde esta se escribía PEGADA ("500g"): nada en español y en
   // inglés, que así lo escribían; un espacio en ruso ("500 г").
   "unit.sep_pegada": "",
-  "ui.invitado": "Invitado"
+  "ui.invitado": "Invitado",
+  // Las dos unidades que trae el catálogo de la tienda en el tamaño de un envase (tPackageUnit).
+  "unit.l": "l",
+  "unit.ud": "ud",
+  // Nivel de confianza del emparejamiento de la nutrición de un producto (render.js, etiquetaDeConfianza).
+  "ui.confianza_alta": "alta",
+  "ui.confianza_media": "media",
+  "ui.confianza_baja": "baja",
+  "ui.confianza_muy_baja": "muy baja",
+  // Ficha de producto del catálogo (render-real-products.js).
+  "ui.kcal_etiqueta": "Kcal",
+  "ui.estimado": "estimado",
+  "ui.mostrando_n_de_m_resultados": "Mostrando {n} de {total} resultados — afina la búsqueda para ver el resto.",
+  // Avisos de las tarjetas y de la franja del horario (render-schedule.js).
+  "ui.horario_ajustado_nota": "Horario ajustado: la ventana elegida deja poco margen entre tomas. Prueba a adelantar la hora de despertar o retrasar la hora de dormir para un reparto más cómodo.",
+  "ui.preparalo_la_noche_anterior": "Prepáralo la noche anterior",
+  "ui.necesita_reposar_en_la_nevera": "necesita reposar en la nevera, no se hace al momento"
 });

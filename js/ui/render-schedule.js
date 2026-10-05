@@ -134,7 +134,7 @@ function renderScheduleTimeline(meals) {
 
   var compact = typeof isScheduleCompact === "function" && isScheduleCompact(list);
   var note = compact
-    ? '<p class="schedule-timeline__note">Horario ajustado: la ventana elegida deja poco margen entre tomas. Prueba a adelantar la hora de despertar o retrasar la hora de dormir para un reparto más cómodo.</p>'
+    ? '<p class="schedule-timeline__note">' + escapeHtml(t("ui.horario_ajustado_nota")) + '</p>'
     : "";
 
   scheduleTimelineEl.hidden = false;
@@ -202,6 +202,17 @@ function renderMealTimeBadge(meal) {
 }
 
 /**
+ * El aviso de «déjalo hecho la noche anterior» (avena remojada). Lo usan la
+ * tarjeta de un plato y la toma de «sin cocinar», que lo escribían igual cada
+ * una por su lado.
+ * @returns {string} HTML
+ */
+function renderMakeAheadNote() {
+  return '<div class="meal-make-ahead">&#9200; <strong>' + escapeHtml(t("ui.preparalo_la_noche_anterior")) + '</strong> ' +
+    '&mdash; ' + escapeHtml(t("ui.necesita_reposar_en_la_nevera")) + '</div>';
+}
+
+/**
  * Notas discretas bajo el encabezado de la tarjeta:
  *   - "Prepáralo la noche anterior" si el plato es `makeAhead` (overnight
  *     oats): solo aparece en el día 2+ de un plan de varios días, porque el
@@ -218,9 +229,7 @@ function renderMealCookNote(meal) {
   if (typeof getDishInstructions === "function" && meal.dishName) {
     var info = getDishInstructions(meal.dishName);
     if (info && info.makeAhead === true) {
-      out +=
-        '<div class="meal-make-ahead">&#9200; <strong>Prepáralo la noche anterior</strong> ' +
-        '&mdash; necesita reposar en la nevera, no se hace al momento</div>';
+      out += renderMakeAheadNote();
     }
   }
 
@@ -229,7 +238,7 @@ function renderMealCookNote(meal) {
     if (cookStart) {
       out +=
         '<div class="meal-cook-note">' + escapeHtml(t("ui.empieza_a_cocinar_sobre_las")) + ' <strong>' + escapeHtml(cookStart) +
-        '</strong> (' + (meal.prep || 0) + ' min)</div>';
+        '</strong> (' + escapeHtml(fmtUnit(meal.prep || 0, "min")) + ')</div>';
     }
   }
 

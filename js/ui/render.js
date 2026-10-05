@@ -150,17 +150,22 @@ function initRenderRefs(refs) {
  * @param {object} total    – salida de sumMeals() (totales del plan generado)
  */
 function renderSummary(profile, total) {
-  summaryEls.calories.textContent    = round0(profile.calories) + " kcal";
-  summaryEls.caloriesSub.textContent = t("ui.plan_real") + " " + round0(total.kcal) + " kcal";
+  // Las cuatro CIFRAS grandes llevan la unidad en un <span class="u"> pegado
+  // detrás del número (fmtUnitHtml), para que el tema pueda hacerla más
+  // pequeña; por eso son innerHTML y no textContent. Todo lo que entra va
+  // escapado dentro de fmtUnitHtml. Las líneas pequeñas de debajo ("Plan
+  // real: 3201 kcal") son una frase y siguen siendo texto.
+  summaryEls.calories.innerHTML      = fmtUnitHtml(round0(profile.calories), "kcal");
+  summaryEls.caloriesSub.textContent = t("ui.plan_real") + " " + fmtUnit(round0(total.kcal), "kcal");
 
-  summaryEls.protein.textContent    = round0(profile.protein) + " g";
-  summaryEls.proteinSub.textContent = t("ui.plan_real") + " " + round0(total.protein) + " g";
+  summaryEls.protein.innerHTML      = fmtUnitHtml(round0(profile.protein), "g");
+  summaryEls.proteinSub.textContent = t("ui.plan_real") + " " + fmtUnit(round0(total.protein), "g");
 
-  summaryEls.carbs.textContent    = round0(profile.carbs) + " g";
-  summaryEls.carbsSub.textContent = t("ui.plan_real") + " " + round0(total.carbs) + " g";
+  summaryEls.carbs.innerHTML      = fmtUnitHtml(round0(profile.carbs), "g");
+  summaryEls.carbsSub.textContent = t("ui.plan_real") + " " + fmtUnit(round0(total.carbs), "g");
 
-  summaryEls.fats.textContent    = round0(profile.fats) + " g";
-  summaryEls.fatsSub.textContent = t("ui.plan_real") + " " + round0(total.fat) + " g";
+  summaryEls.fats.innerHTML      = fmtUnitHtml(round0(profile.fats), "g");
+  summaryEls.fatsSub.textContent = t("ui.plan_real") + " " + fmtUnit(round0(total.fat), "g");
 }
 
 // ── Tarjetas de comidas ───────────────────────────────────────────────────
@@ -248,15 +253,28 @@ function renderProductFindBtn(product) {
     '📷</a>';
 }
 
-// Nivel de confianza del emparejamiento, en español. El pipeline los
-// escribe en inglés (`confidence_tier()` en PythonProject) porque son
-// identificadores, pero al usuario no se le enseña un identificador.
-var NUTRITION_CONFIDENCE_ES = {
-  high: "alta",
-  medium: "media",
-  low: "baja",
-  very_low: "muy baja",
+// Nivel de confianza del emparejamiento. El pipeline los escribe en inglés
+// (`confidence_tier()` en PythonProject) porque son identificadores, pero al
+// usuario no se le enseña un identificador: cada uno apunta a su clave de
+// traducción ("muy baja" / "very low" / "очень низкая").
+var NUTRITION_CONFIDENCE_KEYS = {
+  high: "ui.confianza_alta",
+  medium: "ui.confianza_media",
+  low: "ui.confianza_baja",
+  very_low: "ui.confianza_muy_baja"
 };
+
+/**
+ * El nivel de confianza en el idioma de ahora, o null si no se conoce.
+ * Es una función y no una tabla de textos por lo mismo que etiquetaDeEquipo:
+ * el idioma se puede cambiar sin recargar.
+ * @param {string} nivel - "high" | "medium" | "low" | "very_low"
+ * @returns {string|null}
+ */
+function etiquetaDeConfianza(nivel) {
+  var clave = NUTRITION_CONFIDENCE_KEYS[nivel];
+  return clave ? t(clave) : null;
+}
 
 /**
  * Marca de "esto es una aproximación sin revisar" para la nutrición de un
@@ -285,7 +303,7 @@ function renderNutritionTrustBadge(product) {
   // desconfiar: la fila ya dice "sin datos" por su cuenta.
   if (typeof product.kcal !== "number" || !isFinite(product.kcal) || product.kcal <= 0) return "";
 
-  var nivel = NUTRITION_CONFIDENCE_ES[product.nutritionConfidence] || null;
+  var nivel = etiquetaDeConfianza(product.nutritionConfidence);
   var title = t("ui.nutricion_estimada_por_el_nombre")
     + (nivel ? " (" + t("ui.confianza") + " " + nivel + ")" : "")
     + t("ui.puede_no_corresponder_a_este_producto");
@@ -320,7 +338,7 @@ function renderMealCard(meal, total, dayIndex) {
             ' data-day="' + (dayIndex || 0) + '"' +
             ' title="' + escapeHtml(t("ui.cambiar_solo_esta_toma_por_otra")) + '">&#8635; ' +
             escapeHtml(t("ui.cambiar")) + '</button>' +
-          '<div class="meal-kcal">' + round0(total.kcal) + ' kcal</div>' +
+          '<div class="meal-kcal">' + fmtUnitHtml(round0(total.kcal), "kcal") + '</div>' +
         '</div>' +
       '</div>' +
       '<div class="meal-body">' +
@@ -478,9 +496,9 @@ function renderFoodRow(item, storeId) {
             // Las letras pasan por t(): "P / C / G" son iniciales españolas
             // (en inglés la grasa es F, en ruso es Б / У / Ж) y estaban
             // escritas aquí a pelo, en todas las filas de ingrediente.
-            ? ' &mdash; ' + escapeHtml(t("ui.abrev_proteina")) + ' ' + round1(item.protein) + ' g / ' +
-              escapeHtml(t("ui.abrev_carbos")) + ' ' + round1(item.carbs) + ' g / ' +
-              escapeHtml(t("ui.abrev_grasas")) + ' ' + round1(item.fat) + ' g' +
+            ? ' &mdash; ' + escapeHtml(t("ui.abrev_proteina")) + ' ' + escapeHtml(fmtUnit(round1(item.protein), "g")) + ' / ' +
+              escapeHtml(t("ui.abrev_carbos")) + ' ' + escapeHtml(fmtUnit(round1(item.carbs), "g")) + ' / ' +
+              escapeHtml(t("ui.abrev_grasas")) + ' ' + escapeHtml(fmtUnit(round1(item.fat), "g")) +
               // "real" no dice nada por sí solo, y su explicación estaba en
               // un `title`: en un móvil no hay puntero con el que sacarla.
               // Una palabra que se explica sola vale más que un texto
@@ -492,12 +510,12 @@ function renderFoodRow(item, storeId) {
         formatPurchaseLine(info, realMatch, purchase) +
       '</div>' +
       '<div class="food-right">' +
-        '<div>' + round0(item.kcal) + ' kcal</div>' +
+        '<div>' + fmtUnitHtml(round0(item.kcal), "kcal") + '</div>' +
         '<div class="food-cost food-cost--usage">&euro;' + round2(item.cost) +
           '<span class="food-cost__tag">' + escapeHtml(t("ui.consumo_etiqueta")) + '</span></div>' +
         (purchase && purchase.hasFixedPackage
           ? '<div class="food-cost food-cost--package">&euro;' + round2(purchase.purchaseCost) + '<span class="food-cost__tag">' +
-            (purchase.packagesToBuy > 1 ? purchase.packagesToBuy + '&times; ' : '') + round0(purchase.packageSizeG) + 'g ' +
+            (purchase.packagesToBuy > 1 ? purchase.packagesToBuy + '&times; ' : '') + escapeHtml(fmtUnitJunto(round0(purchase.packageSizeG), "g")) + ' ' +
             escapeHtml(t("ui.paquete_etiqueta")) + '</span></div>'
           : '') +
       '</div>' +
@@ -666,11 +684,11 @@ function formatQuantityPhrase(grams, info, name, storeId, papel) {
     if (tbsp >= 0.75) {
       var roundedTbsp = roundToHalf(tbsp);
       return "&asymp; " + formatHalfFraction(roundedTbsp) + " " +
-        escapeHtml(etiquetaDeRacion("cucharada", roundedTbsp)) + " (" + round0(grams) + "g)";
+        escapeHtml(etiquetaDeRacion("cucharada", roundedTbsp)) + " (" + escapeHtml(fmtUnitJunto(round0(grams), "g")) + ")";
     }
     var roundedTsp = roundToHalf(grams / info.teaspoonG);
     return "&asymp; " + formatHalfFraction(roundedTsp) + " " +
-      escapeHtml(etiquetaDeRacion("cucharadita", roundedTsp)) + " (" + round0(grams) + "g)";
+      escapeHtml(etiquetaDeRacion("cucharadita", roundedTsp)) + " (" + escapeHtml(fmtUnitJunto(round0(grams), "g")) + ")";
   }
 
   if (info && info.type === "perUnit") {
@@ -680,7 +698,7 @@ function formatQuantityPhrase(grams, info, name, storeId, papel) {
     // inglés decía "1 y 1/2 huevos". No daba ningún error -- es la misma
     // clase de fallo que persigue el punto 1 del ROADMAP.
     return "&asymp; " + formatHalfFraction(roundedUnits) + " " +
-      escapeHtml(etiquetaDeRacion(info.unitLabel, roundedUnits)) + " (" + round0(grams) + "g)";
+      escapeHtml(etiquetaDeRacion(info.unitLabel, roundedUnits)) + " (" + escapeHtml(fmtUnitJunto(round0(grams), "g")) + ")";
   }
 
   // El resto pasa por la RACIÓN de casa (js/data/servings.js): "4 yogures",
@@ -703,12 +721,12 @@ function formatQuantityPhrase(grams, info, name, storeId, papel) {
       if (raciones > 0) {
         return '<span class="food-qty">' + formatServingFraction(raciones) + " " +
           escapeHtml(etiquetaDeRacion(unit.label, raciones)) + "</span>" +
-          ' <span class="food-qty__grams">(' + round0(grams) + " g)</span>";
+          ' <span class="food-qty__grams">(' + escapeHtml(fmtUnit(round0(grams), "g")) + ")</span>";
       }
     }
   }
 
-  return round0(grams) + " g";
+  return escapeHtml(fmtUnit(round0(grams), "g"));
 }
 
 /**
@@ -782,8 +800,8 @@ function formatPurchaseLine(info, realMatch, purchase) {
   if (!purchase || !purchase.hasFixedPackage) return "";
 
   var label = purchase.packagesToBuy > 1
-    ? purchase.packagesToBuy + " " + etiquetaDeEnvase(purchase.packageLabel, purchase.packagesToBuy) + " (" + round0(purchase.packageSizeG) + "g " + t("ui.cada_uno") + ")"
-    : "1 " + etiquetaDeEnvase(purchase.packageLabel, 1) + " (" + round0(purchase.packageSizeG) + "g)";
+    ? purchase.packagesToBuy + " " + etiquetaDeEnvase(purchase.packageLabel, purchase.packagesToBuy) + " (" + fmtUnitJunto(round0(purchase.packageSizeG), "g") + " " + t("ui.cada_uno") + ")"
+    : "1 " + etiquetaDeEnvase(purchase.packageLabel, 1) + " (" + fmtUnitJunto(round0(purchase.packageSizeG), "g") + ")";
 
   var priceNote = ' &middot; &euro;' + round2(purchase.purchaseCost);
 
@@ -803,9 +821,15 @@ function formatRealMatchPurchaseLine(realMatch, purchase) {
   // no tenemos un tamaño en gramos fiable para calcular cuántos packs, así
   // que tampoco se anota un precio de paquete aquí (sería ambiguo a qué
   // unidad se refiere).
+  // El nombre del producto va en su propio <span>: es lo que pone en la
+  // estantería del súper y NO se traduce nunca, y así se puede distinguir (a
+  // simple vista y en el barrido de escanear-pantallas.js) del resto de la
+  // línea, que sí está en el idioma de la persona.
+  var producto = '<span class="food-purchase__product">' + escapeHtml(realMatch.productName) + '</span>';
+
   if (!realMatch.sizeG) {
-    var packInfo = realMatch.units ? " (" + t("ui.pack_de") + " " + realMatch.units + ")" : "";
-    return '<div class="food-purchase">' + escapeHtml(t("ui.compra_dos_puntos")) + ' ' + escapeHtml(realMatch.productName) + packInfo + badge + '</div>';
+    var packInfo = realMatch.units ? " (" + escapeHtml(t("ui.pack_de")) + " " + realMatch.units + ")" : "";
+    return '<div class="food-purchase">' + escapeHtml(t("ui.compra_dos_puntos")) + ' ' + producto + packInfo + badge + '</div>';
   }
 
   var packagesToBuy = (purchase && purchase.hasFixedPackage) ? purchase.packagesToBuy : 1;
@@ -815,8 +839,8 @@ function formatRealMatchPurchaseLine(realMatch, purchase) {
     : '';
 
   return (
-    '<div class="food-purchase">' + escapeHtml(t("ui.compra_dos_puntos")) + ' ' + quantityPrefix + escapeHtml(realMatch.productName) +
-    ' (' + round0(realMatch.sizeG) + 'g)' + priceNote + badge + '</div>'
+    '<div class="food-purchase">' + escapeHtml(t("ui.compra_dos_puntos")) + ' ' + quantityPrefix + producto +
+    ' (' + escapeHtml(fmtUnitJunto(round0(realMatch.sizeG), "g")) + ')' + priceNote + badge + '</div>'
   );
 }
 
@@ -829,11 +853,12 @@ function formatRealMatchPurchaseLine(realMatch, purchase) {
 function renderMealFooter(total, prep) {
   return (
     '<div class="meal-footer">' +
-      '<div>' + escapeHtml(t("ui.proteina")) + '<strong>' + round0(total.protein) + ' g</strong></div>' +
-      '<div>' + escapeHtml(t("ui.carbs"))    + '<strong>' + round0(total.carbs)   + ' g</strong></div>' +
-      '<div>' + escapeHtml(t("ui.grasas"))   + '<strong>' + round0(total.fat)     + ' g</strong></div>' +
+      // Las cifras del pie: número y, pegada detrás, la unidad en <span class="u">.
+      '<div>' + escapeHtml(t("ui.proteina")) + '<strong>' + fmtUnitHtml(round0(total.protein), "g") + '</strong></div>' +
+      '<div>' + escapeHtml(t("ui.carbs"))    + '<strong>' + fmtUnitHtml(round0(total.carbs), "g")   + '</strong></div>' +
+      '<div>' + escapeHtml(t("ui.grasas"))   + '<strong>' + fmtUnitHtml(round0(total.fat), "g")     + '</strong></div>' +
       '<div>' + escapeHtml(t("ui.coste"))    + '<strong>&euro;' + round2(total.cost) + '</strong></div>' +
-      '<div>' + escapeHtml(t("ui.prep"))     + '<strong>' + (prep || 0)           + ' min</strong></div>' +
+      '<div>' + escapeHtml(t("ui.prep"))     + '<strong>' + fmtUnitHtml(prep || 0, "min")           + '</strong></div>' +
     '</div>'
   );
 }

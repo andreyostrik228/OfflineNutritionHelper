@@ -213,12 +213,40 @@ function run(t) {
     var ru = {};
     s.UNIT_CODES.forEach(function (code) { ru[code] = s.tUnit(code, "ru"); });
     assert.deepStrictEqual(JSON.parse(JSON.stringify(ru)),
-      { kcal: "ккал", g: "г", kg: "кг", min: "мин", ml: "мл", cm: "см" });
-    ["es", "en"].forEach(function (lang) {
-      s.UNIT_CODES.forEach(function (code) {
-        assert.strictEqual(s.tUnit(code, lang), code, lang + " " + code);
-      });
+      { kcal: "ккал", g: "г", kg: "кг", min: "мин", ml: "мл", cm: "см", l: "л", ud: "шт." });
+    // Español e inglés escriben lo que ya escribían: la unidad es su propio
+    // código. Solo "ud" (unidad, un tamaño de envase del catálogo) no existe
+    // en inglés.
+    s.UNIT_CODES.forEach(function (code) {
+      assert.strictEqual(s.tUnit(code, "es"), code, "es " + code);
+      assert.strictEqual(s.tUnit(code, "en"), code === "ud" ? "pcs" : code, "en " + code);
     });
+  });
+
+  t.test("tPackageUnit traduce el tamaño de envase del catálogo y deja pasar lo que no conoce", function () {
+    // El catálogo trae kg, l y ud. Una unidad nueva no puede salir como
+    // "unit.xx" en medio de una ficha de producto.
+    var s = sandboxDeUnidades();
+    assert.strictEqual(s.tPackageUnit("kg", "ru"), "кг");
+    assert.strictEqual(s.tPackageUnit("l", "ru"), "л");
+    assert.strictEqual(s.tPackageUnit("ud", "ru"), "шт.");
+    assert.strictEqual(s.tPackageUnit("l", "es"), "l");
+    assert.strictEqual(s.tPackageUnit("cl", "ru"), "cl");
+    assert.strictEqual(s.tPackageUnit(null, "ru"), "");
+    assert.strictEqual(s.tPackageUnit(undefined, "es"), "");
+  });
+
+  t.test("las unidades del catálogo de la tienda están todas entre las traducidas", function () {
+    // Si la tienda empieza a publicar otra unidad, este test lo dice antes de
+    // que salga sin traducir en una ficha.
+    var vm = require("vm"), fs = require("fs");
+    var c = {}; vm.createContext(c);
+    vm.runInContext(fs.readFileSync(projPath("js/data/real-products.js"), "utf8"), c);
+    var s = sandboxDeUnidades();
+    var usadas = {};
+    c.REAL_PRODUCTS.forEach(function (p) { if (p.sizeUnit) usadas[p.sizeUnit] = 1; });
+    var sinTraducir = Object.keys(usadas).filter(function (u) { return s.UNIT_CODES.indexOf(u) === -1; });
+    assert.deepStrictEqual(sinTraducir, [], "unidades del catálogo sin traducción: " + sinTraducir.join(", "));
   });
 
   t.test("fmtUnit separa con espacio; fmtUnitJunto conserva la unidad pegada en es y en", function () {

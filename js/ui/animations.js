@@ -135,23 +135,30 @@ function animateSummaryNumbers(profile, total) {
     function (context) {
       if (!context.conditions.motionOK) return; // reduced motion → el valor final ya lo puso renderSummary()
 
-      _countUp(summaryEls.calories, round0(profile.calories), " kcal");
-      _countUp(summaryEls.protein,  round0(profile.protein),  " g");
-      _countUp(summaryEls.carbs,    round0(profile.carbs),    " g");
-      _countUp(summaryEls.fats,     round0(profile.fats),     " g");
+      _countUp(summaryEls.calories, round0(profile.calories), "kcal");
+      _countUp(summaryEls.protein,  round0(profile.protein),  "g");
+      _countUp(summaryEls.carbs,    round0(profile.carbs),    "g");
+      _countUp(summaryEls.fats,     round0(profile.fats),     "g");
     }
   );
 }
 
 /**
  * Tween interno: cuenta desde 0 hasta targetValue y escribe el entero
- * redondeado en el textContent del elemento en cada frame.
+ * redondeado en el elemento en cada frame.
+ *
+ * Escribe LO MISMO que renderSummary(): el número y, pegada detrás, la unidad
+ * en un <span class="u"> (fmtUnitHtml). Esto reescribía el elemento con
+ * `textContent = n + " kcal"`, o sea que en cuanto GSAP cargaba -- siempre,
+ * en producción -- la cifra pasaba a "2499 kcal" en inglés dentro de una
+ * pantalla en ruso, y el <span> de la unidad desaparecía. No se veía en
+ * ninguna prueba porque ninguna carga GSAP.
  *
  * @param {HTMLElement} el
  * @param {number} targetValue
- * @param {string} suffix  – ej. " kcal", " g"
+ * @param {string} unit  – código de unidad de i18n.js: "kcal", "g"
  */
-function _countUp(el, targetValue, suffix) {
+function _countUp(el, targetValue, unit) {
   if (!el) return;
   var proxy = { val: 0 };
   gsap.to(proxy, {
@@ -159,10 +166,10 @@ function _countUp(el, targetValue, suffix) {
     duration: 0.6,
     ease: "power2.out",
     onUpdate: function () {
-      el.textContent = round0(proxy.val) + suffix;
+      el.innerHTML = fmtUnitHtml(round0(proxy.val), unit);
     },
     onComplete: function () {
-      el.textContent = targetValue + suffix; // asegura el valor exacto final, sin redondeos de frame
+      el.innerHTML = fmtUnitHtml(targetValue, unit); // asegura el valor exacto final, sin redondeos de frame
       _pulseCard(el);
     }
   });

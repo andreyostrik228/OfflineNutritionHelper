@@ -161,7 +161,7 @@ function renderRealProducts(products, query, totalMatches) {
   if (total > products.length) {
     html +=
       '<div class="verified-card verified-card--more">' +
-        "Mostrando " + products.length + " de " + total + " resultados &mdash; afina la b&uacute;squeda para ver el resto." +
+        escapeHtml(tFormat("ui.mostrando_n_de_m_resultados", { n: products.length, total: total })) +
       "</div>";
   }
 
@@ -182,17 +182,20 @@ function renderRealProducts(products, query, totalMatches) {
  * @returns {string}
  */
 function renderProductCard(p) {
+  // El tamaño del envase sale del catálogo de la tienda con su unidad
+  // ("kg", "l", "ud"): la cifra y el producto son los de la etiqueta, la unidad
+  // es una palabra del idioma como cualquier otra.
   var priceLine = p.pricePer100g != null
-    ? "&euro;" + round2(p.pricePer100g) + " / 100g"
-    : (p.price != null ? "&euro;" + round2(p.price) + (p.size ? " (" + p.size + " " + (p.sizeUnit || "") + ")" : "") : "");
+    ? "&euro;" + round2(p.pricePer100g) + " / " + escapeHtml(fmtUnitJunto(100, "g"))
+    : (p.price != null ? "&euro;" + round2(p.price) + (p.size ? " (" + escapeHtml(p.size + " " + tPackageUnit(p.sizeUnit)) + ")" : "") : "");
 
   var macrosBlock = p.kcal != null
     ? (
       '<div class="verified-card__macros">' +
-        '<div><span>Kcal</span><strong>' + round0(p.kcal) + '</strong></div>' +
-        '<div><span>' + escapeHtml(t("ui.proteina")) + '</span><strong>' + round1(p.protein) + 'g</strong></div>' +
-        '<div><span>' + escapeHtml(t("ui.carbos")) + '</span><strong>' + round1(p.carbs) + 'g</strong></div>' +
-        '<div><span>' + escapeHtml(t("ui.grasas")) + '</span><strong>' + round1(p.fat) + 'g</strong></div>' +
+        '<div><span>' + escapeHtml(t("ui.kcal_etiqueta")) + '</span><strong>' + round0(p.kcal) + '</strong></div>' +
+        '<div><span>' + escapeHtml(t("ui.proteina")) + '</span><strong>' + escapeHtml(fmtUnitJunto(round1(p.protein), "g")) + '</strong></div>' +
+        '<div><span>' + escapeHtml(t("ui.carbos")) + '</span><strong>' + escapeHtml(fmtUnitJunto(round1(p.carbs), "g")) + '</strong></div>' +
+        '<div><span>' + escapeHtml(t("ui.grasas")) + '</span><strong>' + escapeHtml(fmtUnitJunto(round1(p.fat), "g")) + '</strong></div>' +
       '</div>'
     )
     : '<div class="verified-card__no-nutrition">' + escapeHtml(t("ui.sin_datos_nutricionales")) + '</div>';
@@ -230,10 +233,9 @@ function renderConfidenceBadge(p) {
     // identificador, no texto para nadie. Se traduce con la misma tabla que
     // usa el aviso del plan (render.js), para que los dos sitios no acaben
     // diciendo cosas distintas del mismo dato.
-    var es = (typeof NUTRITION_CONFIDENCE_ES !== "undefined")
-      ? NUTRITION_CONFIDENCE_ES[p.nutritionConfidence] : null;
+    var nivel = etiquetaDeConfianza(p.nutritionConfidence);
     return '<span class="verified-card__badge">' +
-      escapeHtml(es ? "confianza " + es : "estimado") + '</span>';
+      escapeHtml(nivel ? t("ui.confianza") + " " + nivel : t("ui.estimado")) + '</span>';
   }
   return "";
 }

@@ -573,8 +573,12 @@ function _rellenarHuecos(texto, params) {
 // pegada sigue pegada ("500g"). El ruso la separa ("500 г") porque así se
 // escribe: lo decide `unit.sep_pegada`, no el código.
 
-/** Las unidades que existen. Un test comprueba que cada una está traducida. */
-var UNIT_CODES = ["kcal", "g", "kg", "min", "ml", "cm"];
+/**
+ * Las unidades que existen. Un test comprueba que cada una está traducida.
+ * "l" y "ud" son las otras dos que trae el catálogo de la tienda en el tamaño
+ * de un envase (2.240 productos en kg, 735 en l, 19 en ud).
+ */
+var UNIT_CODES = ["kcal", "g", "kg", "min", "ml", "cm", "l", "ud"];
 
 /**
  * La unidad sola, en el idioma de ahora ("kcal" / "ккал").
@@ -584,6 +588,19 @@ var UNIT_CODES = ["kcal", "g", "kg", "min", "ml", "cm"];
  */
 function tUnit(code, lang) {
   return t("unit." + code, lang);
+}
+
+/**
+ * La unidad de un TAMAÑO DE ENVASE tal como la trae el catálogo de la tienda
+ * ("kg", "l", "ud"). Si es una que no conocemos se deja como viene: un dato
+ * nuevo del catálogo no puede salir como "unit.xx" en medio de una ficha.
+ * @param {string} code
+ * @param {string} [lang]
+ * @returns {string}
+ */
+function tPackageUnit(code, lang) {
+  if (typeof code !== "string" || UNIT_CODES.indexOf(code) === -1) return code == null ? "" : String(code);
+  return tUnit(code, lang);
 }
 
 /**

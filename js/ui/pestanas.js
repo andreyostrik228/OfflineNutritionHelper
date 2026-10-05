@@ -188,7 +188,7 @@ function _pintarResumenDeDatos() {
   var edad = (document.getElementById("age") || {}).value;
   if (sexo || edad) partes.push([sexo, edad ? _tx("ui.n_anos").replace("{n}", edad) : ""].filter(Boolean).join(", "));
   var peso = (document.getElementById("weight") || {}).value;
-  if (peso) partes.push(peso + " kg");
+  if (peso) partes.push(typeof fmtUnit === "function" ? fmtUnit(peso, "kg") : peso + " kg");
   var objetivo = _textoOpcion("goal");
   if (objetivo) partes.push(objetivo);
   var presupuesto = document.querySelector(".visually-hidden:checked + .budget-chip");

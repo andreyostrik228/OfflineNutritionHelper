@@ -434,5 +434,21 @@ registerI18nTable("ru", {
   // Lo que va entre el número y la unidad donde esta se escribía PEGADA ("500g"): nada en español y en
   // inglés, que así lo escribían; un espacio en ruso ("500 г").
   "unit.sep_pegada": " ",
-  "ui.invitado": "Гость"
+  "ui.invitado": "Гость",
+  // Las dos unidades que trae el catálogo de la tienda en el tamaño de un envase (tPackageUnit).
+  "unit.l": "л",
+  "unit.ud": "шт.",
+  // Nivel de confianza del emparejamiento de la nutrición de un producto (render.js, etiquetaDeConfianza).
+  "ui.confianza_alta": "высокая",
+  "ui.confianza_media": "средняя",
+  "ui.confianza_baja": "низкая",
+  "ui.confianza_muy_baja": "очень низкая",
+  // Ficha de producto del catálogo (render-real-products.js).
+  "ui.kcal_etiqueta": "Ккал",
+  "ui.estimado": "оценка",
+  "ui.mostrando_n_de_m_resultados": "Показано {n} из {total} результатов — уточните запрос, чтобы увидеть остальные.",
+  // Avisos de las tarjetas y de la franja del horario (render-schedule.js).
+  "ui.horario_ajustado_nota": "Плотный график: выбранное вами окно оставляет мало времени между приёмами пищи. Попробуйте встать пораньше или лечь позже, чтобы распределить их удобнее.",
+  "ui.preparalo_la_noche_anterior": "Приготовьте накануне вечером",
+  "ui.necesita_reposar_en_la_nevera": "блюдо должно настояться в холодильнике, сразу его не приготовить"
 });

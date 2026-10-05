@@ -37,6 +37,60 @@ function archivos(extra) {
   return base.concat((extra || []).map(projPath));
 }
 
+var detector = require("../scripts/i18n/detector");
+var seedRandomInContext = require("./lib/seed-random").seedRandomInContext;
+
+/**
+ * El sandbox COMPLETO: datos, motor, tablas de TODOS los idiomas servidos y
+ * los renderers de js/ui que devuelven HTML. Es lo que permite generar un plan
+ * de verdad y pintarlo en ruso sin navegador, y por eso es la prueba que más
+ * vale de este fichero: un literal español en un renderer sale aquí aunque
+ * ninguna prueba de las tablas lo vea.
+ */
+function sandboxCompleto() {
+  var ficheros = [
+    "js/data/dishes.js", "js/data/dish-instructions.js", "js/data/real-products.js",
+    "js/data/packaging.js", "js/data/servings.js", "js/data/real-ingredient-matches.js",
+    "js/data/product-links.js", "js/data/ingredient-nutrition.js", "js/data/no-cook-classifier.js",
+    "js/data/serving-sizes.js", "js/data/no-cook-templates.js", "js/data/prices/mercadona.js",
+    "js/data/budget-presets.js", "js/data/product-allergens.js",
+    "js/core/utils.js", "js/core/i18n.js", "js/i18n/es.js"
+  ];
+  IDIOMAS_HECHOS.forEach(function (l) {
+    ["", "food-", "packages-", "steps-"].forEach(function (pre) { ficheros.push("js/i18n/" + pre + l + ".js"); });
+  });
+  ficheros = ficheros.concat([
+    "js/core/pricing.js", "js/core/servings.js", "js/core/nutrition.js", "js/core/budget.js",
+    "js/core/calculator.js", "js/core/meal-helpers.js", "js/core/meal-schedule.js",
+    "js/core/allergens.js",
+    "js/engine/dish-selector.js", "js/engine/plan-generator.js", "js/engine/no-cook-generator.js",
+    "js/ui/render.js", "js/ui/render-schedule.js", "js/ui/render-shopping-list.js",
+    "js/ui/render-insights.js", "js/ui/render-no-cook.js", "js/ui/render-real-products.js"
+  ]);
+  var s = loadBrowserGlobals(ficheros.map(projPath));
+  // Math.random sembrado: el motor es aleatorio y una prueba no puede serlo.
+  seedRandomInContext(s, 12345);
+  return s;
+}
+
+/** Un día de plan real. `datos` pisa los del perfil de prueba (volumen, 8 €). */
+function planReal(s, datos) {
+  var perfil = s.calculateProfile({
+    age: 28, sex: "male", weight: 78, height: 178, activity: 1.55, workouts: 4, goal: "bulk"
+  });
+  var d = Object.assign({ budget: 8, cookTime: 35, taste: "sweet", store: "mercadona", planDays: 1 }, datos || {});
+  var r = s.generateDietPlan(perfil, d);
+  return { profile: perfil, data: d, result: r };
+}
+
+/** Un contenedor DOM de mentira que recuerda lo que se le escribe. */
+function contenedor() {
+  return elementoFalso();
+}
+
+/** Texto visible de un trozo de HTML de los renderers, sin nombres de producto. */
+function visible(html) { return detector.textoDeHtml(html); }
+
 /** Un elemento de mentira con lo que usan los renderers de texto. */
 function elementoFalso() {
   var attrs = {};
@@ -44,6 +98,7 @@ function elementoFalso() {
     textContent: "",
     innerHTML: "",
     hidden: false,
+    classList: { toggle: function () {}, add: function () {}, remove: function () {}, contains: function () { return false; } },
     setAttribute: function (k, v) { attrs[k] = String(v); },
     getAttribute: function (k) { return Object.prototype.hasOwnProperty.call(attrs, k) ? attrs[k] : null; },
     removeAttribute: function (k) { delete attrs[k]; }
@@ -99,6 +154,160 @@ function run(t) {
     s.renderProfileButton({ email: "x@example.com", user_metadata: {} });   // sin nombre: el email
     assert.strictEqual(s.authProfileLabel.textContent, "x@example.com");
     assert.strictEqual(s.authProfileLabel.getAttribute("data-i18n"), null);
+  });
+
+  // ── Unidades y cifras ──────────────────────────────────────────────────
+  //
+  // La unidad de una cifra grande va en <span class="u"> detrás del número,
+  // sin espacios (el hueco lo pone el CSS), y en el idioma de la pantalla.
+
+  var UNIDAD = {
+    es: { kcal: "kcal", g: "g", min: "min" },
+    en: { kcal: "kcal", g: "g", min: "min" },
+    ru: { kcal: "ккал", g: "г", min: "мин" }
+  };
+
+  t.test("renderSummary: la cifra grande lleva <span class=\"u\"> y la línea de debajo es texto", function () {
+    var s = sandboxCompleto();
+    ["es", "en", "ru"].forEach(function (lang) {
+      s.saveLang(lang);
+      var els = { calories: contenedor(), caloriesSub: contenedor(), protein: contenedor(), proteinSub: contenedor(),
+                  carbs: contenedor(), carbsSub: contenedor(), fats: contenedor(), fatsSub: contenedor() };
+      s.initRenderRefs({ mealsContainer: contenedor(), summaryEls: els });
+      s.renderSummary({ calories: 3114.4, protein: 148.2, carbs: 472, fats: 70 },
+                      { kcal: 3201.2, protein: 137, carbs: 457, fat: 84 });
+      var u = UNIDAD[lang];
+      assert.strictEqual(els.calories.innerHTML, '3114<span class="u">' + u.kcal + '</span>', lang);
+      assert.strictEqual(els.protein.innerHTML, '148<span class="u">' + u.g + '</span>', lang);
+      assert.strictEqual(els.carbs.innerHTML, '472<span class="u">' + u.g + '</span>', lang);
+      assert.strictEqual(els.fats.innerHTML, '70<span class="u">' + u.g + '</span>', lang);
+      // La línea pequeña es una frase: texto con la unidad traducida, no HTML.
+      assert.strictEqual(els.caloriesSub.textContent, s.t("ui.plan_real") + " 3201 " + u.kcal, lang);
+      assert.strictEqual(els.fatsSub.textContent, s.t("ui.plan_real") + " 84 " + u.g, lang);
+      assert.strictEqual(els.caloriesSub.innerHTML, "", "textContent, no innerHTML");
+    });
+    s.saveLang("es");
+  });
+
+  t.test("un plan real pintado: cada cifra de kcal, del pie y de cada ingrediente lleva su <span class=\"u\">", function () {
+    var s = sandboxCompleto();
+    var p = planReal(s);
+    ["es", "en", "ru"].forEach(function (lang) {
+      s.saveLang(lang);
+      var cont = contenedor();
+      s.initRenderRefs({ mealsContainer: cont, summaryEls: {} });
+      s.renderDayPlans([{ meals: p.result.meals }]);
+      var html = cont.innerHTML;
+      var u = UNIDAD[lang];
+      var num = '\\d+(?:\\.\\d+)?';
+
+      // .meal-kcal
+      var kcalToma = html.match(/<div class="meal-kcal">[^]*?<\/div>/g) || [];
+      assert.ok(kcalToma.length >= 3, lang + ": no hay tarjetas");
+      kcalToma.forEach(function (d) {
+        assert.ok(new RegExp('^<div class="meal-kcal">' + num + '<span class="u">' + u.kcal + '</span></div>$').test(d), lang + ": " + d);
+      });
+      // .food-right > div:first-child
+      var primeros = html.match(/<div class="food-right"><div>[^]*?<\/div>/g) || [];
+      assert.ok(primeros.length >= 3, lang + ": no hay filas de ingrediente");
+      primeros.forEach(function (d) {
+        assert.ok(new RegExp('^<div class="food-right"><div>' + num + '<span class="u">' + u.kcal + '</span></div>$').test(d), lang + ": " + d);
+      });
+      // .meal-footer strong: tres en gramos, uno en euros, uno en minutos
+      var fuertes = html.match(/<div class="meal-footer">[^]*?<\/div><\/div>/g) || [];
+      assert.ok(fuertes.length >= 3, lang + ": no hay pies de tarjeta");
+      fuertes.forEach(function (pie) {
+        var strongs = pie.match(/<strong>[^]*?<\/strong>/g);
+        assert.strictEqual(strongs.length, 5, lang + ": " + pie);
+        [0, 1, 2].forEach(function (i) {
+          assert.ok(new RegExp('^<strong>' + num + '<span class="u">' + u.g + '</span></strong>$').test(strongs[i]), lang + ": " + strongs[i]);
+        });
+        assert.ok(/^<strong>&euro;[\d.]+<\/strong>$/.test(strongs[3]), lang + ": " + strongs[3]);
+        assert.ok(new RegExp('^<strong>\\d+<span class="u">' + u.min + '</span></strong>$').test(strongs[4]), lang + ": " + strongs[4]);
+      });
+      // Ningún espacio entre el número y el <span>, ni dentro de él.
+      assert.strictEqual(/\d\s+<span class="u">/.test(html), false, lang + ": hay un espacio delante de la unidad");
+      var unidades = html.match(/<span class="u">[^<]*<\/span>/g) || [];
+      assert.ok(unidades.length >= 10, lang + ": faltan cifras con unidad");
+      unidades.forEach(function (sp) {
+        assert.ok(/^<span class="u">\S+<\/span>$/.test(sp), lang + ": espacio dentro de " + JSON.stringify(sp));
+      });
+    });
+    s.saveLang("es");
+  });
+
+  t.test("en ruso un plan real no deja ninguna unidad en latín: ni en las tarjetas ni en la compra", function () {
+    var s = sandboxCompleto();
+    var p = planReal(s);
+    s.saveLang("ru");
+    var cont = contenedor();
+    s.initRenderRefs({ mealsContainer: cont, summaryEls: {} });
+    s.renderDayPlans([{ meals: p.result.meals }]);
+    var malos = [];
+    function revisa(donde, html) {
+      var texto = visible(html);
+      var trozos = texto.split(/(?<=[.;·—])\s+|\s{2,}/);
+      detector.analizarTexto(texto, "ru").forEach(function (m) {
+        if (/unidad/.test(m)) malos.push(donde + ": " + m + "  <-  " + texto.slice(0, 160));
+      });
+    }
+    revisa("tarjetas", cont.innerHTML);
+
+    // La lista de la compra, fila a fila, y su versión en texto plano.
+    var items = s.buildShoppingItems(p.result.meals, "mercadona");
+    assert.ok(items.length > 3);
+    items.forEach(function (e) { revisa("compra", s.renderShoppingRow(e, "mercadona", false)); });
+    var plano = s.shoppingListAsText(items, 1);
+    if (/\d\s*(g|kg|kcal|ml|min)\b/.test(plano)) malos.push("texto plano: " + plano.slice(0, 200));
+    assert.ok(/\d г/.test(plano), "el texto para compartir debe decir «г»: " + plano.slice(0, 200));
+    assert.deepStrictEqual(malos, [], malos.slice(0, 4).join("\n"));
+    s.saveLang("es");
+  });
+
+  t.test("en español el plan pintado dice lo mismo que antes: «500g» pegado donde iba pegado", function () {
+    // Español e inglés no cambian ni una coma: las formas pegadas ("(500g)",
+    // "2x 400g paquete") siguen pegadas, y las separadas ("120 g") separadas.
+    var s = sandboxCompleto();
+    ["es", "en"].forEach(function (lang) {
+      s.saveLang(lang);
+      assert.strictEqual(s.formatQuantityPhrase(120, { type: "spoonable", tablespoonG: 15, teaspoonG: 5 }, "Aceite de oliva", "mercadona"),
+        "&asymp; 8 " + s.etiquetaDeRacion("cucharada", 8) + " (120g)", lang);
+      assert.strictEqual(s.formatQuantityPhrase(123.4, null, "Ingrediente sin ración", "mercadona"), "123 g", lang);
+    });
+    s.saveLang("ru");
+    assert.strictEqual(s.formatQuantityPhrase(123.4, null, "Ingrediente sin ración", "mercadona"), "123 г");
+    assert.ok(/\(120 г\)$/.test(s.formatQuantityPhrase(120, { type: "spoonable", tablespoonG: 15, teaspoonG: 5 }, "Aceite de oliva", "mercadona")));
+    s.saveLang("es");
+  });
+
+  t.test("la animación de las cifras escribe lo mismo que renderSummary: con su <span class=\"u\">", function () {
+    // animateSummaryNumbers() reescribía la cifra con `n + " kcal"` en cada
+    // frame y al terminar. Con GSAP cargado -- o sea, SIEMPRE en producción --
+    // la cifra volvía a "3114 kcal" en inglés y el span desaparecía. Ninguna
+    // otra prueba carga GSAP, por eso no se veía.
+    var vm = require("vm");
+    var fs = require("fs");
+    var sandbox = {};
+    vm.createContext(sandbox);
+    sandbox.gsap = {
+      matchMedia: function () { return { add: function (c, fn) { fn({ conditions: { motionOK: true } }); } }; },
+      timeline: function () { return { from: function () { return this; } }; },
+      from: function () {},
+      to: function (obj, v) { obj.val = v.val / 2; v.onUpdate(); obj.val = v.val; v.onUpdate(); v.onComplete(); }
+    };
+    ["js/core/utils.js", "js/core/i18n.js", "js/i18n/es.js", "js/i18n/ru.js", "js/ui/animations.js"].forEach(function (f) {
+      vm.runInContext(fs.readFileSync(projPath(f), "utf8"), sandbox, { filename: f });
+    });
+    ["es", "ru"].forEach(function (lang) {
+      sandbox.saveLang(lang);
+      var els = { calories: elementoFalso(), protein: elementoFalso(), carbs: elementoFalso(), fats: elementoFalso() };
+      sandbox.summaryEls = els;
+      els.calories.closest = els.protein.closest = els.carbs.closest = els.fats.closest = function () { return null; };
+      sandbox.animateSummaryNumbers({ calories: 3114.4, protein: 148.2, carbs: 472, fats: 70 }, {});
+      var u = UNIDAD[lang];
+      assert.strictEqual(els.calories.innerHTML, '3114<span class="u">' + u.kcal + '</span>', lang);
+      assert.strictEqual(els.fats.innerHTML, '70<span class="u">' + u.g + '</span>', lang);
+    });
   });
 }
 
