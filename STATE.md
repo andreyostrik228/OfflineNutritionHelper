@@ -7,8 +7,10 @@
 >
 > ### ⏩ UPDATE 2026-09-28 (d) — la app entera en RUSO, y la tubería de traducción ya sirve para cualquier idioma
 >
-> **725 tests en verde (eran 716). Sello `20260928d`. SIN desplegar ni
-> commitear todavía** (a la espera del "деплой" del dueño).
+> **725 tests en verde (eran 716). Sello `20260928d`. Commit `b6881bc`,
+> DESPLEGADO el 2026-10-05** (`https://717bb87c.offline-nutrition-helper.pages.dev`;
+> 85 ficheros por md5, 0 difieren) **y NO empujado** (origin/main sigue en
+> `a9ff02e`).
 >
 > El dueño pidió los ocho idiomas declarados, uno detrás de otro; el ruso
 > primero. Hecho en ruso: interfaz (`js/i18n/ru.js`, todas las claves más el
