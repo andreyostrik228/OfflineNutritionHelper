@@ -7,7 +7,7 @@
 >
 > ### ⏩ UPDATE 2026-10-05 (e) — diseño "training": `style.css` reescrito desde cero
 >
-> **726 tests en verde (eran 725). Sello `20261005a`. SIN DESPLEGAR** (solo
+> **726 tests en verde (eran 725). Sello `20261005b`. SIN DESPLEGAR** (solo
 > está en la rama `claude/amazing-bell-9sw8xk`; el último despliegue sigue
 > siendo el de (d)).
 >
@@ -25,6 +25,12 @@
 > con su matiz en dos versiones (viva sobre tinta, profunda sobre blanco);
 > Sofia Sans Extra Condensed (titulares y cifras) + Onest (texto), las dos con
 > cirílico. Barra inferior flotante negra con la pestaña activa en volt.
+>
+> **Cabecera:** centrada y sin imagen (el dueño pidió quitar lo que quedaba
+> del diseño anterior, la ilustración recortada de la derecha). El nombre
+> ocupa todo el ancho de la tarjeta: su tamaño sale del ancho de la propia
+> cabecera (`cqw`, factor 4,2 = lo que ocupa "WEEKPLATE" en Sofia Sans negra
+> más margen). `assets/img/og-weekplate.jpg` sigue, solo para `og:image`.
 >
 > **Cosas que cambian fuera de `style.css`:**
 > - **Tipografías alojadas en `assets/fonts/`** (8 `.woff2`, latino, latino
