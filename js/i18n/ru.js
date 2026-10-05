@@ -422,5 +422,18 @@ registerI18nTable("ru", {
   // Белки / углеводы / жиры: el orden ruso de siempre, "БЖУ".
   "ui.abrev_proteina": "Б",
   "ui.abrev_carbos": "У",
-  "ui.abrev_grasas": "Ж"
+  "ui.abrev_grasas": "Ж",
+  "ui.aspecto": "Оформление",
+  "ui.elige_como_quieres_ver_la_aplicacion": "Выберите, как будет выглядеть приложение.",
+  "ui.aspecto_entreno": "Основное",
+  "ui.aspecto_hojas": "Листва",
+  "ui.aspecto_cristal": "Стекло",
+  "ui.aspecto_avena": "Овсянка",
+  "ui.aspecto_relieve": "Мягкий рельеф",
+  "ui.aspecto_pegatinas": "Наклейки",
+  "ui.aspecto_mercadillo": "Рынок",
+  "ui.aspecto_revista": "Журнал",
+  "ui.aspecto_noche": "Ночной лес",
+  "ui.aspecto_puesto": "Оформление: {nombre}",
+  "ui.aspecto_sin_red": "Не удалось загрузить это оформление. Проверьте соединение и попробуйте ещё раз."
 });

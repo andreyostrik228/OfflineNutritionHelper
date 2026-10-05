@@ -12,6 +12,11 @@
  * `repetirExplicacion()` de js/app.js, que es donde viven y de donde tiran
  * también los del pie. Un dueño, una implementación (7.10).
  *
+ * ── El ASPECTO (el diseño entero) funciona igual ────────────────────────
+ * El estado vive en js/core/look.js (sin DOM); el IIFE "ASPECTO" del <head>
+ * carga la hoja elegida antes de pintar y aquí se cambia en caliente cuando el
+ * usuario pulsa una tarjeta. Ver `applyLookToDom`.
+ *
  * ── Y el tema se aplica en DOS sitios, a propósito ──────────────────────
  * El IIFE del <head> de index.html pone `data-theme` antes de pintar; esto
  * lo cambia cuando el usuario elige. Sin el primero la página se pintaría
@@ -263,11 +268,164 @@ function _menuPintarTema() {
   }
 }
 
+// ── Aspecto (diseño completo) ───────────────────────────────────────────
+
+/** El id que se está cargando y el <link> que espera a su hoja. */
+var _menuAspectoPedido = null;
+var _menuAspectoEnlace = null;
+
+/** El sello `?v=` de los recursos, sacado del enlace de style.css. */
+function _menuSello() {
+  var enlace = document.querySelector('link[rel="stylesheet"][href*="assets/css/style.css"]');
+  var m = enlace ? /[?&]v=([0-9a-z]+)/.exec(enlace.getAttribute("href") || "") : null;
+  return m ? m[1] : "";
+}
+
+/** Nombre del aspecto en el idioma actual (el id si faltara la traducción). */
+function _menuNombreAspecto(id) {
+  return typeof t === "function" ? t("ui.aspecto_" + id) : id;
+}
+
+/**
+ * Pinta las tarjetas de aspecto (la primera vez) y deja marcada la elegida.
+ * Se llama al abrir el diálogo y al cambiar de idioma, que cambia los nombres.
+ */
+function _menuPintarAspectos() {
+  var lista = document.getElementById("ajustesAspecto");
+  if (!lista || typeof LOOKS === "undefined" || typeof getLook !== "function") return;
+  var sello = _menuSello();
+  if (!lista.children.length) {
+    for (var i = 0; i < LOOKS.length; i++) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "aspecto-card";
+      b.setAttribute("role", "radio");
+      b.setAttribute("aria-checked", "false");
+      b.setAttribute("data-aspecto", LOOKS[i].id);
+      var vista = document.createElement("span");
+      vista.className = "aspecto-card__vista";
+      var img = document.createElement("img");
+      img.alt = "";
+      img.width = 300;
+      img.height = 250;
+      img.loading = "lazy";
+      img.decoding = "async";
+      img.src = "assets/img/aspectos/" + LOOKS[i].id + ".webp" + (sello ? "?v=" + sello : "");
+      vista.appendChild(img);
+      var nombre = document.createElement("span");
+      nombre.className = "aspecto-card__nombre";
+      b.appendChild(vista);
+      b.appendChild(nombre);
+      lista.appendChild(b);
+    }
+  }
+  var actual = getLook();
+  var tarjetas = lista.querySelectorAll("[data-aspecto]");
+  for (var j = 0; j < tarjetas.length; j++) {
+    var id = tarjetas[j].getAttribute("data-aspecto");
+    var esta = id === actual;
+    tarjetas[j].setAttribute("aria-checked", esta ? "true" : "false");
+    tarjetas[j].classList.toggle("is-active", esta);
+    tarjetas[j].querySelector(".aspecto-card__nombre").textContent = _menuNombreAspecto(id);
+  }
+}
+
+/** Escribe un mensaje bajo las tarjetas (o devuelve el texto de siempre). */
+function _menuEstadoAspecto(clave, params) {
+  var el = document.getElementById("ajustesAspectoEstado");
+  if (!el || typeof t !== "function") return;
+  var texto = t(clave);
+  if (params) {
+    for (var k in params) {
+      if (Object.prototype.hasOwnProperty.call(params, k)) texto = texto.replace("{" + k + "}", params[k]);
+    }
+  }
+  el.textContent = texto;
+}
+
+/**
+ * Pone un aspecto en el DOM: `data-look`, el color de la barra del navegador y
+ * su hoja de estilos. Devuelve una promesa que dice si quedó puesto.
+ *
+ * La hoja nueva se añade ANTES de quitar la vieja y la vieja se quita en el
+ * evento `load` de la nueva, dentro de la misma tarea: no llega a pintarse
+ * ningún fotograma con las dos mezcladas ni con ninguna. Si la nueva no llega
+ * (sin red y sin copia en la cache del service worker), se queda la vieja.
+ *
+ * @param {string} id
+ * @returns {Promise<boolean>}
+ */
+function applyLookToDom(id) {
+  var info = (typeof lookInfo === "function") ? lookInfo(id) : null;
+  if (!info) return Promise.resolve(false);
+  _menuAspectoPedido = info.id;
+  // Una petición anterior que aún no ha cargado se descarta.
+  if (_menuAspectoEnlace && _menuAspectoEnlace.parentNode) {
+    _menuAspectoEnlace.parentNode.removeChild(_menuAspectoEnlace);
+  }
+  _menuAspectoEnlace = null;
+
+  var viejo = document.getElementById("aspectoCss");
+  function ponerLoQueNoEsHoja() {
+    _menuRaiz().setAttribute("data-look", info.id);
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", info.color);
+  }
+
+  if (!info.file) {
+    if (viejo && viejo.parentNode) viejo.parentNode.removeChild(viejo);
+    ponerLoQueNoEsHoja();
+    return Promise.resolve(true);
+  }
+
+  return new Promise(function (resolve) {
+    var nuevo = document.createElement("link");
+    nuevo.rel = "stylesheet";
+    nuevo.href = lookCssHref(info.id, _menuSello());
+    nuevo.onload = function () {
+      if (_menuAspectoPedido !== info.id) { resolve(false); return; }
+      if (viejo && viejo.parentNode) viejo.parentNode.removeChild(viejo);
+      nuevo.id = "aspectoCss";
+      _menuAspectoEnlace = null;
+      ponerLoQueNoEsHoja();
+      resolve(true);
+    };
+    nuevo.onerror = function () {
+      if (nuevo.parentNode) nuevo.parentNode.removeChild(nuevo);
+      if (_menuAspectoEnlace === nuevo) _menuAspectoEnlace = null;
+      resolve(false);
+    };
+    _menuAspectoEnlace = nuevo;
+    document.head.appendChild(nuevo);
+  });
+}
+
+/** El usuario pulsó una tarjeta: cargar, guardar solo si quedó puesto. */
+function _menuElegirAspecto(id) {
+  if (typeof saveLook !== "function") return;
+  var info = lookInfo(id);
+  _menuEstadoAspecto("ui.aspecto_puesto", { nombre: _menuNombreAspecto(info.id) });
+  applyLookToDom(info.id).then(function (puesto) {
+    if (_menuAspectoPedido !== info.id) return;     // pidió otro mientras tanto
+    if (puesto) {
+      saveLook(info.id);
+      _menuPintarAspectos();
+      _menuEstadoAspecto("ui.aspecto_puesto", { nombre: _menuNombreAspecto(info.id) });
+    } else {
+      // Se queda lo que había: lo que está en pantalla y lo guardado coinciden.
+      _menuAspectoPedido = getLook();
+      _menuPintarAspectos();
+      _menuEstadoAspecto("ui.aspecto_sin_red");
+    }
+  });
+}
+
 function openAjustesDialog() {
   var d = document.getElementById("ajustesDialog");
   if (!d) return;
   _menuPintarTema();
   _menuPintarIdioma();
+  _menuPintarAspectos();
   if (typeof d.showModal === "function") d.showModal();
   else d.setAttribute("open", "");    // navegador sin <dialog>: al menos se ve
 }
@@ -315,6 +473,18 @@ function initAjustesMenu() {
     });
   }
 
+  // Aspecto: las tarjetas se pintan YA (para que el primer clic tenga a
+  // quién llegar) y un solo oyente en el grupo las atiende a todas.
+  var aspectos = document.getElementById("ajustesAspecto");
+  if (aspectos) {
+    _menuPintarAspectos();
+    aspectos.addEventListener("click", function (ev) {
+      var b = ev.target && ev.target.closest ? ev.target.closest("[data-aspecto]") : null;
+      if (!b) return;
+      _menuElegirAspecto(b.getAttribute("data-aspecto"));
+    });
+  }
+
   // Se poda la lista YA, no solo al abrir el diálogo: así nunca existe un
   // momento en el que el <select> ofrezca un idioma sin traducir.
   _menuPintarIdioma();
@@ -325,6 +495,7 @@ function initAjustesMenu() {
       if (typeof saveLang !== "function") return;
       var elegido = saveLang(idioma.value);
       applyI18nToDom(elegido);
+      _menuPintarAspectos();
       // El <select> se vuelve a pintar por si el valor pedido no era
       // válido y saveLang() lo dejó en otro: la pantalla tiene que
       // enseñar lo que de verdad ha quedado guardado, no lo que se pulsó.

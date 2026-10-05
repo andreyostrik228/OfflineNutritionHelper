@@ -418,5 +418,18 @@ registerI18nTable("en", {
   "ui.sumar_uno": "{campo}: more",
   "ui.abrev_proteina": "P",
   "ui.abrev_carbos": "C",
-  "ui.abrev_grasas": "F"
+  "ui.abrev_grasas": "F",
+  "ui.aspecto": "Appearance",
+  "ui.elige_como_quieres_ver_la_aplicacion": "Choose how the app looks.",
+  "ui.aspecto_entreno": "Standard",
+  "ui.aspecto_hojas": "Leaves",
+  "ui.aspecto_cristal": "Glass",
+  "ui.aspecto_avena": "Oatmeal",
+  "ui.aspecto_relieve": "Soft relief",
+  "ui.aspecto_pegatinas": "Stickers",
+  "ui.aspecto_mercadillo": "Market",
+  "ui.aspecto_revista": "Magazine",
+  "ui.aspecto_noche": "Night forest",
+  "ui.aspecto_puesto": "Appearance: {nombre}",
+  "ui.aspecto_sin_red": "Couldn't load this look. Check your connection and try again."
 });

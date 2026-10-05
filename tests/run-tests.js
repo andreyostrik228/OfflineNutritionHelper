@@ -58,6 +58,7 @@ function drain() {
 
 var suites = [
   "theme.test",
+  "look.test",
   "i18n.test",
   "shopping-cost.test",
   "shopping-checks.test",

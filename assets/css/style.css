@@ -2337,6 +2337,59 @@ input[type="time"] { font-variant-numeric: tabular-nums; }
 }
 .ajustes-action:hover { border-color: var(--primary); }
 
+/* ── Aspecto: las tarjetas con vista previa del menú de ajustes ──────────
+   El primero (el aspecto por defecto) va arriba a la izquierda. Las tarjetas
+   usan SOLO tokens, así que cada aspecto las recolorea sin saberlo; los
+   ficheros de assets/css/temas/ las tratan además como "fichas" (CHIP) y
+   repiten su maquetación al final para que ningún estilo de ficha la rompa. */
+.aspecto-lista {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+@media (min-width: 540px) {
+  .aspecto-lista { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+.aspecto-card {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto auto;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 8px 10px;
+  border: 1.5px solid var(--field-line);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  color: var(--ink);
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.aspecto-card:hover { border-color: var(--primary); }
+.aspecto-card[aria-checked="true"] {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--on-ink);
+  box-shadow: var(--active-accent);
+}
+.aspecto-card__vista {
+  display: block;
+  aspect-ratio: 6 / 5;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--line);
+}
+.aspecto-card__vista img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+}
+.aspecto-card__nombre { overflow-wrap: anywhere; }
+
 /* ── Despensa ───────────────────────────────────────────────────────── */
 .pantry-intro { font-size: 14px; line-height: 1.5; color: var(--text-2); }
 .pantry-add {

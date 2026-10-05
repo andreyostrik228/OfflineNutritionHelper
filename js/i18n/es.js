@@ -384,5 +384,18 @@ registerI18nTable("es", {
   "ui.sumar_uno": "{campo}: más",
   "ui.abrev_proteina": "P",
   "ui.abrev_carbos": "C",
-  "ui.abrev_grasas": "G"
+  "ui.abrev_grasas": "G",
+  "ui.aspecto": "Aspecto",
+  "ui.elige_como_quieres_ver_la_aplicacion": "Elige cómo quieres ver la aplicación.",
+  "ui.aspecto_entreno": "Estándar",
+  "ui.aspecto_hojas": "Hojas",
+  "ui.aspecto_cristal": "Cristal",
+  "ui.aspecto_avena": "Avena",
+  "ui.aspecto_relieve": "Relieve suave",
+  "ui.aspecto_pegatinas": "Pegatinas",
+  "ui.aspecto_mercadillo": "Mercadillo",
+  "ui.aspecto_revista": "Revista",
+  "ui.aspecto_noche": "Bosque de noche",
+  "ui.aspecto_puesto": "Aspecto: {nombre}",
+  "ui.aspecto_sin_red": "No se pudo cargar este aspecto. Comprueba la conexión e inténtalo de nuevo."
 });

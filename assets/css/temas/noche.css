@@ -1,0 +1,526 @@
+/* ══ Aspecto «Ночной лес» (noche) ═══════════════════════════════════════════════
+   GENERADO por scripts/temas/construir.py a partir de scripts/temas/aspectos/noche.py.
+   No editar a mano: se pierde la próxima vez que se genere. Se carga DESPUÉS de
+   style.css (ver js/core/look.js y el <head> de index.html). ══ */
+@font-face { font-family: "Exo 2"; font-style: normal; font-weight: 500 800; font-display: swap; src: url("../../fonts/exo-2-normal-cyrillic-ext-adf0c6.woff2") format("woff2"); unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F; }
+@font-face { font-family: "Exo 2"; font-style: normal; font-weight: 500 800; font-display: swap; src: url("../../fonts/exo-2-normal-cyrillic-46be12.woff2") format("woff2"); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: "Exo 2"; font-style: normal; font-weight: 500 800; font-display: swap; src: url("../../fonts/exo-2-normal-latin-ext-5a1f43.woff2") format("woff2"); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: "Exo 2"; font-style: normal; font-weight: 500 800; font-display: swap; src: url("../../fonts/exo-2-normal-latin-32270d.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "Onest"; font-style: normal; font-weight: 400 800; font-display: swap; src: url("../../fonts/onest-normal-cyrillic-ext-992f92.woff2") format("woff2"); unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F; }
+@font-face { font-family: "Onest"; font-style: normal; font-weight: 400 800; font-display: swap; src: url("../../fonts/onest-normal-cyrillic-4c7562.woff2") format("woff2"); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: "Onest"; font-style: normal; font-weight: 400 800; font-display: swap; src: url("../../fonts/onest-normal-latin-ext-27cee5.woff2") format("woff2"); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: "Onest"; font-style: normal; font-weight: 400 800; font-display: swap; src: url("../../fonts/onest-normal-latin-cebbb5.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+
+/* ── neutralizar lo propio del diseño base ── */
+.form-section-label::before{transform:none}
+.topbar__brand-mark{transform:none}
+.meta .k{font-size:13px}
+.summary-card .sub{font-size:13px}
+.schedule-timeline__next-tag{font-size:13px}
+.schedule-timeline__note{font-size:13px}
+.meal-time-badge{transform:none}
+.food-macro__badge{font-size:13px}
+.food-cost__tag{font-size:13px}
+.food-purchase__badge{font-size:13px}
+.meal-footer > div{font-size:13px}
+.meal-steps__badge{font-size:13px}
+.empty-icon{transform:none}
+.shopping-summary__stat span{font-size:13px}
+.shopping-item__pantry{font-size:13px}
+.shopping-item__usage-price{font-size:13px}
+.pantry-purchase-row__grams{font-size:13px}
+.pantry-purchase-row__pantry-note{font-size:13px}
+.pantry-meal-chips__label{font-size:13px}
+.nocook-disclaimer{font-size:13px}
+.nutrition-approx{font-size:13px}
+.nocook-slot__kind{font-size:13px}
+.nocook-level{font-size:13px}
+.nocook-item__brand{font-size:13px}
+.nocook-item__whole{font-size:13px}
+.nocook-item__allergens{font-size:13px}
+.verified-card__brand{font-size:13px}
+.verified-card__macros{font-size:13px}
+.verified-card__no-nutrition{font-size:13px}
+.verified-card__badge{font-size:13px}
+.insights li::before{transform:none}
+.footer-note{font-size:13px}
+.legal-dialog__version{font-size:13px}
+.pantry-item__expiry{font-size:13px}
+.onboarding__brand-mark{transform:none}
+.onboarding__summary li::before{transform:none}
+@media screen and (max-width: 900px){.tabbar__btn{font-size:13px}}
+/* ── núcleo común: una escala de tamaños, una escalera de alturas ── */
+
+/* ═══════════════ KIT — one size system for every style ═══════════════
+   type:   13 caption · 14 small · 16 body · 17/18 buttons · 20 small figure · 26 figure · 32 big figure · 44 THE figure
+   height: 40 small control · 52 standard control · 58 main action
+   Nothing is smaller than 13px, nothing (but the brand name) is bigger than 44px.                        */
+:root{
+  --fs-cap:13px; --fs-sm:14px; --fs-md:16px; --fs-lg:18px;
+  --fs-btn:17px; --fs-btn-sm:14px; --fs-btn-lg:18px;
+  --fs-fig-s:20px; --fs-fig-m:26px; --fs-fig-l:32px; --fs-fig-xl:44px;
+  --fs-h2:30px; --fs-h2-md:34px; --fs-h2-lg:38px; --fs-h3:20px; --fs-title:34px; --fs-q:30px; --fs-dlg:26px; --fs-label:13px;
+  --fw-display:700; --fw-fig:800; --fw-btn:700; --fw-label:700; --fw-hero:800;
+  --ls-display:0; --ls-fig:0; --ls-btn:0; --ls-label:0;
+  --tt-display:none; --tt-btn:none; --tt-label:none;
+  --lh-display:1.1;
+  --h-sm:40px; --h-md:52px; --h-lg:58px;
+  --r-ctl:16px; --pill:999px;
+  --hero-k:5.4; --hero-max:84px;
+  --active-accent:0 0 0 0 transparent;
+  --font-label:var(--font-body);
+}
+
+/* fields (before the stepper rules below, which must win) */
+input[type="text"],input[type="number"],input[type="email"],input[type="password"],input[type="time"],input[type="search"],input[type="date"],select,textarea{min-height:var(--h-md);font-size:var(--fs-md)}
+
+/* headings ------------------------------------------------------------------------------ */
+h2{font:var(--fw-display) var(--fs-h2)/var(--lh-display) var(--font-display);letter-spacing:var(--ls-display);text-transform:var(--tt-display)}
+@media(min-width:600px){h2{font-size:var(--fs-h2-md)}}
+@media(min-width:901px){h2{font-size:var(--fs-h2-lg)}}
+.onboarding__title{font:var(--fw-display) var(--fs-title)/1.08 var(--font-display);letter-spacing:var(--ls-display);text-transform:var(--tt-display)}
+.onboarding__question{font:var(--fw-display) var(--fs-q)/1.12 var(--font-display);letter-spacing:var(--ls-display);text-transform:var(--tt-display)}
+.auth-dialog__head h2,.ajustes-dialog__title{font-size:var(--fs-dlg)}
+.tour__title,.nocook-slot__head h3{font:var(--fw-display) 22px/1.15 var(--font-display);letter-spacing:var(--ls-display);text-transform:var(--tt-display)}
+.legal-dialog__body h3,.pantry-history-heading,.insights h3,.ajustes-group__title{font:var(--fw-display) var(--fs-h3)/1.15 var(--font-display);letter-spacing:var(--ls-display);text-transform:var(--tt-display)}
+.ajustes-group__title{font-size:var(--fs-md)}
+.day-slide__n{font:var(--fw-fig) var(--fs-fig-m)/1 var(--font-display);letter-spacing:var(--ls-fig);text-transform:var(--tt-display)}
+@media(min-width:901px){.day-slide__n{font-size:var(--fs-fig-m)}}
+.topbar__brand,.onboarding__brand-name{font:var(--fw-display) 22px/1 var(--font-display);letter-spacing:var(--ls-display);text-transform:var(--tt-display)}
+.hero__nombre{font:var(--fw-hero) clamp(34px,calc((100cqw - 24px) / var(--hero-k)),var(--hero-max))/1 var(--font-display);letter-spacing:var(--ls-display);text-transform:var(--tt-display)}
+.meal-head h3{font:700 var(--fs-lg)/1.3 var(--font-body)}
+.sin-js h1{font-size:30px;text-transform:var(--tt-display)}
+
+/* labels (small captions above fields / inside tiles) ------------------------------------ */
+.form-section-label,.budget-group-label,.field>label,.budget-custom-field>label,.budget-chip__title,.summary-card h3,.tour__counter,.onboarding__progress-label,.suggest-list__item--group{
+  font:var(--fw-label) var(--fs-label)/1.25 var(--font-label);letter-spacing:var(--ls-label);text-transform:var(--tt-label)}
+.field>label,.budget-custom-field>label{font-size:var(--fs-sm)}
+.meta .k,.shopping-summary__stat span,.meal-footer>div,.food-cost__tag,.pantry-meal-chips__label,.food-macro__badge,.food-purchase__badge,.nocook-level,.next-meal-sticky__eyebrow,.schedule-timeline__next-tag,.badge{
+  font-family:var(--font-label);font-size:var(--fs-cap);font-weight:var(--fw-label);letter-spacing:var(--ls-label);text-transform:var(--tt-label)}
+.meal-footer>div{line-height:1.2}
+.shopping-summary__stat span{font-size:var(--fs-sm)}
+.badge{font-size:var(--fs-cap)}
+
+/* figures: units ("ккал", "г") are a little smaller than the number ----------------------- */
+.u{font-size:max(13px,.5em);font-weight:600;letter-spacing:0;margin-left:.22em;white-space:nowrap}
+.summary-card .big{font:var(--fw-fig) var(--fs-fig-l)/1 var(--font-display);letter-spacing:var(--ls-fig);font-variant-numeric:tabular-nums;white-space:nowrap}
+.summary-card--calories .big{font-size:var(--fs-fig-xl)}
+.summary-card .sub{font-size:var(--fs-cap);line-height:1.3}
+.shopping-summary__stat strong{font:var(--fw-fig) var(--fs-fig-m)/1 var(--font-display);letter-spacing:var(--ls-fig);font-variant-numeric:tabular-nums;white-space:nowrap}
+.shopping-summary__stat:nth-child(2) strong,
+.shopping-summary__stat:not(:nth-child(2)) strong{font-size:var(--fs-fig-m);white-space:nowrap;letter-spacing:var(--ls-fig)}
+.shopping-summary__stat:nth-child(2) strong{font-size:var(--fs-fig-xl)}
+.nocook-summary__row:first-child{font:var(--fw-fig) var(--fs-fig-l)/1 var(--font-display)}
+.meal-kcal,.nocook-slot__kcal,.shopping-item__price{font:var(--fw-fig) var(--fs-fig-m)/1 var(--font-display);letter-spacing:var(--ls-fig);font-variant-numeric:tabular-nums}
+.shopping-item__price{font-size:22px}
+.budget-chip__amount,.onboarding__choice-amount,.schedule-timeline__time,.next-meal-sticky__time,.pantry-active-card__date{font:var(--fw-fig) 24px/1 var(--font-display);letter-spacing:var(--ls-fig);font-variant-numeric:tabular-nums}
+.meal-time-badge,.food-right>div:first-child,.meal-footer strong,.verified-card__price,.meta .v,.pantry-meal-chip__time{font:var(--fw-fig) var(--fs-fig-s)/1 var(--font-display);letter-spacing:var(--ls-fig);font-variant-numeric:tabular-nums;text-transform:none}
+.meal-footer strong{font-size:var(--fs-lg)}
+.paso-a-paso input{font:var(--fw-fig) var(--fs-fig-m)/1 var(--font-display);letter-spacing:var(--ls-fig)}
+.onboarding__number,.onboarding__time{font:var(--fw-fig) 40px/1 var(--font-display);letter-spacing:var(--ls-fig)}
+.onboarding__text{font:600 var(--fs-lg)/1.3 var(--font-body)}
+.onboarding__unit{font:var(--fw-display) 22px/1 var(--font-display);text-transform:none}
+.pantry-item__amount{font:var(--fw-fig) var(--fs-md)/1 var(--font-display);letter-spacing:0}
+.tabbar__cuenta{font:var(--fw-fig) 14px/22px var(--font-display);letter-spacing:0}
+.meal-steps__list li::before{font:var(--fw-fig) var(--fs-md)/1 var(--font-display)}
+
+/* controls: one ladder -------------------------------------------------------------------- */
+.btn-primary,.btn-secondary,.onboarding__btn,.tour__prev,.tour__next,.legal-dialog__done,.pantry-add>button,.delete-dialog__confirm,.pantry-active-card__buy-btn{
+  min-height:var(--h-md);font:var(--fw-btn) var(--fs-btn)/1.15 var(--font-display);letter-spacing:var(--ls-btn);text-transform:var(--tt-btn)}
+.actions .btn-primary,.shopping-panel__actions .btn-primary,.nocook-panel>.btn-primary,.onboarding__btn--big{min-height:var(--h-lg);font-size:var(--fs-btn-lg)}
+.actions-secondary .btn-secondary,.shopping-panel__actions .btn-secondary{min-height:var(--h-md);font-size:var(--fs-btn)}
+.actions-secondary #resetBtn{min-height:var(--h-sm);font-size:var(--fs-sm)}
+.resumen-datos__btn,.meal-swap-btn,.pantry-active-card__delete,.traduccion-aviso__si,.traduccion-aviso__no{
+  min-height:var(--h-sm);font:var(--fw-btn) var(--fs-btn-sm)/1.1 var(--font-display);letter-spacing:var(--ls-btn);text-transform:var(--tt-btn)}
+.baldosa,.budget-chip,.onboarding__choice,.pantry-meal-chip,.date-chip{min-height:var(--h-md)}
+.baldosa{font:600 var(--fs-md)/1.2 var(--font-body)}
+.budget-chip{min-height:76px}
+.budget-chip--custom{min-height:var(--h-md)}
+.date-chip,.plan-days__btn,.ajustes-choice__btn{font:var(--fw-btn) var(--fs-md)/1 var(--font-display);letter-spacing:var(--ls-btn);text-transform:var(--tt-btn)}
+.plan-days__btn,.ajustes-choice__btn{min-height:var(--h-md)}
+.paso-a-paso__btn{width:44px;height:44px;font:500 28px/1 var(--font-body)}
+.paso-a-paso input{height:44px;min-height:44px}
+.meal-steps__toggle{font:var(--fw-btn) var(--fs-md)/1 var(--font-display);letter-spacing:var(--ls-btn);text-transform:var(--tt-btn)}
+.tabbar__btn{font-size:var(--fs-cap)}
+.next-meal-sticky__label{font-size:var(--fs-sm)}
+
+/* steppers on narrow phones: smaller knobs so a 3-digit number always fits; 1 column below 340px */
+@media(max-width:389px){
+  .paso-a-paso{gap:2px;padding:3px}
+  .paso-a-paso__btn{width:40px;height:40px}
+  .paso-a-paso input{font-size:22px;height:40px;min-height:40px}
+}
+@media(max-width:339px){.form-grid{grid-template-columns:minmax(0,1fr)}}
+
+/* tap targets: nothing smaller than 40px */
+.site-footer__link,.onboarding__skip,.onboarding__skip-questions,.tour__skip,.pantry-link-btn,.auth-dialog__switch-btn{min-height:40px}
+.onboarding__skip,.onboarding__skip-questions{display:flex;align-items:center;justify-content:center;width:fit-content;padding:6px 10px}
+.product-find-btn{width:40px;height:40px;font-size:18px}
+.days-carousel__dot{width:40px;height:40px}
+
+/* ═══ layout fixes that go into the final design whatever the style ═══ */
+/* ingredient rows: both cost cells share one full-width row so the NAME is never squeezed */
+.food-row{grid-template-areas:"name kcal" "meta meta" "costs costs" "buy buy"}
+.food-cost--usage{grid-area:costs;justify-self:start}
+.food-cost--package{grid-area:costs;justify-self:end}
+.food-cost{font-size:var(--fs-sm)}
+.food-name{font-size:var(--fs-md)}
+.food-meta{font-size:var(--fs-sm)}
+/* meal-card head: swap button never wraps */
+.meal-card{container-type:inline-size}
+.meal-head{grid-template-columns:auto auto 1fr}
+.meal-kcal{justify-self:end}
+.meal-swap-btn{white-space:nowrap}
+@container (max-width:310px){.meal-head{grid-template-columns:auto 1fr;grid-template-areas:"time kcal" "title title" "swap swap"}}
+@container (max-width:290px){.food-row{grid-template-areas:"name kcal" "meta meta" "costs costs" "pack pack" "buy buy"}.food-cost--package{grid-area:pack;justify-self:start}}
+/* tablet: five budget chips in one row made the amounts wrap ("Сбалансированный" broke mid-word) */
+@media(min-width:600px) and (max-width:900px){.budget-modes{grid-template-columns:repeat(2,minmax(0,1fr))}.budget-chip--custom{grid-column:1/-1;flex-direction:row;align-items:center}}
+@media(min-width:768px) and (max-width:900px){.budget-modes{grid-template-columns:repeat(4,minmax(0,1fr))}}
+/* tab names wrap instead of being cut with an ellipsis */
+@media screen and (max-width:900px){
+  .tabbar__texto{white-space:normal;overflow:visible;text-overflow:clip;text-align:center;line-height:1.12;overflow-wrap:anywhere}
+  .next-meal-sticky__label{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.25}
+  .next-meal-sticky__btn{min-height:56px}
+}
+@media(max-width:359px){.tabbar__btn{padding-inline:2px}}
+/* "your data" strip */
+.resumen-datos__texto{-webkit-line-clamp:3;font-size:var(--fs-sm)}
+.resumen-datos__btn{white-space:normal;line-height:1.15;padding:8px 16px;max-width:42%;text-align:center}
+/* money tiles on the shopping screen keep their figures on one line */
+.shopping-summary__stat{min-width:0}
+/* the dots under the day carousel are decoration, keep them tidy */
+.days-carousel__hint{font-size:var(--fs-sm)}
+.schedule-timeline__label{font-size:var(--fs-sm)}
+.schedule-timeline__note{font-size:var(--fs-cap)}
+
+@media print{body::before,body::after{display:none!important}}
+
+/* ── el aspecto ── */
+:root{--canvas:#0C1713;--surface:#14231C;--surface-2:#1B2E25;--line:#2A4034;--line-strong:#3A5546;--field-line:#6A8A7B;--ink:#E9F3EC;--text-2:#B5C9BC;--text-3:#93AB9D;--primary:#7BE0B0;--ink-2:#6CD6A4;--ink-3:#95EAC2;--on-ink:#06231A;--on-ink-2:#134232;--volt:#C6EA7C;--volt-hi:#A9DE8E;--volt-wash:#1D3527;--on-volt:#0C1713;--volt-rgb:198, 234, 124;--volt-hi-rgb:169, 222, 142;--surface-rgb:20, 35, 28;--shadow-rgb:0, 0, 0;--primary-rgb:123, 224, 176;--kcal:#FF9473;--kcal-deep:#FF9473;--kcal-wash:#3A231B;--protein:#B9A8FF;--protein-deep:#B9A8FF;--protein-wash:#2A2540;--carbs:#F5C65A;--carbs-deep:#F5C65A;--carbs-wash:#3A3017;--fat:#63D8E8;--fat-deep:#63D8E8;--fat-wash:#133539;--ok:#8FE3B4;--ok-wash:#173A2A;--warn:#F5C65A;--warn-wash:#3A2E12;--danger:#C23B2C;--danger-deep:#FF9C8F;--danger-wash:#3D1D1A;--font-display:"Exo 2",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;--font-body:"Onest",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;--font-label:"Exo 2",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;--r-sm:12px;--r-md:16px;--r-lg:22px;--r-xl:26px;--r-ctl:16px;--shadow-1:0 1px 0 rgba(0,0,0,.25),0 18px 40px -22px rgba(0,0,0,.9);--shadow-2:0 30px 70px -20px rgba(0,0,0,.9);--fw-display:700;--fw-fig:700;--fw-btn:700;--fw-label:700;--fw-hero:800;--ls-label:.09em;--tt-label:uppercase;--hero-k:7.6;--hero-max:84px;--fs-fig-m:24px;--h-topo:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1000' height='1000' viewBox='0 0 1000 1000' %3E%3Cpath d='M1000 204L996 202Q992 199 988 198Q984 196 980 196Q976 196 968 198Q960 200 956 203Q952 206 948 211Q943 216 940 223Q936 230 935 235Q933 240 933 248Q932 256 933 264Q935 272 937 276Q939 280 941 284Q944 288 951 292Q958 296 963 297Q968 298 973 297Q978 296 985 293Q992 289 996 285L1000 282M0 282L4 277Q7 272 9 268Q11 264 13 256Q15 248 16 244Q16 240 15 232Q13 224 11 220Q10 216 5 210L0 204M0 326L10 319Q19 312 26 305Q32 298 35 293Q39 288 44 276Q49 264 51 256Q53 248 53 240Q53 232 51 220Q49 208 46 200Q42 192 39 188Q37 184 28 176Q20 168 10 163L0 158M1000 158L992 157Q984 155 976 156Q968 157 960 160Q952 164 944 170Q936 176 930 184Q923 192 918 203Q912 215 910 223Q907 232 906 244Q904 256 906 268Q907 280 910 288Q912 296 917 304Q922 312 929 318Q936 325 944 329Q952 332 960 333Q968 335 976 333Q984 332 992 329L1000 326M0 356L8 352Q16 348 25 342Q34 336 42 328Q50 320 56 312Q61 304 67 294Q72 284 75 274Q79 264 81 252Q83 240 84 232Q84 224 83 216Q83 208 80 200Q78 192 75 184Q71 176 65 168Q59 160 53 155Q48 150 40 144Q32 138 24 134Q16 131 8 128L0 126M1000 126L988 126Q976 126 968 127Q960 129 953 133Q946 136 941 139Q936 143 928 150Q920 158 914 167Q908 176 902 188Q896 201 892 215Q888 230 887 243Q885 256 886 268Q887 280 891 292Q894 304 899 314Q904 323 912 333Q920 342 928 348Q936 353 940 355Q944 357 952 359Q960 361 972 360Q984 360 992 358L1000 356M0 405L8 404Q16 402 24 399Q32 396 44 390Q56 383 68 373Q80 362 90 349Q100 336 108 320Q116 304 122 284Q128 264 132 244Q136 224 138 204Q140 184 138 172Q137 160 134 152Q132 144 126 136Q121 128 116 124Q112 119 101 112Q90 104 73 95Q56 87 40 81Q24 76 12 74L0 72M1000 72L992 72Q984 72 976 73Q968 74 956 78Q944 82 932 90Q920 97 912 105Q904 114 899 121Q893 128 889 136Q884 144 877 160Q870 176 865 196Q859 216 858 228Q856 240 856 248Q855 256 857 272Q859 288 864 304Q869 320 878 336Q886 352 895 363Q904 374 912 381Q920 388 932 394Q944 401 956 403Q968 406 976 406Q984 407 992 406L1000 405M0 429L16 427Q32 424 40 422Q48 419 56 415Q64 411 76 401Q88 392 95 384Q102 376 107 368Q113 360 121 344Q129 328 135 308Q141 288 152 240Q163 192 165 180Q167 168 168 156Q168 144 168 136Q167 128 165 120Q163 112 161 108Q159 104 156 100Q153 96 147 92Q141 88 131 83Q120 79 88 67Q55 56 40 52Q24 48 12 47L0 45M1000 45L992 45Q984 45 976 46Q968 47 960 49Q952 51 944 55Q936 58 924 66Q912 74 902 85Q892 96 886 104Q881 112 877 120Q872 129 864 150Q856 170 851 193Q845 216 844 236Q842 256 844 272Q846 288 851 304Q856 320 864 336Q872 352 884 369Q896 386 908 397Q920 408 932 415Q944 421 956 424Q968 427 984 428L1000 429M0 454L12 454Q24 454 32 454Q40 453 48 452Q56 450 64 447Q72 444 80 438Q88 433 96 425Q104 417 110 408Q116 400 122 391Q128 381 135 367Q142 352 147 336Q151 320 159 284Q166 248 182 188Q198 128 200 116Q202 104 204 92Q205 80 204 72Q203 64 201 61Q200 58 196 54Q192 50 188 48Q184 46 176 45Q168 43 140 41Q112 38 72 29Q32 20 16 19L0 17M1000 17L984 18Q968 19 960 21Q952 23 944 25Q936 28 928 32Q920 36 912 42Q904 48 900 52Q895 56 889 64Q882 72 873 88Q863 104 858 116Q853 128 850 140Q846 152 840 176Q834 200 833 212Q831 224 830 236Q830 248 830 260Q831 272 832 280Q834 288 839 304Q844 320 854 340Q864 360 872 372Q880 384 888 395Q896 405 904 413Q912 421 924 430Q936 438 944 441Q952 444 960 447Q968 449 984 451L1000 454M258 0L261 5Q264 9 266 17Q269 24 269 28Q269 32 268 40Q267 48 263 60Q259 72 236 128Q213 184 204 208Q196 232 191 252Q187 272 183 308Q180 344 178 358Q176 371 172 386Q168 401 158 433Q147 464 144 480Q140 496 138 508Q137 520 136 532Q136 544 137 580Q139 616 139 632Q138 648 137 657Q136 665 134 673Q132 680 128 692Q123 704 117 712Q112 720 108 723Q104 727 100 729Q96 730 92 731Q88 731 84 729Q80 727 76 722Q72 716 70 710Q67 704 65 696Q63 688 60 644Q57 600 55 592Q54 584 52 576Q50 568 46 560Q42 552 36 544Q30 536 23 530Q16 523 8 518L0 513M832 0L830 28Q827 56 818 116Q810 176 807 196Q805 216 805 236Q805 256 807 268Q809 280 811 288Q813 296 819 312Q826 328 837 348Q848 369 864 396Q880 423 892 439Q904 455 912 463Q920 470 928 476Q936 481 968 497L1000 513M1000 945L980 947Q960 950 912 958Q864 967 856 968Q848 968 844 967Q840 967 839 963Q837 960 835 936Q833 912 831 900Q829 888 826 876Q823 864 817 852Q812 840 806 832Q800 824 796 820Q792 817 788 815Q784 813 776 811Q768 809 760 811Q752 812 744 817Q736 822 732 825Q728 829 724 835Q720 840 715 852Q709 864 707 876Q705 888 704 896Q704 904 705 912Q706 920 709 930Q712 940 716 946Q720 952 724 956Q728 960 732 962Q736 965 744 968Q752 971 764 973Q776 975 800 976Q824 976 828 980Q832 984 832 992L832 1000M258 1000L253 996Q248 991 240 986Q232 982 224 979Q216 976 208 974Q200 972 156 967Q112 962 76 955Q40 947 32 946Q24 946 12 945L0 945M284 0L286 5Q288 11 289 17Q290 24 290 28Q290 32 288 40Q286 48 283 56Q279 64 262 100Q245 136 232 168Q218 200 212 216Q206 232 202 248Q198 264 197 280Q195 296 195 324Q195 352 194 364Q193 376 191 388Q188 400 181 432Q173 464 170 484Q167 504 167 520Q167 536 168 584Q170 632 169 648Q168 664 165 680Q163 696 158 712Q153 728 149 740Q144 752 132 774Q120 797 106 818Q92 840 88 848Q85 856 84 860Q84 864 85 868Q85 872 89 880Q94 888 101 896Q109 904 114 908Q119 912 126 916Q133 920 142 924Q151 928 179 938Q208 947 224 954Q240 961 252 969Q264 977 268 981Q272 984 278 992L284 1000M713 0L736 12Q758 24 764 28Q770 32 777 39Q784 47 788 55Q792 64 794 76Q797 88 797 100Q798 112 795 164Q791 216 792 236Q792 256 796 272Q799 288 802 296Q804 304 810 316Q816 328 848 386Q880 444 888 457Q896 469 900 474Q904 479 912 487Q920 495 949 515Q979 536 983 540Q988 544 994 551L1000 559M0 880L7 876Q14 872 18 868Q23 864 26 860Q29 856 31 848Q34 840 28 796Q23 752 22 700Q21 648 20 632Q19 616 16 600Q12 584 9 576Q5 568 3 563L0 559M1000 880L988 885Q976 890 964 893Q952 896 940 896Q928 897 920 895Q912 893 907 891Q902 888 895 882Q888 877 880 866Q872 855 857 831Q842 808 835 800Q829 792 822 787Q816 781 808 777Q800 773 792 771Q784 769 776 770Q768 770 760 772Q752 775 744 779Q736 783 732 786Q728 789 722 794Q716 800 710 808Q704 815 698 828Q691 840 687 856Q683 872 681 892Q679 912 680 924Q681 936 682 944Q683 952 686 960Q688 968 692 976Q696 983 700 988Q704 992 709 996L713 1000M303 0L305 4Q306 8 307 16Q307 24 305 36Q302 48 281 88Q261 128 245 164Q228 200 222 216Q216 232 213 244Q210 256 208 264Q207 272 206 284Q206 296 207 328Q209 360 209 372Q208 384 207 396Q205 408 199 436Q194 464 192 484Q190 504 189 520Q189 536 191 580Q192 624 191 644Q190 664 188 680Q186 696 183 708Q181 720 167 768Q153 816 152 824Q151 832 150 840Q150 848 151 856Q153 864 154 868Q155 872 160 880Q164 888 168 892Q172 896 182 904Q192 912 220 929Q248 945 260 954Q272 962 283 973Q294 984 299 992L303 1000M671 0L676 7Q680 14 685 19Q690 24 697 29Q704 34 720 44Q736 54 742 59Q749 64 754 70Q760 77 763 82Q766 88 770 100Q774 112 776 124Q777 136 777 180Q777 224 778 236Q778 248 780 260Q782 272 786 284Q790 296 797 312Q805 328 824 360Q842 392 861 431Q880 469 888 483Q896 496 904 506Q912 516 935 538Q958 560 967 572Q975 584 978 592Q981 600 983 608Q985 616 986 624Q988 632 988 644Q988 656 986 684Q984 712 979 736Q974 760 971 769Q968 778 964 785Q960 792 956 797Q952 802 948 805Q944 807 940 809Q936 810 932 811Q928 811 920 809Q912 807 904 803Q896 798 876 780Q856 763 848 757Q840 751 832 747Q824 743 812 740Q800 737 788 738Q776 739 764 743Q752 747 740 754Q728 761 716 771Q704 782 697 791Q690 800 685 809Q680 818 676 829Q672 840 668 856Q665 872 663 892Q662 912 662 932Q662 952 663 964Q664 977 668 988L671 1000M337 0L338 8Q339 16 339 20Q339 24 336 32Q334 40 330 48Q326 56 307 88Q288 120 268 160Q248 199 241 216Q234 232 230 248Q226 264 225 272Q225 280 225 292Q226 304 232 336Q238 368 239 384Q240 400 235 436Q230 472 229 488Q228 504 227 520Q227 536 228 580Q229 624 228 644Q227 664 225 684Q222 704 214 744Q206 784 205 800Q203 816 204 824Q204 832 206 840Q207 848 210 856Q213 864 218 872Q223 880 234 892Q245 904 270 926Q296 948 306 958Q316 968 323 976Q329 984 333 992L337 1000M625 0L625 8Q624 16 625 24Q626 32 629 40Q632 48 635 52Q637 56 647 65Q656 75 676 89Q696 103 701 107Q707 112 713 120Q720 127 725 136Q729 144 732 152Q735 160 736 168Q738 176 742 208Q746 240 749 256Q753 272 760 288Q768 304 792 340Q816 376 823 388Q829 400 835 412Q840 424 847 444Q854 464 870 520Q886 576 889 588Q891 600 892 608Q893 616 891 624Q890 632 888 636Q886 640 883 644Q879 648 876 651Q872 653 864 657Q856 661 824 672Q792 684 768 696Q744 708 732 716Q720 724 708 733Q696 742 687 751Q678 760 672 768Q666 776 661 784Q656 792 653 800Q650 808 646 824Q641 840 640 852Q639 864 636 900Q633 936 629 968L625 1000M353 0L354 8Q355 16 355 20Q354 24 352 32Q349 40 344 48Q340 56 324 80Q308 104 296 124Q285 144 266 184Q246 224 242 236Q238 248 236 256Q235 264 234 272Q233 280 234 292Q235 304 245 340Q254 376 255 384Q256 392 256 400Q257 408 252 444Q248 480 247 496Q245 512 246 568Q247 624 246 644Q245 664 242 684Q239 704 232 740Q225 776 223 792Q222 808 223 820Q224 832 225 840Q227 848 231 856Q234 864 239 872Q244 880 254 892Q265 904 291 928Q317 952 325 960Q332 968 338 976Q345 984 349 992L353 1000M608 0L605 12Q603 24 602 32Q602 40 603 48Q604 56 606 61Q608 65 612 72Q616 78 620 83Q624 88 632 95Q640 102 662 119Q684 136 690 143Q696 149 699 155Q703 160 708 172Q713 184 720 216Q727 248 733 264Q739 280 749 296Q758 312 783 344Q807 376 812 384Q817 392 823 404Q829 416 835 432Q840 448 844 464Q848 480 851 500Q854 520 855 540Q856 560 856 572Q855 584 853 592Q851 600 847 608Q843 616 836 624Q830 632 814 644Q799 656 761 680Q723 704 706 716Q690 728 677 740Q665 752 656 764Q648 776 642 788Q637 800 634 812Q631 824 629 836Q628 848 625 892Q622 936 620 948Q618 960 613 980L608 1000M369 0L370 8Q372 16 371 20Q371 24 368 32Q365 40 342 71Q320 102 310 119Q299 136 277 180Q255 224 250 236Q246 248 245 256Q243 264 243 272Q242 280 243 292Q245 304 248 316Q252 328 261 352Q270 376 272 384Q274 392 274 400Q275 408 274 420Q274 432 270 456Q267 480 266 496Q264 512 265 564Q265 616 264 636Q263 656 260 676Q257 696 249 736Q241 776 240 792Q238 808 239 820Q240 832 243 840Q245 848 248 856Q252 864 256 872Q261 880 271 892Q282 904 315 936Q348 968 354 976Q361 984 365 992L369 1000M592 0L586 16Q579 32 578 40Q576 48 577 56Q578 64 580 72Q583 80 588 88Q592 96 600 106Q608 116 632 140Q656 164 664 174Q672 183 678 196Q685 208 694 232Q704 256 710 268Q716 280 726 292Q735 304 759 331Q784 358 796 375Q808 392 815 404Q821 416 826 432Q832 448 835 464Q838 480 839 500Q841 520 840 536Q839 552 836 564Q834 576 829 588Q823 600 818 608Q813 616 805 624Q798 632 789 640Q779 648 734 680Q688 712 678 720Q668 728 658 738Q648 749 641 758Q635 768 630 780Q625 792 622 804Q619 816 618 832Q616 848 616 876Q615 904 613 920Q612 936 608 952Q604 968 598 984L592 1000M407 0L410 8Q414 16 414 20Q414 24 412 28Q411 32 404 40Q398 48 375 70Q352 92 344 101Q336 111 330 119Q324 128 298 176Q272 225 268 236Q263 248 262 260Q260 272 261 284Q263 296 267 308Q272 320 280 332Q288 344 303 364Q318 384 322 392Q326 400 327 408Q329 416 328 428Q327 440 322 460Q318 480 315 496Q313 512 311 556Q310 600 309 616Q307 632 303 652Q299 672 289 708Q278 744 275 760Q271 776 269 792Q268 808 269 820Q270 832 272 840Q274 848 278 856Q281 864 289 876Q297 888 308 901Q320 914 354 945Q388 976 397 988L407 1000M559 0L544 16Q530 32 527 36Q524 40 523 44Q521 48 521 52Q520 56 522 64Q524 72 537 100Q550 128 554 140Q559 152 560 160Q562 168 562 176Q563 184 561 196Q558 208 553 220Q547 232 541 240Q536 248 529 256Q522 264 491 296Q461 328 451 340Q441 352 436 360Q431 368 428 376Q424 384 422 392Q421 400 421 408Q422 416 426 424Q429 432 434 438Q440 444 444 446Q448 448 452 449Q456 450 460 449Q464 449 468 447Q472 446 484 438Q496 430 536 392Q576 355 592 342Q608 330 616 325Q624 321 632 318Q640 315 648 314Q656 312 664 313Q672 313 680 315Q688 317 696 320Q704 323 720 332Q736 341 748 350Q760 359 772 371Q784 383 792 395Q801 408 806 420Q811 432 814 444Q818 456 819 472Q820 488 819 504Q818 520 814 536Q810 552 807 560Q804 568 800 576Q796 584 788 596Q780 608 770 618Q760 629 748 639Q736 649 724 658Q712 667 683 685Q654 704 643 712Q633 720 625 728Q617 736 612 744Q607 752 603 764Q598 776 597 788Q595 800 595 812Q594 824 595 860Q597 896 595 912Q594 928 590 940Q587 952 584 960Q580 968 576 976Q571 984 565 992L559 1000M433 0L445 11Q456 22 460 25Q464 28 468 29Q472 30 476 29Q480 29 492 24Q504 20 512 16Q520 12 529 6L539 0M424 55Q408 62 396 70Q384 77 376 84Q368 90 358 101Q347 112 341 120Q335 128 328 141Q320 153 301 189Q282 224 277 236Q273 248 271 260Q269 272 270 280Q271 288 274 296Q276 304 282 313Q288 323 296 331Q304 340 316 348Q328 356 336 360Q344 363 352 364Q360 366 368 364Q376 362 388 355Q400 348 412 338Q424 328 449 304Q474 280 486 268Q497 256 506 244Q516 232 520 224Q525 216 529 204Q534 192 535 180Q536 168 534 156Q532 144 528 132Q523 120 516 108Q510 96 499 81Q488 66 480 57Q472 49 468 46Q464 43 460 43Q456 43 448 45Q440 48 424 55ZM539 1000L545 994Q552 989 560 979Q568 969 572 960Q577 952 580 940Q584 928 585 920Q587 912 587 900Q587 888 585 852Q582 816 582 800Q582 784 583 772Q585 760 587 752Q590 744 592 740Q594 736 600 728Q606 720 611 716Q616 712 664 683Q712 653 724 644Q736 635 746 626Q757 616 767 604Q776 592 784 580Q791 568 796 556Q801 544 804 532Q807 520 809 504Q811 488 810 472Q810 456 808 448Q806 440 803 432Q800 424 796 416Q792 408 788 402Q784 396 779 390Q774 384 767 377Q760 371 748 362Q736 354 728 350Q720 346 712 344Q704 341 696 339Q688 337 680 337Q672 336 660 337Q648 339 636 343Q624 348 612 355Q600 362 588 372Q576 381 562 395Q548 408 538 420Q527 432 514 448Q501 464 483 490Q464 516 456 525Q448 534 444 537Q440 540 436 541Q432 543 428 543Q424 544 420 543Q416 543 400 538Q384 534 380 534Q376 535 372 538Q368 542 364 549Q360 557 349 595Q338 632 319 680Q300 728 294 744Q289 760 286 772Q283 784 282 792Q281 800 281 808Q281 816 282 824Q283 832 285 840Q288 848 291 856Q294 864 299 872Q304 880 311 888Q317 896 330 910Q344 923 375 950Q407 976 420 988L433 1000M486 0L495 0M400 84Q392 87 384 93Q376 98 368 105Q360 113 352 122Q344 132 336 145Q328 158 310 191Q292 224 288 236Q283 248 281 255Q280 262 280 271Q280 280 283 288Q286 296 291 304Q296 312 304 319Q312 326 320 330Q328 333 336 335Q344 337 352 336Q360 336 368 334Q376 331 388 325Q400 318 412 309Q424 299 440 285Q456 271 467 260Q479 248 487 237Q496 225 501 217Q506 208 509 200Q511 192 513 184Q514 176 514 168Q514 160 511 148Q509 136 503 124Q496 112 488 102Q480 92 472 86Q464 81 456 78Q448 75 440 75Q432 74 420 77Q408 80 400 84ZM495 1000L499 999Q504 999 512 997Q520 994 528 990Q536 985 540 982Q544 979 553 970Q561 960 567 948Q572 936 575 924Q577 912 578 900Q578 888 573 840Q567 792 566 776Q566 760 567 748Q568 736 572 728Q575 720 578 716Q581 712 587 708Q592 703 599 700Q605 696 631 685Q656 673 668 667Q680 661 696 651Q712 641 722 632Q733 624 745 612Q756 600 765 588Q774 576 780 564Q786 552 791 540Q795 528 799 512Q802 496 802 480Q802 464 801 456Q800 448 798 440Q795 432 789 420Q783 408 777 400Q770 392 765 387Q760 382 748 374Q736 367 724 362Q712 357 704 356Q696 354 688 354Q680 353 672 354Q664 354 656 356Q648 358 640 361Q632 364 624 368Q616 372 600 383Q584 395 569 410Q555 424 548 432Q541 440 533 452Q524 464 519 472Q515 480 509 492Q503 504 497 520Q492 536 486 565Q480 594 476 605Q472 616 468 620Q464 624 460 627Q456 629 448 632Q440 634 424 636Q408 638 400 641Q392 643 384 647Q376 651 372 654Q368 658 360 666Q352 674 340 692Q328 709 320 724Q312 740 307 754Q301 768 298 784Q295 800 295 808Q294 816 295 824Q296 832 298 840Q300 848 304 856Q307 864 315 876Q323 888 330 896Q338 904 349 914Q360 925 392 949Q424 973 440 982Q456 992 464 995Q472 998 479 999L486 1000M400 115Q392 118 388 121Q384 123 377 130Q370 136 365 142Q360 148 352 161Q344 174 332 197Q320 220 314 234Q308 248 308 256Q307 264 307 268Q308 272 310 276Q312 281 316 285Q320 289 324 291Q328 293 336 294Q344 296 352 294Q360 293 366 290Q372 288 379 284Q387 280 397 273Q408 265 424 252Q440 239 447 231Q454 224 459 217Q464 209 466 205Q469 200 472 192Q475 184 475 176Q476 168 475 160Q474 152 471 144Q467 136 464 132Q461 128 457 124Q453 120 446 117Q440 113 432 111Q424 110 416 111Q408 112 400 115ZM652 387Q640 391 628 397Q616 403 604 412Q592 422 583 431Q574 440 565 452Q556 464 549 476Q543 488 537 504Q532 520 530 532Q529 544 529 560Q530 576 532 588Q535 600 540 612Q546 624 549 629Q552 633 556 637Q560 642 568 646Q576 651 580 653Q584 654 592 655Q600 657 612 656Q624 655 636 653Q648 650 660 645Q672 641 686 632Q701 624 711 616Q721 608 732 596Q743 584 752 572Q760 560 766 548Q772 536 777 520Q782 504 784 492Q786 480 785 468Q785 456 781 444Q777 432 773 424Q768 416 760 408Q752 400 744 395Q736 390 724 386Q712 382 700 381Q688 380 676 382Q664 383 652 387ZM384 715Q376 718 368 725Q360 731 352 740Q344 749 338 758Q332 768 329 776Q326 784 323 796Q320 808 321 820Q321 832 323 840Q325 848 329 856Q332 864 338 873Q344 881 352 890Q360 899 372 909Q384 919 400 930Q416 940 432 949Q448 958 460 962Q472 967 480 968Q488 970 496 970Q504 970 508 969Q512 968 521 964Q530 960 534 956Q539 952 542 948Q546 944 549 938Q552 933 554 926Q556 920 558 908Q559 896 558 884Q557 872 553 852Q549 832 541 808Q534 784 528 772Q523 760 518 751Q512 742 504 734Q496 726 488 721Q480 716 468 712Q456 708 444 707Q432 705 420 706Q408 706 400 709Q392 711 384 715ZM392 138Q384 143 376 152Q368 161 359 176Q351 192 344 208Q337 224 334 232Q331 240 330 244Q330 248 330 252Q330 256 333 261Q336 265 340 267Q344 269 348 269Q352 269 356 268Q360 267 368 264Q376 261 392 251Q408 241 420 230Q432 220 440 210Q447 200 450 192Q454 184 454 180Q455 176 455 168Q454 160 453 156Q452 152 449 148Q447 144 443 141Q440 137 436 135Q432 132 428 131Q424 130 420 130Q416 129 408 131Q400 133 392 138ZM644 403Q632 408 624 413Q616 417 604 427Q592 437 584 447Q575 456 570 464Q564 472 559 484Q553 496 549 508Q546 520 544 532Q543 544 544 556Q545 568 548 580Q551 592 556 601Q560 609 564 614Q568 620 572 623Q576 627 584 632Q592 636 600 638Q608 640 620 640Q632 640 644 638Q656 635 668 630Q680 625 692 617Q704 609 712 602Q720 595 729 586Q737 576 745 564Q753 552 760 536Q768 520 771 508Q774 496 776 484Q777 472 776 464Q775 456 772 445Q768 434 764 427Q760 421 752 414Q744 406 736 402Q728 398 716 395Q704 393 692 393Q680 393 668 396Q656 398 644 403ZM412 729Q400 731 392 734Q384 737 376 743Q368 748 362 754Q356 760 351 768Q345 776 342 784Q338 792 336 800Q334 808 334 820Q334 832 336 840Q338 848 342 856Q345 864 351 872Q357 880 364 888Q372 896 382 904Q392 912 404 920Q416 928 428 934Q440 941 452 946Q464 951 476 954Q488 957 496 956Q504 956 512 953Q520 951 525 947Q530 944 533 941Q536 937 539 933Q542 928 544 920Q547 912 548 904Q549 896 548 884Q547 872 542 856Q538 840 533 824Q527 808 519 793Q512 778 505 769Q499 760 489 752Q480 744 472 740Q464 736 456 733Q448 730 436 729Q424 728 412 729ZM404 160Q400 161 395 164Q391 168 387 172Q384 177 381 184Q377 192 377 196Q376 200 376 204Q376 208 380 212Q384 216 388 215Q392 215 399 211Q405 208 410 204Q415 200 420 192Q425 184 425 180Q426 176 425 172Q424 167 420 163Q416 160 412 159Q408 159 404 160ZM660 410Q648 414 640 417Q632 421 623 427Q615 432 606 440Q597 448 590 456Q583 464 576 476Q569 488 565 496Q562 504 560 516Q557 528 557 540Q557 552 559 564Q562 576 565 584Q569 592 575 600Q581 608 586 613Q592 617 600 621Q608 624 616 626Q624 627 636 626Q648 625 660 621Q672 617 680 613Q688 608 699 600Q709 592 717 584Q725 576 731 568Q737 560 744 548Q751 536 755 524Q760 512 763 500Q766 488 766 476Q767 464 765 456Q763 448 759 440Q755 432 749 426Q744 420 736 415Q728 410 720 408Q712 406 704 405Q696 404 684 405Q672 407 660 410ZM392 755Q384 759 378 763Q372 768 366 775Q360 782 357 787Q354 792 352 800Q349 808 348 816Q347 824 348 832Q349 840 352 848Q355 856 360 864Q365 872 370 878Q376 885 382 890Q389 896 398 903Q408 910 420 916Q432 923 444 929Q456 934 464 937Q472 940 480 941Q488 943 496 942Q504 941 510 939Q517 936 522 930Q528 925 531 918Q534 912 535 904Q537 896 536 884Q535 872 531 860Q528 848 523 836Q518 824 512 812Q506 800 501 793Q496 785 492 781Q488 776 480 770Q472 763 464 759Q456 755 448 752Q440 750 428 749Q416 748 408 750Q400 752 392 755ZM664 434Q656 436 648 440Q640 443 632 448Q624 453 616 461Q608 468 603 474Q599 480 594 488Q590 496 587 504Q584 512 583 520Q582 528 582 536Q582 544 584 552Q586 560 589 567Q592 573 596 579Q600 584 605 588Q610 592 617 595Q624 598 632 599Q640 600 648 599Q656 598 664 595Q672 592 680 587Q688 582 696 575Q704 568 708 564Q712 559 717 552Q723 544 729 532Q735 520 738 512Q740 504 742 496Q744 488 744 480Q744 472 743 468Q742 464 739 457Q736 450 732 446Q728 441 724 439Q720 436 712 433Q704 431 696 430Q688 430 680 431Q672 432 664 434ZM412 792Q408 793 402 797Q396 800 393 804Q389 808 387 812Q385 816 383 824Q382 832 384 840Q385 848 390 856Q395 864 404 872Q413 880 426 888Q440 896 452 900Q464 904 472 905Q480 906 484 905Q488 904 493 900Q498 896 500 892Q501 888 502 884Q502 880 501 872Q500 864 498 859Q496 853 492 845Q488 836 484 830Q480 824 472 815Q464 806 460 803Q456 800 448 796Q440 793 432 791Q424 790 420 791Q416 791 412 792ZM652 453Q640 458 635 461Q630 464 623 471Q616 477 612 483Q608 488 604 496Q600 504 598 516Q595 528 596 536Q596 544 598 550Q600 556 603 562Q607 568 611 572Q615 576 619 579Q624 581 628 583Q632 584 636 585Q640 585 648 585Q656 584 664 581Q672 578 676 576Q680 573 688 567Q696 560 700 556Q704 551 709 544Q714 536 718 528Q722 520 725 512Q727 504 729 496Q730 488 729 480Q728 472 727 468Q725 464 722 460Q719 456 716 453Q712 451 708 449Q704 447 696 446Q688 445 676 446Q664 448 652 453ZM420 826Q416 828 415 830Q414 832 413 836Q413 840 414 845Q416 849 419 853Q421 856 427 860Q432 865 440 867Q448 870 452 870Q456 870 460 867Q464 864 465 860Q465 856 464 852Q463 848 460 844Q458 840 455 836Q451 832 446 828Q440 824 436 823Q432 822 428 823Q424 823 420 826ZM654 468Q644 472 639 476Q633 480 629 484Q625 488 620 496Q615 504 613 512Q611 520 611 528Q611 536 612 540Q613 544 615 548Q617 552 620 556Q623 560 628 563Q632 566 636 567Q640 568 648 568Q656 568 665 564Q675 560 680 556Q685 552 689 548Q692 544 695 540Q698 536 703 528Q707 520 709 512Q712 504 712 500Q713 496 712 492Q712 488 711 484Q710 480 708 476Q705 472 701 469Q696 465 688 463Q680 462 672 463Q664 464 654 468Z' fill='none' stroke='%23CFF5E2' stroke-width='1.1' opacity='0.07' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M0 381L12 377Q24 373 34 366Q44 360 54 351Q64 342 72 332Q80 322 87 309Q94 296 99 284Q103 272 107 256Q110 240 111 228Q112 216 112 204Q111 192 109 184Q107 176 103 168Q99 160 93 152Q87 144 78 136Q70 128 59 121Q48 114 36 109Q24 104 12 101L0 98M1000 98L988 98Q976 98 964 102Q952 105 945 108Q939 112 933 116Q928 120 920 127Q912 135 904 148Q895 160 888 176Q881 192 877 208Q873 224 871 240Q870 256 871 270Q872 284 876 298Q880 312 884 320Q888 328 892 335Q896 341 904 350Q912 360 920 366Q928 372 932 374Q936 376 944 379Q952 382 964 383Q976 385 988 383L1000 381M98 0L113 1Q128 3 160 2Q192 2 200 3Q208 5 213 6Q218 8 225 13Q232 17 236 23Q240 29 241 34Q243 40 243 44Q243 48 241 56Q240 64 217 132Q194 200 188 220Q182 240 178 256Q175 272 170 304Q165 336 161 352Q157 368 151 385Q144 402 132 426Q120 449 112 462Q104 474 100 478Q96 483 92 486Q88 489 84 491Q80 493 76 493Q72 494 64 494Q56 494 28 487L0 481M922 0L909 7Q896 14 888 21Q880 29 872 39Q864 50 857 65Q850 80 843 104Q835 128 828 160Q822 192 820 212Q817 232 817 244Q817 256 818 264Q819 272 823 288Q827 304 834 320Q840 336 856 364Q872 391 884 408Q896 425 904 433Q912 442 924 450Q936 459 948 464Q960 469 980 475L1000 481M98 1000L65 994Q32 987 16 986L0 985M1000 985L988 986Q976 986 968 987Q960 989 948 992Q936 995 929 997L922 1000M321 0L322 8Q324 16 324 20Q323 24 321 32Q319 40 316 48Q312 56 295 88Q277 120 257 160Q238 200 232 216Q225 232 221 248Q217 264 217 272Q216 280 216 292Q216 304 219 332Q223 360 224 372Q224 384 223 396Q222 408 217 440Q212 472 211 488Q209 504 209 520Q209 536 210 576Q211 616 211 636Q210 656 207 680Q204 704 194 748Q185 792 183 808Q181 824 181 832Q181 840 183 848Q185 856 188 864Q191 872 197 880Q203 888 211 896Q219 904 255 932Q291 960 301 972Q312 984 316 992L321 1000M645 0L647 7Q648 14 650 19Q652 24 657 32Q663 40 671 48Q680 55 696 66Q712 76 720 82Q727 88 732 93Q736 98 741 105Q745 112 749 120Q752 128 755 140Q757 152 760 200Q764 248 766 260Q768 272 771 280Q774 288 782 304Q790 320 807 348Q824 375 833 392Q842 408 847 420Q853 432 866 467Q880 502 884 510Q888 518 896 531Q904 544 916 560Q927 576 932 584Q937 592 942 604Q947 616 948 624Q950 632 950 640Q950 648 949 660Q948 672 944 684Q941 696 936 704Q931 712 925 717Q920 721 916 723Q912 724 904 724Q896 724 872 717Q848 710 840 708Q832 707 824 706Q816 706 804 708Q792 709 776 715Q760 720 748 726Q736 733 723 742Q709 752 699 762Q688 773 681 782Q674 792 670 800Q666 808 663 816Q660 824 657 836Q654 848 651 877Q648 906 646 941Q644 976 645 988L645 1000M387 0L389 8Q390 16 390 20Q390 24 388 28Q387 32 382 40Q377 48 353 76Q330 104 317 124Q305 144 288 176Q271 208 266 220Q260 232 256 244Q253 256 252 268Q251 280 252 288Q253 296 256 308Q260 320 276 352Q292 384 294 392Q296 400 296 408Q297 416 291 464Q286 512 285 560Q285 608 284 628Q283 648 280 668Q276 688 266 732Q256 776 255 792Q253 808 255 820Q256 832 258 840Q260 848 264 856Q267 864 275 876Q283 888 294 900Q304 912 334 940Q363 968 370 976Q377 984 382 992L387 1000M576 0L569 12Q561 24 557 32Q553 40 552 44Q551 48 550 56Q550 64 552 72Q554 80 557 87Q560 94 574 119Q588 144 595 160Q603 176 607 188Q611 200 615 216Q619 232 620 236Q622 240 625 244Q628 248 650 262Q672 276 704 300Q736 325 748 336Q760 346 772 358Q784 371 794 385Q805 400 812 416Q819 432 823 448Q827 464 828 480Q830 496 829 512Q828 528 825 544Q822 560 817 572Q812 584 805 596Q797 608 790 616Q783 624 770 636Q757 648 706 684Q656 720 647 728Q639 736 630 748Q621 760 617 772Q612 784 610 796Q607 808 607 820Q606 832 606 868Q605 904 604 920Q602 936 597 952Q592 968 584 984L576 1000M523 331Q518 336 517 340Q517 344 518 345Q520 345 521 345Q522 344 526 340Q531 336 534 332Q537 328 537 325Q536 322 532 324Q528 326 523 331ZM400 99Q392 102 384 108Q376 113 368 121Q361 128 356 133Q352 139 344 152Q336 165 320 194Q304 224 300 232Q297 240 295 248Q292 256 292 264Q292 272 294 279Q296 287 300 293Q304 299 308 302Q312 306 316 308Q320 311 328 313Q336 316 344 316Q352 316 360 314Q368 312 376 308Q384 304 396 296Q408 288 420 279Q432 269 443 259Q455 248 462 240Q469 232 475 224Q481 216 485 208Q489 200 491 192Q494 184 494 172Q495 160 493 152Q492 144 488 136Q485 128 479 120Q473 112 464 106Q456 99 448 97Q440 94 432 93Q424 93 416 94Q408 96 400 99ZM668 369Q656 371 644 376Q632 380 624 384Q616 389 608 394Q600 399 588 410Q576 420 564 434Q552 448 544 460Q536 472 530 484Q525 496 520 512Q515 528 513 544Q511 560 511 580Q512 600 517 624Q521 648 524 656Q527 664 529 668Q531 672 533 674Q536 677 540 678Q544 679 552 679Q560 680 576 679Q592 677 606 675Q619 672 634 668Q648 663 664 656Q680 649 696 638Q712 628 724 618Q735 608 745 596Q756 584 763 572Q771 560 778 546Q784 531 788 518Q792 504 793 488Q795 472 793 461Q792 449 788 438Q784 426 778 417Q773 408 765 400Q758 392 747 385Q736 378 724 374Q712 370 704 369Q696 368 688 368Q680 368 668 369ZM396 683Q384 687 376 691Q368 696 360 703Q352 711 348 715Q344 720 336 732Q328 743 322 756Q316 768 313 780Q309 792 308 804Q307 816 309 828Q310 840 313 848Q316 856 322 867Q328 877 336 887Q343 896 352 904Q360 912 376 925Q392 937 412 950Q432 963 444 969Q456 975 468 979Q480 983 488 984Q496 984 504 983Q512 982 520 979Q528 975 532 973Q536 970 540 967Q544 964 549 958Q554 952 557 946Q560 941 562 934Q565 928 567 916Q569 904 568 888Q567 872 564 851Q560 830 551 787Q542 744 536 724Q531 704 529 700Q527 696 524 692Q520 687 512 685Q504 683 480 680Q456 678 444 677Q432 677 420 678Q408 679 396 683ZM648 427Q640 430 631 435Q623 440 613 448Q604 456 597 464Q591 472 586 480Q581 488 578 496Q574 504 572 516Q569 528 569 536Q569 544 570 552Q571 560 574 568Q577 576 582 584Q587 592 594 598Q600 604 608 607Q616 611 624 612Q632 613 640 613Q648 612 656 610Q664 608 672 604Q680 601 688 595Q696 590 704 583Q712 575 720 565Q728 555 734 546Q739 536 744 524Q750 512 752 500Q755 488 756 480Q756 472 755 464Q754 456 750 448Q746 440 742 436Q739 432 733 428Q728 424 720 421Q712 419 704 418Q696 417 688 417Q680 418 668 420Q656 423 648 427ZM396 775Q392 777 387 780Q382 784 378 788Q375 792 370 800Q366 808 365 812Q364 816 364 824Q363 832 365 840Q367 848 369 852Q370 856 373 861Q376 865 383 873Q389 880 395 885Q400 889 408 895Q416 900 427 906Q438 912 447 916Q456 920 464 922Q472 925 480 926Q488 927 496 925Q504 923 508 920Q512 918 516 911Q520 905 521 900Q522 896 522 888Q522 880 520 872Q518 864 515 855Q512 846 507 835Q501 824 496 816Q491 808 486 801Q480 794 474 789Q468 784 462 780Q456 776 448 773Q440 770 432 769Q424 768 416 769Q408 770 404 771Q400 773 396 775ZM650 492Q644 496 640 500Q637 504 635 510Q632 516 632 522Q631 528 633 532Q634 536 638 540Q642 544 645 545Q648 546 652 546Q656 546 660 545Q663 544 668 541Q672 539 677 533Q682 528 685 521Q688 514 689 509Q689 504 688 500Q687 496 684 492Q680 488 676 487Q672 485 668 486Q664 486 660 487Q656 488 650 492Z' fill='none' stroke='%23CFF5E2' stroke-width='1.6' opacity='0.14' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");--h-card:linear-gradient(90deg,rgba(150,236,196,0) 6%,rgba(150,236,196,.32) 38%,rgba(150,236,196,0) 78%) top / 100% 1px no-repeat,linear-gradient(160deg,#182A21 0%,#12211A 100%);--h-mint:linear-gradient(180deg,rgba(255,255,255,.24),rgba(255,255,255,0) 55%),linear-gradient(115deg,#7BE0B0 0%,#9AE3A4 60%,#B6E595 100%);}
+
+
+:root{color-scheme:dark}
+html{background:#0B1511}
+body{background:transparent;color:#E9F3EC}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180' %3E%3Ccircle cx='59.3' cy='29.2' r='0.81' fill='%23DFF7EA' opacity='0.14'/%3E%3Ccircle cx='96.2' cy='66.6' r='0.48' fill='%23DFF7EA' opacity='0.26'/%3E%3Ccircle cx='9.5' cy='78.5' r='0.49' fill='%23DFF7EA' opacity='0.15'/%3E%3Ccircle cx='76.9' cy='146.9' r='0.52' fill='%23DFF7EA' opacity='0.18'/%3E%3Ccircle cx='112.2' cy='167.9' r='0.77' fill='%23DFF7EA' opacity='0.23'/%3E%3Ccircle cx='172.9' cy='11.1' r='0.92' fill='%23DFF7EA' opacity='0.20'/%3E%3Ccircle cx='28.1' cy='23.5' r='0.62' fill='%23DFF7EA' opacity='0.35'/%3E%3Ccircle cx='34.4' cy='104.2' r='0.80' fill='%23DFF7EA' opacity='0.22'/%3E%3Ccircle cx='98.3' cy='13.9' r='0.48' fill='%23DFF7EA' opacity='0.18'/%3E%3Ccircle cx='121.4' cy='77.4' r='0.62' fill='%23DFF7EA' opacity='0.28'/%3E%3Ccircle cx='81.9' cy='55.2' r='0.89' fill='%23DFF7EA' opacity='0.32'/%3E%3Ccircle cx='45.5' cy='102.9' r='0.74' fill='%23DFF7EA' opacity='0.37'/%3E%3Ccircle cx='129.9' cy='53.1' r='0.99' fill='%23DFF7EA' opacity='0.15'/%3E%3Ccircle cx='75.8' cy='134.7' r='0.53' fill='%23DFF7EA' opacity='0.26'/%3E%3Ccircle cx='9.8' cy='119.3' r='0.87' fill='%23DFF7EA' opacity='0.28'/%3E%3Ccircle cx='155.3' cy='57.6' r='0.83' fill='%23DFF7EA' opacity='0.29'/%3E%3Ccircle cx='103.9' cy='82.4' r='0.91' fill='%23DFF7EA' opacity='0.38'/%3E%3Ccircle cx='85.5' cy='118.6' r='0.48' fill='%23DFF7EA' opacity='0.32'/%3E%3Ccircle cx='115.6' cy='175.8' r='0.90' fill='%23DFF7EA' opacity='0.20'/%3E%3Ccircle cx='70.1' cy='119.3' r='0.46' fill='%23DFF7EA' opacity='0.25'/%3E%3C/svg%3E") repeat 0 0 / 180px 180px,
+    var(--h-topo) repeat center top / 1000px 1000px,
+    radial-gradient(75% 45% at 0% 0%, rgba(123,224,176,.17), rgba(123,224,176,0) 70%),
+    radial-gradient(70% 42% at 100% 100%, rgba(70,200,196,.15), rgba(70,200,196,0) 70%),
+    radial-gradient(45% 28% at 100% 0%, rgba(245,198,90,.07), rgba(245,198,90,0) 70%),
+    linear-gradient(180deg,#0F1D17 0%,#0B1612 55%,#09130F 100%);}
+::selection{background:rgba(123,224,176,.35);color:#fff}
+:focus-visible,.visually-hidden:focus-visible + .budget-chip,.visually-hidden:focus-visible + .date-chip{outline:2px solid #7BE0B0;outline-offset:2px;box-shadow:0 0 0 5px rgba(123,224,176,.22)}
+::placeholder{color:#93AB9D}
+.link-btn,.pantry-link-btn,.auth-dialog__switch-btn,.onboarding__link,.site-footer__link,.onboarding__skip,.onboarding__skip-questions,.tour__skip{text-decoration-color:rgba(123,224,176,.55)}
+.link-btn:hover,.pantry-link-btn:hover,.auth-dialog__switch-btn:hover,.onboarding__link:hover,.site-footer__link:hover{text-decoration-color:#7BE0B0}
+
+
+.topbar__brand{color:#EEF6F0}
+.topbar__brand-mark{width:34px;height:34px;border-radius:11px;background:var(--h-mint);color:#06231A;box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 6px 18px -6px rgba(123,224,176,.75)}.topbar__menu-btn,.auth-dialog__close,.ajustes-dialog__close,.pantry-item__remove{background:rgba(22,38,31,.78);color:#E9F3EC;box-shadow:inset 0 0 0 1px rgba(255,255,255,.1),inset 0 1px 0 rgba(255,255,255,.06),0 10px 22px -14px rgba(0,0,0,.9)}.topbar__menu-btn:hover,.auth-dialog__close:hover,.ajustes-dialog__close:hover,.pantry-item__remove:hover{box-shadow:inset 0 0 0 1px rgba(123,224,176,.55),0 0 14px -4px rgba(123,224,176,.5)}
+.topbar__menu-btn{width:46px;height:46px;border-radius:50%}.topbar__profile-btn{height:46px;border-radius:999px;background:rgba(22,38,31,.78);color:#E9F3EC;font-size:var(--fs-sm);font-weight:600;box-shadow:inset 0 0 0 1px rgba(255,255,255,.1),inset 0 1px 0 rgba(255,255,255,.06),0 10px 22px -14px rgba(0,0,0,.9)}
+.topbar__profile-avatar{background:rgba(123,224,176,.12);color:#8FE8BE;box-shadow:inset 0 0 0 1px rgba(123,224,176,.45)}
+.topbar__menu{background:#15261E;box-shadow:var(--shadow-2),0 0 0 1px rgba(255,255,255,.08)}
+.topbar__menu-item:hover{background:rgba(255,255,255,.05)}
+.topbar__menu-email{color:#93AB9D;border-bottom-color:rgba(255,255,255,.08)}
+.traduccion-aviso{background:var(--h-card);box-shadow:var(--shadow-1),inset 3px 0 0 #7BE0B0}
+
+
+.hero{position:relative;border-radius:24px;color:#EEF8F2;
+  background:
+    radial-gradient(55% 95% at 50% 50%, rgba(123,224,176,.15), rgba(123,224,176,0) 72%),
+    var(--h-topo) 46% 14% / 620px 620px,
+    linear-gradient(135deg,#1B3529 0%,#12261D 52%,#0D1C15 100%);
+  border:1px solid rgba(255,255,255,.08);
+  box-shadow:inset 0 1px 0 rgba(170,240,205,.14),0 24px 48px -26px rgba(0,0,0,.95)}
+.hero::before,.hero::after{content:"";height:7px;margin:11px 16% 0;
+  background:
+    radial-gradient(circle,#E2FBEE 0 1.7px,rgba(123,224,176,.45) 2.4px,rgba(123,224,176,0) 3.6px) center / 8px 7px no-repeat,
+    linear-gradient(90deg,rgba(123,224,176,0),rgba(123,224,176,.8) 32%,rgba(123,224,176,.8) calc(50% - 9px),rgba(123,224,176,0) calc(50% - 9px),rgba(198,234,124,0) calc(50% + 9px),rgba(198,234,124,.6) calc(50% + 9px),rgba(198,234,124,.6) 68%,rgba(198,234,124,0)) center / 100% 1px no-repeat}
+.hero::after{margin:0 16% 11px}
+.hero__texto{padding:8px 12px 10px}
+.hero__nombre{color:#EEF8F2;text-transform:uppercase;letter-spacing:.07em;text-shadow:0 0 26px rgba(123,224,176,.42),0 0 3px rgba(123,224,176,.25)}
+
+
+h2{color:#EEF6F0}
+h2 em{background:none;color:#8FE8BE;padding:0;margin:0}
+.eyebrow{color:#9FB8AA}
+.badge{height:32px;padding:0 12px;border-radius:999px;background:rgba(123,224,176,.07);color:#B5C9BC;box-shadow:inset 0 0 0 1px rgba(123,224,176,.24)}
+.badge svg{color:#7BE0B0}
+.form-section-label{color:#8FE8BE}
+.form-section-label::before{width:8px;height:8px;border-radius:50%;background:#7BE0B0;box-shadow:0 0 0 3px rgba(123,224,176,.16),0 0 12px rgba(123,224,176,.85)}
+.budget-group-label,.field>label,.budget-custom-field>label{font-family:var(--font-body);font-size:var(--fs-sm);font-weight:600;text-transform:none;letter-spacing:0;color:#B5C9BC}
+.field-hint{color:#93AB9D}
+.field-hint strong{color:#D5E6DC}.panel:not(.panel--results){position:relative;border-radius:26px;background:var(--h-card);border:1px solid rgba(255,255,255,.07);box-shadow:var(--shadow-1)}.panel:not(.panel--results)::after{content:"";position:absolute;right:0;top:0;width:200px;height:200px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220' viewBox='0 0 220 220' %3E%3Cpath d='M200.4 35.2 200.3 37.6 199.7 40.0 198.7 42.2 197.3 44.3 195.6 46.2 193.5 47.7 191.1 48.9 188.6 49.6 185.9 49.8 183.4 49.8 181.0 49.7 178.6 49.6 176.3 49.5 173.8 49.2 171.3 48.8 168.9 47.9 166.7 46.6 164.9 44.9 163.5 42.9 162.5 40.8 161.8 38.6 161.3 36.3 161.1 34.0 161.3 31.7 162.0 29.4 163.2 27.3 164.8 25.5 166.8 23.9 168.9 22.5 171.1 21.3 173.4 20.3 175.9 19.5 178.4 19.1 181.1 19.2 183.6 19.7 185.9 20.6 188.0 21.8 189.9 23.0 191.8 24.3 193.7 25.6 195.6 27.0 197.4 28.7 198.9 30.6 200.0 32.8 200.4 35.2Z' fill='none' stroke='%23A6F0CC' stroke-width='1.1' opacity='0.144'/%3E%3Cpath d='M220.2 35.2 219.9 40.0 218.9 44.7 217.0 49.2 214.4 53.5 211.0 57.3 206.8 60.4 201.9 62.6 196.6 63.8 191.4 64.3 186.4 64.3 181.6 64.2 176.9 64.1 172.1 63.9 167.1 63.5 162.1 62.4 157.4 60.6 153.1 57.8 149.6 54.4 146.9 50.5 144.7 46.4 143.1 42.0 142.0 37.5 141.6 32.9 142.1 28.2 143.6 23.7 146.1 19.5 149.5 15.9 153.3 12.7 157.4 9.9 161.7 7.4 166.3 5.2 171.3 3.7 176.5 2.9 181.7 3.1 186.7 4.3 191.4 6.2 195.5 8.5 199.4 10.9 203.3 13.3 207.2 15.9 211.1 18.7 214.6 22.1 217.5 26.1 219.4 30.5 220.2 35.2Z' fill='none' stroke='%23A6F0CC' stroke-width='1.1' opacity='0.128'/%3E%3Cpath d='M239.7 35.2 239.5 42.3 238.1 49.4 235.6 56.3 231.7 62.8 226.5 68.5 220.0 73.0 212.5 76.2 204.6 77.9 196.8 78.6 189.3 78.7 182.2 78.6 175.1 78.7 167.8 78.5 160.4 77.9 152.9 76.2 145.9 73.2 139.7 69.0 134.5 63.9 130.3 58.1 126.9 51.9 124.2 45.5 122.4 38.7 121.8 31.7 122.8 24.7 125.3 18.0 129.3 11.8 134.3 6.4 139.9 1.5 145.9 -2.8 152.3 -6.7 159.2 -10.0 166.6 -12.4 174.5 -13.4 182.4 -12.8 189.9 -10.9 196.7 -8.0 203.0 -4.7 209.0 -1.2 214.9 2.3 220.9 6.0 226.7 10.3 231.8 15.5 235.9 21.5 238.5 28.2 239.7 35.2Z' fill='none' stroke='%23A6F0CC' stroke-width='1.1' opacity='0.112'/%3E%3Cpath d='M259.0 35.2 259.0 44.7 257.5 54.2 254.3 63.5 249.2 72.2 242.2 79.8 233.2 85.7 223.1 89.6 212.5 91.8 202.1 92.7 192.2 93.0 182.8 93.2 173.3 93.5 163.5 93.4 153.6 92.4 143.7 89.8 134.6 85.7 126.5 80.0 119.6 73.2 113.8 65.7 109.0 57.6 105.1 49.0 102.6 39.9 102.0 30.5 103.5 21.1 107.2 12.3 112.6 4.2 119.2 -3.0 126.5 -9.6 134.3 -15.6 142.7 -21.0 151.9 -25.5 161.9 -28.5 172.5 -29.6 183.0 -28.6 192.9 -25.9 202.0 -22.1 210.5 -17.8 218.5 -13.4 226.6 -9.0 234.7 -4.0 242.4 1.9 249.0 8.9 254.2 17.0 257.5 25.9 259.0 35.2Z' fill='none' stroke='%23A6F0CC' stroke-width='1.6' opacity='0.096'/%3E%3Cpath d='M278.2 35.2 278.6 47.1 277.0 59.0 273.3 70.8 266.9 81.7 257.8 91.1 246.4 98.2 233.5 102.9 220.3 105.5 207.4 106.7 195.2 107.4 183.4 108.0 171.4 108.5 159.2 108.4 146.7 106.9 134.6 103.4 123.4 98.0 113.4 90.8 104.7 82.5 97.2 73.2 90.8 63.2 85.8 52.5 82.7 41.1 82.1 29.3 84.4 17.7 89.3 6.7 96.2 -3.3 104.3 -12.4 113.1 -20.7 122.6 -28.5 133.0 -35.4 144.6 -41.1 157.2 -44.7 170.5 -45.7 183.6 -44.2 196.0 -40.7 207.3 -36.0 217.9 -31.0 228.3 -25.8 238.6 -20.3 248.7 -14.1 258.1 -6.5 266.1 2.4 272.1 12.6 276.2 23.6 278.2 35.2Z' fill='none' stroke='%23A6F0CC' stroke-width='1.1' opacity='0.080'/%3E%3Cpath d='M297.4 35.2 298.3 49.4 296.8 63.9 292.5 78.1 284.7 91.2 273.4 102.3 259.3 110.6 243.8 116.0 228.0 119.1 212.7 120.7 198.2 121.9 184.0 123.0 169.6 123.8 154.8 123.5 140.0 121.3 125.6 116.8 112.4 110.1 100.5 101.6 89.9 91.7 80.5 80.9 72.4 69.0 66.1 56.1 62.6 42.3 62.3 28.1 65.6 14.2 71.7 1.2 79.9 -10.7 89.4 -21.7 99.6 -31.9 110.7 -41.5 123.1 -50.1 137.2 -56.8 152.6 -60.7 168.6 -61.6 184.2 -59.5 199.0 -55.3 212.6 -50.0 225.5 -44.3 238.1 -38.4 250.7 -31.9 262.8 -24.2 273.7 -15.0 282.9 -4.0 289.9 8.2 294.6 21.4 297.4 35.2Z' fill='none' stroke='%23A6F0CC' stroke-width='1.1' opacity='0.064'/%3E%3Cpath d='M316.8 35.2 318.3 51.9 317.0 68.9 311.9 85.5 302.4 100.8 288.8 113.4 272.1 122.8 253.9 128.9 235.6 132.5 218.0 134.8 201.2 136.7 184.6 138.3 167.7 139.2 150.4 138.6 133.2 135.6 116.8 130.0 101.5 122.0 87.7 112.2 75.0 101.1 63.5 88.6 53.7 74.9 46.3 59.7 42.5 43.5 42.7 26.9 47.0 10.8 54.4 -4.2 63.8 -18.1 74.3 -31.1 85.8 -43.3 98.6 -54.8 113.2 -64.9 129.8 -72.5 148.0 -76.7 166.7 -77.2 184.9 -74.6 201.9 -69.8 217.9 -64.0 233.2 -57.8 248.2 -51.2 262.9 -43.6 276.8 -34.4 289.2 -23.3 299.4 -10.4 307.3 3.9 313.0 19.2 316.8 35.2Z' fill='none' stroke='%23A6F0CC' stroke-width='1.1' opacity='0.048'/%3E%3Cpath d='M336.3 35.2 338.6 54.3 337.4 73.9 331.4 93.0 320.1 110.3 304.0 124.4 284.7 134.8 263.9 141.6 243.2 146.0 223.4 149.1 204.3 151.7 185.2 153.8 165.8 154.8 146.1 153.6 126.6 149.6 108.1 142.9 90.8 133.8 74.8 122.9 59.9 110.5 46.3 96.5 34.7 80.8 26.4 63.3 22.5 44.7 23.5 25.8 28.8 7.5 37.2 -9.6 47.6 -25.5 59.1 -40.6 71.8 -55.0 86.3 -68.3 103.2 -79.8 122.5 -88.0 143.4 -92.3 164.8 -92.5 185.5 -89.4 204.9 -84.3 223.3 -78.2 241.0 -71.6 258.4 -64.2 275.2 -55.3 290.8 -44.5 304.4 -31.5 315.7 -16.6 324.6 -0.4 331.4 16.9 336.3 35.2Z' fill='none' stroke='%23A6F0CC' stroke-width='1.6' opacity='0.032'/%3E%3Ccircle cx='180.4' cy='35.2' r='2.2' fill='%23A6F0CC' opacity='.35'/%3E%3C/svg%3E") no-repeat right top / contain;pointer-events:none;border-radius:0 26px 0 0}.panel:not(.panel--results)>*{position:relative;z-index:1}.meal-card,.shopping-item,.pantry-active-card,.pantry-history-row,.nocook-slot,.nocook-summary,.insights,.disclosure,.resumen-datos,.shopping-summary__stat{background:var(--h-card);border:1px solid rgba(255,255,255,.07);border-radius:22px;box-shadow:var(--shadow-1)}
+.resumen-datos{border-radius:22px;padding:8px 8px 8px 18px}
+.resumen-datos__texto{color:#B5C9BC}.food-purchase,.confirm-receipt,.pantry-purchase-checklist-wrap,.nocook-item,.verified-card,.pantry-item,.meta{background:rgba(255,255,255,.035);border-radius:14px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}
+.meta{padding:10px 6px 10px 11px}
+.meta .k{font-family:var(--font-body);font-weight:500;text-transform:none;letter-spacing:-.01em;color:#A9BFB2}
+.meta .v{color:#E9F3EC}.btn-primary,.onboarding__btn--primary,.tour__next,.legal-dialog__done,.pantry-add > button,.traduccion-aviso__si,.actions .btn-primary,.shopping-panel__actions .btn-primary,.nocook-panel > .btn-primary,.onboarding__btn--big,.pantry-active-card__buy-btn{border:0;border-radius:18px;color:#06231A;background:var(--h-mint);
+  box-shadow:0 10px 30px -8px rgba(123,224,176,.55),inset 0 1px 0 rgba(255,255,255,.6),inset 0 -2px 0 rgba(6,35,26,.14);
+  transition:transform .1s ease,box-shadow .15s ease,filter .15s ease}.btn-primary svg,.onboarding__btn--primary svg,.tour__next svg,.legal-dialog__done svg,.pantry-add > button svg,.traduccion-aviso__si svg,.actions .btn-primary svg,.shopping-panel__actions .btn-primary svg,.nocook-panel > .btn-primary svg,.onboarding__btn--big svg,.pantry-active-card__buy-btn svg{color:#06231A}.btn-primary:hover,.onboarding__btn--primary:hover,.tour__next:hover,.legal-dialog__done:hover,.pantry-add > button:hover,.traduccion-aviso__si:hover,.actions .btn-primary:hover,.shopping-panel__actions .btn-primary:hover,.nocook-panel > .btn-primary:hover,.onboarding__btn--big:hover,.pantry-active-card__buy-btn:hover{background:var(--h-mint);border-color:transparent;filter:brightness(1.06);box-shadow:0 12px 34px -8px rgba(123,224,176,.72),inset 0 1px 0 rgba(255,255,255,.6),inset 0 -2px 0 rgba(6,35,26,.14)}.btn-primary:active,.onboarding__btn--primary:active,.tour__next:active,.legal-dialog__done:active,.pantry-add > button:active,.traduccion-aviso__si:active,.actions .btn-primary:active,.shopping-panel__actions .btn-primary:active,.nocook-panel > .btn-primary:active,.onboarding__btn--big:active,.pantry-active-card__buy-btn:active{transform:translateY(1px);filter:none;box-shadow:0 3px 12px -5px rgba(123,224,176,.5),inset 0 1px 0 rgba(255,255,255,.35),inset 0 2px 7px rgba(6,35,26,.2)}.btn-primary:disabled,.onboarding__btn--primary:disabled,.tour__next:disabled,.legal-dialog__done:disabled,.pantry-add > button:disabled,.traduccion-aviso__si:disabled,.actions .btn-primary:disabled,.shopping-panel__actions .btn-primary:disabled,.nocook-panel > .btn-primary:disabled,.onboarding__btn--big:disabled,.pantry-active-card__buy-btn:disabled{background:linear-gradient(115deg,rgba(123,224,176,.16),rgba(182,229,149,.1));color:#8DAE9E;filter:none;transform:none;
+  box-shadow:inset 0 0 0 1px rgba(123,224,176,.2),inset 0 1px 0 rgba(255,255,255,.06)}.btn-secondary,.onboarding__btn--ghost,.tour__prev,.traduccion-aviso__no{border:1.5px solid transparent;border-radius:18px;color:#8FE8BE;
+  background:linear-gradient(180deg,#182B22,#13231C) padding-box,linear-gradient(120deg,#7BE0B0,rgba(123,224,176,.22) 55%,#C6EA7C) border-box;
+  box-shadow:0 10px 24px -16px rgba(0,0,0,.9);transition:transform .1s ease,box-shadow .15s ease}.btn-secondary svg,.onboarding__btn--ghost svg,.tour__prev svg,.traduccion-aviso__no svg{color:#7BE0B0}.btn-secondary:hover,.onboarding__btn--ghost:hover,.tour__prev:hover,.traduccion-aviso__no:hover{color:#A6F0CC;background:linear-gradient(180deg,#1D362A,#172C22) padding-box,linear-gradient(120deg,#8FE8BE,rgba(123,224,176,.5) 55%,#C6EA7C) border-box;box-shadow:0 0 18px -6px rgba(123,224,176,.45)}.btn-secondary:active,.onboarding__btn--ghost:active,.tour__prev:active,.traduccion-aviso__no:active{transform:translateY(1px);box-shadow:0 0 0 4px rgba(123,224,176,.12)}.btn-secondary:disabled,.onboarding__btn--ghost:disabled,.tour__prev:disabled,.traduccion-aviso__no:disabled{background:rgba(255,255,255,.02);border:1.5px solid rgba(123,224,176,.2);color:#86A092;box-shadow:none;transform:none}
+.actions-secondary #resetBtn{border:0;background:none;box-shadow:none;color:#B5C9BC;text-decoration:underline;text-decoration-color:rgba(123,224,176,.55);text-underline-offset:4px}.resumen-datos__btn,.meal-swap-btn,.pantry-active-card__delete{border:1px solid rgba(255,255,255,.13);border-radius:999px;background:rgba(255,255,255,.045);color:#E9F3EC;box-shadow:inset 0 1px 0 rgba(255,255,255,.05);transition:border-color .15s ease,background-color .15s ease,transform .1s ease}.resumen-datos__btn:hover,.meal-swap-btn:hover,.pantry-active-card__delete:hover{border-color:rgba(123,224,176,.55);background:rgba(123,224,176,.08);color:#E9F3EC}.resumen-datos__btn:active,.meal-swap-btn:active,.pantry-active-card__delete:active{transform:translateY(1px)}
+.pantry-active-card__delete{color:#FFA396;border-color:rgba(255,140,120,.35)}
+.pantry-active-card__delete.pantry-active-card__delete--armed{background:#C23B2C;border-color:#C23B2C;color:#fff}
+.pantry-active-card__buy-btn.pantry-active-card__buy-btn--secondary{border:1.5px solid transparent;color:#8FE8BE;box-shadow:none;
+  background:linear-gradient(180deg,#182B22,#13231C) padding-box,linear-gradient(120deg,#7BE0B0,rgba(123,224,176,.22) 55%,#C6EA7C) border-box}
+.pantry-active-card__buy-btn--secondary svg{color:#7BE0B0}.delete-dialog__confirm{border-radius:18px;background:linear-gradient(180deg,#CF4635,#B5372A);color:#fff;box-shadow:0 10px 26px -10px rgba(220,80,60,.6),inset 0 1px 0 rgba(255,255,255,.25)}.baldosa,.budget-chip,.onboarding__choice,.pantry-meal-chip,.date-chip,.aspecto-card{position:relative;background:linear-gradient(180deg,#1B2E25,#16271F);border:1px solid rgba(255,255,255,.11);border-radius:16px;color:#E9F3EC;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04);transition:border-color .15s ease,box-shadow .15s ease}.baldosa:hover,.budget-chip:hover,.onboarding__choice:hover,.pantry-meal-chip:hover,.date-chip:hover,.aspecto-card:hover{border-color:rgba(123,224,176,.5)}.baldosa.is-activa,.visually-hidden:checked + .budget-chip,.visually-hidden:checked + .date-chip,.onboarding__choice.is-selected,.pantry-meal-chip--cooked,.aspecto-card[aria-checked="true"]{border-color:#7BE0B0;color:#F1FBF5;background:linear-gradient(180deg,rgba(123,224,176,.17),rgba(123,224,176,.06)),#15281F;
+  box-shadow:0 0 0 1px rgba(123,224,176,.28),0 10px 26px -12px rgba(123,224,176,.55),inset 0 1px 0 rgba(255,255,255,.08)}
+.baldosa.is-activa::after,.visually-hidden:checked + .budget-chip::after,.onboarding__choice.is-selected::after{content:"";position:absolute;top:-8px;right:-8px;width:20px;height:20px;border-radius:50%;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14' %3E%3Cpath d='M3.2 7.4l2.5 2.5 5.1-5.6' stroke='%2306231A' stroke-width='2.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 12px no-repeat,linear-gradient(140deg,#9AEDC6,#62D19D);box-shadow:0 0 0 3px #15261E,0 0 14px rgba(123,224,176,.75)}
+.budget-chip{padding:12px 10px 12px 12px}
+.budget-chip__title{font:600 13px/1.25 var(--font-body);text-transform:none;letter-spacing:0;color:#B5C9BC}
+.budget-chip__amount{color:#EEF6F0}
+.visually-hidden:checked + .budget-chip .budget-chip__title{color:#D5E6DC}
+.visually-hidden:checked + .budget-chip .budget-chip__amount,.onboarding__choice.is-selected .onboarding__choice-amount{color:#8FE8BE}
+.onboarding__choice.is-selected .onboarding__choice-note{color:#B5C9BC}
+.date-chip{border-radius:999px}
+.date-chip--today::after{background:#7BE0B0;box-shadow:0 0 0 2px rgba(123,224,176,.18),0 0 10px rgba(123,224,176,.85)}
+.pantry-meal-chip__time{color:var(--kcal-deep)}
+.pantry-meal-chip--cooked .pantry-meal-chip__time{color:#8FE8BE}.plan-days,.ajustes-choice{background:#0E1A15;border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:4px;box-shadow:inset 0 2px 8px rgba(0,0,0,.45)}.plan-days__btn,.ajustes-choice__btn{border-radius:14px;color:#B5C9BC;background:transparent}.plan-days__btn.is-active,.ajustes-choice__btn[aria-checked="true"]{background:var(--h-mint);color:#06231A;box-shadow:0 6px 18px -6px rgba(123,224,176,.65),inset 0 1px 0 rgba(255,255,255,.55)}.paso-a-paso{background:#1B2E25;border:1.5px solid var(--field-line);border-radius:24px}.paso-a-paso:focus-within{border-color:#7BE0B0;background:#1B2E25;box-shadow:0 0 0 4px rgba(123,224,176,.16)}
+.paso-a-paso input[type="number"]{background:transparent;border:0;box-shadow:none;color:#F1FBF5}.paso-a-paso__btn{border-radius:50%;background:radial-gradient(circle at 50% 28%,#2B4538,#1C3128);color:#CFE2D6;font-weight:400;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.1),inset 0 1px 0 rgba(255,255,255,.08)}.paso-a-paso__btn[data-signo="1"]{background:radial-gradient(circle at 50% 28%,#2E4D3F,#1C3329);color:#8FE8BE;box-shadow:inset 0 0 0 1.5px rgba(123,224,176,.65),0 0 16px -4px rgba(123,224,176,.6)}input[type="text"],input[type="number"],input[type="email"],input[type="password"],input[type="time"],input[type="search"],input[type="date"],select,textarea{background-color:#1B2E25;border:1.5px solid var(--field-line);border-radius:16px;color:#E9F3EC}input[type="text"]:focus,input[type="number"]:focus,input[type="email"]:focus,input[type="password"]:focus,input[type="time"]:focus,input[type="search"]:focus,input[type="date"]:focus,select:focus,textarea:focus{border-color:#7BE0B0;background-color:#1E3329;box-shadow:0 0 0 4px rgba(123,224,176,.18)}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' %3E%3Cpath d='M6 9l6 6 6-6' stroke='%23B5C9BC' stroke-width='2.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;background-size:20px 20px}
+
+
+.nutrition-strip{background:none;box-shadow:none;padding:0;gap:10px;overflow:visible;border-radius:0;color:#E9F3EC}
+.summary-card{overflow:hidden;border:1px solid rgba(255,255,255,.07);border-radius:22px;padding:14px 12px 16px;background:var(--h-card);box-shadow:var(--shadow-1);color:#E9F3EC}
+.summary-card--calories{padding:18px 18px 20px;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200' %3E%3Ccircle cx='100.0' cy='100.0' r='86' fill='none' stroke='%23FF9473' stroke-width='1.4' opacity='0.42'/%3E%3Ccircle cx='100.0' cy='100.0' r='70' fill='none' stroke='%23FF9473' stroke-width='1' opacity='0.26' stroke-dasharray='1.5 5'/%3E%3Ccircle cx='100.0' cy='100.0' r='54' fill='none' stroke='%23FF9473' stroke-width='1.2' opacity='0.2'/%3E%3Ccircle cx='25.5' cy='143.0' r='4' fill='%23FF9473' opacity='.9'/%3E%3Ccircle cx='25.5' cy='143.0' r='9' fill='%23FF9473' opacity='.16'/%3E%3C/svg%3E") no-repeat right -30px center / 160px 160px,radial-gradient(42% 62% at 24% 64%,rgba(255,148,115,.2),rgba(255,148,115,0) 72%),var(--h-card)}
+.summary-card--protein{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96' %3E%3Ccircle cx='96' cy='0' r='26' fill='none' stroke='%23B9A8FF' stroke-width='1.4' opacity='0.5'/%3E%3Ccircle cx='96' cy='0' r='36' fill='none' stroke='%23B9A8FF' stroke-width='1' opacity='0.32' stroke-dasharray='1.5 4'/%3E%3Ccircle cx='96' cy='0' r='46' fill='none' stroke='%23B9A8FF' stroke-width='1.1' opacity='0.2'/%3E%3Ccircle cx='68.4' cy='23.1' r='3' fill='%23B9A8FF' opacity='.9'/%3E%3Ccircle cx='68.4' cy='23.1' r='7' fill='%23B9A8FF' opacity='.16'/%3E%3C/svg%3E") no-repeat right top / 96px 96px,radial-gradient(75% 42% at 34% 60%,rgba(185,168,255,.2),rgba(185,168,255,0) 72%),var(--h-card)}
+.summary-card--carbs{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96' %3E%3Ccircle cx='96' cy='0' r='26' fill='none' stroke='%23F5C65A' stroke-width='1.4' opacity='0.5'/%3E%3Ccircle cx='96' cy='0' r='36' fill='none' stroke='%23F5C65A' stroke-width='1' opacity='0.32' stroke-dasharray='1.5 4'/%3E%3Ccircle cx='96' cy='0' r='46' fill='none' stroke='%23F5C65A' stroke-width='1.1' opacity='0.2'/%3E%3Ccircle cx='68.4' cy='23.1' r='3' fill='%23F5C65A' opacity='.9'/%3E%3Ccircle cx='68.4' cy='23.1' r='7' fill='%23F5C65A' opacity='.16'/%3E%3C/svg%3E") no-repeat right top / 96px 96px,radial-gradient(75% 42% at 34% 60%,rgba(245,198,90,.17),rgba(245,198,90,0) 72%),var(--h-card)}
+.summary-card--fat{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96' %3E%3Ccircle cx='96' cy='0' r='26' fill='none' stroke='%2363D8E8' stroke-width='1.4' opacity='0.5'/%3E%3Ccircle cx='96' cy='0' r='36' fill='none' stroke='%2363D8E8' stroke-width='1' opacity='0.32' stroke-dasharray='1.5 4'/%3E%3Ccircle cx='96' cy='0' r='46' fill='none' stroke='%2363D8E8' stroke-width='1.1' opacity='0.2'/%3E%3Ccircle cx='68.4' cy='23.1' r='3' fill='%2363D8E8' opacity='.9'/%3E%3Ccircle cx='68.4' cy='23.1' r='7' fill='%2363D8E8' opacity='.16'/%3E%3C/svg%3E") no-repeat right top / 96px 96px,radial-gradient(75% 42% at 34% 60%,rgba(99,216,232,.17),rgba(99,216,232,0) 72%),var(--h-card)}
+.summary-card h3{color:#B5C9BC}
+.summary-card .sub{color:#A9BFB2;text-wrap:balance}
+.summary-card .big{color:#EEF6F0}
+.summary-card--calories .big{color:var(--kcal-deep);text-shadow:0 0 26px rgba(255,148,115,.38)}
+.summary-card--protein .big{color:var(--protein-deep);text-shadow:0 0 22px rgba(185,168,255,.35)}
+.summary-card--carbs .big{color:var(--carbs-deep);text-shadow:0 0 22px rgba(245,198,90,.3)}
+.summary-card--fat .big{color:var(--fat-deep);text-shadow:0 0 22px rgba(99,216,232,.3)}
+.icon-badge{width:28px;height:28px;border-radius:50%}
+.summary-card--calories .icon-badge{background:rgba(255,148,115,.14);color:#FF9473;box-shadow:inset 0 0 0 1px rgba(255,148,115,.5)}
+.summary-card--protein .icon-badge{background:rgba(185,168,255,.14);color:#B9A8FF;box-shadow:inset 0 0 0 1px rgba(185,168,255,.5)}
+.summary-card--carbs .icon-badge{background:rgba(245,198,90,.13);color:#F5C65A;box-shadow:inset 0 0 0 1px rgba(245,198,90,.45)}
+.summary-card--fat .icon-badge{background:rgba(99,216,232,.13);color:#63D8E8;box-shadow:inset 0 0 0 1px rgba(99,216,232,.45)}
+.insights .icon-badge{background:rgba(123,224,176,.12);color:#7BE0B0;box-shadow:inset 0 0 0 1px rgba(123,224,176,.45)}
+@container (min-width:620px){.nutrition-strip{grid-template-columns:1.4fr repeat(3,minmax(0,1fr))}
+  .summary-card--calories{grid-column:auto;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96' %3E%3Ccircle cx='96' cy='0' r='26' fill='none' stroke='%23FF9473' stroke-width='1.4' opacity='0.5'/%3E%3Ccircle cx='96' cy='0' r='36' fill='none' stroke='%23FF9473' stroke-width='1' opacity='0.32' stroke-dasharray='1.5 4'/%3E%3Ccircle cx='96' cy='0' r='46' fill='none' stroke='%23FF9473' stroke-width='1.1' opacity='0.2'/%3E%3Ccircle cx='68.4' cy='23.1' r='3' fill='%23FF9473' opacity='.9'/%3E%3Ccircle cx='68.4' cy='23.1' r='7' fill='%23FF9473' opacity='.16'/%3E%3C/svg%3E") no-repeat right top / 110px 110px,radial-gradient(70% 45% at 30% 62%,rgba(255,148,115,.2),rgba(255,148,115,0) 72%),var(--h-card)}}
+
+
+.schedule-timeline__item{border:1px solid rgba(255,255,255,.1);border-radius:22px;padding:12px 16px 14px;background:linear-gradient(160deg,#182A21,#12211A);box-shadow:0 14px 28px -20px rgba(0,0,0,.95);color:#E9F3EC}
+.schedule-timeline__item:hover{border-color:rgba(123,224,176,.5)}
+.schedule-timeline__item--next{border-color:rgba(123,224,176,.9);
+  background:radial-gradient(110% 90% at 0% 0%,rgba(123,224,176,.18),rgba(123,224,176,0) 62%),linear-gradient(160deg,#1A3328,#13261D);
+  box-shadow:0 0 0 1px rgba(123,224,176,.22),0 10px 30px -12px rgba(123,224,176,.45)}
+.schedule-timeline__time{color:#EEF6F0}
+.schedule-timeline__item--next .schedule-timeline__time{color:#8FE8BE}
+.schedule-timeline__label,.schedule-timeline__item--next .schedule-timeline__label{color:#B5C9BC}
+.schedule-timeline__next-tag{background:var(--h-mint);color:#06231A;box-shadow:0 0 12px -2px rgba(123,224,176,.6)}
+.schedule-timeline__note{color:#93AB9D}
+.day-slide__n{color:#EEF6F0}
+.day-slide__of{color:#93AB9D}
+.day-slide__head::after{height:1px;border-radius:0;background:linear-gradient(90deg,rgba(123,224,176,.8),rgba(123,224,176,0))}
+.days-carousel__hint{color:#93AB9D}
+.days-carousel__dot::before{background:#3E5A4C}
+.days-carousel__dot.is-active::before{background:#7BE0B0;box-shadow:0 0 10px rgba(123,224,176,.75)}
+.days-carousel__arrow{background:rgba(20,35,28,.88);color:#8FE8BE;box-shadow:inset 0 0 0 1px rgba(123,224,176,.45),0 12px 26px -10px rgba(0,0,0,.85)}
+.meal-head h3{color:#EEF6F0}
+.meal-time-badge{height:36px;padding:0 12px;border-radius:12px;background:rgba(123,224,176,.1);color:#8FE8BE;box-shadow:inset 0 0 0 1px rgba(123,224,176,.42)}
+.meal-kcal{color:var(--kcal-deep)}
+.meal-items{border-top:1px solid rgba(255,255,255,.08)}
+.food-row{border-bottom:1px solid rgba(255,255,255,.06)}
+.food-name,.food-qty,.food-cost{color:#E9F3EC}
+.food-meta,.food-cost--package{color:#B5C9BC}
+.food-qty__grams,.food-macro__unavailable{color:#93AB9D}
+.food-cost__tag{font-family:var(--font-body);text-transform:none;letter-spacing:0;font-weight:600;color:#93AB9D}
+.food-macro__badge,.food-purchase__badge{border-radius:999px;background:rgba(123,224,176,.1);color:#8FE8BE;box-shadow:inset 0 0 0 1px rgba(123,224,176,.26);font-family:var(--font-body);text-transform:none;letter-spacing:0}
+.food-purchase{background:rgba(123,224,176,.05);border-radius:12px;box-shadow:inset 2px 0 0 rgba(123,224,176,.6),inset 0 0 0 1px rgba(123,224,176,.08);color:#DCEBE2}
+.meal-footer{background:rgba(0,0,0,.2);border-top:1px solid rgba(255,255,255,.06)}
+.meal-footer>div{font-family:var(--font-body);text-transform:none;letter-spacing:0;font-weight:600;color:#A9BFB2}
+.meal-footer strong{color:#EEF6F0}
+.meal-footer>div::before{height:3px;border-radius:2px}
+.meal-footer>div:nth-child(1)::before{background:#B9A8FF;box-shadow:0 0 8px rgba(185,168,255,.6)}
+.meal-footer>div:nth-child(2)::before{background:#F5C65A;box-shadow:0 0 8px rgba(245,198,90,.5)}
+.meal-footer>div:nth-child(3)::before{background:#63D8E8;box-shadow:0 0 8px rgba(99,216,232,.5)}
+.meal-footer>div:nth-child(4)::before{background:#7BE0B0;box-shadow:0 0 8px rgba(123,224,176,.55)}
+.meal-footer>div:nth-child(5)::before{background:#3E5A4C}
+.meal-steps{border-top:1px solid rgba(255,255,255,.08)}
+.meal-steps__toggle{color:#EEF6F0}
+.meal-steps__toggle::after{border-color:#7BE0B0}
+.meal-steps__equipment{color:#93AB9D}
+.meal-steps__list li{color:#D5E6DC}
+.meal-steps__list li::before{border-radius:50%;background:rgba(123,224,176,.1);color:#8FE8BE;box-shadow:inset 0 0 0 1px rgba(123,224,176,.45)}
+.meal-make-ahead,.meal-cook-note,.warning,.nocook-summary__warn,.plan-days-note{border-radius:12px;background:rgba(245,198,90,.08);color:#F5D27E;box-shadow:inset 3px 0 0 #F5C65A}
+.warning--error{background:rgba(255,120,100,.09);color:#FFB0A4;box-shadow:inset 3px 0 0 #FF8A75}
+.meal-card--empty{border:1.5px dashed rgba(255,255,255,.14);background:rgba(255,255,255,.02);box-shadow:none}
+.meal-card--empty p{color:#B5C9BC}
+.empty-icon{background:rgba(123,224,176,.1);color:#8FE8BE;box-shadow:inset 0 0 0 1px rgba(123,224,176,.4)}
+.next-meal-sticky__btn{border-radius:20px;background:rgba(15,28,22,.82);-webkit-backdrop-filter:blur(16px) saturate(140%);backdrop-filter:blur(16px) saturate(140%);color:#E9F3EC;
+  border:1px solid rgba(123,224,176,.24);box-shadow:0 16px 32px -14px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,255,255,.06)}
+.next-meal-sticky__eyebrow{background:var(--h-mint);color:#06231A}
+.next-meal-sticky__time{color:#8FE8BE;text-shadow:0 0 16px rgba(123,224,176,.45)}
+.next-meal-sticky__label{color:#D5E6DC}
+
+
+.shopping-summary__stat span{font-family:var(--font-body);text-transform:none;letter-spacing:0;font-weight:600;color:#B5C9BC}
+.shopping-summary__stat strong{color:#EEF6F0}
+.shopping-summary__stat:nth-child(2){position:relative;overflow:hidden;border-color:rgba(123,224,176,.38);
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200' %3E%3Ccircle cx='100.0' cy='100.0' r='86' fill='none' stroke='%237BE0B0' stroke-width='1.4' opacity='0.42'/%3E%3Ccircle cx='100.0' cy='100.0' r='70' fill='none' stroke='%237BE0B0' stroke-width='1' opacity='0.26' stroke-dasharray='1.5 5'/%3E%3Ccircle cx='100.0' cy='100.0' r='54' fill='none' stroke='%237BE0B0' stroke-width='1.2' opacity='0.2'/%3E%3Ccircle cx='25.5' cy='143.0' r='4' fill='%237BE0B0' opacity='.9'/%3E%3Ccircle cx='25.5' cy='143.0' r='9' fill='%237BE0B0' opacity='.16'/%3E%3C/svg%3E") no-repeat right -24px center / 132px 132px,radial-gradient(45% 75% at 22% 66%,rgba(123,224,176,.2),rgba(123,224,176,0) 72%),var(--h-card);
+  box-shadow:0 0 0 1px rgba(123,224,176,.08),0 22px 46px -22px rgba(123,224,176,.38),var(--shadow-1)}
+.shopping-summary__stat:nth-child(2) span{color:#CFE2D6}
+.shopping-summary__stat:nth-child(2) strong{color:#8FE8BE;text-shadow:0 0 26px rgba(123,224,176,.42)}
+.shopping-progress__texto{color:#B5C9BC}
+.shopping-progress.is-completo .shopping-progress__texto{color:#8FE8BE}
+.shopping-progress__barra{height:14px;padding:3px;background:#0E1A15;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.shopping-progress__barra>span{background:linear-gradient(90deg,#5FCF9C,#B6E595);box-shadow:0 0 12px rgba(123,224,176,.6)}
+.shopping-item__check::before,.pantry-purchase-row__check::before{border:2px solid rgba(123,224,176,.7);background:#11201A}
+.shopping-item__check[aria-checked="true"]::before,.pantry-purchase-row__check[aria-checked="true"]::before{background:#7BE0B0;border-color:#7BE0B0;box-shadow:0 0 12px rgba(123,224,176,.6)}
+.shopping-item__check[aria-checked="true"]::after,.pantry-purchase-row__check[aria-checked="true"]::after{border-color:#06231A}
+.shopping-item__name,.shopping-item__buy,.shopping-item__price{color:#EEF6F0}
+.shopping-item__meta,.shopping-item__usage-price{color:#93AB9D}
+.shopping-item.is-comprado{background:#101C17;box-shadow:none}
+.shopping-item.is-comprado .shopping-item__name,.shopping-item.is-comprado .shopping-item__buy,.shopping-item.is-comprado .shopping-item__price{color:#93AB9D}
+.product-find-btn{background:rgba(255,255,255,.05);box-shadow:inset 0 0 0 1px rgba(255,255,255,.13)}
+.product-find-btn:hover{box-shadow:inset 0 0 0 1px rgba(123,224,176,.6)}
+.shopping-share-note{color:#B5C9BC}
+.confirm-receipt{background:rgba(123,224,176,.06);box-shadow:inset 3px 0 0 #7BE0B0;border-radius:14px;color:#DCEBE2}
+
+
+.pantry-plans-empty{border:1.5px dashed rgba(255,255,255,.15);background:rgba(255,255,255,.02);color:#A9BFB2}
+.pantry-active-card__date{color:#EEF6F0}
+.pantry-active-card__summary,.pantry-purchase-checklist-hint{color:#B5C9BC}
+.pantry-active-card__pantry-note,.pantry-purchase-row__grams,.pantry-purchase-row__pantry-note,.pantry-meal-chips__label{color:#93AB9D}
+.pantry-meal-chips__label{font-family:var(--font-body);text-transform:none;letter-spacing:0}
+.pantry-history-heading{color:#EEF6F0}
+.pantry-history-row__summary{color:#B5C9BC}
+.pantry-item__amount{background:rgba(255,255,255,.04);border-color:rgba(123,224,176,.55);color:#E9F3EC}
+
+
+.status,.pantry-intro,.auth-dialog__body p,.delete-dialog__note,.plan-replace-dialog__note,.plan-replace-prompt{color:#B5C9BC}
+.insights h3{color:#EEF6F0}
+.insights li{color:#B5C9BC}
+.insights li::before{width:7px;height:7px;border-radius:50%;background:#7BE0B0;box-shadow:0 0 8px rgba(123,224,176,.75);top:.62em}
+.site-footer,.footer-note{color:#A9BFB2}
+.site-footer__link{color:#B5C9BC}
+.site-footer__sep{color:#93AB9D}
+.disclosure__chevron{color:#7BE0B0}
+.spinner-wrap{background:rgba(123,224,176,.07);color:#E9F3EC;box-shadow:inset 0 0 0 1px rgba(123,224,176,.25)}
+.loader-flame{border-color:#2A4034;border-top-color:#7BE0B0}
+.verified-card__badge--ean{background:rgba(255,255,255,.05)}
+.auth-dialog__notice-static{background:rgba(255,255,255,.04)}
+.auth-divider{color:#93AB9D}
+.auth-divider::before,.auth-divider::after{background:rgba(255,255,255,.1)}
+
+
+@media(max-width:389px){
+  .meta-boxes{grid-template-columns:minmax(0,1fr);gap:6px}
+  .meta{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:10px 14px}
+  .meta .v{margin-top:0}
+  .budget-chip{padding:12px 8px 12px 10px}
+  .budget-chip__title{font-weight:500;letter-spacing:-.005em}
+  .shopping-summary__stat{padding:12px 12px 10px}
+  .shopping-summary__stat:not(:nth-child(2)) strong{font-size:22px}
+}
+@media(max-width:359px){
+  .budget-modes{grid-template-columns:minmax(0,1fr)}
+  .budget-chip{flex-direction:row;align-items:center;justify-content:space-between;gap:8px;min-height:56px;padding:10px 12px}
+  .budget-chip__amount{font-size:20px;white-space:nowrap}
+  .actions-secondary{grid-template-columns:minmax(0,1fr)}
+  .summary-card h3{letter-spacing:.05em}
+  .disclosure .verified-panel__head{flex-wrap:wrap;align-items:flex-start}
+  .shopping-summary__stat{padding:12px 10px 10px}
+  .shopping-summary__stat:not(:nth-child(2)) strong{font-size:20px}
+}
+
+@media(min-width:600px) and (max-width:900px){
+  .budget-modes{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .budget-chip--custom{grid-column:1 / -1;flex-direction:row;align-items:center}
+}
+@media(min-width:768px) and (max-width:900px){.budget-modes{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@container (max-width:340px){
+  .summary-card--calories{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200' %3E%3Ccircle cx='100.0' cy='100.0' r='86' fill='none' stroke='%23FF9473' stroke-width='1.4' opacity='0.42'/%3E%3Ccircle cx='100.0' cy='100.0' r='70' fill='none' stroke='%23FF9473' stroke-width='1' opacity='0.26' stroke-dasharray='1.5 5'/%3E%3Ccircle cx='100.0' cy='100.0' r='54' fill='none' stroke='%23FF9473' stroke-width='1.2' opacity='0.2'/%3E%3Ccircle cx='25.5' cy='143.0' r='4' fill='%23FF9473' opacity='.9'/%3E%3Ccircle cx='25.5' cy='143.0' r='9' fill='%23FF9473' opacity='.16'/%3E%3C/svg%3E") no-repeat right -62px center / 160px 160px,radial-gradient(42% 62% at 24% 64%,rgba(255,148,115,.2),rgba(255,148,115,0) 72%),var(--h-card)}
+}
+@container (max-width:289px){
+  .meal-footer{grid-template-columns:repeat(3,auto);row-gap:12px}
+  .food-row{grid-template-areas:"name kcal" "meta meta" "use use" "pack pack" "buy buy"}
+  .food-cost--usage{grid-area:use}
+  .food-cost--package{grid-area:pack;justify-self:start}
+}
+
+
+@media screen and (max-width:900px){
+  body.con-pestanas .tabbar{padding:6px;gap:2px;border-radius:26px;background:rgba(12,24,19,.8);-webkit-backdrop-filter:blur(18px) saturate(140%);backdrop-filter:blur(18px) saturate(140%);
+    border:1px solid rgba(255,255,255,.08);box-shadow:0 26px 46px -14px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,255,255,.07)}
+  .tabbar__btn{min-height:60px;border-radius:20px;background:transparent;color:#9FB8AA;font-weight:600}
+  .tabbar__btn::before{content:"";position:absolute;top:-7px;left:50%;width:0;height:3px;border-radius:0 0 3px 3px;background:#8FE8BE;transform:translateX(-50%);transition:width .2s ease}
+  .tabbar__btn.is-activa{background:radial-gradient(70% 62% at 50% 0%,rgba(123,224,176,.2),rgba(123,224,176,0) 78%);color:#8FE8BE;font-weight:700}
+  .tabbar__btn.is-activa::before{width:28px;box-shadow:0 0 10px 1px rgba(123,224,176,.9),0 0 24px 4px rgba(123,224,176,.35)}
+  .tabbar__btn.is-activa svg{filter:drop-shadow(0 0 6px rgba(123,224,176,.7))}
+  .tabbar__cuenta{background:#FF9473;color:#2B0F05;box-shadow:0 0 0 2px #0F1C17,0 0 12px rgba(255,148,115,.55)}
+}
+
+
+.onboarding{background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180' %3E%3Ccircle cx='59.3' cy='29.2' r='0.81' fill='%23DFF7EA' opacity='0.14'/%3E%3Ccircle cx='96.2' cy='66.6' r='0.48' fill='%23DFF7EA' opacity='0.26'/%3E%3Ccircle cx='9.5' cy='78.5' r='0.49' fill='%23DFF7EA' opacity='0.15'/%3E%3Ccircle cx='76.9' cy='146.9' r='0.52' fill='%23DFF7EA' opacity='0.18'/%3E%3Ccircle cx='112.2' cy='167.9' r='0.77' fill='%23DFF7EA' opacity='0.23'/%3E%3Ccircle cx='172.9' cy='11.1' r='0.92' fill='%23DFF7EA' opacity='0.20'/%3E%3Ccircle cx='28.1' cy='23.5' r='0.62' fill='%23DFF7EA' opacity='0.35'/%3E%3Ccircle cx='34.4' cy='104.2' r='0.80' fill='%23DFF7EA' opacity='0.22'/%3E%3Ccircle cx='98.3' cy='13.9' r='0.48' fill='%23DFF7EA' opacity='0.18'/%3E%3Ccircle cx='121.4' cy='77.4' r='0.62' fill='%23DFF7EA' opacity='0.28'/%3E%3Ccircle cx='81.9' cy='55.2' r='0.89' fill='%23DFF7EA' opacity='0.32'/%3E%3Ccircle cx='45.5' cy='102.9' r='0.74' fill='%23DFF7EA' opacity='0.37'/%3E%3Ccircle cx='129.9' cy='53.1' r='0.99' fill='%23DFF7EA' opacity='0.15'/%3E%3Ccircle cx='75.8' cy='134.7' r='0.53' fill='%23DFF7EA' opacity='0.26'/%3E%3Ccircle cx='9.8' cy='119.3' r='0.87' fill='%23DFF7EA' opacity='0.28'/%3E%3Ccircle cx='155.3' cy='57.6' r='0.83' fill='%23DFF7EA' opacity='0.29'/%3E%3Ccircle cx='103.9' cy='82.4' r='0.91' fill='%23DFF7EA' opacity='0.38'/%3E%3Ccircle cx='85.5' cy='118.6' r='0.48' fill='%23DFF7EA' opacity='0.32'/%3E%3Ccircle cx='115.6' cy='175.8' r='0.90' fill='%23DFF7EA' opacity='0.20'/%3E%3Ccircle cx='70.1' cy='119.3' r='0.46' fill='%23DFF7EA' opacity='0.25'/%3E%3C/svg%3E") repeat 0 0 / 180px 180px,
+    var(--h-topo) repeat center top / 1000px 1000px,
+    radial-gradient(80% 50% at 10% 0%, rgba(123,224,176,.2), rgba(123,224,176,0) 70%),
+    radial-gradient(70% 40% at 100% 60%, rgba(70,200,196,.12), rgba(70,200,196,0) 70%),
+    linear-gradient(175deg,#10201A 0%,#0B1612 60%,#09130F 100%)}
+.onboarding__card{background:linear-gradient(180deg,rgba(25,44,35,.94),rgba(17,31,25,.96));-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);color:#E9F3EC;
+  border:1px solid rgba(255,255,255,.08);border-bottom:0;border-radius:30px 30px 0 0;box-shadow:0 -24px 60px -20px rgba(0,0,0,.85),inset 0 1px 0 rgba(170,240,205,.2)}
+@media(min-width:640px){.onboarding__card{border-radius:30px;border-bottom:1px solid rgba(255,255,255,.08)}}
+.onboarding__brand-mark{border-radius:12px;background:var(--h-mint);color:#06231A;box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 6px 18px -6px rgba(123,224,176,.75)}
+.onboarding__brand-name{color:#EEF6F0}
+.onboarding__title,.onboarding__question{color:#EEF6F0}
+.onboarding__title-accent{background:none;color:#8FE8BE;padding:0}
+.onboarding__summary li{color:#B5C9BC}
+.onboarding__summary li::before{left:4px;top:.5em;width:8px;height:8px;border-radius:50%;background:#7BE0B0;box-shadow:0 0 0 3px rgba(123,224,176,.16),0 0 10px rgba(123,224,176,.75)}
+.onboarding__summary strong{color:#EEF6F0}
+.onboarding__check{color:#D5E6DC}
+.onboarding__link{min-height:40px}
+.onboarding__check input{border:2px solid rgba(123,224,176,.75);border-radius:8px;background:#11201A}
+.onboarding__check input:checked{background:#7BE0B0;border-color:#7BE0B0;box-shadow:0 0 12px rgba(123,224,176,.6)}
+.onboarding__check input:checked::after{border-color:#06231A}
+.onboarding__skip,.onboarding__skip-questions{color:#B5C9BC}
+.onboarding__skip-note{color:#93AB9D}
+.onboarding__progress{height:8px;background:#0E1A15;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.onboarding__progress-bar{background:linear-gradient(90deg,#5FCF9C,#B6E595);box-shadow:0 0 12px rgba(123,224,176,.7)}
+.onboarding__progress-label{color:#8FE8BE}
+.onboarding__hint{color:#B5C9BC}
+.onboarding__unit{color:#93AB9D}
+.onboarding__choice.is-selected::after{box-shadow:0 0 0 3px #172A21,0 0 14px rgba(123,224,176,.75)}
+
+
+.tour__hole{box-shadow:0 0 0 100vmax rgba(3,9,6,.76),0 0 0 2px #7BE0B0,0 0 26px 4px rgba(123,224,176,.45)}
+.tour__foco{box-shadow:0 0 0 100vmax rgba(3,9,6,.4),0 0 0 2px #7BE0B0,0 0 20px 2px rgba(123,224,176,.4)}
+.tour__card{border-radius:22px;background:var(--h-card);border:1px solid rgba(255,255,255,.09);color:#E9F3EC}
+.tour__counter{color:#8FE8BE}
+.tour__title{color:#EEF6F0}
+.tour__body{color:#B5C9BC}
+.tour__skip{color:#B5C9BC}
+.auth-dialog,.ajustes-dialog{background:#13221B;color:#E9F3EC;border:1px solid rgba(255,255,255,.08);border-bottom:0;border-radius:28px 28px 0 0;
+  box-shadow:0 -20px 60px -10px rgba(0,0,0,.85),inset 0 1px 0 rgba(170,240,205,.18)}
+@media(min-width:640px){.auth-dialog,.ajustes-dialog{border-radius:28px;border-bottom:1px solid rgba(255,255,255,.08)}}
+.auth-dialog::backdrop,.ajustes-dialog::backdrop{background:rgba(3,9,6,.72);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+.ajustes-dialog__head,.legal-dialog__foot{background:#13221B}
+.legal-dialog__foot{border-top:1px solid rgba(255,255,255,.07)}
+.ajustes-dialog__title,.auth-dialog__head h2{color:#EEF6F0}
+.ajustes-group+.ajustes-group{border-top:1px solid rgba(255,255,255,.07)}
+.ajustes-group__title{color:#8FE8BE}
+.ajustes-group__hint{color:#93AB9D}
+.ajustes-group__hint strong{color:#D5E6DC}
+.ajustes-action{border-radius:16px;border:1px solid rgba(255,255,255,.11);background:rgba(255,255,255,.035);color:#E9F3EC}
+.ajustes-action:hover{border-color:rgba(123,224,176,.55)}
+.ajustes-choice__btn[aria-checked="true"]{color:#06231A}
+.legal-dialog__body h3{color:#EEF6F0}
+.legal-dialog__body ul{color:#B5C9BC}
+.legal-dialog__version{color:#93AB9D}
+.suggest-list{background:#15261E}
+
+/* ── fichas de aspecto (Ajustes): la maquetación manda sobre el estilo de ficha ── */
+.aspecto-card{display:grid;grid-template-rows:auto auto;align-content:start;justify-items:stretch;gap:8px;min-height:0;padding:8px 8px 10px;text-align:center;font-size:14px;line-height:1.2;transform:none}.aspecto-card__vista{display:block;aspect-ratio:6/5;overflow:hidden;border-radius:8px;background:var(--line);margin:0}.aspecto-card__nombre{display:block;overflow-wrap:anywhere}
