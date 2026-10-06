@@ -1062,6 +1062,20 @@ function run(t) {
     assert.ok(src.slice(i, i + 400).indexOf("startTourIfWanted") !== -1, "«Cancelar» tiene que llamar a startTourIfWanted()");
     assert.ok(/addEventListener\("cancel"[\s\S]{0,200}startTourIfWanted/.test(src), "Escape tiene que hacer lo mismo que «Cancelar»");
   });
+
+  t.test("quien vio el recorrido VIEJO (antes del 2026-10-06) vuelve a recibir la oferta, una vez", function () {
+    function oferta(estado) {
+      var e = entornoPregunta(estado);
+      var n = 0;
+      e.ctx.offerTourWhenReady = function () { n++; };
+      e.ctx.maybeStartTour();
+      return n;
+    }
+    assert.strictEqual(oferta({}), 1, "no lo ha visto");
+    assert.strictEqual(oferta({ tourDoneAt: "2026-10-01T10:00:00.000Z" }), 1, "vio el viejo, de 11 pasos");
+    assert.strictEqual(oferta({ tourDoneAt: "2026-10-07T10:00:00.000Z" }), 0, "ya vio o rechazó el nuevo");
+    assert.strictEqual(oferta({ tourDoneAt: "no-es-una-fecha" }), 0, "ante la duda no se molesta");
+  });
 }
 
 module.exports = { run: run };

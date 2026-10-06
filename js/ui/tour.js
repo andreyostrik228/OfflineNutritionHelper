@@ -73,6 +73,11 @@ var _tourAlResponder = null;
 // esto es reciente. 0 = nadie lo ha pedido.
 var _tourQuiereVerlo = 0;
 var TOUR_QUIERE_MAX = 120000;   // si el plan no llega en 2 min, ya no vale
+// Cuándo se estrenó el recorrido actual (2026-10-06: 18 pasos, tarjeta fija).
+// Quien lo "vio" ANTES de esa fecha vio el de 11 pasos, que no se parece: se le
+// vuelve a ofrecer, una vez. Sin esto el dueño no podía ver el nuevo -- la marca
+// "ya lo vio" del recorrido viejo lo daba por visto (2026-10-07).
+var TOUR_ESTRENO = "2026-10-06T00:00:00.000Z";
 // ¿Hay pestañas (móvil)? Se mide ANTES de abrir el recorrido: mientras está
 // abierto el CSS esconde la barra de pestañas.
 var _tourMovil = false;
@@ -768,6 +773,19 @@ function offerTour(alResponder) {
 }
 
 /**
+ * ¿La marca «ya lo vio» es de ESTE recorrido o del viejo? Una fecha que no se
+ * entiende cuenta como vista: ante la duda no se molesta a nadie.
+ * @param {string} cuando - ISO
+ * @returns {boolean}
+ */
+function _tourVistoVigente(cuando) {
+  var visto = Date.parse(cuando);
+  var estreno = Date.parse(TOUR_ESTRENO);
+  if (isNaN(visto) || isNaN(estreno)) return true;
+  return visto >= estreno;
+}
+
+/**
  * Dijo «Sí» al recorrido, pero «Generar plan» no generó nada: había un plan de
  * hoy ya empezado, salió «Ya tienes un plan activo» y rechazó cambiarlo
  * («Cancelar»). Sin esto se quedaba con un «Sí» al que nadie contestaba, que
@@ -813,7 +831,7 @@ function maybeStartTour() {
   }
 
   var estado = getOnboardingState();
-  if (estado && estado.tourDoneAt) return;
+  if (estado && estado.tourDoneAt && _tourVistoVigente(estado.tourDoneAt)) return;
   // Un respiro antes de preguntar: el plan acaba de aparecer y merece verse
   // un segundo antes de que algo se ponga por encima.
   offerTourWhenReady();

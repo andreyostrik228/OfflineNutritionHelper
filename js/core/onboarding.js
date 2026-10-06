@@ -176,12 +176,17 @@ function recordAccountChoice(choice) {
 
 /** @returns {boolean} */
 function completeIntake() {
-  return saveOnboardingState({ intakeDoneAt: new Date().toISOString() });
+  var ok = saveOnboardingState({ intakeDoneAt: new Date().toISOString() });
+  // Es de la cuenta, no del dispositivo (js/core/account-prefs.js).
+  if (typeof pushAccountPrefsToCloud === "function") pushAccountPrefsToCloud();
+  return ok;
 }
 
 /** @returns {boolean} */
 function completeTour() {
-  return saveOnboardingState({ tourDoneAt: new Date().toISOString() });
+  var ok = saveOnboardingState({ tourDoneAt: new Date().toISOString() });
+  if (typeof pushAccountPrefsToCloud === "function") pushAccountPrefsToCloud();
+  return ok;
 }
 
 /**

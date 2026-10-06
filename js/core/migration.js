@@ -113,7 +113,9 @@ function hasSnapshotContent(snapshot) {
 
   var settings = snapshot.settings;
   if (settings && typeof settings === "object") {
-    var realKeys = Object.keys(settings).filter(function (k) { return k !== "updatedAt"; });
+    // "_prefs" (aspecto y marcas del alta, ver js/core/account-prefs.js) tampoco
+    // es una decisión de perfil: una cuenta con solo eso sigue estando vacía.
+    var realKeys = Object.keys(settings).filter(function (k) { return k !== "updatedAt" && k !== "_prefs"; });
     if (realKeys.length > 0) return true;
   }
 
@@ -237,12 +239,34 @@ function _hydrateLocalFrom(cloudRow) {
   if (typeof savePantryState === "function") savePantryState(row.pantry_state || {});
   if (typeof savePantryHistory === "function") savePantryHistory(row.pantry_history || []);
   if (typeof saveSettings === "function") saveSettings(row.settings || {});
+  _applyCloudPrefs(row);
+}
+
+/**
+ * Si la cuenta trae sus preferencias (aspecto, cuestionario y recorrido
+ * hechos), mandan sobre las del dispositivo. Si no las trae -- cuenta nueva o
+ * anterior a esto --, se queda lo del dispositivo y se sube a la cuenta en
+ * cuanto la reconciliación termina (_pushPrefsIfCloudHadNone).
+ * Ver js/core/account-prefs.js.
+ */
+function _applyCloudPrefs(row) {
+  if (typeof hasAccountPrefs !== "function" || typeof applyAccountPrefs !== "function") return;
+  var ajustes = row && row.settings;
+  if (hasAccountPrefs(ajustes)) applyAccountPrefs(ajustes._prefs);
+}
+
+/** Tras fijar el marcador: una cuenta sin preferencias guardadas las recibe. */
+function _pushPrefsIfCloudHadNone(row) {
+  if (typeof hasAccountPrefs !== "function" || typeof pushAccountPrefsToCloud !== "function") return;
+  if (!hasAccountPrefs(row && row.settings)) pushAccountPrefsToCloud();
 }
 
 function _wipeLocal() {
   if (typeof savePantryState === "function") savePantryState({});
   if (typeof savePantryHistory === "function") savePantryHistory([]);
   if (typeof clearSettings === "function") clearSettings();
+  // El aspecto y las marcas del alta son de la cuenta, no del dispositivo.
+  if (typeof resetAccountPrefs === "function") resetAccountPrefs();
 }
 
 /**
@@ -293,6 +317,7 @@ function _applyNonConflict(state, localSnapshot, cloudRow, userId) {
   if (state === "already_synced" || state === "pull") {
     _hydrateLocalFrom(cloudRow);
     setCloudSyncedUserId(userId);
+    _pushPrefsIfCloudHadNone(cloudRow);
     return { status: state === "already_synced" ? "already_synced" : "pulled" };
   }
   if (state === "push") {
@@ -325,6 +350,7 @@ function resolveConflictKeepCloud() {
       if (!cloudRow) return;
       _hydrateLocalFrom(cloudRow);
       setCloudSyncedUserId(user.id);
+      _pushPrefsIfCloudHadNone(cloudRow);
     });
 }
 
@@ -366,6 +392,7 @@ function resolveConflictMerge(cloudRow) {
   if (typeof savePantryState === "function") savePantryState(mergedPantryState);
   if (typeof savePantryHistory === "function") savePantryHistory(mergedPantryHistory);
   if (typeof saveSettings === "function") saveSettings(mergedSettings);
+  _applyCloudPrefs(cloud);
 
   return Promise.resolve((typeof pushAllToCloud === "function") ? pushAllToCloud({ setMigratedAt: true }) : null)
     .then(function () {

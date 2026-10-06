@@ -409,6 +409,8 @@ function _menuElegirAspecto(id) {
     if (_menuAspectoPedido !== info.id) return;     // pidió otro mientras tanto
     if (puesto) {
       saveLook(info.id);
+      // El aspecto es de la cuenta: se sube (si hay sesión; js/core/account-prefs.js).
+      if (typeof pushAccountPrefsToCloud === "function") pushAccountPrefsToCloud();
       _menuPintarAspectos();
       _menuEstadoAspecto("ui.aspecto_puesto", { nombre: _menuNombreAspecto(info.id) });
     } else {

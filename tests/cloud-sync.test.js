@@ -435,6 +435,75 @@ function run(t) {
     s.FIREBASE_CONFIG = { apiKey: "YOUR_FIREBASE_API_KEY", authDomain: "d", projectId: "p", appId: "a" };
     assert.strictEqual(s.firestoreUserDocUrl("u"), null);
   });
+
+  // ── Las preferencias de la cuenta viajan dentro de `settings` ─────────
+  // No en un campo nuevo: firebase/firestore.rules solo admite cuatro campos
+  // y publicar reglas es cosa de la consola de Firebase. Ver
+  // js/core/account-prefs.js.
+  function freshPrefsCloudSandbox() {
+    var s = loadBrowserGlobals([
+      projPath("js/data/firebase-config.js"),
+      projPath("js/core/firebase-client.js"),
+      projPath("js/core/look.js"),
+      projPath("js/core/onboarding.js"),
+      projPath("js/core/account-prefs.js"),
+      projPath("js/core/cloud-sync.js")
+    ]);
+    var datos = {};
+    s.localStorage = {
+      getItem: function (k) { return Object.prototype.hasOwnProperty.call(datos, k) ? datos[k] : null; },
+      setItem: function (k, v) { datos[k] = String(v); },
+      removeItem: function (k) { delete datos[k]; }
+    };
+    s.console = { error: function () {}, log: function () {} };
+    s.FIREBASE_CONFIG = { apiKey: "k", authDomain: "d", projectId: "proyecto-test", appId: "a" };
+    s.getCurrentUser = function () { return { id: "user-1" }; };
+    s.getAuthIdToken = function () { return Promise.resolve("tok-123"); };
+    s.getSettings = function () { return { age: 30, weight: 70 }; };
+    s.getPantryState = function () { return {}; };
+    s.getPantryHistory = function () { return []; };
+    return s;
+  }
+
+  t.test("pushSettingsToCloud sube los ajustes con las preferencias de la cuenta dentro de `settings`", function () {
+    var s = freshPrefsCloudSandbox();
+    var fs = createFakeFirestore();
+    s.fetch = fs.fetch;
+    s.saveLook("kitty");
+    s.completeIntake();
+    return s.pushSettingsToCloud().then(function (r) {
+      assert.strictEqual(r.error, null);
+      var peticion = fs.calls.filter(function (c) { return c.method === "PATCH"; }).pop();
+      var campos = Object.keys(peticion.body.fields);
+      assert.deepStrictEqual(campos, ["settings"], "solo `settings`: las reglas de Firestore no admiten campos nuevos");
+      var ajustes = JSON.parse(peticion.body.fields.settings.stringValue);
+      assert.strictEqual(ajustes.age, 30, "los ajustes de siempre siguen ahí");
+      assert.strictEqual(ajustes._prefs.look, "kitty");
+      assert.ok(ajustes._prefs.intakeDoneAt, "la marca del cuestionario viaja");
+      assert.strictEqual(ajustes._prefs.tourDoneAt, undefined, "y la del recorrido, que no se ha visto, no");
+    });
+  });
+
+  t.test("pushAllToCloud también las lleva, y lo que baja de la nube las devuelve", function () {
+    var s = freshPrefsCloudSandbox();
+    var fs = createFakeFirestore();
+    s.fetch = fs.fetch;
+    s.saveLook("avena");
+    return s.pushAllToCloud({ setMigratedAt: true }).then(function () {
+      return s.pullCloudUserData();
+    }).then(function (fila) {
+      assert.strictEqual(fila.settings.age, 30);
+      assert.strictEqual(fila.settings._prefs.look, "avena");
+    });
+  });
+
+  t.test("las preferencias no se mutan en el objeto de ajustes del llamante", function () {
+    var s = freshPrefsCloudSandbox();
+    var original = { age: 30 };
+    var copia = s.settingsWithAccountPrefs(original);
+    assert.strictEqual(original._prefs, undefined, "no se toca el original");
+    assert.ok(copia._prefs && typeof copia._prefs === "object");
+  });
 }
 
 module.exports = { run: run };

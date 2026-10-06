@@ -126,6 +126,20 @@ function saveLook(id) {
 }
 
 /**
+ * Olvida el aspecto elegido: vuelve al por defecto. Lo usa
+ * js/core/account-prefs.js al cerrar sesión o entrar otra cuenta (el aspecto
+ * es de la cuenta, no del dispositivo).
+ */
+function clearLook() {
+  _lookMemoryState = null;
+  try {
+    if (typeof localStorage !== "undefined" && localStorage) {
+      localStorage.removeItem(LOOK_STORAGE_KEY);
+    }
+  } catch (e) { /* idem saveLook */ }
+}
+
+/**
  * La URL de la hoja de un aspecto, con el sello `?v=` de los demás recursos.
  *
  * El sello es lo que hace que el service worker la guarde para el modo

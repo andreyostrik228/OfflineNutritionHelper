@@ -5,6 +5,44 @@
 > Escrito para alguien que llega SIN NINGÚN contexto previo. Si solo lees
 > una parte de este archivo, que sea esta.
 >
+> ### ⏩ UPDATE 2026-10-07 (e) — el aspecto y las marcas del alta son de la CUENTA, no del dispositivo
+>
+> **824 tests en verde. Sello `20261007e`. Hecho en local, SIN commit ni despliegue todavía**
+> (lo anterior, commit `636cf6a`, sello `d`, sí está desplegado y empujado). Queja del dueño:
+> «какого хуя у меня всегда одно и то же оформление на всех аккаунтах даже если я его только что создал,
+> сделай так чтобы сайт помнил данные аккаунта а не устройства» y «я не могу посмотреть тур».
+> Causa: el aspecto (`nutritionPlanner.look.v1`) y las marcas `intakeDoneAt`/`tourDoneAt`
+> (`nutritionPlanner.onboarding.v1`) vivían SOLO en el dispositivo: ni se subían a la nube ni se
+> vaciaban al cerrar sesión, así que una cuenta nueva heredaba el aspecto de la anterior y, con el
+> recorrido «ya visto» por otra sesión, nunca se le ofrecía (ni el cuestionario si `intakeDoneAt` estaba).
+>
+> - **`js/core/account-prefs.js` (nuevo)**: `collectAccountPrefs()` / `settingsWithAccountPrefs()` /
+>   `hasAccountPrefs()` / `applyAccountPrefs()` / `resetAccountPrefs()` / `pushAccountPrefsToCloud()`.
+>   Las preferencias viajan DENTRO del campo `settings` del documento, bajo `_prefs`
+>   (`{look, intakeDoneAt?, tourDoneAt?}`), **no en un campo nuevo**: `firebase/firestore.rules` solo admite
+>   `pantry_state/pantry_history/settings/migrated_at` y publicar reglas es cosa de la consola de Firebase.
+>   `_prefs` no se guarda en el `settings` local (sanitizeSettings lo descarta); se calcula al subir y se aplica
+>   al bajar.
+> - **Reglas**: al iniciar sesión, si la cuenta TIENE `_prefs` mandan (aspecto y marcas; lo que falta = sin
+>   hacer); si no (cuenta nueva o anterior a esto) se queda lo del dispositivo y se sube. Al cerrar sesión y
+>   en `clear_cross_user` (`_wipeLocal`) el dispositivo vuelve de fábrica: aspecto por defecto, cuestionario y
+>   recorrido sin hacer. Las condiciones aceptadas, `accountChoice` y el IDIOMA siguen siendo del dispositivo.
+>   `hasSnapshotContent` ignora `_prefs` (una cuenta con solo eso sigue «vacía»). No se sube nada hasta que la
+>   reconciliación de esa cuenta termina (`getCloudSyncedUserId`): subir `settings` antes podía pisar el
+>   perfil con un bloque casi vacío.
+> - **Dónde se dispara**: `completeIntake()`/`completeTour()` (onboarding.js), elegir aspecto
+>   (`_menuElegirAspecto`, render-menu.js), `_applyNonConflict`/`resolveConflictKeepCloud`/`...Merge`
+>   (migration.js) y `handleAuthDataReconciled` (app.js) vuelve a poner el aspecto en el DOM tras iniciar o
+>   cerrar sesión. `clearLook()` nuevo en look.js.
+> - **Recorrido**: quien «vio» el recorrido ANTES del 2026-10-06 (`TOUR_ESTRENO`, el de 11 pasos) vuelve a
+>   recibir la oferta una vez tras su siguiente plan (`maybeStartTour`, `_tourVistoVigente`).
+> - **Comprobado**: 14 tests nuevos (migration, cloud-sync, onboarding; mutación comprobada: quitar el reset o
+>   el apply rompe 5), y en el navegador con la nube SIMULADA (`scratchpad/i18n/cuenta.mjs`): cuenta A con
+>   «noche» y alta hecha → cerrar sesión → hojas y alta vacía; cuenta B nueva → hojas, sin recorrido visto y
+>   sube `{look:"hojas"}`; cuenta C con `_prefs` kitty → kitty y marcas suyas, sin subir nada.
+>   **NO comprobado con Firebase real**: crear cuentas reales no es algo que pueda hacer yo; la escritura de
+>   `_prefs` dentro de `settings` solo se ha probado contra un Firestore simulado (PATCH con updateMask).
+>
 > ### ⏩ UPDATE 2026-10-07 (d) — días idénticos a 8 EUR, «cuentas no disponibles» en el móvil, palabra de borrado por idioma
 >
 > **810 tests en verde. Sello `20261007d`. Hecho en local, SIN commit ni despliegue todavía**

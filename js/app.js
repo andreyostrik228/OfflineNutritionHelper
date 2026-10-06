@@ -891,6 +891,16 @@ document.addEventListener("DOMContentLoaded", function () {
     safeInit("settings-reapply-after-sync", function () {
       if (typeof getSettings === "function") applySettingsToForm(getSettings());
     });
+    // El aspecto es de la cuenta: tras iniciar o cerrar sesión puede haber
+    // cambiado en el dispositivo (js/core/account-prefs.js) y hay que ponerlo.
+    safeInit("look-reapply-after-sync", function () {
+      if (typeof getLook !== "function" || typeof applyLookToDom !== "function") return;
+      var quiere = getLook();
+      if (document.documentElement.getAttribute("data-look") === quiere) return;
+      applyLookToDom(quiere).then(function () {
+        if (typeof _menuPintarAspectos === "function") _menuPintarAspectos();
+      });
+    });
     syncAfterPantryChange();
   }
 

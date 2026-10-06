@@ -433,6 +433,169 @@ function run(t) {
     assert.strictEqual(s.getCloudSyncedUserId(), null);
   });
 
+
+  // ── Preferencias de la CUENTA: aspecto y marcas del alta ──────────────
+  // Reportado el 2026-10-07: «одно и то же оформление на всех аккаунтах даже
+  // если я его только что создал» y «не могу посмотреть тур». El aspecto y las
+  // marcas «cuestionario hecho» / «recorrido visto» vivían solo en el
+  // dispositivo: una cuenta nueva heredaba las de la anterior. Ahora viajan en
+  // la cuenta (js/core/account-prefs.js) y se vacían al cerrar sesión.
+  function freshPrefsSandbox(userId, filaNube) {
+    var s = loadBrowserGlobals([
+      projPath("js/core/look.js"),
+      projPath("js/core/settings.js"),
+      projPath("js/core/onboarding.js"),
+      projPath("js/core/account-prefs.js"),
+      projPath("js/core/migration.js")
+    ]);
+    s.localStorage = createFakeLocalStorage();
+    var estado = {
+      cloud: filaNube || { pantry_state: {}, pantry_history: [], settings: {}, migrated_at: null },
+      pushes: 0,
+      ultimosAjustes: null
+    };
+    s.getCurrentUser = function () { return userId ? { id: userId } : null; };
+    s.pullCloudUserData = function () { return Promise.resolve(estado.cloud); };
+    s.pushSettingsToCloud = function () {
+      estado.pushes++;
+      estado.ultimosAjustes = JSON.parse(JSON.stringify(s.settingsWithAccountPrefs(s.getSettings())));
+      return Promise.resolve({ error: null, skipped: false });
+    };
+    s.pushAllToCloud = function () { return s.pushSettingsToCloud(); };
+    return { s: s, estado: estado };
+  }
+
+  t.test("hasSnapshotContent: unas preferencias de cuenta solas NO son datos del usuario", function () {
+    var s = freshMigrationSandbox();
+    assert.strictEqual(s.hasSnapshotContent({ pantry_state: {}, pantry_history: [], settings: { _prefs: { look: "noche" } } }), false);
+    assert.strictEqual(s.hasSnapshotContent({ pantry_state: {}, pantry_history: [], settings: { age: 30, _prefs: { look: "noche" } } }), true);
+  });
+
+  t.test("cerrar sesión devuelve el dispositivo a los valores de fábrica: aspecto por defecto, cuestionario y recorrido sin hacer", function () {
+    var e = freshPrefsSandbox("user-A");
+    var s = e.s;
+    s.saveLook("noche");
+    s.acceptTerms("1.0");
+    s.completeIntake();
+    s.completeTour();
+    assert.strictEqual(s.getLook(), "noche");
+    s.onAuthSignOut();
+    assert.strictEqual(s.getLook(), s.DEFAULT_LOOK, "el aspecto de la cuenta anterior no se queda en el dispositivo");
+    var estado = JSON.parse(JSON.stringify(s.getOnboardingState()));
+    assert.strictEqual(estado.intakeDoneAt, undefined, "el cuestionario era de la cuenta anterior");
+    assert.strictEqual(estado.tourDoneAt, undefined, "el recorrido era de la cuenta anterior");
+    assert.strictEqual(estado.termsVersion, "1.0", "las condiciones aceptadas SÍ son del dispositivo");
+  });
+
+  t.test("una cuenta NUEVA no hereda el aspecto ni el recorrido de otra: arranca de fábrica y sube sus preferencias", function () {
+    var e = freshPrefsSandbox("user-B");
+    var s = e.s;
+    return s.runReconciliation().then(function (r) {
+      assert.strictEqual(r.status, "pulled");
+      assert.strictEqual(s.getLook(), s.DEFAULT_LOOK);
+      assert.strictEqual(JSON.parse(JSON.stringify(s.getOnboardingState())).tourDoneAt, undefined, "a una cuenta nueva hay que ofrecerle el recorrido");
+      assert.strictEqual(e.estado.pushes, 1, "la cuenta recibe sus preferencias");
+      assert.strictEqual(e.estado.ultimosAjustes._prefs.look, s.DEFAULT_LOOK);
+    });
+  });
+
+  t.test("las preferencias de la cuenta MANDAN sobre las del dispositivo (y lo que falta cuenta como sin hacer)", function () {
+    var fila = {
+      pantry_state: {}, pantry_history: [], migrated_at: null,
+      settings: { _prefs: { look: "kitty", intakeDoneAt: "2026-10-01T00:00:00.000Z" } }
+    };
+    var e = freshPrefsSandbox("user-C", fila);
+    var s = e.s;
+    s.saveLook("noche");              // lo que eligió quien usaba el dispositivo
+    s.completeTour();
+    return s.runReconciliation().then(function () {
+      assert.strictEqual(s.getLook(), "kitty");
+      var estado = JSON.parse(JSON.stringify(s.getOnboardingState()));
+      assert.strictEqual(estado.intakeDoneAt, "2026-10-01T00:00:00.000Z");
+      assert.strictEqual(estado.tourDoneAt, undefined, "esta cuenta todavía no ha visto el recorrido");
+      assert.strictEqual(e.estado.pushes, 0, "la cuenta ya tenía preferencias: no se pisan");
+    });
+  });
+
+  t.test("misma cuenta en otro dispositivo (already_synced): lo que cambió en el primero llega al segundo", function () {
+    var fila = { pantry_state: {}, pantry_history: [], migrated_at: null, settings: { _prefs: { look: "avena" } } };
+    var e = freshPrefsSandbox("user-C", fila);
+    var s = e.s;
+    s.setCloudSyncedUserId("user-C");
+    s.saveLook("hojas");
+    return s.runReconciliation().then(function (r) {
+      assert.strictEqual(r.status, "already_synced");
+      assert.strictEqual(s.getLook(), "avena");
+    });
+  });
+
+  t.test("otra cuenta en el mismo dispositivo (clear_cross_user) no hereda el aspecto ni las marcas de la anterior", function () {
+    var e = freshPrefsSandbox("user-B");
+    var s = e.s;
+    s.setCloudSyncedUserId("user-A");      // la caché de este dispositivo es de A
+    s.saveLook("noche");
+    s.completeIntake();
+    s.completeTour();
+    return s.runReconciliation().then(function () {
+      assert.strictEqual(s.getLook(), s.DEFAULT_LOOK, "B no puede ver el aspecto de A");
+      var estado = JSON.parse(JSON.stringify(s.getOnboardingState()));
+      assert.strictEqual(estado.intakeDoneAt, undefined);
+      assert.strictEqual(estado.tourDoneAt, undefined);
+    });
+  });
+
+  t.test("un aspecto inventado en la nube se ignora: nunca llega al DOM ni a una ruta", function () {
+    var fila = { pantry_state: {}, pantry_history: [], migrated_at: null, settings: { _prefs: { look: "<script>alert(1)</script>" } } };
+    var e = freshPrefsSandbox("user-E", fila);
+    var s = e.s;
+    s.saveLook("noche");
+    return s.runReconciliation().then(function () {
+      assert.strictEqual(s.getLook(), "noche", "se queda el aspecto que había");
+    });
+  });
+
+  t.test("no se suben preferencias sin sesión, ni antes de que termine la reconciliación de esa cuenta", function () {
+    var e = freshPrefsSandbox("user-D");
+    var s = e.s;
+    return s.pushAccountPrefsToCloud().then(function (r) {
+      assert.strictEqual(r.skipped, true);
+      assert.strictEqual(e.estado.pushes, 0, "subir antes de reconciliar podía pisar el perfil de la cuenta con un bloque casi vacío");
+      s.setCloudSyncedUserId("user-D");
+      return s.pushAccountPrefsToCloud();
+    }).then(function () {
+      assert.strictEqual(e.estado.pushes, 1);
+      var e2 = freshPrefsSandbox(null);
+      return e2.s.pushAccountPrefsToCloud().then(function (r2) {
+        assert.strictEqual(r2.skipped, true);
+        assert.strictEqual(e2.estado.pushes, 0, "un invitado no sube nada");
+      });
+    });
+  });
+
+  t.test("completar el recorrido o el cuestionario con la cuenta al día sube la marca a la cuenta", function () {
+    var e = freshPrefsSandbox("user-F");
+    var s = e.s;
+    s.setCloudSyncedUserId("user-F");
+    s.completeTour();
+    return Promise.resolve().then(function () {
+      assert.strictEqual(e.estado.pushes, 1);
+      assert.ok(e.estado.ultimosAjustes._prefs.tourDoneAt, "la marca del recorrido viaja en _prefs");
+      s.completeIntake();
+      assert.strictEqual(e.estado.pushes, 2);
+      assert.ok(e.estado.ultimosAjustes._prefs.intakeDoneAt);
+    });
+  });
+
+  t.test("conflicto, «usar los de la nube»: las preferencias de la cuenta también se adoptan", function () {
+    var fila = { pantry_state: {}, pantry_history: [], migrated_at: null, settings: { age: 40, updatedAt: "2026-10-01T00:00:00.000Z", _prefs: { look: "revista" } } };
+    var e = freshPrefsSandbox("user-G", fila);
+    var s = e.s;
+    s.saveLook("noche");
+    return s.resolveConflictKeepCloud().then(function () {
+      assert.strictEqual(s.getLook(), "revista");
+      assert.strictEqual(s.getCloudSyncedUserId(), "user-G");
+    });
+  });
 }
 
 module.exports = { run: run };

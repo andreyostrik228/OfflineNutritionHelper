@@ -202,9 +202,19 @@ function pushPantryToCloud() {
   });
 }
 
+/**
+ * Los ajustes tal como viajan a la nube: los de siempre y, dentro, las
+ * preferencias de la CUENTA (aspecto y marcas del alta, ver
+ * js/core/account-prefs.js). Sin ese módulo, los ajustes a secas.
+ */
+function _ajustesParaNube() {
+  var ajustes = getSettings();
+  return (typeof settingsWithAccountPrefs === "function") ? settingsWithAccountPrefs(ajustes) : ajustes;
+}
+
 function pushSettingsToCloud() {
   if (typeof getSettings !== "function") return Promise.resolve({ error: null, skipped: true });
-  return _updateUserData({ settings: getSettings() });
+  return _updateUserData({ settings: _ajustesParaNube() });
 }
 
 /**
@@ -225,7 +235,7 @@ function pushAllToCloud(options) {
   var columns = {
     pantry_state: getPantryState(),
     pantry_history: getPantryHistory(),
-    settings: getSettings()
+    settings: _ajustesParaNube()
   };
   if (opts.setMigratedAt) columns.migrated_at = new Date().toISOString();
   return _updateUserData(columns);
