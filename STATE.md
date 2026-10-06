@@ -7,8 +7,10 @@
 >
 > ### ⏩ UPDATE 2026-10-07 — recorrido guiado reescrito: 18 pasos, tarjeta fija y pregunta tras el cuestionario
 >
-> **792 tests en verde (eran 789). Sello `20261007a`. SIN COMMITEAR NI DESPLEGAR**
-> (el dueño quiere probarlo y dirá cuándo). Pedido del dueño: «el tutorial crujía:
+> **792 tests en verde (eran 789). Sello `20261007a`. DESPLEGADO el 2026-10-07**
+> (commit `b237007`, `https://36971fd4.offline-nutrition-helper.pages.dev`, 186
+> ficheros por md5, 0 difieren) y probado en producción con Chrome sin interfaz
+> (los mismos tour2/anketa/red de abajo). Pedido del dueño: «el tutorial crujía:
 > la tarjeta salía unas veces arriba y otras abajo, la pantalla saltaba, y no
 > explicaba los botones que se usan». Lo que NO existió nunca es un tour de 17
 > pasos (la historia de git, los 25 despliegues de Cloudflare y las conversaciones
@@ -65,7 +67,9 @@
 > ficheros por md5, 0 difieren). NO empujado a GitHub: `main` allí sigue en
 > `c2d669f`.
 >
-> **BUG ANTIGUO ENCONTRADO, SIN ARREGLAR en producción (decide el dueño):** a
+> **BUG ANTIGUO ENCONTRADO Y ARREGLADO el 2026-10-07 (commit `3600fdd`, `_headers`,
+> desplegado; en producción: `firebase=object gsap=object` y 0 fallos en las
+> cargas 1, 2 y 3). Lo que sigue es el diagnóstico original:** a
 > partir de la SEGUNDA carga, cuando el service worker ya controla la página,
 > `gsap` y `firebase` quedan `undefined`: las tres peticiones a
 > `cdnjs.cloudflare.com` y `cdn.jsdelivr.net` fallan con `net::ERR_FAILED`
@@ -78,7 +82,7 @@
 > (`https://prueba-cdn.offline-nutrition-helper.pages.dev`): añadir
 > `https://cdn.jsdelivr.net https://cdnjs.cloudflare.com` a `connect-src` en
 > `_headers`; con eso `firebase=object gsap=object` y 0 fallos en las cargas 1, 2
-> y 3. Falta aplicarlo a `_headers`, commitear y desplegar. Se mide con
+> y 3. Aplicado. Se mide con
 > `scratchpad/i18n/red.mjs` (dos cargas seguidas, la segunda ya con el SW).
 >
 >
