@@ -12,15 +12,19 @@
  * (offerTour, js/ui/tour.js) y quien dice que no no vuelve a verlo; para
  * repetirlo está «Ver la explicación otra vez».
  *
- * ── Qué entra (2026-10-06: de 11 a 18 pasos) ────────────────────────────
- * Hasta el 2026-10-05 el recorrido dejaba fuera "lo que se explica solo".
- * El dueño pidió lo contrario: que se explique TODO botón que se vaya a usar
- * a menudo -- cambiar una comida, el botón de la cámara que abre el producto
- * en Mercadona, las casillas de la compra, los días del plan, "Mis datos",
- * el menú de idioma y aspecto --, no solo lo que no se descubriría solo.
+ * ── Qué entra (2026-10-07: de 18 a 10 pasos) ────────────────────────────
+ * El 2026-10-06 el dueño pidió que se explicara TODO botón de uso frecuente y
+ * el recorrido pasó de 11 a 18 pasos. El 2026-10-07 pidió lo contrario: "más
+ * corto y más chulo". Se quedó en 10 uniendo lo que va junto, sin dejar de
+ * nombrar ningún botón: el carrusel de días y el horario se explican en la
+ * tarjeta de la comida; las casillas de la compra y el catálogo, en la lista
+ * de la compra; los días del plan y "Cambiar mis datos", en "Generar plan";
+ * la despensa, junto a "Sin cocinar"; y Mis planes, en "Confirmar plan de
+ * hoy". Siguen fuera "Compartir" e "Imprimir".
  *
- * Quedan fuera, a petición suya: "Compartir" e "Imprimir" la lista. El
- * catálogo sale en UN paso, para decir que existe y nada más.
+ * Los pasos con botón llevan `tap: true` (el recorrido le pone un dedo
+ * pulsando encima). Sin emojis: el dueño los descartó el 2026-10-07 ("иишные
+ * смайлики"); la insignia de la tarjeta lleva el número del paso.
  *
  * ── El orden: por pantalla, para que la página no salte ─────────────────
  * En el móvil cada pestaña es una pantalla distinta y el recorrido abre la
@@ -51,6 +55,7 @@
  *   target   string   `#id` del HTML o ancla `[data-tour="x"]` puesta a
  *                     propósito. Nunca una clase CSS: ataría el tutorial a
  *                     la maquetación (lo vigila tests/onboarding.test.js).
+ *   tap      boolean  el objetivo es un botón: se le pone un dedo pulsando
  *   title    string   titular corto
  *   body     string   una o dos frases; qué es y para qué sirve
  *   tab      string?  pestaña del móvil donde vive el elemento (menu,
@@ -74,44 +79,13 @@
  *                     un plan.
  */
 var TOUR_STEPS = [
-  // ── El plan (pestaña Menú), de arriba abajo en la pantalla ─────────────
-  {
-    id: "editdata",
-    tab: "menu",
-    mobile: true,
-    target: "[data-tour=\"editdata\"]",
-    ctx: ".resumen-datos",
-    dynamic: true,
-    optional: true,
-    title: "Cambiar tus datos",
-    body: "Aquí ves con qué datos se hizo el plan. «Cambiar mis datos» te lleva " +
-          "al formulario para ajustar edad, peso, objetivo o presupuesto."
-  },
+  // ── El plan (pestaña Menú) ─────────────────────────────────────────────
   {
     id: "macros",
     tab: "menu",
     target: "#summaryGrid",
-    title: "Calorías y macros",
-    body: "Arriba, lo que necesitas; debajo, lo que suma de verdad el plan " +
-          "que se ha generado. Si los dos números se parecen, el plan cuadra."
-  },
-  {
-    id: "schedule",
-    tab: "menu",
-    target: "#scheduleTimeline",
-    optional: true,
-    title: "A qué hora toca cada comida",
-    body: "Las horas salen de cuándo te levantas y cuándo te acuestas. " +
-          "Pulsa una hora y te lleva a su tarjeta."
-  },
-  {
-    id: "carousel",
-    tab: "menu",
-    target: "#daysCarouselBar",
-    optional: true,
-    title: "Cambiar de día",
-    body: "Si el plan es de varios días, desliza la pantalla hacia los lados, " +
-          "toca los puntos o usa las flechas (en el ordenador) para ver cada día."
+    title: "Tus calorías y macros",
+    body: "Arriba, lo que necesita tu cuerpo; debajo, lo que suma el plan. Si los dos números se parecen, el plan cuadra."
   },
   {
     id: "plan",
@@ -119,145 +93,89 @@ var TOUR_STEPS = [
     target: "[data-tour=\"meal\"]",
     dynamic: true,
     optional: true,
-    title: "Tu día de comidas",
-    body: "Cada tarjeta es una comida del día, con su hora, los ingredientes " +
-          "con su peso y lo que cuesta. Juntas suman las calorías y la " +
-          "proteína que has pedido."
+    title: "Tu día, comida a comida",
+    body: "Cada tarjeta trae su hora, los ingredientes con su peso y lo que cuesta. ¿Plan de varios días? Desliza hacia los lados."
   },
   {
     id: "swap",
     tab: "menu",
+    tap: true,
     target: "[data-tour=\"swap\"]",
     ctx: ".meal-head",
     dynamic: true,
     optional: true,
-    title: "Cambiar solo una comida",
-    body: "Pulsa «Cambiar» si un plato no te apetece o tu Mercadona no lo " +
-          "tiene: se cambia esa comida sola y el resto del día se queda como está."
+    title: "¿No te apetece? Cámbiala",
+    body: "«Cambiar» sustituye solo esa comida; el resto del día se queda como está."
   },
   {
     id: "recipe",
     tab: "menu",
-    // Un <details> CERRADO dentro de cada tarjeta: sin este paso hay quien
-    // no llega a abrirlo nunca y cree que la aplicación solo dice QUÉ comer.
+    tap: true,
     target: "[data-tour=\"recipe\"]",
     ctx: ".meal-steps",
     dynamic: true,
     optional: true,
-    title: "Cómo se cocina cada plato",
-    body: "Pulsa «Cómo se hace» y tendrás los pasos en orden, con cantidades " +
-          "y tiempos. Están escritos para quien no ha cocinado nunca y avisan " +
-          "de lo que suele salir mal antes de que salga mal."
+    title: "Cómo se cocina",
+    body: "«Cómo se hace» abre los pasos con cantidades y tiempos, pensados para quien nunca ha cocinado."
   },
 
-  // ── Cómo cambiar el plan (pestaña Mis datos), de arriba abajo ──────────
-  {
-    id: "days",
-    tab: "datos",
-    target: "#planDays",
-    title: "Comprar para varios días",
-    body: "Elige 1, 3 o 7 días. Con más días la compra sale más barata por día: " +
-          "los paquetes empezados rinden en varios días en vez de sobrar en uno."
-  },
-  {
-    id: "generate",
-    tab: "datos",
-    target: "#generatePlanBtn",
-    title: "Generar un plan nuevo",
-    body: "Cuando cambies algo de tus datos, pulsa «Generar plan» y se calcula " +
-          "otro menú con lo nuevo."
-  },
-  {
-    id: "nocook",
-    tab: "datos",
-    target: "#noCookBtn",
-    ctx: ".actions-secondary",
-    title: "Días sin cocinar",
-    body: "Para cuando no tienes cocina o no te apetece encenderla: un día " +
-          "entero con cosas que se comen tal cual, sin fuego ni sartén."
-  },
-  {
-    id: "pantry",
-    tab: "datos",
-    target: "#despensaBtn",
-    ctx: ".actions-secondary",
-    title: "Lo que ya tienes en casa",
-    body: "Apunta aquí el arroz que te queda o los huevos de la nevera. " +
-          "Dejan de aparecer en la lista de la compra y el plan se abarata, " +
-          "porque solo se te cobra lo que hay que ir a comprar."
-  },
-
-  // ── La compra (pestaña Compra) ──────────────────────────────────────────
+  // ── La compra (pestaña Compra) ─────────────────────────────────────────
   {
     id: "shopping",
     tab: "compra",
     target: "#shoppingPanel",
     optional: true,
-    title: "La lista de la compra",
-    body: "Todo lo del plan, agrupado y con lo que cuesta de verdad: si una " +
-          "receta usa 150 g de un paquete de 600 g, aquí verás el paquete entero."
-  },
-  {
-    id: "check",
-    tab: "compra",
-    target: "[data-tour=\"check\"]",
-    ctx: ".shopping-item",
-    dynamic: true,
-    optional: true,
-    title: "Marca lo que vas cogiendo",
-    body: "Toca una fila cuando la metas en el carro: se tacha y baja al final. " +
-          "Arriba ves cuánto te falta, y lo marcado se queda guardado."
+    title: "La compra, lista",
+    body: "Todo el plan agrupado y con su precio real. Toca una fila al meterla en el carro y se tacha. Más abajo, el catálogo de Mercadona."
   },
   {
     id: "photo",
     tab: "compra",
+    tap: true,
     target: "[data-tour=\"photo\"]",
     ctx: ".shopping-item",
     dynamic: true,
     optional: true,
-    title: "Ver el producto en Mercadona",
-    body: "El botón de la cámara abre la ficha exacta de ese producto en " +
-          "Mercadona, con su foto, para que lo reconozcas en la estantería."
+    title: "Míralo antes de ir",
+    body: "La cámara abre ese producto en Mercadona, con su foto, para que lo reconozcas en el estante."
   },
   {
     id: "today",
     tab: "compra",
+    tap: true,
     target: "#usePlanTodayBtn",
     ctx: ".shopping-panel__actions",
     optional: true,
-    title: "Confirmar el plan de hoy",
-    body: "Guarda este plan como el de hoy. Al volver mañana lo tendrás " +
-          "esperando, con el horario de cada comida."
-  },
-  {
-    id: "catalog",
-    tab: "compra",
-    // Otro <details> cerrado. El dueño pidió solo decir que existe.
-    target: "#verifiedPanel",
-    optional: true,
-    title: "El catálogo de Mercadona",
-    body: "Debajo está el catálogo entero con sus precios, por si quieres " +
-          "mirar cuánto cuesta algo suelto. Se abre y se busca por nombre o marca."
+    title: "Guárdalo como el de hoy",
+    body: "«Confirmar plan de hoy» lo guarda en Mis planes con el horario de cada comida. Mañana lo tienes esperando."
   },
 
-  // ── Lo guardado (pestaña Mis planes) ────────────────────────────────────
+  // ── Cambiar el plan (pestaña Mis datos) ────────────────────────────────
   {
-    id: "saved",
-    tab: "planes",
-    target: "#todayPlansPanel",
-    optional: true,
-    title: "Los días que ya has guardado",
-    body: "Aquí se quedan los planes que confirmas. Puedes volver a abrirlos, " +
-          "ir marcando lo que te has comido y cambiar una comida suelta."
+    id: "generate",
+    tab: "datos",
+    tap: true,
+    target: "#generatePlanBtn",
+    title: "Cambia y genera otro",
+    body: "En Mis datos ajustas peso, objetivo, presupuesto y días (1, 3 o 7). Pulsa «Generar plan» y sale un menú nuevo."
+  },
+  {
+    id: "nocook",
+    tab: "datos",
+    tap: true,
+    target: "#noCookBtn",
+    ctx: ".actions-secondary",
+    title: "Dos atajos",
+    body: "«Sin cocinar» arma un día sin fuego. «Despensa» apunta lo que ya tienes: no lo compras otra vez y el plan sale más barato."
   },
 
-  // ── El menú (visible en todas las pestañas) ─────────────────────────────
+  // ── El menú (visible en todas las pestañas) ────────────────────────────
   {
     id: "settings",
+    tap: true,
     target: "#ajustesBtn",
     ctx: ".topbar",
     title: "Idioma, aspecto y más",
-    body: "En el menú ☰ cambias el idioma y el aspecto de la aplicación, y " +
-          "puedes volver a ver este recorrido cuando quieras."
+    body: "En el menú ☰ cambias el idioma y el aspecto, y repites este recorrido cuando quieras."
   }
 ];

@@ -481,7 +481,7 @@ function run(t) {
     // Si TOUR_STEPS deja de cargar en el sandbox, la lista sale vacía y los
     // dos tests de abajo pasarían sin comprobar nada.
     var claves = clavesDelRecorrido();
-    assert.ok(claves.length >= 22,
+    assert.ok(claves.length >= 20,
       "solo " + claves.length + " claves derivadas de TOUR_STEPS");
     assert.strictEqual(claves.length % 2, 0, "cada paso son dos claves");
   });

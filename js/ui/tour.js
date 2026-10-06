@@ -87,6 +87,13 @@ var _tourRaf = null;
 // stopTour(): decide si se marca como visto.
 var _tourSeVio = false;
 var _tourEscuchando = false;
+// ¿Es el primer paso desde que se abrió? (la tarjeta de ese ya entra desde abajo)
+var _tourPrimera = false;
+// ¿Se está cerrando con la animación de salida?
+var _tourSaliendo = false;
+// Número del paso en pantalla: lo que se programa para después (el ajuste fino)
+// solo vale si sigue siendo el mismo.
+var _tourToken = 0;
 
 var TOUR_PAD = 8;       // aire entre lo enmarcado y el borde del hueco
 var TOUR_MARGEN = 12;   // aire contra los bordes de la pantalla
@@ -142,7 +149,16 @@ function _tourPintarTextos() {
   e.counter.textContent = _tourT("ui.paso_n_de_m", "{n} de {total}")
     .replace("{n}", _tourIndex + 1)
     .replace("{total}", _tourVisible.length);
-  e.progress.style.width = Math.round((_tourIndex + 1) / _tourVisible.length * 100) + "%";
+  var pct = Math.round((_tourIndex + 1) / _tourVisible.length * 100);
+  // Con GSAP la barra se rellena animada (js/ui/tour-fx.js); sin él, de golpe.
+  if (!(typeof tourFxProgreso === "function" && tourFxProgreso(e.progress, pct))) {
+    e.progress.style.width = pct + "%";
+  }
+  // La insignia lleva el número del paso.
+  if (e.icono) {
+    e.icono.textContent = String(_tourIndex + 1);
+    e.icono.hidden = false;
+  }
   e.title.textContent = _tourTextoPaso(step, "titulo");
   e.body.textContent = _tourTextoPaso(step, "cuerpo");
   e.next.textContent = (_tourIndex === _tourVisible.length - 1)
@@ -174,6 +190,34 @@ function _tourBuild() {
   card.className = "tour__card";
   card.setAttribute("role", "dialog");
   card.setAttribute("aria-live", "polite");
+
+  // La insignia con el número del paso: adorno (el contador ya lo dice), por eso aria-hidden.
+  var icono = document.createElement("span");
+  icono.className = "tour__icono";
+  icono.setAttribute("aria-hidden", "true");
+  icono.hidden = true;
+
+  // El anillo que late alrededor del hueco y del foco (js/ui/tour-fx.js).
+  var pulsoHole = document.createElement("span");
+  pulsoHole.className = "tour__pulso";
+  hole.appendChild(pulsoHole);
+  var pulsoFoco = document.createElement("span");
+  pulsoFoco.className = "tour__pulso";
+  foco.appendChild(pulsoFoco);
+
+  // El dedo que pulsa sobre los botones. Cuelga del foco si lo hay y, si no,
+  // del hueco (_tourToqueEnSuSitio).
+  var toque = document.createElement("span");
+  toque.className = "tour__toque";
+  toque.setAttribute("aria-hidden", "true");
+  toque.hidden = true;
+  var toqueOnda = document.createElement("span");
+  toqueOnda.className = "tour__toque-onda";
+  var toquePunto = document.createElement("span");
+  toquePunto.className = "tour__toque-punto";
+  toque.appendChild(toqueOnda);
+  toque.appendChild(toquePunto);
+  hole.appendChild(toque);
 
   var counter = document.createElement("p");
   counter.className = "tour__counter";
@@ -212,6 +256,7 @@ function _tourBuild() {
   nav.appendChild(skip);
   nav.appendChild(prev);
   nav.appendChild(next);
+  card.appendChild(icono);
   card.appendChild(counter);
   card.appendChild(barra);
   card.appendChild(title);
@@ -235,7 +280,8 @@ function _tourBuild() {
 
   _tourEls = { root: root, hole: hole, foco: foco, card: card, counter: counter,
                progress: progress, title: title, body: body, skip: skip,
-               prev: prev, next: next };
+               prev: prev, next: next, icono: icono, pulsoHole: pulsoHole,
+               pulsoFoco: pulsoFoco, toque: toque };
   _tourPintarTextos();
   return _tourEls;
 }
@@ -351,11 +397,23 @@ function _tourPonerHueco(nodo, r, alto, pad) {
   // hueco no sale por la parte de arriba de la pantalla.
   var arriba = Math.max(4, r.top - pad);
   var abajo = r.top + alto + pad;
+  var v = { left: izq, top: arriba, width: Math.max(0, der - izq), height: Math.max(0, abajo - arriba) };
+  var estabaOculto = nodo.hidden;
   nodo.hidden = false;
-  nodo.style.left = izq + "px";
-  nodo.style.top = arriba + "px";
-  nodo.style.width = Math.max(0, der - izq) + "px";
-  nodo.style.height = Math.max(0, abajo - arriba) + "px";
+  // Con GSAP el hueco se DESLIZA hasta su sitio (js/ui/tour-fx.js); sin él,
+  // se pone de golpe como siempre.
+  if (typeof tourFxMover === "function" && tourFxMover(nodo, v, estabaOculto)) return;
+  nodo.style.left = v.left + "px";
+  nodo.style.top = v.top + "px";
+  nodo.style.width = v.width + "px";
+  nodo.style.height = v.height + "px";
+}
+
+/** El dedo cuelga del foco si lo hay (el botón) y, si no, del hueco. */
+function _tourToqueEnSuSitio(e) {
+  if (!e || !e.toque || e.toque.hidden) return;
+  var casa = e.foco.hidden ? e.hole : e.foco;
+  if (e.toque.parentNode !== casa) casa.appendChild(e.toque);
 }
 
 /** Coloca los huecos sobre lo que toca AHORA (sin mover la página). */
@@ -378,6 +436,7 @@ function _tourColocar() {
   } else {
     e.foco.hidden = true;
   }
+  _tourToqueEnSuSitio(e);
 }
 
 function _tourMenosMovimiento() {
@@ -421,6 +480,56 @@ function _tourSeguir() {
       _tourRaf = null;
     }
   })();
+}
+
+/**
+ * Desplazamiento instantáneo a una altura exacta, sin el `scroll-behavior:
+ * smooth` de la página (que haría de cada empujón una animación).
+ */
+function _tourScrollYa(y) {
+  var raiz = document.documentElement;
+  var antes = raiz.style.scrollBehavior;
+  raiz.style.scrollBehavior = "auto";
+  window.scrollTo(0, y);
+  raiz.style.scrollBehavior = antes;
+}
+
+/**
+ * Un segundo vistazo, cuando el desplazamiento ya ha terminado: si lo señalado
+ * sigue FUERA de la banda, se empuja la página un poco más y se vuelve a mirar.
+ *
+ * Hace falta con lo que va PEGADO a la pantalla (position: sticky): el botón
+ * «Generar plan» del móvil se queda anclado abajo mientras la página no llega
+ * a su sitio natural, así que desplazar hasta donde parecía que estaba no lo
+ * mueve (el hueco quedaba debajo de la tarjeta). Se sigue bajando hasta que se
+ * suelta y entra en la banda -- o hasta que no hay más página.
+ */
+function _tourAjusteFino(token, intento) {
+  var e = _tourEls;
+  var step = _tourVisible[_tourIndex];
+  if (!e || !step || e.root.hidden || token !== _tourToken) return;
+  var el = _tourEncontrar(step);
+  if (!el) return;
+
+  var b = _tourBanda();
+  var q = _tourQueEnmarcar(el, step, b);
+  var r = q.marco.getBoundingClientRect();
+  var alto = Math.min(r.height, b.alto - 2 * TOUR_PAD);
+  if (r.top >= b.arriba - 2 && r.top + alto <= b.abajo + 2) return;   // ya está bien
+  if (intento >= 10) return;
+
+  var actual = window.pageYOffset || document.documentElement.scrollTop || 0;
+  var maximo = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+  var deseado = b.arriba + (b.alto - alto) / 2;
+  var empuje = r.top - deseado;
+  // Por debajo de la banda y sin más página que bajar, o por encima y arriba del todo: no hay nada que hacer.
+  if (empuje > 0 && actual >= maximo - 1) return;
+  if (empuje < 0 && actual <= 1) return;
+  // Si el elemento no se ha movido en nada con el empuje anterior (está pegado), se sigue con empujes de al menos 120 px.
+  var paso = empuje > 0 ? Math.max(120, empuje) : Math.min(-120, empuje);
+  _tourScrollYa(Math.max(0, Math.min(maximo, actual + paso)));
+  _tourColocar();
+  window.setTimeout(function () { _tourAjusteFino(token, intento + 1); }, 90);
 }
 
 /** Lleva lo del paso actual a la banda (si hace falta) y lo ilumina. */
@@ -529,6 +638,14 @@ function _tourRender() {
   }
 
   _tourReencuadrar();
+  // Cuando el desplazamiento haya acabado, un segundo vistazo (_tourAjusteFino).
+  var token = ++_tourToken;
+  window.setTimeout(function () { _tourAjusteFino(token, 0); }, 420);
+  // La animación de la tarjeta, la insignia, el texto y el dedo (tour-fx.js).
+  var primera = _tourPrimera;
+  _tourPrimera = false;
+  if (typeof tourFxPaso === "function") tourFxPaso(e, step, _tourDir, primera);
+  _tourToqueEnSuSitio(e);
   // La tarjeta no se mueve; el foco del teclado, al botón de seguir.
   try { e.next.focus({ preventScroll: true }); } catch (err) { /* sin foco, no pasa nada */ }
 }
@@ -553,7 +670,8 @@ function refreshTourTexts() {
 function _tourNext() {
   _tourDir = 1;
   if (_tourIndex >= _tourVisible.length - 1) {
-    stopTour();
+    // Terminarlo de verdad (no saltarlo) se celebra: confeti y un aviso.
+    _tourCerrar(true);
     return;
   }
   _tourIndex++;
@@ -595,7 +713,10 @@ function startTour() {
 
   _tourIndex = 0;
   _tourDir = 1;
+  _tourPrimera = true;
+  _tourSaliendo = false;
   e.root.hidden = false;
+  if (typeof tourFxEntrar === "function") tourFxEntrar(e);
   // A partir de aquí el recorrido está EN PANTALLA. Ver stopTour(): solo
   // cuenta como "visto" lo que se ha llegado a ver.
   _tourSeVio = true;
@@ -612,6 +733,16 @@ function startTour() {
  * enlace del pie.
  */
 function stopTour() {
+  _tourCerrar(false);
+}
+
+/**
+ * El cierre de verdad. `celebrar` solo es true al pulsar «Entendido» en el
+ * último paso: entonces sale el confeti y un aviso. Con GSAP el recorrido se
+ * va con una animación corta (js/ui/tour-fx.js); sin él, de golpe.
+ */
+function _tourCerrar(celebrar) {
+  if (_tourSaliendo) return;
   // "Visto" solo si de verdad llegó a la pantalla.
   //
   // Antes se marcaba SIEMPRE, y eso apaga el recorrido PARA SIEMPRE: basta
@@ -633,13 +764,27 @@ function stopTour() {
   // mueve y sin nada en pantalla que explique por que. Es el fallo peor de
   // todo este mecanismo.
   _tourQuitarBloqueo();
-  if (_tourEls) _tourEls.root.hidden = true;
 
-  // Cada cual vuelve a la pestaña en la que estaba.
-  if (_tourMovil && _tourPestanaAntes && typeof activarPestana === "function" &&
-      _tourPestanaActual() !== _tourPestanaAntes) {
-    activarPestana(_tourPestanaAntes, true);
-    _tourIrArribaYa();
+  var terminar = function () {
+    if (!_tourSaliendo) return;           // otro recorrido arrancó entre medias
+    _tourSaliendo = false;
+    if (_tourEls) _tourEls.root.hidden = true;
+    // Cada cual vuelve a la pestaña en la que estaba.
+    if (_tourMovil && _tourPestanaAntes && typeof activarPestana === "function" &&
+        _tourPestanaActual() !== _tourPestanaAntes) {
+      activarPestana(_tourPestanaAntes, true);
+      _tourIrArribaYa();
+    }
+  };
+
+  _tourSaliendo = true;
+  if (_tourEls && !_tourEls.root.hidden && typeof tourFxSalir === "function" &&
+      typeof tourFxActivo === "function" && tourFxActivo()) {
+    tourFxSalir(_tourEls, celebrar ? _tourT("ui.tour_listo", "¡Listo! Ya sabes moverte por Weekplate.") : null, terminar);
+    // Red de seguridad: si la animación no llegara a acabar, se cierra igual.
+    window.setTimeout(terminar, 1200);
+  } else {
+    terminar();
   }
 }
 
@@ -661,6 +806,13 @@ function _tourBuildAsk() {
   card.setAttribute("aria-modal", "true");
   card.setAttribute("aria-labelledby", "tourAskTitulo");
 
+  // La insignia: el icono del cocinero, el de «Generar plan» (js/ui/tour-fx.js,
+  // tourFxPregunta). Un icono de la propia aplicación, no un emoji.
+  var icono = document.createElement("span");
+  icono.className = "tour__icono";
+  icono.setAttribute("aria-hidden", "true");
+  icono.innerHTML = '<svg width="30" height="30" aria-hidden="true"><use href="#icon-chef"></use></svg>';
+
   var title = document.createElement("h3");
   title.className = "tour__title";
   title.id = "tourAskTitulo";
@@ -681,6 +833,7 @@ function _tourBuildAsk() {
 
   nav.appendChild(no);
   nav.appendChild(si);
+  card.appendChild(icono);
   card.appendChild(title);
   card.appendChild(body);
   card.appendChild(nav);
@@ -712,7 +865,7 @@ function _tourBuildAsk() {
     if (ev.key === "Escape" && _tourAsk && !_tourAsk.root.hidden) no.click();
   });
 
-  _tourAsk = { root: root, card: card, title: title, body: body, no: no, si: si };
+  _tourAsk = { root: root, card: card, title: title, body: body, no: no, si: si, icono: icono };
   return _tourAsk;
 }
 
@@ -768,6 +921,7 @@ function offerTour(alResponder) {
   if (!a.root.hidden) return;
   _tourPintarPregunta();
   a.root.hidden = false;
+  if (typeof tourFxPregunta === "function") tourFxPregunta(a);
   _tourActivarBloqueo();
   try { a.si.focus({ preventScroll: true }); } catch (err) { /* idem */ }
 }

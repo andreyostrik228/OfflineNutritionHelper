@@ -1756,6 +1756,7 @@ input[type="time"] { font-variant-numeric: tabular-nums; }
   box-shadow: 0 0 0 1.5px var(--line-strong);
   font-size: 15px;
   line-height: 1;
+  color: var(--ink);
   text-decoration: none;
   vertical-align: middle;
 }
@@ -2788,9 +2789,14 @@ body.is-onboarding { overflow: hidden; overscroll-behavior: none; }
 .tour__foco[hidden] { display: none; }
 .tour__card {
   position: fixed;
-  left: 50%;
+  /* Centrada con márgenes y NO con transform: js/ui/tour-fx.js anima el
+     transform de la tarjeta (entrada, empujón entre pasos) y un
+     translateX(-50%) se habría perdido por el camino. */
+  left: 0;
+  right: 0;
+  margin-left: auto;
+  margin-right: auto;
   bottom: max(12px, env(safe-area-inset-bottom));
-  transform: translateX(-50%);
   width: min(560px, calc(100vw - 24px));
   max-height: min(46dvh, 380px);
   padding: 16px 18px 14px;
@@ -2808,6 +2814,7 @@ body:has(#tour:not([hidden])) { padding-bottom: 54dvh; }
 .tour__counter { font: 800 15px/1 var(--font-display); letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); }
 .tour__progress { height: 4px; margin-top: 10px; border-radius: 99px; background: var(--field-line); overflow: hidden; }
 .tour__progress > span { display: block; width: 0; height: 100%; border-radius: 99px; background: var(--primary); transition: width 0.25s ease; }
+.tour--fx .tour__progress > span { transition: none; }
 .tour__title { margin-top: 10px; font: 900 28px/0.95 var(--font-display); text-transform: uppercase; }
 .tour__body { margin-top: 8px; font-size: 15px; line-height: 1.5; color: var(--text-2); }
 .tour__nav { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
@@ -2837,6 +2844,108 @@ body:has(#tour:not([hidden])) { padding-bottom: 54dvh; }
 }
 .tour__prev[hidden] { display: none; }
 .tour__next { background: var(--primary); color: var(--on-ink); }
+
+/* ── El recorrido animado (2026-10-07, js/ui/tour-fx.js) ────────────────────
+   Todo esto es adorno: sin GSAP, o con «menos movimiento», se queda quieto y
+   el recorrido es el de siempre. */
+
+/* La insignia del paso: el número en un círculo, arriba a la derecha. Deja
+   sitio al contador y a la barra (margin-right) para no pisarlos. */
+.tour__icono {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--volt);
+  box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--primary);
+  color: var(--on-volt, var(--primary));
+  font: 900 22px/1 var(--font-display);
+  pointer-events: none;
+}
+.tour__icono svg { width: 60%; height: 60%; stroke: currentColor; }
+.tour__icono[hidden] { display: none; }
+.tour__counter,
+.tour__progress { margin-right: 58px; }
+.tour__title { margin-right: 0; }
+/* Cada palabra, para que entren una a una. */
+.tour__w { display: inline-block; will-change: transform, opacity; }
+/* El anillo que late: GSAP anima su box-shadow. Hereda la forma del hueco. */
+.tour__pulso {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+/* El dedo que pulsa: un punto con su onda, en el centro de lo señalado. */
+.tour__toque {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+.tour__toque[hidden] { display: none; }
+.tour__toque-punto {
+  position: absolute;
+  left: -14px;
+  top: -14px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--volt);
+  box-shadow: 0 0 0 3px var(--primary), 0 8px 16px rgba(0, 0, 0, 0.35);
+}
+.tour__toque-onda {
+  position: absolute;
+  left: -26px;
+  top: -26px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 3px solid var(--volt);
+  box-shadow: 0 0 0 1.5px var(--primary);
+}
+/* En la pregunta la insignia va en el centro, encima del titular. */
+.tour-ask .tour__icono {
+  position: static;
+  width: 60px;
+  height: 60px;
+  margin: 0 auto 14px;
+}
+/* El confeti del final y su aviso. */
+.tour__confeti {
+  position: fixed;
+  inset: 0;
+  z-index: 216;
+  overflow: hidden;
+  pointer-events: none;
+}
+.tour__pieza { position: absolute; will-change: transform, opacity; }
+.tour__aviso {
+  position: fixed;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  bottom: calc(max(12px, env(safe-area-inset-bottom)) + 96px);
+  z-index: 215;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  padding: 12px 20px;
+  border-radius: var(--pill);
+  background: var(--primary);
+  color: var(--on-ink);
+  box-shadow: var(--shadow-2), 0 0 0 3px var(--volt);
+  font: 800 18px/1.2 var(--font-display);
+  letter-spacing: 0.04em;
+  text-align: center;
+  pointer-events: none;
+}
 
 /* La pregunta de después del cuestionario: «¿Quieres ver un recorrido?». Va
    en el CENTRO, con el mismo aspecto que la tarjeta del recorrido. */

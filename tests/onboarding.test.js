@@ -592,14 +592,17 @@ function run(t) {
 
   t.test("el recorrido no explica lo que el dueño dejó fuera", function () {
     // Pedido el 2026-10-06: «Compartir» e «Imprimir» la lista no se explican,
-    // y el catálogo sale en UN paso para decir que existe y nada más.
+    // y el catálogo solo se NOMBRA (desde el 2026-10-07 dentro del paso de la
+    // compra, no en uno propio) para decir que existe y nada más.
     var s = freshSandbox();
     var texto = s.TOUR_STEPS.map(function (step) { return step.id + " " + step.target + " " + step.title + " " + step.body; }).join(" ").toLowerCase();
     ["shareListBtn", "printListBtn", "compartir", "imprimir"].forEach(function (palabra) {
       assert.strictEqual(texto.indexOf(palabra.toLowerCase()), -1, "no se explica: " + palabra);
     });
     var catalogo = s.TOUR_STEPS.filter(function (step) { return step.id === "catalog"; });
-    assert.strictEqual(catalogo.length, 1, "el catálogo sale en un solo paso");
+    assert.strictEqual(catalogo.length, 0, "el catálogo no tiene paso propio");
+    var compra = s.TOUR_STEPS.filter(function (step) { return step.id === "shopping"; })[0];
+    assert.ok(compra && compra.body.toLowerCase().indexOf("catálogo") !== -1, "el paso de la compra tiene que decir que el catálogo existe");
   });
 
   t.test("el recorrido es corto y cada paso dice para qué sirve la función", function () {
@@ -629,8 +632,14 @@ function run(t) {
     // La despensa, el modo sin cocinar y los planes de varios días viven
     // detrás de botones que no cuentan lo que hacen: son justo las que hay
     // que enseñar.
-    ["pantry", "nocook", "days", "shopping"].forEach(function (need) {
+    // Desde el 2026-10-07 (recorrido de 10 pasos) la despensa se explica en el
+    // paso de «Sin cocinar» y los días del plan en el de «Generar plan».
+    ["nocook", "generate", "shopping"].forEach(function (need) {
       assert.ok(ids.indexOf(need) !== -1, "el recorrido no enseña: " + need);
+    });
+    var texto = s.TOUR_STEPS.map(function (x) { return x.title + " " + x.body; }).join(" ").toLowerCase();
+    ["despensa", "sin cocinar", "(1, 3 o 7)", "cámara", "confirmar plan de hoy"].forEach(function (palabra) {
+      assert.ok(texto.indexOf(palabra) !== -1, "el recorrido ya no nombra: " + palabra);
     });
   });
 
@@ -933,8 +942,8 @@ function run(t) {
     ctx.getOnboardingState = function () { return estadoOnboarding || {}; };
     return {
       ctx: ctx, llamadas: llamadas, teclas: teclas,
-      si: function () { buscar(cuerpo, "tour-ask").children[0].children[2].children[1].handlers.click[0](); },
-      no: function () { buscar(cuerpo, "tour-ask").children[0].children[2].children[0].handlers.click[0](); },
+      si: function () { buscar(buscar(cuerpo, "tour-ask"), "tour__next").handlers.click[0](); },
+      no: function () { buscar(buscar(cuerpo, "tour-ask"), "tour__prev").handlers.click[0](); },
       visible: function () { var r = buscar(cuerpo, "tour-ask"); return !!r && !r.hidden; },
       correrTemporizadores: function () { var l = temporizadores.splice(0); l.forEach(function (fn) { fn(); }); }
     };
@@ -1075,6 +1084,67 @@ function run(t) {
     assert.strictEqual(oferta({ tourDoneAt: "2026-10-01T10:00:00.000Z" }), 1, "vio el viejo, de 11 pasos");
     assert.strictEqual(oferta({ tourDoneAt: "2026-10-07T10:00:00.000Z" }), 0, "ya vio o rechazó el nuevo");
     assert.strictEqual(oferta({ tourDoneAt: "no-es-una-fecha" }), 0, "ante la duda no se molesta");
+  });
+
+  // ── Sin emojis, y la animación es opcional ─────────────────────────────
+  // El dueño los descartó el 2026-10-07 («убери нахуй эти иишные смайлики»):
+  // la insignia del recorrido lleva el número del paso, no un emoji.
+  function tieneEmoji(texto) {
+    for (var i = 0; i < texto.length; i++) {
+      var cp = texto.codePointAt(i);
+      if (cp > 0xFFFF) i++;
+      // ☰ (U+2630) es el símbolo del menú de la propia aplicación, no un emoji.
+      if (cp === 0x2630) continue;
+      if ((cp >= 0x1F000 && cp <= 0x1FAFF) || (cp >= 0x2600 && cp <= 0x27BF) || cp === 0xFE0F) return true;
+    }
+    return false;
+  }
+
+  t.test("el recorrido no lleva emojis: ni en los pasos, ni en las traducciones, ni en el código", function () {
+    var fs = require("fs");
+    var s = freshSandbox();
+    s.TOUR_STEPS.forEach(function (paso) {
+      assert.ok(!tieneEmoji(paso.title + " " + paso.body), "emoji en el texto del paso " + paso.id);
+      assert.strictEqual(paso.icon, undefined, "el paso " + paso.id + " trae un `icon`: la insignia lleva el número");
+    });
+    ["js/ui/tour.js", "js/ui/tour-fx.js", "js/data/tour-steps.js", "js/i18n/en.js", "js/i18n/ru.js", "js/i18n/es.js"].forEach(function (f) {
+      var lineas = fs.readFileSync(projPath(f), "utf8").split(String.fromCharCode(10));
+      lineas.forEach(function (l, i) {
+        if (l.indexOf("tour") === -1 && f.indexOf("i18n") !== -1) return;   // en las tablas solo las claves del recorrido
+        assert.ok(!tieneEmoji(l), f + ":" + (i + 1) + " tiene un emoji: " + l.trim().slice(0, 80));
+      });
+    });
+  });
+
+  t.test("los pasos con botón llevan tap, y los que enseñan un panel entero no", function () {
+    var s = freshSandbox();
+    var conTap = s.TOUR_STEPS.filter(function (p) { return p.tap; }).map(function (p) { return p.id; });
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(conTap)),
+      ["swap", "recipe", "photo", "today", "generate", "nocook", "settings"]);
+  });
+
+  t.test("tour.js solo usa las animaciones si existen: sin GSAP el recorrido es el de siempre", function () {
+    var src = require("fs").readFileSync(projPath("js/ui/tour.js"), "utf8");
+    var llamadas = src.match(/tourFx[A-Z][A-Za-z]*\(/g) || [];
+    assert.ok(llamadas.length >= 6, "tour.js tendría que llamar a las animaciones");
+    llamadas.forEach(function (ll) {
+      var nombre = ll.slice(0, -1);
+      assert.ok(src.indexOf('typeof ' + nombre + ' === "function"') !== -1, nombre + " se llama sin comprobar antes que existe");
+    });
+    // y cada una existe de verdad en tour-fx.js
+    var fx = require("fs").readFileSync(projPath("js/ui/tour-fx.js"), "utf8");
+    llamadas.forEach(function (ll) {
+      var nombre = ll.slice(0, -1);
+      assert.ok(fx.indexOf("function " + nombre + "(") !== -1, nombre + " no está definida en tour-fx.js");
+    });
+  });
+
+  t.test("tour-fx.js se carga ANTES que tour.js, y GSAP antes que los dos", function () {
+    var html = require("fs").readFileSync(projPath("index.html"), "utf8");
+    var g = html.indexOf("gsap.min.js");
+    var fx = html.indexOf("js/ui/tour-fx.js?v=");
+    var tour = html.indexOf("js/ui/tour.js?v=");
+    assert.ok(g !== -1 && fx !== -1 && tour !== -1 && g < fx && fx < tour);
   });
 }
 

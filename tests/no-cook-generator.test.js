@@ -97,6 +97,13 @@ function run(t) {
     assert.ok(html.indexOf('rel="noopener noreferrer"') !== -1);
     assert.ok(html.indexOf('href="https://tienda.mercadona.es/product/10005"') !== -1);
     assert.ok(html.indexOf("Atún &lt;claro&gt;") !== -1, "el nombre va escapado en aria-label");
+    // Un icono de la aplicación (sprite), no el emoji de la cámara: el dueño
+    // descartó los emojis el 2026-10-07.
+    assert.ok(html.indexOf('href="#icon-camera"') !== -1, "tiene que usar el icono icon-camera");
+    for (var i = 0; i < html.length; i++) {
+      assert.ok(html.charCodeAt(i) < 0x2600 || html.charCodeAt(i) > 0xFFFF, "el botón no lleva emojis");
+      assert.ok(!(html.charCodeAt(i) >= 0xD83C && html.charCodeAt(i) <= 0xD83E), "el botón no lleva emojis (par sustituto)");
+    }
   });
 
   t.test("getNoCookEligiblePool(storeId): usa el catálogo de la tienda pedida, no el global", function () {

@@ -280,7 +280,7 @@ function renderProductFindBtn(product) {
     ' href="' + escapeHtml(mercadonaProductUrl(product)) + '"' +
     ' title="' + escapeHtml(t("ui.ver_la_foto_y_la_ficha_en_mercadona")) + '"' +
     ' aria-label="' + escapeHtml(t("ui.ver_en_mercadona").replace("{producto}", name)) + '">' +
-    '📷</a>';
+    '<svg width="16" height="16" aria-hidden="true"><use href="#icon-camera"></use></svg></a>';
 }
 
 // Nivel de confianza del emparejamiento. El pipeline los escribe en inglés

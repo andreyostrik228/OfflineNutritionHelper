@@ -5,6 +5,43 @@
 > Escrito para alguien que llega SIN NINGÚN contexto previo. Si solo lees
 > una parte de este archivo, que sea esta.
 >
+> ### ⏩ UPDATE 2026-10-07 (f) — recorrido de 10 pasos, con GSAP y sin emojis
+>
+> **828 tests en verde. Sello `20261007g`. Hecho en local, SIN commit ni despliegue todavía**
+> (lo anterior, commit `6676185`, sello `e`, sí está desplegado y empujado). Pedido del dueño: «используй
+> GSAP и сделай короче тур, круче, анимации… чтобы прям клёво было» y, al ver los emojis de la primera
+> versión, «убери нахуй эти иишные смайлики».
+>
+> - **De 18 a 10 pasos** (`js/data/tour-steps.js`): macros, plan, swap, recipe | shopping, photo, today |
+>   generate, nocook | settings. Lo de los pasos quitados se dice dentro de otros (horario y días en la
+>   tarjeta de la comida; casillas y catálogo en la compra; días del plan y «Cambiar mis datos» en «Generar
+>   plan»; despensa junto a «Sin cocinar»; Mis planes en «Confirmar plan de hoy»). Textos nuevos en es/en/ru
+>   (en `en.js` la clave `tour.plan_titulo` estaba TRAGADA por un comentario desde el 10-06: arreglado al
+>   reescribir el bloque). Los pasos con botón llevan `tap: true`.
+> - **`js/ui/tour-fx.js` (nuevo, GSAP, opcional)**: el hueco se DESLIZA entre pasos (`tourFxMover`, retarget
+>   por fotograma con `overwrite:"auto"`), un anillo late alrededor (box-shadow animado), la tarjeta entra desde
+>   abajo con rebote y se empuja de lado entre pasos, titular y texto aparecen palabra a palabra, la barra se
+>   rellena animada, un dedo con onda pulsa sobre los botones, al pulsar «Entendido» del último paso cae
+>   confeti y sale «¡Listo!», y la pregunta inicial entra con rebote. Todo detrás de `typeof tourFxX ===
+>   "function"` y de `tourFxActivo()` (GSAP cargado y sin `prefers-reduced-motion`): sin cualquiera de las dos
+>   el recorrido es el de antes. La tarjeta se centra ahora con márgenes y NO con `translateX(-50%)`, que GSAP
+>   habría pisado.
+> - **Sin emojis**: la insignia lleva el NÚMERO del paso; la de la pregunta, el icono del cocinero de la
+>   aplicación (`#icon-chef`). Y el botón de la cámara de la lista de la compra (`renderProductFindBtn`,
+>   render.js) usaba el emoji 📷: ahora es un SVG `icon-camera` del sprite. Test que falla si vuelve un emoji
+>   al recorrido (☰ no cuenta: es el icono del menú de la app).
+> - **Bug encontrado y arreglado por el camino** (`_tourAjusteFino`): el botón «Generar plan» del móvil es
+>   `position: sticky` y se queda pegado abajo hasta que la página llega a su sitio natural; con el orden nuevo
+>   (primer paso de su pestaña) el hueco quedaba DEBAJO de la tarjeta. Ahora, cuando el desplazamiento acaba,
+>   si lo señalado sigue fuera de la banda se empuja la página hasta que se suelta.
+> - **Aviso importante para probar**: el Chrome sin interfaz de esta máquina arranca con
+>   `prefers-reduced-motion: reduce` (animaciones del sistema apagadas), así que SIN
+>   `Emulation.setEmulatedMedia` el GSAP nunca corre en las pruebas. `scratchpad/i18n/tour2.mjs` y `fx.mjs` lo
+>   fuerzan a `no-preference`.
+> - **Medido** (390x844 es y ru, 360x640, 768x1024, 1280x800, y los 10 aspectos): 0 pasos con problema, sin
+>   hueco sobre la tarjeta, la rueda no mueve la página durante el recorrido y sí al cerrar; con GSAP, sin GSAP
+>   (CDN bloqueada) y con menos movimiento. 4 tests nuevos.
+>
 > ### ⏩ UPDATE 2026-10-07 (e) — el aspecto y las marcas del alta son de la CUENTA, no del dispositivo
 >
 > **824 tests en verde. Sello `20261007e`. Hecho en local, SIN commit ni despliegue todavía**

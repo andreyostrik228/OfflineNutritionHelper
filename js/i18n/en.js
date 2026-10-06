@@ -377,46 +377,30 @@ registerI18nTable("en", {
   "ui.ya_tienes_un_plan_activo_hoy": "You already have an active plan today",
 
   // ── El recorrido guiado ────────────────────────────────────────────────
-  // El espanol de estas 22 NO esta en es.js: vive en TOUR_STEPS
-  // (js/data/tour-steps.js), junto al comentario que explica por que cada
-  // paso existe y por que se dice asi. Misma decision que LEGAL_SUMMARY, y
-  // por el mismo motivo: el texto y su justificacion no se separan. El
-  // recorrido pide la traduccion y, si no la hay, usa el original.  "tour.plan_titulo": "Your day of meals",
-  "tour.plan_cuerpo": "Each card is one meal of the day, with its time, the ingredients with their weight and what it costs. Together they add up to the calories and protein you asked for.",
-  "tour.macros_titulo": "Calories and macros",
-  "tour.macros_cuerpo": "Above, what you need; below, what the generated plan actually adds up to. If the two numbers are close, the plan works.",
-  "tour.schedule_titulo": "When each meal is due",
-  "tour.schedule_cuerpo": "The times come from when you get up and when you go to bed. Tap a time and it takes you to its card.",
-  "tour.recipe_titulo": "How each dish is cooked",
-  "tour.recipe_cuerpo": "Tap “How to make it” and you get the steps in order, with amounts and times. They are written for someone who has never cooked, and they warn you about what usually goes wrong before it goes wrong.",
-  "tour.swap_titulo": "Change just one meal",
-  "tour.swap_cuerpo": "Tap “Change” if you don't fancy a dish or your Mercadona doesn't stock it: only that meal is swapped and the rest of the day stays as it is.",
-  "tour.carousel_titulo": "Switching day",
-  "tour.carousel_cuerpo": "If the plan covers several days, swipe sideways, tap the dots or use the arrows (on a computer) to see each day.",
-  "tour.editdata_titulo": "Change your details",
-  "tour.editdata_cuerpo": "Here you see the details the plan was built from. “Change my details” takes you to the form to adjust age, weight, goal or budget.",
-  "tour.generate_titulo": "Generate a new plan",
-  "tour.generate_cuerpo": "When you change anything in your details, press “Generate plan” and a new menu is worked out with the new values.",
-  "tour.days_titulo": "Shopping for several days",
-  "tour.days_cuerpo": "Pick 1, 3 or 7 days. With more days the shopping works out cheaper per day: opened packs stretch across several days instead of going to waste in one.",
-  "tour.nocook_titulo": "Days without cooking",
-  "tour.nocook_cuerpo": "For when you have no kitchen or don't feel like turning it on: a whole day of things you eat as they are, with no hob and no pan.",
-  "tour.pantry_titulo": "What you already have at home",
-  "tour.pantry_cuerpo": "Note down the rice you have left or the eggs in the fridge. They stop appearing in the shopping list and the plan gets cheaper, because you are only charged for what you have to go and buy.",
-  "tour.shopping_titulo": "The shopping list",
-  "tour.shopping_cuerpo": "Everything in the plan, grouped and with what it really costs: if a recipe uses 150 g out of a 600 g pack, here you will see the whole pack.",
-  "tour.check_titulo": "Tick off what you pick up",
-  "tour.check_cuerpo": "Tap a row when it goes in the trolley: it is crossed out and drops to the bottom. At the top you see how much is left, and what you've ticked stays saved.",
-  "tour.photo_titulo": "See the product on Mercadona",
-  "tour.photo_cuerpo": "The camera button opens that exact product's page on Mercadona, with its photo, so you can recognise it on the shelf.",
-  "tour.today_titulo": "Confirm today's plan",
-  "tour.today_cuerpo": "Saves this plan as today's. When you come back tomorrow it will be waiting, with the time for each meal.",
-  "tour.catalog_titulo": "The Mercadona catalogue",
-  "tour.catalog_cuerpo": "Below is the whole catalogue with its prices, in case you want to check what something costs. Open it and search by name or brand.",
-  "tour.saved_titulo": "The days you have already saved",
-  "tour.saved_cuerpo": "This is where the plans you confirm stay. You can open them again, tick off what you have eaten and change a single meal.",
+  // El español de estos 10 pasos NO está en es.js: vive en TOUR_STEPS
+  // (js/data/tour-steps.js), junto al comentario que explica por qué cada paso
+  // existe y por qué se dice así. Misma decisión que LEGAL_SUMMARY. El
+  // recorrido pide la traducción y, si no la hay, usa el original.
+  "tour.macros_titulo": "Your calories and macros",
+  "tour.macros_cuerpo": "Above, what your body needs; below, what the plan adds up to. If the two numbers are close, the plan fits.",
+  "tour.plan_titulo": "Your day, meal by meal",
+  "tour.plan_cuerpo": "Each card has its time, the ingredients with their weight and what it costs. Plan for several days? Swipe sideways.",
+  "tour.swap_titulo": "Don't fancy it? Swap it",
+  "tour.swap_cuerpo": "“Change” replaces just that meal; the rest of the day stays as it is.",
+  "tour.recipe_titulo": "How it's cooked",
+  "tour.recipe_cuerpo": "“How to make it” opens the steps with amounts and times, written for someone who has never cooked.",
+  "tour.shopping_titulo": "The shopping list, ready",
+  "tour.shopping_cuerpo": "The whole plan grouped, with the real price. Tap a row when it goes in the trolley and it gets crossed out. Further down, the Mercadona catalogue.",
+  "tour.photo_titulo": "Look it up before you go",
+  "tour.photo_cuerpo": "The camera opens that product on Mercadona, with its photo, so you recognise it on the shelf.",
+  "tour.today_titulo": "Save it as today's",
+  "tour.today_cuerpo": "“Confirm today's plan” saves it in My plans with the time of each meal. Tomorrow it's waiting for you.",
+  "tour.generate_titulo": "Tweak it and generate another",
+  "tour.generate_cuerpo": "In My data you adjust weight, goal, budget and days (1, 3 or 7). Press “Generate plan” and a new menu appears.",
+  "tour.nocook_titulo": "Two shortcuts",
+  "tour.nocook_cuerpo": "“No cooking” builds a day with no stove. “Pantry” notes what you already have: you don't buy it again and the plan gets cheaper.",
   "tour.settings_titulo": "Language, look and more",
-  "tour.settings_cuerpo": "In the ☰ menu you change the language and the look of the app, and you can watch this walkthrough again whenever you like.",
+  "tour.settings_cuerpo": "In the ☰ menu you change the language and the look, and you can repeat this tour whenever you like.",
   "ui.en_el_carrito": "{n} of {total} in the basket",
   "ui.todo_en_el_carrito": "Everything is in the basket",
   "ui.toca_un_producto_para_marcarlo": "Tap an item to tick it off",
@@ -679,7 +663,8 @@ registerI18nTable("en", {
   "ui.val_presupuesto_bajo": "The daily budget is too low to generate a realistic plan.",
   "ui.val_presupuesto_no_disponible": "The chosen budget is not available. Try an exact amount.",
   "ui.tour_pregunta_titulo": "Want a quick tour of the app?",
-  "ui.tour_pregunta_cuerpo": "I'll show you, with your plan in front of you, what each button does. It takes about two minutes.",
+  "ui.tour_pregunta_cuerpo": "I'll show you, with your plan in front of you, what each button does. It takes under a minute.",
   "ui.tour_pregunta_si": "Yes, show me",
-  "ui.tour_pregunta_no": "No, thanks"
+  "ui.tour_pregunta_no": "No, thanks",
+  "ui.tour_listo": "All set! You now know your way around Weekplate."
 });
