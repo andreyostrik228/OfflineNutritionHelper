@@ -3,7 +3,8 @@
 
 Un ASPECTO es una hoja de estilos que se carga ENCIMA de assets/css/style.css y
 redefine el aspecto de la aplicación (colores, fondo, botones, tarjetas...).
-El aspecto por defecto ("entreno") es style.css tal cual y no tiene fichero.
+El aspecto "entreno" es style.css tal cual y no tiene fichero (el por defecto
+desde el 2026-10-07 es "hojas", que sí lo tiene).
 
 Cada fichero de aspecto lleva, en este orden:
   1. las @font-face de sus tipografías (assets/fonts/, URL relativa a la hoja),

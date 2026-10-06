@@ -9,9 +9,10 @@
  * ── Qué es un aspecto ───────────────────────────────────────────────────
  * Una hoja de estilos de assets/css/temas/ que se carga ENCIMA de
  * assets/css/style.css y cambia el aspecto entero: fondo, botones, tarjetas,
- * tipografías. El aspecto por defecto, "entreno", ES style.css y no tiene
- * hoja propia. Las hojas se GENERAN (scripts/temas/construir.py); no se
- * editan a mano.
+ * tipografías. El aspecto por defecto es "hojas" (el dueño lo pidió el
+ * 2026-10-07: «основной стиль должен быть листва»). "entreno" ES style.css
+ * y es el único sin hoja propia: sigue ahí como una opción más. Las hojas
+ * se GENERAN (scripts/temas/construir.py); no se editan a mano.
  *
  * ── Por qué es distinto del "tema" claro/oscuro ─────────────────────────
  * `js/core/theme.js` guarda claro/oscuro/sistema y sigue ahí, escondido (el
@@ -31,11 +32,13 @@
 var LOOK_STORAGE_KEY = "nutritionPlanner.look.v1";
 
 /** El aspecto por defecto: el diseño de style.css, sin hoja de aspecto. */
-var DEFAULT_LOOK = "entreno";
+var DEFAULT_LOOK = "hojas";
 
 /**
  * Los aspectos, en el orden en que salen en el menú. El por defecto va el
- * PRIMERO (arriba a la izquierda): decisión del dueño, 2026-10-06.
+ * PRIMERO (arriba a la izquierda): decisión del dueño, 2026-10-06; desde el
+ * 2026-10-07 el por defecto es "hojas", y "entreno" (style.css sin hoja)
+ * pasa a ser el segundo.
  *
  *   id      lo que se guarda y lo que lleva `data-look` en <html>
  *   file    la hoja, o null para el aspecto por defecto
@@ -43,8 +46,8 @@ var DEFAULT_LOOK = "entreno";
  *   dark    true si el lienzo es oscuro (decide el icono/contraste de las ayudas)
  */
 var LOOKS = [
-  { id: "entreno",    file: null,                            color: "#edeff3", dark: false },
   { id: "hojas",      file: "assets/css/temas/hojas.css",      color: "#E9F1E3", dark: false },
+  { id: "entreno",    file: null,                            color: "#edeff3", dark: false },
   { id: "cristal",    file: "assets/css/temas/cristal.css",    color: "#EEF5F2", dark: false },
   { id: "avena",      file: "assets/css/temas/avena.css",      color: "#F1E9DA", dark: false },
   { id: "relieve",    file: "assets/css/temas/relieve.css",    color: "#E4EBE3", dark: false },
@@ -128,7 +131,7 @@ function saveLook(id) {
  * El sello es lo que hace que el service worker la guarde para el modo
  * offline (sw.js: "recurso con sello: inmutable, cache primero") y que un
  * despliegue nuevo no la mezcle con la vieja. null para el aspecto por
- * defecto, que no tiene hoja.
+ * sin hoja ("entreno"), que es style.css tal cual.
  *
  * @param {string} id
  * @param {string} [sello] - el `v` de style.css (el IIFE del <head> y el menú

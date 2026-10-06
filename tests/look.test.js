@@ -91,26 +91,27 @@ function run(t) {
 
   // ── Validación: esto acaba en un atributo del DOM y en una URL ─────────
 
-  t.test("sin nada guardado el aspecto es el de siempre, 'entreno'", function () {
+  t.test("sin nada guardado el aspecto es 'hojas' (pedido del dueño, 2026-10-07)", function () {
     var s = freshLookSandbox();
-    assert.strictEqual(s.DEFAULT_LOOK, "entreno");
-    assert.strictEqual(s.getLook(), "entreno");
+    assert.strictEqual(s.DEFAULT_LOOK, "hojas");
+    assert.strictEqual(s.getLook(), "hojas");
   });
 
-  t.test("el aspecto por defecto va el PRIMERO (arriba a la izquierda) y no tiene hoja", function () {
+  t.test("el aspecto por defecto va el PRIMERO (arriba a la izquierda) y 'entreno' es el único sin hoja", function () {
     var s = freshLookSandbox();
     assert.strictEqual(s.LOOKS[0].id, s.DEFAULT_LOOK);
-    assert.strictEqual(s.LOOKS[0].file, null);
-    // y es el único sin hoja
+    assert.ok(s.LOOKS[0].file, "el por defecto, 'hojas', tiene su hoja");
+    // 'entreno' (style.css tal cual) sigue siendo elegible y es el único sin hoja
     var sinHoja = JSON.parse(JSON.stringify(s.LOOKS)).filter(function (l) { return !l.file; });
-    assert.strictEqual(sinHoja.length, 1);
+    assert.deepStrictEqual(sinHoja.map(function (l) { return l.id; }), ["entreno"]);
   });
 
   t.test("un id inventado cae al aspecto por defecto y NO llega a una ruta", function () {
     var s = freshLookSandbox();
-    ["../x", "hojas.css", "HOJAS", "hojas ", "", null, undefined, 7, {}, [], true, "javascript:alert(1)", "assets/css/temas/hojas"].forEach(function (basura) {
-      assert.strictEqual(s.sanitizeLook(basura), "entreno", "deberia rechazar " + JSON.stringify(basura));
-      assert.strictEqual(s.lookCssHref(basura, "20261006a"), null);
+    ["../x", "hojas.css", "HOJAS", "hojas ", "entreno ", "ENTRENO", "entreno.css", "", null, undefined, 7, {}, [], true, "javascript:alert(1)", "assets/css/temas/hojas"].forEach(function (basura) {
+      assert.strictEqual(s.sanitizeLook(basura), "hojas", "deberia rechazar " + JSON.stringify(basura));
+      // la única ruta posible es la de la hoja del aspecto por defecto, nunca algo derivado de la basura
+      assert.strictEqual(s.lookCssHref(basura, "20261006a"), "assets/css/temas/hojas.css?v=20261006a");
     });
   });
 
@@ -118,7 +119,7 @@ function run(t) {
     var s = freshLookSandbox();
     s.localStorage = createFakeLocalStorage();
     s.localStorage.setItem("nutritionPlanner.look.v1", "<script>");
-    assert.strictEqual(s.getLook(), "entreno");
+    assert.strictEqual(s.getLook(), "hojas");
   });
 
   t.test("guarda y devuelve cada aspecto de la lista", function () {
@@ -133,8 +134,8 @@ function run(t) {
   t.test("saveLook devuelve lo que QUEDÓ, no lo que se pidió", function () {
     var s = freshLookSandbox();
     s.localStorage = createFakeLocalStorage();
-    assert.strictEqual(s.saveLook("verde-lima"), "entreno");
-    assert.strictEqual(s.getLook(), "entreno");
+    assert.strictEqual(s.saveLook("verde-lima"), "hojas");
+    assert.strictEqual(s.getLook(), "hojas");
   });
 
   t.test("el aspecto vive en su PROPIA clave, no dentro de los ajustes", function () {
@@ -181,6 +182,20 @@ function run(t) {
     JSON.parse(JSON.stringify(s.LOOKS)).forEach(function (l) { enJs[l.id] = l.color.toLowerCase(); });
     assert.deepStrictEqual(enHead, enJs,
       "la lista del <head> de index.html y LOOKS de js/core/look.js se han separado");
+  });
+
+  t.test("el <head> arranca con el mismo aspecto por defecto que look.js, y su color en la barra", function () {
+    var html = leer("index.html");
+    var bloque = /var id = "([a-z]+)";/.exec(html.slice(html.indexOf("var ASPECTOS = {")));
+    assert.ok(bloque, "no se encuentra el `var id = \"...\"` del IIFE de aspecto");
+    var s = freshLookSandbox();
+    assert.strictEqual(bloque[1], s.DEFAULT_LOOK,
+      "sin nada guardado el <head> pintaría un aspecto y el menú marcaría otro");
+    var meta = /<meta name="theme-color" content="(#[0-9a-fA-F]{6})">/.exec(html);
+    assert.ok(meta, "falta <meta name=\"theme-color\">");
+    var info = JSON.parse(JSON.stringify(s.lookInfo(s.DEFAULT_LOOK)));
+    assert.strictEqual(meta[1].toLowerCase(), info.color.toLowerCase(),
+      "el color estático de la barra tiene que ser el del aspecto por defecto");
   });
 
   t.test("look.js se carga ANTES que render-menu.js, que lo usa", function () {

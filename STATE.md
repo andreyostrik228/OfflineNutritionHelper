@@ -5,6 +5,31 @@
 > Escrito para alguien que llega SIN NINGÚN contexto previo. Si solo lees
 > una parte de este archivo, que sea esta.
 >
+> ### ⏩ UPDATE 2026-10-07 (c) — la pregunta del recorrido sale ANTES del plan, y el aspecto por defecto es «hojas»
+>
+> **801 tests en verde. Sello `20261007c`. Hecho en local, SIN commit ni despliegue
+> todavía** (lo anterior, commit `8d60b0b`, sello `b`, sí está desplegado y empujado).
+> Pedido del dueño: «после прохождения вопросов сразу должно показывать хотите
+> пройти тур, а не после создания плана, также основной стиль должен быть листва».
+>
+> - **Orden**: al soltar la última pregunta sale «¿Quieres ver un recorrido?» (a los
+>   ~5 ms, sin plan todavía) y el plan se genera DESPUÉS, conteste lo que conteste
+>   (`offerTour(alResponder)` en `js/ui/tour.js`; `onFinish` de `js/app.js` pasa
+>   `generarElPlan`). «Sí» anota `_tourQuiereVerlo` y `maybeStartTour()` -- que
+>   `app.js` llama al final de CADA generación -- arranca el recorrido 0,7 s
+>   después de pintarse (caduca a los 2 min; vale aunque ya hubiera visto el
+>   recorrido). «No» y Escape guardan `tourDoneAt` y generan. Si la pregunta no
+>   puede mostrarse (ya hay un recorrido), también se genera. Con un plan de hoy
+>   empezado: pregunta → «Sí» → diálogo «plan activo» → «Cambiar el plan completo»
+>   → recorrido «1 de 18». `offerTourWhenReady()` queda solo para la primera
+>   generación de quien nunca vio el recorrido (`maybeStartTour`).
+> - **Aspecto por defecto = `hojas`** (`DEFAULT_LOOK` en `js/core/look.js`, primero en
+>   `LOOKS`; `entreno` = style.css sin hoja pasa a segundo; el IIFE del `<head>` y el
+>   `theme-color` estático `#E9F1E3` coinciden, con test). Quien YA eligió un aspecto
+>   lo conserva (clave `nutritionPlanner.look.v1`); solo cambia a quien no eligió
+>   nada. Comprobado a 390 y 1280 px: sin elegir → hojas; guardado `entreno` → sin
+>   hoja; guardado `noche` → noche.
+>
 > ### ⏩ UPDATE 2026-10-07 (b) — «el tutorial no aparece»: la pregunta esperaba UNA sola vez
 >
 > **795 tests en verde. Sello `20261007b`. SIN commit ni despliegue todavía.**

@@ -1666,34 +1666,52 @@ document.addEventListener("DOMContentLoaded", function () {
         // contestar, sale el aviso de siempre en vez de un plan a medias).
         var generar = document.querySelector('#plannerForm button[type="submit"]');
         if (!generar) return;
-        if (typeof generar.scrollIntoView === "function") {
-          generar.scrollIntoView({ behavior: "smooth", block: "center" });
-        }
-        // Un respiro antes de generar: el formulario acaba de aparecer y
-        // que se rellene solo ANTE los ojos es parte de entender de donde
-        // sale el plan. Tras generarlo, maybeStartTour() arranca el
-        // recorrido por su cuenta (ver handleSubmit).
-        window.setTimeout(function () {
-          generar.click();
 
-          // Y el recorrido: se PREGUNTA, no arranca solo (2026-10-06).
-          //
-          // Acaba de contestar quince preguntas y ha pulsado un botón que
-          // promete un plan. Antes se le soltaba el recorrido encima sin
-          // más; ahora sale «¿Quieres ver un recorrido?» con sí y no. Y se
-          // pregunta SIN pasar por maybeStartTour(): si pidió repetir el alta
-          // quiere que se lo ofrezcan otra vez, y hacerlo depender de una
-          // marca guardada es justo lo que dejó a este usuario sin recorrido
-          // (reportado el 2026-09-03). Un «No» queda guardado: para verlo
-          // después está «Ver la explicación otra vez».
-          //
-          // Se espera a que el plan esté pintado Y a que no haya ningún
-          // diálogo abierto (offerTourWhenReady, js/ui/tour.js): con un plan
-          // de hoy ya empezado, «Generar plan» abre «Ya tienes un plan
-          // activo» en vez de generar, y una sola mirada a los 0,9 s dejaba
-          // al usuario sin pregunta (reportado el 2026-10-07).
-          if (typeof offerTourWhenReady === "function") offerTourWhenReady();
-        }, 450);
+        // El plan se genera DESPUÉS de la pregunta del recorrido, no antes
+        // (2026-10-07, a petición del usuario: «после прохождения вопросов
+        // сразу должно показывать хотите пройти тур, а не после создания
+        // плана»). La pregunta sale al instante, al soltar la última
+        // pregunta del cuestionario; conteste lo que conteste -- sí, no o
+        // Escape --, entonces se genera el plan. Si dijo «Sí», el recorrido
+        // arranca solo en cuanto el plan está pintado (maybeStartTour, que
+        // se llama al final de cada generación; ver js/ui/tour.js).
+        //
+        // Un «No» queda guardado: para verlo después está «Ver la
+        // explicación otra vez». Se pregunta SIN pasar por maybeStartTour
+        // y sin mirar si ya lo vio: si pidió repetir el alta quiere que se
+        // lo ofrezcan otra vez, y hacerlo depender de una marca guardada es
+        // justo lo que dejó a este usuario sin recorrido (reportado el
+        // 2026-09-03).
+        //
+        // Con un plan de hoy ya empezado «Generar plan» abre el diálogo
+        // «Ya tienes un plan activo» en vez de generar. Ya no importa para
+        // la pregunta, que salió antes; si dijo «Sí» y acepta cambiar el
+        // plan, el recorrido arranca cuando el plan nuevo se pinta.
+        var generado = false;
+        function generarElPlan() {
+          if (generado) return;
+          generado = true;
+          if (typeof generar.scrollIntoView === "function") {
+            generar.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+          // Un respiro antes de generar: el formulario acaba de aparecer y
+          // que se rellene solo ANTE los ojos es parte de entender de donde
+          // sale el plan.
+          window.setTimeout(function () { generar.click(); }, 450);
+        }
+
+        if (typeof offerTour === "function") {
+          try {
+            offerTour(generarElPlan);
+          } catch (err) {
+            // Si la pregunta falla, el plan se genera igualmente: no se le
+            // queda al usuario un cuestionario que no desemboca en nada.
+            console.error(err);
+            generarElPlan();
+          }
+        } else {
+          generarElPlan();
+        }
       }
     });
   });

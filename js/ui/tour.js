@@ -63,6 +63,15 @@ var _tourDir = 1;            // hacia dónde va: +1 siguiente, -1 atrás
 var _tourVisible = [];
 var _tourEls = null;
 var _tourAsk = null;
+// Quien se entera de la respuesta a la pregunta (lo pasa offerTour). Al
+// terminar el cuestionario es el que GENERA el plan: la pregunta sale antes
+// que el plan, y el plan sale conteste lo que conteste.
+var _tourAlResponder = null;
+// Cuándo dijo «Sí» a la pregunta del cuestionario (ms). maybeStartTour(), que
+// se llama justo después de pintar cada plan nuevo, arranca el recorrido si
+// esto es reciente. 0 = nadie lo ha pedido.
+var _tourQuiereVerlo = 0;
+var TOUR_QUIERE_MAX = 120000;   // si el plan no llega en 2 min, ya no vale
 // ¿Hay pestañas (móvil)? Se mide ANTES de abrir el recorrido: mientras está
 // abierto el CSS esconde la barra de pestañas.
 var _tourMovil = false;
@@ -677,8 +686,20 @@ function _tourBuildAsk() {
   no.addEventListener("click", function () {
     _tourCerrarPregunta(false);
     if (typeof completeTour === "function") completeTour();
+    _tourResponder(false);
   });
-  si.addEventListener("click", startTour);
+  si.addEventListener("click", function () {
+    // Con quien espera la respuesta (el final del cuestionario) todavía no
+    // hay plan que señalar: se anota que lo quiere, se deja que se genere y
+    // lo arranca maybeStartTour() en cuanto esté pintado.
+    if (_tourAlResponder) {
+      _tourCerrarPregunta(false);
+      _tourQuiereVerlo = Date.now();
+      _tourResponder(true);
+      return;
+    }
+    startTour();
+  });
 
   // Escape = «No»: una pregunta de la que no se puede salir es una trampa.
   document.addEventListener("keydown", function (ev) {
@@ -709,12 +730,34 @@ function _tourCerrarPregunta(mantenerBloqueo) {
 }
 
 /**
- * Pregunta si quiere ver el recorrido. Se llama al terminar el cuestionario
- * (js/app.js): el plan ya está pintado y la persona acaba de contestar
- * quince preguntas, así que lo cortés es preguntar y no empezar.
+ * Avisa de la respuesta a quien la espera, UNA vez. Pase lo que pase con la
+ * pregunta (sí, no, Escape, o ni siquiera poder mostrarla) quien espera tiene
+ * que enterarse: si es el final del cuestionario, de ahí cuelga que el plan se
+ * genere.
  */
-function offerTour() {
-  if (_tourEls && !_tourEls.root.hidden) return;
+function _tourResponder(quiere) {
+  var cb = _tourAlResponder;
+  _tourAlResponder = null;
+  if (cb) {
+    try { cb(!!quiere); } catch (err) { console.error(err); }
+  }
+}
+
+/**
+ * Pregunta si quiere ver el recorrido.
+ *
+ * Al terminar el cuestionario (js/app.js) sale AL INSTANTE, antes de generar
+ * el plan: la persona acaba de contestar quince preguntas y lo cortés es
+ * preguntar y no empezar. `alResponder(quiere)` se llama cuando contesta, y
+ * es entonces cuando se genera el plan. Sin `alResponder` (la primera vez que
+ * se genera un plan, ver maybeStartTour) el plan ya está delante y «Sí»
+ * arranca el recorrido en el acto.
+ *
+ * @param {function(boolean)} [alResponder]
+ */
+function offerTour(alResponder) {
+  _tourAlResponder = typeof alResponder === "function" ? alResponder : null;
+  if (_tourEls && !_tourEls.root.hidden) { _tourResponder(false); return; }
   var a = _tourBuildAsk();
   if (!a.root.hidden) return;
   _tourPintarPregunta();
@@ -739,6 +782,16 @@ function maybeStartTour() {
   // recorrido no salía nunca. La lección es la de siempre aquí: una función
   // que decide "qué pantalla toca" no sirve para responder "¿toca esta otra
   // cosa?".
+  // Dijo «Sí» al terminar el cuestionario y el plan acaba de pintarse: ahora
+  // sí hay algo que señalar. Va ANTES de mirar si ya lo vio: quien lo vio y lo
+  // pide otra vez tiene que verlo.
+  var pidio = _tourQuiereVerlo;
+  _tourQuiereVerlo = 0;
+  if (pidio && Date.now() - pidio < TOUR_QUIERE_MAX) {
+    window.setTimeout(startTour, 700);
+    return;
+  }
+
   var estado = getOnboardingState();
   if (estado && estado.tourDoneAt) return;
   // Un respiro antes de preguntar: el plan acaba de aparecer y merece verse

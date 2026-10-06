@@ -881,15 +881,146 @@ function run(t) {
     for (var i = 0; i < 6; i++) { estado.ahora += 400; relojes.forEach(function (fn) { if (fn) fn(); }); }
     assert.strictEqual(estado.preguntas, 0, "tras «Cancelar» no hay que preguntar nada");
   });
+  // ── La pregunta sale ANTES que el plan ──────────────────────────────
+  // 2026-10-07, a petición del usuario: tras el cuestionario la pregunta del
+  // recorrido tiene que salir al instante, no después de crear el plan. El
+  // plan se genera cuando contesta (offerTour(alResponder)) y, si dijo «Sí»,
+  // el recorrido arranca al pintarse (maybeStartTour).
+  function entornoPregunta(estadoOnboarding) {
+    var fs = require("fs");
+    var vm = require("vm");
+    function el(tag) {
+      return {
+        tag: tag, className: "", id: "", hidden: false, children: [], handlers: {}, style: {},
+        textContent: "", type: "",
+        appendChild: function (c) { this.children.push(c); return c; },
+        addEventListener: function (tipo, fn) { (this.handlers[tipo] = this.handlers[tipo] || []).push(fn); },
+        setAttribute: function () {}, focus: function () {},
+        click: function () { (this.handlers.click || []).forEach(function (fn) { fn(); }); },
+        classList: { add: function () {}, remove: function () {}, contains: function () { return false; } }
+      };
+    }
+    function buscar(nodo, clase) {
+      if ((" " + nodo.className + " ").indexOf(" " + clase + " ") !== -1) return nodo;
+      for (var i = 0; i < nodo.children.length; i++) {
+        var r = buscar(nodo.children[i], clase);
+        if (r) return r;
+      }
+      return null;
+    }
+    var teclas = [];
+    var temporizadores = [];
+    var cuerpo = el("body");
+    var doc = {
+      body: cuerpo,
+      createElement: el,
+      addEventListener: function (tipo, fn) { if (tipo === "keydown") teclas.push(fn); },
+      getElementById: function () { return null; },
+      querySelector: function () { return null; },
+      querySelectorAll: function () { return []; }
+    };
+    var win = {
+      setTimeout: function (fn) { temporizadores.push(fn); return temporizadores.length; },
+      clearTimeout: function () {}, setInterval: function () { return 1; }, clearInterval: function () {},
+      addEventListener: function () {}, removeEventListener: function () {},
+      requestAnimationFrame: function () { return 1; }, cancelAnimationFrame: function () {}
+    };
+    var ctx = vm.createContext({ window: win, document: doc, console: console, Date: Date });
+    vm.runInContext(fs.readFileSync(projPath("js/ui/tour.js"), "utf8"), ctx);
+    var llamadas = { start: 0, completo: 0 };
+    ctx.startTour = function () { llamadas.start++; };
+    ctx.completeTour = function () { llamadas.completo++; };
+    ctx.getOnboardingState = function () { return estadoOnboarding || {}; };
+    return {
+      ctx: ctx, llamadas: llamadas, teclas: teclas,
+      si: function () { buscar(cuerpo, "tour-ask").children[0].children[2].children[1].handlers.click[0](); },
+      no: function () { buscar(cuerpo, "tour-ask").children[0].children[2].children[0].handlers.click[0](); },
+      visible: function () { var r = buscar(cuerpo, "tour-ask"); return !!r && !r.hidden; },
+      correrTemporizadores: function () { var l = temporizadores.splice(0); l.forEach(function (fn) { fn(); }); }
+    };
+  }
 
-  t.test("el final del cuestionario espera con offerTourWhenReady, no con una sola mirada", function () {
+  t.test("«Sí» a la pregunta del cuestionario avisa para generar el plan y el recorrido arranca al pintarse", function () {
+    var e = entornoPregunta({});
+    var respuestas = [];
+    e.ctx.offerTour(function (q) { respuestas.push(q); });
+    assert.strictEqual(e.visible(), true, "la pregunta tiene que salir al instante");
+    assert.deepStrictEqual(respuestas, [], "todavía no ha contestado");
+    e.si();
+    assert.deepStrictEqual(respuestas, [true], "«Sí» avisa UNA vez, para que se genere el plan");
+    assert.strictEqual(e.visible(), false, "la pregunta se cierra");
+    assert.strictEqual(e.llamadas.start, 0, "aún no hay plan que señalar: el recorrido no arranca todavía");
+    // El plan se pinta: app.js llama a maybeStartTour() al final de cada generación.
+    e.ctx.maybeStartTour();
+    e.correrTemporizadores();
+    assert.strictEqual(e.llamadas.start, 1, "al pintarse el plan arranca el recorrido que pidió");
+    // Y solo esa vez: el siguiente plan no vuelve a arrancarlo.
+    e.ctx.maybeStartTour();
+    e.correrTemporizadores();
+    assert.strictEqual(e.llamadas.start, 1, "el «Sí» se gasta con un solo recorrido");
+  });
+
+  t.test("«Sí» arranca el recorrido aunque ya lo hubiera visto antes (repetir el alta)", function () {
+    var e = entornoPregunta({ tourDoneAt: "2026-10-01T00:00:00Z" });
+    e.ctx.offerTour(function () {});
+    e.si();
+    e.ctx.maybeStartTour();
+    e.correrTemporizadores();
+    assert.strictEqual(e.llamadas.start, 1);
+  });
+
+  t.test("«No» y Escape avisan para generar el plan, lo recuerdan y NO arrancan el recorrido", function () {
+    var e = entornoPregunta({});
+    var respuestas = [];
+    e.ctx.offerTour(function (q) { respuestas.push(q); });
+    e.no();
+    assert.deepStrictEqual(respuestas, [false]);
+    assert.strictEqual(e.llamadas.completo, 1, "el «No» se guarda para siempre");
+    e.ctx.maybeStartTour();
+    e.correrTemporizadores();
+    assert.strictEqual(e.llamadas.start, 0);
+
+    var e2 = entornoPregunta({});
+    var r2 = [];
+    e2.ctx.offerTour(function (q) { r2.push(q); });
+    e2.teclas.forEach(function (fn) { fn({ key: "Escape" }); });
+    assert.deepStrictEqual(r2, [false], "Escape es «No»: de una pregunta hay que poder salir");
+  });
+
+  t.test("si la pregunta no puede mostrarse, quien espera se entera igual (el plan se genera)", function () {
+    var e = entornoPregunta({});
+    e.ctx._tourEls = { root: { hidden: false } };   // ya hay un recorrido en pantalla
+    var respuestas = [];
+    e.ctx.offerTour(function (q) { respuestas.push(q); });
+    assert.deepStrictEqual(respuestas, [false]);
+    assert.strictEqual(e.visible(), false);
+  });
+
+  t.test("un «Sí» que nunca llega a un plan caduca y no arranca el recorrido de otro plan", function () {
+    var e = entornoPregunta({ tourDoneAt: "2026-10-01T00:00:00Z" });
+    e.ctx.offerTour(function () {});
+    e.si();
+    e.ctx._tourQuiereVerlo = Date.now() - 3 * 60 * 1000;   // «Cancelar» en el diálogo: 3 min después...
+    e.ctx.maybeStartTour();
+    e.correrTemporizadores();
+    assert.strictEqual(e.llamadas.start, 0);
+  });
+
+  t.test("el final del cuestionario pregunta ANTES de pulsar «Generar plan»", function () {
     var fs = require("fs");
     var app = fs.readFileSync(projPath("js/app.js"), "utf8");
-    assert.ok(app.indexOf("offerTourWhenReady") !== -1,
-      "js/app.js tiene que usar offerTourWhenReady() al terminar el cuestionario");
-    assert.ok(!/hayPlan\s*&&\s*typeof offerTour/.test(app),
-      "la mirada única a los 0,9 s dejó sin pregunta a quien tiene un plan activo");
+    var pregunta = app.indexOf("offerTour(generarElPlan)");
+    var genera = app.indexOf("generar.click()", app.indexOf("function generarElPlan"));
+    assert.ok(pregunta !== -1, "js/app.js tiene que llamar a offerTour(generarElPlan) al terminar el cuestionario");
+    assert.ok(genera !== -1, "no se encuentra el clic que genera el plan");
+    assert.ok(app.indexOf("function generarElPlan") < pregunta,
+      "el plan se genera dentro de generarElPlan, que es lo que ejecuta la respuesta");
+    assert.ok(app.indexOf("generar.click()") === genera,
+      "no puede haber otro generar.click() antes: la pregunta sale antes que el plan");
+    assert.ok(app.indexOf("offerTourWhenReady") === -1,
+      "al final del cuestionario ya no se espera al plan para preguntar");
   });
+
 }
 
 module.exports = { run: run };
