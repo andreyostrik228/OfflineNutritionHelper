@@ -52,6 +52,7 @@
 .pantry-item__expiry{font-size:13px}
 .onboarding__brand-mark{transform:none}
 .onboarding__summary li::before{transform:none}
+@media (max-height: 600px){.tour__counter{font-size:13px}}
 @media screen and (max-width: 900px){.tabbar__btn{font-size:13px}}
 /* ── núcleo común: una escala de tamaños, una escalera de alturas ── */
 

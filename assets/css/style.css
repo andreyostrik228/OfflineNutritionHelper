@@ -2957,6 +2957,20 @@ html.tour-abierto body { overflow: hidden; }
   .tour__title { font-size: 38px; }
   .tour__body { font-size: 17px; }
 }
+/* Un móvil de 568 px de alto (iPhone SE) con el texto en ruso: la maqueta se quedaba sin sitio. */
+@media (max-height: 600px) {
+  .tour__top { padding: 8px 12px 4px; }
+  .tour__seg { height: 18px; }
+  .tour__x { width: 34px; height: 34px; font-size: 22px; }
+  .tour__texto { min-height: 0; padding: 8px 14px 0; }
+  .tour__counter { font-size: 12px; }
+  .tour__title { margin-top: 4px; font-size: 22px; }
+  .tour__body { margin-top: 4px; font-size: 14px; line-height: 1.32; }
+  .tour__nav { padding: 6px 12px 10px; }
+  .tour__prev,
+  .tour__next { min-height: 42px; padding: 0 16px; font-size: 16px; }
+  .tour__escena { min-height: 150px; }
+}
 @media (max-height: 640px) {
   .tour__texto { min-height: 150px; }
   .tour__title { font-size: 26px; }
@@ -2979,6 +2993,7 @@ html.tour-abierto body { overflow: hidden; }
   justify-content: center;
   gap: 6px;
   min-height: 42px;
+  max-width: 100%;
   padding: 0 16px;
   border: 2px solid var(--primary);
   border-radius: var(--pill);
@@ -2992,7 +3007,10 @@ html.tour-abierto body { overflow: hidden; }
 .tg-btn--s { background: var(--surface); color: var(--ink); }
 .tg-btn.is-on,
 .tg-btn.is-hecho { background: var(--volt); color: var(--on-volt); }
-.tg-grande { width: 100%; max-width: 300px; min-height: 54px; margin: 0 auto; font-size: 20px; }
+/* El botón grande lleva la palabra REAL de la interfaz («Сделать планом на сегодня»,
+   «Confirmar plan de hoy»...), que en algún idioma o aspecto no cabe en una línea:
+   puede pasar a dos y se centra en vez de salirse del botón. */
+.tg-grande { width: 100%; max-width: 300px; min-height: 62px; margin: 0 auto; padding: 8px 18px; font-size: 18px; line-height: 1.12; letter-spacing: 0.04em; white-space: normal; text-align: center; }
 .tg-ok { width: 16px; height: 16px; flex: none; }
 /* El dedo y su onda: solo existen cuando algo los mueve. */
 .tg-dedo,
@@ -3182,6 +3200,10 @@ html.tour-abierto body { overflow: hidden; }
 .tg-atajo { display: grid; justify-items: center; align-content: start; gap: 10px; padding: 12px 10px; text-align: center; }
 .tg-atajo .tg-btn { min-width: 0; max-width: 100%; min-height: 40px; padding: 5px 8px; font-size: 13px; line-height: 1.05; letter-spacing: 0.03em; white-space: normal; text-align: center; }
 .tg-atajo .tg-ico { width: 15px; height: 15px; }
+@media (max-width: 340px) {
+  .tg-atajo .tg-btn { letter-spacing: 0; }
+  .tg-atajo .tg-btn .tg-ico { display: none; }
+}
 .tg-atajo small { font-size: 13px; font-weight: 700; color: var(--text-2); }
 .tg-fuego { position: relative; display: grid; place-items: center; width: 54px; height: 54px; }
 .tg-llama { width: 46px; height: 46px; stroke: var(--kcal); }
