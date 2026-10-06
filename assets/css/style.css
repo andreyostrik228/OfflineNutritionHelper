@@ -2706,6 +2706,11 @@ body.is-onboarding { overflow: hidden; overscroll-behavior: none; }
 
 .onboarding__answer--choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
 .onboarding__answer--choices:has(.onboarding__choice-note) { grid-template-columns: minmax(0, 1fr); }
+/* Las opciones con una CIFRA al lado (el presupuesto: nombre y euros al día)
+   van de una en una, a ancho completo. En dos columnas el nombre se quedaba
+   con unos 90 px y en ruso se partía letra a letra ("Очен/ь/экон/омны/й"). */
+.onboarding__answer--choices:has(.onboarding__choice-amount) { grid-template-columns: minmax(0, 1fr); }
+.onboarding__choice-amount { white-space: nowrap; }
 .onboarding__choice {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
