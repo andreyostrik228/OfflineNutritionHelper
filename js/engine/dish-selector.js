@@ -823,6 +823,18 @@ function pickDish(category, data, usedState, tier, maxCost, target, storeId, tar
   var cuisinePref = (typeof getCuisinePreference === "function") ? getCuisinePreference() : "mixta";
   var eatingPriority = (typeof getEatingPriority === "function") ? getEatingPriority() : "balanced";
 
+  // Días anteriores del MISMO plan (data.avoidDishNames, lo rellena
+  // generateDietPlanDays). Es un filtro sobre lo que YA cabe en el
+  // presupuesto, no sobre el pool entero: la variedad no puede costar dinero
+  // ni empujar una toma por encima de su tope. Si TODO lo asequible salió ya
+  // otro día se repite -- antes repetir que romper el presupuesto o dejar la
+  // toma vacía. Ver la cabecera de generateDietPlanDays().
+  var avoid = (data && data.avoidDishNames && data.avoidDishNames.length) ? data.avoidDishNames : null;
+  if (avoid && affordable.length) {
+    var notYetSeen = affordable.filter(function (d) { return avoid.indexOf(d.name) === -1; });
+    if (notYetSeen.length) affordable = notYetSeen;
+  }
+
   if (affordable.length > 0) {
     var minPoolCost = Math.min.apply(null, affordable.map(function (d) {
       return estimateScaledPurchaseImpact(d, target, storeId, committedGrams, pantryState).marginalCost;
@@ -877,6 +889,10 @@ function pickDish(category, data, usedState, tier, maxCost, target, storeId, tar
       eatingPriority: eatingPriority
     };
     var fittingDishes = fitting.map(function (p) { return p.dish; }); // ya viene ordenado por coste de compra marginal asc.
+    if (avoid) {
+      var fittingNotSeen = fittingDishes.filter(function (d) { return avoid.indexOf(d.name) === -1; });
+      if (fittingNotSeen.length) fittingDishes = fittingNotSeen;
+    }
     var chosenDish = fallbackCtx.tight
       ? pickWeightedFromTop(fittingDishes)
       : pickWeightedByScore(rankDishesByBudgetMode(fittingDishes, usedState, fallbackCtx));

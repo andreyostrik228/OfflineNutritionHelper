@@ -539,39 +539,31 @@ document.addEventListener("DOMContentLoaded", function () {
         // porque hace Object.assign({}, data, ...).
         data.planDays = planDays;
         data.dayIndex = 0;
-        var result  = generateDietPlan(profile, data);
 
-        // Horario: se calcula DESPUÉS de generar el plan, nunca dentro de
+        // Los días: una llamada al generador por cada uno, y cada día evita
+        // los platos de los anteriores (generateDietPlanDays, en
+        // js/engine/plan-generator.js, explica el porqué: a 8 EUR los tres
+        // días salían idénticos). El presupuesto sigue siendo diario: no se
+        // comparte dinero ni gramos entre días, solo se prefiere no repetir
+        // lo que ya cabe en el presupuesto.
+        //
+        // Horario: se calcula DESPUÉS de generar cada día, nunca dentro de
         // generateDietPlan() — así el generador (probado a fondo, ver
         // STATE.md) no cambia de comportamiento por esto. Reordena
-        // result.meals cronológicamente (antes: orden de categoría,
+        // day.meals cronológicamente (antes: orden de categoría,
         // desayuno/comida/cena/snack/snack2 — ver js/core/meal-schedule.js)
         // y añade meal.time/meal.timeMinutes a cada uno. Aislado en
         // safeInit: si fallara, el plan se sigue mostrando con normalidad,
         // solo sin horario (mismo principio que el resto de módulos
         // opcionales, ver cabecera del archivo).
-        safeInit("meal-schedule", function () {
-          if (typeof computeMealSchedule === "function") {
-            result.meals = computeMealSchedule(result.meals, readScheduleSettings());
-          }
-        });
-
-        // Días 2..N. El primero ya está generado (`result`); los demás son
-        // llamadas nuevas al MISMO generador, así que cada uno sale con sus
-        // propios platos. No se comparte estado entre días a propósito: el
-        // presupuesto es diario, y mezclarlos haría que el día 5 dependiera
-        // de lo que salió el día 1.
-        var days = [result];
-        for (var d = 1; d < planDays; d++) {
-          data.dayIndex = d;
-          var extra = generateDietPlan(profile, data);
-          safeInit("meal-schedule-day-" + d, function () {
+        var days = generateDietPlanDays(profile, data, planDays, function (day, d) {
+          safeInit(d === 0 ? "meal-schedule" : "meal-schedule-day-" + d, function () {
             if (typeof computeMealSchedule === "function") {
-              extra.meals = computeMealSchedule(extra.meals, readScheduleSettings());
+              day.meals = computeMealSchedule(day.meals, readScheduleSettings());
             }
           });
-          days.push(extra);
-        }
+        });
+        var result = days[0];
 
         // El resumen y los avisos siguen siendo del DÍA 1: son objetivos
         // diarios (kcal, proteína), no semanales. Multiplicarlos por 7 sería

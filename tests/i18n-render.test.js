@@ -195,7 +195,8 @@ function run(t) {
         assert.strictEqual(s.authErrorEl.textContent, corta[lang], lang);
 
         // Borrar la cuenta: mientras se borra, y si el servidor contesta con un error.
-        s.authDeleteConfirmInput = { value: "BORRAR" };
+        // Cada idioma teclea SU palabra (BORRAR, DELETE, УДАЛИТЬ), la que sale en pantalla.
+        s.authDeleteConfirmInput = { value: s.t("ui.borrar", lang) };
         s.authDeleteConfirmBtn = elementoFalso();
         s.authDeleteErrorEl = elementoFalso();
         s.deleteOwnAccount = function () { return Promise.resolve({ error: { code: "auth/requires-recent-login" } }); };

@@ -20,7 +20,7 @@
  *     despliegue nuevo. Si la red falla, se sirve la copia guardada.
  *
  * De ahi sale la propiedad importante: **este fichero no hay que tocarlo en
- * cada despliegue.** No lleva dentro ninguna lista de recursos ni ningun
+ * cada despliegue** -- con UNA excepcion, la de SELLO_CABECERAS, mas abajo. No lleva dentro ninguna lista de recursos ni ningun
  * numero de version que se quede viejo. La lista de precache la deduce el
  * propio worker leyendo index.html, y el nombre de la cache sale del sello
  * que encuentre ahi. Un sello nuevo => una cache nueva => la vieja se borra
@@ -35,6 +35,26 @@
  * persona, que no tienen por que quedarse en una cache del navegador.
  */
 "use strict";
+
+/**
+ * Version de la CSP de `_headers`. SI SE CAMBIA LA CSP, HAY QUE CAMBIAR ESTO.
+ *
+ * Un service worker se queda con las cabeceras (la CSP) con que se instalo, y
+ * si `sw.js` es identico byte a byte el navegador NO lo reinstala: los
+ * cambios de `_headers` no le llegan nunca. Es exactamente lo que paso el
+ * 2026-10-07: se anadieron jsdelivr y cdnjs a `connect-src` (el worker
+ * reenvia esos scripts con fetch() y los rige esa directiva), el servidor ya
+ * mandaba la CSP buena, y los moviles con el worker VIEJO siguieron sin
+ * `firebase` ni `gsap` -- "las cuentas todavia no estan disponibles" -- hasta
+ * que cambiaron los bytes de este fichero. Medido con Chrome sin interfaz:
+ * CSP vieja -> repetida con sw.js identico: siguen rotos las 3 cargas ->
+ * sw.js con un byte distinto: arreglado desde la 2.a carga.
+ *
+ * Es el sha1 (10 primeros caracteres) de la linea Content-Security-Policy de
+ * `_headers`. tests/auth.test.js comprueba que coincide: si se toca la CSP y
+ * se olvida esto, el test falla.
+ */
+var SELLO_CABECERAS = "csp-5572558b16";
 
 var PREFIJO = "onh-";
 var CACHE_FUENTES = "onh-fuentes-v1";

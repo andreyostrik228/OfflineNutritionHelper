@@ -212,7 +212,15 @@ function initPantryRefs(refs) {
     hidePlanReplaceDialog();
     if (id) pantryOnReplaceWholePlan(id);
   });
-  if (planReplaceCancelBtn) planReplaceCancelBtn.addEventListener("click", hidePlanReplaceDialog);
+  if (planReplaceCancelBtn) planReplaceCancelBtn.addEventListener("click", function () {
+    hidePlanReplaceDialog();
+    // Si venía de decir «Sí» al recorrido, no se queda sin él (js/ui/tour.js).
+    if (typeof startTourIfWanted === "function") startTourIfWanted();
+  });
+  // Escape también cierra el diálogo: mismo caso que «Cancelar».
+  if (planReplaceDialogEl) planReplaceDialogEl.addEventListener("cancel", function () {
+    if (typeof startTourIfWanted === "function") startTourIfWanted();
+  });
 
   if (despensaCloseBtn) despensaCloseBtn.addEventListener("click", hideDespensaDialog);
 }

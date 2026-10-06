@@ -5,6 +5,48 @@
 > Escrito para alguien que llega SIN NINGÚN contexto previo. Si solo lees
 > una parte de este archivo, que sea esta.
 >
+> ### ⏩ UPDATE 2026-10-07 (d) — días idénticos a 8 EUR, «cuentas no disponibles» en el móvil, palabra de borrado por idioma
+>
+> **810 tests en verde. Sello `20261007d`. Hecho en local, SIN commit ni despliegue todavía**
+> (lo anterior, commit `055ad31`, sello `c`, sí está desplegado y empujado). Cuatro quejas del dueño:
+>
+> 1. **«Мне выдало точно такой же план на 3 дня, один в один… дизайн убил логику?»** No: los ficheros del
+>    motor no se tocaron desde el 2026-10-05 (solo avisos i18n) ni por el diseño ni por otro chat. Medido
+>    sobre el motor (`scratchpad/i18n/variedad.cjs`, 60-80 planes de 3 días por celda, hombre 78 kg
+>    ganando músculo, 8 EUR/día): **0 planes con los 3 días idénticos el 2026-09-01, 2 de 60 el 09-04,
+>    15 de 60 el 09-08**. El salto es `d781b41` («Let a day spend what a multi-day shop actually shares»):
+>    sube un 3 % el tope diario de un plan de 3 días y el puñado de platos más baratos cabe siempre, así
+>    que cada día elegía los mismos; los días solo se diferenciaban por el desempate aleatorio.
+>    Arreglo: `generateDietPlanDays()` (`js/engine/plan-generator.js`) genera un día por llamada y le pasa
+>    a cada uno `data.avoidDishNames` (platos de los días anteriores); `pickDish()` prefiere, ENTRE LOS QUE
+>    YA CABEN en el presupuesto de la toma, los que no han salido (fase 1 y fase 2). Si todo lo asequible
+>    ya salió, se repite. `js/app.js` lo usa y le pone el horario por día con un callback. Antes → después,
+>    8 EUR hombre: días idénticos 14/80 → 0/80, platos distintos 4,3 → 8,7 de 9, día 1→día 2 repetido
+>    73 % → 1 %; **coste: kcal 96 % → 88 % y proteína 100 % → 96 %** (antes la «variedad» de 8 EUR era
+>    repetir lo más barato por caloría; el tramo de 8 EUR ya declaraba no dar un día completo, `1b51a9a`).
+>    A 12/16/20 EUR: variedad 11,4→14,6 / 14→15 / 14,2→15 de 15, kcal y coste iguales ±1 punto. 7 días,
+>    16 EUR: 30,8→35 de 35, días con avisos 1 % → 4 %. 5 tests nuevos (uno falla si se quita el filtro:
+>    mutación comprobada).
+> 2. **«Las cuentas todavía no están disponibles» en el iPhone** (captura del dueño). Causa real, medida con
+>    Chrome sin interfaz y un servidor que cambia la CSP (`scratchpad/i18n/csp-sw.mjs`): un service worker
+>    **conserva la CSP con que se instaló** y, con `sw.js` idéntico byte a byte, el navegador no lo
+>    reinstala. El 07-oct se añadió jsdelivr/cdnjs a `connect-src` en `_headers`, pero los móviles con el
+>    worker viejo siguieron sin `firebase` ni `gsap` (3 de 3 cargas rotas); con UN byte distinto en `sw.js`
+>    se arregla desde la 2.ª carga. Arreglo: `var SELLO_CABECERAS = "csp-<sha1>"` en `sw.js` (hay que
+>    cambiarlo si cambia la CSP; un test lo comprueba) + en `index.html` un `controllerchange` que recarga
+>    UNA vez (guarda en sessionStorage) si un worker nuevo toma el control y falta firebase o gsap. Medido:
+>    visitante con worker viejo + despliegue nuevo → roto ~3 s → recarga sola → todo cargado.
+> 3. **Palabra de borrado por idioma**: `ui.borrar` = BORRAR / DELETE / УДАЛИТЬ y la comprobación
+>    (`authDeleteWord()` en `js/ui/render-auth.js`) lee la misma clave que la etiqueta; la frase de alrededor
+>    también se traduce. Para los idiomas que vengan: uk ВИДАЛИТИ, fr SUPPRIMER, de LÖSCHEN, it ELIMINA,
+>    pt APAGAR, pl USUŃ, ro ȘTERGE. Comprobado en es/en/ru: la palabra propia (en minúsculas también) enciende
+>    el botón y la de otro idioma no.
+> 4. **El recorrido «no sale» en la primera vuelta**: con clics reales y toques, iPhone UA, cuentas y GSAP
+>    bloqueados y un usuario previo, la pregunta sale a los ~3 ms en producción (`scratchpad/i18n/primera.mjs`),
+>    así que no se reproduce con perfil limpio. Lo que sí quedaba: con un plan de hoy empezado, «Sí» → diálogo
+>    «plan activo» → «Cancelar» dejaba el «Sí» sin recorrido. Ahora `startTourIfWanted()` (llamada desde
+>    «Cancelar» y Escape) lo arranca igualmente con lo que haya en pantalla (9 pasos sin plan).
+>
 > ### ⏩ UPDATE 2026-10-07 (c) — la pregunta del recorrido sale ANTES del plan, y el aspecto por defecto es «hojas»
 >
 > **801 tests en verde. Sello `20261007c`. Hecho en local, SIN commit ni despliegue

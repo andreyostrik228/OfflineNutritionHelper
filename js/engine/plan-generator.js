@@ -618,6 +618,65 @@ function generateDietPlan(profile, data) {
   }
 }
 
+/**
+ * Un plan de VARIOS días: una llamada al generador por día, y cada día EVITA
+ * los platos de los anteriores.
+ *
+ * Reportado el 2026-10-07 por el dueño: «мне выдало точно такой же план на 3
+ * дня, один в один». Medido sobre el motor, 60 planes de 3 días por celda,
+ * hombre 78 kg ganando músculo, presupuesto 8 EUR/día:
+ *
+ *   2026-09-01  0 planes con los 3 días idénticos, 7,5 platos distintos de 9
+ *   2026-09-04  2 de 60
+ *   2026-09-08  15 de 60, 4,3 de 9   <- d781b41 "Let a day spend what a
+ *               multi-day shop actually shares" sube un 3% el tope diario
+ *               de un plan de 3 días: justo lo que hacía falta para que el
+ *               puñado de platos más baratos CAIGA siempre dentro del
+ *               tope. Cada día lo elegía igual y salía el mismo día tres
+ *               veces.
+ *
+ * Los días solo se diferenciaban por el desempate aleatorio, y a 8 EUR casi
+ * no hay entre qué desempatar. La variedad entre días no era una regla, era
+ * una suerte.
+ *
+ * Ahora lo es: `data.avoidDishNames` lleva los platos de los días ya hechos y
+ * pickDish() (dish-selector.js) prefiere, ENTRE LOS QUE YA CABEN en el
+ * presupuesto de la toma, los que no han salido. No cuesta dinero ni puede
+ * romper un tope; si todo lo asequible ya salió, se repite.
+ *
+ * @param {object} profile
+ * @param {object} data           - mismo objeto que generateDietPlan(), con
+ *                                  planDays ya puesto por el llamante
+ * @param {number} planDays       - 1, 3 o 7
+ * @param {function(object, number)} [alTerminarDia] - se llama con
+ *   (día, índice) justo después de generar cada día, antes de mirar sus platos.
+ *   js/app.js lo usa para ponerle el horario.
+ * @returns {object[]} los días, en orden
+ */
+function generateDietPlanDays(profile, data, planDays, alTerminarDia) {
+  var days = [];
+  var vistos = [];
+  var tenia = data.avoidDishNames;
+  try {
+    for (var d = 0; d < planDays; d++) {
+      data.dayIndex = d;
+      data.avoidDishNames = vistos.slice();
+      var day = generateDietPlan(profile, data);
+      if (typeof alTerminarDia === "function") alTerminarDia(day, d);
+      (day.meals || []).forEach(function (m) {
+        if (m && m.dishName) vistos.push(m.dishName);
+      });
+      days.push(day);
+    }
+  } finally {
+    // La lista de platos vistos NO tiene que quedarse en `data`: app.js
+    // guarda ese objeto entero en los ajustes del usuario y lo reusa para
+    // cambiar una sola comida.
+    if (tenia === undefined) delete data.avoidDishNames; else data.avoidDishNames = tenia;
+  }
+  return days;
+}
+
 // ── Búsqueda en niveles de relajación (tiempo/sabor/tope-25%, NO presupuesto) ─
 
 /**

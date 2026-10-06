@@ -434,6 +434,81 @@ function run(t) {
     });
   });
 
+  // ── Los días de un plan de varios días no son copias ───────────────────
+  // Reportado el 2026-10-07: «мне выдало точно такой же план на 3 дня, один в
+  // один». A 8 EUR/día un plan de 3 días salía con los TRES días idénticos en
+  // 14 de cada 80 casos (hombre 78 kg ganando músculo; 4,3 platos distintos de
+  // 9) desde que d781b41 (2026-09-08) subió el tope diario de los planes de
+  // varios días: el puñado de platos más baratos cabía siempre y cada día
+  // elegía los mismos. Ahora cada día evita los de los anteriores
+  // (generateDietPlanDays / data.avoidDishNames), entre lo que YA cabe en el
+  // presupuesto.
+  function nombresDeLosDias(dias) {
+    // Round-trip: los arrays del sandbox son de OTRO realm y deepStrictEqual
+    // no los compara con los del host.
+    return JSON.parse(JSON.stringify(Array.prototype.map.call(dias, function (d) {
+      return Array.prototype.map.call(d.meals, function (m) { return m.dishName; });
+    })));
+  }
+
+  t.test("a 8 EUR ningún plan de 3 días repite el mismo día tres veces, y hay variedad de verdad", function () {
+    var s = freshEngineSandbox();
+    var built = buildProfileAndData(s, {
+      rawData: { age: 28, sex: "male", weight: 78, height: 178, activity: 1.55, workouts: 4, goal: "bulk" },
+      budgetMode: "minimal", budgetCustom: NaN, cookTime: 30, taste: "mixed"
+    });
+    var iguales = 0, distintos = 0, tomas = 0, planes = 40;
+    for (var seed = 1; seed <= planes; seed++) {
+      seedRandomInContext(s, seed);
+      var data = Object.assign({}, built.data, { planDays: 3 });
+      var dias = nombresDeLosDias(s.generateDietPlanDays(built.profile, data, 3));
+      var firmas = dias.map(function (d) { return d.slice().sort().join("|"); });
+      if (firmas[0] === firmas[1] && firmas[1] === firmas[2]) iguales++;
+      var todos = [].concat.apply([], dias);
+      distintos += new Set(todos).size;
+      tomas += todos.length;
+    }
+    assert.strictEqual(iguales, 0, "planes con los 3 días idénticos: " + iguales + " de " + planes);
+    // Medido: sin el filtro 4,3 de 9 (48%); con él 8,7 de 9 (97%). El umbral
+    // deja margen a la suerte sin dejar pasar el comportamiento viejo.
+    assert.ok(distintos / tomas >= 0.85,
+      "platos distintos " + (distintos / planes).toFixed(1) + " de " + (tomas / planes).toFixed(1) + ": los días vuelven a parecerse");
+  });
+
+  t.test("cada día de un plan de 3 días evita los platos de los anteriores cuando el presupuesto lo permite", function () {
+    var s = freshEngineSandbox();
+    var built = buildProfileAndData(s, PROFILES[1]);   // recomposición, presupuesto medio
+    for (var seed = 1; seed <= 20; seed++) {
+      seedRandomInContext(s, seed);
+      var data = Object.assign({}, built.data, { planDays: 3 });
+      var dias = nombresDeLosDias(s.generateDietPlanDays(built.profile, data, 3));
+      var repetidos = dias[1].filter(function (n) { return dias[0].indexOf(n) !== -1; })
+        .concat(dias[2].filter(function (n) { return dias[0].indexOf(n) !== -1 || dias[1].indexOf(n) !== -1; }));
+      assert.deepStrictEqual(repetidos, [], "semilla " + seed + ": platos repetidos entre días: " + repetidos.join(", "));
+    }
+  });
+
+  t.test("generateDietPlanDays no deja basura en `data` (app.js la guarda en los ajustes)", function () {
+    var s = freshEngineSandbox();
+    var built = buildProfileAndData(s, PROFILES[1]);
+    var data = Object.assign({}, built.data, { planDays: 3 });
+    s.generateDietPlanDays(built.profile, data, 3);
+    assert.ok(!("avoidDishNames" in data), "avoidDishNames se queda en data y acabaría guardada en los ajustes");
+    var data2 = Object.assign({}, built.data, { planDays: 3, avoidDishNames: ["x"] });
+    s.generateDietPlanDays(built.profile, data2, 3);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(data2.avoidDishNames)), ["x"], "tiene que devolver lo que había");
+  });
+
+  t.test("un plan de UN día es exactamente el de siempre: sin lista de platos vistos no cambia nada", function () {
+    var a = freshEngineSandbox(), b = freshEngineSandbox();
+    var builtA = buildProfileAndData(a, PROFILES[1]), builtB = buildProfileAndData(b, PROFILES[1]);
+    seedRandomInContext(a, 99); seedRandomInContext(b, 99);
+    var viejo = a.generateDietPlan(builtA.profile, builtA.data);
+    var nuevo = b.generateDietPlanDays(builtB.profile, builtB.data, 1)[0];
+    assert.deepStrictEqual(nombresDeLosDias([nuevo]), nombresDeLosDias([viejo]));
+    assert.strictEqual(nuevo.total.kcal, viejo.total.kcal);
+  });
+
   // ── 8-9. Golden-master determinista (Math.random sembrado) ───────────────
   // Recapturados por CUARTA vez el 2026-08-19, tras suavizar el reparto
   // secuencial a mitad de fuerza (SEQUENCING_BLEND_RATIO=0.5, ver esa

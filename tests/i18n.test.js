@@ -531,15 +531,24 @@ function run(t) {
     });
   });
 
-  t.test("la palabra de confirmar el borrado NO se traduce", function () {
-    // Quien la compara es código que este trabajo todavía no ha tocado.
-    // Traducir la etiqueta sin traducir la comprobación deja la cuenta
-    // imposible de borrar: el usuario teclea lo que pone en pantalla y no
-    // pasa nada, para siempre.
+  t.test("la palabra de confirmar el borrado es PROPIA de cada idioma, y la comprobación usa la que sale en pantalla", function () {
+    // Pedido del dueño, 2026-10-07: «в кнопке удалить нужно писать BORRAR,
+    // сделай для каждого языка своё слово». Antes no se traducía porque la
+    // comprobación (js/ui/render-auth.js) tenía BORRAR fijo y traducir solo
+    // la etiqueta dejaba la cuenta imposible de borrar. Ahora la comprobación
+    // lee la misma clave que la etiqueta (authDeleteWord), así que las dos
+    // no se pueden separar.
     var s = sandboxConTablas(["es"].concat(IDIOMAS_HECHOS));
+    var esperadas = { es: "BORRAR", en: "DELETE", ru: "УДАЛИТЬ" };
     IDIOMAS_HECHOS.forEach(function (lang) {
-      assert.strictEqual(s.I18N_TABLES[lang]["ui.borrar"], s.I18N_TABLES["es"]["ui.borrar"], lang);
+      var palabra = s.I18N_TABLES[lang]["ui.borrar"];
+      assert.ok(palabra && palabra === palabra.toUpperCase(), lang + ": en mayúsculas");
+      if (esperadas[lang]) assert.strictEqual(palabra, esperadas[lang], lang);
+      if (lang !== "es") assert.notStrictEqual(palabra, s.I18N_TABLES["es"]["ui.borrar"], lang + ": tiene que ser SU palabra, no la española");
     });
+    var auth = require("fs").readFileSync(projPath("js/ui/render-auth.js"), "utf8");
+    assert.ok(auth.indexOf('t("ui.borrar")') !== -1, "la comprobación tiene que leer ui.borrar, la misma clave que la etiqueta");
+    assert.ok(!/AUTH_DELETE_WORD(?!_FALLBACK)/.test(auth), "no puede volver a haber una palabra fija en la comprobación");
   });
 
   // ── Declarado no es lo mismo que disponible ────────────────────────────

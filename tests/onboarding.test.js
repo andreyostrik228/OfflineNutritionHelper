@@ -1021,6 +1021,47 @@ function run(t) {
       "al final del cuestionario ya no se espera al plan para preguntar");
   });
 
+  t.test("«Sí» y luego «Cancelar» en «plan activo»: el recorrido arranca igualmente, una sola vez", function () {
+    var e = entornoPregunta({});
+    e.ctx.offerTour(function () {});
+    e.si();
+    e.ctx.startTourIfWanted();      // lo llama el botón «Cancelar» del diálogo
+    e.correrTemporizadores();
+    assert.strictEqual(e.llamadas.start, 1, "dijo «Sí»: no puede quedarse sin recorrido");
+    e.ctx.startTourIfWanted();
+    e.correrTemporizadores();
+    assert.strictEqual(e.llamadas.start, 1, "se gasta con un solo recorrido");
+  });
+
+  t.test("«Cancelar» sin haber dicho «Sí» (o con el «Sí» caducado) no arranca nada", function () {
+    var e = entornoPregunta({});
+    e.ctx.startTourIfWanted();
+    e.correrTemporizadores();
+    assert.strictEqual(e.llamadas.start, 0, "nadie pidió el recorrido");
+
+    var e2 = entornoPregunta({});
+    e2.ctx.offerTour(function () {});
+    e2.si();
+    e2.ctx._tourQuiereVerlo = Date.now() - 3 * 60 * 1000;
+    e2.ctx.startTourIfWanted();
+    e2.correrTemporizadores();
+    assert.strictEqual(e2.llamadas.start, 0, "un «Sí» de hace 3 minutos ya no vale");
+
+    var e3 = entornoPregunta({});
+    e3.ctx.offerTour(function () {});
+    e3.no();
+    e3.ctx.startTourIfWanted();
+    e3.correrTemporizadores();
+    assert.strictEqual(e3.llamadas.start, 0, "dijo «No»: no se le enseña nada");
+  });
+
+  t.test("el botón «Cancelar» (y Escape) del diálogo de plan activo llaman a startTourIfWanted", function () {
+    var src = require("fs").readFileSync(projPath("js/ui/render-pantry.js"), "utf8");
+    var i = src.indexOf("planReplaceCancelBtn.addEventListener");
+    assert.ok(i !== -1, "no se encuentra el botón Cancelar");
+    assert.ok(src.slice(i, i + 400).indexOf("startTourIfWanted") !== -1, "«Cancelar» tiene que llamar a startTourIfWanted()");
+    assert.ok(/addEventListener\("cancel"[\s\S]{0,200}startTourIfWanted/.test(src), "Escape tiene que hacer lo mismo que «Cancelar»");
+  });
 }
 
 module.exports = { run: run };

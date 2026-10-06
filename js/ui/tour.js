@@ -54,6 +54,7 @@
  *   startTour()      → arranca desde el primer paso
  *   maybeStartTour() → pregunta solo si al usuario le toca (tras su 1er plan)
  *   offerTourWhenReady() → pregunta en cuanto haya plan y ningún diálogo abierto
+ *   startTourIfWanted()  → arranca el recorrido que pidió con «Sí» si el plan no llegó a generarse
  *   stopTour()       → cierra y da el recorrido por visto
  * ──────────────────────────────────────────────────────
  */
@@ -764,6 +765,25 @@ function offerTour(alResponder) {
   a.root.hidden = false;
   _tourActivarBloqueo();
   try { a.si.focus({ preventScroll: true }); } catch (err) { /* idem */ }
+}
+
+/**
+ * Dijo «Sí» al recorrido, pero «Generar plan» no generó nada: había un plan de
+ * hoy ya empezado, salió «Ya tienes un plan activo» y rechazó cambiarlo
+ * («Cancelar»). Sin esto se quedaba con un «Sí» al que nadie contestaba, que
+ * es justo lo que el dueño llamó «el tutorial no aparece» (2026-10-07).
+ *
+ * El recorrido arranca igualmente, con lo que haya en pantalla: sin plan faltan
+ * los pasos que lo señalan (tarjetas, cambiar un plato, receta), que se saltan
+ * solos, y quedan los de los botones de siempre (datos, generar, sin cocinar,
+ * despensa, compra, planes guardados y el menú ☰). Lo llama js/ui/render-pantry.js
+ * desde «Cancelar».
+ */
+function startTourIfWanted() {
+  var pidio = _tourQuiereVerlo;
+  if (!pidio || Date.now() - pidio >= TOUR_QUIERE_MAX) return;
+  _tourQuiereVerlo = 0;
+  window.setTimeout(startTour, 500);
 }
 
 /**

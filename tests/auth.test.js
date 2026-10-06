@@ -630,6 +630,35 @@ function run(t) {
     // Y son mensajes distintos entre sí (no todos el genérico).
     assert.ok(Object.keys(vistos).length >= 20, "pocos mensajes distintos: " + Object.keys(vistos).length);
   });
+
+  // ── El service worker se entera de los cambios de la CSP ───────────────
+  // Un worker conserva la CSP con que se instalo y, si sw.js es idéntico byte
+  // a byte, el navegador no lo reinstala. El 2026-10-07 se arregló connect-src
+  // en _headers y los móviles con el worker viejo siguieron diciendo «las
+  // cuentas todavía no están disponibles» (SDK de Firebase sin cargar).
+  t.test("sw.js lleva el sello de la CSP de _headers: tocar una sin la otra es el fallo de las cuentas", function () {
+    var fs = require("fs");
+    var crypto = require("crypto");
+    var linea = fs.readFileSync(projPath("_headers"), "utf8").split(String.fromCharCode(10)).map(function (l) { return l.trim(); })
+      .filter(function (l) { return l.indexOf("Content-Security-Policy:") === 0; })[0];
+    assert.ok(linea, "no hay línea Content-Security-Policy en _headers");
+    var csp = linea.replace("Content-Security-Policy:", "").trim();
+    var sello = "csp-" + crypto.createHash("sha1").update(csp).digest("hex").slice(0, 10);
+    var sw = fs.readFileSync(projPath("sw.js"), "utf8");
+    var m = /var SELLO_CABECERAS = "([^"]+)";/.exec(sw);
+    assert.ok(m, "sw.js tiene que declarar var SELLO_CABECERAS");
+    assert.strictEqual(m[1], sello,
+      "la CSP de _headers cambió y sw.js no: los móviles con el worker viejo conservarían la CSP vieja. " +
+      "Pon SELLO_CABECERAS = \"" + sello + "\" en sw.js");
+  });
+
+  t.test("el registro del service worker recarga una vez si un worker nuevo toma el control y faltan firebase/gsap", function () {
+    var html = require("fs").readFileSync(projPath("index.html"), "utf8");
+    assert.ok(html.indexOf('addEventListener("controllerchange"') !== -1, "falta el aviso de controllerchange");
+    assert.ok(html.indexOf("nutritionPlanner.swRecarga") !== -1, "falta la guarda de una sola recarga");
+    assert.ok(/typeof firebase !== "undefined" && typeof gsap !== "undefined"/.test(html),
+      "solo debe recargar si de verdad falta alguno de los dos");
+  });
 }
 
 module.exports = { run: run };

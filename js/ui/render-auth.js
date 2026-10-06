@@ -54,9 +54,17 @@ var authGoogleBtn, authEmailForm, authEmailInput, authPasswordInput, authErrorEl
 var authConflictDialogEl, authConflictKeepCloudBtn, authConflictMergeBtn, authConflictKeepLocalBtn;
 var authDeleteAccountBtn, authDeleteDialogEl, authDeleteConfirmBtn, authDeleteCancelBtn, authDeleteErrorEl;
 var authDeleteConfirmInput;
-// La palabra que hay que teclear para poder borrar. En mayúsculas y sin
-// acentos a propósito: tiene que poder escribirse en cualquier teclado.
-var AUTH_DELETE_WORD = "BORRAR";
+// La palabra que hay que teclear para poder borrar, en el idioma de la
+// pantalla (ui.borrar: BORRAR, DELETE, УДАЛИТЬ...). Cada idioma la suya
+// (pedido del dueño, 2026-10-07: en ruso había que escribir BORRAR). Se
+// compara en mayúsculas, así que da igual cómo la escriba el teclado. Si por
+// lo que sea no hay traducción, la de siempre.
+var AUTH_DELETE_WORD_FALLBACK = "BORRAR";
+function authDeleteWord() {
+  var palabra = (typeof t === "function") ? t("ui.borrar") : "";
+  if (!palabra || palabra === "ui.borrar") palabra = AUTH_DELETE_WORD_FALLBACK;
+  return String(palabra).trim().toUpperCase();
+}
 
 var authOnDataReconciled; // callback de app.js -- ver cabecera del archivo
 var _authMode = "login"; // 'login' | 'register'
@@ -315,7 +323,7 @@ function openDeleteAccountDialog() {
 function syncDeleteGate() {
   if (!authDeleteConfirmBtn) return;
   var escrito = authDeleteConfirmInput ? String(authDeleteConfirmInput.value || "") : "";
-  var vale = escrito.trim().toUpperCase() === AUTH_DELETE_WORD;
+  var vale = escrito.trim().toUpperCase() === authDeleteWord();
   authDeleteConfirmBtn.disabled = !vale;
 }
 
@@ -334,7 +342,7 @@ function handleDeleteAccountConfirm() {
   // Se vuelve a comprobar aquí, no solo en el `disabled` del botón: un
   // atributo se puede quitar desde la consola, y esto no tiene deshacer.
   var escrito = authDeleteConfirmInput ? String(authDeleteConfirmInput.value || "") : "";
-  if (escrito.trim().toUpperCase() !== AUTH_DELETE_WORD) {
+  if (escrito.trim().toUpperCase() !== authDeleteWord()) {
     syncDeleteGate();
     return;
   }

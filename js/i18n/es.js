@@ -223,6 +223,8 @@ registerI18nTable("es", {
   "ui.atras": "Atrás",
   "ui.base_de_platos": "Base de platos",
   "ui.borrar": "BORRAR",
+  "ui.para_confirmar_escribe": "Para confirmar, escribe",
+  "ui.escribe_aqui_final": "aquí:",
   "ui.borrar_mi_cuenta": "Borrar mi cuenta",
   "ui.borrar_mi_cuenta_para_siempre": "Borrar mi cuenta para siempre",
   "ui.borrar_tu_cuenta": "¿Borrar tu cuenta?",
