@@ -5,6 +5,59 @@
 > Escrito para alguien que llega SIN NINGÚN contexto previo. Si solo lees
 > una parte de este archivo, que sea esta.
 >
+> ### ⏩ UPDATE 2026-10-07 — recorrido guiado reescrito: 18 pasos, tarjeta fija y pregunta tras el cuestionario
+>
+> **792 tests en verde (eran 789). Sello `20261007a`. SIN COMMITEAR NI DESPLEGAR**
+> (el dueño quiere probarlo y dirá cuándo). Pedido del dueño: «el tutorial crujía:
+> la tarjeta salía unas veces arriba y otras abajo, la pantalla saltaba, y no
+> explicaba los botones que se usan». Lo que NO existió nunca es un tour de 17
+> pasos (la historia de git, los 25 despliegues de Cloudflare y las conversaciones
+> solo tienen 6 y 11); lo más parecido son las 17 pantallas del cuestionario
+> (bienvenida + 16 preguntas), centradas y con la página bloqueada.
+>
+> **Qué cambió.**
+> - `js/data/tour-steps.js`: de 11 a **18 pasos**, agrupados por pestaña y, dentro
+>   de cada una, de arriba abajo. Nuevos: calorías y macros, cambiar de día,
+>   «Cambiar mis datos» (solo móvil), generar plan, casillas de la compra, botón de
+>   la cámara (producto en Mercadona), «Confirmar plan de hoy» y el menú ☰. Fuera,
+>   a petición: «Compartir» e «Imprimir»; el catálogo, en UN paso.
+> - `js/ui/tour.js` reescrito: la **tarjeta está FIJA** (pegada abajo, centrada) y
+>   solo cambia de alto; lo explicado va a la banda libre de encima y la página
+>   solo se mueve si hace falta. En el móvil **cada paso abre su pestaña**
+>   (`step.tab` + `activarPestana`), así que ya no se enseña la página entera.
+>   Un paso puede traer `ctx` (tarjeta o panel donde vive el botón): si cabe, se
+>   enmarca eso y el botón se marca dentro. Gestos bloqueados (rueda, arrastre,
+>   teclas) y el `.tour` recoge los toques: nada de debajo se puede pulsar.
+> - **`offerTour()`**: al terminar el cuestionario se PREGUNTA «¿Quieres ver un
+>   recorrido?» (sí / no) en una tarjeta centrada. «No» se recuerda para siempre
+>   (`completeTour`); «Ver la explicación otra vez» sigue ahí. `maybeStartTour`
+>   también pregunta en vez de arrancar.
+> - Anclas nuevas `data-tour`: `meal` (tarjeta, render.js), `check` y `photo`
+>   (lista de la compra), `editdata` (pestanas.js); `id="generatePlanBtn"`.
+> - Traducido a es, en y ru (36 claves `tour.*` + 4 `ui.tour_pregunta_*` por
+>   idioma). Los tests derivan las claves de `TOUR_STEPS`: cada paso nuevo exige su
+>   traducción en cada idioma que se sirva.
+> - Tests nuevos en `tests/onboarding.test.js`: ids de una palabra, cada pestaña
+>   se visita UNA vez (el orden no salta), no se explica lo que se dejó fuera, y
+>   el tope sube de 11 a 20 con su razón escrita.
+>
+> **Medido** con Chrome sin interfaz (`scratchpad/i18n/tour2.mjs`: 18 pasos,
+> tarjeta, hueco, desplazamiento) en 390×844 (es y ru), 360×640, 768×1024,
+> 1280×800 (ru) y los aspectos kitty, mercadillo y noche: 0 pasos con problema
+> (el hueco nunca pisa la tarjeta ni se sale), una rueda sobre la página no la
+> mueve durante el recorrido y sí al cerrar, y al cerrar vuelve a su pestaña. El
+> cuestionario real (15 respuestas) termina en la pregunta, y el recorrido no se
+> abre sin preguntar. NO medido: los diez aspectos uno a uno ni las pantallas
+> táctiles reales.
+>
+> **Trampas.** (1) Con el recorrido abierto la página gana `padding-bottom: 54dvh`
+> (`body:has(#tour…)`): sin él, un botón al final de una pestaña corta no puede
+> subir a la banda de encima de la tarjeta. (2) La pregunta usa las clases
+> `tour__card`/`tour__next`/`tour__prev` para heredar el vestido de cada aspecto:
+> cualquier `querySelector(".tour__card")` coge la pregunta (oculta) antes que la
+> tarjeta; usar `#tour .tour__card`. (3) Una regla de las hojas de aspecto sobre
+> `.tour__hole`/`.tour__foco` sigue valiendo; `.tour__foco` se sigue creando.
+>
 > ### ⏩ UPDATE 2026-10-06 (h) — alimentos «traducción / original», y las cifras del resumen de la compra ya no se parten
 >
 > **789 tests en verde (eran 788). Sello `20261006b`. DESPLEGADO en Cloudflare**

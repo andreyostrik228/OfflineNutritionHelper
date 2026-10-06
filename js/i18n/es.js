@@ -593,5 +593,9 @@ registerI18nTable("es", {
   "ui.val_entrenos": "Entrenamientos por semana no válidos.",
   "ui.val_elige_presupuesto": "Elige un presupuesto: Ajustado, Equilibrado, Amplio, o introduce una cantidad exacta.",
   "ui.val_presupuesto_bajo": "El presupuesto diario es demasiado bajo para generar un plan realista.",
-  "ui.val_presupuesto_no_disponible": "El presupuesto elegido no está disponible. Prueba con una cantidad exacta."
+  "ui.val_presupuesto_no_disponible": "El presupuesto elegido no está disponible. Prueba con una cantidad exacta.",
+  "ui.tour_pregunta_titulo": "¿Quieres ver un recorrido por la aplicación?",
+  "ui.tour_pregunta_cuerpo": "Te enseño, con tu plan delante, para qué sirve cada botón. Son unos dos minutos.",
+  "ui.tour_pregunta_si": "Sí, enséñamelo",
+  "ui.tour_pregunta_no": "No, gracias"
 });

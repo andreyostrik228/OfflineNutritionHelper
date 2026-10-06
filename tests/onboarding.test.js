@@ -520,7 +520,12 @@ function run(t) {
 
   t.test("cada ancla `data-tour` la pinta de verdad el renderizador", function () {
     var s = freshSandbox();
-    var render = require("fs").readFileSync(projPath("js/ui/render.js"), "utf8");
+    // Las pintan varios ficheros: las tarjetas (render.js), la lista de la
+    // compra y el resumen de datos del móvil (pestanas.js).
+    var fs = require("fs");
+    var render = ["render.js", "render-shopping-list.js", "pestanas.js"].map(function (f) {
+      return fs.readFileSync(projPath("js/ui/" + f), "utf8");
+    }).join(" ");
     var rotas = s.TOUR_STEPS.filter(function (step) {
       if (!step.dynamic) return false;
       var ancla = (step.target.match(/data-tour="([a-z-]+)"/) || [])[1];
@@ -553,6 +558,50 @@ function run(t) {
     assert.deepStrictEqual(plain(mal), [], "sin `optional` apuntarían a un panel oculto: " + mal.join(", "));
   });
 
+  t.test("el id de cada paso es una palabra: de él sale la clave de traducción", function () {
+    var s = freshSandbox();
+    var mal = s.TOUR_STEPS.filter(function (step) { return !/^[a-z]+$/.test(step.id); })
+      .map(function (step) { return step.id; });
+    assert.deepStrictEqual(plain(mal), [], "ids con guiones o mayúsculas: " + mal.join(", "));
+    var ids = s.TOUR_STEPS.map(function (step) { return step.id; });
+    assert.strictEqual(new Set(ids).size, ids.length, "ids repetidos");
+  });
+
+  t.test("cada pestaña del recorrido es una de las cuatro, y cada una se visita UNA sola vez", function () {
+    // En el móvil cada paso abre la pestaña de su elemento (js/ui/pestanas.js).
+    // Si los pasos van mezclados -- menu, compra, menu, compra --, la pantalla
+    // da un salto en cada uno, que es justo lo que había que evitar. Los
+    // pasos sin pestaña (el menú ☰ se ve en todas) no cuentan.
+    var s = freshSandbox();
+    var validas = ["menu", "compra", "planes", "datos"];
+    var mal = s.TOUR_STEPS.filter(function (step) { return step.tab && validas.indexOf(step.tab) === -1; })
+      .map(function (step) { return step.id + ": " + step.tab; });
+    assert.deepStrictEqual(plain(mal), [], "pestaña desconocida: " + mal.join(", "));
+
+    var secuencia = [];
+    s.TOUR_STEPS.forEach(function (step) {
+      if (!step.tab) return;
+      if (secuencia[secuencia.length - 1] !== step.tab) secuencia.push(step.tab);
+    });
+    var vistas = {};
+    secuencia.forEach(function (tab) {
+      assert.ok(!vistas[tab], "la pestaña \"" + tab + "\" se visita dos veces separadas: " + secuencia.join(" > "));
+      vistas[tab] = true;
+    });
+  });
+
+  t.test("el recorrido no explica lo que el dueño dejó fuera", function () {
+    // Pedido el 2026-10-06: «Compartir» e «Imprimir» la lista no se explican,
+    // y el catálogo sale en UN paso para decir que existe y nada más.
+    var s = freshSandbox();
+    var texto = s.TOUR_STEPS.map(function (step) { return step.id + " " + step.target + " " + step.title + " " + step.body; }).join(" ").toLowerCase();
+    ["shareListBtn", "printListBtn", "compartir", "imprimir"].forEach(function (palabra) {
+      assert.strictEqual(texto.indexOf(palabra.toLowerCase()), -1, "no se explica: " + palabra);
+    });
+    var catalogo = s.TOUR_STEPS.filter(function (step) { return step.id === "catalog"; });
+    assert.strictEqual(catalogo.length, 1, "el catálogo sale en un solo paso");
+  });
+
   t.test("el recorrido es corto y cada paso dice para qué sirve la función", function () {
     var s = freshSandbox();
     // El tope subió de 8 a 11 el 2026-09-03, cuando el usuario pidió cubrir
@@ -561,7 +610,11 @@ function run(t) {
     // -- un recorrido que no se termina no enseña nada -- no ha dejado de
     // ser cierta, solo se ha movido la raya. Si hace falta subirla otra vez,
     // que sea quitando un paso antes de añadir dos.
-    assert.ok(s.TOUR_STEPS.length >= 4 && s.TOUR_STEPS.length <= 11,
+    // Tope 20 desde el 2026-10-06: el dueño pidió que se explique TODO botón
+    // de uso frecuente (el de cambiar una comida, la cámara de Mercadona, las
+    // casillas de la compra...), no solo lo que no se descubre solo. El
+    // recorrido pasó de 11 a 18 pasos, y a cambio no arranca solo: se pregunta.
+    assert.ok(s.TOUR_STEPS.length >= 4 && s.TOUR_STEPS.length <= 20,
       "un recorrido que no se termina no enseña nada; hay " + s.TOUR_STEPS.length + " pasos");
     s.TOUR_STEPS.forEach(function (step) {
       assert.ok(step.title && step.title.length > 0, "paso sin título: " + step.id);

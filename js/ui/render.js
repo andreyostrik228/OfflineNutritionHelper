@@ -350,7 +350,7 @@ function renderMealCard(meal, total, dayIndex) {
   var storeId = meal.store || (typeof DEFAULT_STORE_ID !== "undefined" ? DEFAULT_STORE_ID : "mercadona");
 
   return (
-    '<div class="meal-card" data-meal-key="' + escapeHtml(meal.key || "") + '">' +
+    '<div class="meal-card" data-tour="meal" data-meal-key="' + escapeHtml(meal.key || "") + '">' +
       '<div class="meal-head">' +
         '<div class="meal-head__title">' +
           timeBadge +

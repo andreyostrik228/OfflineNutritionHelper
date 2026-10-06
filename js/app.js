@@ -1676,22 +1676,23 @@ document.addEventListener("DOMContentLoaded", function () {
         window.setTimeout(function () {
           generar.click();
 
-          // Y el recorrido, SIN pasar por maybeStartTour().
+          // Y el recorrido: se PREGUNTA, no arranca solo (2026-10-06).
           //
-          // maybeStartTour() solo arranca a quien no lo haya visto nunca, y
-          // eso es lo correcto para el plan que uno genera por su cuenta.
-          // Pero aquí acaba de contestar quince preguntas y ha pulsado un
-          // botón que promete un plan: si además pidió repetir el alta, lo
-          // que quiere es que se lo expliquen otra vez. Hacerlo depender de
-          // una marca guardada es justo lo que dejaba a este usuario sin
-          // recorrido (reportado el 2026-09-03).
+          // Acaba de contestar quince preguntas y ha pulsado un botón que
+          // promete un plan. Antes se le soltaba el recorrido encima sin
+          // más; ahora sale «¿Quieres ver un recorrido?» con sí y no. Y se
+          // pregunta SIN pasar por maybeStartTour(): si pidió repetir el alta
+          // quiere que se lo ofrezcan otra vez, y hacerlo depender de una
+          // marca guardada es justo lo que dejó a este usuario sin recorrido
+          // (reportado el 2026-09-03). Un «No» queda guardado: para verlo
+          // después está «Ver la explicación otra vez».
           //
-          // Se espera a que el plan esté pintado: startTour() descarta los
+          // Se espera a que el plan esté pintado: el recorrido descarta los
           // pasos cuyo elemento no existe, y casi todos nacen con el plan.
           window.setTimeout(function () {
             var hayPlan = document.querySelectorAll(
               "#mealsContainer .meal-card:not([data-empty])").length > 0;
-            if (hayPlan && typeof startTour === "function") startTour();
+            if (hayPlan && typeof offerTour === "function") offerTour();
           }, 900);
         }, 450);
       }

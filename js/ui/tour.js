@@ -1,9 +1,9 @@
 /**
  * js/ui/tour.js
- * ─────────────────────────────────────────────────────────────────────────
+ * ──────────────────────────────────────────────────────
  * El recorrido guiado sobre la interfaz REAL: oscurece la página, deja un
- * hueco iluminado alrededor del elemento del que se habla, y pone al lado
- * una nota explicando para qué sirve.
+ * hueco iluminado alrededor de lo que se explica, y debajo una tarjeta
+ * con la explicación.
  *
  * ── Por qué sobre la interfaz de verdad y no con capturas ───────────────
  * Un tutorial con capturas envejece mal y, sobre todo, enseña una página
@@ -11,10 +11,22 @@
  * -- con SU plan, SUS precios -- lo que se aprende sirve en el mismo
  * momento en que se cierra el recorrido.
  *
- * ── Los pasos se saltan solos si no hay nada que señalar ────────────────
- * Los pasos marcados `optional` desaparecen si su elemento no está en la
- * página (la lista de la compra no existe hasta que hay un plan). Apuntar
- * a un hueco vacío sería peor que no explicar nada.
+ * ── La pantalla no salta (reescrito el 2026-10-06) ──────────────────────
+ * La versión anterior colocaba la nota al lado del hueco, encima o debajo
+ * según cupiera, y eso era lo que hacía que la tarjeta apareciera "unas
+ * veces arriba y otras abajo" y que la página diera saltos. Ahora hay UNA
+ * regla y es siempre la misma:
+ *
+ *   - la tarjeta está FIJA, pegada abajo y centrada; solo cambia de alto
+ *     con el texto;
+ *   - lo que se explica se lleva a la BANDA libre de encima de la tarjeta,
+ *     y se centra ahí;
+ *   - si ya está entero dentro de la banda, la página NO se mueve;
+ *   - en el móvil cada paso abre antes la pestaña donde vive su elemento,
+ *     así que la pantalla es corta y casi nunca hay que desplazar.
+ *
+ * Los gestos (rueda, arrastre, teclas) están bloqueados mientras dura: la
+ * página solo se mueve cuando la mueve el recorrido.
  *
  * ── El hueco ────────────────────────────────────────────────────────────
  * En vez de recortar el fondo (que obliga a SVG o a cuatro divs que se
@@ -23,22 +35,46 @@
  * oscurece TODO lo que hay fuera del rectángulo, así que el "agujero" no
  * hay que dibujarlo, es lo único que la sombra no tapa.
  *
- * Depende de: js/core/onboarding.js (completeTour), js/data/tour-steps.js.
+ * Dos huecos, no uno. El de CONTEXTO (`step.ctx`: la tarjeta o el panel
+ * donde vive el botón) deja ver DÓNDE está; el de FOCO señala la cosa
+ * concreta dentro de él. Con un solo hueco sobre un botón pequeño, la
+ * tarjeta que lo contiene quedaba tan oscura como el resto de la página y
+ * se veía el botón pero no dónde vivía.
+ *
+ * ── No arranca solo ─────────────────────────────────────────────────────
+ * Al terminar el cuestionario se PREGUNTA (offerTour): «¿Quieres ver un
+ * recorrido?». Un «No» se recuerda para siempre; para repetirlo está
+ * «Ver la explicación otra vez».
+ *
+ * Depende de: js/core/onboarding.js (completeTour), js/data/tour-steps.js,
+ *             js/ui/pestanas.js (activarPestana, solo en el móvil).
  *
  * Expone (globales):
+ *   offerTour()      → pregunta si quiere verlo; sí arranca, no lo da por visto
  *   startTour()      → arranca desde el primer paso
- *   maybeStartTour() → arranca solo si al usuario le toca (tras su 1er plan)
+ *   maybeStartTour() → pregunta solo si al usuario le toca (tras su 1er plan)
  *   stopTour()       → cierra y da el recorrido por visto
- * ─────────────────────────────────────────────────────────────────────────
+ * ──────────────────────────────────────────────────────
  */
 
 var _tourIndex = 0;
+var _tourDir = 1;            // hacia dónde va: +1 siguiente, -1 atrás
 var _tourVisible = [];
 var _tourEls = null;
+var _tourAsk = null;
+// ¿Hay pestañas (móvil)? Se mide ANTES de abrir el recorrido: mientras está
+// abierto el CSS esconde la barra de pestañas.
+var _tourMovil = false;
+var _tourPestanaAntes = null;
+var _tourRaf = null;
 // .Ha llegado el recorrido a estar EN PANTALLA en esta ejecucion? Ver
 // stopTour(): decide si se marca como visto.
 var _tourSeVio = false;
-var _tourScrollHandler = null;
+var _tourEscuchando = false;
+
+var TOUR_PAD = 8;       // aire entre lo enmarcado y el borde del hueco
+var TOUR_MARGEN = 12;   // aire contra los bordes de la pantalla
+var TOUR_HUECO = 10;    // aire entre la banda de enmarcado y la tarjeta
 
 /**
  * Traduce, y si no hay traduccion se queda con el original.
@@ -90,6 +126,7 @@ function _tourPintarTextos() {
   e.counter.textContent = _tourT("ui.paso_n_de_m", "{n} de {total}")
     .replace("{n}", _tourIndex + 1)
     .replace("{total}", _tourVisible.length);
+  e.progress.style.width = Math.round((_tourIndex + 1) / _tourVisible.length * 100) + "%";
   e.title.textContent = _tourTextoPaso(step, "titulo");
   e.body.textContent = _tourTextoPaso(step, "cuerpo");
   e.next.textContent = (_tourIndex === _tourVisible.length - 1)
@@ -109,14 +146,9 @@ function _tourBuild() {
   root.id = "tour";
   root.hidden = true;
 
-  // Dos huecos, no uno. El de CONTEXTO deja ver la tarjeta o el panel donde
-  // vive lo que se explica; el de FOCO señala la cosa concreta dentro de
-  // ella. Con un solo hueco sobre un botón pequeño, la tarjeta que lo
-  // contiene quedaba tan oscura como el resto de la página y no se sabía
-  // DÓNDE estaba ese botón -- que era justo lo que el recorrido tenía que
-  // enseñar.
   var hole = document.createElement("div");
   hole.className = "tour__hole";
+  hole.hidden = true;
 
   var foco = document.createElement("div");
   foco.className = "tour__foco";
@@ -130,6 +162,12 @@ function _tourBuild() {
   var counter = document.createElement("p");
   counter.className = "tour__counter";
 
+  var barra = document.createElement("div");
+  barra.className = "tour__progress";
+  barra.setAttribute("aria-hidden", "true");
+  var progress = document.createElement("span");
+  barra.appendChild(progress);
+
   var title = document.createElement("h3");
   title.className = "tour__title";
 
@@ -142,7 +180,6 @@ function _tourBuild() {
   var skip = document.createElement("button");
   skip.type = "button";
   skip.className = "tour__skip";
-  skip.textContent = _tourT("ui.saltar", "Saltar");
 
   // "Atrás" existe porque un recorrido solo de ida obliga a elegir entre
   // terminar sin haber entendido un paso o abandonarlo entero. Se oculta en
@@ -151,17 +188,16 @@ function _tourBuild() {
   var prev = document.createElement("button");
   prev.type = "button";
   prev.className = "tour__prev";
-  prev.textContent = _tourT("ui.atras", "Atrás");
 
   var next = document.createElement("button");
   next.type = "button";
   next.className = "tour__next";
-  next.textContent = _tourT("ui.siguiente", "Siguiente");
 
   nav.appendChild(skip);
   nav.appendChild(prev);
   nav.appendChild(next);
   card.appendChild(counter);
+  card.appendChild(barra);
   card.appendChild(title);
   card.appendChild(body);
   card.appendChild(nav);
@@ -182,16 +218,50 @@ function _tourBuild() {
   });
 
   _tourEls = { root: root, hole: hole, foco: foco, card: card, counter: counter,
-               title: title, body: body, skip: skip, prev: prev, next: next };
+               progress: progress, title: title, body: body, skip: skip,
+               prev: prev, next: next };
+  _tourPintarTextos();
   return _tourEls;
+}
+
+/**
+ * El elemento de un paso, si de verdad se puede señalar ahora mismo.
+ *
+ * Se descartan los que viven dentro de algo con el atributo `hidden` (la
+ * lista de la compra no existe hasta que hay un plan, y las flechas de los
+ * días no si el plan es de un día). Un mismo selector puede coincidir con
+ * varios elementos -- el botón de la cámara sale en la compra, en el
+ * catálogo y en "sin cocinar" --, así que se recorre y se toma el primero
+ * que no está escondido.
+ *
+ * @param {object} step
+ * @returns {Element|null}
+ */
+function _tourEncontrar(step) {
+  var lista = document.querySelectorAll(step.target);
+  for (var i = 0; i < lista.length; i++) {
+    if (!lista[i].closest("[hidden]")) return lista[i];
+  }
+  return null;
+}
+
+/** ¿La pantalla tiene pestañas (móvil)? Ver js/ui/pestanas.js. */
+function _tourHayPestanas() {
+  var barra = document.querySelector(".tabbar");
+  return !!barra && window.getComputedStyle(barra).display !== "none";
+}
+
+function _tourPestanaActual() {
+  var main = document.querySelector("main");
+  return main ? main.getAttribute("data-pestana") : null;
 }
 
 /** Los pasos cuyo elemento existe DE VERDAD en la página ahora mismo. */
 function _tourResolveSteps() {
   var steps = (typeof TOUR_STEPS !== "undefined") ? TOUR_STEPS : [];
   return steps.filter(function (step) {
-    var el = document.querySelector(step.target);
-    if (el) return true;
+    if (step.mobile && !_tourMovil) return false;
+    if (_tourEncontrar(step)) return true;
     // Un paso no opcional que no encuentra su elemento es un error de
     // programación, no una situación normal: se avisa por consola en vez
     // de desaparecer en silencio, pero tampoco se rompe el recorrido.
@@ -202,742 +272,169 @@ function _tourResolveSteps() {
   });
 }
 
-/**
- * Coloca el hueco sobre el elemento y la nota junto a él.
- *
- * ── El hueco se RECORTA a la pantalla ───────────────────────────────────
- * Medido con el primer plan real: `#mealsContainer` mide 1.855 px de alto
- * en una ventana de 455. Iluminarlo entero no destaca nada -- el "foco"
- * era más grande que la pantalla y no quedaba ni un píxel oscurecido, o
- * sea que el recorrido señalaba "todo", que es lo mismo que no señalar.
- * Y la nota, colocada contra el borde inferior de ese rectángulo, se iba
- * fuera de la vista.
- *
- * Así que el hueco se limita a la parte VISIBLE del elemento, y la nota
- * se coloca contra ese rectángulo recortado, no contra el original.
- */
-/**
- * La tarjeta o el panel donde vive lo que se explica.
- *
- * Sirve para que el usuario vea DONDE esta lo que se le senala: sin esto,
- * un boton pequeno se iluminaba solo y todo su alrededor quedaba tan oscuro
- * como el resto de la pagina, asi que se veia el boton pero no donde estaba.
- *
- * Devuelve null cuando el propio objetivo YA es la tarjeta o el panel: ahi
- * no hay nada que contextualizar y el foco sobraria.
- *
- * @param {Element} el
- * @returns {Element|null}
- */
-// ── La geometria, en un solo sitio ───────────────────────────────────────
-//
-// `_tourContexto`, `_tourPosition` y el desplazamiento tienen que decidir
-// EXACTAMENTE igual: si uno cree que la nota va al lado y otro que va
-// debajo, se elige un marco con una altura y se pinta con otra. Ya paso.
-// Por eso las tres preguntas viven aqui y no repetidas en cada funcion.
-
-var TOUR_MARGEN = 12;   // aire entre el marco, la nota y el borde
-var TOUR_PAD = 8;       // aire entre lo enmarcado y el borde del marco
-
-// `_tourTopInset` recorre TODOS los elementos de la pagina con
-// `getComputedStyle` -- 2.514 en un plan normal, 3,0 ms por llamada aqui y
-// bastante mas en un movil. Mientras estuvo solo en _tourRender (una vez
-// por paso) daba igual; al entrar en _tourPosition paso a correr en CADA
-// evento de scroll, y ademas cuatro veces por evento (una directa, dos por
-// _tourContexto y otra por la comprobacion de la nota). Medido: 12,8 ms por
-// evento, con 16,7 de presupuesto por fotograma -- de ahi que el recorrido
-// "лагает" en el movil.
-//
-// La barra pegajosa no se mueve al desplazarse (comprobado: 52 px en siete
-// posiciones de scroll distintas), asi que basta con calcularlo una vez por
-// paso y al cambiar el tamaño de la ventana.
-var _tourInsetCache = -1;
-
-function _tourInset() {
-  if (_tourInsetCache < 0) _tourInsetCache = _tourTopInset();
-  return _tourInsetCache;
-}
-
-function _tourOlvidarInset() {
-  _tourInsetCache = -1;
-}
+// ── La geometría: una sola regla ─────────────────────────────────────────
 
 /**
- * .Se centra el bloque en la pantalla?
- *
- * Solo en pantallas anchas. Centrar TODO dejo el movil "сбилось": ahi los
- * once pasos usan la disposicion apilada, el marco ocupa casi toda la
- * altura y moverlo del sitio donde el dueno ya lo habia dado por bueno no
- * gana nada. En el portatil, donde el mismo cambio dejo "всё хорошо", los
- * marcos son pequenos y sobra pantalla.
- *
- * 900 px es el mismo corte que usa la hoja de estilos para la barra
- * pegajosa: una sola frontera entre "movil" y "escritorio" en todo el
- * proyecto, y no una nueva inventada aqui.
+ * La banda de pantalla donde se enseña lo explicado: todo lo que queda
+ * encima de la tarjeta. La tarjeta mide lo que mida su texto, así que se
+ * llama DESPUÉS de pintar el texto del paso.
  */
-function _tourCentrar() {
-  return window.innerWidth >= 900;
-}
-
-function _tourCardW() {
-  return (_tourEls && _tourEls.card && _tourEls.card.offsetWidth) || 340;
-}
-
-function _tourCardH() {
-  return (_tourEls && _tourEls.card && _tourEls.card.offsetHeight) || 200;
-}
-
-/** .Cabe la nota AL LADO de un rectangulo, sin encogerlo? */
-function _tourNotaAlLado(rect) {
-  var falta = _tourCardW() + TOUR_MARGEN * 2;
-  return (window.innerWidth - rect.right >= falta) || (rect.left >= falta);
-}
-
-/**
- * Alto maximo del marco. Con la nota al lado se lleva la pantalla entera;
- * apilada hay que reservarle su sitio, porque si no la nota acaba ENCIMA
- * del marco que esta explicando (medido en el movil: 28.023 px2 tapados en
- * el paso de la receta).
- */
-function _tourAltoMaxMarco(alLado) {
-  var libre = window.innerHeight - _tourInset();
-  return alLado
-    ? Math.max(120, libre - TOUR_MARGEN * 2)
-    : Math.max(120, libre - _tourCardH() - TOUR_MARGEN * 3);
-}
-
-/**
- * Cuando lo señalado NO CABE y no tiene contexto, el primer trozo suyo que
- * si quepa.
- *
- * El paso "tu dia de comidas" apunta a `#mealsContainer`, que mide 1.971 px:
- * no cabe, asi que se recortaba a la banda y el resultado era un recuadro de
- * 924x696 -- el 64% de la pantalla. Eso no señala una zona, señala casi
- * todo, y el dueno lo dijo: "неправильную зону показывает".
- *
- * Bajando hasta la primera tarjeta de comida se enmarca algo que cabe
- * entero y que ademas se lee como lo que es. Es la misma forma que el dueno
- * aprobo en el paso de "Cambiar": una tarjeta, no una franja.
- *
- * Baja en cadena porque la estructura tiene capas intermedias que tampoco
- * caben (`#mealsContainer` > `.day-slide` de 1.861 > `.meals-grid` >
- * `.meal-card` de 695).
- *
- * @param {Element} el
- * @param {number} altoMax
- * @returns {Element|null} el trozo, o null si no hay ninguno que quepa
- */
-function _tourPrimerTrozoQueCabe(el, altoMax) {
-  var actual = el;
-  // Tope de profundidad: sin el, una estructura muy anidada acabaria
-  // señalando una palabra suelta en vez de un bloque.
-  for (var nivel = 0; nivel < 4; nivel++) {
-    var hijos = actual.children;
-    if (!hijos || !hijos.length) return null;
-    var elegido = null;
-    for (var i = 0; i < hijos.length; i++) {
-      var hr = hijos[i].getBoundingClientRect();
-      // Se salta lo decorativo y lo vacio: una franja de 20 px no es un
-      // trozo del contenido, es una linea o un titulo suelto.
-      if (hr.height < 120) continue;
-      elegido = hijos[i];
-      break;
-    }
-    if (!elegido) return null;
-    // El marco enseña siempre el PRINCIPIO de lo que enmarca, asi que un
-    // trozo recortado sigue mostrando su cabecera -- en una tarjeta de
-    // comida, la hora y el nombre del plato. Por eso no hace falta que quepa
-    // entero: basta con que ya no sea una losa.
-    //
-    // Con un margen estrecho pasaba justo lo contrario. Una tarjeta un poco
-    // mas alta de la cuenta se rechazaba, se bajaba un nivel mas y se
-    // acababa enmarcando `.meal-body`: los ingredientes SIN el titulo. El
-    // dueno lo describio exacto -- "он только ингридиенты показывает".
-    // Y el filtro de altura minima de aqui arriba empeoraba la caida,
-    // porque `.meal-head` mide 118 px y se saltaba por poco.
-    if (elegido.getBoundingClientRect().height <= altoMax * 2.5) return elegido;
-    actual = elegido;
-  }
-  return null;
-}
-
-/**
- * QUE se enmarca y QUE no puede quedar fuera del marco.
- *
- * Las tres funciones que colocan el recorrido (`_tourRender`,
- * `_tourPosition` y `_tourDestino`) tienen que partir de la misma respuesta,
- * o una centra una cosa y otra pinta otra.
- *
- * @param {Element} objetivo
- * @returns {{marco: Element, dentro: Element, contexto: Element|null}}
- */
-function _tourQueEnmarcar(objetivo) {
-  var contexto = _tourContexto(objetivo);
-  if (contexto) return { marco: contexto, dentro: objetivo, contexto: contexto };
-
-  var r = objetivo.getBoundingClientRect();
-  var left = Math.max(TOUR_MARGEN, r.left - TOUR_PAD);
-  var right = Math.min(window.innerWidth - TOUR_MARGEN, r.right + TOUR_PAD);
-  var altoMax = _tourAltoMaxMarco(_tourNotaAlLado({ left: left, right: right }));
-
-  // Cabe entero, o se pasa por poco: se enmarca tal cual. Recortado enseña
-  // su PRINCIPIO, que es donde esta su cabecera -- la hora y el nombre del
-  // plato en una tarjeta, el titulo y el total en la lista de la compra.
-  //
-  // Bajar aqui seria peor, no mejor: los hijos que empiezan un bloque son
-  // justamente los pequeños (una cabecera mide 87 px, un resumen 77), asi
-  // que el primer hijo "grande" es siempre el CUERPO, y enmarcarlo deja el
-  // titulo fuera. Es lo que pasaba con `.meal-body` y con `.shopping-list`.
-  if (r.height <= altoMax * 2.5) {
-    return { marco: objetivo, dentro: objetivo, contexto: null };
-  }
-
-  // Ya no es un bloque grande, es una losa: ahi si compensa bajar hasta un
-  // trozo que se lea como algo (una tarjeta de comida dentro del carrusel).
-  var trozo = _tourPrimerTrozoQueCabe(objetivo, altoMax);
-  if (trozo) return { marco: trozo, dentro: trozo, contexto: null };
-
-  // Ni eso: se recorta el objetivo, como se hacia siempre.
-  return { marco: objetivo, dentro: objetivo, contexto: null };
-}
-
-/**
- * La tarjeta o el panel donde vive lo que se explica.
- *
- * Sirve para que el usuario vea DONDE esta lo que se le senala: sin esto,
- * un boton pequeno se iluminaba solo y todo su alrededor quedaba tan oscuro
- * como el resto de la pagina, asi que se veia el boton pero no donde estaba.
- *
- * Devuelve null cuando ningun antepasado aporta nada: ahi el foco sobraria
- * y se enmarca el objetivo a secas.
- *
- * @param {Element} el
- * @returns {Element|null}
- */
-function _tourContexto(el) {
-  if (!el || !el.parentElement) return null;
-
-  // "No cabe por poco" y "no cabe ni de lejos" son cosas distintas: la
-  // tarjeta recortada sigue leyendose como una tarjeta, y el formulario
-  // entero (1.689 px) no se lee como nada.
-  //
-  // El margen es el MISMO para la nota al lado y para la nota debajo, y el
-  // mismo que usa _tourPrimerTrozoQueCabe. Antes el de al lado no tenia
-  // ninguno, y eso hacia que el resultado dependiera del plan que hubiera
-  // salido: con una tarjeta de comida de 712 px y una banda de 644 se
-  // rechazaba por 68 px y el paso de "Cambiar" bajaba a `.meal-head`, en vez
-  // de enmarcar la tarjeta que el dueno aprobo como referencia. Con otro
-  // plan la misma pantalla daba la tarjeta. Un recorrido no puede cambiar de
-  // forma segun los platos que toquen.
-  var TOLERANCIA = 200;
-  var altoMaxDebajo = _tourAltoMaxMarco(false) + TOLERANCIA;
-  var altoMaxAlLado = _tourAltoMaxMarco(true) + TOLERANCIA;
-  var anchoMax = window.innerWidth - 24;
-
-  var r = el.getBoundingClientRect();
-  var mejor = null;
-  var p = el.parentElement;
-
-  while (p && p !== document.body && p !== document.documentElement) {
-    var pr = p.getBoundingClientRect();
-    var altoMax = _tourNotaAlLado(pr) ? altoMaxAlLado : altoMaxDebajo;
-    // En cuanto un antepasado NO cabe entero, se para: framear algo que hay
-    // que recortar da una losa gris sin bordes visibles, que es justo lo
-    // que el dueno califico de horrible en los pasos de los botones del
-    // formulario (contexto .panel de 1.689 px en una pantalla de 900).
-    if (pr.height > altoMax || pr.width > anchoMax) break;
-    // Y tiene que aportar SITIO VISIBLE, no doce pixeles. Un envoltorio que
-    // solo saca 4 px de ancho y 63 de alto al objetivo pinta un cerco verde
-    // rodeado de otro gris casi identico: dos rectangulos, ninguna
-    // informacion. Es lo que el dueno llamo "чуть чуть фигово" en el paso
-    // de "fijar el plan de hoy" (.shopping-panel__actions, h4 v63). El
-    // corte esta por encima de eso y por debajo del contexto que si vale
-    // (.field del selector de dias, h4 v188).
-    if (pr.height >= r.height + 96 || pr.width >= r.width + 96) mejor = p;
-    p = p.parentElement;
-  }
-
-  // El MAS GRANDE que quepa, no el mas pequeno: el dueno aprobo la tarjeta
-  // de comida entera (444x615) como contexto del boton "Cambiar", no la
-  // fila que lo contiene. La unidad con sentido es la tarjeta.
-  return mejor;
-}
-
-/**
- * Cuando hay que RECORTAR algo mas alto que la pantalla, corta por donde el
- * contenido ya se corta solo.
- *
- * La lista de la compra tiene filas de 84 px (194..278, 278..362,
- * 362..446...) y el recorte caia en 440: la tercera fila partida por la
- * mitad. En el movil el mismo corte caia entre filas y por eso alli se veia
- * bien y en el portatil no -- "lista de compra на телефоне хорошо на ноуте
- * хуёво".
- *
- * Solo se mueve hasta una fila de distancia: mas seria recortar por gusto.
- *
- * El corte solo puede moverse DENTRO de [minAbs, maxAbs]: el marco no puede
- * crecer mas alla de su banda ni encoger hasta dejar fuera lo señalado. Sin
- * ese limite, la fila mas cercana al corte de la lista de la compra caia 36
- * px por DEBAJO del final de la banda, se descartaba, y el corte se quedaba
- * partiendo la fila igual que antes. Medido: corte en 430, fila 382..466.
- *
- * @param {Element} el       lo que se esta enmarcando
- * @param {number} bordeAbs  y absoluta (de pagina) donde caeria el corte
- * @param {number} minAbs    lo mas arriba que puede quedar el corte
- * @param {number} maxAbs    lo mas abajo que puede quedar el corte
- * @returns {number} la y ajustada, o la misma si no hay nada cerca
- */
-function _tourCorteLimpio(el, bordeAbs, minAbs, maxAbs) {
-  var hijos = el.children;
-  if (!hijos || hijos.length < 2) return bordeAbs;
-
-  var desplazamiento = window.pageYOffset || document.documentElement.scrollTop || 0;
-  var mejor = bordeAbs;
-  var distMejor = Infinity;
-
-  for (var i = 0; i < hijos.length; i++) {
-    var hr = hijos[i].getBoundingClientRect();
-    if (!hr.height) continue;
-    // Los bordes de CADA hijo, y ademas los de sus filas cuando el hijo es
-    // la lista: el corte feo estaba dentro de un <ul>, no entre los
-    // bloques del panel.
-    var candidatos = [hr.top + desplazamiento, hr.bottom + desplazamiento];
-    if (hijos[i].children && hijos[i].children.length > 1) {
-      for (var j = 0; j < hijos[i].children.length; j++) {
-        var nr = hijos[i].children[j].getBoundingClientRect();
-        if (nr.height) candidatos.push(nr.bottom + desplazamiento);
-      }
-    }
-    for (var k = 0; k < candidatos.length; k++) {
-      var cand = candidatos[k];
-      if (cand < minAbs || cand > maxAbs) continue;
-      var d = Math.abs(cand - bordeAbs);
-      // Una fila de margen: 96 px cubre las de 84 de la lista de la compra
-      // y las de 73 del movil, y no llega a saltarse un bloque entero.
-      if (d < distMejor && d <= 96) { distMejor = d; mejor = cand; }
-    }
-  }
-
-  return mejor;
-}
-
-function _tourPosition() {
-  var step = _tourVisible[_tourIndex];
-  if (!step) return;
-  var objetivo = document.querySelector(step.target);
-  if (!objetivo) return;
-
-  // El hueco oscuro enmarca el CONTEXTO; el foco gris, el objetivo. Sin
-  // contexto se enmarca el objetivo, o un trozo suyo si no cabe entero.
-  var queEnmarcar = _tourQueEnmarcar(objetivo);
-  var contexto = queEnmarcar.contexto;
-  var el = queEnmarcar.marco;
-
-  var r = el.getBoundingClientRect();
-  var pad = TOUR_PAD;
-  var margen = TOUR_MARGEN;
-  var e = _tourEls;
+function _tourBanda() {
   var vh = window.innerHeight;
-  var vw = window.innerWidth;
-  var inset = _tourInset();
-  var cardH = _tourCardH();
+  var alto = _tourEls.card.getBoundingClientRect().height;
+  var arriba = TOUR_MARGEN;
+  var abajo = vh - alto - TOUR_MARGEN - TOUR_HUECO;
+  // En una pantalla muy baja la tarjeta se come casi todo: siempre queda
+  // una banda mínima, y la propia tarjeta se desplaza por dentro.
+  if (abajo - arriba < 120) abajo = arriba + 120;
+  return { arriba: arriba, abajo: abajo, alto: abajo - arriba };
+}
 
-  var left  = Math.max(margen, r.left - pad);
-  var right = Math.min(vw - margen, r.right + pad);
-
-  // .Cabe la nota AL LADO del marco? Cuando el marco es estrecho -- una
-  // tarjeta de comida de 444 px en una pantalla de 1.400 -- sobra sitio a
-  // la derecha, y ponerla ahi devuelve al marco toda la altura de la
-  // pantalla.
-  var alLado = _tourNotaAlLado({ left: left, right: right });
-
-  // ── La BANDA donde puede vivir el marco ────────────────────────────────
-  //
-  // Apilada, la nota se decide ANTES que el marco y se le quita su trozo de
-  // pantalla. Antes era al reves -- primero el marco, y la nota se apanaba
-  // con lo que quedara -- y cuando no quedaba nada la nota se plantaba
-  // ENCIMA del marco: 28.023 px2 tapados en el paso de la receta en el
-  // movil, justo sobre la tarjeta que estaba explicando.
-  //
-  // La nota va ARRIBA cuando lo señalado esta en la mitad baja de la
-  // pantalla. Ese caso es real: el enlace "como se cocina" vive al final de
-  // una tarjeta de 631 px que no cabe entera, asi que el marco tiene que
-  // enseñar su FINAL, y con la nota debajo no habia sitio para las dos
-  // cosas. Con la nota arriba, si.
-  // El criterio se mide DENTRO de lo enmarcado, no contra la pantalla: la
-  // posicion en pantalla es justo lo que el desplazamiento esta cambiando,
-  // y _tourDestino tiene que llegar a la misma conclusion que esta funcion
-  // ANTES de mover nada. Con un criterio en coordenadas de pantalla, las
-  // dos discrepaban durante la animacion y el marco daba un salto al final.
-  // `dentro` es lo que no puede quedar fuera del marco: el objetivo cuando
-  // hay contexto, y el propio marco cuando se ha bajado a un trozo (ahi el
-  // objetivo entero es mas grande que el marco a proposito, y exigir
-  // contenerlo devolveria la franja de pantalla completa que se acaba de
-  // quitar).
-  var ro0 = queEnmarcar.dentro.getBoundingClientRect();
-  var recorta = (r.height + pad * 2) > _tourAltoMaxMarco(alLado);
-  var frac = (ro0.top + ro0.height / 2 - r.top) / Math.max(1, r.height);
-  var notaArriba = !alLado && recorta && frac > 0.55;
-
-  var bandaTop, bandaBottom;
-  if (alLado) {
-    bandaTop = inset + margen;
-    bandaBottom = vh - margen;
-  } else if (notaArriba) {
-    bandaTop = inset + margen + cardH + margen;
-    bandaBottom = vh - margen;
-  } else {
-    bandaTop = inset + margen;
-    bandaBottom = vh - margen - cardH - margen;
-  }
-  if (bandaBottom - bandaTop < 120) bandaBottom = bandaTop + 120;
-
-  var top    = Math.max(bandaTop, r.top - pad);
-  var bottom = Math.min(bandaBottom, r.bottom + pad);
-  var altoMax = bandaBottom - bandaTop;
-
-  if (bottom - top > altoMax) {
-    bottom = top + altoMax;
-  }
-
-  // Un elemento altisimo se ilumina solo por su comienzo: es donde esta su
-  // encabezado y donde el usuario mira. Pero el recorte no puede dejar
-  // FUERA lo que se esta señalando: si el objetivo cae por debajo, la
-  // ventana se desliza hasta contenerlo, conservando su altura.
-  //
-  // Solo si HAY recorte. Sin esta condicion, un contexto que cabe entero
-  // entraba igualmente por la ultima rama y salia estirado a toda la banda:
-  // el grupo de botones "Despensa"/"Sin cocinar" (94 px) se pintaba como un
-  // marco de 458. Y entraba por medio pixel -- el desplazamiento dejaba el
-  // contexto en 71,5 y la comparacion `ro0.top - pad < top` daba 63,5 < 64.
-  // En el portatil no pasaba porque el centrado deja otros restos.
-  if (!recorta) {
-    // Cabe entero: no hay nada que deslizar ni que estirar.
-  } else if (!contexto) {
-    // Lo enmarcado ES lo señalado: se enseña su PRINCIPIO y punto. Deslizar
-    // aqui es lo que dejaba fuera la hora y el nombre del plato y empezaba
-    // el marco en los ingredientes. Sin contexto no hay un objetivo pequeño
-    // al que perseguir dentro del marco -- el objetivo es el marco.
-    top = Math.max(bandaTop, r.top - pad);
-    bottom = Math.min(bandaBottom, top + altoMax);
-  } else if (ro0.bottom + pad > bottom && ro0.top - pad < top) {
-    // El objetivo es MAS alto que la banda: no hay nada que deslizar.
-    top = bandaTop;
-    bottom = bandaBottom;
-  } else if (ro0.bottom + pad > bottom) {
-    var corrimiento = Math.min(ro0.bottom + pad - bottom, top - bandaTop);
-    if (corrimiento > 0) { top -= corrimiento; bottom -= corrimiento; }
-    bottom = Math.min(bandaBottom, Math.max(bottom, ro0.bottom + pad));
-    top = Math.max(bandaTop, bottom - altoMax);
-  } else if (ro0.top - pad < top) {
-    var subida = Math.min(top - (ro0.top - pad), bandaBottom - bottom);
-    if (subida > 0) { top += subida; bottom += subida; }
-    top = Math.max(bandaTop, Math.min(top, ro0.top - pad));
-    bottom = Math.min(bandaBottom, top + altoMax);
-  }
-
-  // Si ha habido recorte, que corte por donde el contenido ya se corta:
-  // una fila partida por la mitad es lo que hacia feo el paso de la lista
-  // de la compra en el portatil.
-  if (bottom < r.bottom + pad - 1) {
-    var desplazamiento = window.pageYOffset || document.documentElement.scrollTop || 0;
-    // Lo mas arriba que puede subir el corte: sin dejar el marco enano y,
-    // cuando hay contexto, sin dejar fuera lo señalado. Cuando lo señalado
-    // ES lo enmarcado no cabe entero de todas formas, y exigir contenerlo
-    // impedia cualquier ajuste.
-    var minCorte = top + 120;
-    if (contexto) minCorte = Math.max(minCorte, Math.min(ro0.bottom + pad, bandaBottom));
-    bottom = _tourCorteLimpio(
-      el,
-      bottom + desplazamiento,
-      minCorte + desplazamiento,
-      bandaBottom + desplazamiento
-    ) - desplazamiento;
-  }
-
-  var h = Math.max(0, bottom - top);
-  var w = Math.max(0, right - left);
-
-  e.hole.style.top    = top + "px";
-  e.hole.style.left   = left + "px";
-  e.hole.style.width  = w + "px";
-  e.hole.style.height = h + "px";
-
-  // El foco: la cosa concreta, dentro del contexto ya iluminado. Sin
-  // contexto no hay nada que atenuar, asi que no se enciende.
-  var foco = null;
-  if (contexto) {
-    var ro = objetivo.getBoundingClientRect();
-    // Solo si de verdad se ve: un objetivo que ha quedado fuera del recorte
-    // del contexto senalaria una zona vacia de la pantalla.
-    var fTop = Math.max(top, ro.top - 6);
-    var fBottom = Math.min(top + h, ro.bottom + 6);
-    var fLeft = Math.max(left, ro.left - 6);
-    var fRight = Math.min(left + w, ro.right + 6);
-    if (fBottom - fTop > 4 && fRight - fLeft > 4) {
-      var areaFoco = (fBottom - fTop) * (fRight - fLeft);
-      var areaCtx = Math.max(1, w * h);
-      // Si el foco ocupa casi todo el contexto no distingue nada: seria un
-      // velo gris sobre un margen de cuatro pixeles. Mejor no encenderlo.
-      if (areaFoco / areaCtx < 0.8) {
-        foco = { top: fTop, left: fLeft, w: fRight - fLeft, h: fBottom - fTop };
-      }
+/**
+ * Qué se enmarca y qué se marca dentro.
+ *
+ * Si el paso trae `ctx` (la tarjeta o el panel donde vive el botón) y CABE
+ * en la banda, se enmarca eso y el botón se marca dentro: se ve dónde está.
+ * Si no cabe, se enmarca el propio elemento -- y si es más alto que la
+ * banda, su principio, que es lo que lleva el título.
+ */
+function _tourQueEnmarcar(el, step, b) {
+  if (step.ctx) {
+    var ctx = el.closest(step.ctx);
+    if (ctx && ctx !== el) {
+      var h = ctx.getBoundingClientRect().height;
+      if (h <= b.alto - 2 * TOUR_PAD) return { marco: ctx, foco: el };
     }
   }
-  if (foco) {
-    e.foco.hidden = false;
-    e.foco.style.top    = foco.top + "px";
-    e.foco.style.left   = foco.left + "px";
-    e.foco.style.width  = foco.w + "px";
-    e.foco.style.height = foco.h + "px";
+  return { marco: el, foco: null };
+}
+
+/**
+ * A qué punto de la página hay que ir para que el marco quede en la banda.
+ * Si ya está entero dentro, es donde está ahora: la página no se mueve.
+ */
+function _tourDestino(marco, b) {
+  var r = marco.getBoundingClientRect();
+  var alto = Math.min(r.height, b.alto - 2 * TOUR_PAD);
+  var actual = window.pageYOffset || document.documentElement.scrollTop || 0;
+
+  if (r.top >= b.arriba && r.top + alto <= b.abajo) return actual;
+
+  var topDeseado = b.arriba + (b.alto - alto) / 2;
+  var destino = actual + r.top - topDeseado;
+  var maximo = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+  return Math.max(0, Math.min(destino, maximo));
+}
+
+/** Pone un hueco sobre un rectángulo, recortado al ancho de la pantalla. */
+function _tourPonerHueco(nodo, r, alto, pad) {
+  var vw = document.documentElement.clientWidth;
+  var izq = Math.max(6, r.left - pad);
+  var der = Math.min(vw - 6, r.right + pad);
+  // Pegado al borde de arriba (la cabecera, el menú ☰) el aire se come: el
+  // hueco no sale por la parte de arriba de la pantalla.
+  var arriba = Math.max(4, r.top - pad);
+  var abajo = r.top + alto + pad;
+  nodo.hidden = false;
+  nodo.style.left = izq + "px";
+  nodo.style.top = arriba + "px";
+  nodo.style.width = Math.max(0, der - izq) + "px";
+  nodo.style.height = Math.max(0, abajo - arriba) + "px";
+}
+
+/** Coloca los huecos sobre lo que toca AHORA (sin mover la página). */
+function _tourColocar() {
+  var e = _tourEls;
+  var step = _tourVisible[_tourIndex];
+  if (!e || !step || e.root.hidden) return;
+
+  var el = _tourEncontrar(step);
+  if (!el) { e.hole.hidden = true; e.foco.hidden = true; return; }
+
+  var b = _tourBanda();
+  var q = _tourQueEnmarcar(el, step, b);
+  var r = q.marco.getBoundingClientRect();
+  _tourPonerHueco(e.hole, r, Math.min(r.height, b.alto - 2 * TOUR_PAD), TOUR_PAD);
+
+  if (q.foco) {
+    var rf = q.foco.getBoundingClientRect();
+    _tourPonerHueco(e.foco, rf, rf.height, 4);
   } else {
     e.foco.hidden = true;
   }
-
-  // La nota va debajo del hueco; si no cabe, encima; y si tampoco, se
-  // pega al borde inferior de la pantalla. Nunca queda fuera de la vista.
-  var cardW = e.card.offsetWidth || 300;
-
-  // La nota se coloca junto a lo ENFOCADO, no junto al contexto: si no,
-  // al senalar un boton pequeno la nota se iba al borde de la tarjeta
-  // entera y quedaba lejos de lo que estaba explicando.
-  var anclaTop = foco ? foco.top : top;
-  var anclaBottom = foco ? (foco.top + foco.h) : bottom;
-  var anclaLeft = foco ? foco.left : left;
-
-  var cardTop, cardLeft;
-
-  if (alLado) {
-    // Al lado del marco y CENTRADA con lo enfocado -- no alineada con su
-    // borde de arriba: asi la explicacion queda enfrente de lo que explica
-    // en vez de colgando por encima.
-    cardTop = anclaTop + (anclaBottom - anclaTop) / 2 - cardH / 2;
-    cardTop = Math.max(inset + margen, Math.min(cardTop, vh - cardH - margen));
-    cardLeft = (vw - right >= cardW + margen * 2)
-      ? right + margen
-      : left - cardW - margen;
-    cardLeft = Math.max(margen, Math.min(cardLeft, vw - cardW - margen));
-  } else {
-    // Apilada, la nota ocupa el trozo de pantalla que la banda del marco ha
-    // dejado libre a proposito. No hay que buscarle sitio ni comprobar si
-    // cabe: se le reservo antes de decidir el marco, asi que por
-    // construccion no puede solaparse con el.
-    cardTop = notaArriba
-      ? Math.max(inset + margen, top - margen - cardH)
-      : bottom + margen;
-    cardTop = Math.max(inset + margen, Math.min(cardTop, vh - cardH - margen));
-    cardLeft = Math.max(margen, Math.min(anclaLeft, vw - cardW - margen));
-  }
-
-  e.card.style.top = cardTop + "px";
-  e.card.style.left = cardLeft + "px";
 }
 
-/**
- * Alto de lo que esté PEGADO ARRIBA y vaya a taparle el sitio al elemento
- * que se resalta.
- *
- * El caso real (reportado el 2026-09-03: "кнопки подсвечиваются, но они
- * слишком высоко, их не видно"): en móvil la franja "siguiente toma"
- * (`.next-meal-sticky`) va `position: sticky; top: 0` y mide 52px. Como el
- * recorrido alinea el elemento con el borde superior, los seis pasos
- * dejaban al resaltado en `top: 16` -- es decir, con 36px metidos DEBAJO de
- * la franja. En un botón de 43px de alto quedaban 7px a la vista, y había
- * que subir a mano para verlo. En escritorio no pasaba: esa franja solo
- * existe por debajo de 900px, que es justo por qué no se vio antes.
- *
- * Se busca en vez de mirar un id concreto para que una barra futura no
- * vuelva a romper esto en silencio. El tope de 200px descarta las capas a
- * pantalla completa (el alta, el propio recorrido), que no son barras.
- *
- * @returns {number} píxeles ocupados arriba
- */
-function _tourTopInset() {
-  var inset = 0;
-  var nodes = document.querySelectorAll("body *");
-
-  for (var i = 0; i < nodes.length; i++) {
-    var el = nodes[i];
-    if (_tourEls && _tourEls.root && _tourEls.root.contains(el)) continue;
-
-    var cs = window.getComputedStyle(el);
-    if (cs.position !== "sticky" && cs.position !== "fixed") continue;
-    if (cs.display === "none" || cs.visibility === "hidden") continue;
-    if (parseFloat(cs.top) !== 0) continue;
-
-    var h = el.getBoundingClientRect().height;
-    if (h > 0 && h < 200) inset = Math.max(inset, h);
-  }
-
-  return inset;
+function _tourMenosMovimiento() {
+  return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
 }
 
-// El elemento al que se le puso un `scroll-margin-top` prestado, para poder
-// devolvérselo: es una propiedad del elemento REAL de la página, y dejarla
-// puesta cambiaría cómo le hacen scroll otros (p. ej. el salto desde la
-// franja de horario a una tarjeta de comida).
-var _tourScrollMarginEl = null;
-var _tourScrollMarginPrev = "";
-
-function _tourRestoreScrollMargin() {
-  if (!_tourScrollMarginEl) return;
-  _tourScrollMarginEl.style.scrollMarginTop = _tourScrollMarginPrev;
-  _tourScrollMarginEl = null;
-  _tourScrollMarginPrev = "";
-}
-
-// ── El desplazamiento entre pasos ────────────────────────────────────────
-//
-// Se anima a mano y NO con `scrollIntoView({behavior:"smooth"})`.
-//
-// Medido en un portatil: `scrollIntoView` con `smooth` salta de golpe
-// -- 951 px a 1555 px en un solo fotograma, a los 19 ms -- cuando el
-// sistema tiene activado "reducir movimiento". Chrome respeta esa
-// preferencia tambien para la version JS de la llamada, aunque se le pida
-// `smooth` explicitamente. En un movil sin esa preferencia se desliza; de
-// ahi que el mismo recorrido se sintiera distinto en cada aparato.
-//
-// Aqui el movimiento NO es decoracion: es lo que dice "lo que te voy a
-// enseñar esta MAS ABAJO". Un salto seco deja al usuario sin saber a donde
-// ha ido a parar, que es justo lo que el recorrido existe para evitar. Asi
-// que se anima siempre, pero con la preferencia respetada en la DURACION:
-// corta cuando se pide menos movimiento, normal cuando no.
-var _tourScrollRaf = null;
-
-function _tourPrefiereMenosMovimiento() {
-  try {
-    return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
-  } catch (e) { return false; }
-}
-
-/**
- * A que altura de la pantalla hay que dejar lo enmarcado.
- *
- * CENTRADO, no pegado arriba. Antes todo aterrizaba en y=12 y en los pasos
- * de un boton eso dejaba un marco de 104 px arriba del todo con 600 px de
- * oscuridad debajo -- medido: los pasos 4, 6, 7, 8, 9, 10 y 11 caian entre
- * 218 y 296 px por encima del centro. "сделай так чтобы всё было +- по
- * центру а не вверху или внизу экрана".
- *
- * Se centra el BLOQUE entero (marco + nota cuando va apilada), no solo el
- * marco: centrar el marco y colgarle la nota debajo descuadra el conjunto
- * hacia abajo.
- *
- * @param {Element} el        lo que se va a enmarcar
- * @param {Element} objetivo  lo que se señala dentro de ello
- * @returns {number} desplazamiento de pagina al que hay que ir
- */
-function _tourDestino(el, objetivo) {
-  var desde = window.pageYOffset || document.documentElement.scrollTop || 0;
-  var r = el.getBoundingClientRect();
-  var vh = window.innerHeight;
-  var inset = _tourInset();
-  var cardH = _tourCardH();
-
-  var left = Math.max(TOUR_MARGEN, r.left - TOUR_PAD);
-  var right = Math.min(window.innerWidth - TOUR_MARGEN, r.right + TOUR_PAD);
-  var alLado = _tourNotaAlLado({ left: left, right: right });
-
-  var altoBanda = _tourAltoMaxMarco(alLado);
-  var altoMarco = Math.min(r.height + TOUR_PAD * 2, altoBanda);
-  var bloque = alLado ? altoMarco : (altoMarco + TOUR_MARGEN + cardH);
-
-  var arriba = _tourCentrar()
-    ? inset + Math.max(TOUR_MARGEN, (vh - inset - bloque) / 2)
-    : inset + TOUR_MARGEN;
-
-  // Con la nota ARRIBA el marco empieza despues de ella. Mismo criterio que
-  // _tourPosition, pero medido DENTRO de lo enmarcado y no contra la
-  // pantalla, que es lo unico que no cambia al desplazarse.
-  var ro = (objetivo || el).getBoundingClientRect();
-  var recorta = (r.height + TOUR_PAD * 2) > altoBanda;
-  var frac = (ro.top + ro.height / 2 - r.top) / Math.max(1, r.height);
-  var notaArriba = !alLado && recorta && frac > 0.55;
-  if (notaArriba) arriba += cardH + TOUR_MARGEN;
-
-  // Recortando y con la nota arriba se enseña el FINAL de lo enmarcado --
-  // ahi esta lo señalado. En cualquier otro caso, su comienzo.
-  var hasta = notaArriba
-    ? desde + r.bottom - (arriba + altoMarco - TOUR_PAD)
-    : desde + r.top - (arriba + TOUR_PAD);
-
-  var maximo = Math.max(0, (document.documentElement.scrollHeight || 0) - vh);
-  return Math.max(0, Math.min(maximo, hasta));
-}
-
-function _tourScrollSuave(el, objetivo) {
-  if (_tourScrollRaf) { window.cancelAnimationFrame(_tourScrollRaf); _tourScrollRaf = null; }
-
-  var desde = window.pageYOffset || document.documentElement.scrollTop || 0;
-  var hasta = _tourDestino(el, objetivo);
-  var salto = hasta - desde;
-  if (Math.abs(salto) < 2) return;
-
-  if (typeof window.requestAnimationFrame !== "function") {
-    window.scrollTo(0, hasta);
-    return;
-  }
-
-  // La hoja pone `scroll-behavior: smooth` en la raiz, asi que CADA
-  // `scrollTo` de esta animacion se suavizaria por su cuenta: dos
-  // animaciones peleandose por el mismo scroll, con el resultado de que
-  // ninguna llega. Se apaga mientras dura y se devuelve al terminar.
+/** Desplazamiento INSTANTÁNEO: para empezar una pestaña nueva desde arriba. */
+function _tourIrArribaYa() {
   var raiz = document.documentElement;
-  var behaviorPrevio = raiz.style.scrollBehavior;
+  var antes = raiz.style.scrollBehavior;
   raiz.style.scrollBehavior = "auto";
-  function terminar() {
-    raiz.style.scrollBehavior = behaviorPrevio;
-    _tourScrollRaf = null;
-  }
-
-  var duracion = _tourPrefiereMenosMovimiento() ? 200 : 480;
-  var t0 = null;
-  function paso(ahora) {
-    if (t0 === null) t0 = ahora;
-    var k = Math.min(1, (ahora - t0) / duracion);
-    // easeInOutCubic: arranca y frena despacio, que es lo que hace que se
-    // lea como "me estan llevando" y no como "me han movido".
-    var f = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
-    window.scrollTo(0, desde + salto * f);
-    if (k < 1) _tourScrollRaf = window.requestAnimationFrame(paso);
-    else terminar();
-  }
-  _tourScrollRaf = window.requestAnimationFrame(paso);
-
-  // Red de seguridad: en una pestaña en segundo plano el navegador NO
-  // ejecuta requestAnimationFrame, asi que la animacion no arranca y el
-  // recorrido se quedaria señalando algo que no esta en pantalla.
-  // Comprobado a las malas: la panel de pruebas estaba oculta y ningun
-  // fotograma llego a correr.
-  //
-  // Pasado el tiempo de la animacion, si no ha llegado, se lleva de golpe.
-  // Saltar es peor que deslizar y mucho mejor que no moverse.
-  window.setTimeout(function () {
-    if (_tourScrollRaf === null) return;      // la animacion ya termino
-    window.cancelAnimationFrame(_tourScrollRaf);
-    raiz.style.scrollBehavior = "auto";
-    window.scrollTo(0, hasta);
-    terminar();
-  }, duracion + 260);
+  window.scrollTo(0, 0);
+  raiz.style.scrollBehavior = antes;
 }
 
-// ── Que el usuario no mueva la pantalla mientras dura el recorrido ───────
+function _tourScrollA(y) {
+  var actual = window.pageYOffset || document.documentElement.scrollTop || 0;
+  if (Math.abs(y - actual) < 2) return;
+  try {
+    window.scrollTo({ top: y, left: 0, behavior: _tourMenosMovimiento() ? "auto" : "smooth" });
+  } catch (err) {
+    window.scrollTo(0, y);
+  }
+}
+
+/**
+ * Mientras la página se desplaza, el hueco la sigue fotograma a fotograma;
+ * se para cuando lleva unos fotogramas quieta (o al segundo y medio).
+ */
+function _tourSeguir() {
+  if (_tourRaf) window.cancelAnimationFrame(_tourRaf);
+  var ultimo = null, quietos = 0, t0 = Date.now();
+  (function paso() {
+    _tourColocar();
+    var y = window.pageYOffset || document.documentElement.scrollTop || 0;
+    quietos = (y === ultimo) ? quietos + 1 : 0;
+    ultimo = y;
+    if (quietos < 8 && Date.now() - t0 < 1500 && _tourEls && !_tourEls.root.hidden) {
+      _tourRaf = window.requestAnimationFrame(paso);
+    } else {
+      _tourRaf = null;
+    }
+  })();
+}
+
+/** Lleva lo del paso actual a la banda (si hace falta) y lo ilumina. */
+function _tourReencuadrar() {
+  var e = _tourEls;
+  var step = _tourVisible[_tourIndex];
+  if (!e || !step || e.root.hidden) return;
+  var el = _tourEncontrar(step);
+  if (!el) return;
+  var b = _tourBanda();
+  var q = _tourQueEnmarcar(el, step, b);
+  _tourScrollA(_tourDestino(q.marco, b));
+  _tourSeguir();
+}
+
+// ── Bloqueo de los gestos que mueven la página ──────────────────────────
 //
-// El recorrido decide a donde mirar en cada paso: mueve la pagina, mide
-// donde ha quedado lo señalado y coloca el marco encima. Si a la vez se
-// puede arrastrar con el dedo o con la rueda, el marco se queda enmarcando
-// un trozo de pagina vacio -- se recoloca en cada evento de scroll, si,
-// pero lo que se lee entonces ya no es el paso que se estaba explicando.
+// El recorrido decide qué mirar: mueve la página, mide dónde ha quedado la
+// cosa y le pone el hueco encima. Arrastrar la página a la vez dejaba el
+// hueco sobre una franja vacía.
 //
-// Se bloquean los GESTOS, no la scrollabilidad. Poner `overflow: hidden` en
-// el <html> seria lo evidente y romperia justo lo que hay que conservar: la
-// pagina dejaria de poder desplazarse y `window.scrollTo` del propio
-// recorrido no haria nada. Asi que la pagina sigue siendo desplazable y lo
-// que se cancela es la rueda, el arrastre y las teclas de desplazamiento.
+// Lo que se bloquea son los GESTOS, no la posibilidad de desplazarse:
+// `overflow: hidden` en la raíz sería lo obvio y rompería lo único que tiene
+// que seguir funcionando -- el propio `window.scrollTo` del recorrido. Así
+// que la página sigue siendo desplazable y lo que se cancela es la rueda, el
+// arrastre y las teclas de desplazamiento.
 //
-// La nota SI se puede desplazar por dentro: en una pantalla corta un texto
-// de seis lineas con dos botones debajo puede no caber, y dejarlo sin
-// desplazar seria dejar el boton "Siguiente" fuera del alcance.
+// La tarjeta SÍ se puede desplazar por dentro: en una pantalla corta un
+// texto de seis líneas con dos botones debajo puede no caber, y dejarlo sin
+// desplazar sería dejar el botón "Siguiente" fuera del alcance.
 var _tourBloqueoGestos = null;
 
 /** Teclas que mueven la pagina y que hay que cancelar mientras dura. */
@@ -947,9 +444,13 @@ var TOUR_TECLAS_SCROLL = {
 };
 
 function _tourDentroDeLaNota(nodo) {
-  if (!_tourEls || !_tourEls.card || !nodo) return false;
-  return _tourEls.card === nodo ||
-    (typeof _tourEls.card.contains === "function" && _tourEls.card.contains(nodo));
+  if (!nodo) return false;
+  var tarjetas = [_tourEls && _tourEls.card, _tourAsk && _tourAsk.card];
+  for (var i = 0; i < tarjetas.length; i++) {
+    var c = tarjetas[i];
+    if (c && (c === nodo || (typeof c.contains === "function" && c.contains(nodo)))) return true;
+  }
+  return false;
 }
 
 function _tourActivarBloqueo() {
@@ -985,72 +486,56 @@ function _tourQuitarBloqueo() {
   _tourBloqueoGestos = null;
 }
 
+// ── Los pasos ───────────────────────────────────────────────────────────
+
 function _tourRender() {
-  var step = _tourVisible[_tourIndex];
   var e = _tourEls;
+  var step = _tourVisible[_tourIndex];
   if (!step) { stopTour(); return; }
 
-  _tourRestoreScrollMargin();
-  // Una sola medida del inset por paso: dentro de un paso no cambia, y
-  // medirla en cada evento de scroll era casi todo el coste de
-  // _tourPosition.
-  _tourOlvidarInset();
+  // Un paso cuyo elemento ha desaparecido (cambió el plan con el recorrido
+  // abierto) se salta en la dirección en que se iba.
+  while (step && !_tourEncontrar(step)) {
+    _tourIndex += _tourDir;
+    step = _tourVisible[_tourIndex];
+  }
+  if (!step) { stopTour(); return; }
 
-  // Se desplaza hasta lo que se va a ENMARCAR, que es el contexto cuando
-  // lo hay. Llevando el objetivo al borde de arriba, la tarjeta que lo
-  // contiene se quedaba por encima de la pantalla: el marco de contexto se
-  // recortaba a una franja de 51 px y el foco no cabia dentro. Medido.
-  var objetivo = document.querySelector(step.target);
-
-  // El texto va ANTES del desplazamiento. La cuenta del centrado necesita
-  // saber cuanto mide la nota, y hasta que no lleva el texto de ESTE paso
-  // mide lo que midiera el anterior -- con notas de 3 y de 6 lineas el
-  // error son 60 px de descuadre.
+  // El texto va ANTES de medir: la banda depende de lo que mida la tarjeta.
   _tourPintarTextos();
 
-  var queEnmarcar = objetivo ? _tourQueEnmarcar(objetivo) : null;
-  var el = queEnmarcar ? queEnmarcar.marco : null;
-  if (el && typeof el.scrollIntoView === "function") {
-    // El hueco se reserva con `scroll-margin-top` y NO restando píxeles
-    // después: así la cuenta la hace el navegador dentro del propio
-    // desplazamiento. Ajustar a mano tras un scroll suave ya falló aquí una
-    // vez -- el resultado dependía de CUÁNDO se midiera y caía distinto en
-    // cada intento (ver el andamiaje de `alignToSameMeal` que hubo que
-    // borrar).
-    _tourScrollMarginEl = el;
-    _tourScrollMarginPrev = el.style.scrollMarginTop;
-    el.style.scrollMarginTop = (_tourInset() + 12) + "px";
-
-    // El destino lo calcula _tourDestino: centra el bloque, y con algo mas
-    // alto que la pantalla enseña su comienzo (o su final, si es ahi donde
-    // esta lo señalado) en vez de un trozo cualquiera de la mitad.
-    _tourScrollSuave(el, queEnmarcar.dentro);
+  // En el móvil, la pestaña donde vive el elemento: pantalla nueva, se
+  // empieza arriba y casi nunca hay que desplazar.
+  if (_tourMovil && step.tab && typeof activarPestana === "function" &&
+      _tourPestanaActual() !== step.tab) {
+    activarPestana(step.tab, true);
+    _tourIrArribaYa();
   }
 
-  // El desplazamiento suave tarda: se recoloca al terminar, y además en
-  // cada scroll/resize mientras el recorrido esté abierto.
-  _tourPosition();
-  window.setTimeout(_tourPosition, 320);
+  _tourReencuadrar();
+  // La tarjeta no se mueve; el foco del teclado, al botón de seguir.
+  try { e.next.focus({ preventScroll: true }); } catch (err) { /* sin foco, no pasa nada */ }
 }
 
 /**
- * Repinta SOLO los textos de la tarjeta, en el idioma de ahora mismo.
+ * Repinta SOLO los textos, en el idioma de ahora mismo.
  *
  * Lo llama applyI18nToDom() al cambiar de idioma. No es _tourRender()
- * porque aquel vuelve a desplazar la pagina, y cambiar de idioma no es
- * motivo para mover a nadie de sitio: se quedaria mirando otro paso.
+ * porque aquel vuelve a mover la pagina, y cambiar de idioma no es motivo
+ * para mover a nadie de sitio.
  */
 function refreshTourTexts() {
+  if (_tourAsk && !_tourAsk.root.hidden) _tourPintarPregunta();
   var e = _tourEls;
   if (!e || e.root.hidden) return;
   if (!_tourVisible[_tourIndex]) return;
   _tourPintarTextos();
-  // El texto cambia de largo con el idioma, y de su alto dependen la banda
-  // del marco y donde cae la nota.
-  _tourPosition();
+  // El texto cambia de largo con el idioma, y de su alto depende la banda.
+  _tourReencuadrar();
 }
 
 function _tourNext() {
+  _tourDir = 1;
   if (_tourIndex >= _tourVisible.length - 1) {
     stopTour();
     return;
@@ -1060,33 +545,47 @@ function _tourNext() {
 }
 
 function _tourPrev() {
+  _tourDir = -1;
   if (_tourIndex <= 0) return;
   _tourIndex--;
   _tourRender();
 }
 
+function _tourEscuchar() {
+  if (_tourEscuchando) return;
+  _tourEscuchando = true;
+  window.addEventListener("scroll", _tourColocar, true);
+  window.addEventListener("resize", _tourReencuadrar);
+}
+
+function _tourDejarDeEscuchar() {
+  if (!_tourEscuchando) return;
+  _tourEscuchando = false;
+  window.removeEventListener("scroll", _tourColocar, true);
+  window.removeEventListener("resize", _tourReencuadrar);
+}
+
 /** Arranca el recorrido desde el principio. */
 function startTour() {
   var e = _tourBuild();
+  _tourCerrarPregunta(true);
+
+  // Antes de abrirlo: con el recorrido abierto el CSS esconde la barra.
+  _tourMovil = _tourHayPestanas();
+  _tourPestanaAntes = _tourPestanaActual();
+
   _tourVisible = _tourResolveSteps();
-  if (!_tourVisible.length) return;
+  if (!_tourVisible.length) { _tourQuitarBloqueo(); return; }
 
   _tourIndex = 0;
+  _tourDir = 1;
   e.root.hidden = false;
   // A partir de aquí el recorrido está EN PANTALLA. Ver stopTour(): solo
   // cuenta como "visto" lo que se ha llegado a ver.
   _tourSeVio = true;
 
-  _tourScrollHandler = function (ev) {
-    // Al cambiar el tamaño puede aparecer o desaparecer la barra pegajosa,
-    // asi que ahi el inset se vuelve a medir; al desplazarse no cambia.
-    if (ev && ev.type === "resize") _tourOlvidarInset();
-    _tourPosition();
-  };
-  window.addEventListener("scroll", _tourScrollHandler, true);
-  window.addEventListener("resize", _tourScrollHandler);
+  _tourEscuchar();
   _tourActivarBloqueo();
-
   _tourRender();
 }
 
@@ -1097,11 +596,6 @@ function startTour() {
  * enlace del pie.
  */
 function stopTour() {
-  // Se devuelve el `scroll-margin-top` prestado ANTES de nada: si el
-  // recorrido se cierra a mitad, ese margen se quedaría puesto en un
-  // elemento de la página para siempre.
-  _tourRestoreScrollMargin();
-
   // "Visto" solo si de verdad llegó a la pantalla.
   //
   // Antes se marcaba SIEMPRE, y eso apaga el recorrido PARA SIEMPRE: basta
@@ -1109,34 +603,128 @@ function stopTour() {
   // que no resuelve, un cierre inmediato, cualquier camino futuro) para que
   // maybeStartTour() no vuelva a arrancarlo jamás. Es exactamente la forma
   // del fallo reportado el 2026-09-03: "туториал не появляется... ни разу
-  // не видел". No se pudo reproducir aquí en cuatro intentos (estado
-  // vacío, estado de invitado, alta completa real y viewport de móvil), y
-  // esta es la única vía en el código por la que la marca puede quedar
-  // puesta sin que nadie haya visto nada.
-  //
-  // Marcar por error "no visto" solo cuesta que el recorrido salga otra
-  // vez. Marcar por error "visto" cuesta que no salga nunca. La asimetría
-  // decide.
+  // не видел". Marcar por error "no visto" solo cuesta que el recorrido
+  // salga otra vez. Marcar por error "visto" cuesta que no salga nunca. La
+  // asimetría decide.
   if (_tourSeVio && typeof completeTour === "function") {
     completeTour();
   }
   _tourSeVio = false;
-  if (_tourScrollHandler) {
-    window.removeEventListener("scroll", _tourScrollHandler, true);
-    window.removeEventListener("resize", _tourScrollHandler);
-    _tourScrollHandler = null;
-  }
-  // Incondicional, fuera del `if` de arriba: dejarse el bloqueo puesto
-  // significa una pagina que no se mueve y sin nada en pantalla que
-  // explique por que. Es el fallo peor de todo este mecanismo.
+
+  if (_tourRaf) { window.cancelAnimationFrame(_tourRaf); _tourRaf = null; }
+  _tourDejarDeEscuchar();
+  // Incondicional: dejarse el bloqueo puesto significa una pagina que no se
+  // mueve y sin nada en pantalla que explique por que. Es el fallo peor de
+  // todo este mecanismo.
   _tourQuitarBloqueo();
   if (_tourEls) _tourEls.root.hidden = true;
+
+  // Cada cual vuelve a la pestaña en la que estaba.
+  if (_tourMovil && _tourPestanaAntes && typeof activarPestana === "function" &&
+      _tourPestanaActual() !== _tourPestanaAntes) {
+    activarPestana(_tourPestanaAntes, true);
+    _tourIrArribaYa();
+  }
+}
+
+// ── La pregunta de después del cuestionario ─────────────────────────────
+
+function _tourBuildAsk() {
+  if (_tourAsk) return _tourAsk;
+
+  var root = document.createElement("div");
+  root.className = "tour-ask";
+  root.id = "tourAsk";
+  root.hidden = true;
+
+  // Mismas clases que la tarjeta del recorrido: los aspectos que la visten
+  // (papel, cristal, lazos...) visten también esta pregunta sin tocar nada.
+  var card = document.createElement("div");
+  card.className = "tour__card tour-ask__card";
+  card.setAttribute("role", "dialog");
+  card.setAttribute("aria-modal", "true");
+  card.setAttribute("aria-labelledby", "tourAskTitulo");
+
+  var title = document.createElement("h3");
+  title.className = "tour__title";
+  title.id = "tourAskTitulo";
+
+  var body = document.createElement("p");
+  body.className = "tour__body";
+
+  var nav = document.createElement("div");
+  nav.className = "tour__nav tour-ask__nav";
+
+  var no = document.createElement("button");
+  no.type = "button";
+  no.className = "tour__prev";
+
+  var si = document.createElement("button");
+  si.type = "button";
+  si.className = "tour__next";
+
+  nav.appendChild(no);
+  nav.appendChild(si);
+  card.appendChild(title);
+  card.appendChild(body);
+  card.appendChild(nav);
+  root.appendChild(card);
+  document.body.appendChild(root);
+
+  // «No» se recuerda para siempre (completeTour); para repetirlo está el
+  // enlace «Ver la explicación otra vez». «Sí» arranca el recorrido.
+  no.addEventListener("click", function () {
+    _tourCerrarPregunta(false);
+    if (typeof completeTour === "function") completeTour();
+  });
+  si.addEventListener("click", startTour);
+
+  // Escape = «No»: una pregunta de la que no se puede salir es una trampa.
+  document.addEventListener("keydown", function (ev) {
+    if (ev.key === "Escape" && _tourAsk && !_tourAsk.root.hidden) no.click();
+  });
+
+  _tourAsk = { root: root, card: card, title: title, body: body, no: no, si: si };
+  return _tourAsk;
+}
+
+function _tourPintarPregunta() {
+  var a = _tourAsk;
+  if (!a) return;
+  a.title.textContent = _tourT("ui.tour_pregunta_titulo", "¿Quieres ver un recorrido por la aplicación?");
+  a.body.textContent = _tourT("ui.tour_pregunta_cuerpo",
+    "Te enseño, con tu plan delante, para qué sirve cada botón. Son unos dos minutos.");
+  a.si.textContent = _tourT("ui.tour_pregunta_si", "Sí, enséñamelo");
+  a.no.textContent = _tourT("ui.tour_pregunta_no", "No, gracias");
 }
 
 /**
- * Arranca el recorrido solo si al usuario le toca. Se llama después de
- * generar un plan: `hasPlan: true` es lo que hace que
- * nextOnboardingStep() devuelva "tour" (ver js/core/onboarding.js).
+ * Cierra la pregunta. Con `mantenerBloqueo` no suelta los gestos: es el
+ * caso de «Sí», que abre el recorrido sin dejar un instante la página libre.
+ */
+function _tourCerrarPregunta(mantenerBloqueo) {
+  if (_tourAsk) _tourAsk.root.hidden = true;
+  if (!mantenerBloqueo) _tourQuitarBloqueo();
+}
+
+/**
+ * Pregunta si quiere ver el recorrido. Se llama al terminar el cuestionario
+ * (js/app.js): el plan ya está pintado y la persona acaba de contestar
+ * quince preguntas, así que lo cortés es preguntar y no empezar.
+ */
+function offerTour() {
+  if (_tourEls && !_tourEls.root.hidden) return;
+  var a = _tourBuildAsk();
+  if (!a.root.hidden) return;
+  _tourPintarPregunta();
+  a.root.hidden = false;
+  _tourActivarBloqueo();
+  try { a.si.focus({ preventScroll: true }); } catch (err) { /* idem */ }
+}
+
+/**
+ * Pregunta solo si al usuario le toca. Se llama después de generar un plan:
+ * quien ya contestó (sí o no) no vuelve a ser preguntado.
  */
 function maybeStartTour() {
   if (typeof getOnboardingState !== "function") return;
@@ -1147,16 +735,12 @@ function maybeStartTour() {
   // Pasaba por ahí, y dejó de funcionar el día que se añadió la regla de
   // "sin cuenta, la bienvenida sale siempre": esa función empezó a
   // contestar "welcome" a todo el que no tuviera sesión, así que el
-  // recorrido no salía nunca -- ni con cuenta, porque maybeStartTour ni
-  // siquiera le pasaba `hasAccount`. Se descubrió generando un plan de
-  // verdad al revisar el alta entera; los tests no lo veían porque
-  // comprueban la máquina de estados, no quién la llama y con qué.
-  //
-  // La lección es la de siempre aquí: una función que decide "qué pantalla
-  // toca" no sirve para responder "¿toca esta otra cosa?".
+  // recorrido no salía nunca. La lección es la de siempre aquí: una función
+  // que decide "qué pantalla toca" no sirve para responder "¿toca esta otra
+  // cosa?".
   var estado = getOnboardingState();
   if (estado && estado.tourDoneAt) return;
-  // Un respiro antes de empezar: el plan acaba de aparecer y merece verse
+  // Un respiro antes de preguntar: el plan acaba de aparecer y merece verse
   // un segundo antes de que algo se ponga por encima.
-  window.setTimeout(startTour, 700);
+  window.setTimeout(offerTour, 700);
 }

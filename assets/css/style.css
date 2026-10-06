@@ -2760,21 +2760,25 @@ body.is-onboarding { overflow: hidden; overscroll-behavior: none; }
 .onboarding__nav { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; margin-top: 22px; }
 
 /* ══ 15. Recorrido guiado ═══════════════════════════════════════════════
-   Dos huecos: el de CONTEXTO deja ver la tarjeta o el panel; el de FOCO
-   señala la cosa concreta dentro de ella (su velo atenúa el contexto). La
-   posición y el tamaño de ambos los pone el JS con estilos en línea. */
+   (2026-10-06) La tarjeta está FIJA, pegada abajo y centrada: no cambia de
+   sitio de un paso a otro, solo de alto. Lo que se explica se lleva a la banda
+   libre de encima (js/ui/tour.js). Dos huecos: el de CONTEXTO deja ver la
+   tarjeta o el panel; el de FOCO señala la cosa concreta dentro de ella (su
+   velo atenúa el contexto). La posición y el tamaño de ambos los pone el JS
+   con estilos en línea. El propio `.tour` ocupa toda la pantalla y recoge los
+   toques: mientras dura, lo de debajo no se puede pulsar. */
 .tour {
   position: fixed;
   inset: 0;
   z-index: 210;
-  pointer-events: none;
 }
+.tour[hidden] { display: none; }
 .tour__hole {
   position: fixed;
-  pointer-events: auto;
   border-radius: 18px;
   box-shadow: 0 0 0 100vmax rgba(var(--shadow-rgb), 0.74), 0 0 0 3px var(--volt);
 }
+.tour__hole[hidden] { display: none; }
 .tour__foco {
   position: fixed;
   pointer-events: none;
@@ -2784,20 +2788,29 @@ body.is-onboarding { overflow: hidden; overscroll-behavior: none; }
 .tour__foco[hidden] { display: none; }
 .tour__card {
   position: fixed;
-  width: min(340px, calc(100vw - 32px));
-  max-height: min(60dvh, 420px);
-  padding: 18px 18px 16px;
+  left: 50%;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: min(560px, calc(100vw - 24px));
+  max-height: min(46dvh, 380px);
+  padding: 16px 18px 14px;
   overflow-y: auto;
   overscroll-behavior: contain;
   border-radius: var(--r-lg);
   background: var(--surface);
   box-shadow: var(--shadow-2);
-  pointer-events: auto;
 }
+/* Con el recorrido abierto la página gana margen por abajo: lo que está al
+   final de una pantalla (el botón de generar, la lista...) tiene que poder
+   subir hasta la banda de encima de la tarjeta, y sin este margen ya no hay
+   más página que desplazar. */
+body:has(#tour:not([hidden])) { padding-bottom: 54dvh; }
 .tour__counter { font: 800 15px/1 var(--font-display); letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); }
-.tour__title { margin-top: 8px; font: 900 30px/0.95 var(--font-display); text-transform: uppercase; }
+.tour__progress { height: 4px; margin-top: 10px; border-radius: 99px; background: var(--field-line); overflow: hidden; }
+.tour__progress > span { display: block; width: 0; height: 100%; border-radius: 99px; background: var(--primary); transition: width 0.25s ease; }
+.tour__title { margin-top: 10px; font: 900 28px/0.95 var(--font-display); text-transform: uppercase; }
 .tour__body { margin-top: 8px; font-size: 15px; line-height: 1.5; color: var(--text-2); }
-.tour__nav { display: flex; align-items: center; gap: 8px; margin-top: 16px; }
+.tour__nav { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
 .tour__skip {
   margin-right: auto;
   padding: 8px 4px;
@@ -2824,6 +2837,31 @@ body.is-onboarding { overflow: hidden; overscroll-behavior: none; }
 }
 .tour__prev[hidden] { display: none; }
 .tour__next { background: var(--primary); color: var(--on-ink); }
+
+/* La pregunta de después del cuestionario: «¿Quieres ver un recorrido?». Va
+   en el CENTRO, con el mismo aspecto que la tarjeta del recorrido. */
+.tour-ask {
+  position: fixed;
+  inset: 0;
+  z-index: 212;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(var(--shadow-rgb), 0.7);
+}
+.tour-ask[hidden] { display: none; }
+.tour-ask .tour__card {
+  position: static;
+  transform: none;
+  width: min(440px, 100%);
+  max-height: none;
+  padding: 24px 22px 20px;
+  text-align: center;
+}
+.tour-ask .tour__body { margin-top: 12px; font-size: 16px; }
+.tour-ask__nav { flex-direction: column-reverse; align-items: stretch; margin-top: 22px; }
+.tour-ask__nav .tour__prev,
+.tour-ask__nav .tour__next { width: 100%; }
 
 /* ══ 16. Móvil: barra inferior, pestañas y "siguiente toma" ═════════════
    js/ui/pestanas.js marca cada sección con `data-pestana` y `<main>` dice
@@ -2928,12 +2966,12 @@ body.is-onboarding { overflow: hidden; overscroll-behavior: none; }
     font-weight: 600;
   }
 
-  /* Una sola pestaña a la vez. Mientras el recorrido guiado está abierto se
-     enseña la página entera, porque ilumina elementos de TODAS. */
-  body.con-pestanas:not(:has(#tour:not([hidden]))) main[data-pestana="menu"] [data-pestana]:not([data-pestana~="menu"]),
-  body.con-pestanas:not(:has(#tour:not([hidden]))) main[data-pestana="compra"] [data-pestana]:not([data-pestana~="compra"]),
-  body.con-pestanas:not(:has(#tour:not([hidden]))) main[data-pestana="planes"] [data-pestana]:not([data-pestana~="planes"]),
-  body.con-pestanas:not(:has(#tour:not([hidden]))) main[data-pestana="datos"] [data-pestana]:not([data-pestana~="datos"]) {
+  /* Una sola pestaña a la vez. También con el recorrido guiado abierto: él abre
+     la pestaña de cada paso (js/ui/tour.js), así que la pantalla es corta. */
+  body.con-pestanas main[data-pestana="menu"] [data-pestana]:not([data-pestana~="menu"]),
+  body.con-pestanas main[data-pestana="compra"] [data-pestana]:not([data-pestana~="compra"]),
+  body.con-pestanas main[data-pestana="planes"] [data-pestana]:not([data-pestana~="planes"]),
+  body.con-pestanas main[data-pestana="datos"] [data-pestana]:not([data-pestana~="datos"]) {
     display: none !important;
   }
 

@@ -15,8 +15,10 @@
  * compra se esconde si no hay productos, "sin cocinar" hasta que se genera)
  * y los dos mecanismos se pisarían.
  *
- * El recorrido guiado ilumina elementos de TODAS las secciones: mientras
- * está abierto, el CSS enseña la página entera (ver `:has(#tour...)`).
+ * El recorrido guiado ilumina elementos de TODAS las secciones y, desde el
+ * 2026-10-06, abre él mismo la pestaña de cada paso (activarPestana, desde
+ * js/ui/tour.js): así la pantalla es corta y no hay que desplazarse tanto.
+ * Antes enseñaba la página entera mientras estaba abierto.
  *
  * Mejora progresiva: sin este fichero la página se ve entera, como antes.
  *
@@ -168,7 +170,7 @@ function _crearResumenDeDatos() {
   caja.id = "resumenDatos";
   caja.innerHTML =
     '<p class="resumen-datos__texto" id="resumenDatosTexto"></p>' +
-    '<button type="button" class="resumen-datos__btn">' +
+    '<button type="button" class="resumen-datos__btn" data-tour="editdata">' +
       '<span data-i18n="ui.cambiar_mis_datos">' + escapeHtml(_tx("ui.cambiar_mis_datos")) + '</span></button>';
   caja.querySelector("button").addEventListener("click", function () { activarPestana("datos"); });
   resultados.insertBefore(caja, resultados.firstChild);
