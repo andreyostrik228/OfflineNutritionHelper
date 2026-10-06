@@ -513,8 +513,7 @@ function initAjustesMenu() {
   var tour = document.getElementById("ajustesTourBtn");
   if (tour && typeof repetirExplicacion === "function") {
     tour.addEventListener("click", function () {
-      // El recorrido señala elementos de la página: con el diálogo abierto
-      // encima, señalaría detrás de una cortina.
+      // Se cierra el menú antes: el recorrido es otro <dialog> modal y dos a la vez no.
       closeAjustesDialog();
       repetirExplicacion();
     });

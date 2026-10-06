@@ -350,20 +350,14 @@ function renderMealCard(meal, total, dayIndex) {
   var storeId = meal.store || (typeof DEFAULT_STORE_ID !== "undefined" ? DEFAULT_STORE_ID : "mercadona");
 
   return (
-    '<div class="meal-card" data-tour="meal" data-meal-key="' + escapeHtml(meal.key || "") + '">' +
+    '<div class="meal-card" data-meal-key="' + escapeHtml(meal.key || "") + '">' +
       '<div class="meal-head">' +
         '<div class="meal-head__title">' +
           timeBadge +
           '<h3>' + escapeHtml(tituloDeToma(meal)) + '</h3>' +
         '</div>' +
         '<div class="meal-head__right">' +
-          // `data-tour`: ancla del recorrido guiado (ver la nota en
-          // renderMealSteps más abajo). Se pone aparte de `data-action`
-          // aunque aquí coincidan: uno es el contrato con app.js y el otro
-          // con el tutorial, y mezclarlos haría que tocar uno moviera el
-          // otro sin querer.
           '<button type="button" class="meal-swap-btn" data-action="swap-plan-meal"' +
-            ' data-tour="swap"' +
             ' data-meal-key="' + escapeHtml(meal.key || "") + '"' +
             ' data-day="' + (dayIndex || 0) + '"' +
             ' title="' + escapeHtml(t("ui.cambiar_solo_esta_toma_por_otra")) + '">&#8635; ' +
@@ -425,13 +419,7 @@ function renderCookingSteps(meal) {
 
   return (
     '<details class="meal-steps">' +
-      // `data-tour` es el ANCLA del recorrido guiado, no un gancho de
-      // estilo. Existe porque estos elementos los pinta el JavaScript y no
-      // pueden llevar un id (hay uno por tarjeta), y apuntar a la clase CSS
-      // habría atado el tutorial a una decisión de maquetación: al
-      // renombrarla, el paso iluminaría un hueco vacío sin que nada avise.
-      // Ver js/data/tour-steps.js y su test en tests/onboarding.test.js.
-      '<summary class="meal-steps__summary" data-tour="recipe">' +
+      '<summary class="meal-steps__summary">' +
         '<span class="meal-steps__toggle">' + escapeHtml(t("ui.como_se_hace")) + '</span>' +
         (difficultyLabel
           ? '<span class="meal-steps__badge meal-steps__badge--d' + info.difficulty + '">' +

@@ -1757,21 +1757,13 @@ function exportarMisDatos() {
 }
 
 /**
- * Repite la explicacion. Si ya hay un plan en pantalla hace falta el
- * recorrido guiado; si no lo hay no habria nada que senalar, asi que se
- * repite el alta entera desde la bienvenida.
+ * «Ver la explicación otra vez» (pie y menú ☰): abre el recorrido.
  *
- * `:not([data-empty])` -- la tarjeta "Esperando parametros..." es tambien
- * un `.meal-card`, asi que SIN esto siempre habia "plan" y este enlace
- * nunca repetia el alta: arrancaba un recorrido cuyo primer paso senalaba
- * una caja vacia.
+ * Hasta el 2026-10-08 esto miraba si había un plan pintado y, si no, REPETÍA
+ * EL ALTA: quien no tenía plan en pantalla acababa otra vez en la bienvenida
+ * («elegir o crear cuenta»). El recorrido ya no señala la página de verdad
+ * (js/ui/tour.js), así que no necesita plan y se abre siempre.
  */
 function repetirExplicacion() {
-  var hayPlan = document.querySelectorAll(
-    "#mealsContainer .meal-card:not([data-empty])").length > 0;
-  if (hayPlan && typeof startTour === "function") {
-    startTour();
-  } else if (typeof restartOnboarding === "function") {
-    restartOnboarding();
-  }
+  if (typeof startTour === "function") startTour();
 }

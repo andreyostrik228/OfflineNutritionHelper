@@ -5,6 +5,43 @@
 > Escrito para alguien que llega SIN NINGÚN contexto previo. Si solo lees
 > una parte de este archivo, que sea esta.
 >
+> ### ⏩ UPDATE 2026-10-08 — el recorrido, REHECHO desde cero: escenas animadas, sin tocar la página
+>
+> **823 tests en verde. Sello `20261008a`. Hecho en local, SIN commit ni despliegue todavía**
+> (lo anterior, commit `85382d4`, sello `20261007g`, sí está desplegado y empujado). Queja del dueño:
+> «тур полная хуйня, он дёргался… когда я нажал на кнопку в меню посмотреть заново тур, меня выкидывает
+> на главную (elegir o crear cuenta)… кинь все силы, делай по-своему, чтобы выглядело понятно и классно».
+>
+> - **Por qué daba tirones** (y por qué no tenía arreglo): el recorrido viejo oscurecía la página real, abría un
+>   hueco sobre cada botón, la desplazaba hasta él y, en el móvil, cambiaba de pestaña. Cada paso movía la
+>   página, el botón «Generar plan» es `position: sticky`, y hacía falta un plan pintado. Rehecho con otro
+>   enfoque: **no se toca la página**.
+> - **Ahora**: `js/ui/tour.js` es una hoja a pantalla completa (un `<dialog>` modal con `showModal()`: capa
+>   superior, nada lo tapa) con 9 ESCENAS animadas (`js/ui/tour-scenes.js`): maquetas hechas con las variables
+>   CSS de la aplicación (se ven bien en los 10 aspectos) en las que un dedo pulsa los botones: plan y macros
+>   (contador de kcal y barras), varios días (carrusel que se desliza), «Cambiar» (la tarjeta gira) y «Cómo se
+>   hace» (se despliegan los pasos), la compra (casillas que se tachan y bajan; FLIP a mano), la cámara de
+>   Mercadona (sube la ficha), «Confirmar plan de hoy» (se guarda, insignia en Mis planes), datos + «Generar
+>   plan», «Sin cocinar» y despensa (el precio baja) y el menú ☰ (idioma, aspecto). Navegación: botones, barritas
+>   de progreso tocables, deslizar, flechas, Escape. Palabras de las maquetas en `TOUR_MOCK` (es) y
+>   `tour.m_*` (en/ru); titulares y textos en `tour.<id>_titulo/_cuerpo`.
+> - **Bug del menú arreglado**: `repetirExplicacion()` ya no repite el alta cuando no hay plan en pantalla (eso
+>   te echaba a la bienvenida): abre el recorrido siempre. Quitado también `startTourIfWanted`, `offerTourWhenReady`
+>   y las anclas `data-tour`: ya no hacen falta.
+> - **Orden nuevo**: cuestionario → pregunta (dialog) → «Sí» abre el recorrido → al cerrarse (acabado o
+>   saltado) se genera el plan. Con un plan de hoy empezado, el diálogo «plan activo» sale DESPUÉS del
+>   recorrido, nunca debajo. «No» genera el plan al momento.
+> - **Rendimiento**: los primeros intentos usaban `filter: blur()` y `backdrop-filter` y tardaban >500 ms por
+>   fotograma en el Chrome sin interfaz (GSAP lo ve y relentiza todo: `lagSmoothing`); sin ellos, ~8 ms y 0
+>   fotogramas lentos en las 9 escenas. Hay un test que prohíbe `backdrop-filter:` en el recorrido. Otra
+>   trampa: una `transition` CSS sobre `opacity` en un elemento que GSAP anima con `from()` le roba el valor
+>   final (las filas se quedaban invisibles).
+> - **Pantallas bajas**: si la maqueta no cabe, `.tg-compacto` (menos aire, letra menor). Medido sin problemas
+>   a 320x568, 360x640, 390x844 (es, ru, en), 768x1024, 1280x800 y en los 10 aspectos; en `revista`, de
+>   botones anchos, la barra de botones envuelve (`flex-wrap`).
+> - **Opcional**: sin GSAP o con «menos movimiento» cada escena se queda en su estado FINAL, quieta.
+> - Medición: `scratchpad/i18n/tg.mjs` (env `MEDIR=1`, `LOOK`, `ESCENAS`, `TIEMPOS`) y `flujos.mjs`.
+>
 > ### ⏩ UPDATE 2026-10-07 (f) — recorrido de 10 pasos, con GSAP y sin emojis
 >
 > **828 tests en verde. Sello `20261007g`. Hecho en local, SIN commit ni despliegue todavía**

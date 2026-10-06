@@ -597,8 +597,7 @@ registerI18nTable("es", {
   "ui.val_presupuesto_bajo": "El presupuesto diario es demasiado bajo para generar un plan realista.",
   "ui.val_presupuesto_no_disponible": "El presupuesto elegido no está disponible. Prueba con una cantidad exacta.",
   "ui.tour_pregunta_titulo": "¿Quieres ver un recorrido por la aplicación?",
-  "ui.tour_pregunta_cuerpo": "Te enseño, con tu plan delante, para qué sirve cada botón. Dura menos de un minuto.",
+  "ui.tour_pregunta_cuerpo": "Te lo enseño con dibujos animados, en menos de un minuto.",
   "ui.tour_pregunta_si": "Sí, enséñamelo",
   "ui.tour_pregunta_no": "No, gracias",
-  "ui.tour_listo": "¡Listo! Ya sabes moverte por Weekplate."
 });

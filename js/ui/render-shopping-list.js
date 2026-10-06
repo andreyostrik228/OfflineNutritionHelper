@@ -537,7 +537,7 @@ function renderShoppingRow(entry, storeId, marcado) {
   // teclado y un lector de pantalla dice si está marcada. La fila entera
   // también marca (ver cablearMarcas), pero el control accesible es este.
   var casilla = _hayMarcas()
-    ? '<button type="button" class="shopping-item__check" data-tour="check" role="checkbox" aria-checked="' + (marcado ? "true" : "false") + '"' +
+    ? '<button type="button" class="shopping-item__check" role="checkbox" aria-checked="' + (marcado ? "true" : "false") + '"' +
         ' aria-label="' + escapeHtml(t("ui.marcar_como_comprado").replace("{producto}", nombreComidaDoble(entry.name))) + '"></button>'
     : '<span class="shopping-item__check" aria-hidden="true"></span>';
 
@@ -551,10 +551,7 @@ function renderShoppingRow(entry, storeId, marcado) {
         // encontrar el producto real de Mercadona.
         '<div class="shopping-item__name">' + escapeHtml(nombreComidaDoble(entry.name)) +
           (typeof renderProductFindBtn === "function"
-            // `data-tour` solo en la lista de la compra: el botón sale también en el
-            // catálogo y en "sin cocinar", y el recorrido tiene que señalar el de aquí.
-            ? renderProductFindBtn(resolveShoppingProduct(entry.name, storeId))
-                .replace('class="product-find-btn"', 'class="product-find-btn" data-tour="photo"') : "") +
+            ? renderProductFindBtn(resolveShoppingProduct(entry.name, storeId)) : "") +
         '</div>' +
         '<div class="shopping-item__meta">' + escapeHtml(usedText) + '</div>' +
         pantryNote +

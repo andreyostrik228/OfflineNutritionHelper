@@ -482,163 +482,211 @@ function run(t) {
       "sigue contestando 'welcome' a un invitado: por eso el recorrido no puede colgar de aquí");
   });
 
-  // ── El recorrido guiado ─────────────────────────────────────────────
-  // Mismo peligro que el alta: apunta a elementos del index.html real. Un
-  // id que alguien renombre convierte un paso del tutorial en un foco
-  // sobre la nada.
+  // ── El recorrido guiado (rehecho el 2026-10-08) ─────────────────────
+  // Ya no señala la página de verdad: es una hoja con una ESCENA animada por
+  // paso (js/ui/tour-scenes.js). Lo que se vigila aquí es que los datos
+  // (TOUR_STEPS, TOUR_MOCK), las escenas y las traducciones no se separen.
 
-  t.test("cada paso del recorrido señala un elemento que existe en index.html", function () {
-    var s = freshSandbox();
-    var html = readIndexHtml();
-    var rotos = s.TOUR_STEPS.filter(function (step) {
-      // Los pasos `dynamic` apuntan a algo que pinta el JavaScript, así que
-      // no puede estar en index.html: los comprueba el test de abajo,
-      // contra el archivo que los genera.
-      if (step.dynamic) return false;
-      var id = step.target.replace(/^#/, "");
-      return html.indexOf('id="' + id + '"') === -1;
-    }).map(function (step) { return step.id + " -> " + step.target; });
-    assert.deepStrictEqual(plain(rotos), [],
-      "el recorrido iluminaría un hueco vacío: " + rotos.join(", "));
+  // Un DOM de mentira, lo justo para montar las escenas y el recorrido en Node.
+  function FakeNodo(tag) {
+    this.tag = tag;
+    this.nodeType = 1;
+    this.className = "";
+    this.childNodes = [];
+    this.children = [];
+    this.parentNode = null;
+    this.handlers = {};
+    this.style = { setProperty: function () {} };
+    this.attrs = {};
+    this._texto = "";
+    this.hidden = false;
+    this.open = false;
+    var self = this;
+    this.classList = {
+      add: function (c) { if (!self.classList.contains(c)) self.className = (self.className + " " + c).trim(); },
+      remove: function (c) { self.className = self.className.split(" ").filter(function (x) { return x && x !== c; }).join(" "); },
+      contains: function (c) { return (" " + self.className + " ").indexOf(" " + c + " ") !== -1; },
+      toggle: function (c, on) { if (on === undefined) on = !self.classList.contains(c); if (on) self.classList.add(c); else self.classList.remove(c); }
+    };
+  }
+  FakeNodo.prototype.appendChild = function (h) {
+    if (h.parentNode && h.parentNode.removeChild) h.parentNode.removeChild(h);
+    h.parentNode = this;
+    this.childNodes.push(h);
+    if (h.nodeType === 1) this.children.push(h);
+    return h;
+  };
+  FakeNodo.prototype.removeChild = function (h) {
+    this.childNodes = this.childNodes.filter(function (x) { return x !== h; });
+    this.children = this.children.filter(function (x) { return x !== h; });
+    h.parentNode = null;
+    return h;
+  };
+  FakeNodo.prototype.insertBefore = function (h, ref) {
+    var i = this.childNodes.indexOf(ref);
+    h.parentNode = this;
+    if (i === -1) this.childNodes.push(h); else this.childNodes.splice(i, 0, h);
+    if (h.nodeType === 1) this.children = this.childNodes.filter(function (x) { return x.nodeType === 1; });
+    return h;
+  };
+  Object.defineProperty(FakeNodo.prototype, "firstChild", { get: function () { return this.childNodes[0] || null; } });
+  Object.defineProperty(FakeNodo.prototype, "lastChild", { get: function () { return this.childNodes[this.childNodes.length - 1] || null; } });
+  Object.defineProperty(FakeNodo.prototype, "textContent", {
+    get: function () { return this._texto + this.childNodes.map(function (n) { return n.textContent; }).join(""); },
+    set: function (v) { this._texto = String(v); this.childNodes = []; this.children = []; }
   });
+  FakeNodo.prototype.setAttribute = function (k, v) { this.attrs[k] = String(v); if (k === "class") this.className = String(v); };
+  FakeNodo.prototype.removeAttribute = function (k) { delete this.attrs[k]; if (k === "open") this.open = false; };
+  FakeNodo.prototype.addEventListener = function (tipo, fn) { (this.handlers[tipo] = this.handlers[tipo] || []).push(fn); };
+  FakeNodo.prototype.focus = function () {};
+  FakeNodo.prototype.closest = function () { return null; };
+  FakeNodo.prototype.getBoundingClientRect = function () { return { left: 0, top: 0, width: 100, height: 40, right: 100, bottom: 40 }; };
+  FakeNodo.prototype.querySelector = function (sel) {
+    var clase = sel.charAt(0) === "." ? sel.slice(1) : null;
+    var pila = this.children.slice();
+    while (pila.length) {
+      var n = pila.shift();
+      if (clase && n.classList.contains(clase)) return n;
+      pila = pila.concat(n.children);
+    }
+    return null;
+  };
+  FakeNodo.prototype.showModal = function () { this.open = true; };
+  FakeNodo.prototype.close = function () { this.open = false; };
+  FakeNodo.prototype.click = function () { this.disparar("click"); };
+  FakeNodo.prototype.disparar = function (tipo, ev) {
+    var e = ev || {};
+    if (!e.preventDefault) e.preventDefault = function () {};
+    (this.handlers[tipo] || []).forEach(function (fn) { fn(e); });
+  };
+  Object.defineProperty(FakeNodo.prototype, "innerHTML", { set: function (v) { this._html = v; this.childNodes = []; this.children = []; }, get: function () { return this._html || ""; } });
 
-  t.test("los pasos del recorrido no se atan a clases de estilo", function () {
-    var s = freshSandbox();
-    // Dos formas válidas, y las dos son un contrato explícito: un id del
-    // HTML, o un ancla `data-tour` puesta a propósito para el recorrido.
-    // Lo que sigue prohibido es apuntar a una clase CSS o a una posición:
-    // eso ata el tutorial a la maquetación y se rompe en silencio al
-    // reestilizar.
-    var frágiles = s.TOUR_STEPS.filter(function (step) {
-      var porId = /^#[A-Za-z][\w-]*$/.test(step.target);
-      var porAncla = /^\[data-tour="[a-z-]+"\]$/.test(step.target);
-      return !porId && !porAncla;
-    }).map(function (step) { return step.id + ": " + step.target; });
-    assert.deepStrictEqual(plain(frágiles), [],
-      "un selector por clase o por posición se rompe al mover el HTML: " + frágiles.join(", "));
-  });
-
-  t.test("cada ancla `data-tour` la pinta de verdad el renderizador", function () {
-    var s = freshSandbox();
-    // Las pintan varios ficheros: las tarjetas (render.js), la lista de la
-    // compra y el resumen de datos del móvil (pestanas.js).
+  function entornoTour(opciones) {
+    opciones = opciones || {};
     var fs = require("fs");
-    var render = ["render.js", "render-shopping-list.js", "pestanas.js"].map(function (f) {
-      return fs.readFileSync(projPath("js/ui/" + f), "utf8");
-    }).join(" ");
-    var rotas = s.TOUR_STEPS.filter(function (step) {
-      if (!step.dynamic) return false;
-      var ancla = (step.target.match(/data-tour="([a-z-]+)"/) || [])[1];
-      return !ancla || render.indexOf('data-tour="' + ancla + '"') === -1;
-    }).map(function (step) { return step.id + " -> " + step.target; });
-    assert.deepStrictEqual(plain(rotas), [],
-      "el ancla no existe en render.js, el paso apuntaría a la nada: " + rotas.join(", "));
-  });
-
-  t.test("un paso `dynamic` es siempre `optional`", function () {
-    var s = freshSandbox();
-    // Su elemento no existe hasta que hay un plan pintado. Sin `optional`,
-    // el recorrido se rompería en la primera visita en vez de saltárselo.
-    var mal = s.TOUR_STEPS.filter(function (step) {
-      return step.dynamic && !step.optional;
-    }).map(function (step) { return step.id; });
-    assert.deepStrictEqual(plain(mal), [],
-      "sin `optional` apuntarían a una tarjeta que aún no existe: " + mal.join(", "));
-  });
-
-  // Los pasos que dependen de que haya un plan generado TIENEN que estar
-  // marcados como opcionales: si no, en la primera visita el recorrido
-  // apuntaría a paneles que todavía están ocultos.
-  t.test("lo que solo existe con un plan generado está marcado como opcional", function () {
-    var s = freshSandbox();
-    var dependenDelPlan = ["#shoppingPanel", "#usePlanTodayBtn"];
-    var mal = s.TOUR_STEPS.filter(function (step) {
-      return dependenDelPlan.indexOf(step.target) !== -1 && !step.optional;
-    }).map(function (step) { return step.id; });
-    assert.deepStrictEqual(plain(mal), [], "sin `optional` apuntarían a un panel oculto: " + mal.join(", "));
-  });
-
-  t.test("el id de cada paso es una palabra: de él sale la clave de traducción", function () {
-    var s = freshSandbox();
-    var mal = s.TOUR_STEPS.filter(function (step) { return !/^[a-z]+$/.test(step.id); })
-      .map(function (step) { return step.id; });
-    assert.deepStrictEqual(plain(mal), [], "ids con guiones o mayúsculas: " + mal.join(", "));
-    var ids = s.TOUR_STEPS.map(function (step) { return step.id; });
-    assert.strictEqual(new Set(ids).size, ids.length, "ids repetidos");
-  });
-
-  t.test("cada pestaña del recorrido es una de las cuatro, y cada una se visita UNA sola vez", function () {
-    // En el móvil cada paso abre la pestaña de su elemento (js/ui/pestanas.js).
-    // Si los pasos van mezclados -- menu, compra, menu, compra --, la pantalla
-    // da un salto en cada uno, que es justo lo que había que evitar. Los
-    // pasos sin pestaña (el menú ☰ se ve en todas) no cuentan.
-    var s = freshSandbox();
-    var validas = ["menu", "compra", "planes", "datos"];
-    var mal = s.TOUR_STEPS.filter(function (step) { return step.tab && validas.indexOf(step.tab) === -1; })
-      .map(function (step) { return step.id + ": " + step.tab; });
-    assert.deepStrictEqual(plain(mal), [], "pestaña desconocida: " + mal.join(", "));
-
-    var secuencia = [];
-    s.TOUR_STEPS.forEach(function (step) {
-      if (!step.tab) return;
-      if (secuencia[secuencia.length - 1] !== step.tab) secuencia.push(step.tab);
+    var vm = require("vm");
+    var temporizadores = [];
+    var teclas = [];
+    var cuerpo = new FakeNodo("body");
+    var raiz = new FakeNodo("html");
+    var doc = {
+      body: cuerpo,
+      documentElement: raiz,
+      createElement: function (tag) { return new FakeNodo(tag); },
+      createElementNS: function (ns, tag) { return new FakeNodo(tag); },
+      createTextNode: function (txt) { var n = new FakeNodo("#text"); n.nodeType = 3; n._texto = txt; return n; },
+      addEventListener: function (tipo, fn) { if (tipo === "keydown") teclas.push(fn); },
+      getElementById: function () { return null; },
+      querySelector: function () { return null; },
+      querySelectorAll: function () { return []; }
+    };
+    var win = {
+      setTimeout: function (fn) { temporizadores.push(fn); return temporizadores.length; },
+      clearTimeout: function () {},
+      matchMedia: function () { return { matches: false }; },
+      innerWidth: 390, innerHeight: 844
+    };
+    var pedidas = [];
+    var ctx = vm.createContext({ window: win, document: doc, console: console, Date: Date });
+    ctx.t = function (clave) { pedidas.push(clave); return clave; };
+    [].concat(opciones.sinDatos ? [] : ["js/data/tour-steps.js"], ["js/ui/tour-scenes.js", "js/ui/tour-fx.js", "js/ui/tour.js"]).forEach(function (f) {
+      vm.runInContext(fs.readFileSync(projPath(f), "utf8"), ctx, { filename: f });
     });
-    var vistas = {};
-    secuencia.forEach(function (tab) {
-      assert.ok(!vistas[tab], "la pestaña \"" + tab + "\" se visita dos veces separadas: " + secuencia.join(" > "));
-      vistas[tab] = true;
+    var llamadas = { start: 0, completo: 0, opts: null };
+    ctx.completeTour = function () { llamadas.completo++; };
+    ctx.getOnboardingState = function () { return opciones.estado || {}; };
+    function buscar(nodo, clase) {
+      if (nodo.classList && nodo.classList.contains(clase)) return nodo;
+      for (var i = 0; i < nodo.children.length; i++) {
+        var r = buscar(nodo.children[i], clase);
+        if (r) return r;
+      }
+      return null;
+    }
+    return {
+      ctx: ctx, llamadas: llamadas, raiz: raiz, cuerpo: cuerpo, teclas: teclas, pedidas: pedidas,
+      buscar: function (clase) { return buscar(cuerpo, clase); },
+      correrTemporizadores: function () { var l = temporizadores.splice(0); l.forEach(function (fn) { fn(); }); },
+      espiarStartTour: function () { ctx.startTour = function (o) { llamadas.start++; llamadas.opts = o || null; }; }
+    };
+  }
+
+  t.test("el id de cada escena es una palabra: de él sale la clave de traducción", function () {
+    var s = freshSandbox();
+    s.TOUR_STEPS.forEach(function (paso) {
+      assert.ok(/^[a-z]+$/.test(paso.id), "id con guiones o mayúsculas: " + paso.id);
+      assert.ok(paso.title && paso.body, "escena sin texto: " + paso.id);
     });
+  });
+
+  t.test("cada escena del recorrido tiene su maqueta, y no sobra ninguna", function () {
+    var e = entornoTour();
+    var ids = e.ctx.TOUR_STEPS.map(function (p) { return p.id; });
+    var escenas = Object.keys(e.ctx.TOUR_SCENES);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(ids.slice().sort())), JSON.parse(JSON.stringify(escenas.slice().sort())),
+      "TOUR_STEPS y TOUR_SCENES no coinciden");
+  });
+
+  t.test("cada maqueta se monta sin GSAP en su estado final, y todas sus palabras existen en TOUR_MOCK", function () {
+    var e = entornoTour();
+    e.ctx.TOUR_STEPS.forEach(function (paso) {
+      var escena = new FakeNodo("div");
+      var ctl = e.ctx.tourEscenaMontar(paso.id, escena, false);
+      assert.strictEqual(typeof ctl.parar, "function", paso.id + ": sin parar()");
+      assert.ok(escena.children.length >= 1, paso.id + ": la maqueta no pintó nada");
+      ctl.parar();
+    });
+    var usadas = {};
+    e.pedidas.forEach(function (k) {
+      if (k.indexOf("tour.m_") === 0) usadas[k.slice(7)] = true;
+    });
+    Object.keys(usadas).forEach(function (k) {
+      assert.ok(e.ctx.TOUR_MOCK[k] !== undefined, "una maqueta pide la palabra «" + k + "» y no está en TOUR_MOCK");
+    });
+    Object.keys(e.ctx.TOUR_MOCK).forEach(function (k) {
+      assert.ok(usadas[k], "TOUR_MOCK trae «" + k + "» y ninguna maqueta la usa");
+    });
+  });
+
+  t.test("sin GSAP la maqueta de la compra queda con lo marcado ya tachado (estado final)", function () {
+    var e = entornoTour();
+    var escena = new FakeNodo("div");
+    e.ctx.tourEscenaMontar("compra", escena, false);
+    var lista = escena.children[0].children[1];
+    var hechas = lista.children.filter(function (f) { return f.classList.contains("is-hecha"); });
+    assert.strictEqual(hechas.length, 2, "las dos primeras filas tienen que verse marcadas");
+    assert.ok(lista.children[2].classList.contains("is-hecha") && lista.children[3].classList.contains("is-hecha"),
+      "lo marcado baja al final de la lista");
   });
 
   t.test("el recorrido no explica lo que el dueño dejó fuera", function () {
-    // Pedido el 2026-10-06: «Compartir» e «Imprimir» la lista no se explican,
-    // y el catálogo solo se NOMBRA (desde el 2026-10-07 dentro del paso de la
-    // compra, no en uno propio) para decir que existe y nada más.
+    // Pedido el 2026-10-06: «Compartir» e «Imprimir» la lista no se explican.
     var s = freshSandbox();
-    var texto = s.TOUR_STEPS.map(function (step) { return step.id + " " + step.target + " " + step.title + " " + step.body; }).join(" ").toLowerCase();
-    ["shareListBtn", "printListBtn", "compartir", "imprimir"].forEach(function (palabra) {
-      assert.strictEqual(texto.indexOf(palabra.toLowerCase()), -1, "no se explica: " + palabra);
-    });
-    var catalogo = s.TOUR_STEPS.filter(function (step) { return step.id === "catalog"; });
-    assert.strictEqual(catalogo.length, 0, "el catálogo no tiene paso propio");
-    var compra = s.TOUR_STEPS.filter(function (step) { return step.id === "shopping"; })[0];
-    assert.ok(compra && compra.body.toLowerCase().indexOf("catálogo") !== -1, "el paso de la compra tiene que decir que el catálogo existe");
-  });
-
-  t.test("el recorrido es corto y cada paso dice para qué sirve la función", function () {
-    var s = freshSandbox();
-    // El tope subió de 8 a 11 el 2026-09-03, cuando el usuario pidió cubrir
-    // las funciones que faltaban (recetas, "↻ Cambiar", horario, catálogo y
-    // "Mis planes"). Sigue habiendo tope, y a propósito: la razón original
-    // -- un recorrido que no se termina no enseña nada -- no ha dejado de
-    // ser cierta, solo se ha movido la raya. Si hace falta subirla otra vez,
-    // que sea quitando un paso antes de añadir dos.
-    // Tope 20 desde el 2026-10-06: el dueño pidió que se explique TODO botón
-    // de uso frecuente (el de cambiar una comida, la cámara de Mercadona, las
-    // casillas de la compra...), no solo lo que no se descubre solo. El
-    // recorrido pasó de 11 a 18 pasos, y a cambio no arranca solo: se pregunta.
-    assert.ok(s.TOUR_STEPS.length >= 4 && s.TOUR_STEPS.length <= 20,
-      "un recorrido que no se termina no enseña nada; hay " + s.TOUR_STEPS.length + " pasos");
-    s.TOUR_STEPS.forEach(function (step) {
-      assert.ok(step.title && step.title.length > 0, "paso sin título: " + step.id);
-      assert.ok(step.body && step.body.length >= 40,
-        "el paso \"" + step.id + "\" no explica para qué sirve, solo lo nombra");
+    var texto = s.TOUR_STEPS.map(function (p) { return p.id + " " + p.title + " " + p.body; })
+      .concat(Object.keys(s.TOUR_MOCK).map(function (k) { return s.TOUR_MOCK[k]; })).join(" ").toLowerCase();
+    ["compartir", "imprimir"].forEach(function (palabra) {
+      assert.strictEqual(texto.indexOf(palabra), -1, "no se explica: " + palabra);
     });
   });
 
-  t.test("el recorrido cubre las funciones que un recién llegado no descubriría solo", function () {
+  t.test("el recorrido es corto y cada escena dice para qué sirve la función", function () {
     var s = freshSandbox();
-    var ids = s.TOUR_STEPS.map(function (x) { return x.id; });
-    // La despensa, el modo sin cocinar y los planes de varios días viven
-    // detrás de botones que no cuentan lo que hacen: son justo las que hay
-    // que enseñar.
-    // Desde el 2026-10-07 (recorrido de 10 pasos) la despensa se explica en el
-    // paso de «Sin cocinar» y los días del plan en el de «Generar plan».
-    ["nocook", "generate", "shopping"].forEach(function (need) {
-      assert.ok(ids.indexOf(need) !== -1, "el recorrido no enseña: " + need);
+    // Tope 12: el dueño pidió «más corto» el 2026-10-07 y rehacerlo el
+    // 2026-10-08. Si hace falta subirlo, que sea quitando una escena antes de
+    // añadir otra: un recorrido que no se termina no enseña nada.
+    assert.ok(s.TOUR_STEPS.length <= 12, "demasiadas escenas: " + s.TOUR_STEPS.length);
+    assert.ok(s.TOUR_STEPS.length >= 6, "demasiado pocas escenas para cubrir lo que se usa a menudo");
+    s.TOUR_STEPS.forEach(function (paso) {
+      assert.ok(paso.title.length >= 8 && paso.title.length <= 45, "titular raro en " + paso.id);
+      assert.ok(paso.body.length >= 50 && paso.body.length <= 200, "texto muy corto o muy largo en " + paso.id + " (" + paso.body.length + ")");
     });
-    var texto = s.TOUR_STEPS.map(function (x) { return x.title + " " + x.body; }).join(" ").toLowerCase();
-    ["despensa", "sin cocinar", "(1, 3 o 7)", "cámara", "confirmar plan de hoy"].forEach(function (palabra) {
+  });
+
+  t.test("el recorrido nombra cada botón de uso frecuente", function () {
+    var s = freshSandbox();
+    var texto = s.TOUR_STEPS.map(function (p) { return p.title + " " + p.body; }).join(" ").toLowerCase();
+    ["«cambiar»", "«cómo se hace»", "cámara", "«confirmar plan de hoy»", "«generar plan»", "«sin cocinar»",
+     "«despensa»", "1, 3 o 7", "idioma", "aspecto", "mis planes", "macros"].forEach(function (palabra) {
       assert.ok(texto.indexOf(palabra) !== -1, "el recorrido ya no nombra: " + palabra);
     });
   });
@@ -810,190 +858,55 @@ function run(t) {
     assert.deepStrictEqual(plain(puedenQuedarVacios), ["budget"],
       "cambió qué pasos pueden quedarse vacíos: revisar la validación de _obNext()");
   });
-  // ── La pregunta del recorrido espera a que se pueda ─────────────────
-  // Reportado el 2026-10-07: «el tutorial simplemente no aparece». Con un
-  // plan de hoy ya empezado, «Generar plan» no genera: abre el diálogo
-  // «Ya tienes un plan activo». La pregunta se decidía con UNA mirada a los
-  // 0,9 s y se perdía (o salía debajo del diálogo modal). Ahora espera.
-  t.test("offerTourWhenReady espera a que haya plan y ningún diálogo abierto", function () {
-    var fs = require("fs");
-    var vm = require("vm");
-    var estado = { plan: false, dialogoAbierto: false, ahora: 0, preguntas: 0 };
-    var relojes = [];
-    var win = {
-      setInterval: function (fn) { relojes.push(fn); return relojes.length; },
-      clearInterval: function (id) { relojes[id - 1] = null; }
-    };
-    var doc = {
-      querySelectorAll: function (sel) {
-        if (sel === "dialog") return [{ open: estado.dialogoAbierto }];
-        if (sel.indexOf(".meal-card") !== -1) return estado.plan ? [{}] : [];
-        return [];
-      }
-    };
-    var ctx = vm.createContext({ window: win, document: doc, console: console,
-      Date: { now: function () { return estado.ahora; } } });
-    vm.runInContext(fs.readFileSync(projPath("js/ui/tour.js"), "utf8"), ctx);
-    ctx.offerTour = function () { estado.preguntas++; };
-
-    function pasar(veces) {
-      for (var i = 0; i < veces; i++) {
-        estado.ahora += 400;
-        relojes.forEach(function (fn) { if (fn) fn(); });
-      }
-    }
-
-    // 1. Sin plan: no pregunta, por mucho que pase.
-    ctx.offerTourWhenReady();
-    pasar(5);
-    assert.strictEqual(estado.preguntas, 0, "sin plan no hay nada que enseñar");
-
-    // 2. Con plan pero con un diálogo modal encima: espera.
-    estado.plan = true;
-    estado.dialogoAbierto = true;
-    pasar(5);
-    assert.strictEqual(estado.preguntas, 0, "con un diálogo abierto la pregunta quedaría debajo");
-
-    // 3. Se cierra el diálogo: pregunta, y UNA sola vez.
-    estado.dialogoAbierto = false;
-    pasar(6);
-    assert.strictEqual(estado.preguntas, 1, "tiene que preguntar en cuanto se pueda, una vez");
-  });
-
-  t.test("offerTourWhenReady se rinde si el diálogo se cierra sin que haya plan", function () {
-    var fs = require("fs");
-    var vm = require("vm");
-    var estado = { plan: false, dialogoAbierto: true, ahora: 0, preguntas: 0 };
-    var relojes = [];
-    var win = {
-      setInterval: function (fn) { relojes.push(fn); return relojes.length; },
-      clearInterval: function (id) { relojes[id - 1] = null; }
-    };
-    var doc = {
-      querySelectorAll: function (sel) {
-        if (sel === "dialog") return [{ open: estado.dialogoAbierto }];
-        if (sel.indexOf(".meal-card") !== -1) return estado.plan ? [{}] : [];
-        return [];
-      }
-    };
-    var ctx = vm.createContext({ window: win, document: doc, console: console,
-      Date: { now: function () { return estado.ahora; } } });
-    vm.runInContext(fs.readFileSync(projPath("js/ui/tour.js"), "utf8"), ctx);
-    ctx.offerTour = function () { estado.preguntas++; };
-
-    ctx.offerTourWhenReady();
-    estado.ahora += 400; relojes.forEach(function (fn) { if (fn) fn(); });   // ve el diálogo
-    estado.dialogoAbierto = false;                                          // «Cancelar»: sigue sin plan
-    estado.ahora += 400; relojes.forEach(function (fn) { if (fn) fn(); });
-    // Aunque luego aparezca un plan por otro camino, ya no se pregunta.
-    estado.plan = true;
-    for (var i = 0; i < 6; i++) { estado.ahora += 400; relojes.forEach(function (fn) { if (fn) fn(); }); }
-    assert.strictEqual(estado.preguntas, 0, "tras «Cancelar» no hay que preguntar nada");
-  });
-  // ── La pregunta sale ANTES que el plan ──────────────────────────────
-  // 2026-10-07, a petición del usuario: tras el cuestionario la pregunta del
-  // recorrido tiene que salir al instante, no después de crear el plan. El
-  // plan se genera cuando contesta (offerTour(alResponder)) y, si dijo «Sí»,
-  // el recorrido arranca al pintarse (maybeStartTour).
-  function entornoPregunta(estadoOnboarding) {
-    var fs = require("fs");
-    var vm = require("vm");
-    function el(tag) {
-      return {
-        tag: tag, className: "", id: "", hidden: false, children: [], handlers: {}, style: {},
-        textContent: "", type: "",
-        appendChild: function (c) { this.children.push(c); return c; },
-        addEventListener: function (tipo, fn) { (this.handlers[tipo] = this.handlers[tipo] || []).push(fn); },
-        setAttribute: function () {}, focus: function () {},
-        click: function () { (this.handlers.click || []).forEach(function (fn) { fn(); }); },
-        classList: { add: function () {}, remove: function () {}, contains: function () { return false; } }
-      };
-    }
-    function buscar(nodo, clase) {
-      if ((" " + nodo.className + " ").indexOf(" " + clase + " ") !== -1) return nodo;
-      for (var i = 0; i < nodo.children.length; i++) {
-        var r = buscar(nodo.children[i], clase);
-        if (r) return r;
-      }
-      return null;
-    }
-    var teclas = [];
-    var temporizadores = [];
-    var cuerpo = el("body");
-    var doc = {
-      body: cuerpo,
-      createElement: el,
-      addEventListener: function (tipo, fn) { if (tipo === "keydown") teclas.push(fn); },
-      getElementById: function () { return null; },
-      querySelector: function () { return null; },
-      querySelectorAll: function () { return []; }
-    };
-    var win = {
-      setTimeout: function (fn) { temporizadores.push(fn); return temporizadores.length; },
-      clearTimeout: function () {}, setInterval: function () { return 1; }, clearInterval: function () {},
-      addEventListener: function () {}, removeEventListener: function () {},
-      requestAnimationFrame: function () { return 1; }, cancelAnimationFrame: function () {}
-    };
-    var ctx = vm.createContext({ window: win, document: doc, console: console, Date: Date });
-    vm.runInContext(fs.readFileSync(projPath("js/ui/tour.js"), "utf8"), ctx);
-    var llamadas = { start: 0, completo: 0 };
-    ctx.startTour = function () { llamadas.start++; };
-    ctx.completeTour = function () { llamadas.completo++; };
-    ctx.getOnboardingState = function () { return estadoOnboarding || {}; };
-    return {
-      ctx: ctx, llamadas: llamadas, teclas: teclas,
-      si: function () { buscar(buscar(cuerpo, "tour-ask"), "tour__next").handlers.click[0](); },
-      no: function () { buscar(buscar(cuerpo, "tour-ask"), "tour__prev").handlers.click[0](); },
-      visible: function () { var r = buscar(cuerpo, "tour-ask"); return !!r && !r.hidden; },
-      correrTemporizadores: function () { var l = temporizadores.splice(0); l.forEach(function (fn) { fn(); }); }
-    };
+  // ── La pregunta sale ANTES que el plan, y el recorrido es un <dialog> ──
+  // 2026-10-07: tras el cuestionario sale «¿Quieres ver un recorrido?» al
+  // instante y el plan se genera DESPUÉS. 2026-10-08: con el recorrido rehecho,
+  // «sí» abre el recorrido (no necesita plan) y el plan se genera cuando se
+  // cierra; ambos son <dialog> modales, así que ningún otro diálogo los tapa.
+  function entornoPregunta(estado) {
+    var e = entornoTour({ estado: estado });
+    e.espiarStartTour();
+    e.si = function () { e.buscar("tour__next").click(); };
+    e.no = function () { e.buscar("tour__prev").click(); };
+    e.visible = function () { var r = e.buscar("tour-ask"); return !!r && !r.hidden; };
+    return e;
   }
 
-  t.test("«Sí» a la pregunta del cuestionario avisa para generar el plan y el recorrido arranca al pintarse", function () {
+  t.test("«Sí» abre el recorrido y el plan se genera cuando el recorrido se cierra", function () {
     var e = entornoPregunta({});
     var respuestas = [];
     e.ctx.offerTour(function (q) { respuestas.push(q); });
     assert.strictEqual(e.visible(), true, "la pregunta tiene que salir al instante");
     assert.deepStrictEqual(respuestas, [], "todavía no ha contestado");
     e.si();
-    assert.deepStrictEqual(respuestas, [true], "«Sí» avisa UNA vez, para que se genere el plan");
     assert.strictEqual(e.visible(), false, "la pregunta se cierra");
-    assert.strictEqual(e.llamadas.start, 0, "aún no hay plan que señalar: el recorrido no arranca todavía");
-    // El plan se pinta: app.js llama a maybeStartTour() al final de cada generación.
-    e.ctx.maybeStartTour();
-    e.correrTemporizadores();
-    assert.strictEqual(e.llamadas.start, 1, "al pintarse el plan arranca el recorrido que pidió");
-    // Y solo esa vez: el siguiente plan no vuelve a arrancarlo.
-    e.ctx.maybeStartTour();
-    e.correrTemporizadores();
-    assert.strictEqual(e.llamadas.start, 1, "el «Sí» se gasta con un solo recorrido");
+    assert.strictEqual(e.llamadas.start, 1, "«Sí» abre el recorrido en el acto: ya no hace falta un plan");
+    assert.deepStrictEqual(respuestas, [], "el plan no se genera mientras suena el recorrido");
+    e.llamadas.opts.alCerrar();
+    assert.deepStrictEqual(respuestas, [true], "al cerrarse el recorrido (acabado o saltado) se genera el plan");
   });
 
-  t.test("«Sí» arranca el recorrido aunque ya lo hubiera visto antes (repetir el alta)", function () {
-    var e = entornoPregunta({ tourDoneAt: "2026-10-01T00:00:00Z" });
-    e.ctx.offerTour(function () {});
-    e.si();
-    e.ctx.maybeStartTour();
-    e.correrTemporizadores();
-    assert.strictEqual(e.llamadas.start, 1);
-  });
-
-  t.test("«No» y Escape avisan para generar el plan, lo recuerdan y NO arrancan el recorrido", function () {
+  t.test("«No» y Escape avisan para generar el plan al momento, lo recuerdan y NO abren el recorrido", function () {
     var e = entornoPregunta({});
     var respuestas = [];
     e.ctx.offerTour(function (q) { respuestas.push(q); });
     e.no();
     assert.deepStrictEqual(respuestas, [false]);
     assert.strictEqual(e.llamadas.completo, 1, "el «No» se guarda para siempre");
-    e.ctx.maybeStartTour();
-    e.correrTemporizadores();
     assert.strictEqual(e.llamadas.start, 0);
 
+    // Escape en un <dialog> llega como `cancel`; sin <dialog> de verdad, como keydown.
     var e2 = entornoPregunta({});
     var r2 = [];
     e2.ctx.offerTour(function (q) { r2.push(q); });
-    e2.teclas.forEach(function (fn) { fn({ key: "Escape" }); });
+    e2.buscar("tour-ask").disparar("cancel");
     assert.deepStrictEqual(r2, [false], "Escape es «No»: de una pregunta hay que poder salir");
+
+    var e3 = entornoPregunta({});
+    var r3 = [];
+    e3.ctx.offerTour(function (q) { r3.push(q); });
+    e3.teclas.forEach(function (fn) { fn({ key: "Escape" }); });
+    assert.deepStrictEqual(r3, [false]);
   });
 
   t.test("si la pregunta no puede mostrarse, quien espera se entera igual (el plan se genera)", function () {
@@ -1005,14 +918,17 @@ function run(t) {
     assert.strictEqual(e.visible(), false);
   });
 
-  t.test("un «Sí» que nunca llega a un plan caduca y no arranca el recorrido de otro plan", function () {
-    var e = entornoPregunta({ tourDoneAt: "2026-10-01T00:00:00Z" });
+  t.test("la pregunta y el recorrido son <dialog> modales (capa superior: nada los tapa)", function () {
+    var e = entornoPregunta({});
     e.ctx.offerTour(function () {});
-    e.si();
-    e.ctx._tourQuiereVerlo = Date.now() - 3 * 60 * 1000;   // «Cancelar» en el diálogo: 3 min después...
-    e.ctx.maybeStartTour();
-    e.correrTemporizadores();
-    assert.strictEqual(e.llamadas.start, 0);
+    var pregunta = e.buscar("tour-ask");
+    assert.strictEqual(pregunta.tag, "dialog");
+    assert.strictEqual(pregunta.open, true, "showModal() tiene que haberse llamado");
+    var e2 = entornoTour();
+    e2.ctx.startTour();
+    var hoja = e2.buscar("tour");
+    assert.strictEqual(hoja.tag, "dialog");
+    assert.strictEqual(hoja.open, true);
   });
 
   t.test("el final del cuestionario pregunta ANTES de pulsar «Generar plan»", function () {
@@ -1026,69 +942,92 @@ function run(t) {
       "el plan se genera dentro de generarElPlan, que es lo que ejecuta la respuesta");
     assert.ok(app.indexOf("generar.click()") === genera,
       "no puede haber otro generar.click() antes: la pregunta sale antes que el plan");
-    assert.ok(app.indexOf("offerTourWhenReady") === -1,
-      "al final del cuestionario ya no se espera al plan para preguntar");
   });
 
-  t.test("«Sí» y luego «Cancelar» en «plan activo»: el recorrido arranca igualmente, una sola vez", function () {
-    var e = entornoPregunta({});
-    e.ctx.offerTour(function () {});
-    e.si();
-    e.ctx.startTourIfWanted();      // lo llama el botón «Cancelar» del diálogo
-    e.correrTemporizadores();
-    assert.strictEqual(e.llamadas.start, 1, "dijo «Sí»: no puede quedarse sin recorrido");
-    e.ctx.startTourIfWanted();
-    e.correrTemporizadores();
-    assert.strictEqual(e.llamadas.start, 1, "se gasta con un solo recorrido");
-  });
-
-  t.test("«Cancelar» sin haber dicho «Sí» (o con el «Sí» caducado) no arranca nada", function () {
-    var e = entornoPregunta({});
-    e.ctx.startTourIfWanted();
-    e.correrTemporizadores();
-    assert.strictEqual(e.llamadas.start, 0, "nadie pidió el recorrido");
-
-    var e2 = entornoPregunta({});
-    e2.ctx.offerTour(function () {});
-    e2.si();
-    e2.ctx._tourQuiereVerlo = Date.now() - 3 * 60 * 1000;
-    e2.ctx.startTourIfWanted();
-    e2.correrTemporizadores();
-    assert.strictEqual(e2.llamadas.start, 0, "un «Sí» de hace 3 minutos ya no vale");
-
-    var e3 = entornoPregunta({});
-    e3.ctx.offerTour(function () {});
-    e3.no();
-    e3.ctx.startTourIfWanted();
-    e3.correrTemporizadores();
-    assert.strictEqual(e3.llamadas.start, 0, "dijo «No»: no se le enseña nada");
-  });
-
-  t.test("el botón «Cancelar» (y Escape) del diálogo de plan activo llaman a startTourIfWanted", function () {
-    var src = require("fs").readFileSync(projPath("js/ui/render-pantry.js"), "utf8");
-    var i = src.indexOf("planReplaceCancelBtn.addEventListener");
-    assert.ok(i !== -1, "no se encuentra el botón Cancelar");
-    assert.ok(src.slice(i, i + 400).indexOf("startTourIfWanted") !== -1, "«Cancelar» tiene que llamar a startTourIfWanted()");
-    assert.ok(/addEventListener\("cancel"[\s\S]{0,200}startTourIfWanted/.test(src), "Escape tiene que hacer lo mismo que «Cancelar»");
+  t.test("«Ver la explicación otra vez» abre el recorrido: ya no repite el alta (bienvenida) si no hay plan", function () {
+    // Reportado el 2026-10-08: sin plan en pantalla, el botón del menú echaba a
+    // «elegir o crear cuenta» y solo funcionaba al volver a entrar.
+    var app = require("fs").readFileSync(projPath("js/app.js"), "utf8");
+    var i = app.indexOf("function repetirExplicacion()");
+    assert.ok(i !== -1);
+    var cuerpo = app.slice(i, app.indexOf("\n}", i));
+    assert.ok(cuerpo.indexOf("startTour()") !== -1, "tiene que abrir el recorrido");
+    assert.ok(cuerpo.indexOf("restartOnboarding") === -1, "no puede volver a repetir el alta");
   });
 
   t.test("quien vio el recorrido VIEJO (antes del 2026-10-06) vuelve a recibir la oferta, una vez", function () {
     function oferta(estado) {
-      var e = entornoPregunta(estado);
+      var e = entornoTour({ estado: estado });
       var n = 0;
-      e.ctx.offerTourWhenReady = function () { n++; };
+      e.ctx.offerTour = function () { n++; };
       e.ctx.maybeStartTour();
+      e.correrTemporizadores();
       return n;
     }
     assert.strictEqual(oferta({}), 1, "no lo ha visto");
-    assert.strictEqual(oferta({ tourDoneAt: "2026-10-01T10:00:00.000Z" }), 1, "vio el viejo, de 11 pasos");
-    assert.strictEqual(oferta({ tourDoneAt: "2026-10-07T10:00:00.000Z" }), 0, "ya vio o rechazó el nuevo");
+    assert.strictEqual(oferta({ tourDoneAt: "2026-10-01T10:00:00.000Z" }), 1, "vio el viejo");
+    assert.strictEqual(oferta({ tourDoneAt: "2026-10-07T10:00:00.000Z" }), 0, "ya vio o rechazó el actual");
     assert.strictEqual(oferta({ tourDoneAt: "no-es-una-fecha" }), 0, "ante la duda no se molesta");
+  });
+
+  t.test("el recorrido: abre, avanza escena a escena, retrocede y al terminar se cierra y se da por visto", function () {
+    var e = entornoTour();
+    var cerrados = 0;
+    e.ctx.startTour({ alCerrar: function () { cerrados++; } });
+    var hoja = e.buscar("tour");
+    assert.strictEqual(hoja.hidden, false);
+    assert.strictEqual(hoja.open, true);
+    assert.ok(e.raiz.classList.contains("tour-abierto"), "la página queda bloqueada mientras dura");
+    var total = e.ctx.TOUR_STEPS.length;
+    var siguiente = e.buscar("tour__next");
+    var atras = e.buscar("tour__prev");
+    assert.strictEqual(atras.hidden, true, "en la primera no hay «Atrás»");
+    siguiente.click();
+    assert.strictEqual(e.ctx._tourIndex, 1);
+    assert.strictEqual(atras.hidden, false);
+    atras.click();
+    assert.strictEqual(e.ctx._tourIndex, 0);
+    for (var i = 0; i < total - 1; i++) siguiente.click();
+    assert.strictEqual(e.ctx._tourIndex, total - 1, "llega a la última escena");
+    assert.strictEqual(hoja.hidden, false);
+    siguiente.click();                 // «Entendido»
+    assert.strictEqual(hoja.hidden, true, "se cierra");
+    assert.strictEqual(hoja.open, false);
+    assert.ok(!e.raiz.classList.contains("tour-abierto"), "la página se desbloquea");
+    assert.strictEqual(e.llamadas.completo, 1, "se da por visto, una vez");
+    assert.strictEqual(cerrados, 1, "avisa a quien esperaba, una vez");
+  });
+
+  t.test("saltar, la X y Escape cierran el recorrido y lo dan por visto; no hace falta plan", function () {
+    ["skip", "x", "cancel"].forEach(function (via) {
+      var e = entornoTour();
+      var cerrados = 0;
+      e.ctx.startTour({ alCerrar: function () { cerrados++; } });
+      var hoja = e.buscar("tour");
+      if (via === "skip") e.buscar("tour__skip").click();
+      else if (via === "x") e.buscar("tour__x").click();
+      else hoja.disparar("cancel");
+      assert.strictEqual(hoja.hidden, true, via + ": se cierra");
+      assert.strictEqual(e.llamadas.completo, 1, via + ": se da por visto");
+      assert.strictEqual(cerrados, 1, via + ": avisa a quien esperaba");
+      // y se puede volver a abrir
+      e.ctx.startTour();
+      assert.strictEqual(hoja.hidden, false, via + ": se reabre");
+    });
+  });
+
+  t.test("sin escenas (datos que no cargan) el recorrido no se abre, pero quien esperaba se entera", function () {
+    var e = entornoTour({ sinDatos: true });
+    var cerrados = 0;
+    e.ctx.startTour({ alCerrar: function () { cerrados++; } });
+    assert.strictEqual(cerrados, 1, "si no hay recorrido, que se genere el plan igualmente");
+    var hoja = e.buscar("tour");
+    assert.ok(!hoja || hoja.hidden, "no queda nada abierto");
   });
 
   // ── Sin emojis, y la animación es opcional ─────────────────────────────
   // El dueño los descartó el 2026-10-07 («убери нахуй эти иишные смайлики»):
-  // la insignia del recorrido lleva el número del paso, no un emoji.
+  // las maquetas usan los iconos de la propia aplicación, no emojis.
   function tieneEmoji(texto) {
     for (var i = 0; i < texto.length; i++) {
       var cp = texto.codePointAt(i);
@@ -1100,14 +1039,9 @@ function run(t) {
     return false;
   }
 
-  t.test("el recorrido no lleva emojis: ni en los pasos, ni en las traducciones, ni en el código", function () {
+  t.test("el recorrido no lleva emojis: ni en los textos, ni en las traducciones, ni en el código", function () {
     var fs = require("fs");
-    var s = freshSandbox();
-    s.TOUR_STEPS.forEach(function (paso) {
-      assert.ok(!tieneEmoji(paso.title + " " + paso.body), "emoji en el texto del paso " + paso.id);
-      assert.strictEqual(paso.icon, undefined, "el paso " + paso.id + " trae un `icon`: la insignia lleva el número");
-    });
-    ["js/ui/tour.js", "js/ui/tour-fx.js", "js/data/tour-steps.js", "js/i18n/en.js", "js/i18n/ru.js", "js/i18n/es.js"].forEach(function (f) {
+    ["js/ui/tour.js", "js/ui/tour-fx.js", "js/ui/tour-scenes.js", "js/data/tour-steps.js", "js/i18n/en.js", "js/i18n/ru.js", "js/i18n/es.js"].forEach(function (f) {
       var lineas = fs.readFileSync(projPath(f), "utf8").split(String.fromCharCode(10));
       lineas.forEach(function (l, i) {
         if (l.indexOf("tour") === -1 && f.indexOf("i18n") !== -1) return;   // en las tablas solo las claves del recorrido
@@ -1116,36 +1050,39 @@ function run(t) {
     });
   });
 
-  t.test("los pasos con botón llevan tap, y los que enseñan un panel entero no", function () {
-    var s = freshSandbox();
-    var conTap = s.TOUR_STEPS.filter(function (p) { return p.tap; }).map(function (p) { return p.id; });
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(conTap)),
-      ["swap", "recipe", "photo", "today", "generate", "nocook", "settings"]);
-  });
-
   t.test("tour.js solo usa las animaciones si existen: sin GSAP el recorrido es el de siempre", function () {
-    var src = require("fs").readFileSync(projPath("js/ui/tour.js"), "utf8");
-    var llamadas = src.match(/tourFx[A-Z][A-Za-z]*\(/g) || [];
-    assert.ok(llamadas.length >= 6, "tour.js tendría que llamar a las animaciones");
-    llamadas.forEach(function (ll) {
-      var nombre = ll.slice(0, -1);
-      assert.ok(src.indexOf('typeof ' + nombre + ' === "function"') !== -1, nombre + " se llama sin comprobar antes que existe");
+    var fs = require("fs");
+    var src = fs.readFileSync(projPath("js/ui/tour.js"), "utf8");
+    var fx = fs.readFileSync(projPath("js/ui/tour-fx.js"), "utf8") + fs.readFileSync(projPath("js/ui/tour-scenes.js"), "utf8");
+    ["tourFxActivo", "tourFxPalabras", "tourFxFondo", "tourFxConfeti", "tourEscenaMontar"].forEach(function (nombre) {
+      assert.ok(src.indexOf('typeof ' + nombre + ' === "function"') !== -1 || src.indexOf('typeof ' + nombre + ' !== "function"') !== -1,
+        nombre + " se llama sin comprobar antes que existe");
+      assert.ok(fx.indexOf("function " + nombre + "(") !== -1, nombre + " no está definida");
     });
-    // y cada una existe de verdad en tour-fx.js
-    var fx = require("fs").readFileSync(projPath("js/ui/tour-fx.js"), "utf8");
-    llamadas.forEach(function (ll) {
-      var nombre = ll.slice(0, -1);
-      assert.ok(fx.indexOf("function " + nombre + "(") !== -1, nombre + " no está definida en tour-fx.js");
-    });
+    // GSAP solo se toca detrás de tourFxActivo()
+    assert.ok(src.indexOf("gsap.") !== -1);
   });
 
-  t.test("tour-fx.js se carga ANTES que tour.js, y GSAP antes que los dos", function () {
+  t.test("el recorrido es un <dialog> con showModal(), y la página se bloquea con una clase", function () {
+    var src = require("fs").readFileSync(projPath("js/ui/tour.js"), "utf8");
+    assert.ok(src.indexOf('createElement("dialog")') !== -1);
+    assert.ok(src.indexOf("showModal") !== -1);
+    assert.ok(src.indexOf("tour-abierto") !== -1);
+    var css = require("fs").readFileSync(projPath("assets/css/style.css"), "utf8");
+    assert.ok(css.indexOf("html.tour-abierto") !== -1, "falta el CSS que bloquea el desplazamiento");
+    assert.ok(css.indexOf("backdrop-filter:") === -1 || css.indexOf("backdrop-filter:") > css.indexOf("/* ══ 16."),
+      "el recorrido no debe usar backdrop-filter: desenfocar un fondo que se mueve da tirones en el móvil");
+  });
+
+  t.test("tour-fx.js y tour-scenes.js se cargan ANTES que tour.js, y GSAP antes que todos", function () {
     var html = require("fs").readFileSync(projPath("index.html"), "utf8");
     var g = html.indexOf("gsap.min.js");
     var fx = html.indexOf("js/ui/tour-fx.js?v=");
+    var esc = html.indexOf("js/ui/tour-scenes.js?v=");
     var tour = html.indexOf("js/ui/tour.js?v=");
-    assert.ok(g !== -1 && fx !== -1 && tour !== -1 && g < fx && fx < tour);
+    assert.ok(g !== -1 && fx !== -1 && esc !== -1 && tour !== -1 && g < fx && fx < esc && esc < tour);
   });
+
 }
 
 module.exports = { run: run };

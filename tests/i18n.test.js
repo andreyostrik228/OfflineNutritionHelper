@@ -453,6 +453,8 @@ function run(t) {
       claves.push("tour." + paso.id + "_titulo");
       claves.push("tour." + paso.id + "_cuerpo");
     });
+    // Y las palabras de dentro de las maquetas (TOUR_MOCK).
+    Object.keys(s.TOUR_MOCK || {}).forEach(function (k) { claves.push("tour.m_" + k); });
     return claves;
   }
 
@@ -481,9 +483,11 @@ function run(t) {
     // Si TOUR_STEPS deja de cargar en el sandbox, la lista sale vacía y los
     // dos tests de abajo pasarían sin comprobar nada.
     var claves = clavesDelRecorrido();
-    assert.ok(claves.length >= 20,
-      "solo " + claves.length + " claves derivadas de TOUR_STEPS");
-    assert.strictEqual(claves.length % 2, 0, "cada paso son dos claves");
+    assert.ok(claves.length >= 50,
+      "solo " + claves.length + " claves derivadas de TOUR_STEPS y TOUR_MOCK");
+    var s = loadBrowserGlobals([projPath("js/data/tour-steps.js")]);
+    assert.strictEqual(claves.length, s.TOUR_STEPS.length * 2 + Object.keys(s.TOUR_MOCK).length,
+      "cada escena son dos claves y cada palabra de maqueta una");
   });
 
   t.test("una traducción no inventa claves que el español no tiene", function () {

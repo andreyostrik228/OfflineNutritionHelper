@@ -170,7 +170,7 @@ function _crearResumenDeDatos() {
   caja.id = "resumenDatos";
   caja.innerHTML =
     '<p class="resumen-datos__texto" id="resumenDatosTexto"></p>' +
-    '<button type="button" class="resumen-datos__btn" data-tour="editdata">' +
+    '<button type="button" class="resumen-datos__btn">' +
       '<span data-i18n="ui.cambiar_mis_datos">' + escapeHtml(_tx("ui.cambiar_mis_datos")) + '</span></button>';
   caja.querySelector("button").addEventListener("click", function () { activarPestana("datos"); });
   resultados.insertBefore(caja, resultados.firstChild);
