@@ -801,6 +801,95 @@ function run(t) {
     assert.deepStrictEqual(plain(puedenQuedarVacios), ["budget"],
       "cambió qué pasos pueden quedarse vacíos: revisar la validación de _obNext()");
   });
+  // ── La pregunta del recorrido espera a que se pueda ─────────────────
+  // Reportado el 2026-10-07: «el tutorial simplemente no aparece». Con un
+  // plan de hoy ya empezado, «Generar plan» no genera: abre el diálogo
+  // «Ya tienes un plan activo». La pregunta se decidía con UNA mirada a los
+  // 0,9 s y se perdía (o salía debajo del diálogo modal). Ahora espera.
+  t.test("offerTourWhenReady espera a que haya plan y ningún diálogo abierto", function () {
+    var fs = require("fs");
+    var vm = require("vm");
+    var estado = { plan: false, dialogoAbierto: false, ahora: 0, preguntas: 0 };
+    var relojes = [];
+    var win = {
+      setInterval: function (fn) { relojes.push(fn); return relojes.length; },
+      clearInterval: function (id) { relojes[id - 1] = null; }
+    };
+    var doc = {
+      querySelectorAll: function (sel) {
+        if (sel === "dialog") return [{ open: estado.dialogoAbierto }];
+        if (sel.indexOf(".meal-card") !== -1) return estado.plan ? [{}] : [];
+        return [];
+      }
+    };
+    var ctx = vm.createContext({ window: win, document: doc, console: console,
+      Date: { now: function () { return estado.ahora; } } });
+    vm.runInContext(fs.readFileSync(projPath("js/ui/tour.js"), "utf8"), ctx);
+    ctx.offerTour = function () { estado.preguntas++; };
+
+    function pasar(veces) {
+      for (var i = 0; i < veces; i++) {
+        estado.ahora += 400;
+        relojes.forEach(function (fn) { if (fn) fn(); });
+      }
+    }
+
+    // 1. Sin plan: no pregunta, por mucho que pase.
+    ctx.offerTourWhenReady();
+    pasar(5);
+    assert.strictEqual(estado.preguntas, 0, "sin plan no hay nada que enseñar");
+
+    // 2. Con plan pero con un diálogo modal encima: espera.
+    estado.plan = true;
+    estado.dialogoAbierto = true;
+    pasar(5);
+    assert.strictEqual(estado.preguntas, 0, "con un diálogo abierto la pregunta quedaría debajo");
+
+    // 3. Se cierra el diálogo: pregunta, y UNA sola vez.
+    estado.dialogoAbierto = false;
+    pasar(6);
+    assert.strictEqual(estado.preguntas, 1, "tiene que preguntar en cuanto se pueda, una vez");
+  });
+
+  t.test("offerTourWhenReady se rinde si el diálogo se cierra sin que haya plan", function () {
+    var fs = require("fs");
+    var vm = require("vm");
+    var estado = { plan: false, dialogoAbierto: true, ahora: 0, preguntas: 0 };
+    var relojes = [];
+    var win = {
+      setInterval: function (fn) { relojes.push(fn); return relojes.length; },
+      clearInterval: function (id) { relojes[id - 1] = null; }
+    };
+    var doc = {
+      querySelectorAll: function (sel) {
+        if (sel === "dialog") return [{ open: estado.dialogoAbierto }];
+        if (sel.indexOf(".meal-card") !== -1) return estado.plan ? [{}] : [];
+        return [];
+      }
+    };
+    var ctx = vm.createContext({ window: win, document: doc, console: console,
+      Date: { now: function () { return estado.ahora; } } });
+    vm.runInContext(fs.readFileSync(projPath("js/ui/tour.js"), "utf8"), ctx);
+    ctx.offerTour = function () { estado.preguntas++; };
+
+    ctx.offerTourWhenReady();
+    estado.ahora += 400; relojes.forEach(function (fn) { if (fn) fn(); });   // ve el diálogo
+    estado.dialogoAbierto = false;                                          // «Cancelar»: sigue sin plan
+    estado.ahora += 400; relojes.forEach(function (fn) { if (fn) fn(); });
+    // Aunque luego aparezca un plan por otro camino, ya no se pregunta.
+    estado.plan = true;
+    for (var i = 0; i < 6; i++) { estado.ahora += 400; relojes.forEach(function (fn) { if (fn) fn(); }); }
+    assert.strictEqual(estado.preguntas, 0, "tras «Cancelar» no hay que preguntar nada");
+  });
+
+  t.test("el final del cuestionario espera con offerTourWhenReady, no con una sola mirada", function () {
+    var fs = require("fs");
+    var app = fs.readFileSync(projPath("js/app.js"), "utf8");
+    assert.ok(app.indexOf("offerTourWhenReady") !== -1,
+      "js/app.js tiene que usar offerTourWhenReady() al terminar el cuestionario");
+    assert.ok(!/hayPlan\s*&&\s*typeof offerTour/.test(app),
+      "la mirada única a los 0,9 s dejó sin pregunta a quien tiene un plan activo");
+  });
 }
 
 module.exports = { run: run };

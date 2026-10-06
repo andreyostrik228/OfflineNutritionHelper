@@ -53,6 +53,7 @@
  *   offerTour()      → pregunta si quiere verlo; sí arranca, no lo da por visto
  *   startTour()      → arranca desde el primer paso
  *   maybeStartTour() → pregunta solo si al usuario le toca (tras su 1er plan)
+ *   offerTourWhenReady() → pregunta en cuanto haya plan y ningún diálogo abierto
  *   stopTour()       → cierra y da el recorrido por visto
  * ──────────────────────────────────────────────────────
  */
@@ -742,5 +743,73 @@ function maybeStartTour() {
   if (estado && estado.tourDoneAt) return;
   // Un respiro antes de preguntar: el plan acaba de aparecer y merece verse
   // un segundo antes de que algo se ponga por encima.
-  window.setTimeout(offerTour, 700);
+  offerTourWhenReady();
+}
+
+/**
+ * Ofrece el recorrido en cuanto se pueda, no a una hora fija.
+ *
+ * Al terminar el cuestionario se pulsa «Generar plan» y, 0,9 s después, se
+ * miraba UNA vez si había plan para preguntar. Esa mirada única fallaba en el
+ * caso más normal de quien usa la aplicación a diario: con un plan de hoy ya
+ * empezado (una comida cocinada o la compra hecha), «Generar plan» no genera
+ * nada, abre el diálogo «Ya tienes un plan activo hoy», y la pregunta se
+ * perdía -- o, peor, salía por debajo de ese diálogo modal, que está en la
+ * capa superior del navegador y tapa cualquier z-index. Reportado el
+ * 2026-10-07 como «el tutorial simplemente no aparece».
+ *
+ * Aquí se ESPERA a que se den las tres cosas a la vez, y a que se sigan
+ * dando un instante para no preguntar a mitad de un repintado:
+ *   - hay un plan pintado (los pasos casi todos nacen de él),
+ *   - no hay ningún <dialog> abierto (el de «plan activo», el de la cuenta…),
+ *   - no hay ya un recorrido ni una pregunta en pantalla.
+ * Si se vio un diálogo y se cerró SIN que hubiera plan (dijo «Cancelar»), se
+ * deja de esperar: no hay nada que enseñar y preguntar entonces sería raro.
+ * Para ese caso está «Ver la explicación otra vez».
+ *
+ * @returns {void}
+ */
+var _tourEspera = null;
+var TOUR_ESPERA_MS = 400;        // cada cuánto se mira
+var TOUR_ESPERA_MAX = 120000;    // y cuánto se espera como máximo (2 min)
+
+function _tourHayPlanPintado() {
+  return document.querySelectorAll("#mealsContainer .meal-card:not([data-empty])").length > 0;
+}
+
+function _tourHayDialogoAbierto() {
+  var d = document.querySelectorAll("dialog");
+  for (var i = 0; i < d.length; i++) {
+    if (d[i].open) return true;
+  }
+  return false;
+}
+
+function offerTourWhenReady() {
+  if (_tourEspera) window.clearInterval(_tourEspera);
+  var desde = Date.now();
+  var estables = 0;
+  var vioDialogo = false;
+
+  _tourEspera = window.setInterval(function () {
+    var fin = function () { window.clearInterval(_tourEspera); _tourEspera = null; };
+    if (Date.now() - desde > TOUR_ESPERA_MAX) { fin(); return; }
+
+    // Ya hay algo del recorrido delante: no se pisa.
+    if ((_tourEls && !_tourEls.root.hidden) || (_tourAsk && !_tourAsk.root.hidden)) {
+      fin();
+      return;
+    }
+
+    var dialogo = _tourHayDialogoAbierto();
+    var plan = _tourHayPlanPintado();
+    if (dialogo) { vioDialogo = true; estables = 0; return; }
+    if (vioDialogo && !plan) { fin(); return; }
+
+    if (!plan) { estables = 0; return; }
+    estables++;
+    if (estables < 2) return;   // dos miradas seguidas: ~0,8 s de calma
+    fin();
+    offerTour();
+  }, TOUR_ESPERA_MS);
 }

@@ -5,6 +5,25 @@
 > Escrito para alguien que llega SIN NINGÚN contexto previo. Si solo lees
 > una parte de este archivo, que sea esta.
 >
+> ### ⏩ UPDATE 2026-10-07 (b) — «el tutorial no aparece»: la pregunta esperaba UNA sola vez
+>
+> **795 tests en verde. Sello `20261007b`. SIN commit ni despliegue todavía.**
+> Reproducido con Chrome sin interfaz: con un plan de hoy ya empezado (una
+> comida cocinada o la compra hecha) y no terminado, «Generar plan» no genera:
+> abre el diálogo «Ya tienes un plan activo hoy» (`getBlockingActiveEntry`,
+> `js/app.js`). Al terminar el cuestionario la pregunta del recorrido se
+> decidía con UNA mirada a los 0,9 s (¿hay plan pintado?) y se perdía; si el
+> plan estaba pintado, salía POR DEBAJO del `<dialog>` modal (capa superior).
+> Arreglo: `offerTourWhenReady()` (`js/ui/tour.js`) espera a que haya plan
+> pintado y ningún `<dialog>` abierto, dos miradas seguidas (~0,8 s); se rinde
+> si se vio un diálogo y se cerró sin plan («Cancelar»); tope de 2 min. Lo usan
+> el final del cuestionario y `maybeStartTour()`. Medido: con plan activo →
+> «Cambiar el plan completo» → sale la pregunta a ~1 s; «Cancelar» → no sale
+> (no hay plan en el Menú que señalar; queda «Ver la explicación otra vez»).
+> Los 10 aspectos × 390 y 1280 px: la pregunta y la tarjeta del paso 1 están
+> en pantalla y sus botones se pueden pulsar (`elementFromPoint`). 3 tests nuevos
+> (comportamiento con `window`/`document` falsos).
+>
 > ### ⏩ UPDATE 2026-10-07 — recorrido guiado reescrito: 18 pasos, tarjeta fija y pregunta tras el cuestionario
 >
 > **792 tests en verde (eran 789). Sello `20261007a`. DESPLEGADO el 2026-10-07**

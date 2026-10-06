@@ -1687,13 +1687,12 @@ document.addEventListener("DOMContentLoaded", function () {
           // (reportado el 2026-09-03). Un «No» queda guardado: para verlo
           // después está «Ver la explicación otra vez».
           //
-          // Se espera a que el plan esté pintado: el recorrido descarta los
-          // pasos cuyo elemento no existe, y casi todos nacen con el plan.
-          window.setTimeout(function () {
-            var hayPlan = document.querySelectorAll(
-              "#mealsContainer .meal-card:not([data-empty])").length > 0;
-            if (hayPlan && typeof offerTour === "function") offerTour();
-          }, 900);
+          // Se espera a que el plan esté pintado Y a que no haya ningún
+          // diálogo abierto (offerTourWhenReady, js/ui/tour.js): con un plan
+          // de hoy ya empezado, «Generar plan» abre «Ya tienes un plan
+          // activo» en vez de generar, y una sola mirada a los 0,9 s dejaba
+          // al usuario sin pregunta (reportado el 2026-10-07).
+          if (typeof offerTourWhenReady === "function") offerTourWhenReady();
         }, 450);
       }
     });
