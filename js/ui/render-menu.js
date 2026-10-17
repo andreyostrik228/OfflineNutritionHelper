@@ -117,6 +117,8 @@ function applyI18nToDom(lang) {
   // asi que este barrido no lo toca. Si esta abierto cuando se cambia de
   // idioma, se queda en el anterior hasta el siguiente paso.
   if (typeof refreshTourTexts === "function") refreshTourTexts();
+  // El panel de entrenamientos repinta su plan en el idioma nuevo (si está abierto).
+  if (typeof renderEntrenoSiVisible === "function") renderEntrenoSiVisible();
 }
 
 // ── Cuando el navegador traduce la página por su cuenta ──────────────────

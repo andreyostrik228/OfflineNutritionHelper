@@ -89,7 +89,8 @@ var suites = [
   "onboarding.test",
   "css-visibility.test",
   "store-theme.test",
-  "workout-generator.test"
+  "workout-generator.test",
+  "entreno.test"
 ];
 
 (async function () {

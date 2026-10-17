@@ -106,8 +106,8 @@
        .css. Si se olvida, lo peor que pasa es lo de siempre; si se sube,
        no hay mezcla posible.
        ══════════════════════════════════════════════════════════════════ -->
-  <link rel="stylesheet" href="assets/css/style.css?v=20261017a">
-  <link rel="stylesheet" href="assets/css/paginas.css?v=20261017a">
+  <link rel="stylesheet" href="assets/css/style.css?v=20261017b">
+  <link rel="stylesheet" href="assets/css/paginas.css?v=20261017b">
 
   <!-- ══ ANTES DE PINTAR NADA ══════════════════════════════════════════
        Decide, de forma SÍNCRONA y antes del primer pintado, si este
@@ -564,6 +564,16 @@
         </button>
       </div>
     </header>
+
+    <!-- ══ MODO: MENÚ o ENTRENAMIENTOS ═══════════════════════════════════
+         Botón fijo arriba: un toque cambia la página entera entre el menú
+         y el plan de entrenamiento (js/ui/render-entreno.js). ══ -->
+    <div class="modo-barra">
+      <button type="button" class="modo-btn" id="modoBtn" aria-pressed="false">
+        <svg width="18" height="18" aria-hidden="true"><use href="#icon-bolt"/></svg>
+        <span class="modo-btn__texto" data-i18n="ent.boton_entreno">Entrenamientos</span>
+      </button>
+    </div>
 
     <!-- ══ AVISO DE TRADUCCION AUTOMATICA ════════════════════════════════
          Sale SOLO cuando el navegador traduce la pagina a un idioma que
@@ -1427,6 +1437,51 @@
 
     </main>
 
+    <!-- ══ ENTRENAMIENTOS: el panel que se ve al pulsar el botón de arriba.
+         Lo pinta js/ui/render-entreno.js; los días y el objetivo salen de
+         «Mis datos» (#workouts y #goal). ══ -->
+    <section class="entreno" id="entrenoPanel" aria-labelledby="entrenoTitulo" hidden>
+      <h2 class="entreno__titulo" id="entrenoTitulo" data-i18n="ent.titulo">Entrenamientos de la semana</h2>
+      <p class="entreno__intro" data-i18n="ent.intro">Los días y el objetivo salen de «Mis datos». El nivel, el material y el número de semana los eliges aquí.</p>
+
+      <div class="entreno__aviso" id="entrenoSinDias" hidden>
+        <p data-i18n="ent.sin_dias">En «Mis datos» no hay días de entrenamiento. Indica cuántos días entrenas a la semana.</p>
+        <button type="button" class="btn-secondary" id="entAbrirDatos" data-i18n="ent.abrir_datos">Abrir «Mis datos»</button>
+      </div>
+
+      <div class="entreno__controles">
+        <div class="field">
+          <label for="entNivel" data-i18n="ent.etiqueta_nivel">Nivel</label>
+          <select id="entNivel">
+            <option value="principiante" data-i18n="ent.nivel_principiante">Principiante</option>
+            <option value="intermedio" data-i18n="ent.nivel_intermedio">Intermedio</option>
+            <option value="avanzado" data-i18n="ent.nivel_avanzado">Avanzado</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="entEquipo" data-i18n="ent.etiqueta_equipo">Material</label>
+          <select id="entEquipo">
+            <option value="gimnasio" data-i18n="ent.equipo_gimnasio">Gimnasio</option>
+            <option value="mancuernas" data-i18n="ent.equipo_mancuernas">Mancuernas y banco</option>
+            <option value="sin_material" data-i18n="ent.equipo_sin_material">Sin material</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="entSemana" data-i18n="ent.etiqueta_semana">Número de semana</label>
+          <input id="entSemana" type="number" min="1" max="52" value="1">
+          <p class="field-hint" data-i18n="ent.ayuda_semana">Cada 5.ª semana es de descarga.</p>
+        </div>
+      </div>
+
+      <div class="entreno__acciones">
+        <button type="button" class="btn-secondary" id="entImprimir" data-i18n="ui.imprimir">Imprimir</button>
+      </div>
+
+      <div class="entreno__salida" id="entrenoSalida" aria-live="polite"></div>
+
+      <p class="entreno__nota" data-i18n="ent.nota_idioma">Los nombres de los ejercicios y la técnica están por ahora en español.</p>
+    </section>
+
     <!-- ══ PIE ═══════════════════════════════════════════════════════════
          Dos cosas que tienen que seguir estando a mano cuando el alta ya
          es un recuerdo: el texto que se aceptó (nadie recuerda qué firmó,
@@ -1464,17 +1519,17 @@
  <script src="https://cdn.jsdelivr.net/npm/firebase@12.19.0/firebase-app-compat.js"></script>
  <script src="https://cdn.jsdelivr.net/npm/firebase@12.19.0/firebase-auth-compat.js"></script>
 
-<script src="js/data/firebase-config.js?v=20261017a"></script>
-<script src="js/data/legal.js?v=20261017a"></script>
-<script src="js/data/onboarding-steps.js?v=20261017a"></script>
-<script src="js/data/tour-steps.js?v=20261017a"></script>
-<script src="js/data/dishes.js?v=20261017a"></script>
+<script src="js/data/firebase-config.js?v=20261017b"></script>
+<script src="js/data/legal.js?v=20261017b"></script>
+<script src="js/data/onboarding-steps.js?v=20261017b"></script>
+<script src="js/data/tour-steps.js?v=20261017b"></script>
+<script src="js/data/dishes.js?v=20261017b"></script>
 <!-- dish-instructions.js: pasos/equipo/dificultad, ADITIVO y opcional.
      Un plato sin entrada aqui se comporta exactamente como antes -- por
      eso dishes.js no se toca y los golden-master no se mueven. -->
-<script src="js/data/dish-instructions.js?v=20261017a"></script>
-<script src="js/data/dish-cuisine.js?v=20261017a"></script>
-<script src="js/data/real-products.js?v=20261017a"></script>
+<script src="js/data/dish-instructions.js?v=20261017b"></script>
+<script src="js/data/dish-cuisine.js?v=20261017b"></script>
+<script src="js/data/real-products.js?v=20261017b"></script>
 <!-- Alcampo y Carrefour se cayeron el 2026-09-07: 103 KB que viajaban a
      cada visitante sin que NADIE los leyera. Comprobado antes de quitarlos:
      ningun fichero fuera de ellos mismos menciona REAL_PRODUCTS_ALCAMPO ni
@@ -1482,121 +1537,124 @@
      js/data/prices/ solo existe mercadona.js -- asi que ni con precios
      habrian servido. Si algun dia vuelve el selector de tienda, vuelven
      desde git; ver la cabecera de js/core/pricing.js para el porque. -->
-<script src="js/data/packaging.js?v=20261017a"></script>
-<script src="js/data/servings.js?v=20261017a"></script>
-<script src="js/data/real-ingredient-matches.js?v=20261017a"></script>
-<script src="js/data/product-links.js?v=20261017a"></script>
-<script src="js/data/ingredient-nutrition.js?v=20261017a"></script>
-<script src="js/data/no-cook-classifier.js?v=20261017a"></script>
+<script src="js/data/packaging.js?v=20261017b"></script>
+<script src="js/data/servings.js?v=20261017b"></script>
+<script src="js/data/real-ingredient-matches.js?v=20261017b"></script>
+<script src="js/data/product-links.js?v=20261017b"></script>
+<script src="js/data/ingredient-nutrition.js?v=20261017b"></script>
+<script src="js/data/no-cook-classifier.js?v=20261017b"></script>
 <!-- Raciones/papeles de cada producto y formas de comida del modo "sin
      cocinar" (2026-09-01). serving-sizes.js antes que el generador: sin el
      ANTES no habia gramos por racion y los macros en pantalla eran los de
      100 g. -->
-<script src="js/data/serving-sizes.js?v=20261017a"></script>
-<script src="js/data/no-cook-templates.js?v=20261017a"></script>
-<script src="js/data/prices/mercadona.js?v=20261017a"></script>
-<script src="js/data/budget-presets.js?v=20261017a"></script>
-<script src="js/data/dislike-groups.js?v=20261017a"></script>
-<script src="js/data/shelf-life.js?v=20261017a"></script>
+<script src="js/data/serving-sizes.js?v=20261017b"></script>
+<script src="js/data/no-cook-templates.js?v=20261017b"></script>
+<script src="js/data/prices/mercadona.js?v=20261017b"></script>
+<script src="js/data/budget-presets.js?v=20261017b"></script>
+<script src="js/data/dislike-groups.js?v=20261017b"></script>
+<script src="js/data/shelf-life.js?v=20261017b"></script>
 <!-- Conservación REAL publicada por Mercadona (generado por
      PythonProject/scripts/export_product_storage.py). Tiene prioridad
      sobre shelf-life.js, que es estimación nuestra. -->
-<script src="js/data/product-storage.js?v=20261017a"></script>
+<script src="js/data/product-storage.js?v=20261017b"></script>
 <!-- Alergenos declarados en la etiqueta de Mercadona (generado por
      scratchpad/gen_allergens.js). Solo para MOSTRAR en las tarjetas de
      "sin cocinar" -- no es un filtro, ver js/core/allergens.js. -->
-<script src="js/data/product-allergens.js?v=20261017a"></script>
+<script src="js/data/product-allergens.js?v=20261017b"></script>
 <!-- Estado del tema. Sin DOM: solo guarda, valida y resuelve.
      Antes que cualquier ui/ porque render-menu.js lo usa. -->
-<script src="js/core/theme.js?v=20261017a"></script>
-<script src="js/core/look.js?v=20261017a"></script>
+<script src="js/core/theme.js?v=20261017b"></script>
+<script src="js/core/look.js?v=20261017b"></script>
 <!-- Idioma. i18n.js ANTES que las tablas: son ellas las que llaman a
      registerI18nTable(). Y las tablas antes que cualquier ui/, que es
      quien pinta. Se cargan TODAS y no solo la elegida: cargarla despues
      de pintar hace parpadear la pagina del espanol al idioma elegido, y
      esconderla hasta que llegue es lo que prohibe 7.2. -->
-<script src="js/core/i18n.js?v=20261017a"></script>
-<script src="js/i18n/es.js?v=20261017a"></script>
-<script src="js/i18n/en.js?v=20261017a"></script>
-<script src="js/i18n/ru.js?v=20261017a"></script>
-<script src="js/i18n/uk.js?v=20261017a"></script>
+<script src="js/core/i18n.js?v=20261017b"></script>
+<script src="js/i18n/es.js?v=20261017b"></script>
+<script src="js/i18n/en.js?v=20261017b"></script>
+<script src="js/i18n/ru.js?v=20261017b"></script>
+<script src="js/i18n/uk.js?v=20261017b"></script>
 <!-- Los nombres de comida van aparte de las cadenas de interfaz: son un
      diccionario, no una lista de frases, y el que traduce nombres de plato
      se compone de piezas para que los platos NUEVOS del generador salgan
      traducidos solos. -->
-<script src="js/i18n/food-en.js?v=20261017a"></script>
-<script src="js/i18n/food-ru.js?v=20261017a"></script>
-<script src="js/i18n/food-uk.js?v=20261017a"></script>
+<script src="js/i18n/food-en.js?v=20261017b"></script>
+<script src="js/i18n/food-ru.js?v=20261017b"></script>
+<script src="js/i18n/food-uk.js?v=20261017b"></script>
 <!-- Los pasos de las recetas: 1.682 frases distintas, tabla propia. Van
      por la frase española entera, igual que los nombres, para que el
      fichero se pueda revisar en paralelo con dish-instructions.js. -->
-<script src="js/i18n/steps-en.js?v=20261017a"></script>
-<script src="js/i18n/steps-ru.js?v=20261017a"></script>
-<script src="js/i18n/steps-uk.js?v=20261017a"></script>
+<script src="js/i18n/steps-en.js?v=20261017b"></script>
+<script src="js/i18n/steps-ru.js?v=20261017b"></script>
+<script src="js/i18n/steps-uk.js?v=20261017b"></script>
 <!-- Las etiquetas de envase ("barra", "tarro", "bandeja"): describen CÓMO
      se compra algo, no el nombre comercial, así que sí se traducen. Llevan
      singular y plural porque en inglés no basta con añadir una "s". -->
-<script src="js/i18n/packages-en.js?v=20261017a"></script>
-<script src="js/i18n/packages-ru.js?v=20261017a"></script>
-<script src="js/i18n/packages-uk.js?v=20261017a"></script>
-<script src="js/core/utils.js?v=20261017a"></script>
-<script src="js/core/pricing.js?v=20261017a"></script>
+<script src="js/i18n/packages-en.js?v=20261017b"></script>
+<script src="js/i18n/packages-ru.js?v=20261017b"></script>
+<script src="js/i18n/packages-uk.js?v=20261017b"></script>
+<script src="js/core/utils.js?v=20261017b"></script>
+<script src="js/core/pricing.js?v=20261017b"></script>
 <!-- servings.js despues de pricing.js (usa normalizeIngredientKey) y de
      data/servings.js + packaging.js, de donde saca las unidades; antes de
      dish-selector/plan-generator y de render.js, que son quienes preguntan. -->
-<script src="js/core/servings.js?v=20261017a"></script>
-<script src="js/core/nutrition.js?v=20261017a"></script>
+<script src="js/core/servings.js?v=20261017b"></script>
+<script src="js/core/nutrition.js?v=20261017b"></script>
 <!-- expiry.js despues de pricing.js (usa normalizeIngredientKey) y de
      shelf-life.js (usa getShelfLife); antes de pantry.js, que lo consulta
      desde listPantryEntries(). Los tres son opcionales: si expiry.js
      faltara, la despensa sigue funcionando sin columna de caducidad. -->
-<script src="js/core/expiry.js?v=20261017a"></script>
+<script src="js/core/expiry.js?v=20261017b"></script>
 <!-- preferences.js despues de pricing.js (reutiliza
      normalizeIngredientKey para no tener dos normalizaciones que puedan
      divergir). Es SOLO preferencias blandas ("no me gusta"); las alergias
      son una restriccion de seguridad y viviran en su propio archivo, a
      proposito -- ver la cabecera de preferences.js. -->
-<script src="js/core/preferences.js?v=20261017a"></script>
+<script src="js/core/preferences.js?v=20261017b"></script>
 <!-- allergens.js: MOSTRAR alergenos de etiqueta, nunca filtrar. Aparte de
      preferences.js a proposito (ver cabecera de ambos). Despues de
      product-allergens.js (usa PRODUCT_ALLERGENS) y utils.js (escapeHtml). -->
-<script src="js/core/allergens.js?v=20261017a"></script>
-<script src="js/core/pantry.js?v=20261017a"></script>
-<script src="js/core/budget.js?v=20261017a"></script>
-<script src="js/core/shopping-checks.js?v=20261017a"></script>
-<script src="js/core/calculator.js?v=20261017a"></script>
-<script src="js/core/meal-helpers.js?v=20261017a"></script>
-<script src="js/core/meal-schedule.js?v=20261017a"></script>
-<script src="js/core/firebase-client.js?v=20261017a"></script>
-<script src="js/core/settings.js?v=20261017a"></script>
-<script src="js/core/onboarding.js?v=20261017a"></script>
-<script src="js/core/account-prefs.js?v=20261017a"></script>
-<script src="js/core/auth.js?v=20261017a"></script>
-<script src="js/core/cloud-sync.js?v=20261017a"></script>
-<script src="js/core/migration.js?v=20261017a"></script>
-<script src="js/engine/dish-selector.js?v=20261017a"></script>
-<script src="js/engine/plan-generator.js?v=20261017a"></script>
-<script src="js/engine/no-cook-generator.js?v=20261017a"></script>
-<script src="js/ui/render.js?v=20261017a"></script>
-<script src="js/ui/render-schedule.js?v=20261017a"></script>
-<script src="js/ui/render-shopping-list.js?v=20261017a"></script>
-<script src="js/ui/form-controls.js?v=20261017a"></script>
-<script src="js/ui/pestanas.js?v=20261017a"></script>
-<script src="js/ui/render-pantry.js?v=20261017a"></script>
-<script src="js/ui/render-insights.js?v=20261017a"></script>
-<script src="js/ui/render-real-products.js?v=20261017a"></script>
-<script src="js/ui/render-no-cook.js?v=20261017a"></script>
-<script src="js/ui/render-auth.js?v=20261017a"></script>
-<script src="js/ui/onboarding-ui.js?v=20261017a"></script>
-<script src="js/ui/tour-fx.js?v=20261017a"></script>
-<script src="js/ui/tour-scenes.js?v=20261017a"></script>
-<script src="js/ui/tour.js?v=20261017a"></script>
-<script src="js/ui/ingredient-suggest.js?v=20261017a"></script>
-<script src="js/ui/animations.js?v=20261017a"></script>
+<script src="js/core/allergens.js?v=20261017b"></script>
+<script src="js/core/pantry.js?v=20261017b"></script>
+<script src="js/core/budget.js?v=20261017b"></script>
+<script src="js/core/shopping-checks.js?v=20261017b"></script>
+<script src="js/core/calculator.js?v=20261017b"></script>
+<script src="js/core/meal-helpers.js?v=20261017b"></script>
+<script src="js/core/meal-schedule.js?v=20261017b"></script>
+<script src="js/core/firebase-client.js?v=20261017b"></script>
+<script src="js/core/settings.js?v=20261017b"></script>
+<script src="js/core/onboarding.js?v=20261017b"></script>
+<script src="js/core/account-prefs.js?v=20261017b"></script>
+<script src="js/core/auth.js?v=20261017b"></script>
+<script src="js/core/cloud-sync.js?v=20261017b"></script>
+<script src="js/core/migration.js?v=20261017b"></script>
+<script src="js/engine/dish-selector.js?v=20261017b"></script>
+<script src="js/engine/plan-generator.js?v=20261017b"></script>
+<script src="js/engine/no-cook-generator.js?v=20261017b"></script>
+<script src="js/ui/render.js?v=20261017b"></script>
+<script src="js/ui/render-schedule.js?v=20261017b"></script>
+<script src="js/ui/render-shopping-list.js?v=20261017b"></script>
+<script src="js/ui/form-controls.js?v=20261017b"></script>
+<script src="js/ui/pestanas.js?v=20261017b"></script>
+<script src="js/ui/render-pantry.js?v=20261017b"></script>
+<script src="js/ui/render-insights.js?v=20261017b"></script>
+<script src="js/ui/render-real-products.js?v=20261017b"></script>
+<script src="js/ui/render-no-cook.js?v=20261017b"></script>
+<script src="js/ui/render-auth.js?v=20261017b"></script>
+<script src="js/ui/onboarding-ui.js?v=20261017b"></script>
+<script src="js/ui/tour-fx.js?v=20261017b"></script>
+<script src="js/ui/tour-scenes.js?v=20261017b"></script>
+<script src="js/ui/tour.js?v=20261017b"></script>
+<script src="js/ui/ingredient-suggest.js?v=20261017b"></script>
+<script src="js/ui/animations.js?v=20261017b"></script>
 <!-- El menu de ajustes. Despues de onboarding-ui.js (usa
      openLegalDialog) y de tour.js (usa startTour via app.js). -->
-<script src="js/ui/render-menu.js?v=20261017a"></script>
-<script src="js/app.js?v=20261017a"></script>
+<script src="js/ui/render-menu.js?v=20261017b"></script>
+<script src="js/data/exercises.js?v=20261017b"></script>
+<script src="js/engine/workout-generator.js?v=20261017b"></script>
+<script src="js/ui/render-entreno.js?v=20261017b"></script>
+<script src="js/app.js?v=20261017b"></script>
 
 <!-- ══ OFFLINE DE VERDAD (2026-09-07) ═══════════════════════════════════
      Se registra al final y envuelto en try: si el navegador no soporta

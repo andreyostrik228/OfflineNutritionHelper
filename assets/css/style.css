@@ -3577,3 +3577,57 @@ html.tour-abierto body { overflow: hidden; }
     scroll-behavior: auto !important;
   }
 }
+
+/* ── Entrenamientos (2026-10-17) ──────────────────────────────────────────
+   Botón fijo arriba que cambia la página entera entre el menú y el plan de
+   entrenamiento (js/ui/render-entreno.js). El panel vive fuera de <main>. */
+.modo-barra {
+  position: sticky;
+  top: 0;
+  z-index: 45;
+  display: flex;
+  justify-content: center;
+  padding: 8px 0;
+  background: var(--canvas);
+}
+.modo-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border: 0;
+  border-radius: var(--pill);
+  background: var(--ink);
+  color: var(--on-ink);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--shadow-1);
+}
+.modo-btn:focus-visible { outline: 3px solid var(--volt); outline-offset: 3px; }
+body.modo-entreno .tabbar { display: none !important; }
+
+.entreno { max-width: 920px; margin: 0 auto; padding: 8px var(--gutter) 40px; }
+.entreno [hidden] { display: none !important; }
+.entreno__titulo { font-family: var(--font-display); font-size: clamp(1.7rem, 4vw, 2.3rem); margin: 8px 0 4px; }
+.entreno__intro, .entreno__nota { color: var(--text-2); font-size: 0.95rem; }
+.entreno__controles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 16px 0; }
+.entreno__acciones { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.entreno__aviso { background: var(--warn-wash); color: var(--warn); border-radius: var(--r-sm); padding: 10px 12px; margin: 12px 0; }
+.entreno__aviso ul { margin: 6px 0 0 18px; padding: 0; }
+.entreno__cabecera { font-size: 1.05rem; margin: 18px 0 8px; }
+.entreno__sesion { font-size: 1rem; margin: 18px 0 6px; color: var(--text-2); }
+.entreno__subtitulo { font-size: 1rem; margin: 22px 0 6px; }
+.entreno__lista { margin: 6px 0 0 18px; padding: 0; color: var(--text-2); }
+.entreno__lista li { margin: 6px 0; }
+.entreno__tabla { overflow-x: auto; }
+.entreno table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+.entreno th, .entreno td { text-align: left; vertical-align: top; padding: 8px 6px; border-bottom: 1px solid var(--line); }
+.entreno th { color: var(--text-3); font-weight: 600; }
+.entreno__tec { color: var(--text-2); font-size: 0.85rem; }
+
+@media print {
+  .topbar, .modo-barra, .entreno__controles, .entreno__acciones, .entreno__nota,
+  .entreno__intro, .site-footer, .tabbar, .traduccion-aviso { display: none !important; }
+  .entreno { padding: 0; }
+}

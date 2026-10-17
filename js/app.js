@@ -1299,6 +1299,9 @@ document.addEventListener("DOMContentLoaded", function () {
   safeInit("pestanas", function () {
     if (typeof initPestanas === "function") initPestanas();
   });
+  safeInit("entreno", function () {
+    if (typeof initEntreno === "function") initEntreno();
+  });
 
   // ── Despensa: sincronización y Etapa 1 (guardar el plan del día) ──────
 
