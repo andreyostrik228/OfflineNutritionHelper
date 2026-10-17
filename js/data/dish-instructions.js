@@ -5341,6 +5341,441 @@ var DISH_INSTRUCTIONS = {
       "Junta todo en la sarten un minuto al final, solo para que coja temperatura: removido de mas, la legumbre se deshace."
     ]
   },
+
+  // ── Recetas de la ampliacion, lote 40 2026-10-17 (2026-10-17) ────────────────────────
+  "Salmorejo cordobés": {
+    difficulty: 1,
+    equipment: ["batidora", "olla"],
+    steps: [
+      "Pon el tomate troceado, el pan sin corteza remojado en agua, el ajo y el aceite en el vaso de la batidora.",
+      "Tritura hasta que quede una crema muy fina y pásala por un colador si quieres un acabado más sedoso.",
+      "Cuece el huevo 10 minutos desde que hierve, enfríalo bajo el grifo y pélalo.",
+      "Sirve el salmorejo frío, con el huevo picado y el jamón troceado por encima."
+    ]
+  },
+
+  "Tortilla de calabacín y cebolla": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Corta el calabacín en rodajas finas y la cebolla en juliana.",
+      "Pocha el calabacín y la cebolla en la sartén con el aceite a fuego medio 10 minutos, hasta que estén tiernos.",
+      "Bate los huevos con una pizca de sal y mézclalos con las verduras ya escurridas.",
+      "Cuaja la tortilla a fuego medio-bajo 4 minutos, dale la vuelta con un plato y termina 2 minutos más."
+    ]
+  },
+
+  "Fideuá de gambas": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Pica el pimiento y el ajo, y ralla o pica el tomate.",
+      "Sofríe el pimiento y el ajo con el aceite a fuego medio 5 minutos, después añade el tomate y cocina 5 minutos más.",
+      "Incorpora la pasta cocida y dale un par de vueltas para que tome el sabor del sofrito.",
+      "Añade las gambas cocidas al final, caliéntalas 2 minutos y sirve enseguida."
+    ]
+  },
+
+  "Pollo al chilindrón": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Corta el pollo en trozos, sécalo y sálalo ligeramente.",
+      "Dóralo en la sartén con el aceite a fuego medio-alto 5 minutos por lado. Retíralo.",
+      "En el mismo aceite, pocha la cebolla, el pimiento y el ajo 8 minutos, y añade el tomate y el jamón troceado.",
+      "Devuelve el pollo a la sartén y cocina tapado a fuego bajo 15 minutos, hasta que la salsa espese."
+    ]
+  },
+
+  "Albóndigas en salsa de tomate": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Remoja el pan en un poco de agua, escúrrelo y mézclalo con la carne, el huevo y una pizca de sal.",
+      "Forma bolitas del tamaño de una nuez y dóralas en el aceite 3 minutos. Retíralas.",
+      "Pocha la cebolla y el ajo en el mismo aceite 6 minutos y añade el tomate triturado.",
+      "Devuelve las albóndigas a la salsa y cocina a fuego bajo 15 minutos, tapadas."
+    ]
+  },
+
+  "Pimientos rellenos de ternera": {
+    difficulty: 2,
+    equipment: ["horno", "sarten"],
+    steps: [
+      "Precalienta el horno a 190 grados. Corta los pimientos por la mitad a lo largo y quítales las semillas.",
+      "Pocha la cebolla con el aceite 5 minutos, añade la carne y dórala 6 minutos. Incorpora el tomate y el arroz.",
+      "Rellena las mitades de pimiento con la mezcla y colócalas en una fuente con un poco de agua.",
+      "Hornea 25 minutos, hasta que el pimiento esté tierno."
+    ]
+  },
+
+  "Revuelto de champiñones y gambas": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Lamina los champiñones y saltéalos con el aceite y el ajo picado a fuego fuerte 5 minutos, hasta que suelten y reevaporen el agua.",
+      "Añade las gambas cocidas y caliéntalas 1 minuto.",
+      "Bate los huevos con sal, viértelos en la sartén y remueve a fuego medio hasta que cuajen pero sigan jugosos.",
+      "Sirve enseguida."
+    ]
+  },
+
+  "Migas con pimiento y huevo": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Corta el pan del día anterior en trozos pequeños y rocíalo con un poco de agua para que se ablande.",
+      "Dora el ajo en el aceite a fuego medio, añade el pimiento en tiras y cocina 6 minutos.",
+      "Incorpora el pan escurrido y remueve 8 minutos, hasta que quede dorado y suelto.",
+      "Añade el huevo batido al final, revuelve 1 minuto y sirve."
+    ]
+  },
+
+  "Crema de calabacín con queso": {
+    difficulty: 1,
+    equipment: ["olla", "batidora"],
+    steps: [
+      "Pocha la cebolla en el aceite 5 minutos y añade el calabacín troceado.",
+      "Cubre con agua, añade la patata cocida y cuece 12 minutos.",
+      "Tritura hasta que quede cremosa y añade el queso al final, removiendo hasta que se funda.",
+      "Sirve caliente."
+    ]
+  },
+
+  "Ensalada de atún y pimiento asado": {
+    difficulty: 1,
+    equipment: ["olla", "ninguno"],
+    steps: [
+      "Cuece el huevo 10 minutos desde que hierve, enfríalo y pártelo en cuartos.",
+      "Asa el pimiento directamente sobre el fuego o en la sartén hasta que se ennegrezca, déjalo tapado 5 minutos y pélalo.",
+      "Pon la lechuga y el tomate troceados en un plato, añade el atún escurrido, el pimiento en tiras y el huevo.",
+      "Aliña con el aceite y sal al gusto."
+    ]
+  },
+
+  "Revuelto de calabacín con jamón": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Corta el calabacín en daditos y la cebolla en brunoise.",
+      "Saltea el calabacín y la cebolla con el aceite a fuego medio-alto 6 minutos, hasta que se doren un poco.",
+      "Añade el jamón troceado y los huevos batidos con sal, y revuelve a fuego medio hasta que cuajen.",
+      "Sirve enseguida."
+    ]
+  },
+
+  "Arroz a la cubana": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Prepara una salsa de tomate: sofríe el tomate troceado en el aceite 8 minutos, hasta que espese.",
+      "Fríe el huevo en una sartén con un poco de aceite, con la yema jugosa.",
+      "Calienta el arroz cocido con un chorrito de agua y sírvelo con la salsa, el huevo encima y el plátano en rodajas al lado."
+    ]
+  },
+
+  "Patatas a lo pobre": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Corta la patata cocida en rodajas gruesas y el pimiento y la cebolla en tiras.",
+      "Dora la patata en el aceite a fuego medio 8 minutos, por los dos lados.",
+      "Añade el pimiento y la cebolla y cocina 10 minutos, removiendo con cuidado.",
+      "Haz dos huecos, casca un huevo en cada uno y tapa la sartén hasta que cuaje la clara."
+    ]
+  },
+
+  "Sopa de merluza y patata": {
+    difficulty: 2,
+    equipment: ["olla"],
+    steps: [
+      "Sofríe la cebolla, el pimiento y el ajo en el aceite 8 minutos, y añade el tomate troceado.",
+      "Cubre con agua, añade la patata cocida en trozos y cuece 10 minutos.",
+      "Incorpora la merluza en trozos y cocina 5 minutos a fuego suave, sin que hierva con fuerza.",
+      "Sirve caliente."
+    ]
+  },
+
+  "Merluza al horno con patata y cebolla": {
+    difficulty: 1,
+    equipment: ["horno"],
+    steps: [
+      "Precalienta el horno a 180 grados.",
+      "Corta la cebolla en aros finos y reparte la patata cocida en rodajas en una fuente con un poco de aceite y sal. Hornea 10 minutos.",
+      "Coloca la merluza sobre la patata y la cebolla, con un hilo de aceite y sal.",
+      "Hornea 15 minutos más, hasta que la carne se separe en lascas."
+    ]
+  },
+
+  "Lentejas a la marinera": {
+    difficulty: 2,
+    equipment: ["olla"],
+    steps: [
+      "Sofríe la cebolla, el pimiento y el ajo en el aceite 8 minutos, y añade el tomate troceado 5 minutos más.",
+      "Incorpora las lentejas cocidas con un poco de su agua o caldo y cocina 10 minutos.",
+      "Añade la merluza en trozos y las gambas, y cocina 4 minutos a fuego suave, sin que hierva con fuerza.",
+      "Sirve caliente."
+    ]
+  },
+
+  "Ensalada de atún con huevo cocido": {
+    difficulty: 1,
+    equipment: ["olla"],
+    steps: [
+      "Cuece el huevo 10 minutos desde que hierve, enfríalo y pártelo en cuartos.",
+      "Trocea la lechuga, el tomate, el pepino y la cebolla en pedazos pequeños.",
+      "Pon todo en un bol con el atún escurrido y el huevo.",
+      "Aliña con el aceite y sal al gusto."
+    ]
+  },
+
+  "Ensalada de patata con atún y huevo": {
+    difficulty: 1,
+    equipment: ["olla"],
+    steps: [
+      "Corta la patata cocida en dados y el pepino y el tomate en trozos.",
+      "Cuece el huevo 10 minutos desde que hierve, enfríalo y pícalo.",
+      "Mezcla la patata con el tomate, el pepino, la cebolla picada y el atún escurrido.",
+      "Añade el huevo, aliña con el aceite y sal, y sirve."
+    ]
+  },
+
+  "Ensalada de naranja, patata y atún": {
+    difficulty: 1,
+    equipment: ["olla"],
+    steps: [
+      "Pela la naranja, quítale la piel blanca y córtala en rodajas o en trozos.",
+      "Corta la patata cocida en dados y la cebolla en juliana muy fina.",
+      "Mezcla todo con el atún escurrido y el huevo cocido troceado.",
+      "Aliña con el aceite y sal, y sirve enseguida."
+    ]
+  },
+
+  "Salmón con miel y naranja": {
+    difficulty: 1,
+    equipment: ["horno"],
+    steps: [
+      "Precalienta el horno a 200 grados.",
+      "Exprime la mitad de la naranja y mezcla su zumo con la miel y el aceite.",
+      "Coloca el salmón en una fuente, báñalo con la mezcla y pon la naranja cortada en rodajas alrededor.",
+      "Hornea 12 minutos, rociándolo una vez con su jugo."
+    ]
+  },
+
+  "Bacalao al horno con patata y ajo": {
+    difficulty: 2,
+    equipment: ["horno"],
+    steps: [
+      "Si el bacalao es salado, desálalo 24 horas cambiando el agua varias veces. Precalienta el horno a 180 grados.",
+      "Pica el ajo y mézclalo con la mitad del aceite.",
+      "Coloca la patata cocida en rodajas en una fuente, pon el bacalao encima y báñalo con el aceite de ajo.",
+      "Hornea 20 minutos, hasta que el bacalao esté hecho."
+    ]
+  },
+
+  "Pastel de avena y manzana al horno": {
+    difficulty: 1,
+    equipment: ["horno"],
+    steps: [
+      "Precalienta el horno a 180 grados y forra un molde pequeño con papel de horno.",
+      "Mezcla la avena, los huevos batidos, la leche, la miel y la manzana en dados. Remueve bien.",
+      "Vierte la mezcla en el molde y hornea 25 minutos, hasta que cuaje y se dore por encima.",
+      "Deja enfriar 5 minutos antes de cortarlo."
+    ]
+  },
+
+  "Pollo caprese al horno": {
+    difficulty: 1,
+    equipment: ["horno"],
+    steps: [
+      "Precalienta el horno a 200 grados.",
+      "Corta la pechuga por la mitad a lo ancho para hacer dos filetes finos y sálalos.",
+      "Colócalos en una fuente con el tomate en rodajas por encima y la mozzarella troceada.",
+      "Hornea 20 minutos, hasta que el pollo esté hecho por dentro y el queso se funda."
+    ]
+  },
+
+  "Ensalada de alubias con pollo": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Cocina la pechuga a la plancha 8 minutos por lado y córtala en tiras.",
+      "Trocea el tomate, el pepino y la cebolla.",
+      "Mezcla las alubias escurridas con las verduras y el pollo.",
+      "Aliña con el aceite y sal."
+    ]
+  },
+
+  "Tacos de lechuga con lentejas": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Calienta las lentejas escurridas con el aceite y la cebolla picada 5 minutos.",
+      "Pica el tomate y el aguacate.",
+      "Coloca las hojas de lechuga como tacos y rellénalas con las lentejas, el tomate y el aguacate."
+    ]
+  },
+
+  "Croquetas de garbanzos y lentejas": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Pocha la cebolla y el ajo en el aceite 6 minutos.",
+      "Tritura los garbanzos y las lentejas con la cebolla, el ajo y la avena hasta tener una masa firme. Déjala enfriar 10 minutos.",
+      "Forma croquetas con las manos y pásalas por un poco más de avena.",
+      "Dóralas en una sartén con un poco de aceite, 3 minutos por cada lado."
+    ]
+  },
+
+  "Tortitas de garbanzos, patata y zanahoria": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Ralla la zanahoria y pica la cebolla muy fina.",
+      "Aplasta los garbanzos y la patata con un tenedor y mézclalos con la zanahoria, la cebolla y el huevo batido.",
+      "Forma tortitas planas y dóralas en el aceite 4 minutos por cada lado."
+    ]
+  },
+
+  "Ensalada de arroz y lentejas con huevo": {
+    difficulty: 1,
+    equipment: ["olla"],
+    steps: [
+      "Cuece el huevo 10 minutos desde que hierve, enfríalo y pártelo.",
+      "Pica el tomate, el pepino y la cebolla.",
+      "Mezcla el arroz y las lentejas con las verduras y el huevo.",
+      "Aliña con el aceite y sal."
+    ]
+  },
+
+  "Ensalada multicolor de pasta con atún y maíz": {
+    difficulty: 1,
+    equipment: ["olla"],
+    steps: [
+      "Cuece la zanahoria en rodajas finas 5 minutos en agua hirviendo y escúrrela.",
+      "Mezcla la pasta cocida y fría con el atún escurrido, el tomate troceado, la zanahoria y el maíz.",
+      "Aliña con el aceite y sal, y sirve fría."
+    ]
+  },
+
+  "Sopa de pollo con fideos y zanahoria": {
+    difficulty: 1,
+    equipment: ["olla"],
+    steps: [
+      "Pon el pollo en una olla con agua fría, la cebolla y la zanahoria troceada. Cuece 20 minutos a fuego suave.",
+      "Retira el pollo, deshílalo y devuélvelo a la olla.",
+      "Añade la pasta cocida y calienta 3 minutos.",
+      "Sirve caliente con un hilo de aceite."
+    ]
+  },
+
+  "Crema de zanahoria con patata": {
+    difficulty: 1,
+    equipment: ["olla", "batidora"],
+    steps: [
+      "Pocha la cebolla en el aceite 5 minutos.",
+      "Añade la zanahoria troceada y la patata cocida, cubre con agua y cuece 15 minutos.",
+      "Tritura hasta que quede cremosa y añade el queso fresco batido al final."
+    ]
+  },
+
+  "Crema de espinacas con queso": {
+    difficulty: 1,
+    equipment: ["olla", "batidora"],
+    steps: [
+      "Sofríe la cebolla en el aceite 4 minutos y añade las espinacas.",
+      "Añade la patata cocida y cubre con agua. Cuece 8 minutos.",
+      "Tritura y añade el queso light al final, removiendo hasta que se funda."
+    ]
+  },
+
+  "Ensalada de tofu y edamame con zanahoria": {
+    difficulty: 1,
+    equipment: ["sarten", "olla"],
+    steps: [
+      "Corta el tofu en dados, sécalo y dóralo en una sartén con un poco de aceite 6 minutos.",
+      "Cuece el edamame 3 minutos si no viene ya cocido y escúrrelo.",
+      "Ralla la zanahoria y pica la cebolla y la lechuga.",
+      "Mezcla todo y aliña con el aceite y sal."
+    ]
+  },
+
+  "Bol de tofu crujiente con edamame y brócoli": {
+    difficulty: 2,
+    equipment: ["olla", "sarten"],
+    steps: [
+      "Cuece el brócoli en agua hirviendo con sal 4 minutos y escúrrelo.",
+      "Corta el tofu en dados, sécalo bien y dóralo en el aceite hasta que quede crujiente, unos 8 minutos.",
+      "Calienta el arroz integral cocido y el edamame.",
+      "Monta el bol con el arroz, el tofu, el edamame y el brócoli."
+    ]
+  },
+
+  "Arroz a la mexicana con huevo": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Sofríe la cebolla, el ajo y el pimiento en el aceite 6 minutos.",
+      "Añade el tomate troceado y cocina 8 minutos.",
+      "Incorpora el arroz cocido y mézclalo 3 minutos.",
+      "Fríe el huevo aparte y sírvelo encima del arroz."
+    ]
+  },
+
+  "Frittata de calabacín y espinacas": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Corta el calabacín y la cebolla en daditos y saltéalos con el aceite 6 minutos.",
+      "Añade las espinacas 1 minuto, hasta que bajen.",
+      "Bate los huevos con sal, viértelos sobre la verdura y cuaja a fuego medio 5 minutos tapada.",
+      "Dale la vuelta con un plato y termina 2 minutos."
+    ]
+  },
+
+  "Ensalada de pollo y pasta con maíz": {
+    difficulty: 1,
+    equipment: ["sarten"],
+    steps: [
+      "Cocina la pechuga a la plancha 8 minutos por lado y córtala en tiras.",
+      "Trocea el tomate y el pepino.",
+      "Mezcla la pasta fría con el pollo, las verduras y el maíz.",
+      "Aliña con el aceite y sal."
+    ]
+  },
+
+  "Pechuga de pavo al horno con verduras": {
+    difficulty: 1,
+    equipment: ["horno"],
+    steps: [
+      "Precalienta el horno a 200 grados.",
+      "Corta las verduras en trozos y ponlas en una fuente con el aceite y sal.",
+      "Coloca la pechuga de pavo encima y hornea 25 minutos, hasta que esté hecha por dentro.",
+      "Deja reposar 3 minutos antes de cortarla."
+    ]
+  },
+
+  "Ternera magra al horno con patata y pimiento": {
+    difficulty: 2,
+    equipment: ["horno"],
+    steps: [
+      "Precalienta el horno a 190 grados.",
+      "Coloca la patata cocida en rodajas en una fuente con el pimiento y la cebolla en tiras, con aceite y sal.",
+      "Pon la ternera encima, con un poco de sal y pimentón, y hornea 25 minutos.",
+      "Deja reposar 5 minutos antes de cortarla."
+    ]
+  },
+
+  "Garbanzos con pollo y tomate al curry": {
+    difficulty: 2,
+    equipment: ["sarten"],
+    steps: [
+      "Dora el pollo troceado en tacos en la sartén con el aceite 5 minutos. Retíralo.",
+      "Pocha la cebolla 5 minutos, añade el tomate y cocina 5 minutos más.",
+      "Devuelve el pollo y añade los garbanzos y las espinacas. Cocina 8 minutos.",
+      "Sirve caliente."
+    ]
+  },
 };
 
 /**

@@ -787,7 +787,20 @@ function run(t) {
     // cae de 216,3 a 214,4 g. Los principales nuevos son mas densos en
     // proteina y por tanto mas caros por kcal, y un dia de 3871 kcal con
     // 20 EUR va justo. Esta semilla tiene suerte; el perfil paga un poco.
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 3, 3, 2, 2]);
+    // ── RECAPTURADO el 2026-10-17: lote de 40 platos nuevos ──────────────
+    // Una comida de volumen pasa de 3 a 4 ingredientes: el plato nuevo que
+    // gana la lotería en esta semilla lleva cuatro. El juez de probar_lote
+    // (200 semillas) da volumen: violaciones +1,0 y días perfectos -3,5, justo
+    // en el umbral de rechazo. Se anota aquí para que se vea.
+    //
+    //   kcal       3723,9 -> 3665,1 sobre un objetivo de 3871
+    //   proteína   235,4 -> 235,5 g
+    //   hidratos   464,4 -> 534,4 g
+    //   grasa      99,6  -> 60,8 g
+    //   coste      9,51  -> 10,53 EUR
+    //   compra     19,15 -> 19 EUR
+    //   estado, tier y violations no cambian.
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 4, 3, 2, 2]);
     // ── RECAPTURADO el 2026-09-13: raciones que se pueden servir ───────
     // Mismo cambio que en el golden-master de seed=42, y aquí EMPEORA. Se
     // escribe con su cifra porque es la verdad y porque el otro mejora: no
@@ -813,12 +826,12 @@ function run(t) {
     //   prot    232,7 ->  235,4  (objetivo 171, de sobra las dos veces)
     //   compra  19,15 ->  19,15  (tope 20, ni un céntimo de diferencia)
     // Sigue "perfect"/tier 0 y sin violaciones.
-    assert.strictEqual(result.total.kcal, 3723.9);
-    assert.strictEqual(result.total.protein, 235.4);
-    assert.strictEqual(result.total.carbs, 464.4);
-    assert.strictEqual(result.total.fat, 99.6);
-    assert.strictEqual(result.total.cost, 9.51);
-    assert.strictEqual(result.total.purchaseCost, 19.15);
+    assert.strictEqual(result.total.kcal, 3665.0999999999995);
+    assert.strictEqual(result.total.protein, 235.5);
+    assert.strictEqual(result.total.carbs, 534.4);
+    assert.strictEqual(result.total.fat, 60.800000000000004);
+    assert.strictEqual(result.total.cost, 10.53);
+    assert.strictEqual(result.total.purchaseCost, 19);
     assert.strictEqual(result.report.status, "perfect");
     assert.strictEqual(result.report.tierUsed, 0);
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.report.violations)), []);
