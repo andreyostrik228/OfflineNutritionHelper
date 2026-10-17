@@ -222,6 +222,12 @@ self.addEventListener("fetch", function (e) {
   // Cuentas y sincronizacion NUNCA se cachean.
   if (esCuentaOSincronizacion(url)) return;
 
+  // Las páginas de contenido (comparativas, etc.) no son la aplicación: se
+  // piden a la red sin tocar la caché. Si no, la respuesta se guardaría como
+  // "./" y la siguiente vez que no hubiera red saldría esa página en lugar
+  // de la aplicación.
+  if (req.mode === "navigate" && url.pathname !== "/" && url.pathname !== "/index.html") return;
+
   // La entrada: red primero, cache como red de seguridad.
   if (req.mode === "navigate") {
     e.respondWith(

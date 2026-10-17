@@ -1,0 +1,20 @@
+# Weekplate
+
+> Weekplate es un planificador de menús de una semana, pensado para la compra en Mercadona. Calcula macros y propone platos según tu objetivo, tu presupuesto y el tiempo que tienes para cocinar. Funciona sin conexión y sin crear cuenta.
+
+Los cálculos se hacen en el propio navegador. Sin cuenta, los datos no salen del dispositivo. La cuenta es opcional y sirve para sincronizar entre dispositivos. La aplicación está en español, con traducciones al inglés, ruso y ucraniano.
+
+## Páginas principales
+
+- [Inicio](https://offline-nutrition-helper.pages.dev/): la aplicación: plan de menús, lista de la compra con precios y recetas paso a paso.
+- [Weekplate frente a MyFitnessPal](https://offline-nutrition-helper.pages.dev/weekplate-vs-myfitnesspal): comparación entre un planificador de menús y un contador de calorías.
+- [Weekplate frente a Yazio](https://offline-nutrition-helper.pages.dev/weekplate-vs-yazio): comparación con otro contador de calorías, con recetas y planes.
+- [Alternativas a MyFitnessPal](https://offline-nutrition-helper.pages.dev/alternativas-a-myfitnesspal): qué app usar según lo que busques: contar, planear o comprar.
+
+## Datos clave
+
+- Precios: los de Mercadona. Por ahora es la única tienda con precios reales dentro de la app.
+- Cuenta: opcional, solo para sincronizar.
+- Uso sin conexión: sí, tras la primera visita.
+- Idiomas: español, inglés, ruso y ucraniano.
+- Sitemap: https://offline-nutrition-helper.pages.dev/sitemap.xml

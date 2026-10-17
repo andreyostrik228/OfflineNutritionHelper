@@ -697,4 +697,8 @@ registerI18nTable("en", {
   "ui.tour_pregunta_cuerpo": "A quick animated walkthrough, under a minute.",
   "ui.tour_pregunta_si": "Yes, show me",
   "ui.tour_pregunta_no": "No, thanks",
+  "ui.comparativas": "Comparisons",
+  "ui.comparar_myfitnesspal": "Weekplate vs MyFitnessPal",
+  "ui.comparar_yazio": "Weekplate vs Yazio",
+  "ui.alternativas_myfitnesspal": "Alternatives to MyFitnessPal"
 });

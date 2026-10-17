@@ -600,4 +600,8 @@ registerI18nTable("es", {
   "ui.tour_pregunta_cuerpo": "Te lo enseño con dibujos animados, en menos de un minuto.",
   "ui.tour_pregunta_si": "Sí, enséñamelo",
   "ui.tour_pregunta_no": "No, gracias",
+  "ui.comparativas": "Comparativas",
+  "ui.comparar_myfitnesspal": "Weekplate frente a MyFitnessPal",
+  "ui.comparar_yazio": "Weekplate frente a Yazio",
+  "ui.alternativas_myfitnesspal": "Alternativas a MyFitnessPal"
 });

@@ -251,6 +251,13 @@ function renderDayPlans(days) {
  * @returns {string}
  */
 /**
+ * IDs del catálogo que Mercadona ya no sirve: su ficha da 404 (comprobado el
+ * 2026-10-17). Se enlazan por búsqueda de nombre en vez de a una página muerta.
+ * Revisar al actualizar js/data/real-products.js.
+ */
+var MERCADONA_IDS_RETIRADOS = { "69245": true, "69275": true };
+
+/**
  * URL de la ficha de un producto en la tienda online de Mercadona, para
  * ver su FOTO y reconocerlo en el súper. Los `id` del catálogo son
  * numéricos (a veces con un sufijo de variante ".1"/".2" que la web
@@ -261,7 +268,7 @@ function renderDayPlans(days) {
 function mercadonaProductUrl(product) {
   var id = product && product.id != null ? String(product.id) : "";
   var base = id.replace(/\.\d+$/, "");
-  if (/^\d+$/.test(base)) return "https://tienda.mercadona.es/product/" + base;
+  if (/^\d+$/.test(base) && !MERCADONA_IDS_RETIRADOS[base]) return "https://tienda.mercadona.es/product/" + base;
   var q = ((product && product.name) || "") + " " + ((product && product.brand) || "");
   return "https://tienda.mercadona.es/search-results?query=" + encodeURIComponent(q.trim());
 }

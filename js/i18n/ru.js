@@ -704,4 +704,8 @@ registerI18nTable("ru", {
   "ui.tour_pregunta_cuerpo": "Короткий анимированный тур — меньше минуты.",
   "ui.tour_pregunta_si": "Да, покажите",
   "ui.tour_pregunta_no": "Нет, спасибо",
+  "ui.comparativas": "Сравнения",
+  "ui.comparar_myfitnesspal": "Weekplate и MyFitnessPal",
+  "ui.comparar_yazio": "Weekplate и Yazio",
+  "ui.alternativas_myfitnesspal": "Альтернативы MyFitnessPal"
 });

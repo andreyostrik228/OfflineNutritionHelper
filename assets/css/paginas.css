@@ -1,0 +1,112 @@
+/*
+ * assets/css/paginas.css
+ * ─────────────────────────────────────────────────────────────────────────
+ * Estilos de las páginas de contenido (comparativas) y de los enlaces del
+ * pie de la aplicación. Se carga después de style.css y TODO está bajo
+ * `.pagina-estatica`, `.enlaces-relacionados` o `.sin-js`: si una regla
+ * tocara `body` o `:root`, cambiaría también la aplicación.
+ * ─────────────────────────────────────────────────────────────────────────
+ */
+
+.pagina-estatica {
+  margin: 0;
+  font: 17px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: #1c2a20;
+  background: #f6f9f3;
+}
+
+.pagina-estatica .cabecera,
+.pagina-estatica .pie,
+.pagina-estatica .pagina {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+.pagina-estatica .cabecera { padding-top: 16px; }
+
+.pagina-estatica .cabecera a {
+  font-weight: 700;
+  color: #2e6b3c;
+  text-decoration: none;
+}
+
+.pagina-estatica .pagina { padding-top: 8px; padding-bottom: 40px; }
+
+.pagina-estatica h1 {
+  font-size: 1.9rem;
+  line-height: 1.2;
+  margin: 0.4em 0 0.6em;
+}
+
+.pagina-estatica h2 {
+  font-size: 1.3rem;
+  line-height: 1.25;
+  margin: 1.6em 0 0.5em;
+}
+
+.pagina-estatica p { margin: 0 0 0.9em; }
+
+.pagina-estatica ul { padding-left: 1.2em; margin: 0 0 1em; }
+
+.pagina-estatica li { margin-bottom: 0.4em; }
+
+.pagina-estatica a { color: #2e6b3c; }
+
+.pagina-estatica .meta {
+  font-size: 0.9rem;
+  color: #4a5a4d;
+}
+
+.pagina-estatica .tabla { overflow-x: auto; margin: 1em 0; }
+
+.pagina-estatica table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.pagina-estatica th,
+.pagina-estatica td {
+  text-align: left;
+  vertical-align: top;
+  padding: 8px 10px;
+  border-bottom: 1px solid #d5e0cf;
+}
+
+.pagina-estatica th { font-weight: 700; }
+
+.pagina-estatica .pie {
+  margin-top: 32px;
+  padding-top: 16px;
+  padding-bottom: 32px;
+  border-top: 1px solid #d5e0cf;
+  font-size: 0.95rem;
+}
+
+.pagina-estatica .pie ul { list-style: none; padding: 0; }
+
+/* Pie de la aplicación: enlaces a las comparativas. */
+.enlaces-relacionados {
+  max-width: 680px;
+  margin: 24px auto;
+  padding: 16px;
+  border-top: 1px solid #d5e0cf;
+  font-size: 0.95rem;
+  text-align: center;
+}
+
+.enlaces-relacionados p { font-weight: 700; margin: 0 0 6px; }
+
+.enlaces-relacionados ul { list-style: none; margin: 0; padding: 0; }
+
+.enlaces-relacionados li { margin: 4px 0; }
+
+.enlaces-relacionados a { color: #2e6b3c; }
+
+/* El aviso sin JavaScript pasó de <h1> a <h2>: mismo aspecto que antes. */
+.sin-js h2 {
+  font: 800 36px/1 var(--font-display);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}

@@ -694,5 +694,9 @@ registerI18nTable("uk", {
   "nocook.snack_dulce_nombre": "Щось солодке",
   "nocook.snack_dulce_montaje": "Прямо з упаковки.",
   "nocook.snack_salado_nombre": "Солоні снеки",
-  "nocook.snack_salado_montaje": "Прямо з упаковки."
+  "nocook.snack_salado_montaje": "Прямо з упаковки.",
+  "ui.comparativas": "Порівняння",
+  "ui.comparar_myfitnesspal": "Weekplate і MyFitnessPal",
+  "ui.comparar_yazio": "Weekplate і Yazio",
+  "ui.alternativas_myfitnesspal": "Альтернативи MyFitnessPal"
 });
