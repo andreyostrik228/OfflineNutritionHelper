@@ -6,7 +6,106 @@
 > las trampas y los errores que ya se pagaron caros, para que no se
 > vuelvan a pagar.
 >
-> Si solo lees una sección, que sea *"Las lecciones caras"*.
+> Si solo lees dos secciones, que sean la **0** (estado y reglas al 2026-10-08) y *"Las lecciones caras"*.
+
+---
+
+## 0. LEE ESTO PRIMERO — estado al 2026-10-08
+
+**Esta sección es la más nueva. Si algo de las secciones 1 a 10 la contradice,
+manda esta** (la 10.2, la del recorrido, está reescrita entera; la 3, la 4 y la 5
+llevan al final un bloque «actualización 2026-10-08»). El diario fechado, con
+medidas y causas, está en la cabecera de `STATE.md` (entradas del 2026-10-07 y
+2026-10-08).
+
+### 0.1 Dónde está todo exactamente (comprobado el 2026-10-08)
+
+- **Rama `main` = `c4306ad`**, empujada a GitHub (`andreyostrik228/OfflineNutritionHelper`).
+  GitHub Pages construye `main` solo (es la copia de respaldo en github.io).
+- **Producción = Cloudflare Pages**, proyecto `offline-nutrition-helper`, despliegue
+  `31659b1c`, `https://offline-nutrition-helper.pages.dev`. **Hacer push NO despliega**:
+  hay que subir a mano (sección 4).
+- **189 ficheros idénticos por md5** entre el repo y producción (comprobado con
+  `scripts/qa/produccion.mjs` el mismo día), sello `?v=20261008b`.
+- **823 tests en verde** (`node tests/run-tests.js`).
+- Los ficheros de 0 bytes con nombres raros en la raíz (`###`, `6`, `Reglas)`,
+  `esperados`, `g`, `no`…) son **basura de los hooks globales rotos** (sección 2):
+  no son del proyecto, NUNCA se comitean. Se mete en git **por nombre de fichero**.
+- Si este traspaso (HANDOFF.md, STATE.md, `scripts/qa/`) aparece sin comitear en
+  `git status`, es porque el dueño aún no ha dicho que se comitee: pregúntale.
+
+### 0.2 Qué cambió desde el 2026-10-05 (una línea cada cosa y dónde leer más)
+
+1. **El recorrido guiado se rehízo desde cero**: ahora es un `<dialog>`
+   con 9 escenas animadas con GSAP que NO toca la página. Sección 10.2.
+2. **Orden del alta**: cuestionario → pregunta «¿Quieres ver un recorrido?» (antes
+   que el plan) → si dice sí, recorrido → al cerrarse, se genera el plan. 10.2.
+3. **El aspecto y las marcas de alta pertenecen a la CUENTA**, no al dispositivo
+   (`settings._prefs` en Firestore). Sección 11.
+4. **El service worker conserva la CSP con que se instaló**; hay un sello de cabeceras
+   (`SELLO_CABECERAS`) que hay que cambiar cuando cambia la CSP. Sección 13.
+5. **Los días de un plan de varios días ya no son copias** (`generateDietPlanDays`,
+   `avoidDishNames`). Sección 14.
+6. **Aspecto por defecto = `hojas`** (листва); diez aspectos, hojas CSS generadas.
+   Sección 15.
+7. **La palabra para confirmar el borrado de cuenta es por idioma**:
+   BORRAR / DELETE / УДАЛИТЬ (`ui.borrar`, `authDeleteWord()`).
+8. **«Las cuentas todavía no están disponibles» en el iPhone** era el punto 4.
+9. **Herramientas de prueba guardadas en el repo**: `scripts/qa/` (sección 12).
+   Antes vivían en una carpeta temporal que se pierde con la sesión.
+
+### 0.3 Las reglas que más errores han evitado (léelas antes de tocar nada)
+
+1. **Cualquier cambio en un `.js` o `.css` sube el sello `?v=` de `index.html`**
+   (sección 4, con el comando). Si no, un móvil se queda con HTML nuevo y script viejo.
+2. **Si cambias la CSP de `_headers`, cambia `SELLO_CABECERAS` en `sw.js`**
+   (sección 13). Hay un test que lo vigila; si no, los móviles con el worker viejo
+   se quedan sin Firebase ni GSAP.
+3. **Si cambias `assets/css/style.css`, regenera las hojas de aspecto**:
+   `python scripts/temas/construir.py`, y comitea `assets/css/temas/*` (sección 15).
+4. **Texto nuevo para la persona = en español, inglés y ruso a la vez.** Una clave
+   que no casa letra por letra NO da error: sale en español dentro de la interfaz
+   en otro idioma (10.1). Los textos del recorrido tienen test; los demás no.
+5. **NUNCA escribas el carácter «mayor que» (el de redirigir salida), ni su flecha
+   de dos o de guion, en ningún texto que pases a una herramienta**: ni en
+   comandos ni en el CONTENIDO de un fichero que escribas. Los hooks globales rotos
+   ejecutan el texto con `cmd` y cada uno crea un fichero de 0 bytes en la carpeta
+   de trabajo. Comprobado el 2026-10-08: escribir los scripts de `scripts/qa/` creó
+   cuatro (`m.vw`, `v.look`…), que hubo que borrar. Después de cada tanda:
+   `find . -maxdepth 1 -type f -size 0 -newer <un fichero tuyo>` y borra solo los nuevos.
+   En JavaScript que escribas tú, usa `function` en vez de flechas y `!==` o `<`.
+6. **`sed -i` se come los CR de los ficheros CRLF** (todo el repo lo es). Para
+   cambios masivos usa un script de Node que lea, `split`/`join` y escriba.
+7. **Los tests no cubren el DOM ni quién llama a la lógica.** Todo lo que se vea
+   se prueba además con Chrome sin interfaz (`scripts/qa/`), y se dice honestamente
+   qué NO se pudo probar (p. ej. Firebase real).
+8. **Un solo Chrome de pruebas a la vez** contra el servidor local (sección 12).
+9. **Commit, push y despliegue solo con permiso explícito del dueño para ese cambio**
+   («Выкладывай», «Да, деплой»…). Él suele pedirlo en la misma frase que la tarea;
+   si no lo pide, pregunta al final. Sin `Co-Authored-By` en sus commits.
+10. **Habla con él en ruso; código, commits, webs y documentos en español.** Sin
+    emojis en la aplicación (los odia: «иишные смайлики»). Sección 16.
+
+### 0.4 Qué NO está comprobado (no lo des por hecho)
+
+- **Cuentas con Firebase de verdad.** Nadie ha iniciado sesión con una cuenta real
+  desde que existen las preferencias por cuenta (`_prefs`). Solo se probó contra una
+  nube simulada (`scripts/qa/cuenta.mjs`) y con tests. Hace falta que el dueño cree
+  una cuenta en su móvil.
+- **El recorrido nuevo en el móvil del dueño.** Medido con Chrome sin interfaz en
+  320×568, 360×640, 390×844, 768×1024 y 1280×800, en es/ru/en y en los 10 aspectos;
+  no en una pantalla táctil real. Quedan recortes leves en 320×568 con aspectos de
+  letra muy ancha (`pegatinas`, `revista`).
+- **Siete idiomas pendientes**: uk, fr, de, it, pt, pl, ro. Se sirven es, en y ru.
+
+### 0.5 Por dónde seguir (en este orden, salvo que el dueño pida otra cosa)
+
+1. Preguntarle cómo se ve el recorrido en su móvil y si las cuentas entran.
+2. Traducir un idioma nuevo (propuesto: ucraniano) siguiendo `scripts/i18n/LEEME.md`;
+   cada idioma exige, además, las 51 claves `tour.*` por idioma (9 escenas × 2
+   + 33 palabras de maqueta), las 4 `ui.tour_pregunta_*` y la palabra de borrado
+   (uk ВИДАЛИТИ, fr SUPPRIMER, de LÖSCHEN, it ELIMINA, pt APAGAR, pl USUŃ, ro ȘTERGE).
+3. Lo demás de la sección 17.
 
 ---
 
@@ -128,7 +227,7 @@ fichero del repo, renormaliza con el comando de arriba y cuenta.
 
 Sitio web estático puro: HTML + CSS + JavaScript **ES5 con globales de
 navegador**, sin build, sin módulos, sin dependencias. `index.html` carga
-67 scripts (tres de ellos externos: GSAP y los dos del SDK de Firebase, núcleo y auth) **en orden manual de dependencia** — si añades uno, colócalo
+78 scripts (tres de ellos externos: GSAP y los dos del SDK de Firebase, núcleo y auth) **en orden manual de dependencia** — si añades uno, colócalo
 donde toca o no existirá cuando lo llamen.
 
 ```
@@ -144,6 +243,23 @@ Por eso su lógica se puede probar sin navegador, y por eso los tests son
 útiles. Cuando metas lógica de decisión en `js/ui/*`, sabe que estás
 metiéndola donde los tests no llegan — es exactamente donde se escondió
 el fallo más largo de esta sesión.
+
+**Actualización 2026-10-08.** `index.html` carga ahora **78 scripts** (tres externos:
+GSAP 3.12.5 desde cdnjs y los dos del SDK de Firebase 12.19.0 desde jsdelivr). Ficheros
+nuevos desde el 2026-10-05, con el orden en que se cargan:
+
+- `js/core/account-prefs.js` — preferencias por cuenta (sección 11). Va **después de
+  `onboarding.js` y antes de `auth.js`**.
+- `js/ui/tour-fx.js`, `js/ui/tour-scenes.js`, `js/ui/tour.js` — el recorrido (10.2).
+  **Orden obligatorio: `tour-fx` → `tour-scenes` → `tour`** (después de `onboarding-ui.js`,
+  antes de `ingredient-suggest.js`). GSAP carga antes que todos.
+- `assets/css/temas/*.css` — hojas de aspecto **generadas** (sección 15).
+- `scripts/qa/` — herramientas de prueba con Chrome sin interfaz (sección 12).
+
+Tamaños que conviene saber antes de abrir: `js/app.js` 1769 líneas,
+`js/engine/plan-generator.js` 2366, `js/ui/tour-scenes.js` 711, `js/ui/tour.js` 608.
+La guía de las 500 líneas es una guía (CLAUDE.md global), no una puerta: no partas un
+fichero si la partición obliga a un orden de carga delicado.
 
 ---
 
@@ -188,12 +304,60 @@ funcionando y pierde las dos cosas en silencio.
   nuevo y JavaScript viejo, y esa mezcla produce fallos que no se pueden
   razonar: la página llama a funciones que su script todavía no tiene.
 
+### 4.1 Actualización 2026-10-08 — el procedimiento que se ha seguido, paso a paso
+
+El de arriba sigue valiendo en lo esencial; estos son los matices que se pagaron:
+
+1. **Subir el sello** (solo si cambió un `.js` o el `.css`). Está 76 veces en `index.html`
+   y en ningún otro sitio. Con Node, **nunca con `sed -i`** (se come los CR):
+   ```bash
+   node -e "var fs=require('fs');var t=fs.readFileSync('index.html','utf8');fs.writeFileSync('index.html',t.split('20261008b').join('20261008c'))"
+   ```
+   El formato es `AAAAMMDD` + una letra (`b`, `c`…); el día siguiente empieza otra vez en `a`.
+2. **Tests**: `node tests/run-tests.js` (823). Si cambió el CSS, antes
+   `python scripts/temas/construir.py`.
+3. **Commit**, mensaje en español descriptivo (mira `git log` para el tono: dice el
+   porqué, lo medido y el nuevo sello). Se escribe a un fichero con heredoc y se usa
+   `git commit -F`. Se añade **por nombre** lo que toca, nunca `git add -A` (hay basura
+   de 0 bytes en la raíz).
+4. **Montar la carpeta de despliegue y comprobar que es la del repo**:
+   ```bash
+   DIR="$TEMP/deploy-wp" && rm -rf "$DIR" && mkdir -p "$DIR"
+   cp -r index.html icon.svg sw.js manifest.webmanifest _headers 404.html assets js "$DIR/"
+   diff -r js "$DIR/js" && diff -r assets "$DIR/assets" && diff index.html "$DIR/index.html" && echo STAGE_OK
+   ```
+5. **Subir**, con la versión de wrangler **fijada** (la última daba `EBUSY` en Windows)
+   y con `--branch main` (sin eso no es producción):
+   ```bash
+   npx --yes wrangler@4.142.0 pages deploy "$DIR" --project-name=offline-nutrition-helper --branch main --commit-dirty=true
+   ```
+   Imprime la URL del despliegue (`https://<8 hex>.offline-nutrition-helper.pages.dev`).
+6. **Verificar por hash contra lo subido**, no a ojo:
+   ```bash
+   node scripts/qa/produccion.mjs "$DIR" https://offline-nutrition-helper.pages.dev/
+   ```
+   Tiene que decir `distintos: []`, `no están: []` y el sello nuevo. Justo tras subir, un
+   fichero puede tardar unos segundos en llegar a todos los nodos: el script reintenta;
+   si aun así difiere uno, espera un minuto y repite antes de pensar que falló.
+   `_headers` no se sirve como fichero: la CSP se comprueba mirando las cabeceras de la
+   respuesta (`curl -sI`).
+7. **Empujar a GitHub** (es lo que ha funcionado: `gh` como credential helper solo para esa orden):
+   ```bash
+   git -c credential.helper= -c "credential.helper=!gh auth git-credential" push origin main
+   ```
+8. Actualizar la memoria y el estado (`STATE.md` cabecera) con el commit, el sello y el
+   despliegue.
+
+**Si cambia `_headers`** (la CSP), cambia también `SELLO_CABECERAS` en `sw.js` (sección 13)
+**antes** del paso 2, o el test de `tests/auth.test.js` falla y, peor, los móviles con el
+worker viejo no reciben la CSP nueva.
+
 ---
 
 ## 5. Probar
 
 ```bash
-node tests/run-tests.js     # 550 tests, todos deben pasar
+node tests/run-tests.js     # 823 tests, todos deben pasar
 ```
 
 El runner es casero y la lista de suites está **a mano** en
@@ -217,6 +381,28 @@ esta sesión: `maybeStartTour()` preguntaba a la máquina de estados algo
 que esa función no sabía contestar, el recorrido guiado dejó de salir
 **para todo el mundo**, y los 519 tests siguieron en verde porque prueban
 la máquina, no a sus llamadores.
+
+### 5.1 Actualización 2026-10-08
+
+- Son **823 tests** (el número de arriba es de hace semanas). `node tests/run-tests.js`
+  termina con `823 passed, 0 failed`. La lista de suites sigue siendo manual.
+- **Los tests del recorrido usan un DOM de mentira** (`FakeNodo`, dentro de
+  `tests/onboarding.test.js`): monta las 9 escenas sin GSAP y comprueba que cada
+  palabra que pide una maqueta existe en `TOUR_MOCK` y al revés. Si añades una escena,
+  añade su id a `TOUR_STEPS`, su función a `TOUR_SCENES` y sus claves a es/en/ru, o fallan
+  tres tests a la vez (eso es lo previsto).
+- **Hay tests que prohíben cosas**: `backdrop-filter:` en el recorrido (hace >500 ms por
+  fotograma y GSAP se pone en cámara lenta), emojis en el recorrido, nombrar «Compartir»
+  o «Imprimir» (el dueño los dejó fuera), más de 12 escenas.
+- **`tests/auth.test.js` vigila `SELLO_CABECERAS`** contra la CSP de `_headers`.
+- **`tests/look.test.js` vigila que el `<head>` repita los mismos ids y colores que
+  `LOOKS`** (el IIFE de `index.html` pinta el aspecto antes de cargar nada).
+- **`tests/migration.test.js` y `tests/cloud-sync.test.js`** cubren las preferencias por
+  cuenta (se comprobó con mutación: quitar el reset o el apply rompe 5 tests).
+- **`plan-generator.characterization.test.js` lleva 5 tests de variedad entre días** (sección 14;
+  uno falla si se quita el filtro de platos ya vistos: mutación comprobada). Los golden masters
+  NO se recapturaron: siguen valiendo los de siempre.
+- Lo que los tests siguen sin cubrir es **el navegador**: usa `scripts/qa/` (sección 12).
 
 ---
 
@@ -911,6 +1097,9 @@ el valor se guarda redondeado a entero y la rejilla no lo está.
 
 ## 8. Lo que queda abierto
 
+**Nota 2026-10-08:** lo más reciente está en la sección 17. Esta lista es anterior: parte de ella
+ya se hizo (recorrido, inglés y ruso, cuentas con Firebase) y el resto sigue vigente.
+
 - **`scripts/export_product_allergens.py`** en el repo de Python:
   `product-allergens.js` solo es reproducible con un script del
   scratchpad que ya no existe.
@@ -1316,36 +1505,432 @@ por fichero. Los mayores: `plan-generator.js` 17, `render-no-cook.js` 14,
 **Cada vez que crezca `dish-instructions.js` hay que volver a pasar por el
 ciclo de tandas.** Es una línea: `node scripts/i18n/inventario.js`.
 
-### 10.2 El recorrido — el modelo de bandas
+### 10.2 El recorrido — escenas animadas en un `<dialog>` (rehecho el 2026-10-08)
 
-`js/ui/tour.js`. Lo que hay que entender antes de tocar la geometría:
+**El modelo de «bandas», el hueco sobre el botón y las anclas `data-tour` YA NO EXISTEN.**
+Si encuentras mencionados en `STATE.md` o en la memoria `_tourInset`, `_tourCentrar`,
+`_tourNotaAlLado`, `tourFxMover`, `startTourIfWanted`, `offerTourWhenReady` o `data-tour`,
+es historia: se borraron.
 
-**La nota reserva su banda ANTES de elegir el marco.** No al revés. Hacerlo
-al revés fue lo que dejó la nota tapando su propio marco por 28.023 px² en
-el móvil. Tres funciones tienen que estar de acuerdo sobre el espacio
-disponible, así que el cálculo vive en helpers compartidos —`_tourInset()`,
-`_tourCentrar()`, `_tourNotaAlLado()`, `_tourAltoMaxMarco()`— y ninguna lo
-recalcula por su cuenta.
+**Por qué se rehízo.** El recorrido viejo oscurecía la página real, abría un hueco sobre
+cada botón, la desplazaba hasta él y en el móvil cambiaba de pestaña. Daba tirones **por
+construcción** (cada paso movía la página; el botón «Generar plan» es `position: sticky`
+y no se deja llevar) y necesitaba un plan ya pintado: sin él, «Ver la explicación otra
+vez» echaba a la bienvenida. Rehacerlo con otro enfoque fue más barato que seguir
+parcheando la geometría. El dueño: «кинь все силы… не обязательно делать таким как был».
 
-**`_tourInset()` está cacheado a propósito.** Recorre 2.514 elementos; al
-llamarlo desde `_tourPosition` (unas 4 veces por evento de scroll) el móvil
-pasó a **12,84 ms por evento**. Con caché, **0,08 ms**. Si alguien lo
-"limpia" quitando el caché, el móvil vuelve a ir a tirones.
+**Cómo es ahora.**
 
-**El centrado solo se aplica a partir de 900 px de ancho**, que es el punto
-de ruptura que ya usaba la hoja de estilos. Aplicarlo en todas partes
-descolocó el móvil entero.
+- `js/data/tour-steps.js` — datos puros: `TOUR_STEPS` (9 escenas: `plan`, `dias`, `cambiar`,
+  `compra`, `mercadona`, `hoy`, `generar`, `atajos`, `menu`; el `id` es UNA palabra y da la
+  clave de traducción y la de `TOUR_SCENES`) y `TOUR_MOCK` (33 palabras españolas que salen
+  DENTRO de las maquetas).
+- `js/ui/tour-scenes.js` — una función por escena en `TOUR_SCENES`. Cada una recibe un
+  contexto `c` (`_tgCrearContexto`: constructores `c.e`, `c.ico`, `c.t`, `c.ui`, y el dedo
+  `c.ir`, `c.pulsar`, `c.irse`, `c.reordenar`) y devuelve `{ el, play(tl), fin() }`:
+  la maqueta, lo que se añade a la línea de tiempo GSAP, y el estado FINAL de golpe (lo
+  que se ve sin GSAP o con «menos movimiento»). `tourEscenaMontar(id, el, animar)`
+  devuelve `{ parar() }`. La escena se reconstruye en cada pasada del bucle (con
+  fundido) y, si la maqueta no cabe en la altura que hay, se le pone `.tg-compacto`.
+  Las maquetas usan **las variables CSS de la aplicación** y la palabra REAL de la
+  interfaz (`ui.*`) cuando existe, así que se ven bien en los diez aspectos y el botón
+  de la maqueta dice lo mismo que el de verdad.
+- `js/ui/tour-fx.js` — solo ayudantes opcionales: `tourFxActivo()` (¿hay GSAP y
+  movimiento permitido?), `tourFxPalabras`, `tourFxFondo`, `tourFxConfeti`, `tourFxColor`.
+  Sin GSAP (la CDN no llegó) o con `prefers-reduced-motion`, no hacen nada y cada escena
+  se queda quieta en su estado final.
+- `js/ui/tour.js` — la hoja: `<dialog id="tour">` con `showModal()` (capa superior: nada
+  lo tapa, ni el diálogo de «plan activo»), `html.tour-abierto` bloquea el desplazamiento
+  de la página de debajo, navegación por botones, barritas de progreso tocables,
+  deslizamiento, flechas y Escape. La pregunta es otro diálogo, `<dialog id="tourAsk">`.
+  Funciones: `startTour({alCerrar})`, `stopTour()`, `offerTour(alResponder)`,
+  `maybeStartTour()`, `refreshTourTexts()`, `_tourVistoVigente()`.
+- CSS: sección 15 de `assets/css/style.css` (`.tour`, `.tour__card`, `.tg-*`). **Usa los
+  tokens de la aplicación** (nada de colores sueltos); el acento de cada escena es la
+  variable de un macro (`--kcal`, `--protein`, `--carbs`, `--fat`) mediante
+  `--tg-acento` / `--tg-wash`.
 
-**`passive: false` es obligatorio** en `wheel` y `touchmove` para que el
-bloqueo de scroll durante el recorrido pueda llamar a `preventDefault()`.
-`_tourDentroDeLaNota()` deja pasar el scroll dentro de la nota y la barra
-espaciadora sobre los botones. `stopTour` desbloquea **sin condiciones**:
-una salida por un camino no previsto que deje la página bloqueada es peor
-que cualquier fallo de geometría.
+**El flujo y quién llama a quién** (`js/app.js`):
 
-Los textos del recorrido viven en `js/data/tour-steps.js` **en español**,
-junto al comentario que los justifica, y el inglés está en `en.js` con
-claves `tour.<id>_titulo` / `tour.<id>_cuerpo`. Es el mismo patrón que
-`LEGAL_SUMMARY` y lo vigila `CLAVES_CON_ORIGEN_FUERA` en `tests/i18n.test.js`.
-El recorrido no lleva marcas `data-i18n` (se pinta desde JavaScript), así que
-`applyI18nToDom()` termina llamando a `refreshTourTexts()`.
+1. Al soltar la última pregunta del cuestionario, `onFinish` llama a
+   `offerTour(generarElPlan)`: la pregunta sale a los ~5 ms, **antes** de que exista el
+   plan. Contestes lo que contestes, `generarElPlan` se ejecuta después.
+2. «No» o Escape: se guarda `tourDoneAt` y se genera el plan al momento.
+3. «Sí»: `startTour({alCerrar})`. Al cerrarse el recorrido (acabado o saltado) se genera el
+   plan. Si había un plan de hoy ya empezado, el diálogo «plan activo» sale DESPUÉS del
+   recorrido, nunca debajo.
+4. `completeTour()` solo se llama si el recorrido llegó a mostrarse.
+5. «Ver la explicación otra vez» (pie y menú ☰) → `repetirExplicacion()` →
+   `startTour()` **siempre**, haya plan o no. (El bug del 2026-10-07 era que sin plan
+   repetía el alta y te echaba a la bienvenida.)
+6. `maybeStartTour()` se llama al final de cada generación y pregunta (no arranca) solo a
+   quien nunca vio el recorrido o lo vio ANTES de `TOUR_ESTRENO = 2026-10-06`. Una fecha
+   ilegible cuenta como «visto»: ante la duda no se molesta.
+
+**Cómo añadir o cambiar una escena** (en este orden, o los tests te lo dirán):
+1. `TOUR_STEPS` (titular y texto, 50 a 200 caracteres el cuerpo, el titular de 8 a 45) y, si
+   la maqueta dice palabras nuevas, `TOUR_MOCK`.
+2. La función en `TOUR_SCENES` (`tour-scenes.js`), con su `fin()`.
+3. Es, en y ru: `tour.<id>_titulo`, `tour.<id>_cuerpo`, `tour.m_<clave>` en
+   `js/i18n/en.js` y `ru.js`. Las claves se derivan de los datos y las vigila
+   `tests/i18n.test.js`.
+4. Mide con `scripts/qa/tour.mjs` (sección 12), en 320×568, 360×640 y 390×844, en `ru` (el
+   idioma de textos largos), y en `revista` y `pegatinas` (letra muy ancha).
+5. Sube el sello `?v=` (sección 4).
+
+**Trampas medidas (todas costaron horas):**
+
+- **`filter: blur()` y `backdrop-filter` en el recorrido**: >500 ms por fotograma en el
+  Chrome sin interfaz, y GSAP (`lagSmoothing`) responde poniendo TODO en cámara lenta.
+  Sin ellos ~8 ms y 0 fotogramas lentos. Hay un test que lo prohíbe.
+- **Una `transition` CSS sobre `opacity` en algo que GSAP anima con `from()`** le roba el
+  valor final: las filas se quedaban invisibles. Quita la transición.
+- **La opacidad de una clase CSS se pierde tras una animación GSAP de opacidad**:
+  atenúa los hijos en vez del contenedor.
+- **No uses `translateX(-50%)` para centrar** lo que GSAP anime con `x`: lo pisa. Centra
+  con márgenes.
+- **Los textos largos del ruso**: un botón con la palabra REAL de la interfaz («Сделать
+  планом на сегодня») no cabía en su botón en la escena 6. Ahora el botón grande
+  (`.tg-grande`) puede pasar a dos líneas y todo `.tg-btn` lleva `max-width: 100%`. Si
+  añades un botón de maqueta, pruébalo en ru y en `revista`.
+- **Pantallas bajas** (iPhone SE con ruso): `@media (max-height: 600px)` compacta
+  cabecera, texto y botones; por debajo de 340 px de ancho los botones de «Sin cocinar» y
+  despensa pierden icono y espaciado.
+- **Para probar sin pasar por la bienvenida** hay que quitar sus clases y el atributo `inert` que
+  deja en la página (`QUITAR_BIENVENIDA`, sección 12), y usar desplazamiento instantáneo.
+
+**Los textos** viven en español en `tour-steps.js` y en `en.js`/`ru.js` con claves
+`tour.<id>_titulo`, `_cuerpo` y `tour.m_<clave>`; la pregunta, en `ui.tour_pregunta_{titulo,
+cuerpo,si,no}`. Una clave que falta cae al español **sin avisar** (10.1).
+
+---
+
+## 11. Preferencias por cuenta (`settings._prefs`) — añadido el 2026-10-08
+
+La sección 9 explica cómo está montado Firebase; esto es lo que se añadió encima.
+
+**El problema que resolvió.** El aspecto elegido (`nutritionPlanner.look.v1`) y las marcas
+«ya hizo el cuestionario» y «ya vio el recorrido» (`intakeDoneAt`, `tourDoneAt` dentro de
+`nutritionPlanner.onboarding.v1`) vivían solo en `localStorage`: no se subían ni se
+vaciaban al cambiar de cuenta. Una cuenta recién creada heredaba el aspecto de la anterior
+y, con el recorrido «ya visto» por otra sesión, nunca se le ofrecía el recorrido ni el
+cuestionario. El dueño: «одно и то же оформление на всех аккаунтах даже если я его
+только что создал».
+
+**Dónde viajan.** DENTRO del campo `settings` del documento `user_data/{uid}` (que ya es
+texto JSON), bajo la clave reservada `_prefs`: `{ look, intakeDoneAt?, tourDoneAt? }`.
+**No en un campo nuevo**: `firebase/firestore.rules` solo admite
+`pantry_state`, `pantry_history`, `settings` y `migrated_at`, y publicar reglas se hace
+en la consola de Firebase, no desde este código. **No cambies las reglas ni añadas campos
+sin que el dueño publique reglas nuevas**, o las escrituras se rechazarán en silencio.
+
+**El módulo** es `js/core/account-prefs.js` (187 líneas, todo con `typeof` por si falta
+un colaborador): `collectAccountPrefs()`, `settingsWithAccountPrefs(settings)`,
+`hasAccountPrefs(settings)`, `applyAccountPrefs(prefs)`, `resetAccountPrefs()`,
+`pushAccountPrefsToCloud()`. `_prefs` **no** se guarda en el `settings` local
+(`sanitizeSettings` lo descarta, y está bien): se calcula al subir a partir de las claves
+de siempre (que son lo que lee el `<head>` antes de pintar) y se aplica al bajar.
+
+**Las reglas (no las cambies sin entenderlas):**
+
+- Al iniciar sesión, si la cuenta **tiene** `_prefs`, mandan: se aplican al dispositivo
+  (aspecto y marcas; lo que falta cuenta como «sin hacer»). Si no tiene (cuenta nueva o
+  anterior a esto), se queda lo del dispositivo —que es de quien acaba de crearla, porque
+  cerrar sesión lo vacía— y se sube.
+- Al cerrar sesión y en `clear_cross_user` (`_wipeLocal` en `migration.js`) el
+  dispositivo vuelve de fábrica: aspecto por defecto (`hojas`), cuestionario y recorrido
+  sin hacer.
+- **Se quedan en el dispositivo**: el idioma, las condiciones aceptadas
+  (`termsAcceptedAt`) y `accountChoice`.
+- `hasSnapshotContent` ignora `_prefs`: una cuenta con solo eso sigue contando como vacía.
+- **No se sube nada hasta que la reconciliación de esa cuenta ha terminado**
+  (`getCloudSyncedUserId`): subir `settings` antes de saber qué hay en la nube podía pisar el
+  perfil de la cuenta con un bloque casi vacío.
+
+**Dónde se dispara la subida o la aplicación:** `completeIntake()` y `completeTour()`
+(`onboarding.js`), `_menuElegirAspecto` (`render-menu.js`), `_applyNonConflict`,
+`resolveConflictKeepCloud` y `resolveConflictMerge` (`migration.js`), y
+`handleAuthDataReconciled` (`app.js`), que también vuelve a pintar el aspecto en el DOM
+tras iniciar o cerrar sesión. `clearLook()` (nuevo en `look.js`) quita el aspecto guardado.
+
+**Cómo se comprobó, y lo que NO:**
+
+- 14 tests (`migration`, `cloud-sync`, `onboarding`), con mutación.
+- `scripts/qa/cuenta.mjs`, en el navegador con la nube **simulada**: cuenta A («noche», alta
+  hecha) → cerrar sesión → hojas y alta vacía; cuenta B nueva → hojas, sin recorrido visto
+  y sube `{look:"hojas"}`; cuenta C con `_prefs` kitty → kitty y marcas suyas, no sube nada.
+- **NO con Firebase real.** Hace falta que el dueño haga esto en su móvil y te cuente:
+  crear una cuenta nueva (¿sale el cuestionario y luego la pregunta del recorrido?), elegir
+  un aspecto, cerrar sesión (¿vuelve a hojas?), entrar otra vez (¿vuelve su aspecto?), y
+  entrar desde otro dispositivo (¿llega el aspecto?). Si algo falla, mira primero en la
+  consola de Firebase si el documento `user_data/{uid}` tiene `settings` con `_prefs`
+  dentro, y si las reglas rechazaron la escritura (pestaña de red: 403).
+
+---
+
+## 12. Herramientas de prueba y trampas del entorno — añadido el 2026-10-08
+
+### 12.1 `scripts/qa/` — pruebas con Chrome sin interfaz
+
+Antes vivían en una carpeta temporal que desaparece con la sesión; ahora están en el repo.
+No necesitan dependencias: solo Node 22+ (WebSocket y `fetch` globales) y Chrome
+(variable `CHROME` si no está en `C:/Program Files/Google/Chrome/Application/chrome.exe`).
+
+**Primero, el servidor local** (la configuración «static-site» de `.claude/launch.json`
+hace exactamente esto, en el puerto 8000):
+```bash
+python -m http.server 8000 --directory "C:/Users/andre/Desktop/Offline Nutrition Helper/nutrition-planner"
+```
+La dirección es `http://127.0.0.1:8000/`.
+Este servidor **no manda las cabeceras de `_headers`**: no sirve para probar la CSP.
+
+| Script | Para qué | Ejemplo |
+|---|---|---|
+| `cdp.mjs` | Arnés común (lanza Chrome, `js()`, `ir()`, `foto()`, `clic()` con ratón real, errores de JS). Es una librería, no se ejecuta. | `import { lanzar } from "./cdp.mjs"` |
+| `tour.mjs` | Recorre las 9 escenas, mide fotogramas lentos y comprueba desbordes (hoja fuera de pantalla, botones, texto fuera de su botón, maqueta que no cabe). Sale con 1 si hay problemas. | `MEDIR=1 LOOK=revista node scripts/qa/tour.mjs http://127.0.0.1:8000/ capturas ru 320 568` |
+| `alta.mjs` | Pasa el cuestionario entero como persona nueva y comprueba el orden cuestionario → pregunta → recorrido → plan. Variantes: `RESP=si\|no\|esc`, `ACTIVO=1` (con plan de hoy empezado), `CANCELAR=1`, `SALTAR=1`. | `RESP=si node scripts/qa/alta.mjs http://127.0.0.1:8000/ capturas es 390 844` |
+| `cuenta.mjs` | Aspecto y marcas por cuenta con la nube simulada (sección 11). | `node scripts/qa/cuenta.mjs http://127.0.0.1:8000/ capturas` |
+| `variedad.cjs` | Variedad entre los días de un plan, sobre el MOTOR (sin navegador). Acepta la raíz de cualquier copia del proyecto, así que sirve para comparar commits. | `SOLO=minimal,small node scripts/qa/variedad.cjs . 60` |
+| `produccion.mjs` | Compara por md5 la carpeta que se subió con la URL de producción. | `node scripts/qa/produccion.mjs "$DIR" https://offline-nutrition-helper.pages.dev/` |
+
+Las capturas (PNG) se guardan en la carpeta que se pasa; míralas con la herramienta de
+lectura de imágenes, no te fíes solo de los números.
+
+**Verificado el 2026-10-08** contra el servidor local en la versión `c4306ad`: `tour.mjs`
+(es y ru, `MEDIR=1`) sin problemas y ~8 ms por fotograma; `alta.mjs` (pregunta a los 5 ms,
+sin plan, «Sí» abre el recorrido); `cuenta.mjs` (los 4 casos OK); `produccion.mjs` (189 de
+189 idénticos); `variedad.cjs` (0 planes con los días iguales).
+
+### 12.2 Trampas del entorno (todas se pagaron)
+
+1. **Este Chrome arranca con `prefers-reduced-motion: reduce`.** Sin forzar
+   `Emulation.setEmulatedMedia` a `no-preference`, GSAP nunca corre y el recorrido sale
+   quieto: parece que «no anima» y es la prueba. `lanzar()` ya lo fuerza.
+2. **Un solo Chrome a la vez contra el servidor local.** Una vez, con `tour.mjs` y `alta.mjs`
+   en paralelo, salió `ReferenceError: initInsightRefs is not defined` (un script no llegó a
+   cargar); en tres corridas sueltas posteriores no se repitió. Está sin investigar más; si
+   lo ves en una prueba en serie, **sí** es un fallo real de carga y hay que mirarlo.
+3. **Saltarse la bienvenida en una prueba** deja la página `inert` y con clases
+   (`esperando-bienvenida`, `is-onboarding`): usa `QUITAR_BIENVENIDA` de `cdp.mjs`.
+4. **El emulador de ventana de las herramientas del navegador de la app falsea el
+   desbordamiento.** Mide con `Emulation.setDeviceMetricsOverride` (lo hace `lanzar`) y
+   comprueba `clientWidth === innerWidth` antes de creer un «desborda».
+5. **Los hooks globales rotos crean ficheros de 0 bytes** por cada carácter de redirección
+   que haya en lo que escribes (comandos y contenido de ficheros): regla 5 de la
+   sección 0.3. Revisa y borra los nuevos al acabar cada tanda.
+6. **`sed -i` se come los CR.** Para cambios masivos: un script de Node con `split`/`join`.
+7. **Un script largo en un heredoc de Bash puede dar `unexpected EOF`.** Guárdalo en un
+   fichero y ejecútalo. Y dentro de plantillas de JavaScript con comillas invertidas, un
+   `\s` pierde la barra (se vuelve `s`): evita las barras invertidas ahí.
+8. **`curl /index.html` da 308 y 0 bytes** (redirige a `/`): parece que el despliegue falló.
+   Usa `curl -L` o `produccion.mjs`.
+9. **El CDN tarda unos segundos** en servir un despliegue recién subido: reintenta antes de
+   pensar que falló (`produccion.mjs` ya reintenta).
+10. **Los objetos de un sandbox `vm` son de otro realm**: `deepStrictEqual` contra un
+    literal falla; pasa por `JSON.parse(JSON.stringify(x))` (sección 5).
+11. **Medir mal el identificador**: en `variedad.cjs` una vez medí
+    `JSON.stringify(m).slice(0, 40)` y salieron cifras absurdas; el plato es `m.dishName`.
+    Antes de fiarte de una cifra rara, sospecha de lo medido (sección 7.1).
+12. **Un asistente no puede crear cuentas de Firebase reales ni meter contraseñas**: eso solo
+    lo puede probar el dueño (sección 11).
+
+---
+
+## 13. Service worker, CSP y el sello de cabeceras — añadido el 2026-10-08
+
+**Qué hace `sw.js`** (la cabecera del propio fichero lo cuenta bien): navegaciones
+(`index.html`) **primero a red**, con la copia guardada si falla; recursos con sello
+`?v=` **primero de caché** (una URL con sello es inmutable por construcción); la lista
+de precarga la deduce leyendo `index.html` y el nombre de la caché sale del sello, así
+que un sello nuevo borra la caché vieja. **No cachea nunca** cuentas y sincronización
+(Firebase) ni peticiones que no sean GET. Reenvía los scripts de jsdelivr y cdnjs con
+`fetch()`, y por eso los rige la directiva `connect-src` de la CSP, no solo `script-src`.
+
+**La trampa (2026-10-07), medida con Chrome sin interfaz y un servidor que cambia la CSP:**
+un service worker **conserva las cabeceras (la CSP) con que se instaló**, y si `sw.js` es
+idéntico byte a byte **el navegador no lo reinstala**. Se había añadido jsdelivr y cdnjs a
+`connect-src` en `_headers`, el servidor ya mandaba la CSP buena, y los móviles con el worker
+viejo siguieron sin `firebase` ni `gsap` (3 de 3 cargas rotas) → «Las cuentas todavía no
+están disponibles». Con UN byte distinto en `sw.js` se arreglaba desde la 2.ª carga. Lo
+vio el dueño en un iPhone.
+
+**El arreglo, y lo que te obliga a hacer:**
+
+- `var SELLO_CABECERAS = "csp-<10 primeros caracteres del sha1 de la línea
+  Content-Security-Policy de _headers>";` en `sw.js`. **Si cambias la CSP, cambia esto.**
+  `tests/auth.test.js` lo comprueba y el mensaje de fallo te dice el valor que toca poner.
+- En `index.html`, un `controllerchange` que **recarga UNA vez** (marca en `sessionStorage`,
+  clave `nutritionPlanner.swRecarga`) si un worker nuevo toma el control y faltan
+  `firebase` o `gsap`. Medido: visitante con worker viejo + despliegue nuevo → roto ~3 s →
+  recarga sola → todo cargado. Sin la marca sería un bucle de recargas.
+- Esta CSP se aplica en Cloudflare vía `_headers` (que Pages no sirve como fichero: se
+  comprueba con `curl -sI`). Dominios permitidos de scripts: el propio, jsdelivr (Firebase), cdnjs (GSAP)
+  y apis.google.com. **Añadir un CDN nuevo = tocar `_headers` (`script-src` y `connect-src`) y
+  `SELLO_CABECERAS`.**
+
+**Cómo reproducirlo si vuelve a pasar** (el experimento no se guardó en `scripts/qa/`
+porque es de un solo uso, pero se monta en veinte minutos): un servidor de Node que
+sirve el proyecto con la CSP como variable; Chrome sin interfaz instala el worker con la
+CSP vieja; cambias la CSP; recargas tres veces y miras `typeof firebase` y `typeof gsap`
+en cada carga. Con el `sw.js` viejo sirviéndose tiene que fallar y con el nuevo no.
+
+---
+
+## 14. Planes de varios días: variedad entre días — añadido el 2026-10-08
+
+**La queja (2026-10-07):** «мне выдало точно такой же план на 3 дня, один в один… дизайн
+убил логику?». **No**: los ficheros del motor no se habían tocado por el diseño ni por otro
+chat. Medido sobre el motor con `scripts/qa/variedad.cjs` (hombre 28 años 78 kg ganando
+músculo, 8 EUR/día, 60 a 80 planes de 3 días por celda): días idénticos **0 de 60 el
+2026-09-01, 2 de 60 el 09-04, 15 de 60 el 09-08**. El salto es el commit `d781b41`
+(«Let a day spend what a multi-day shop actually shares»): sube un 3 % el tope diario de un
+plan de 3 días y el puñado de platos más baratos cabía siempre, así que cada día elegía los
+mismos; los días solo se diferenciaban por el desempate aleatorio.
+
+**El arreglo** (`js/engine/plan-generator.js` y `js/engine/dish-selector.js`):
+
+- `generateDietPlanDays(profile, data, planDays, alTerminarDia)` genera **un día por
+  llamada** y le pasa a cada uno `data.avoidDishNames` (los platos de los días anteriores).
+  `alTerminarDia(dia, indice)` es el gancho con el que `js/app.js` pone el horario de cada
+  día (línea ~559). La usa `app.js`; la antigua forma de llamar a `generateDietPlan` en
+  bucle sigue funcionando.
+- `pickDish()` prefiere, **ENTRE LOS QUE YA CABEN en el presupuesto de la toma**, los que no
+  han salido (fase 1 y fase 2). Si todo lo asequible ya salió, se repite. Es decir: se filtra,
+  no se puntúa, y nunca se rompe el presupuesto para ganar variedad (principio general: cuando una regla DEBE
+  cumplirse, se filtra; puntuar solo ordena).
+
+**Antes → después (8 EUR, hombre):** días idénticos 14 de 80 → 0 de 80; platos distintos 4,3
+→ 8,7 de 9; día 1 → día 2 repetido 73 % → 1 %. **Coste: kcal 96 % → 88 % y proteína 100 % →
+96 %**: antes la «variedad» a 8 EUR era repetir lo más barato por caloría; ese tramo de 8 EUR
+ya declaraba no dar un día completo (`1b51a9a`). A 12, 16 y 20 EUR: variedad 11,4 → 14,6,
+14 → 15 y 14,2 → 15 de 15, con kcal y coste iguales ±1 punto. 7 días a 16 EUR: 30,8 → 35 de
+35, con días con avisos 1 % → 4 %.
+
+**Tests:** 5 nuevos en `tests/plan-generator.characterization.test.js` (el de 8 EUR falla si se
+quita el filtro) y retoques en `tests/no-cook-generator.test.js`.
+
+**Si el dueño vuelve a quejarse de repetición:** primero mide con `variedad.cjs` (con el
+presupuesto y los días que dice), compara con el motor de un commit anterior
+(`git worktree add` o `git show commit:ruta` a una carpeta y pasa esa raíz), y solo
+después toques el algoritmo. Y recuerda que el modo «sin cocinar» tiene su propio
+generador (`no-cook-generator.js`).
+
+---
+
+## 15. Los diez aspectos («looks») y el generador de temas — añadido el 2026-10-08
+
+La aplicación tiene **diez aspectos** que se eligen en el menú ☰. Es lo que el dueño llama
+«дизайн / оформление». Su historia: el diseño anterior al nuevo está en la etiqueta git
+`diseno-mercado-2026-09-28`; la rama `diseno-en-blanco` (la web sin CSS, para que otro chat
+rehiciera el diseño) **no se fusiona ni se despliega**.
+
+**Los ids, en el orden del menú** (`LOOKS` en `js/core/look.js`): `hojas` (**por defecto**,
+листва), `entreno` (= `style.css` sin hoja de aspecto), `cristal`, `avena`, `relieve`,
+`pegatinas`, `mercadillo`, `revista`, `noche` (el único oscuro), `kitty`.
+
+**Cómo funciona:**
+
+- `style.css` es el diseño base (el aspecto `entreno`). Cada otro aspecto es **una hoja
+  encima**, `assets/css/temas/NOMBRE.css`, que `look.js` enlaza en `#aspectoCss` y marca con
+  `data-look` en `<html>`.
+- Se guarda en `nutritionPlanner.look.v1` (clave propia, no dentro de los ajustes) y,
+  desde el 2026-10-07, también en la cuenta (sección 11).
+- **Un IIFE al principio del `<head>` de `index.html` repite la lista de ids y de colores**
+  para pintar el aspecto ANTES de cargar nada (si no, parpadea el diseño por defecto). Es
+  una duplicación a propósito; `tests/look.test.js` comprueba que coincide con `LOOKS`. Si
+  cambias un color o un id, cámbialo en los dos sitios. El `theme-color` estático del
+  `<head>` es `#E9F1E3` (el de `hojas`).
+- Cambiar el aspecto por defecto afecta solo a quien no haya elegido nada; quien ya eligió
+  uno lo conserva.
+
+**Las hojas están GENERADAS. No las edites a mano.** Salen de `scripts/temas/` con:
+```bash
+python scripts/temas/construir.py            # todos
+python scripts/temas/construir.py hojas noche
+```
+a partir de `scripts/temas/nucleo.py` (lo común, incluida la parte «neutralizar», que sale
+de `style.css`) y `scripts/temas/aspectos/NOMBRE.py` (cada aspecto: variables, tipografía,
+arte). **Cada vez que cambie `style.css`, hay que volver a generar**, comitear
+`assets/css/temas/*` y subir el sello `?v=`. El generador **obliga a letras de al menos 13 px**
+en las etiquetas pequeñas. `scripts/temas/LEEME.md` lo cuenta con más detalle.
+
+**El recorrido y los aspectos:** las maquetas del recorrido usan las variables CSS de la
+aplicación, así que cambian de aspecto solas; en `revista` y `pegatinas` (letra muy ancha) hay
+reglas propias para que los botones envuelvan (`flex-wrap`). Cuando toques el recorrido,
+pruébalo al menos en `hojas`, `revista`, `pegatinas`, `kitty` y `noche`.
+
+**Para ver los diez aspectos** con el navegador sin interfaz, `tour.mjs` acepta `LOOK=nombre`
+(sección 12). Para el menú, hay que abrir ☰ y elegir; no existe un script dedicado.
+
+---
+
+## 16. El dueño y cómo trabaja — añadido el 2026-10-08
+
+(La sección 1 ya describe con quién trabajas; esto es lo aprendido en estos días.)
+
+- **Habla ruso, el código va en español.** Contéstale siempre en ruso, corto y claro. Los
+  commits, los comentarios, la documentación y los textos de la web, en español.
+- **Cuando algo falla se enfada, con razón, y lo que quiere es el arreglo YA.** Tono duro
+  («блять», «полная хуйня») no es una orden de cambiar de enfoque: es frustración por algo
+  que él ve y tú no. No te disculpes largo: reproduce, arregla, verifica y cuéntalo.
+- **«Выкладывай» / «Да» / «деплой» = permiso para commit + despliegue + push de ESE cambio.**
+  Suele venir en la misma frase que la queja («…сразу выкладывай»). Si no lo dice, termina
+  con una línea preguntando. El permiso de una vez no vale para la siguiente.
+- **Odia los emojis en la aplicación** («иишные смайлики»). Usa iconos SVG del sprite de
+  `index.html` (`icon-camera`, `icon-chef`…) y números, nunca emojis. Hay un test para el
+  recorrido; para el resto vigílalo tú. (El ☰ del menú es un carácter de icono, no emoji.)
+- **Quiere cosas que se vean bien, no solo que funcionen**: «прям клёво», animaciones con GSAP,
+  textos que quepan en el botón en CADA idioma. Cuando dijo «делай по-своему, главное чтобы
+  выглядело понятно и классно», la solución fue rehacer el recorrido entero, no retocarlo.
+- **Prueba en su móvil real** (iPhone, a veces Android). Por eso importa lo de los service
+  workers y la CSP (sección 13): lo que funciona en un perfil limpio de Chrome puede no
+  funcionar en un móvil con una versión anterior instalada.
+- **Pide datos, no consuelo** (memoria «hands-on technical dogfooder»): mide antes y después
+  y cuenta lo que salga, incluidos los costes (sección 14 dice que la variedad costó
+  kcal 96 a 88 % a 8 EUR). Si algo no se pudo comprobar, dilo.
+- **Cierra cada respuesta que cambió algo con «cambié X, ve a comprobar Y»**, con el
+  número de antes y de después y el dispositivo nombrado.
+- **Una sola sesión de trabajo**: el modo «orquestador + agente de código» está APAGADO salvo
+  que él lo pida.
+- **Mercadona únicamente** hasta que diga otra cosa.
+
+---
+
+## 17. Lo que queda abierto al 2026-10-08
+
+La sección 8 sigue teniendo la lista larga de lo anterior; esto es lo nuevo y lo más urgente.
+
+**Que solo puede comprobar el dueño**
+1. El recorrido nuevo en su móvil (¿tirones? ¿textos largos en ruso? ¿se ve en su aspecto?).
+2. Cuentas con Firebase de verdad: crear, elegir aspecto, cerrar sesión, volver a entrar,
+   entrar desde otro dispositivo (sección 11). **Ningún inicio de sesión real se ha probado
+   desde que existen las preferencias por cuenta.**
+3. Que la pregunta «¿Quieres ver un recorrido?» salga tras el cuestionario en su móvil. Su
+   queja original («не появляется») NO se reprodujo con un perfil limpio (en Chrome sin
+   interfaz con iPhone UA sale a los ~3 ms); sí se encontró y arregló el caso del plan de hoy
+   ya empezado, y se rehízo el orden del alta. Si vuelve a decir que no sale, pídele un
+   vídeo o la captura y mira qué diálogo hay abierto.
+
+**Trabajo pendiente (no pedido aún; propón, no empieces sin que lo confirme)**
+4. **Siete idiomas**: uk (propuesto el primero), fr, de, it, pt, pl, ro. Tubería y reglas en
+   `scripts/i18n/LEEME.md`. Cada idioma exige, además de la interfaz, las 51 claves `tour.*`,
+   las 4 `ui.tour_pregunta_*` y la palabra de borrado (sección 0.5).
+5. **Quedan literales en español incrustados en el código** (72 el 2026-09-13; mira
+   `node scripts/i18n/inventario.js`), el texto legal completo y el `<title>`, que sigue en
+   español.
+6. `detectLang()` no está conectada al arranque, y **cambiar de idioma no repinta un plan ya
+   pintado** (hay que regenerar o recargar).
+7. `restartOnboarding()` ya no la llama nadie (se dejó por prudencia).
+8. **Recortes leves a 320×568 con aspectos de letra muy ancha** (`pegatinas`, `revista`) en
+   alguna maqueta del recorrido.
+9. **`poc/tests`: 19 de 23 en rojo** desde hace tiempo. No es de la aplicación; no lo arregles
+   sin que lo pida.
+10. **Los hooks globales rotos** (sección 2): arreglarlos o quitarlos es decisión del dueño
+    (memoria `reference_hooks_msys_cmd`). Mientras tanto, la regla 5 de la sección 0.3.
+11. **Las entradas viejas de `STATE.md`** (2026-10-07 «(f)», el recorrido de 10 pasos, y las
+    de las anclas `data-tour`) describen cosas que ya no existen; están marcadas, pero no las
+    cites como estado actual.
+
+**Decisiones del dueño que siguen vigentes:** presupuestos 8/12/16/20 EUR; Mercadona
+únicamente; «Compartir» e «Imprimir» la lista de la compra no se explican en el recorrido;
+aspecto por defecto `hojas`; el recorrido debe ser corto (tope de 12 escenas, hoy 9).

@@ -5,10 +5,21 @@
 > Escrito para alguien que llega SIN NINGÚN contexto previo. Si solo lees
 > una parte de este archivo, que sea esta.
 >
+> ### ⏩ UPDATE 2026-10-08 (h) — TRASPASO COMPLETO PARA EL SIGUIENTE CHAT
+>
+> **Lee `HANDOFF.md`, sección 0**: estado exacto, reglas que evitan errores, lo no comprobado y por dónde
+> seguir. Herramientas de prueba con Chrome sin interfaz guardadas en `scripts/qa/` (sección 12 del HANDOFF).
+> Las entradas (b) a (g) de debajo dicen «SIN commit» porque se escribieron antes de desplegar: **todo hasta
+> `c4306ad` está desplegado y empujado** (Cloudflare `31659b1c`, sello `20261008b`, 823 tests). La entrada (f)
+> (recorrido de 10 pasos con hueco, anillo y `tourFxMover`) está **SUSTITUIDA** por el recorrido de escenas
+> (la entrada de 2026-10-08 sin letra): lo que describe, incluidas las anclas `data-tour`, ya no existe.
+>
+>
 > ### ⏩ UPDATE 2026-10-08 — el recorrido, REHECHO desde cero: escenas animadas, sin tocar la página
 >
-> **823 tests en verde. Sello `20261008a`. Hecho en local, SIN commit ni despliegue todavía**
-> (lo anterior, commit `85382d4`, sello `20261007g`, sí está desplegado y empujado). Queja del dueño:
+> **823 tests en verde. DESPLEGADO Y EMPUJADO** (commits `13250ac` el recorrido y `c4306ad` el texto de
+> los botones de las maquetas; Cloudflare `31659b1c`; sello `20261008b`; 189 ficheros idénticos por md5 el
+> 2026-10-08). Queja del dueño:
 > «тур полная хуйня, он дёргался… когда я нажал на кнопку в меню посмотреть заново тур, меня выкидывает
 > на главную (elegir o crear cuenta)… кинь все силы, делай по-своему, чтобы выглядело понятно и классно».
 >
@@ -42,7 +53,7 @@
 > - **Opcional**: sin GSAP o con «menos movimiento» cada escena se queda en su estado FINAL, quieta.
 > - Medición: `scratchpad/i18n/tg.mjs` (env `MEDIR=1`, `LOOK`, `ESCENAS`, `TIEMPOS`) y `flujos.mjs`.
 >
-> ### ⏩ UPDATE 2026-10-07 (f) — recorrido de 10 pasos, con GSAP y sin emojis
+> ### ⏩ UPDATE 2026-10-07 (f) — [SUSTITUIDO el 2026-10-08: ya no existe] recorrido de 10 pasos, con GSAP y sin emojis
 >
 > **828 tests en verde. Sello `20261007g`. Hecho en local, SIN commit ni despliegue todavía**
 > (lo anterior, commit `6676185`, sello `e`, sí está desplegado y empujado). Pedido del dueño: «используй
