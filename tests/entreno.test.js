@@ -153,6 +153,31 @@ function run(t) {
     assert.ok(html.indexOf("js/engine/workout-generator.js") !== -1, "index.html no carga el generador");
     assert.ok(html.indexOf("js/data/exercises.js") !== -1, "index.html no carga el catálogo");
   });
+
+  t.test("el plan se pinta con una tarjeta por día y celdas con etiqueta, para que en el móvil sean tarjetas", function () {
+    var s = sandbox();
+    var plan = s.entrenoPlanParaDatos({ dias: 3, objetivo: "bulk", nivel: "intermedio", equipamiento: "gimnasio", semana: 1 });
+    var html = s.entrenoPlanHtml(plan);
+    assert.strictEqual(html.split('class="entreno__sesion"').length - 1, 3, "debe haber una tarjeta por día");
+    assert.ok(html.indexOf('data-label="') !== -1, "faltan las etiquetas de las celdas");
+    assert.ok(html.indexOf("undefined") === -1 && html.indexOf("NaN") === -1, "sale un hueco sin rellenar");
+  });
+
+  t.test("la semana de descarga se anuncia con su aviso y las demás semanas no", function () {
+    var s = sandbox();
+    var quinta = s.entrenoPlanHtml(s.entrenoPlanParaDatos({ dias: 4, objetivo: "cut", nivel: "principiante", equipamiento: "gimnasio", semana: 5 }));
+    assert.ok(quinta.indexOf("entreno__aviso--suave") !== -1, "la semana 5 no avisa de la descarga");
+    var cuarta = s.entrenoPlanHtml(s.entrenoPlanParaDatos({ dias: 4, objetivo: "cut", nivel: "principiante", equipamiento: "gimnasio", semana: 4 }));
+    assert.ok(cuarta.indexOf("entreno__aviso--suave") === -1, "la semana 4 avisa de descarga sin serlo");
+  });
+
+  t.test("el marcado trae las elecciones con su valor, y los botones de la semana", function () {
+    var html = fs.readFileSync(projPath("index.html"), "utf8");
+    ["principiante", "intermedio", "avanzado", "gimnasio", "mancuernas", "sin_material"].forEach(function (v) {
+      assert.ok(html.indexOf('data-valor="' + v + '"') !== -1, "falta el botón data-valor=\"" + v + "\"");
+    });
+    assert.strictEqual(html.split('class="entreno__paso-btn"').length - 1, 2, "debe haber dos botones de paso (− y +)");
+  });
 }
 
 module.exports = { run: run };

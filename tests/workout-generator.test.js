@@ -406,6 +406,21 @@ function run(t) {
     assert.strictEqual(s.siguienteCarga(60, "6-10", [10, "diez"], "pecho").ok, false, "repeticiones no numéricas");
   });
 
+  t.test("con gimnasio, cada patrón tiene al menos dos ejercicios para principiante: el plan puede variar de una semana a otra", function () {
+    var s = sandbox();
+    var gimnasio = s.EQUIPAMIENTO_DISPONIBLE.gimnasio;
+    var patrones = {};
+    Object.keys(s.WORKOUT_SESIONES).forEach(function (k) {
+      s.WORKOUT_SESIONES[k].patrones.forEach(function (p) { patrones[p] = true; });
+    });
+    Object.keys(patrones).forEach(function (p) {
+      var opciones = s.EXERCISE_CATALOG.filter(function (e) {
+        return e.pattern === p && e.level === "principiante" && e.equipment.every(function (m) { return gimnasio.indexOf(m) !== -1; });
+      });
+      assert.ok(opciones.length >= 2, p + " solo tiene " + opciones.length + " opción(es) para principiante en gimnasio");
+    });
+  });
+
   // ── Catálogo ────────────────────────────────────────────────────────────
 
   t.test("el catálogo tiene ids únicos y campos válidos", function () {

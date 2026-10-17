@@ -702,5 +702,14 @@ registerI18nTable("es", {
   "ent.cardio_recomp": "Cardio opcional: 1-2 sesiones suaves de 20-30 min a la semana.",
   "ent.cardio_maintain": "Cardio opcional: 1-2 sesiones suaves de 20-30 min a la semana.",
   "ent.aviso_general": "Plan general de fuerza, no es consejo médico. Si tienes lesiones o problemas de salud, consulta a un profesional.",
-  "ent.nota_idioma": "Los nombres de los ejercicios y la técnica están por ahora en español."
+  "ent.nota_idioma": "Los nombres de los ejercicios y la técnica están por ahora en español.",
+  "ent.menos": "Menos",
+  "ent.mas": "Más",
+  "ent.n_ejercicios": "{n} ejercicios",
+  "ent.tip_calentar": "Calentamiento",
+  "ent.tip_progresion": "Progresión",
+  "ent.tip_descarga": "Descarga",
+  "ent.tip_cardio": "Cardio",
+  "ent.tip_rir": "Repeticiones en reserva (RIR)",
+  "ent.tip_aviso": "Importante"
 });

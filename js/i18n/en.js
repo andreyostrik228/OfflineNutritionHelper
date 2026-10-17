@@ -799,5 +799,14 @@ registerI18nTable("en", {
   "ent.cardio_recomp": "Optional: 1–2 easy sessions of 20–30 min a week.",
   "ent.cardio_maintain": "Optional: 1–2 easy sessions of 20–30 min a week.",
   "ent.aviso_general": "General strength plan, not medical advice. If you have injuries or health problems, ask a professional.",
-  "ent.nota_idioma": "Exercise names and form tips are in Spanish for now."
+  "ent.nota_idioma": "Exercise names and form tips are in Spanish for now.",
+  "ent.menos": "Less",
+  "ent.mas": "More",
+  "ent.n_ejercicios": "{n} exercises",
+  "ent.tip_calentar": "Warm-up",
+  "ent.tip_progresion": "Progression",
+  "ent.tip_descarga": "Deload",
+  "ent.tip_cardio": "Cardio",
+  "ent.tip_rir": "Reps in reserve (RIR)",
+  "ent.tip_aviso": "Important"
 });

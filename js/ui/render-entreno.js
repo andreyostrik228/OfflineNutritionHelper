@@ -101,10 +101,24 @@ function entrenoTextoAviso(aviso) {
   return String(aviso);
 }
 
+/** Valor del grupo de botones de una sola elección (nivel, material). */
+function entrenoValorSeg(id) {
+  var elegido = document.querySelector("#" + id + " .entreno__seg-btn.is-on");
+  return elegido ? elegido.getAttribute("data-valor") : null;
+}
+
+function entrenoPonerSeg(id, valor) {
+  Array.prototype.forEach.call(document.querySelectorAll("#" + id + " .entreno__seg-btn"), function (b) {
+    var on = b.getAttribute("data-valor") === valor;
+    b.classList.toggle("is-on", on);
+    b.setAttribute("aria-pressed", on ? "true" : "false");
+  });
+}
+
 /** Lo que el usuario ha elegido en la pantalla, ya validado. */
 function entrenoLeerControles() {
-  var nivel = document.getElementById("entNivel").value;
-  var equipamiento = document.getElementById("entEquipo").value;
+  var nivel = entrenoValorSeg("entNivel");
+  var equipamiento = entrenoValorSeg("entEquipo");
   var semana = Math.floor(Number(document.getElementById("entSemana").value));
   if (ENTRENO_NIVELES.indexOf(nivel) === -1) nivel = "principiante";
   if (ENTRENO_EQUIPOS.indexOf(equipamiento) === -1) equipamiento = "gimnasio";
@@ -124,64 +138,97 @@ function entrenoDescanso(segundos) {
   return min + ":" + (seg < 10 ? "0" + seg : String(seg));
 }
 
-function entrenoCabeceraHtml(plan) {
-  var partes = [
-    tOr("ent.division_" + plan.division, plan.division),
-    tFormat("ent.dias_n", { n: plan.dias }),
-    tOr("ent.objetivo_" + plan.objetivo, plan.objetivo),
-    tOr("ent.nivel_" + plan.nivel, plan.nivel),
-    tOr("ent.equipo_" + plan.equipamiento, plan.equipamiento)
-  ];
-  return '<h3 class="entreno__cabecera">' + partes.map(entrenoEsc).join(" · ") + "</h3>";
+function entrenoChip(texto, fuerte) {
+  return '<li class="entreno__chip' + (fuerte ? " entreno__chip--fuerte" : "") + '">' + entrenoEsc(texto) + "</li>";
 }
 
+function entrenoChipsHtml(plan) {
+  return '<ul class="entreno__chips">' + [
+    entrenoChip(tOr("ent.division_" + plan.division, plan.division), true),
+    entrenoChip(tFormat("ent.dias_n", { n: plan.dias }), false),
+    entrenoChip(tOr("ent.objetivo_" + plan.objetivo, plan.objetivo), false),
+    entrenoChip(tOr("ent.nivel_" + plan.nivel, plan.nivel), false),
+    entrenoChip(tOr("ent.equipo_" + plan.equipamiento, plan.equipamiento), false)
+  ].join("") + "</ul>";
+}
+
+/** Tabla de una sesión. Cada celda lleva su etiqueta: en el móvil se pinta como tarjeta. */
 function entrenoTablaHtml(sesion) {
+  var etiqueta = {
+    ejercicio: t("ent.col_ejercicio"),
+    series: t("ent.col_series"),
+    reps: t("ent.col_reps"),
+    descanso: t("ent.col_descanso"),
+    rir: t("ent.col_rir"),
+    tecnica: t("ent.col_tecnica")
+  };
   var filas = sesion.exercises.map(function (e) {
-    return "<tr><td>" + entrenoEsc(e.name) + "</td><td>" + e.sets + "</td><td>" + entrenoEsc(e.reps) +
-      "</td><td>" + entrenoDescanso(e.restSeconds) + "</td><td>" + e.rir +
-      '</td><td class="entreno__tec">' + entrenoEsc(e.tecnica) + "</td></tr>";
+    return "<tr>" +
+      '<td class="entreno__nombre" data-label="' + entrenoEsc(etiqueta.ejercicio) + '">' + entrenoEsc(e.name) + "</td>" +
+      '<td data-label="' + entrenoEsc(etiqueta.series) + '">' + e.sets + "</td>" +
+      '<td data-label="' + entrenoEsc(etiqueta.reps) + '">' + entrenoEsc(e.reps) + "</td>" +
+      '<td data-label="' + entrenoEsc(etiqueta.descanso) + '">' + entrenoDescanso(e.restSeconds) + "</td>" +
+      '<td data-label="' + entrenoEsc(etiqueta.rir) + '">' + e.rir + "</td>" +
+      '<td class="entreno__tec" data-label="' + entrenoEsc(etiqueta.tecnica) + '">' + entrenoEsc(e.tecnica) + "</td>" +
+      "</tr>";
   }).join("");
   return '<div class="entreno__tabla"><table><thead><tr>' +
-    "<th>" + t("ent.col_ejercicio") + "</th><th>" + t("ent.col_series") + "</th><th>" + t("ent.col_reps") +
-    "</th><th>" + t("ent.col_descanso") + "</th><th>" + t("ent.col_rir") + "</th><th>" + t("ent.col_tecnica") +
+    "<th>" + entrenoEsc(etiqueta.ejercicio) + "</th><th>" + entrenoEsc(etiqueta.series) + "</th><th>" + entrenoEsc(etiqueta.reps) +
+    "</th><th>" + entrenoEsc(etiqueta.descanso) + "</th><th>" + entrenoEsc(etiqueta.rir) + "</th><th>" + entrenoEsc(etiqueta.tecnica) +
     "</th></tr></thead><tbody>" + filas + "</tbody></table></div>";
 }
 
-function entrenoItem(textoHtml) {
-  return "<li>" + textoHtml + "</li>";
+/** Tarjeta de una sesión: el día, el nombre y el número de ejercicios, y debajo la tabla. */
+function entrenoSesionHtml(s) {
+  return '<section class="entreno__sesion">' +
+    '<header class="entreno__sesion-cabeza">' +
+      '<span class="entreno__dia">' + entrenoEsc(t("ent.dia_" + s.dia)) + "</span>" +
+      '<h4 class="entreno__sesion-titulo">' + entrenoEsc(tOr("ent.sesion_" + s.key, s.name)) + "</h4>" +
+      '<span class="entreno__n">' + entrenoEsc(tFormat("ent.n_ejercicios", { n: s.exercises.length })) + "</span>" +
+    "</header>" +
+    entrenoTablaHtml(s) +
+  "</section>";
+}
+
+/** Consejos en tarjetas: título corto y el texto debajo. */
+function entrenoConsejosHtml(plan) {
+  var consejos = [
+    ["ent.tip_calentar", "ent.calentar"],
+    ["ent.tip_progresion", "ent.progresion"],
+    ["ent.tip_descarga", "ent.descarga"],
+    ["ent.tip_cardio", "ent.cardio_" + plan.objetivo],
+    ["ent.tip_rir", "ent.rir"],
+    ["ent.tip_aviso", "ent.aviso_general"]
+  ];
+  return '<div class="entreno__consejos">' + consejos.map(function (c) {
+    return '<article class="entreno__consejo"><h4>' + entrenoEsc(t(c[0])) + "</h4><p>" + entrenoEsc(t(c[1])) + "</p></article>";
+  }).join("") + "</div>";
 }
 
 function entrenoPlanHtml(plan) {
-  var h = [entrenoCabeceraHtml(plan)];
+  var h = [entrenoChipsHtml(plan)];
 
   if (plan.semanaDescarga) {
-    h.push('<p class="entreno__aviso">' + entrenoEsc(tFormat("ent.semana_descarga", { semana: plan.semana })) + "</p>");
+    h.push('<p class="entreno__aviso entreno__aviso--suave">' + entrenoEsc(tFormat("ent.semana_descarga", { semana: plan.semana })) + "</p>");
   }
   if (plan.warnings.length) {
-    var avisos = plan.warnings.map(function (w) { return entrenoItem(entrenoEsc(entrenoTextoAviso(w))); });
-    h.push('<div class="entreno__aviso"><strong>' + t("ent.que_saber") + "</strong><ul>" + avisos.join("") + "</ul></div>");
+    var avisos = plan.warnings.map(function (w) { return "<li>" + entrenoEsc(entrenoTextoAviso(w)) + "</li>"; });
+    h.push('<div class="entreno__aviso"><strong>' + entrenoEsc(t("ent.que_saber")) + "</strong><ul>" + avisos.join("") + "</ul></div>");
   }
 
-  plan.sesiones.forEach(function (s) {
-    h.push('<h4 class="entreno__sesion">' + entrenoEsc(tOr("ent.sesion_" + s.key, s.name)) + " — " +
-      entrenoEsc(t("ent.dia_" + s.dia)) + "</h4>");
-    h.push(entrenoTablaHtml(s));
-  });
+  plan.sesiones.forEach(function (s) { h.push(entrenoSesionHtml(s)); });
 
   var grupos = Object.keys(plan.seriesPorSemana).map(function (m) {
-    return entrenoItem(entrenoEsc(tFormat("ent.series_linea", {
+    return entrenoChip(tFormat("ent.series_linea", {
       grupo: tOr("ent.grupo_" + m, m),
       n: plan.seriesPorSemana[m]
-    })));
+    }), false);
   });
-  h.push('<h3 class="entreno__subtitulo">' + t("ent.series_semana") + "</h3>");
-  h.push('<ul class="entreno__lista">' + grupos.join("") + "</ul>");
+  h.push('<h3 class="entreno__subtitulo">' + entrenoEsc(t("ent.series_semana")) + "</h3>");
+  h.push('<ul class="entreno__chips">' + grupos.join("") + "</ul>");
 
-  h.push('<h3 class="entreno__subtitulo">' + t("ent.como") + "</h3>");
-  var consejos = ["ent.calentar", "ent.progresion", "ent.descarga", "ent.cardio_" + plan.objetivo, "ent.rir", "ent.aviso_general"];
-  h.push('<ul class="entreno__lista">' + consejos.map(function (clave) {
-    return entrenoItem(entrenoEsc(t(clave)));
-  }).join("") + "</ul>");
+  h.push('<h3 class="entreno__subtitulo">' + entrenoEsc(t("ent.como")) + "</h3>");
+  h.push(entrenoConsejosHtml(plan));
 
   return h.join("");
 }
@@ -236,10 +283,26 @@ function entrenoMostrar(activo) {
   window.scrollTo(0, 0);
 }
 
+/** Pulsación corta en los móviles que vibran (Android). En el resto no hace nada. */
+function entrenoVibrar() {
+  try {
+    if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") navigator.vibrate(8);
+  } catch (e) { /* sin vibración: no pasa nada */ }
+}
 function entrenoAlCambiar() {
   var controles = entrenoLeerControles();
   entrenoGuardarPrefs(controles);
   renderEntreno();
+}
+
+/** Botones «−» y «+» de la semana: mueve el número dentro de 1…52. */
+function entrenoPasoSemana(paso) {
+  var campo = document.getElementById("entSemana");
+  var nueva = Math.floor(Number(campo.value)) + paso;
+  if (!(nueva >= 1)) nueva = 1;
+  if (nueva > ENTRENO_SEMANA_MAX) nueva = ENTRENO_SEMANA_MAX;
+  campo.value = String(nueva);
+  entrenoAlCambiar();
 }
 
 function initEntreno() {
@@ -248,14 +311,25 @@ function initEntreno() {
   if (!_entrenoBoton || !_entrenoPanel) return;
 
   var prefs = entrenoLeerPrefs();
-  document.getElementById("entNivel").value = prefs.nivel;
-  document.getElementById("entEquipo").value = prefs.equipamiento;
+  entrenoPonerSeg("entNivel", prefs.nivel);
+  entrenoPonerSeg("entEquipo", prefs.equipamiento);
   document.getElementById("entSemana").value = String(prefs.semana);
 
-  _entrenoBoton.addEventListener("click", function () { entrenoMostrar(_entrenoPanel.hidden); });
-  ["entNivel", "entEquipo", "entSemana"].forEach(function (id) {
-    document.getElementById(id).addEventListener("change", entrenoAlCambiar);
+  _entrenoBoton.addEventListener("click", function () { entrenoVibrar(); entrenoMostrar(_entrenoPanel.hidden); });
+
+  ["entNivel", "entEquipo"].forEach(function (id) {
+    Array.prototype.forEach.call(document.querySelectorAll("#" + id + " .entreno__seg-btn"), function (b) {
+      b.addEventListener("click", function () {
+        entrenoVibrar();
+        entrenoPonerSeg(id, b.getAttribute("data-valor"));
+        entrenoAlCambiar();
+      });
+    });
   });
+  Array.prototype.forEach.call(document.querySelectorAll(".entreno__paso-btn"), function (b) {
+    b.addEventListener("click", function () { entrenoVibrar(); entrenoPasoSemana(Number(b.getAttribute("data-paso"))); });
+  });
+  document.getElementById("entSemana").addEventListener("change", entrenoAlCambiar);
 
   var abrirDatos = document.getElementById("entAbrirDatos");
   if (abrirDatos) abrirDatos.addEventListener("click", function () {
