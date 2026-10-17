@@ -88,7 +88,8 @@ var suites = [
   "auth.test",
   "onboarding.test",
   "css-visibility.test",
-  "store-theme.test"
+  "store-theme.test",
+  "workout-generator.test"
 ];
 
 (async function () {
