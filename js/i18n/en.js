@@ -676,6 +676,12 @@ registerI18nTable("en", {
   "ui.auth_contrasena_debil": "The password must be at least 6 characters long.",
   "ui.auth_demasiados_intentos": "Too many attempts — wait a moment and try again.",
   "ui.auth_popup_bloqueado": "The browser blocked the Google window — allow pop-ups for this site and try again.",
+  "ui.auth_entrando": "Signing in…",
+  "ui.auth_creando_cuenta": "Creating your account…",
+  "ui.sync_sincronizando": "Syncing your account…",
+  "ui.sync_nube_no_disponible": "Your account could not be read. Your data is still on this device and will be tried again when you reload the page.",
+  "ui.sync_no_se_guardo": "Your data could not be saved to your account. It is still on this device and will be tried again when you reload the page.",
+  "ui.nube_fallo_guardado": "Your latest changes could not be saved to the cloud. They are still on this device, and saving will be tried again with the next change.",
   "ui.auth_sin_red": "Could not connect — check your internet connection and try again.",
   "ui.auth_error_generico": "The operation could not be completed. Please try again.",
   // Validaciones del cuestionario (js/ui/onboarding-ui.js) y del formulario (js/core/calculator.js: validateInput).
@@ -837,5 +843,6 @@ registerI18nTable("en", {
   "ui.peso_registro_dos": "Add at least two weigh-ins to see the chart.",
   "ui.peso_registro_grafico": "Chart of your weight over recent days",
   "ui.peso_registro_min": "min {v} kg",
-  "ui.peso_registro_max": "max {v} kg"
+  "ui.peso_registro_max": "max {v} kg",
+  "ui.peso_registro_vacio_total": "You have not saved any weight yet. Enter today's and press Save."
 });

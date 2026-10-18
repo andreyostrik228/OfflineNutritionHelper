@@ -358,6 +358,19 @@ function run(t) {
     });
   });
 
+  t.test("runReconciliation(): primer login, la nube NO acepta la copia local -> 'push_failed' y el marcador NO se fija", function () {
+    var s = freshMigrationSandbox();
+    s.localStorage = createFakeLocalStorage();
+    s.setStock("Arroz blanco cocido", 150);
+    installFakeCloud(s, "user-1");
+    s.pushAllToCloud = function () { return Promise.resolve({ error: { message: "HTTP 503" }, skipped: false }); };
+
+    return s.runReconciliation().then(function (result) {
+      assert.strictEqual(result.status, "push_failed");
+      assert.strictEqual(s.getCloudSyncedUserId(), null, "sin guardado no hay que dar la sesión por sincronizada: la próxima vez se reintenta");
+    });
+  });
+
   t.test("resolveConflictKeepCloud(): con la nube ILEGIBLE no sustituye lo local por nada", function () {
     var s = freshMigrationSandbox();
     s.localStorage = createFakeLocalStorage();

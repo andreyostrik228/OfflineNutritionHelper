@@ -192,6 +192,23 @@ function run(t) {
     assert.ok(lineas.indexOf("DESCRIPTION:Press de banca: 3 x 8-12\\, descanso 2:30") !== -1, "la coma de la línea va escapada");
   });
 
+  t.test("sin función de línea el entrenamiento no escribe nombres en español: el evento sale sin descripción", function () {
+    var s = sandbox();
+    var texto = s.icsEntreno(planDePrueba(), "2026-10-19", { sello: selloFijo() });
+    var lineas = lineasDe(texto);
+    assert.ok(lineas.indexOf("DTSTART:20261019T180000") !== -1, "el evento sigue ahí");
+    assert.strictEqual(lineas.filter(function (l) { return l.indexOf("DESCRIPTION:") === 0; }).length, 0, "sin descripción");
+    assert.ok(texto.indexOf("Press de banca") === -1 && texto.indexOf("Sentadilla") === -1, "ningún nombre de ejercicio en español");
+  });
+
+  t.test("sin función de título el resumen sale vacío, sin el nombre de la sesión en español", function () {
+    var s = sandbox();
+    var texto = s.icsEntreno(planDePrueba(), "2026-10-19", { sello: selloFijo() });
+    var lineas = lineasDe(texto);
+    assert.ok(lineas.indexOf("SUMMARY:") !== -1, "el resumen queda vacío");
+    assert.ok(texto.indexOf("Superior A") === -1 && texto.indexOf("Inferior A") === -1, "ningún nombre de sesión en español");
+  });
+
   t.test("sin fecha válida o sin plan no sale ningún evento, solo la cabecera y el cierre", function () {
     var s = sandbox();
     var sinFecha = s.icsEntreno(planDePrueba(), "19/10/2026", { sello: selloFijo() });

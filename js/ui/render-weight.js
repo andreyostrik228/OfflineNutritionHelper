@@ -77,11 +77,13 @@ function weightLogPintarGrafico() {
   var cont = _wlEls.grafico;
   cont.textContent = "";
 
-  var geom = pesosGrafico(pesosParaGrafico(pesosLeer(pesosAlmacen())), 320, 120);
+  var registro = pesosLeer(pesosAlmacen());
+  var geom = pesosGrafico(pesosParaGrafico(registro), 320, 120);
   if (!geom) {
+    // Sin ningún peso guardado no se pide «dos»: se dice que todavía no hay nada.
     var aviso = document.createElement("p");
     aviso.className = "weight-log__hint";
-    aviso.textContent = t("ui.peso_registro_dos");
+    aviso.textContent = registro.length === 0 ? t("ui.peso_registro_vacio_total") : t("ui.peso_registro_dos");
     cont.appendChild(aviso);
     return;
   }

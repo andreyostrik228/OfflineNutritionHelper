@@ -73,10 +73,25 @@ function fechaHoy(fecha) {
 }
 
 /** ¿Es una entrada del registro bien formada? (Lo que llega de fuera se valida.) */
+/**
+ * ¿Existe de verdad esa fecha YYYY-MM-DD? Date.parse acepta "2026-02-30" y lo
+ * corre a marzo sin avisar; por eso se comprueba que el Date creado tiene
+ * los mismos año, mes y día que se pidieron.
+ */
+function fechaExiste(fecha) {
+  if (typeof fecha !== "string" || !_WEIGHT_FECHA.test(fecha)) return false;
+  var p = fecha.split("-");
+  var anio = Number(p[0]);
+  var mes = Number(p[1]);
+  var dia = Number(p[2]);
+  var d = new Date(anio, mes - 1, dia);
+  return d.getFullYear() === anio && d.getMonth() === mes - 1 && d.getDate() === dia;
+}
+
 function pesoEntradaValida(e) {
   if (!e || typeof e !== "object") return false;
   if (typeof e.fecha !== "string" || !_WEIGHT_FECHA.test(e.fecha)) return false;
-  if (isNaN(Date.parse(e.fecha + "T00:00:00"))) return false;
+  if (!fechaExiste(e.fecha)) return false;
   if (typeof e.kg !== "number" || !isFinite(e.kg)) return false;
   if (e.kg < WEIGHT_MIN_KG || e.kg > WEIGHT_MAX_KG) return false;
   return typeof e.t === "number" && isFinite(e.t) && e.t >= 0;

@@ -348,14 +348,14 @@ registerI18nTable("uk", {
   "ui.salado": "Солоний",
   "ui.saltar": "Пропустити",
   "ui.saltar_al_contenido": "Перейти до вмісту",
-  "ui.se_borran_ahora_mismo_y_para_siempre_tu_cuen": "Зараз назавжди видаляться твій обліковий запис і все, що було збережено в хмарі: профіль, комора і плани. Цю дію не можна скасувати.",
+  "ui.se_borran_ahora_mismo_y_para_siempre_tu_cuen": "Зараз назавжди видаляться твій обліковий запис і усе, що було збережено в хмарі: профіль, комора і плани. Цю дію не можна скасувати.",
   "ui.sedentario": "Малорухливий",
   "ui.sexo": "Стать",
-  "ui.siete_preguntas_cortas_nada_mas_y_todo_se_pu": "Сім коротких питань. Більше нічого, і все можна змінити потім.",
+  "ui.siete_preguntas_cortas_nada_mas_y_todo_se_pu": "Сім коротких питань. Більше нічого, і усе можна змінити потім.",
   "ui.siguiente": "Далі",
   "ui.sin_cocinar": "без готування",
   "ui.sin_conexion_puedes_seguir_usando_la_aplicac": "Немає з’єднання. Можна далі користуватися застосунком: усе зберігається на цьому пристрої й синхронізується само, коли з’явиться мережа.",
-  "ui.sin_cuenta_funciona_todo_igual_tus_datos_se_": "Без облікового запису все працює так само: твої дані лишаються в цьому браузері. Створити його можна пізніше, і дані синхронізуються.",
+  "ui.sin_cuenta_funciona_todo_igual_tus_datos_se_": "Без облікового запису усе працює так само: твої дані лишаються в цьому браузері. Створити його можна пізніше, і дані синхронізуються.",
   "ui.sin_dependencias_externas_100_offline": "Без зовнішніх залежностей — 100% офлайн.",
   "ui.solo_comer_bien_sin_objetivo": "Просто добре харчуватися — без мети",
   "ui.tema": "Тема",
@@ -526,7 +526,7 @@ registerI18nTable("uk", {
   "html.planes_aviso_reemplazado": "<p>Твій активний план на сьогодні оновлено в розділі <strong>{planes}</strong>.{cocinado} Оскільки інгредієнти могли змінитися, познач <strong>{boton}</strong> знову, коли купуватимеш.</p>",
   "ui.planes_aviso_lo_cocinado": "Те, що вже приготовано ({comidas}), залишилося як є.",
   "ui.planes_aviso_actualizado_titulo": "План оновлено",
-  "html.planes_aviso_actualizado": "<p>Це все той самий план на сьогодні в розділі <strong>{planes}</strong> — ще нічого не куплено й не приготовано, і в комору нічого не додано.</p>",
+  "html.planes_aviso_actualizado": "<p>Це досі той самий план на сьогодні в розділі <strong>{planes}</strong> — ще нічого не куплено й не приготовано, і в комору нічого не додано.</p>",
   "ui.planes_aviso_varios_dias_titulo": "План на {n} дн. підтверджено",
   "html.planes_aviso_varios_dias": "<p>Збережено план на кожен із <strong>{n} дн.</strong>, починаючи сьогодні. Перемикай дні кнопками дат у розділі <strong>{planes}</strong>. Коли купуватимеш, натисни <strong>{boton}</strong> у відповідний день.</p>",
   "ui.planes_aviso_confirmado_titulo": "План підтверджено",
@@ -582,6 +582,12 @@ registerI18nTable("uk", {
   "ui.auth_contrasena_debil": "Пароль має містити щонайменше 6 символів.",
   "ui.auth_demasiados_intentos": "Забагато спроб — зачекай трохи і спробуй знову.",
   "ui.auth_popup_bloqueado": "Браузер заблокував вікно Google — дозволь спливаючі вікна для цього сайту і спробуй знову.",
+  "ui.auth_entrando": "Входимо в обліковий запис…",
+  "ui.auth_creando_cuenta": "Створюємо обліковий запис…",
+  "ui.sync_sincronizando": "Синхронізуємо обліковий запис…",
+  "ui.sync_nube_no_disponible": "Не вдалося прочитати обліковий запис. Дані лишаються на цьому пристрої, спроба повториться після перезавантаження сторінки.",
+  "ui.sync_no_se_guardo": "Не вдалося зберегти дані в обліковому записі. Вони лишаються на цьому пристрої, спроба повториться після перезавантаження сторінки.",
+  "ui.nube_fallo_guardado": "Не вдалося зберегти останні зміни в хмарі. Вони лишаються на цьому пристрої, збереження повториться після наступної зміни.",
   "ui.auth_sin_red": "Не вдалося підключитися — перевір інтернет-з’єднання і спробуй ще раз.",
   "ui.auth_error_generico": "Не вдалося виконати дію. Спробуй ще раз.",
   // Validaciones del cuestionario (js/ui/onboarding-ui.js) y del formulario (js/core/calculator.js: validateInput).
@@ -839,5 +845,7 @@ registerI18nTable("uk", {
   "ui.peso_registro_dos": "Додай принаймні два зважування.",
   "ui.peso_registro_grafico": "Графік ваги за останні дні",
   "ui.peso_registro_min": "мін. {v} кг",
-  "ui.peso_registro_max": "макс. {v} кг"
+  "ui.peso_registro_max": "макс. {v} кг",
+  // Clave ui.peso_registro_vacio_total: traducción sin revisar por una persona nativa en ucraniano.
+  "ui.peso_registro_vacio_total": "Ще жодної ваги не збережено. Введи вагу за сьогодні і натисни «Зберегти»."
 });

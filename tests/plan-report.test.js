@@ -291,7 +291,7 @@ function run(t) {
     con.saveLang("ru");
     d = plano(con.describePlanReport(plano(INFORME_CON_TODOS_LOS_AVISOS)));
     var texto = d.avisos.join(" | ");
-    assert.ok(/23\.8 г белка/.test(texto), texto);
+    assert.ok(/по белку не хватает 23\.8 г\./.test(texto), texto);
     assert.ok(/12\.4%/.test(texto), texto);
     assert.ok(/на 7 мин больше/.test(texto), texto);
     // El ingrediente va traducido al pintar (Arroz blanco cocido -> ruso).

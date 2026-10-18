@@ -177,6 +177,29 @@ function run(t) {
 
   // ── Gráfico ───────────────────────────────────────────────────────────
 
+  t.test("una fecha que no existe (30 de febrero, 31 de abril, 29 de febrero sin bisiesto) no entra en el registro", function () {
+    // Date.parse acepta "2026-02-30" y lo corre a marzo: el peso se guardaba con una fecha falsa.
+    var s = cargar();
+    ["2026-02-30", "2026-04-31", "2026-02-29", "2026-13-01"].forEach(function (f) {
+      assert.strictEqual(s.pesoEntradaValida(entrada(f, 70, 1)), false, f + " no existe");
+    });
+    assert.deepStrictEqual(comoJson(s.pesosLimpiar([entrada("2026-02-30", 70, 1), entrada("2026-10-18", 72, 2)])),
+      [entrada("2026-10-18", 72, 2)]);
+  });
+
+  t.test("el 29 de febrero sí existe en los años bisiestos", function () {
+    var s = cargar();
+    assert.strictEqual(s.pesoEntradaValida(entrada("2024-02-29", 70, 1)), true);
+    assert.strictEqual(s.fechaExiste("2026-10-18"), true);
+  });
+
+  t.test("la nube no puede colar una fecha imposible en el registro del dispositivo", function () {
+    var s = cargar();
+    assert.strictEqual(s.mergeWeightLogFromCloud([entrada("2026-02-30", 70, 9), entrada("2026-10-17", 72.9, 1)]), true);
+    var fechas = s.pesosLeer(s.window.localStorage).map(function (e) { return e.fecha; });
+    assert.deepStrictEqual(comoJson(fechas), ["2026-10-17"]);
+  });
+
   t.test("con menos de dos pesos no hay gráfico, y el texto lo dice", function () {
     var s = cargar();
     assert.strictEqual(s.pesosGrafico([], 320, 120), null);
@@ -266,6 +289,16 @@ function run(t) {
     var app = fs.readFileSync(projPath("js/app.js"), "utf8").replace(/\r\n/g, "\n");
     assert.ok(app.indexOf('safeInit("weight-log", function () {') !== -1);
     assert.ok(app.indexOf("initWeightLog()") !== -1);
+  });
+
+  t.test("sin ningún peso guardado el gráfico dice que todavía no hay nada, no que faltan dos", function () {
+    var src = fs.readFileSync(projPath("js/ui/render-weight.js"), "utf8");
+    assert.ok(src.indexOf("registro.length === 0 ? t(\"ui.peso_registro_vacio_total\") : t(\"ui.peso_registro_dos\")") !== -1,
+      "el texto depende de si hay registros");
+    ["es", "en", "ru", "uk"].forEach(function (lang) {
+      var txt = fs.readFileSync(projPath("js/i18n/" + lang + ".js"), "utf8");
+      assert.ok(txt.indexOf('"ui.peso_registro_vacio_total"') !== -1, lang + " no tiene el texto de vacío");
+    });
   });
 
   t.test("las claves nuevas existen en es, en, ru y uk", function () {

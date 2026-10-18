@@ -220,7 +220,8 @@ function icsComidasDias(dias, fecha, opciones) {
  * Eventos del entrenamiento semanal: una serie semanal por sesión, en el
  * primer día que cae en la misma semana (lunes = 1 … domingo = 7, como en el
  * generador). Opciones: horaMinutos (18:00 por defecto), duracionMin (60),
- * titulo(sesion), linea(ejercicio) → texto, sello (Date).
+ * titulo(sesion) → texto (sin ella, el resumen sale vacío), linea(ejercicio) →
+ * texto (sin ella, la descripción sale vacía), sello (Date).
  */
 function icsEntreno(plan, fecha, opciones) {
   var o = opciones || {};
@@ -237,15 +238,16 @@ function icsEntreno(plan, fecha, opciones) {
     var primera = icsSumarDias(fecha, desplazamiento);
     var p = icsPartirFecha(primera);
     var fin = Math.min(1439, hora + duracion);
+    // Sin `linea` no hay texto en ningún idioma: la descripción sale vacía, nunca en español.
     var lineas = (s.exercises || []).map(function (e) {
-      return o.linea ? o.linea(e) : e.name;
-    });
+      return o.linea ? o.linea(e) : "";
+    }).filter(function (l) { return l.length > 0; });
     return icsEvento({
       uid: "entreno-" + s.key + "@weekplate",
       comienzo: icsFechaHora(p.anio, p.mes, p.dia, hora),
       fin: icsFechaHora(p.anio, p.mes, p.dia, fin),
       sello: sello,
-      titulo: o.titulo ? o.titulo(s) : s.name,
+      titulo: o.titulo ? o.titulo(s) : "",
       descripcion: lineas.join("\n"),
       rrule: "FREQ=WEEKLY;BYDAY=" + ICS_DIAS_RRULE[s.dia - 1]
     });

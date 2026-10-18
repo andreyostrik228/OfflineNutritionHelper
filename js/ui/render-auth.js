@@ -54,6 +54,7 @@ var authGoogleBtn, authEmailForm, authEmailInput, authPasswordInput, authErrorEl
 var authConflictDialogEl, authConflictKeepCloudBtn, authConflictMergeBtn, authConflictKeepLocalBtn;
 var authDeleteAccountBtn, authDeleteDialogEl, authDeleteConfirmBtn, authDeleteCancelBtn, authDeleteErrorEl;
 var authDeleteConfirmInput;
+var syncBannerEl; // #syncBanner: estado de la cuenta al entrar (showSyncBanner)
 // La palabra que hay que teclear para poder borrar, en el idioma de la
 // pantalla (ui.borrar: BORRAR, DELETE, УДАЛИТЬ...). Cada idioma la suya
 // (pedido del dueño, 2026-10-07: en ruso había que escribir BORRAR). Se
@@ -101,6 +102,8 @@ function initAuthRefs(refs) {
   authSwitchRow       = refs.authSwitchRow;
   authErrorEl         = refs.authErrorEl;
   authNoticeEl        = refs.authNoticeEl;
+  syncBannerEl        = refs.syncBanner;
+  if (typeof onCloudWriteStatus === "function") onCloudWriteStatus(alResultadoEscritura);
   authSubmitBtn       = refs.authSubmitBtn;
   authSwitchPrompt    = refs.authSwitchPrompt;
   authSwitchModeBtn   = refs.authSwitchModeBtn;
@@ -171,6 +174,8 @@ function handleAuthStateChange(event, user) {
 
   if (!user) {
     _reconciledForUserId = null;
+    _fallaGuardadoNube = false;
+    hideSyncBanner();
     if (event === "SIGNED_OUT") {
       if (typeof onAuthSignOut === "function") {
         onAuthSignOut();
@@ -218,13 +223,21 @@ function handleAuthStateChange(event, user) {
       dismissWelcomeIfSignedIn();
     }
     if (typeof runReconciliation !== "function") return;
+    showSyncBanner(t("ui.sync_sincronizando"));
     runReconciliation().then(function (result) {
       if (result.status === "conflict") {
+        hideSyncBanner();
         _pendingConflictCloudRow = result.cloudRow;
         openConflictDialog();
       } else {
+        mostrarResultadoSync(result.status);
         authOnDataReconciled();
       }
+    }, function () {
+      // runReconciliation() no debería rechazar, pero si lo hace el aviso no
+      // puede quedarse en "Sincronizando…" para siempre.
+      mostrarResultadoSync("cloud_unavailable");
+      authOnDataReconciled();
     });
   }
 }
@@ -509,6 +522,49 @@ function showAuthNotice(message) {
   authNoticeEl.hidden = false;
 }
 
+// Aviso de la cuenta bajo la barra (#syncBanner). Va fuera del diálogo porque
+// el diálogo se cierra al entrar, y es entonces cuando se lee la nube.
+function showSyncBanner(message, isError) {
+  if (!syncBannerEl || !message) return;
+  syncBannerEl.textContent = message;
+  syncBannerEl.classList.toggle("sync-banner--error", !!isError);
+  syncBannerEl.hidden = false;
+}
+
+function hideSyncBanner() {
+  if (!syncBannerEl) return;
+  syncBannerEl.hidden = true;
+  syncBannerEl.textContent = "";
+  syncBannerEl.classList.remove("sync-banner--error");
+}
+
+/**
+ * Qué dice el aviso cuando termina la reconciliación sin conflicto. Los
+ * textos son de usuario: no se nombra el error técnico, solo qué pasa con
+ * sus datos (siguen en el dispositivo y se reintenta al recargar).
+ */
+function mostrarResultadoSync(status) {
+  if (status === "cloud_unavailable") showSyncBanner(t("ui.sync_nube_no_disponible"), true);
+  else if (status === "push_failed") showSyncBanner(t("ui.sync_no_se_guardo"), true);
+  else if (!_fallaGuardadoNube) hideSyncBanner();
+}
+
+// Fallo de escritura en la nube (js/core/cloud-sync.js): el banner lo dice
+// mientras el último guardado no haya llegado. Un guardado correcto quita el
+// aviso solo si era de un fallo anterior: no tapa el de inicio de sesión.
+var _fallaGuardadoNube = false;
+function alResultadoEscritura(ok) {
+  if (ok) {
+    if (_fallaGuardadoNube) {
+      _fallaGuardadoNube = false;
+      hideSyncBanner();
+    }
+    return;
+  }
+  _fallaGuardadoNube = true;
+  showSyncBanner(t("ui.nube_fallo_guardado"), true);
+}
+
 function setAuthBusy(busy) {
   if (authSubmitBtn) authSubmitBtn.disabled = busy;
   if (authGoogleBtn) authGoogleBtn.disabled = busy;
@@ -518,11 +574,13 @@ function handleGoogleClick() {
   clearAuthFeedback();
   if (typeof signInWithGoogle !== "function") return;
   setAuthBusy(true);
+  showAuthNotice(t("ui.auth_entrando"));
   signInWithGoogle().then(function (result) {
     // Ventana emergente, sin recargar: si sale bien, onAuthStateChange
     // ('SIGNED_IN') cierra el diálogo y sigue. Si el usuario la cerró sin
     // elegir cuenta, `cancelled` y ningún error -- cambiar de idea no lo es.
     setAuthBusy(false);
+    clearAuthFeedback();
     if (result.error) showAuthError(authErrorMessage(result.error));
   });
 }
@@ -576,9 +634,11 @@ function handleEmailFormSubmit(event) {
   }
 
   setAuthBusy(true);
+  showAuthNotice(t(_authMode === "register" ? "ui.auth_creando_cuenta" : "ui.auth_entrando"));
   var action = _authMode === "register" ? signUpWithEmail : signInWithEmail;
 
   action(email, password).then(function (result) {
+    clearAuthFeedback();
     setAuthBusy(false);
 
     if (result.error) {

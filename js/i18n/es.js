@@ -579,6 +579,12 @@ registerI18nTable("es", {
   "ui.auth_contrasena_debil": "La contraseña debe tener al menos 6 caracteres.",
   "ui.auth_demasiados_intentos": "Demasiados intentos -- espera un momento y vuelve a intentarlo.",
   "ui.auth_popup_bloqueado": "El navegador ha bloqueado la ventana de Google -- permite las ventanas emergentes para este sitio e inténtalo otra vez.",
+  "ui.auth_entrando": "Iniciando sesión…",
+  "ui.auth_creando_cuenta": "Creando la cuenta…",
+  "ui.sync_sincronizando": "Sincronizando tu cuenta…",
+  "ui.sync_nube_no_disponible": "No se pudo leer tu cuenta. Tus datos siguen en este dispositivo y se volverá a intentar al recargar la página.",
+  "ui.sync_no_se_guardo": "No se pudieron guardar tus datos en tu cuenta. Siguen en este dispositivo y se volverá a intentar al recargar la página.",
+  "ui.nube_fallo_guardado": "No se pudieron guardar tus últimos cambios en la nube. Siguen en este dispositivo y se volverá a intentar con el siguiente cambio.",
   "ui.auth_sin_red": "No se pudo conectar -- revisa tu conexión a internet e inténtalo de nuevo.",
   "ui.auth_error_generico": "No se pudo completar la operación. Inténtalo de nuevo.",
   // Validaciones del cuestionario (js/ui/onboarding-ui.js) y del formulario (js/core/calculator.js: validateInput).
@@ -740,5 +746,6 @@ registerI18nTable("es", {
   "ui.peso_registro_dos": "Añade al menos dos pesajes para ver el gráfico.",
   "ui.peso_registro_grafico": "Gráfico de tu peso de los últimos días",
   "ui.peso_registro_min": "mín. {v} kg",
-  "ui.peso_registro_max": "máx. {v} kg"
+  "ui.peso_registro_max": "máx. {v} kg",
+  "ui.peso_registro_vacio_total": "Aún no has guardado ningún peso. Escribe el de hoy y pulsa Guardar."
 });

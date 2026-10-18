@@ -480,6 +480,20 @@ body.con-pestanas { padding-bottom: calc(var(--dock) + 16px + env(safe-area-inse
   font-weight: 600;
 }
 .topbar__offline[hidden] { display: none; }
+
+/* Estado de la cuenta al entrar (index.html, #syncBanner): bajo la barra,
+   visible también con el diálogo de sesión cerrado. */
+.sync-banner {
+  margin: 8px 16px 0;
+  padding: 8px 12px;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 14px;
+  line-height: 1.4;
+}
+.sync-banner[hidden] { display: none; }
+.sync-banner--error { background: var(--danger-wash); color: var(--danger-deep); }
 .topbar__offline-dot {
   width: 8px;
   height: 8px;
@@ -1196,8 +1210,11 @@ input[type="time"] { font-variant-numeric: tabular-nums; }
 
 /* ── Carrusel de días ───────────────────────────────────────────────── */
 .days-carousel { position: relative; margin-top: 20px; }
+/* Con 7 días los puntos ocupan 280 px: si no cabe junto al texto, el texto
+   y los puntos bajan de línea en vez de salirse de la pantalla (320 px). */
 .days-carousel__bar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -1206,7 +1223,7 @@ input[type="time"] { font-variant-numeric: tabular-nums; }
 .days-carousel__bar[hidden] { display: none; }
 .days-carousel__hint { font-size: 13px; color: var(--text-3); }
 .days-carousel__hint::after { content: "\2192"; display: inline-block; margin-left: 6px; font-weight: 700; }
-.days-carousel__dots { display: flex; gap: 0; }
+.days-carousel__dots { display: flex; flex-wrap: wrap; gap: 0; }
 .days-carousel__dot {
   display: grid;
   place-items: center;
@@ -3812,6 +3829,21 @@ body.modo-entreno .tabbar { display: none !important; }
   .entreno td.entreno__tec::before { content: none; }
   .entreno td.entreno__nombre { font-size: 1rem; line-height: 1.25; }
   .entreno__seg-btn { font-size: 0.82rem; padding: 9px 4px; }
+}
+
+/* Pantallas de 359 px o menos (p. ej. 320): las opciones no caben en una fila
+   de 71 px y la palabra se partía a mitad ("Principiant / e"). Ahora la fila
+   se parte en dos y cada palabra queda entera. */
+@media (max-width: 359px) {
+  .entreno__seg { flex-wrap: wrap; }
+  .entreno__seg-btn { flex: 1 1 auto; white-space: nowrap; padding-left: 8px; padding-right: 8px; }
+}
+
+/* A 389 px o menos la página ya pone 16 px a cada lado (--gutter) y el panel
+   de entrenamiento los repetía: el contenido quedaba en 256 px y la tabla en
+   230 px. Aquí se quita el doble margen. Desde 390 px no cambia nada. */
+@media (max-width: 389px) {
+  .entreno { padding-left: 0; padding-right: 0; }
 }
 
 /* Escritorio: nivel y material lado a lado; el número de semana ocupa la fila de abajo */

@@ -382,6 +382,26 @@ function run(t) {
     });
   });
 
+  t.test("onCloudWriteStatus(): avisa de un guardado fallido y de uno correcto, nunca de uno omitido (invitado)", function () {
+    var s = freshCloudSyncSandbox();
+    var avisos = [];
+    s.onCloudWriteStatus(function (ok) { avisos.push(ok); });
+    s.getSettings = function () { return {}; };
+
+    s.fetch = createFakeFirestore({ estado: 503 }).fetch;
+    return s.pushSettingsToCloud().then(function () {
+      assert.deepStrictEqual(avisos, [false], "tras el reintento, un solo aviso de fallo");
+      s.fetch = createFakeFirestore({}).fetch;
+      return s.pushSettingsToCloud();
+    }).then(function () {
+      assert.deepStrictEqual(avisos, [false, true], "el guardado correcto avisa de que la nube ya está al día");
+      s.getCurrentUser = function () { return null; };
+      return s.pushSettingsToCloud();
+    }).then(function () {
+      assert.deepStrictEqual(avisos, [false, true], "el invitado no genera avisos: no hay nube que guardar");
+    });
+  });
+
   // ── Borrado ───────────────────────────────────────────────────────────
 
   t.test("deleteCloudUserData(): DELETE del documento del usuario; después, la nube está vacía", function () {

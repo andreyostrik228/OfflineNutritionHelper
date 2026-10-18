@@ -35,7 +35,8 @@
  * settings.js) -- es un empuje/tirón en segundo plano. push*() nunca lanza
  * ni rechaza: un fallo de red no debe alterar ni bloquear nada que el
  * usuario ya ve en pantalla. Un solo reintento inmediato, y si vuelve a
- * fallar se rinde en silencio (log de consola) -- sin cola offline,
+ * fallar se rinde: avisa a la interfaz (onCloudWriteStatus) y deja un log de
+ * consola -- sin cola offline,
  * deliberadamente: para el volumen de datos de esta app no compensa.
  *
  * Depende de:
@@ -51,6 +52,7 @@
  *   pushAllToCloud(options?)          → Promise<{error, skipped}> -- options.setMigratedAt:boolean
  *   pullCloudUserData()               → Promise<{pantry_state, pantry_history, settings, migrated_at}|null>
  *   deleteCloudUserData()             → Promise<{error}>
+ *   onCloudWriteStatus(listener)      → función para darse de baja; listener(ok)
  * ─────────────────────────────────────────────────────────────────────────
  */
 
@@ -180,13 +182,46 @@ function _updateUserDataOnce(columns) {
  * @param {object} columns
  * @returns {Promise<{error:object|null, skipped:boolean}>}
  */
+/**
+ * Quien muestra el estado al usuario (js/ui/render-auth.js) se suscribe aquí.
+ * listener(true) cuando una escritura llega a la nube; listener(false) cuando
+ * se rinde tras el reintento. Nunca avisa de una escritura OMITIDA (invitado,
+ * sin Firebase): ahí no hay nada que guardar en la nube.
+ * @param {function(boolean)} listener
+ * @returns {function} para darse de baja
+ */
+var _cloudWriteListeners = [];
+function onCloudWriteStatus(listener) {
+  if (typeof listener !== "function") return function () {};
+  _cloudWriteListeners.push(listener);
+  return function unsubscribe() {
+    var idx = _cloudWriteListeners.indexOf(listener);
+    if (idx !== -1) _cloudWriteListeners.splice(idx, 1);
+  };
+}
+
+/** Avisa a cada suscriptor; uno que falle no impide avisar a los demás. */
+function _notificarEscritura(ok) {
+  _cloudWriteListeners.forEach(function (fn) {
+    try {
+      fn(ok);
+    } catch (err) {
+      console.error("[cloud-sync] un aviso de escritura falló de forma aislada:", err);
+    }
+  });
+}
+
 function _updateUserData(columns) {
   return _updateUserDataOnce(columns).then(function (result) {
     if (!result.error || result.skipped) return result;
     return _updateUserDataOnce(columns);
   }).then(function (result) {
-    if (result.error && !result.skipped) {
+    if (result.skipped) return result;
+    if (result.error) {
       console.error("[cloud-sync] no se pudo guardar en la nube tras reintentar -- los cambios siguen a salvo en este dispositivo:", result.error);
+      _notificarEscritura(false);
+    } else {
+      _notificarEscritura(true);
     }
     return result;
   });

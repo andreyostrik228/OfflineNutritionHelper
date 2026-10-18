@@ -161,6 +161,7 @@ document.addEventListener("DOMContentLoaded", function () {
   var authPasswordInput   = document.getElementById("authPassword");
   var authErrorEl         = document.getElementById("authError");
   var authNoticeEl        = document.getElementById("authNotice");
+  var syncBannerEl        = document.getElementById("syncBanner");
   var authSubmitBtn       = document.getElementById("authSubmitBtn");
   var authSwitchPrompt    = document.getElementById("authSwitchPrompt");
   var authSwitchModeBtn   = document.getElementById("authSwitchModeBtn");
@@ -986,6 +987,7 @@ document.addEventListener("DOMContentLoaded", function () {
         authSwitchRow: document.getElementById("authSwitchRow"),
         authErrorEl: authErrorEl,
         authNoticeEl: authNoticeEl,
+        syncBanner: syncBannerEl,
         authSubmitBtn: authSubmitBtn,
         authSwitchPrompt: authSwitchPrompt,
         authSwitchModeBtn: authSwitchModeBtn,

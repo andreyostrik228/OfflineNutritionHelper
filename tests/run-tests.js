@@ -97,7 +97,15 @@ var suites = [
   "reset-confirm.test",
   "plan-store.test",
   "weight-log.test",
-  "exercises-tecnica.test"
+  "exercises-tecnica.test",
+  "exercises-nombres.test",
+  "entreno-ancho.test",
+  "carrusel-dias-ancho.test",
+  "sincronizacion-estado.test",
+  "accesibilidad.test",
+  "textos-coherencia.test",
+  "vacios.test",
+  "pasos-en.test"
 ];
 
 (async function () {

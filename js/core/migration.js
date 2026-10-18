@@ -325,7 +325,11 @@ function _applyNonConflict(state, localSnapshot, cloudRow, userId) {
   }
   if (state === "push") {
     return Promise.resolve((typeof pushAllToCloud === "function") ? pushAllToCloud({ setMigratedAt: true }) : null)
-      .then(function () {
+      .then(function (resultado) {
+        // La nube NO aceptó la copia: no se fija el marcador. Así la próxima
+        // reconciliación vuelve a intentar subirla, en vez de dar por
+        // sincronizado un guardado que no llegó.
+        if (resultado && resultado.error && !resultado.skipped) return { status: "push_failed" };
         setCloudSyncedUserId(userId);
         return { status: "pushed" };
       });

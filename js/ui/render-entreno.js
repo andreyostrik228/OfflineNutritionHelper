@@ -141,6 +141,18 @@ function entrenoTecnica(e) {
   return (typeof texto === "string" && texto) ? texto : e.tecnica;
 }
 
+/**
+ * Nombre del ejercicio en el idioma de la pantalla: name_en, name_ru o name_uk
+ * del catálogo. Sin traducción para ese idioma, el español de siempre.
+ */
+function entrenoNombre(e) {
+  var lang = typeof getLang === "function" ? getLang() : "es";
+  var catalogo = typeof EXERCISE_CATALOG !== "undefined" ? EXERCISE_CATALOG : [];
+  var ejercicio = catalogo.filter(function (x) { return x.id === e.id; })[0];
+  var texto = (ejercicio && lang !== "es") ? ejercicio["name_" + lang] : null;
+  return (typeof texto === "string" && texto) ? texto : e.name;
+}
+
 function entrenoEsc(texto) {
   return escapeHtml(String(texto));
 }
@@ -178,7 +190,7 @@ function entrenoTablaHtml(sesion) {
   };
   var filas = sesion.exercises.map(function (e) {
     return "<tr>" +
-      '<td class="entreno__nombre" data-label="' + entrenoEsc(etiqueta.ejercicio) + '">' + entrenoEsc(e.name) + "</td>" +
+      '<td class="entreno__nombre" data-label="' + entrenoEsc(etiqueta.ejercicio) + '">' + entrenoEsc(entrenoNombre(e)) + "</td>" +
       '<td data-label="' + entrenoEsc(etiqueta.series) + '">' + e.sets + "</td>" +
       '<td data-label="' + entrenoEsc(etiqueta.reps) + '">' + entrenoEsc(e.reps) + "</td>" +
       '<td data-label="' + entrenoEsc(etiqueta.descanso) + '">' + entrenoDescanso(e.restSeconds) + "</td>" +
@@ -288,7 +300,7 @@ function entrenoExportarIcs() {
     },
     linea: function (e) {
       return tFormat("ics.linea_ejercicio", {
-        nombre: e.name, series: e.sets, reps: e.reps, descanso: entrenoDescanso(e.restSeconds)
+        nombre: entrenoNombre(e), series: e.sets, reps: e.reps, descanso: entrenoDescanso(e.restSeconds)
       });
     }
   });

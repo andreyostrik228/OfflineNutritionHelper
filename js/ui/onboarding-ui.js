@@ -421,6 +421,8 @@ function _obRenderStep() {
     libre.type = (step.kind === "time") ? "time" : "text";
     libre.className = (step.kind === "time") ? "onboarding__time" : "onboarding__text";
     libre.id = "onboardingFreeInput";
+    // Sin etiqueta propia: el nombre del campo es la pregunta que tiene encima.
+    libre.setAttribute("aria-labelledby", "onboardingQuestion");
     libre.value = current || "";
     if (step.placeholder) libre.placeholder = step.placeholder;
     libre.addEventListener("keydown", function (ev) {
@@ -437,6 +439,7 @@ function _obRenderStep() {
   input.type = "number";
   input.className = "onboarding__number";
   input.id = "onboardingNumberInput";
+  input.setAttribute("aria-labelledby", "onboardingQuestion");
   input.min = step.min;
   input.max = step.max;
   if (step.step) input.step = step.step;
