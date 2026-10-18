@@ -2,9 +2,9 @@
 
 ## Entrenamientos: estado y prioridades al 2026-10-18 (esto primero si vas a tocar entrenamientos)
 
-**Sin subir: `main` sigue en `eab3332` (empujado; producción con sello `20261018za`). En el árbol de trabajo hay una segunda parte grande, sin commit ni despliegue: 1164 tests en verde, sello `20261018zb`.**
+**Subido y desplegado: `main` = `01a5494` (empujado) y producción con sello `20261018zb` (217 de 217 ficheros idénticos). 1164 tests en verde.**
 
-**Lo que cambió en la segunda parte (2026-10-18, sin commit):**
+**Lo que cambió en esta tanda (2026-10-18, en `01a5494`):**
 - Copia de datos completa («Descargar mis datos» + «Cargar una copia»), con el registro de peso y el cuestionario dentro (`js/core/data-backup.js`).
 - Diario y cuestionario en la cuenta, en `settings._entrenos`, unidos con lo del dispositivo; lo borrado no vuelve (`js/core/workout-sync.js`).
 - Cambios sobre la marcha: sustituir, saltar, quitar, añadir, superseries y circuitos, series de calentamiento, drop set y al fallo, notas, pausa y calculadora de discos (`js/core/workout-edit.js`, `js/ui/entreno-sesion.js`).
@@ -17,7 +17,7 @@
 
 **Lo que NO está hecho todavía de la propuesta de diseño:** la navegación inferior de cinco secciones (Главная · План · Тренировка · Прогресс · Профиль), el tema grafito oscuro con acento lima, la página de cada ejercicio con su historial y las animaciones nuevas del flujo. Y la prueba en el móvil real (solo Chrome sin interfaz, 375 px).
 
-La tabla de abajo es el estado ANTES de la segunda parte: ahora mismo el catálogo, la superserie, la corrección, la sincronización y las gráficas por ejercicio sí existen.
+La tabla de abajo es el estado ANTES de esta tanda: ahora mismo el catálogo, la superserie, la corrección, la sincronización y las gráficas por ejercicio sí existen.
 La parte de nutrición sigue donde la deja la sección del 2026-09-14, justo
 debajo de esta.
 
