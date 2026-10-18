@@ -821,5 +821,8 @@ registerI18nTable("en", {
   "ics.boton_entreno": "Download workouts (.ics)",
   "ics.entreno_titulo": "Workout: {sesion}",
   "ics.linea_ejercicio": "{nombre}: {series} x {reps}, rest {descanso}",
-  "ics.hora_entreno": "Workout time"
+  "ics.hora_entreno": "Workout time",
+  "ui.resetear_titulo": "Clear the form?",
+  "ui.resetear_texto": "This clears the form data, including the budget, and the plan on screen.",
+  "ui.resetear_confirmar": "Yes, reset"
 });

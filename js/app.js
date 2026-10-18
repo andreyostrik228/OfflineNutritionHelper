@@ -379,6 +379,44 @@ document.addEventListener("DOMContentLoaded", function () {
     dayMeals[idx] = res.meal;
 
     rerenderCurrentPlan();
+    guardarPlanActual();
+  }
+
+  /**
+   * Guarda el plan que está en pantalla en este dispositivo (ver
+   * js/core/plan-store.js). Se llama tras generar y tras "Cambiar" un plato.
+   */
+  function guardarPlanActual() {
+    if (typeof planGuardar !== "function" || !lastGeneratedDays) return;
+    planGuardar(planAlmacen(), {
+      dias: lastGeneratedDays,
+      store: lastGeneratedStore,
+      dayOptions: lastGeneratedDayOptions,
+      profile: lastGeneratedProfile,
+      data: lastGeneratedData,
+      report: lastGeneratedReport
+    });
+  }
+
+  /**
+   * Al cargar la página, vuelve a pintar el último plan guardado en este
+   * dispositivo. NO genera nada: un plan nuevo sale solo de "Generar plan".
+   */
+  function restaurarPlanGuardado() {
+    if (typeof planLeer !== "function" || typeof planAlmacen !== "function") return;
+    var guardado = planLeer(planAlmacen());
+    if (!guardado) return;
+    lastGeneratedDays = guardado.dias;
+    // Mismo array que el día 1, como al generar: "Cambiar" en el día 1 lo
+    // cambia en los dos sitios a la vez.
+    lastGeneratedMeals = guardado.dias[0].meals;
+    lastGeneratedStore = guardado.store;
+    lastGeneratedDayOptions = guardado.dayOptions;
+    lastGeneratedProfile = guardado.profile;
+    lastGeneratedData = guardado.data;
+    lastGeneratedReport = guardado.report || guardado.dias[0].report || null;
+    rerenderCurrentPlan();
+    renderDayDots(lastGeneratedDays.length);
   }
 
   /** Re-pinta el plan en memoria completo tras editar una toma. */
@@ -596,6 +634,10 @@ document.addEventListener("DOMContentLoaded", function () {
         lastGeneratedData = data;
         lastGeneratedReport = result.report;
 
+        // Se guarda en este dispositivo para que sobreviva a una recarga (ver
+        // js/core/plan-store.js). Nunca lanza: sin almacenamiento, no pasa nada.
+        guardarPlanActual();
+
         // Guarda el perfil/formulario para la próxima visita (invitado:
         // este navegador; con sesión iniciada: también se empuja a la
         // nube) -- piggyback sobre el camino de éxito ya existente, en
@@ -730,6 +772,8 @@ document.addEventListener("DOMContentLoaded", function () {
     form.reset();
     updateBudgetCustomVisibility(); // form.reset() desmarca los radios -> vuelve a ocultar el campo exacto
     clearOutput();
+    // Y el plan guardado en este dispositivo: si no, volvería al recargar.
+    if (typeof planBorrar === "function") planBorrar(planAlmacen());
   }
 
   // Solo el modo "custom" muestra el campo de cantidad exacta — elegir un
@@ -758,7 +802,18 @@ document.addEventListener("DOMContentLoaded", function () {
   initInsightRefs({ warningBox: warningBox, insightsList: insightsList });
 
   form.addEventListener("submit", handleSubmit);
-  if (resetBtn) resetBtn.addEventListener("click", resetAll);
+  // Resetear pide confirmación antes de borrar. Si el módulo no carga, el botón
+  // no hace nada: es mejor no borrar que borrar sin preguntar.
+  safeInit("reset-confirm", function () {
+    if (typeof initResetConfirm !== "function") return;
+    initResetConfirm({
+      boton: resetBtn,
+      dialogo: document.getElementById("resetConfirmDialog"),
+      confirmar: document.getElementById("resetConfirmOkBtn"),
+      cancelar: document.getElementById("resetConfirmCancelBtn"),
+      alConfirmar: resetAll
+    });
+  });
   if (mealsContainer) mealsContainer.addEventListener("click", handleSwapPlanMeal);
 
   budgetModeRadios.forEach(function (radio) {
@@ -1643,6 +1698,12 @@ document.addEventListener("DOMContentLoaded", function () {
     if (tourBtn) tourBtn.addEventListener("click", repetirExplicacion);
   });
 
+  // Último plan guardado en este dispositivo: se vuelve a pintar tal cual, sin
+  // generar nada (ver js/core/plan-store.js). Va AQUÍ, con los módulos ya
+  // montados: pintar el día necesita el carrusel (_updateDayArrows, más arriba)
+  // y la lista de la compra no debe quedar pisada por una init posterior.
+  safeInit("plan-restore", restaurarPlanGuardado);
+
   safeInit("onboarding-init", function () {
     if (typeof initOnboarding !== "function") return;
 
@@ -1652,9 +1713,14 @@ document.addEventListener("DOMContentLoaded", function () {
     // campo, incluido el presupuesto.
     var saved = (typeof getSettings === "function") ? getSettings() : {};
     var hasProfile = !!(saved && saved.age && saved.weight && saved.height);
+    // Con un plan guardado en este dispositivo no se vuelve a enseñar la
+    // bienvenida al invitado (decisión del dueño, 2026-10-18).
+    var hasPlan = typeof planLeer === "function" && typeof planAlmacen === "function" &&
+                  planLeer(planAlmacen()) !== null;
 
     initOnboarding({
       hasProfile: hasProfile,
+      hasPlan: hasPlan,
       onFinish: function () {
         // El ultimo boton del alta dice "Generar plan", asi que genera el
         // plan (2026-09-03, a peticion del usuario).

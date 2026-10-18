@@ -1024,7 +1024,7 @@ function _obDecidirYPintar(o) {
 
   var state = typeof getOnboardingState === "function" ? getOnboardingState() : {};
   var step = typeof nextOnboardingStep === "function"
-    ? nextOnboardingStep(state, { hasProfile: !!o.hasProfile, hasAccount: _obHayCuenta() })
+    ? nextOnboardingStep(state, { hasProfile: !!o.hasProfile, hasAccount: _obHayCuenta(), hasPlan: !!o.hasPlan })
     : "done";
 
   if (step === "welcome") {

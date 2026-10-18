@@ -227,7 +227,22 @@ function run(t) {
   // buscada -- "если кто-то не хочет его создавать то пусть постоянно
   // кликает на не создавать аккаунт" -- y por eso está fijada con un test
   // en vez de quedar como un efecto secundario que alguien "arregle".
-  t.test("sin cuenta, la bienvenida vuelve aunque ya se contestara todo", function () {
+  t.test("sin cuenta y sin plan guardado, la bienvenida vuelve aunque ya se contestara todo", function () {
+    var s = freshSandbox();
+    var todoHecho = {
+      termsVersion: "1.0", termsAcceptedAt: "2026-09-02T00:00:00Z",
+      intakeDoneAt: "2026-09-02T00:01:00Z", tourDoneAt: "2026-09-02T00:02:00Z",
+      accountChoice: "skipped"
+    };
+    assert.strictEqual(
+      s.nextOnboardingStep(todoHecho, { currentVersion: "1.0", hasAccount: false, hasProfile: true }),
+      "welcome",
+      "sin cuenta y sin plan se le vuelve a ofrecer, por muchas veces que ya la haya rechazado");
+  });
+
+  // Decisión del dueño, 2026-10-18: con un plan guardado en este dispositivo
+  // la bienvenida no vuelve al invitado; el recorrido pendiente sí se ofrece.
+  t.test("sin cuenta pero con plan guardado, la bienvenida no vuelve", function () {
     var s = freshSandbox();
     var todoHecho = {
       termsVersion: "1.0", termsAcceptedAt: "2026-09-02T00:00:00Z",
@@ -236,8 +251,29 @@ function run(t) {
     };
     assert.strictEqual(
       s.nextOnboardingStep(todoHecho, { currentVersion: "1.0", hasAccount: false, hasProfile: true, hasPlan: true }),
+      "done",
+      "con plan guardado el invitado entra directo al plan");
+    var recorridoPendiente = {
+      termsVersion: "1.0", termsAcceptedAt: "2026-09-02T00:00:00Z",
+      intakeDoneAt: "2026-09-02T00:01:00Z", accountChoice: "skipped"
+    };
+    assert.strictEqual(
+      s.nextOnboardingStep(recorridoPendiente, { currentVersion: "1.0", hasAccount: false, hasProfile: true, hasPlan: true }),
+      "tour",
+      "con plan guardado, el recorrido que falta sigue ofreciéndose");
+  });
+
+  t.test("con plan guardado, unas condiciones nuevas siguen pidiendo la bienvenida", function () {
+    var s = freshSandbox();
+    var condicionesViejas = {
+      termsVersion: "0.9", termsAcceptedAt: "2026-09-02T00:00:00Z",
+      intakeDoneAt: "2026-09-02T00:01:00Z", tourDoneAt: "2026-09-02T00:02:00Z",
+      accountChoice: "skipped"
+    };
+    assert.strictEqual(
+      s.nextOnboardingStep(condicionesViejas, { currentVersion: "1.0", hasAccount: false, hasProfile: true, hasPlan: true }),
       "welcome",
-      "sin cuenta se le vuelve a ofrecer, por muchas veces que ya la haya rechazado");
+      "las condiciones nuevas se siguen pidiendo, plan o no");
   });
 
   t.test("crear la cuenta es lo que hace que la bienvenida deje de salir", function () {
@@ -477,9 +513,9 @@ function run(t) {
     // invitado aunque el recorrido esté pendiente. Por eso no sirve para
     // esta pregunta, y queda escrito aquí para que nadie lo vuelva a atar.
     assert.strictEqual(
-      s.nextOnboardingStep(sinVerlo, { currentVersion: "1.0", hasAccount: false, hasPlan: true }),
+      s.nextOnboardingStep(sinVerlo, { currentVersion: "1.0", hasAccount: false }),
       "welcome",
-      "sigue contestando 'welcome' a un invitado: por eso el recorrido no puede colgar de aquí");
+      "sin plan guardado sigue contestando 'welcome' a un invitado: por eso el recorrido no puede colgar de aquí");
   });
 
   // ── El recorrido guiado (rehecho el 2026-10-08) ─────────────────────

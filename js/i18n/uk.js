@@ -821,5 +821,9 @@ registerI18nTable("uk", {
   "ics.entreno_titulo": "Тренування: {sesion}",
   "ics.linea_ejercicio": "{nombre}: {series} x {reps}, відпочинок {descanso}",
   // ics.hora_entreno: traducción sin revisar por una persona nativa en ucraniano.
-  "ics.hora_entreno": "Час тренування"
+  "ics.hora_entreno": "Час тренування",
+  // Claves ui.resetear_*: traducción sin revisar por una persona nativa en ucraniano.
+  "ui.resetear_titulo": "Очистити форму?",
+  "ui.resetear_texto": "Буде стерто дані форми, зокрема бюджет, і план на екрані.",
+  "ui.resetear_confirmar": "Так, скинути"
 });

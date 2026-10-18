@@ -93,7 +93,9 @@ var suites = [
   "entreno.test",
   "ayuno.test",
   "ics.test",
-  "ics-plan.test"
+  "ics-plan.test",
+  "reset-confirm.test",
+  "plan-store.test"
 ];
 
 (async function () {

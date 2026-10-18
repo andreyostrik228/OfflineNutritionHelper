@@ -21,6 +21,7 @@
  *
  * Expone (globales):
  *   initFormControls()
+ *   initResetConfirm(refs)
  * ─────────────────────────────────────────────────────────────────────────
  */
 
@@ -36,6 +37,30 @@ function initFormControls() {
     var i = document.getElementById(id);
     if (i && i.tagName === "INPUT") mejorarNumeroConBotones(i, FORM_PASOS[id]);
   });
+}
+
+// Resetear borra el formulario entero (también el presupuesto) y el plan de
+// la pantalla. Antes lo hacía con un solo toque y sin aviso: un toque cerca de
+// "Despensa" y el presupuesto se perdía. Ahora el botón abre un diálogo y solo
+// "Sí" llama a alConfirmar.
+function initResetConfirm(refs) {
+  if (!refs || !refs.boton || !refs.dialogo || typeof refs.alConfirmar !== "function") return;
+  function abrir() {
+    if (typeof refs.dialogo.showModal === "function") refs.dialogo.showModal();
+    else refs.dialogo.setAttribute("open", "");
+  }
+  function cerrar() {
+    if (typeof refs.dialogo.close === "function" && refs.dialogo.open) refs.dialogo.close();
+    else refs.dialogo.removeAttribute("open");
+  }
+  refs.boton.addEventListener("click", abrir);
+  if (refs.cancelar) refs.cancelar.addEventListener("click", cerrar);
+  if (refs.confirmar) {
+    refs.confirmar.addEventListener("click", function () {
+      cerrar();
+      refs.alConfirmar();
+    });
+  }
 }
 
 function _etiquetaDe(campo) {

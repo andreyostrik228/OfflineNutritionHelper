@@ -828,5 +828,8 @@ registerI18nTable("ru", {
   "ics.boton_entreno": "Скачать тренировки (.ics)",
   "ics.entreno_titulo": "Тренировка: {sesion}",
   "ics.linea_ejercicio": "{nombre}: {series} x {reps}, отдых {descanso}",
-  "ics.hora_entreno": "Время тренировки"
+  "ics.hora_entreno": "Время тренировки",
+  "ui.resetear_titulo": "Очистить форму?",
+  "ui.resetear_texto": "Сотрутся данные формы, включая бюджет, и план на экране.",
+  "ui.resetear_confirmar": "Да, сбросить"
 });

@@ -273,8 +273,14 @@ function nextOnboardingStep(state, ctx) {
   // invitado que use esto a diario pasa por la bienvenida cada día. Se
   // suaviza precargando cada respuesta con lo que ya contestó, así son
   // siete toques y no siete decisiones.
+  // ── Matiz del 2026-10-18 (decisión del dueño) ───────────────────────────
+  // Con un plan ya guardado en este dispositivo (ctx.hasPlan), al invitado
+  // no se le vuelve a enseñar la bienvenida: el plan vuelve tal cual. Sin
+  // plan, sigue preguntándose en cada visita, como arriba. Las condiciones
+  // (needsTermsAcceptance, más arriba) se siguen pidiendo siempre.
   if (!c.hasAccount) {
-    return "welcome";
+    if (!c.hasPlan) return "welcome";
+    return s.tourDoneAt ? "done" : "tour";
   }
 
   if (!s.intakeDoneAt && !c.hasProfile) {

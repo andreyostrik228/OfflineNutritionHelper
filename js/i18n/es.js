@@ -724,5 +724,8 @@ registerI18nTable("es", {
   "ics.boton_entreno": "Descargar entrenamientos (.ics)",
   "ics.entreno_titulo": "Entreno: {sesion}",
   "ics.linea_ejercicio": "{nombre}: {series} x {reps}, descanso {descanso}",
-  "ics.hora_entreno": "Hora del entreno"
+  "ics.hora_entreno": "Hora del entreno",
+  "ui.resetear_titulo": "¿Borrar el formulario?",
+  "ui.resetear_texto": "Se borran los datos del formulario, incluido el presupuesto, y el plan que se muestra.",
+  "ui.resetear_confirmar": "Sí, resetear"
 });
