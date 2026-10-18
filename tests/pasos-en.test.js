@@ -21,12 +21,16 @@ function run(t) {
       projPath("js/core/i18n.js"),
       projPath("js/i18n/es.js"),
       projPath("js/i18n/steps-en.js"),
-      projPath("js/data/dish-instructions.js")
+      projPath("js/data/dish-instructions.js"),
+      projPath("js/data/dish-steps.js")
     ]);
     var DI = s.DISH_INSTRUCTIONS || {};
+    var PASOS = s.DISH_STEPS || {};
+    // Sin esta comprobacion, si los pasos no se cargan la prueba pasa en vacio.
+    assert.strictEqual(Object.keys(PASOS).length, Object.keys(DI).length, "cada receta tiene sus pasos en dish-steps.js");
     var sinTraducir = [];
     Object.keys(DI).forEach(function (plato) {
-      (DI[plato].steps || []).forEach(function (paso) {
+      (PASOS[plato] || []).forEach(function (paso) {
         if (s.tStep(paso, "en") === paso) sinTraducir.push(plato + ": " + paso.slice(0, 60));
       });
     });

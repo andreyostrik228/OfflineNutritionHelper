@@ -682,6 +682,8 @@ registerI18nTable("en", {
   "ui.sync_nube_no_disponible": "Your account could not be read. Your data is still on this device and will be tried again when you reload the page.",
   "ui.sync_no_se_guardo": "Your data could not be saved to your account. It is still on this device and will be tried again when you reload the page.",
   "ui.nube_fallo_guardado": "Your latest changes could not be saved to the cloud. They are still on this device, and saving will be tried again with the next change.",
+  "ui.cargando_pasos": "Loading the steps…",
+  "ui.pasos_no_disponibles": "The steps could not be loaded. Open the recipe again to retry.",
   "ui.auth_sin_red": "Could not connect — check your internet connection and try again.",
   "ui.auth_error_generico": "The operation could not be completed. Please try again.",
   // Validaciones del cuestionario (js/ui/onboarding-ui.js) y del formulario (js/core/calculator.js: validateInput).

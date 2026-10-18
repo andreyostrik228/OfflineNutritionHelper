@@ -24,11 +24,11 @@ if (!/^[a-z]{2}$/.test(LANG || "")) {
 var TANDAS = path.join(AQUI, "tandas", LANG);
 var loadBrowserGlobals = require(path.join(REPO, "tests/lib/load-browser-globals")).loadBrowserGlobals;
 
-var s = loadBrowserGlobals([path.join(REPO, "js/data/dish-instructions.js")]);
-var DI = s.DISH_INSTRUCTIONS || {};
+var s = loadBrowserGlobals([path.join(REPO, "js/data/dish-instructions.js"), path.join(REPO, "js/data/dish-steps.js")]);
+var DI = s.DISH_STEPS || {};
 var reales = {}, orden = [];
 Object.keys(DI).forEach(function (p) {
-  (DI[p].steps || []).forEach(function (paso) {
+  (DI[p] || []).forEach(function (paso) {
     if (!reales[paso]) { reales[paso] = 0; orden.push(paso); }
     reales[paso]++;
   });

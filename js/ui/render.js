@@ -406,8 +406,9 @@ function renderMealCard(meal, total, dayIndex) {
 function renderCookingSteps(meal) {
   if (typeof getDishInstructions !== "function") return "";
 
-  var info = getDishInstructions(meal && meal.dishName);
-  if (!info || !Array.isArray(info.steps) || !info.steps.length) return "";
+  var nombre = meal && meal.dishName;
+  var info = getDishInstructions(nombre);
+  if (!info) return "";
 
   var difficultyLabel = { 1: t("ui.facil"), 2: t("ui.medio"), 3: t("ui.avanzado") }[info.difficulty] || "";
 
@@ -424,8 +425,11 @@ function renderCookingSteps(meal) {
         .map(function (e) { return etiquetaDeEquipo(e); })
         .join(" · ");
 
+  // Los PASOS no van en el plan: el desplegable sale cerrado y vacío, y se
+  // rellena la primera vez que se abre (rellenarPasosReceta). Así pintar el
+  // plan no descarga el texto de cientos de recetas que casi nadie abre.
   return (
-    '<details class="meal-steps">' +
+    '<details class="meal-steps" data-receta="' + escapeHtml(nombre) + '">' +
       '<summary class="meal-steps__summary">' +
         '<span class="meal-steps__toggle">' + escapeHtml(t("ui.como_se_hace")) + '</span>' +
         (difficultyLabel
@@ -436,17 +440,54 @@ function renderCookingSteps(meal) {
       (equipmentLabel
         ? '<p class="meal-steps__equipment">' + escapeHtml(equipmentLabel) + '</p>'
         : "") +
-      '<ol class="meal-steps__list">' +
-        info.steps.map(function (step) {
-          // Se traduce AL PINTAR, no en los datos: el paso español es la
-          // clave del diccionario, igual que pasa con los nombres.
-          return '<li>' + escapeHtml(typeof tStep === "function" ? tStep(step) : step) + '</li>';
-        }).join("") +
-      '</ol>' +
+      '<ol class="meal-steps__list" data-estado="pendiente"></ol>' +
     '</details>'
   );
 }
 
+/**
+ * Rellena la lista de pasos de un desplegable la primera vez que se abre, o
+ * otra vez si el idioma cambió desde la última vez. Mientras carga, muestra un
+ * aviso. Si la carga falla, deja un aviso y lo vuelve a intentar al abrirlo.
+ * @param {HTMLElement} desplegable - el <details class="meal-steps">
+ */
+function rellenarPasosReceta(desplegable) {
+  var lista = desplegable.querySelector(".meal-steps__list");
+  if (!lista) return;
+  var idioma = getLang();
+  var estado = lista.getAttribute("data-estado");
+  if (estado === "cargando") return;
+  if (estado === "lleno" && lista.getAttribute("data-idioma") === idioma) return;
+
+  var nombre = desplegable.getAttribute("data-receta");
+  lista.setAttribute("data-estado", "cargando");
+  lista.style.listStyle = "none";
+  lista.innerHTML = "<li>" + escapeHtml(t("ui.cargando_pasos")) + "</li>";
+
+  recetaCargar(idioma).then(function () {
+    var pasos = recetaPasos(nombre);
+    if (!pasos) throw new Error("la receta no tiene pasos: " + nombre);
+    lista.style.listStyle = "";
+    lista.innerHTML = pasos.map(function (paso) {
+      return "<li>" + escapeHtml(tStep(paso, idioma)) + "</li>";
+    }).join("");
+    lista.setAttribute("data-estado", "lleno");
+    lista.setAttribute("data-idioma", idioma);
+  })["catch"](function (err) {
+    console.error("[render:pasos] no se pudieron cargar los pasos de la receta:", err);
+    lista.style.listStyle = "none";
+    lista.setAttribute("data-estado", "error");
+    lista.innerHTML = "<li>" + escapeHtml(t("ui.pasos_no_disponibles")) + "</li>";
+  });
+}
+
+// Un <details> no hace burbujear su evento "toggle": se escucha en captura.
+if (typeof document !== "undefined" && document.addEventListener) {
+  document.addEventListener("toggle", function (ev) {
+    var d = ev.target;
+    if (d && d.classList && d.classList.contains("meal-steps") && d.open) rellenarPasosReceta(d);
+  }, true);
+}
 /**
  * Etiquetas legibles del vocabulario cerrado de equipo.
  *

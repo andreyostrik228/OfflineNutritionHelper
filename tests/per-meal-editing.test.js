@@ -15,13 +15,22 @@
 var assert = require("assert");
 var path = require("path");
 var loadBrowserGlobals = require("./lib/load-browser-globals").loadBrowserGlobals;
+var seedRandomInContext = require("./lib/seed-random").seedRandomInContext;
+
+// Semilla fija para Math.random del motor. Sin ella, en ~0,3% de las tiradas
+// el resto del día (4 tomas) ya agota el presupuesto y no hay plato que quepe
+// en la toma reemplazada: regeneratePlanMeal() devuelve no_alternative_found,
+// que es el resultado correcto en ese caso, pero el test asumía que siempre
+// hay alternativa. Con la semilla 1 sí la hay, y el test sigue comprobando
+// que el día queda dentro del presupuesto.
+var SEMILLA_MOTOR = 1;
 
 function projPath(rel) {
   return path.join(__dirname, "..", rel);
 }
 
 function freshEngineSandbox() {
-  return loadBrowserGlobals([
+  var s = loadBrowserGlobals([
     projPath("js/data/dishes.js"),
     projPath("js/data/real-products.js"),
     projPath("js/data/packaging.js"),
@@ -42,6 +51,8 @@ function freshEngineSandbox() {
     projPath("js/engine/dish-selector.js"),
     projPath("js/engine/plan-generator.js")
   ]);
+  seedRandomInContext(s, SEMILLA_MOTOR);
+  return s;
 }
 
 /** Genera y guarda un plan real completo, con dayOptions -- helper común. */
@@ -250,6 +261,19 @@ function run(t) {
       "mercadona", null
     ).purchaseCost;
     assert.ok(cost <= 20 + 0.01, "coste real del día tras el swap (" + cost + ") no debería superar el presupuesto (20)");
+  });
+
+  t.test("regeneratePlanMeal(): si ningún plato cabe en el presupuesto del día -> no_alternative_found, y las tomas no cambian", function () {
+    var s = freshEngineSandbox();
+    var profile = s.calculateProfile({ weight: 82, height: 178, age: 27, sex: "male", activity: 1.55, workouts: 4, goal: "recomp" });
+    var result = s.generateDietPlan(profile, { budget: 20, cookTime: 30, taste: "mixed", store: "mercadona" });
+    var before = JSON.parse(JSON.stringify(result.meals));
+
+    // Con 1 € para el día entero no hay combinación posible: es el caso que el
+    // test de arriba evita con la semilla; aquí se comprueba explícitamente.
+    var regen = s.regeneratePlanMeal(result.meals, "dinner", { budget: 1, cookTime: 30, taste: "mixed" }, "mercadona", null);
+    assert.strictEqual(regen.error, "no_alternative_found");
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals)), before, "sin alternativa, el array de tomas no se toca");
   });
 
   t.test("regeneratePlanMeal(): mealKey desconocido -> error, nunca lanza; sin dayOptions.budget usa Infinity", function () {

@@ -24,6 +24,7 @@ function sandbox() {
   return loadBrowserGlobals([
     projPath("js/data/dishes.js"),
     projPath("js/data/dish-instructions.js"),
+    projPath("js/data/dish-steps.js"),
     projPath("js/data/real-products.js"),
     projPath("js/data/packaging.js"),
     projPath("js/data/servings.js"),
@@ -144,7 +145,7 @@ function run(t) {
     var s = sandbox();
     var info = s.getDishInstructions(MAKE_AHEAD_DISH);
     assert.strictEqual(info.makeAhead, true);
-    assert.ok(/noche ant/i.test(info.steps[0]), "el primer paso debe avisar de la antelación");
+    assert.ok(/noche ant/i.test(s.DISH_STEPS[MAKE_AHEAD_DISH][0]), "el primer paso debe avisar de la antelación");
   });
 }
 

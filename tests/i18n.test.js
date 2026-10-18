@@ -594,10 +594,14 @@ function run(t) {
       });
     });
     var html = fs.readFileSync(projPath("index.html"), "utf8");
+    // Los pasos de receta (steps-*.js) NO van en el HTML: los pide
+    // js/core/recipe-assets.js al abrir una receta. Aqui se comprueba que los pide.
+    var recetas = fs.readFileSync(projPath("js/core/recipe-assets.js"), "utf8");
     IDIOMAS_HECHOS.forEach(function (lang) {
-      ["", "food-", "packages-", "steps-"].forEach(function (pre) {
+      ["", "food-", "packages-"].forEach(function (pre) {
         if (html.indexOf('src="js/i18n/' + pre + lang + '.js') === -1) faltan.push("<script> de " + pre + lang + ".js");
       });
+      if (recetas.indexOf('"' + lang + '"') === -1) faltan.push("recipe-assets.js no pide steps-" + lang + ".js");
     });
     assert.deepStrictEqual(faltan, [], "le falta a algún idioma: " + faltan.join(", "));
   });

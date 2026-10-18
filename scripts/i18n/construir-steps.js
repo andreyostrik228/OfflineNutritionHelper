@@ -45,12 +45,12 @@ if (!NOMBRES[LANG]) {
 var TANDAS = path.join(AQUI, "tandas", LANG);
 
 // ── Los pasos REALES, tal cual están en los datos ──────────────────────
-var s = loadBrowserGlobals([path.join(REPO, "js/data/dish-instructions.js")]);
-var DI = s.DISH_INSTRUCTIONS || {};
+var s = loadBrowserGlobals([path.join(REPO, "js/data/dish-instructions.js"), path.join(REPO, "js/data/dish-steps.js")]);
+var DI = s.DISH_STEPS || {};
 var reales = {};
 var ordenados = [];
 Object.keys(DI).forEach(function (plato) {
-  (DI[plato].steps || []).forEach(function (paso) {
+  (DI[plato] || []).forEach(function (paso) {
     if (!reales[paso]) { reales[paso] = 0; ordenados.push(paso); }
     reales[paso]++;
   });
@@ -127,7 +127,7 @@ var cab = [
   " * Los PASOS de las recetas, en " + NOMBRES[LANG] + ".",
   " *",
   " * La clave es la frase española entera, no un identificador: asi este",
-  " * fichero se lee en paralelo con js/data/dish-instructions.js y se puede",
+  " * fichero se lee en paralelo con js/data/dish-steps.js y se puede",
   " * revisar sin saltar de uno a otro. Misma decision que food-" + LANG + ".js.",
   " *",
   " * Sin traduccion para un paso, `tStep()` devuelve el ORIGINAL en español.",

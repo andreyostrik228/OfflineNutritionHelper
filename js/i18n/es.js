@@ -585,6 +585,8 @@ registerI18nTable("es", {
   "ui.sync_nube_no_disponible": "No se pudo leer tu cuenta. Tus datos siguen en este dispositivo y se volverá a intentar al recargar la página.",
   "ui.sync_no_se_guardo": "No se pudieron guardar tus datos en tu cuenta. Siguen en este dispositivo y se volverá a intentar al recargar la página.",
   "ui.nube_fallo_guardado": "No se pudieron guardar tus últimos cambios en la nube. Siguen en este dispositivo y se volverá a intentar con el siguiente cambio.",
+  "ui.cargando_pasos": "Cargando los pasos…",
+  "ui.pasos_no_disponibles": "No se pudieron cargar los pasos. Vuelve a abrir la receta para intentarlo de nuevo.",
   "ui.auth_sin_red": "No se pudo conectar -- revisa tu conexión a internet e inténtalo de nuevo.",
   "ui.auth_error_generico": "No se pudo completar la operación. Inténtalo de nuevo.",
   // Validaciones del cuestionario (js/ui/onboarding-ui.js) y del formulario (js/core/calculator.js: validateInput).

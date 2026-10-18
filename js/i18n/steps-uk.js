@@ -4,7 +4,7 @@
  * Los PASOS de las recetas, en ucraniano.
  *
  * La clave es la frase española entera, no un identificador: asi este
- * fichero se lee en paralelo con js/data/dish-instructions.js y se puede
+ * fichero se lee en paralelo con js/data/dish-steps.js y se puede
  * revisar sin saltar de uno a otro. Misma decision que food-uk.js.
  *
  * Sin traduccion para un paso, `tStep()` devuelve el ORIGINAL en español.

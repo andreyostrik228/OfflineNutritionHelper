@@ -467,7 +467,7 @@ function run(t) {
   // sitio.
   t.test("ningún texto visible del catálogo contiene un hueco del generador", function () {
     var s = freshSandbox();
-    var instrucciones = loadBrowserGlobals([projPath("js/data/dish-instructions.js")]);
+    var instrucciones = loadBrowserGlobals([projPath("js/data/dish-instructions.js"), projPath("js/data/dish-steps.js")]);
 
     // "null" no entra: es una palabra improbable en español pero no
     // imposible, y estas marcas tienen que ser inequívocas.
@@ -486,9 +486,12 @@ function run(t) {
     });
 
     var recetas = instrucciones.DISH_INSTRUCTIONS || {};
+    // Sin esta comprobacion, si los pasos no se cargan la prueba pasa en vacio.
+    assert.strictEqual(Object.keys(instrucciones.DISH_STEPS || {}).length, Object.keys(recetas).length,
+      "cada receta tiene sus pasos en dish-steps.js");
     Object.keys(recetas).forEach(function (nombre) {
       revisa("clave de receta", nombre);
-      (recetas[nombre].steps || []).forEach(function (paso, i) {
+      ((instrucciones.DISH_STEPS || {})[nombre] || []).forEach(function (paso, i) {
         revisa(nombre + " [paso " + (i + 1) + "]", paso);
       });
       (recetas[nombre].equipment || []).forEach(function (eq) {

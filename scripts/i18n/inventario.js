@@ -42,12 +42,13 @@ var s = loadBrowserGlobals([
   path.join(REPO, "js/core/i18n.js"),
   path.join(REPO, "js/i18n/es.js"),
   path.join(REPO, "js/i18n/steps-en.js"),
-  path.join(REPO, "js/data/dish-instructions.js")
+  path.join(REPO, "js/data/dish-instructions.js"),
+  path.join(REPO, "js/data/dish-steps.js")
 ]);
-var DI = s.DISH_INSTRUCTIONS || {};
+var DI = s.DISH_STEPS || {};
 var total = 0, sinTraducir = 0, unicos = {}, unicosSin = {};
 Object.keys(DI).forEach(function (p) {
-  (DI[p].steps || []).forEach(function (paso) {
+  (DI[p] || []).forEach(function (paso) {
     total++; unicos[paso] = 1;
     if (s.tStep(paso, "en") === paso) { sinTraducir++; unicosSin[paso] = 1; }
   });

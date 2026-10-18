@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Inserta lote_platos.json en dishes.js y dish-instructions.js.
+"""Inserta lote_platos.json en dishes.js, dish-instructions.js y dish-steps.js.
 
 Respeta el estilo de cada fichero al pie de la letra y renormaliza a CRLF,
 como manda la regla del repo.
@@ -34,17 +34,20 @@ def linea_plato(p):
 
 
 def bloque_receta(nombre, r):
-    pasos = "\n".join('      "%s"%s' % (s.replace('"', "'"), "," if i < len(r["steps"]) - 1 else "")
-                      for i, s in enumerate(r["steps"]))
+    # Solo metadatos: el generador de la app los necesita al arrancar. Los
+    # pasos van a dish-steps.js (ver bloque_pasos), que se carga al abrir una receta.
     equipo = ", ".join('"%s"' % e for e in r["equipment"])
     return (
         '  "%s": {\n'
         "    difficulty: %d,\n"
         "    equipment: [%s],\n"
-        "    steps: [\n%s\n"
-        "    ]\n"
         "  },"
-    ) % (nombre, r["difficulty"], equipo, pasos)
+    ) % (nombre, r["difficulty"], equipo)
+
+
+def bloque_pasos(nombre, r):
+    pasos = ",\n".join('    "%s"' % s.replace('"', "'") for s in r["steps"])
+    return '  "%s": [\n%s\n  ]' % (nombre, pasos)
 
 
 # ── dishes.js ───────────────────────────────────────────────────────────
@@ -74,3 +77,14 @@ cab = "\n  // ── Recetas de la ampliacion, %s (%s) ────────�
 t = t[:cierre] + "\n" + cab + bloques + t[cierre:]
 io.open(ruta, "wb").write(t.replace("\n", "\r\n").encode("utf-8"))
 print("dish-instructions.js: +%d recetas" % len(datos))
+
+# ── dish-steps.js: los PASOS, fuera de dish-instructions.js ─────────────
+ruta = os.path.join(REPO, "js/data/dish-steps.js")
+t = io.open(ruta, "rb").read().decode("utf-8").replace("\r\n", "\n")
+cierre = t.rfind("\n};\n")
+if cierre < 0:
+    print("ABORTA: no encuentro el cierre de DISH_STEPS"); sys.exit(1)
+bloques = ",\n\n".join(bloque_pasos(d["plato"]["name"], d["receta"]) for d in datos)
+t = t[:cierre] + ",\n\n" + bloques + t[cierre:]
+io.open(ruta, "wb").write(t.replace("\n", "\r\n").encode("utf-8"))
+print("dish-steps.js: +%d recetas" % len(datos))

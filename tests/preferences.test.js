@@ -26,6 +26,7 @@ function sandbox() {
     projPath("js/core/utils.js"),
     projPath("js/data/dishes.js"),
     projPath("js/data/dish-instructions.js"),
+    projPath("js/data/dish-steps.js"),
     projPath("js/data/real-products.js"),
     projPath("js/data/no-cook-classifier.js"),
     projPath("js/core/pricing.js"),
@@ -204,7 +205,8 @@ function run(t) {
 
     conInstrucciones.forEach(function (d) {
       var info = s.getDishInstructions(d.name);
-      assert.ok(Array.isArray(info.steps) && info.steps.length >= 3, d.name + ": necesita pasos de verdad");
+      var pasos = s.DISH_STEPS[d.name] || [];
+      assert.ok(Array.isArray(pasos) && pasos.length >= 3, d.name + ": necesita pasos de verdad");
       assert.ok(info.difficulty >= 1 && info.difficulty <= 3, d.name + ": dificultad fuera de rango");
       assert.ok(Array.isArray(info.equipment) && info.equipment.length, d.name + ": sin equipo declarado");
       info.equipment.forEach(function (tok) {
@@ -281,7 +283,7 @@ function run(t) {
     conFuego.forEach(function (name) {
       var info = s.getDishInstructions(name);
       assert.ok(info, name + " deberia estar en el piloto");
-      var texto = info.steps.join(" ");
+      var texto = s.DISH_STEPS[name].join(" ");
       assert.ok(/\d/.test(texto), name + ": sin una sola cifra concreta no sirve a un principiante");
       assert.ok(
         /minuto|segundos|hasta que|cuando/i.test(texto),
