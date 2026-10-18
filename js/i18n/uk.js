@@ -806,5 +806,20 @@ registerI18nTable("uk", {
   "ent.tip_descarga": "Розвантаження",
   "ent.tip_cardio": "Кардіо",
   "ent.tip_rir": "Запас повторень (RIR)",
-  "ent.tip_aviso": "Важливо"
+  "ent.tip_aviso": "Важливо",
+  "ayu.titulo": "Переривчасте голодування",
+  "ayu.ventana": "Вікно прийому їжі: {inicio} – {fin}",
+  "ayu.ayuno_dia": "голодування {tiempo} на день",
+  "ayu.ahora_comida": "Вікно відкрите: закриється через {tiempo}",
+  "ayu.ahora_ayuno": "Голодування: перший прийом через {tiempo}",
+  "ayu.h": "{h} год",
+  "ayu.hm": "{h} год {m} хв",
+  "ayu.aviso": "Це лише інформація, а не медична порада. За наявності проблем зі здоров’ям спершу порадьтеся з лікарем.",
+  // Claves ics.*: traducción sin revisar por una persona nativa en ucraniano.
+  "ics.boton_comidas": "Завантажити прийоми їжі (.ics)",
+  "ics.boton_entreno": "Завантажити тренування (.ics)",
+  "ics.entreno_titulo": "Тренування: {sesion}",
+  "ics.linea_ejercicio": "{nombre}: {series} x {reps}, відпочинок {descanso}",
+  // ics.hora_entreno: traducción sin revisar por una persona nativa en ucraniano.
+  "ics.hora_entreno": "Час тренування"
 });

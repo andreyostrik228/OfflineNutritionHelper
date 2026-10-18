@@ -815,5 +815,18 @@ registerI18nTable("ru", {
   "ent.tip_descarga": "Разгрузка",
   "ent.tip_cardio": "Кардио",
   "ent.tip_rir": "Запас повторов (RIR)",
-  "ent.tip_aviso": "Важно"
+  "ent.tip_aviso": "Важно",
+  "ayu.titulo": "Прерывистое голодание",
+  "ayu.ventana": "Окно приёма пищи: {inicio} – {fin}",
+  "ayu.ayuno_dia": "голодание {tiempo} в день",
+  "ayu.ahora_comida": "Окно открыто: закроется через {tiempo}",
+  "ayu.ahora_ayuno": "Голодание: первый приём через {tiempo}",
+  "ayu.h": "{h} ч",
+  "ayu.hm": "{h} ч {m} мин",
+  "ayu.aviso": "Это только информация, не медицинский совет. При проблемах со здоровьем спросите врача, прежде чем голодать.",
+  "ics.boton_comidas": "Скачать приёмы пищи (.ics)",
+  "ics.boton_entreno": "Скачать тренировки (.ics)",
+  "ics.entreno_titulo": "Тренировка: {sesion}",
+  "ics.linea_ejercicio": "{nombre}: {series} x {reps}, отдых {descanso}",
+  "ics.hora_entreno": "Время тренировки"
 });

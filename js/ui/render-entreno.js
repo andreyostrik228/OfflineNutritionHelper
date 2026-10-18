@@ -31,6 +31,7 @@ var ENTRENO_SEMANA_MAX = 52;
 
 var _entrenoBoton = null;
 var _entrenoPanel = null;
+var _entrenoUltimoPlan = null;
 
 /** Avisos del generador que se traducen con una clave fija. */
 var ENTRENO_AVISOS = {
@@ -244,6 +245,7 @@ function renderEntreno() {
   if (sinDias) sinDias.hidden = !sinPlan;
   salida.hidden = sinPlan;
   if (sinPlan) {
+    _entrenoUltimoPlan = null;
     salida.innerHTML = "";
     return;
   }
@@ -256,7 +258,28 @@ function renderEntreno() {
     equipamiento: controles.equipamiento,
     semana: controles.semana
   });
+  _entrenoUltimoPlan = plan.ok ? plan : null;
   salida.innerHTML = plan.ok ? entrenoPlanHtml(plan) : "";
+}
+
+/** Descarga el plan de entrenamiento como calendario .ics: un evento semanal por sesión. */
+function entrenoExportarIcs() {
+  if (!_entrenoUltimoPlan) return;
+  var ahora = new Date();
+  var fecha = icsFechaDeHoy(ahora.getFullYear(), ahora.getMonth() + 1, ahora.getDate());
+  var texto = icsEntreno(_entrenoUltimoPlan, fecha, {
+    sello: ahora,
+    horaMinutos: icsHoraEntreno((document.getElementById("entHora") || {}).value),
+    titulo: function (sesion) {
+      return tFormat("ics.entreno_titulo", { sesion: tOr("ent.sesion_" + sesion.key, sesion.name) });
+    },
+    linea: function (e) {
+      return tFormat("ics.linea_ejercicio", {
+        nombre: e.name, series: e.sets, reps: e.reps, descanso: entrenoDescanso(e.restSeconds)
+      });
+    }
+  });
+  icsDescargar(texto, "weekplate-entreno.ics");
 }
 
 function renderEntrenoSiVisible() {
@@ -336,6 +359,8 @@ function initEntreno() {
     entrenoMostrar(false);
     if (typeof activarPestana === "function") activarPestana("datos");
   });
+  var icsBoton = document.getElementById("entIcs");
+  if (icsBoton) icsBoton.addEventListener("click", entrenoExportarIcs);
   var imprimir = document.getElementById("entImprimir");
   if (imprimir) imprimir.addEventListener("click", function () { window.print(); });
 

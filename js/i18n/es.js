@@ -711,5 +711,18 @@ registerI18nTable("es", {
   "ent.tip_descarga": "Descarga",
   "ent.tip_cardio": "Cardio",
   "ent.tip_rir": "Repeticiones en reserva (RIR)",
-  "ent.tip_aviso": "Importante"
+  "ent.tip_aviso": "Importante",
+  "ayu.titulo": "Ayuno intermitente",
+  "ayu.ventana": "Ventana de comidas: {inicio} – {fin}",
+  "ayu.ayuno_dia": "ayuno de {tiempo} al día",
+  "ayu.ahora_comida": "Ventana abierta: cierra en {tiempo}",
+  "ayu.ahora_ayuno": "Ayunando: primera comida en {tiempo}",
+  "ayu.h": "{h} h",
+  "ayu.hm": "{h} h {m} min",
+  "ayu.aviso": "Solo es información, no es consejo médico. Si tienes alguna condición de salud, consulta a tu médico antes de ayunar.",
+  "ics.boton_comidas": "Descargar comidas (.ics)",
+  "ics.boton_entreno": "Descargar entrenamientos (.ics)",
+  "ics.entreno_titulo": "Entreno: {sesion}",
+  "ics.linea_ejercicio": "{nombre}: {series} x {reps}, descanso {descanso}",
+  "ics.hora_entreno": "Hora del entreno"
 });

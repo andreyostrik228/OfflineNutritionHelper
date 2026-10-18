@@ -808,5 +808,18 @@ registerI18nTable("en", {
   "ent.tip_descarga": "Deload",
   "ent.tip_cardio": "Cardio",
   "ent.tip_rir": "Reps in reserve (RIR)",
-  "ent.tip_aviso": "Important"
+  "ent.tip_aviso": "Important",
+  "ayu.titulo": "Intermittent fasting",
+  "ayu.ventana": "Eating window: {inicio} – {fin}",
+  "ayu.ayuno_dia": "{tiempo} fasting each day",
+  "ayu.ahora_comida": "Eating window open: closes in {tiempo}",
+  "ayu.ahora_ayuno": "Fasting: first meal in {tiempo}",
+  "ayu.h": "{h} h",
+  "ayu.hm": "{h} h {m} min",
+  "ayu.aviso": "For information only, not medical advice. If you have a health condition, check with your doctor before fasting.",
+  "ics.boton_comidas": "Download meals (.ics)",
+  "ics.boton_entreno": "Download workouts (.ics)",
+  "ics.entreno_titulo": "Workout: {sesion}",
+  "ics.linea_ejercicio": "{nombre}: {series} x {reps}, rest {descanso}",
+  "ics.hora_entreno": "Workout time"
 });

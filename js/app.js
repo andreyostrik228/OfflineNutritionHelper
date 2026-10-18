@@ -414,7 +414,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     if (lastGeneratedProfile) renderSummary(lastGeneratedProfile, total);
     safeInit("schedule-timeline-render", function () {
-      if (typeof renderScheduleTimeline === "function") renderScheduleTimeline(lastGeneratedMeals);
+      if (typeof renderScheduleTimeline === "function") renderScheduleTimeline(lastGeneratedMeals, lastGeneratedDays);
     });
     if (lastGeneratedProfile && lastGeneratedData) {
       renderInsights(lastGeneratedProfile, result, lastGeneratedData);
@@ -572,7 +572,7 @@ document.addEventListener("DOMContentLoaded", function () {
         renderDayPlans(days);
         renderDayDots(days.length);
         safeInit("schedule-timeline-render", function () {
-          if (typeof renderScheduleTimeline === "function") renderScheduleTimeline(result.meals);
+          if (typeof renderScheduleTimeline === "function") renderScheduleTimeline(result.meals, days);
         });
         renderInsights(profile, result, data);
         renderWarnings(profile, result, data);

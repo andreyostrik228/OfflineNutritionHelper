@@ -3971,3 +3971,104 @@ body.modo-entreno .tabbar { display: none !important; }
     padding: 14px;
   }
 }
+
+/* ── Ayuno intermitente (2026-10-17) ───────────────────────────────────────
+   Tarjeta bajo el horario de comidas (js/ui/render-ayuno.js). Usa las mismas
+   sombras, radios y tipos que el resto del sitio. */
+.ayuno {
+  margin: 12px 0 0;
+  padding: 14px 16px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+}
+.ayuno[hidden] { display: none; }
+.ayuno__titulo {
+  margin: 0 0 4px;
+  font: 800 1.05rem/1.2 var(--font-display);
+  letter-spacing: 0.01em;
+  color: var(--ink);
+}
+.ayuno__estado {
+  margin: 0 0 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+.ayuno__barra {
+  height: 8px;
+  border-radius: var(--pill);
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.ayuno__relleno {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  background: var(--ink);
+  transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.ayuno--comida .ayuno__relleno { background: var(--volt); }
+.ayuno__ventana {
+  margin: 10px 0 0;
+  font-size: 0.86rem;
+  color: var(--text-2);
+}
+.ayuno__aviso {
+  margin: 8px 0 0;
+  font-size: 0.78rem;
+  color: var(--text-3);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ayuno__relleno { transition: none; }
+}
+
+/* ── Exportación .ics (2026-10-17) ─────────────────────────────────────────
+   Botón de descargar las comidas bajo la línea horaria. El de entrenamientos
+   usa .btn-secondary dentro de .entreno (ya tiene su estilo y su gesto). */
+.schedule-timeline__acciones { margin-top: 12px; }
+.schedule-timeline__ics {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  min-height: 42px;
+  padding: 9px 16px;
+  border: 1.5px solid var(--field-line);
+  border-radius: var(--pill);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.12s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.schedule-timeline__ics:focus-visible { outline: 3px solid var(--volt); outline-offset: 2px; }
+@media (hover: hover) {
+  .schedule-timeline__ics:hover { border-color: var(--primary); box-shadow: var(--active-accent); }
+}
+.schedule-timeline__ics:active { transform: scale(0.95); box-shadow: none; }
+@media (prefers-reduced-motion: reduce) {
+  .schedule-timeline__ics { transition: none; }
+  .schedule-timeline__ics:active { transform: none; }
+}
+
+/* ── Hora del entreno para la exportación .ics (2026-10-17) ─────────────── */
+.entreno__hora {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--text-2);
+}
+.entreno__hora input {
+  min-height: 42px;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 0.95rem;
+  border: 1.5px solid var(--field-line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--ink);
+}
+.entreno__hora input:focus-visible { outline: 3px solid var(--volt); outline-offset: 2px; }

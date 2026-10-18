@@ -38,6 +38,8 @@
  */
 
 var scheduleTimelineEl;
+var scheduleUltimasComidas = null;
+var scheduleUltimosDias = null;
 var nextMealStickyEl;
 
 /**
@@ -65,6 +67,8 @@ function initScheduleRefs(refs) {
  * quede un horario de un plan que ya no está en pantalla.
  */
 function clearScheduleUI() {
+  scheduleUltimosDias = null;
+  if (typeof ayunoOcultar === "function") ayunoOcultar();
   if (scheduleTimelineEl) {
     scheduleTimelineEl.hidden = true;
     scheduleTimelineEl.innerHTML = "";
@@ -75,7 +79,22 @@ function clearScheduleUI() {
   }
 }
 
+/** Descarga las comidas del plan (todos sus días) como calendario .ics. Sin plan de varios días, solo las de hoy. */
+function exportarComidasIcs() {
+  if (!scheduleUltimasComidas || !scheduleUltimasComidas.length) return;
+  var dias = scheduleUltimosDias && scheduleUltimosDias.length ? scheduleUltimosDias : [{ meals: scheduleUltimasComidas }];
+  var ahora = new Date();
+  var fecha = icsFechaDeHoy(ahora.getFullYear(), ahora.getMonth() + 1, ahora.getDate());
+  var texto = icsComidasDias(dias, fecha, {
+    sello: ahora,
+    titulo: function (comida) { return typeof tituloDeToma === "function" ? tituloDeToma(comida) : comida.label; }
+  });
+  icsDescargar(texto, "weekplate-comidas.ics");
+}
+
 function handleTimelineClick(event) {
+  var boton = event.target.closest('button[data-accion="ics"]');
+  if (boton) { exportarComidasIcs(); return; }
   var chip = event.target.closest("button[data-meal-key]");
   if (!chip) return;
   scrollToMealCard(chip.getAttribute("data-meal-key"));
@@ -111,10 +130,12 @@ function scrollToMealCard(key) {
  *
  * @param {object[]} meals - salida de computeMealSchedule() (con .time/.timeMinutes)
  */
-function renderScheduleTimeline(meals) {
+function renderScheduleTimeline(meals, dias) {
   if (!scheduleTimelineEl) return;
 
   var list = meals || [];
+  scheduleUltimasComidas = list;
+  scheduleUltimosDias = dias || null;
   var scheduled = list.filter(function (m) { return m && typeof m.timeMinutes === "number"; });
 
   if (scheduled.length === 0) {
@@ -138,9 +159,12 @@ function renderScheduleTimeline(meals) {
     : "";
 
   scheduleTimelineEl.hidden = false;
-  scheduleTimelineEl.innerHTML = '<div class="schedule-timeline__row">' + chips + '</div>' + note;
+  scheduleTimelineEl.innerHTML = '<div class="schedule-timeline__row">' + chips + '</div>' + note +
+    '<div class="schedule-timeline__acciones"><button type="button" class="schedule-timeline__ics" data-accion="ics">' +
+    escapeHtml(t("ics.boton_comidas")) + '</button></div>';
 
   renderNextMealSticky(nextMeal);
+  if (typeof ayunoRenderizar === "function") ayunoRenderizar(list);
 }
 
 /**

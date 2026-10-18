@@ -90,7 +90,10 @@ var suites = [
   "css-visibility.test",
   "store-theme.test",
   "workout-generator.test",
-  "entreno.test"
+  "entreno.test",
+  "ayuno.test",
+  "ics.test",
+  "ics-plan.test"
 ];
 
 (async function () {
