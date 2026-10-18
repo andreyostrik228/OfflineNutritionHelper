@@ -21,6 +21,12 @@
  *   entrenoTextoAviso(aviso)   texto traducido de un aviso del generador
  *   entrenoLeerPrefs()         elecciones guardadas, validadas
  *   entrenoGuardarPrefs(p)     guarda las elecciones (sin romper si no hay almacenamiento)
+ *   entrenoRepsTexto(reps)     "10-12 por lado" en el idioma de la pantalla
+ *
+ * Desde el 2026-10-18 cada día del plan tiene «Empezar» (modo entrenamiento,
+ * js/ui/entreno-sesion.js), cada ejercicio enseña «La última vez» del diario
+ * (js/core/workout-log.js) y encima del plan va el progreso
+ * (js/ui/entreno-progreso.js). Sin esos ficheros el plan se pinta como antes.
  * ─────────────────────────────────────────────────────────────────────────
  */
 
@@ -165,6 +171,90 @@ function entrenoEsc(texto) {
   return escapeHtml(String(texto));
 }
 
+/**
+ * Repeticiones del plan en el idioma de la pantalla: "6-10" → "6–10",
+ * "10-12 por lado" → "10–12 на сторону", "30-45 s" → "30–45 с". Lo que no
+ * tenga esa forma sale tal cual.
+ */
+function entrenoRepsTexto(reps) {
+  var m = /^(\d+)-(\d+)( s)?( por lado)?$/.exec(String(reps));
+  if (!m) return String(reps);
+  return m[1] + "–" + m[2] + (m[3] ? " " + t("ent.seg_abrev") : "") + (m[4] ? " " + t("ent.por_lado") : "");
+}
+
+/** «La última vez: 60 kg × 10, 10, 9» de un ejercicio, si hay diario y se hizo alguna vez. */
+function entrenoUltimaHtml(e, log) {
+  if (!log || typeof entrenoLogUltimaVez !== "function" || typeof entrenoSeriesTexto !== "function") return "";
+  var ultima = entrenoLogUltimaVez(log, e.id);
+  if (!ultima) return "";
+  var tiempo = / s( por lado)?$/.test(String(e.reps));
+  return '<span class="entreno__ultima">' + entrenoEsc(tFormat("ent.ultima_vez", { series: entrenoSeriesTexto(ultima.series, tiempo) })) + "</span>";
+}
+
+function _entrenoCatalogo(id) {
+  var catalogo = typeof EXERCISE_CATALOG !== "undefined" ? EXERCISE_CATALOG : [];
+  for (var i = 0; i < catalogo.length; i++) if (catalogo[i].id === id) return catalogo[i];
+  return null;
+}
+
+/**
+ * La animación pequeña de un ejercicio (js/ui/entreno-figura.js) como botón
+ * que abre la grande. "" si no hay animaciones o ese ejercicio no tiene.
+ */
+function entrenoMiniHtml(e) {
+  if (typeof entrenoAnimacionTiene !== "function" || !entrenoAnimacionTiene(e.id)) return "";
+  return '<button type="button" class="entreno__anim" data-anim-abrir="' + entrenoEsc(e.id) + '"' +
+    ' aria-label="' + entrenoEsc(tFormat("ent.ver_animacion", { nombre: entrenoNombre(e) })) + '">' +
+    entrenoAnimacionHtml(e.id, "mini", "") + "</button>";
+}
+
+/** Los músculos de la animación: los que trabajan y los que ayudan, como fichas. */
+function entrenoMusculosHtml(id) {
+  var spec = typeof EJERCICIO_POSES !== "undefined" ? EJERCICIO_POSES[id] : null;
+  var m = (spec && spec.musculos) || {};
+  function grupo(lista, clave, clase) {
+    if (!lista || !lista.length) return "";
+    return '<p class="anim-ficha__musculos"><span class="anim-ficha__titulo">' + entrenoEsc(t(clave)) + "</span>" +
+      lista.map(function (z) {
+        return '<span class="anim-musculo anim-musculo--' + clase + '">' + entrenoEsc(tOr("ent.musculo_" + z, z)) + "</span>";
+      }).join("") + "</p>";
+  }
+  return grupo(m.p, "ent.musculos_trabajan", "p") + grupo(m.s, "ent.musculos_ayudan", "s");
+}
+
+/** Lo que va en la ventana de un ejercicio: la animación grande, los músculos y la técnica. */
+function entrenoFichaHtml(id) {
+  var e = _entrenoCatalogo(id);
+  if (!e) return "";
+  return '<div class="anim-ficha">' +
+    entrenoAnimacionHtml(id, "completo", tFormat("ent.animacion_de", { nombre: entrenoNombre(e) })) +
+    entrenoMusculosHtml(id) +
+    '<p class="anim-ficha__tecnica">' + entrenoEsc(entrenoTecnica(e)) + "</p>" +
+    '<p class="anim-ficha__leyenda">' + entrenoEsc(t("ent.animacion_leyenda")) + "</p>" +
+  "</div>";
+}
+
+/** Abre la ventana con la animación grande de un ejercicio. */
+function entrenoAbrirAnimacion(id) {
+  var dialogo = document.getElementById("entrenoAnimDialogo");
+  var e = _entrenoCatalogo(id);
+  if (!dialogo || !e) return;
+  document.getElementById("entrenoAnimTitulo").textContent = entrenoNombre(e);
+  var cuerpo = document.getElementById("entrenoAnimCuerpo");
+  cuerpo.innerHTML = entrenoFichaHtml(id);
+  if (typeof dialogo.showModal === "function") dialogo.showModal();
+  else dialogo.setAttribute("open", "");
+  if (typeof entrenoAnimacionesActivar === "function") entrenoAnimacionesActivar(cuerpo);
+}
+
+function _entrenoCerrarAnimacion() {
+  var dialogo = document.getElementById("entrenoAnimDialogo");
+  if (!dialogo) return;
+  if (typeof dialogo.close === "function") dialogo.close();
+  else dialogo.removeAttribute("open");
+  document.getElementById("entrenoAnimCuerpo").innerHTML = "";
+}
+
 /** Descanso en minutos y segundos: "2:30". Igual en todos los idiomas. */
 function entrenoDescanso(segundos) {
   var min = Math.floor(segundos / 60);
@@ -186,8 +276,11 @@ function entrenoChipsHtml(plan) {
   ].join("") + "</ul>";
 }
 
-/** Tabla de una sesión. Cada celda lleva su etiqueta: en el móvil se pinta como tarjeta. */
-function entrenoTablaHtml(sesion) {
+/**
+ * Tabla de una sesión. Cada celda lleva su etiqueta: en el móvil se pinta como
+ * tarjeta. Con el diario (log), bajo el nombre va «La última vez: …».
+ */
+function entrenoTablaHtml(sesion, log) {
   var etiqueta = {
     ejercicio: t("ent.col_ejercicio"),
     series: t("ent.col_series"),
@@ -198,9 +291,12 @@ function entrenoTablaHtml(sesion) {
   };
   var filas = sesion.exercises.map(function (e) {
     return "<tr>" +
-      '<td class="entreno__nombre" data-label="' + entrenoEsc(etiqueta.ejercicio) + '">' + entrenoEsc(entrenoNombre(e)) + "</td>" +
+      '<td class="entreno__nombre" data-label="' + entrenoEsc(etiqueta.ejercicio) + '">' +
+        '<span class="entreno__nombre-fila">' + entrenoMiniHtml(e) +
+          '<span class="entreno__nombre-texto">' + entrenoEsc(entrenoNombre(e)) + entrenoUltimaHtml(e, log) + "</span>" +
+        "</span></td>" +
       '<td data-label="' + entrenoEsc(etiqueta.series) + '">' + e.sets + "</td>" +
-      '<td data-label="' + entrenoEsc(etiqueta.reps) + '">' + entrenoEsc(e.reps) + "</td>" +
+      '<td data-label="' + entrenoEsc(etiqueta.reps) + '">' + entrenoEsc(entrenoRepsTexto(e.reps)) + "</td>" +
       '<td data-label="' + entrenoEsc(etiqueta.descanso) + '">' + entrenoDescanso(e.restSeconds) + "</td>" +
       '<td data-label="' + entrenoEsc(etiqueta.rir) + '">' + e.rir + "</td>" +
       '<td class="entreno__tec" data-label="' + entrenoEsc(etiqueta.tecnica) + '">' + entrenoEsc(entrenoTecnica(e)) + "</td>" +
@@ -212,15 +308,23 @@ function entrenoTablaHtml(sesion) {
     "</th></tr></thead><tbody>" + filas + "</tbody></table></div>";
 }
 
-/** Tarjeta de una sesión: el día, el nombre y el número de ejercicios, y debajo la tabla. */
-function entrenoSesionHtml(s) {
+/**
+ * Tarjeta de una sesión: el día, el nombre y el número de ejercicios, y debajo
+ * la tabla. Con su índice (i) lleva el botón de empezarla (modo entrenamiento,
+ * js/ui/entreno-sesion.js); sin él, solo se lee.
+ */
+function entrenoSesionHtml(s, i, log) {
+  var empezar = (typeof i === "number" && typeof entrenoSesionEmpezar === "function")
+    ? '<button type="button" class="entreno__empezar" data-empezar="' + i + '">' + entrenoEsc(t("ent.empezar")) + "</button>"
+    : "";
   return '<section class="entreno__sesion">' +
     '<header class="entreno__sesion-cabeza">' +
       '<span class="entreno__dia">' + entrenoEsc(t("ent.dia_" + s.dia)) + "</span>" +
       '<h4 class="entreno__sesion-titulo">' + entrenoEsc(tOr("ent.sesion_" + s.key, s.name)) + "</h4>" +
       '<span class="entreno__n">' + entrenoEsc(tFormat("ent.n_ejercicios", { n: s.exercises.length })) + "</span>" +
+      empezar +
     "</header>" +
-    entrenoTablaHtml(s) +
+    entrenoTablaHtml(s, log) +
   "</section>";
 }
 
@@ -239,7 +343,7 @@ function entrenoConsejosHtml(plan) {
   }).join("") + "</div>";
 }
 
-function entrenoPlanHtml(plan) {
+function entrenoPlanHtml(plan, log) {
   var h = [entrenoChipsHtml(plan)];
 
   if (plan.semanaDescarga) {
@@ -250,7 +354,7 @@ function entrenoPlanHtml(plan) {
     h.push('<div class="entreno__aviso"><strong>' + entrenoEsc(t("ent.que_saber")) + "</strong><ul>" + avisos.join("") + "</ul></div>");
   }
 
-  plan.sesiones.forEach(function (s) { h.push(entrenoSesionHtml(s)); });
+  plan.sesiones.forEach(function (s, i) { h.push(entrenoSesionHtml(s, i, log)); });
 
   var grupos = Object.keys(plan.seriesPorSemana).map(function (m) {
     return entrenoChip(tFormat("ent.series_linea", {
@@ -277,9 +381,11 @@ function renderEntreno() {
   var sinPlan = !(dias >= 1);
   if (sinDias) sinDias.hidden = !sinPlan;
   salida.hidden = sinPlan;
+  var log = typeof entrenoLogLeer === "function" ? entrenoLogLeer() : null;
   if (sinPlan) {
     _entrenoUltimoPlan = null;
     salida.innerHTML = "";
+    if (typeof renderEntrenoProgreso === "function") renderEntrenoProgreso(log, null);
     return;
   }
 
@@ -294,7 +400,9 @@ function renderEntreno() {
     semana: controles.semana
   });
   _entrenoUltimoPlan = plan.ok ? plan : null;
-  salida.innerHTML = plan.ok ? entrenoPlanHtml(plan) : "";
+  salida.innerHTML = plan.ok ? entrenoPlanHtml(plan, log) : "";
+  if (typeof entrenoAnimacionesActivar === "function") entrenoAnimacionesActivar(salida);
+  if (typeof renderEntrenoProgreso === "function") renderEntrenoProgreso(log, _entrenoUltimoPlan);
 }
 
 /** Descarga el plan de entrenamiento como calendario .ics: un evento semanal por sesión. */
@@ -320,6 +428,7 @@ function entrenoExportarIcs() {
 function renderEntrenoSiVisible() {
   if (!_entrenoPanel || _entrenoPanel.hidden) return;
   renderEntreno();
+  if (typeof entrenoSesionRepintar === "function") entrenoSesionRepintar();
 }
 
 /** Cambia entre el menú (false) y el panel de entrenamientos (true). */
@@ -338,6 +447,9 @@ function entrenoMostrar(activo) {
     }
   }
   if (activo) renderEntreno();
+  // La pantalla de una sesión en marcha (si estaba abierta) vuelve a contar el tiempo, o deja de hacerlo.
+  if (activo && typeof entrenoSesionAlMostrar === "function") entrenoSesionAlMostrar();
+  if (!activo && typeof entrenoSesionAlOcultar === "function") entrenoSesionAlOcultar();
   window.scrollTo(0, 0);
 }
 
@@ -401,6 +513,25 @@ function initEntreno() {
   if (icsBoton) icsBoton.addEventListener("click", entrenoExportarIcs);
   var imprimir = document.getElementById("entImprimir");
   if (imprimir) imprimir.addEventListener("click", function () { window.print(); });
+
+  // «Empezar» en la tarjeta de un día abre el modo entrenamiento con esa sesión.
+  var salida = document.getElementById("entrenoSalida");
+  if (salida) salida.addEventListener("click", function (ev) {
+    var anim = ev.target.closest("[data-anim-abrir]");
+    if (anim) { entrenoAbrirAnimacion(anim.getAttribute("data-anim-abrir")); return; }
+    var boton = ev.target.closest("[data-empezar]");
+    if (!boton || !_entrenoUltimoPlan || typeof entrenoSesionEmpezar !== "function") return;
+    var sesion = _entrenoUltimoPlan.sesiones[Number(boton.getAttribute("data-empezar"))];
+    if (!sesion) return;
+    entrenoVibrar();
+    entrenoSesionEmpezar(sesion, _entrenoUltimoPlan.semana);
+  });
+  if (typeof initEntrenoSesion === "function") initEntrenoSesion();
+  if (typeof initEntrenoProgreso === "function") initEntrenoProgreso();
+  var cerrarAnim = document.getElementById("entrenoAnimCerrar");
+  if (cerrarAnim) cerrarAnim.addEventListener("click", _entrenoCerrarAnimacion);
+  var dialogoAnim = document.getElementById("entrenoAnimDialogo");
+  if (dialogoAnim) dialogoAnim.addEventListener("close", function () { document.getElementById("entrenoAnimCuerpo").innerHTML = ""; });
 
   entrenoMostrar(false);
 }

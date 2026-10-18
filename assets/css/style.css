@@ -4104,6 +4104,587 @@ body.modo-entreno .tabbar { display: none !important; }
   color: var(--ink);
 }
 .entreno__hora input:focus-visible { outline: 3px solid var(--volt); outline-offset: 2px; }
+
+/* ── Entrenamientos: modo entrenamiento, progreso e historial (2026-10-18) ──
+   js/ui/entreno-sesion.js y js/ui/entreno-progreso.js. Con .is-sesion el panel
+   enseña solo la sesión en marcha. La sesión no usa tablas: las reglas
+   .entreno tr/td de arriba convierten cada fila en tarjeta. La cabecera se
+   queda pegada bajo la barra de arriba (.modo-barra: 8 + 46 + 8 px). */
+body.modo-entreno { --alto-modo-barra: 62px; }
+.entreno.is-sesion > :not(.entreno-sesion) { display: none !important; }
+/* Con la sesión abierta, la próxima comida no ocupa sitio bajo la barra de arriba. */
+body.modo-sesion .next-meal-sticky { display: none !important; }
+
+.entreno__empezar,
+.sesion__terminar,
+.sesion__icono,
+.sesion__check,
+.sesion__boton {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+  cursor: pointer;
+  font: inherit;
+  transition: transform 0.12s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s ease,
+              background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+.entreno__empezar:focus-visible,
+.sesion__terminar:focus-visible,
+.sesion__icono:focus-visible,
+.sesion__check:focus-visible,
+.sesion__boton:focus-visible { outline: 3px solid var(--volt); outline-offset: 2px; }
+.entreno__empezar:active,
+.sesion__terminar:active,
+.sesion__icono:active,
+.sesion__check:active,
+.sesion__boton:active { transform: scale(0.94); }
+
+.entreno__empezar {
+  min-height: 44px;
+  padding: 10px 18px;
+  border: 1.5px solid var(--ink);
+  border-radius: var(--pill);
+  background: var(--volt);
+  color: var(--on-volt);
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+@media (hover: hover) {
+  .entreno__empezar:hover { transform: translateY(-1px); box-shadow: var(--shadow-1); }
+}
+.entreno__sesion-cabeza .entreno__empezar { margin-left: 4px; }
+@media (max-width: 640px) {
+  .entreno__sesion-cabeza .entreno__empezar { width: 100%; margin-left: 0; }
+}
+
+/* «La última vez» bajo el nombre del ejercicio, en la tabla del plan */
+.entreno td.entreno__nombre .entreno__ultima {
+  display: block;
+  margin-top: 4px;
+  font: 600 0.8rem/1.35 var(--font-body);
+  letter-spacing: 0;
+  color: var(--text-2);
+}
+
+/* Sesión sin terminar */
+.entreno__reanudar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin: 16px 0 0;
+  padding: 14px 16px;
+  border: 1.5px solid var(--ink);
+  border-radius: var(--r-lg);
+  background: var(--volt-wash);
+  color: var(--ink);
+}
+.entreno__reanudar[hidden] { display: none; }
+.entreno__reanudar-texto { flex: 1 1 260px; margin: 0; font-size: 0.95rem; }
+.entreno__reanudar-botones { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* Progreso: la semana, la racha, una barra por semana y el historial */
+.entreno__progreso {
+  margin: 16px 0;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-1);
+}
+.entreno__progreso-titulo {
+  margin: 0 0 12px;
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  line-height: 1.1;
+  color: var(--ink);
+}
+.entreno__progreso-vacio { margin: 0; color: var(--text-2); font-size: 0.93rem; max-width: 62ch; }
+.entreno__progreso-sub {
+  margin: 18px 0 8px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.entreno__progreso-nota { margin: 12px 0 0; font-size: 0.8rem; color: var(--text-3); }
+.entreno__cifras { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.entreno__cifra { min-width: 0; padding: 12px 14px; border-radius: var(--r-md); background: var(--surface-2); }
+.entreno__cifra--ancha { grid-column: 1 / -1; }
+@media (min-width: 640px) {
+  .entreno__cifras { grid-template-columns: 2fr 1fr 1fr; }
+  .entreno__cifra--ancha { grid-column: auto; }
+}
+.entreno__cifra-etiqueta {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.entreno__cifra-valor { display: block; font: 800 1.35rem/1.1 var(--font-display); color: var(--ink); }
+.entreno__puntos { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.entreno__punto {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid var(--line-strong);
+  background: var(--surface);
+}
+.entreno__punto.is-hecho { border-color: var(--ink); background: var(--volt); }
+.entreno__grafica {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 6px;
+  height: 120px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.entreno__barra { display: flex; flex-direction: column; gap: 4px; min-width: 0; height: 100%; }
+.entreno__barra-col {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  border-radius: 6px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.entreno__barra-col i { display: block; width: 100%; border-radius: 6px 6px 0 0; background: var(--ink); }
+.entreno__barra.is-actual .entreno__barra-col i { background: var(--volt); box-shadow: inset 0 0 0 1.5px var(--ink); }
+.entreno__barra-fecha {
+  overflow: hidden;
+  font-size: 0.66rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  white-space: nowrap;
+  color: var(--text-3);
+}
+.entreno__hist { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.entreno__hist-item details {
+  border: 1.5px solid var(--field-line);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+.entreno__hist-item summary {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2px 10px;
+  padding: 12px 40px 12px 14px;
+  cursor: pointer;
+  list-style: none;
+}
+.entreno__hist-item summary::-webkit-details-marker { display: none; }
+.entreno__hist-item summary::after {
+  content: "";
+  position: absolute;
+  top: 17px;
+  right: 16px;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--text-3);
+  border-bottom: 2px solid var(--text-3);
+  transform: rotate(45deg);
+}
+.entreno__hist-item details[open] > summary::after { top: 21px; transform: rotate(-135deg); }
+.entreno__hist-item summary:focus-visible { outline: 3px solid var(--volt); outline-offset: 2px; border-radius: var(--r-md); }
+.entreno__hist-fecha { font-size: 0.82rem; font-weight: 600; color: var(--text-3); }
+.entreno__hist-nombre { font-weight: 700; color: var(--ink); }
+.entreno__hist-datos { grid-column: 1 / -1; font-size: 0.86rem; color: var(--text-2); }
+.entreno__hist-ejercicios { display: grid; gap: 6px; margin: 0; padding: 0 14px 8px; list-style: none; font-size: 0.88rem; }
+.entreno__hist-ejercicios li { display: flex; flex-wrap: wrap; gap: 2px 8px; color: var(--ink); }
+.entreno__hist-series { color: var(--text-2); }
+.entreno__hist-borrar { margin: 4px 14px 14px; }
+
+/* La sesión en marcha */
+.entreno-sesion { padding-bottom: 120px; }
+.sesion__cabeza {
+  position: sticky;
+  top: var(--alto-modo-barra, 0px);
+  z-index: 30;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  margin: 0 0 14px;
+  padding: 10px 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-1);
+}
+.sesion__titulos { flex: 1 1 140px; min-width: 0; }
+.sesion__titulo { margin: 0; font: 800 1.4rem/1.05 var(--font-display); color: var(--ink); }
+.sesion__titulo:focus { outline: none; }
+.sesion__meta { margin: 2px 0 0; font-size: 0.86rem; font-variant-numeric: tabular-nums; color: var(--text-2); }
+.sesion__reloj { font-weight: 700; color: var(--ink); }
+.sesion__icono {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1.5px solid var(--field-line);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--ink);
+}
+.sesion__icono[aria-pressed="false"] { color: var(--text-3); }
+.sesion__terminar {
+  flex: none;
+  margin-left: auto;
+  min-height: 44px;
+  padding: 10px 20px;
+  border: 0;
+  border-radius: var(--pill);
+  background: var(--ink);
+  color: var(--on-ink);
+  font-weight: 700;
+}
+.sesion__progreso { flex: 1 1 100%; height: 6px; border-radius: var(--pill); background: var(--surface-2); overflow: hidden; }
+.sesion__progreso i { display: block; height: 100%; border-radius: inherit; background: var(--volt); box-shadow: inset 0 0 0 1px var(--line-strong); transition: width 0.3s ease; }
+
+.sesion__lista { display: grid; gap: 14px; margin: 0; padding: 0; list-style: none; }
+.sesion__ej {
+  padding: 14px 14px 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-1);
+}
+.sesion__ej.is-completo { border-color: var(--ink); }
+.sesion__ej-cabeza { display: flex; align-items: flex-start; gap: 10px; }
+.sesion__ej-num {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--ink);
+  font: 800 1rem/1 var(--font-display);
+}
+.sesion__ej.is-completo .sesion__ej-num { background: var(--volt); color: var(--on-volt); }
+.sesion__ej-titulos { flex: 1; min-width: 0; }
+.sesion__ej-nombre { margin: 0; font: 800 1.15rem/1.15 var(--font-display); color: var(--ink); }
+.sesion__ej-plan { margin: 2px 0 0; font-size: 0.84rem; color: var(--text-2); }
+.sesion__ej-cuenta { flex: none; font-size: 0.84rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-3); }
+.sesion__ultima { margin: 10px 0 0; font-size: 0.86rem; color: var(--text-2); }
+.sesion__sug { margin: 6px 0 0; padding: 8px 10px; border-radius: var(--r-sm); background: var(--surface-2); font-size: 0.86rem; color: var(--ink); }
+.sesion__sug--subir { background: var(--volt-wash); }
+.sesion__sug--bajar { background: var(--warn-wash); color: var(--warn); }
+.sesion__tec { margin: 8px 0 0; font-size: 0.86rem; color: var(--text-2); }
+.sesion__tec summary { padding: 6px 0; font-weight: 600; color: var(--ink); cursor: pointer; }
+.sesion__tec p { margin: 2px 0 4px; }
+
+.sesion__series { display: grid; gap: 6px; max-width: 520px; margin: 10px 0 0; }
+.sesion__fila {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) minmax(0, 1fr) 48px;
+  gap: 8px;
+  align-items: center;
+  padding: 4px;
+  border-radius: var(--r-sm);
+}
+.sesion__fila--cabeza {
+  padding-top: 0;
+  padding-bottom: 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.sesion__fila--cabeza span { padding-left: 6px; white-space: nowrap; }
+.sesion__fila--cabeza span:nth-child(2),
+.sesion__fila--cabeza span:nth-child(3) { padding-left: 0; text-align: center; }
+.sesion__fila.is-hecha { background: var(--volt-wash); }
+.sesion__n {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding-left: 6px;
+  font: 800 1.05rem/1 var(--font-display);
+  color: var(--ink);
+}
+.sesion__record {
+  padding: 3px 5px;
+  border-radius: 6px;
+  background: var(--ink);
+  color: var(--volt);
+  font: 700 0.6rem/1 var(--font-body);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.sesion__campo {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 6px;
+  border: 1.5px solid var(--field-line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.sesion__campo:focus-visible { outline: 3px solid var(--volt); outline-offset: 1px; border-color: var(--ink); }
+.sesion__campo.is-falta { border-color: var(--danger); outline: 2px solid var(--danger); outline-offset: 1px; }
+.sesion__check {
+  justify-self: end;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1.5px solid var(--line-strong);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text-3);
+}
+.sesion__check[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: var(--volt); }
+.sesion__ej-acciones { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.sesion__boton {
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1.5px solid var(--field-line);
+  border-radius: var(--pill);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+.sesion__boton--fuerte { border-color: var(--volt); background: var(--volt); color: var(--on-volt); }
+.sesion__pie { display: grid; justify-items: start; gap: 8px; margin: 18px 0 0; }
+.sesion__nota { margin: 0; font-size: 0.8rem; color: var(--text-3); }
+
+/* El descanso: abajo, fijo, encima de todo lo de la página */
+.sesion__descanso {
+  position: fixed;
+  left: 50%;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  z-index: 60;
+  width: min(560px, calc(100% - 24px));
+  padding: 10px 14px 12px;
+  transform: translateX(-50%);
+  border-radius: 20px;
+  background: var(--ink);
+  color: var(--on-ink);
+  box-shadow: var(--shadow-2);
+}
+.sesion__descanso-fila { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.sesion__descanso-etiqueta {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+.sesion__descanso-reloj { min-width: 3.2ch; font: 800 1.7rem/1 var(--font-display); font-variant-numeric: tabular-nums; }
+.sesion__descanso-botones { display: flex; gap: 6px; margin-left: auto; }
+.sesion__descanso .sesion__boton { min-height: 38px; padding: 6px 12px; }
+.sesion__descanso-barra { position: relative; height: 4px; margin-top: 8px; border-radius: var(--pill); overflow: hidden; }
+.sesion__descanso-barra::before { content: ""; position: absolute; inset: 0; background: currentColor; opacity: 0.2; }
+.sesion__descanso-barra i { position: relative; display: block; width: 100%; height: 100%; border-radius: inherit; background: var(--volt); transition: width 0.25s linear; }
+.sesion__descanso.is-fin { background: var(--volt); color: var(--on-volt); animation: sesion-aviso 0.9s ease-in-out 3; }
+.sesion__descanso.is-fin .sesion__descanso-etiqueta { font-size: 1rem; letter-spacing: 0; text-transform: none; opacity: 1; }
+.sesion__descanso.is-fin [data-accion="descanso-menos"],
+.sesion__descanso.is-fin [data-accion="descanso-mas"] { display: none; }
+.sesion__descanso.is-fin .sesion__boton--fuerte { border-color: var(--ink); background: var(--ink); color: var(--on-ink); }
+@keyframes sesion-aviso {
+  0%, 100% { transform: translateX(-50%) scale(1); }
+  50% { transform: translateX(-50%) scale(1.03); }
+}
+
+/* El resumen al terminar */
+.sesion__resumen {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  padding: 20px 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-1);
+}
+.sesion__resumen-ojo {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.sesion__resumen-titulo { margin: 0; font: 800 clamp(1.8rem, 6vw, 2.4rem)/1.02 var(--font-display); color: var(--ink); }
+.sesion__resumen-titulo:focus { outline: none; }
+.sesion__stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; width: 100%; margin: 0; }
+@media (min-width: 640px) {
+  .sesion__stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+.sesion__stats div { padding: 12px 14px; border-radius: var(--r-md); background: var(--surface-2); }
+.sesion__stats dt { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); }
+.sesion__stats dd { margin: 4px 0 0; font: 800 1.5rem/1.1 var(--font-display); color: var(--ink); }
+.sesion__resumen-sub {
+  margin: 6px 0 0;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.sesion__records { display: grid; gap: 6px; width: 100%; margin: 0; padding: 0; list-style: none; }
+.sesion__records li { padding: 10px 12px; border-radius: var(--r-sm); background: var(--volt-wash); color: var(--ink); font-size: 0.92rem; }
+
+/* Teléfono: la cabecera en dos filas (título; progreso y «Terminar»), no en tres */
+@media (max-width: 520px) {
+  .sesion__titulos { flex: 1 1 calc(100% - 124px); }
+  .sesion__progreso { order: 3; flex: 1 1 50%; min-width: 0; }
+  .sesion__terminar { order: 4; margin-left: 0; min-height: 40px; padding: 8px 16px; }
+}
+@media (max-width: 359px) {
+  .sesion__fila { grid-template-columns: 54px minmax(0, 1fr) minmax(0, 1fr) 44px; gap: 6px; }
+  .sesion__fila--cabeza { letter-spacing: 0.01em; }
+  .sesion__descanso-botones { margin-left: 0; }
+}
+@media print {
+  .entreno__empezar, .entreno__reanudar, .entreno__progreso, .entreno-sesion { display: none !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .entreno__empezar,
+  .sesion__terminar,
+  .sesion__icono,
+  .sesion__check,
+  .sesion__boton,
+  .sesion__progreso i,
+  .sesion__descanso-barra i { transition: none; }
+  .entreno__empezar:hover,
+  .entreno__empezar:active,
+  .sesion__terminar:active,
+  .sesion__icono:active,
+  .sesion__check:active,
+  .sesion__boton:active { transform: none; }
+  .sesion__descanso.is-fin { animation: none; }
+}
+
+/* ── Animaciones de los ejercicios (js/ui/entreno-figura.js, 2026-10-18) ──
+   El hombre gris: silueta de un tono con líneas del color del fondo entre
+   las partes, músculos en el color de las kcal, y lo que explica el gesto
+   (camino, flecha, marcas y ángulo) en el morado de las proteínas. Todo con
+   las variables del tema, así sirve en los claros y en «noche». */
+.anim {
+  --anim-fondo: var(--surface-2);
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--r-md);
+  background: var(--anim-fondo);
+  overflow: hidden;
+}
+.anim line,
+.anim polygon,
+.anim path { stroke-linecap: round; stroke-linejoin: round; }
+.anim__rejilla { stroke: var(--line); stroke-width: 0.5; }
+.anim__suelo { stroke: var(--line-strong); stroke-width: 1.6; }
+/* Las líneas que separan las partes del cuerpo son del color del fondo de la escena. */
+.anim__sep { stroke: var(--anim-fondo); fill: none; }
+.anim__cuerpo { stroke: var(--text-3); stroke: color-mix(in srgb, var(--text-3) 78%, var(--anim-fondo)); fill: none; }
+.anim__sep-relleno { fill: var(--anim-fondo); }
+.anim__cuerpo-relleno { fill: var(--text-3); fill: color-mix(in srgb, var(--text-3) 78%, var(--anim-fondo)); }
+.anim__musculo { stroke: var(--kcal); fill: none; }
+.anim__musculo--ayuda { opacity: 0.5; }
+.anim__metal { stroke: var(--ink); fill: none; }
+.anim__disco { fill: var(--ink); }
+.anim__disco-aro { fill: var(--text-2); }
+.anim__cable { stroke: var(--text-2); fill: none; }
+.anim__cuerda { stroke: var(--carbs-deep); fill: none; }
+.anim__toalla { stroke: var(--carbs); fill: none; }
+.anim__toalla-caja { fill: var(--carbs); stroke: var(--carbs); stroke-width: 1.5; }
+.anim__botella { stroke: var(--fat); fill: none; }
+.anim__almohadilla { stroke: var(--text-2); fill: none; }
+.anim__mueble { fill: var(--line-strong); stroke: var(--line-strong); stroke-width: 2.4; }
+.anim__mueble-l { stroke: var(--line-strong); fill: none; }
+.anim__polea { fill: var(--surface); stroke: var(--text-2); stroke-width: 1.4; }
+.anim__fantasma { opacity: 0.16; }
+.anim__camino { fill: none; stroke: var(--protein-deep); stroke-width: 1.3; stroke-dasharray: 3 3.5; opacity: 0.85; }
+.anim__flecha { fill: var(--protein-deep); }
+.anim__marca { fill: var(--surface); stroke: var(--protein-deep); stroke-width: 1.3; }
+.anim__arco { fill: none; stroke: var(--protein-deep); stroke-width: 1.5; }
+/* El tamaño de los grados va como atributo del <text> (unidades del dibujo): así
+   el ajuste de tamaños de los temas no lo toca. */
+.anim__grados { fill: var(--protein-deep); font-family: var(--font-body); font-weight: 700; }
+
+/* La pequeña, junto al nombre del ejercicio (plan y sesión): un botón que abre la grande.
+   En la tarjeta del ejercicio el fondo ya es --surface-2: la escena va en --surface
+   para que se vea. El nombre ocupa todo el ancho (antes un 30 %). */
+.entreno td.entreno__nombre { width: auto; }
+.entreno td.entreno__nombre .entreno__nombre-fila { display: flex; align-items: center; gap: 12px; }
+.entreno__anim .anim { --anim-fondo: var(--surface); box-shadow: 0 0 0 1px var(--line); }
+.entreno__nombre-texto { min-width: 0; }
+.entreno__anim,
+.sesion__ej-anim {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  position: relative;
+  flex: none;
+  width: 72px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-md);
+  background: none;
+  cursor: pointer;
+  transition: transform 0.12s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.sesion__ej-anim { width: 64px; }
+.entreno__anim:focus-visible,
+.sesion__ej-anim:focus-visible { outline: 3px solid var(--volt); outline-offset: 2px; }
+.entreno__anim:active,
+.sesion__ej-anim:active { transform: scale(0.94); }
+.sesion__ej-anim .sesion__ej-num {
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  box-shadow: 0 0 0 2px var(--surface);
+}
+.sesion__tec-anim { max-width: 320px; margin: 6px 0 4px; }
+
+/* La ventana con la grande, los músculos y la técnica */
+.anim-dialogo__cuerpo { padding: 0 20px 22px; }
+.anim-ficha .anim { max-width: 420px; margin: 0 auto; }
+.anim-ficha__musculos { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 12px 0 0; }
+.anim-ficha__titulo {
+  margin-right: 2px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.anim-musculo { padding: 4px 10px; border-radius: var(--pill); font-size: 0.82rem; font-weight: 600; }
+.anim-musculo--p { background: var(--kcal-wash); color: var(--kcal-deep); }
+.anim-musculo--s { background: var(--surface-2); color: var(--text-2); }
+.anim-ficha__tecnica { margin: 12px 0 0; color: var(--ink); }
+.anim-ficha__leyenda { margin: 8px 0 0; font-size: 0.8rem; color: var(--text-3); }
+@media (prefers-reduced-motion: reduce) {
+  .entreno__anim,
+  .sesion__ej-anim { transition: none; }
+  .entreno__anim:active,
+  .sesion__ej-anim:active { transform: none; }
+}
 /* ── Registro de peso (js/ui/render-weight.js) ─────────────────────────── */
 .weight-log { grid-column: 1 / -1; }
 .weight-log__row { display: flex; gap: 8px; align-items: stretch; }
