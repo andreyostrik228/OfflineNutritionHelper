@@ -511,6 +511,10 @@ function initAjustesMenu() {
   if (exportar && typeof exportarMisDatos === "function") {
     exportar.addEventListener("click", exportarMisDatos);
   }
+  var importar = document.getElementById("ajustesImportBtn");
+  if (importar && typeof importarMisDatos === "function") {
+    importar.addEventListener("click", importarMisDatos);
+  }
 
   var tour = document.getElementById("ajustesTourBtn");
   if (tour && typeof repetirExplicacion === "function") {

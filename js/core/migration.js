@@ -241,6 +241,13 @@ function _hydrateLocalFrom(cloudRow) {
   if (typeof saveSettings === "function") saveSettings(row.settings || {});
   _applyCloudPrefs(row);
   if (typeof mergeWeightLogFromCloud === "function") mergeWeightLogFromCloud(row.settings && row.settings._pesos);
+  // El diario de entrenamiento se UNE con el del dispositivo (js/core/workout-sync.js).
+  if (typeof mergeWorkoutsFromCloud === "function") mergeWorkoutsFromCloud(row.settings && row.settings._entrenos);
+}
+
+/** Tras fijar el marcador: lo que el dispositivo tenía y la nube no, sube. */
+function _pushWorkoutsIfPending() {
+  if (typeof pushWorkoutsIfPending === "function") pushWorkoutsIfPending();
 }
 
 /**
@@ -270,6 +277,8 @@ function _wipeLocal() {
   if (typeof resetAccountPrefs === "function") resetAccountPrefs();
   // El registro de peso es de la cuenta: al salir se borra del dispositivo.
   if (typeof pesosBorrarAlmacen === "function") pesosBorrarAlmacen(pesosAlmacen());
+  // Y el diario de entrenamiento y el cuestionario, igual.
+  if (typeof entrenoNubeBorrarDispositivo === "function") entrenoNubeBorrarDispositivo();
 }
 
 /**
@@ -321,6 +330,7 @@ function _applyNonConflict(state, localSnapshot, cloudRow, userId) {
     _hydrateLocalFrom(cloudRow);
     setCloudSyncedUserId(userId);
     _pushPrefsIfCloudHadNone(cloudRow);
+    _pushWorkoutsIfPending();
     return { status: state === "already_synced" ? "already_synced" : "pulled" };
   }
   if (state === "push") {
@@ -358,6 +368,7 @@ function resolveConflictKeepCloud() {
       _hydrateLocalFrom(cloudRow);
       setCloudSyncedUserId(user.id);
       _pushPrefsIfCloudHadNone(cloudRow);
+      _pushWorkoutsIfPending();
     });
 }
 
@@ -371,7 +382,18 @@ function resolveConflictKeepLocal() {
   var user = (typeof getCurrentUser === "function") ? getCurrentUser() : null;
   if (!user) return Promise.resolve();
 
-  return Promise.resolve((typeof pushAllToCloud === "function") ? pushAllToCloud({ setMigratedAt: true }) : null)
+  // El diario de entrenamiento es aditivo (como el historial): aunque se elija
+  // lo de este dispositivo, las sesiones que solo estaban en la nube no se
+  // pierden. Si la nube no se puede leer, se sube lo local como siempre.
+  var leer = (typeof pullCloudUserData === "function" && typeof mergeWorkoutsFromCloud === "function")
+    ? pullCloudUserData() : null;
+  return Promise.resolve(leer)
+    .then(function (cloudRow) {
+      if (cloudRow && cloudRow.settings) mergeWorkoutsFromCloud(cloudRow.settings._entrenos);
+    }, function () {})
+    .then(function () {
+      return (typeof pushAllToCloud === "function") ? pushAllToCloud({ setMigratedAt: true }) : null;
+    })
     .then(function () {
       setCloudSyncedUserId(user.id);
     });
@@ -401,6 +423,7 @@ function resolveConflictMerge(cloudRow) {
   if (typeof saveSettings === "function") saveSettings(mergedSettings);
   _applyCloudPrefs(cloud);
   if (typeof mergeWeightLogFromCloud === "function") mergeWeightLogFromCloud(cloud.settings && cloud.settings._pesos);
+  if (typeof mergeWorkoutsFromCloud === "function") mergeWorkoutsFromCloud(cloud.settings && cloud.settings._entrenos);
 
   return Promise.resolve((typeof pushAllToCloud === "function") ? pushAllToCloud({ setMigratedAt: true }) : null)
     .then(function () {

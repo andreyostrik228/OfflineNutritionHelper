@@ -1698,6 +1698,11 @@ document.addEventListener("DOMContentLoaded", function () {
     // sola, sin que nadie tenga que acordarse de anadirla aqui.
     var exportBtn = document.getElementById("footerExportBtn");
     if (exportBtn) exportBtn.addEventListener("click", exportarMisDatos);
+    // Y volver a cargarla (2026-10-18): la copia ya no es de ida solo.
+    var importBtn = document.getElementById("footerImportBtn");
+    if (importBtn) importBtn.addEventListener("click", importarMisDatos);
+    var archivo = document.getElementById("copiaArchivo");
+    if (archivo) archivo.addEventListener("change", _alElegirCopia);
 
     var tourBtn = document.getElementById("footerTourBtn");
     if (tourBtn) tourBtn.addEventListener("click", repetirExplicacion);
@@ -1812,27 +1817,88 @@ document.addEventListener("DOMContentLoaded", function () {
  * ajustes -- y dos copias del mismo codigo se separan solas.
  */
 function exportarMisDatos() {
-  var datos = { exportadoEl: new Date().toISOString(), version: 1, claves: {} };
-  try {
-    for (var i = 0; i < localStorage.length; i++) {
-      var k = localStorage.key(i);
-      if (k && k.indexOf("nutritionPlanner.") === 0) {
-        try { datos.claves[k] = JSON.parse(localStorage.getItem(k)); }
-        catch (e) { datos.claves[k] = localStorage.getItem(k); }
-      }
-    }
-  } catch (e) { /* sin localStorage no hay nada que exportar */ }
+  // Qué entra y con qué forma: js/core/data-backup.js (desde el 2026-10-18
+  // también las claves `weekplate-`: peso, cuestionario de entrenamiento, plan).
+  var almacen = null;
+  try { almacen = window.localStorage; } catch (e) { almacen = null; }
+  var datos = copiaCrear(almacen, new Date().toISOString());
 
   var blob = new Blob([JSON.stringify(datos, null, 2)], { type: "application/json" });
   var url = URL.createObjectURL(blob);
   var a = document.createElement("a");
   a.href = url;
-  a.download = "nutrition-planner-" + new Date().toISOString().slice(0, 10) + ".json";
+  a.download = "weekplate-copia-" + new Date().toISOString().slice(0, 10) + ".json";
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   // Sin revocar, el blob se queda en memoria hasta recargar.
   setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+}
+
+/** «Cargar una copia» (pie y menú ☰): abre el selector de ficheros. */
+function importarMisDatos() {
+  var archivo = document.getElementById("copiaArchivo");
+  if (!archivo) return;
+  archivo.value = "";
+  archivo.click();
+}
+
+function _copiaLeerTexto(fichero) {
+  if (typeof fichero.text === "function") return fichero.text();
+  return new Promise(function (resolver, rechazar) {
+    var lector = new FileReader();
+    lector.onload = function () { resolver(String(lector.result || "")); };
+    lector.onerror = function () { rechazar(lector.error); };
+    lector.readAsText(fichero);
+  });
+}
+
+function _copiaFechaTexto(iso) {
+  var lang = typeof getLang === "function" ? getLang() : "es";
+  var locale = (typeof LANG_LOCALES !== "undefined" && LANG_LOCALES[lang]) || "es-ES";
+  try {
+    return new Date(iso).toLocaleString(locale, { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  } catch (e) {
+    return iso.slice(0, 10);
+  }
+}
+
+/**
+ * Se eligió un fichero: se lee, se valida (copiaAnalizar), se pregunta y se
+ * cargan los datos. Con cuenta, la copia se sube también a la nube antes de
+ * recargar: si no, al recargar la nube volvería a pisar lo recién cargado. Si
+ * la subida falla, se quita la marca de «sincronizado» y el siguiente inicio
+ * pregunta qué datos quedarse (el diálogo de conflicto de siempre).
+ */
+function _alElegirCopia(ev) {
+  var fichero = ev && ev.target && ev.target.files && ev.target.files[0];
+  if (!fichero) return;
+  if (COPIA_MAX_BYTES < fichero.size) { window.alert(t("ui.copia_error_grande")); return; }
+  _copiaLeerTexto(fichero).then(function (texto) {
+    var r = copiaAnalizar(texto);
+    if (!r.ok) {
+      window.alert(t(r.error === "grande" ? "ui.copia_error_grande" : "ui.copia_error"));
+      return;
+    }
+    var pregunta = r.fecha
+      ? tFormat("ui.copia_confirmar", { fecha: _copiaFechaTexto(r.fecha) })
+      : t("ui.copia_confirmar_sin_fecha");
+    if (!window.confirm(pregunta)) return;
+    var almacen = null;
+    try { almacen = window.localStorage; } catch (e) { almacen = null; }
+    if (copiaRestaurar(almacen, r.claves) < 0) { window.alert(t("ui.copia_error_guardar")); return; }
+
+    var usuario = typeof getCurrentUser === "function" ? getCurrentUser() : null;
+    var sincronizado = usuario && typeof getCloudSyncedUserId === "function" && getCloudSyncedUserId() === usuario.id;
+    var subida = (sincronizado && typeof pushAllToCloud === "function") ? pushAllToCloud({}) : Promise.resolve(null);
+    Promise.resolve(subida).then(function (res) {
+      if (res && res.error && !res.skipped && typeof clearCloudSyncedUserId === "function") clearCloudSyncedUserId();
+    }, function () {
+      if (typeof clearCloudSyncedUserId === "function") clearCloudSyncedUserId();
+    }).then(function () { window.location.reload(); });
+  }, function () {
+    window.alert(t("ui.copia_error"));
+  });
 }
 
 /**

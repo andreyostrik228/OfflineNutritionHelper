@@ -67,42 +67,107 @@ function _entrenoLista(valor, permitidos, max) {
   return max ? r.slice(0, max) : r;
 }
 
+/** ¿Existe este ejercicio en el catálogo? (Sin catálogo cargado, se acepta cualquier id con forma de id.) */
+function _entrenoIdValido(id) {
+  if (typeof id !== "string" || !/^[a-z0-9_]{1,60}$/.test(id)) return false;
+  if (typeof EXERCISE_CATALOG === "undefined") return true;
+  return EXERCISE_CATALOG.some(function (e) { return e.id === id; });
+}
+
+var ENTRENO_MAX_CAMBIOS = 60;
+var ENTRENO_MAX_EXTRAS = 4;
+
 /**
- * Elecciones guardadas en este navegador. Lo que no sea válido vuelve al valor
- * por defecto. `configurado` dice si ya se contestó el cuestionario; sin él,
- * el panel lo abre solo la primera vez.
+ * Las elecciones tal como vengan (del almacenamiento, de la cuenta, de una
+ * copia) → elecciones válidas. Lo que no sea válido vuelve al valor por
+ * defecto. `configurado` dice si ya se contestó el cuestionario; sin él, el
+ * panel lo abre solo la primera vez.
+ *
+ * Desde el 2026-10-18 también lo cambiado a mano en el programa:
+ *   cambios  { idDelPlan: idElegido }       ese ejercicio se cambia por otro en todo el plan
+ *   quitados ["clave_sesion:patron", …]     ese hueco de esa sesión se queda vacío
+ *   extras   { clave_sesion: [ids] }        ejercicios añadidos al final de esa sesión
+ *   t        cuándo se guardó (para elegir, entre cuenta y dispositivo, lo más nuevo)
  */
-function entrenoLeerPrefs() {
+function entrenoPrefsLimpiar(guardado) {
   var prefs = {
     nivel: "principiante", equipamiento: "gimnasio", semana: 1, duracion: 60, excluir: "",
-    objetivo: "auto", material: null, enfoque: [], limitaciones: [], diasSemana: null, configurado: false
+    objetivo: "auto", material: null, enfoque: [], limitaciones: [], diasSemana: null, configurado: false,
+    cambios: {}, quitados: [], extras: {}, t: 0
   };
-  try {
-    var guardado = JSON.parse(localStorage.getItem(ENTRENO_CLAVE_PREFS) || "null");
-    if (guardado && typeof guardado === "object") {
-      if (ENTRENO_NIVELES.indexOf(guardado.nivel) !== -1) prefs.nivel = guardado.nivel;
-      if (ENTRENO_EQUIPOS.indexOf(guardado.equipamiento) !== -1) prefs.equipamiento = guardado.equipamiento;
-      var semana = Math.floor(Number(guardado.semana));
-      if (semana >= 1 && semana <= ENTRENO_SEMANA_MAX) prefs.semana = semana;
-      if (ENTRENO_DURACIONES.indexOf(Number(guardado.duracion)) !== -1) prefs.duracion = Number(guardado.duracion);
-      if (typeof guardado.excluir === "string") prefs.excluir = guardado.excluir.slice(0, 200);
-      if (ENTRENO_OBJETIVOS.indexOf(guardado.objetivo) !== -1) prefs.objetivo = guardado.objetivo;
-      if (Array.isArray(guardado.material)) prefs.material = _entrenoLista(guardado.material, ENTRENO_MATERIALES);
-      prefs.enfoque = _entrenoLista(guardado.enfoque, ENTRENO_ENFOQUES, ENTRENO_ENFOQUE_MAX);
-      prefs.limitaciones = _entrenoLista(guardado.limitaciones, ENTRENO_LIMITACIONES);
-      var dias = _entrenoLista((guardado.diasSemana || []).map(Number), [1, 2, 3, 4, 5, 6, 7]);
-      if (dias.length) prefs.diasSemana = dias.sort(function (a, b) { return a - b; });
-      prefs.configurado = guardado.configurado === true;
+  if (guardado && typeof guardado === "object" && !Array.isArray(guardado)) {
+    if (ENTRENO_NIVELES.indexOf(guardado.nivel) !== -1) prefs.nivel = guardado.nivel;
+    if (ENTRENO_EQUIPOS.indexOf(guardado.equipamiento) !== -1) prefs.equipamiento = guardado.equipamiento;
+    var semana = Math.floor(Number(guardado.semana));
+    if (1 <= semana && semana <= ENTRENO_SEMANA_MAX) prefs.semana = semana;
+    if (ENTRENO_DURACIONES.indexOf(Number(guardado.duracion)) !== -1) prefs.duracion = Number(guardado.duracion);
+    if (typeof guardado.excluir === "string") prefs.excluir = guardado.excluir.slice(0, 200);
+    if (ENTRENO_OBJETIVOS.indexOf(guardado.objetivo) !== -1) prefs.objetivo = guardado.objetivo;
+    if (Array.isArray(guardado.material)) prefs.material = _entrenoLista(guardado.material, ENTRENO_MATERIALES);
+    prefs.enfoque = _entrenoLista(guardado.enfoque, ENTRENO_ENFOQUES, ENTRENO_ENFOQUE_MAX);
+    prefs.limitaciones = _entrenoLista(guardado.limitaciones, ENTRENO_LIMITACIONES);
+    var dias = _entrenoLista((Array.isArray(guardado.diasSemana) ? guardado.diasSemana : []).map(Number), [1, 2, 3, 4, 5, 6, 7]);
+    if (dias.length) prefs.diasSemana = dias.sort(function (a, b) { return a - b; });
+    prefs.configurado = guardado.configurado === true;
+
+    var cambios = guardado.cambios;
+    if (cambios && typeof cambios === "object" && !Array.isArray(cambios)) {
+      Object.keys(cambios).slice(0, ENTRENO_MAX_CAMBIOS).forEach(function (de) {
+        var a = cambios[de];
+        if (de !== a && _entrenoIdValido(de) && _entrenoIdValido(a)) prefs.cambios[de] = a;
+      });
     }
-  } catch (e) { /* sin almacenamiento o JSON roto: se queda con los valores por defecto */ }
+    if (Array.isArray(guardado.quitados)) {
+      guardado.quitados.forEach(function (q) {
+        if (typeof q === "string" && /^[A-Za-z_]{1,40}:[A-Za-z_]{1,40}$/.test(q) &&
+            prefs.quitados.indexOf(q) === -1 && prefs.quitados.length < ENTRENO_MAX_CAMBIOS) prefs.quitados.push(q);
+      });
+    }
+    var extras = guardado.extras;
+    if (extras && typeof extras === "object" && !Array.isArray(extras)) {
+      Object.keys(extras).forEach(function (clave) {
+        if (!/^[A-Za-z_]{1,40}$/.test(clave) || !Array.isArray(extras[clave])) return;
+        if (typeof WORKOUT_SESIONES !== "undefined" && !Object.prototype.hasOwnProperty.call(WORKOUT_SESIONES, clave)) return;
+        var ids = [];
+        extras[clave].forEach(function (id) {
+          if (_entrenoIdValido(id) && ids.indexOf(id) === -1 && ids.length < ENTRENO_MAX_EXTRAS) ids.push(id);
+        });
+        if (ids.length) prefs.extras[clave] = ids;
+      });
+    }
+    var t = Number(guardado.t);
+    if (isFinite(t) && 0 < t) prefs.t = t;
+  }
   if (prefs.equipamiento === "personalizado" && !prefs.material) prefs.equipamiento = "gimnasio";
   return prefs;
 }
 
-function entrenoGuardarPrefs(prefs) {
+/** Elecciones guardadas en este navegador, ya validadas (entrenoPrefsLimpiar). */
+function entrenoLeerPrefs() {
+  var guardado = null;
+  try {
+    guardado = JSON.parse(localStorage.getItem(ENTRENO_CLAVE_PREFS) || "null");
+  } catch (e) { /* sin almacenamiento o JSON roto: se queda con los valores por defecto */ }
+  return entrenoPrefsLimpiar(guardado);
+}
+
+/**
+ * Guarda las elecciones y las sube a la cuenta (js/core/workout-sync.js).
+ * Con `conservarT` (lo que llega de la cuenta) no se vuelve a fechar ni a subir.
+ */
+function entrenoGuardarPrefs(prefs, conservarT) {
+  if (!conservarT) prefs.t = Date.now();
   try {
     localStorage.setItem(ENTRENO_CLAVE_PREFS, JSON.stringify(prefs));
   } catch (e) { /* sin almacenamiento: la elección vale solo para esta visita */ }
+  if (!conservarT && typeof pushWorkoutsToCloud === "function") pushWorkoutsToCloud();
+}
+
+/** ¿Hay algo cambiado a mano en el programa? (cuántas cosas) */
+function entrenoCambiosManuales(prefs) {
+  var n = Object.keys(prefs.cambios || {}).length + (prefs.quitados || []).length;
+  Object.keys(prefs.extras || {}).forEach(function (k) { n += prefs.extras[k].length; });
+  return n;
 }
 
 /**
@@ -120,7 +185,8 @@ function entrenoPlanParaDatos(datos) {
     {
       nivel: d.nivel, equipamiento: d.equipamiento, duracion: d.duracion, excluir: d.excluir,
       objetivo: d.objetivoEntreno, material: d.material, enfoque: d.enfoque,
-      limitaciones: d.limitaciones, diasSemana: d.diasSemana
+      limitaciones: d.limitaciones, diasSemana: d.diasSemana,
+      cambios: d.cambios, quitados: d.quitados, extras: d.extras
     }
   );
   var semana = Math.floor(Number(d.semana));
@@ -378,11 +444,38 @@ function entrenoResumenNotasHtml(plan) {
   return h;
 }
 
+/** Botones para cambiar a mano un ejercicio del programa: sustituir, quitar y, si era un cambio, volver. */
+function _entrenoBotonesProgramaHtml(sesion, e) {
+  var datos = ' data-sesion="' + entrenoEsc(sesion.key) + '" data-id="' + entrenoEsc(e.id) + '"' +
+    ' data-patron="' + entrenoEsc(e.patron || "") + '"' + (e.extra ? ' data-extra="1"' : "");
+  var nombre = entrenoNombre(e);
+  return '<span class="entreno__ej-botones">' +
+    '<button type="button" class="entreno__mini-btn" data-prog="cambiar"' + datos +
+      ' aria-label="' + entrenoEsc(tFormat("ent.prog_cambiar_de", { nombre: nombre })) + '">' + entrenoEsc(t("ent.prog_cambiar")) + "</button>" +
+    (e.cambiadoDe
+      ? '<button type="button" class="entreno__mini-btn" data-prog="volver"' + datos +
+          ' aria-label="' + entrenoEsc(tFormat("ent.prog_volver_de", { nombre: nombre })) + '">' + entrenoEsc(t("ent.prog_volver")) + "</button>"
+      : "") +
+    '<button type="button" class="entreno__mini-btn entreno__mini-btn--quitar" data-prog="quitar"' + datos +
+      ' aria-label="' + entrenoEsc(tFormat("ent.prog_quitar_de", { nombre: nombre })) + '">' + entrenoEsc(t("ent.prog_quitar")) + "</button>" +
+  "</span>";
+}
+
+/** Si el programa tiene cambios a mano: cuántos, y el botón para volver al programa tal como sale. */
+function entrenoCambiosHtml(prefs) {
+  var n = entrenoCambiosManuales(prefs);
+  if (!n) return "";
+  return '<p class="entreno__nota-programa entreno__nota-programa--tuyo">' +
+    entrenoEsc(tFormat("ent.prog_cambios_n", { n: n })) +
+    ' <button type="button" class="entreno__mini-btn" data-prog="reset">' + entrenoEsc(t("ent.prog_reset")) + "</button></p>";
+}
+
 /**
  * Tabla de una sesión. Cada celda lleva su etiqueta: en el móvil se pinta como
- * tarjeta. Con el diario (log), bajo el nombre va «La última vez: …».
+ * tarjeta. Con el diario (log), bajo el nombre va «La última vez: …». Con
+ * `editable`, cada ejercicio trae sus botones para cambiar el programa a mano.
  */
-function entrenoTablaHtml(sesion, log) {
+function entrenoTablaHtml(sesion, log, editable) {
   var etiqueta = {
     ejercicio: t("ent.col_ejercicio"),
     series: t("ent.col_series"),
@@ -397,8 +490,11 @@ function entrenoTablaHtml(sesion, log) {
         '<span class="entreno__nombre-fila">' + entrenoMiniHtml(e) +
           '<span class="entreno__nombre-texto">' + entrenoEsc(entrenoNombre(e)) +
             (e.enfoque ? ' <span class="entreno__badge">' + entrenoEsc(t("ent.badge_enfoque")) + "</span>" : "") +
+            (e.cambiadoDe ? ' <span class="entreno__badge entreno__badge--tuyo">' + entrenoEsc(t("ent.badge_cambio")) + "</span>" : "") +
+            (e.extra ? ' <span class="entreno__badge entreno__badge--tuyo">' + entrenoEsc(t("ent.badge_extra")) + "</span>" : "") +
             entrenoUltimaHtml(e, log) + "</span>" +
-        "</span></td>" +
+        "</span>" +
+        (editable ? _entrenoBotonesProgramaHtml(sesion, e) : "") + "</td>" +
       '<td data-label="' + entrenoEsc(etiqueta.series) + '">' + e.sets + "</td>" +
       '<td data-label="' + entrenoEsc(etiqueta.reps) + '">' + entrenoEsc(entrenoRepsTexto(e.reps)) + "</td>" +
       '<td data-label="' + entrenoEsc(etiqueta.descanso) + '">' + entrenoDescanso(e.restSeconds) + "</td>" +
@@ -418,8 +514,13 @@ function entrenoTablaHtml(sesion, log) {
  * js/ui/entreno-sesion.js); sin él, solo se lee.
  */
 function entrenoSesionHtml(s, i, log) {
-  var empezar = (typeof i === "number" && typeof entrenoSesionEmpezar === "function")
+  var editable = typeof i === "number";
+  var empezar = (editable && typeof entrenoSesionEmpezar === "function")
     ? '<button type="button" class="entreno__empezar" data-empezar="' + i + '">' + entrenoEsc(t("ent.empezar")) + "</button>"
+    : "";
+  var anadir = (editable && typeof entrenoCatalogoAbrir === "function")
+    ? '<button type="button" class="btn-secondary entreno__anadir" data-prog="anadir" data-sesion="' + entrenoEsc(s.key) + '">' +
+        entrenoEsc(t("ent.anadir_ejercicio")) + "</button>"
     : "";
   return '<section class="entreno__sesion">' +
     '<header class="entreno__sesion-cabeza">' +
@@ -428,8 +529,132 @@ function entrenoSesionHtml(s, i, log) {
       '<span class="entreno__n">' + entrenoEsc(tFormat("ent.n_ejercicios", { n: s.exercises.length })) + "</span>" +
       empezar +
     "</header>" +
-    entrenoTablaHtml(s, log) +
+    entrenoTablaHtml(s, log, editable && typeof entrenoCatalogoAbrir === "function") +
+    anadir +
   "</section>";
+}
+
+// ── Cambiar el programa a mano (2026-10-18) ─────────────────────────────
+
+/** El material con el que se hace el plan de ahora (para el catálogo y los cambios). */
+function entrenoMaterialActual() {
+  if (_entrenoUltimoPlan && Array.isArray(_entrenoUltimoPlan.material)) return _entrenoUltimoPlan.material;
+  var prefs = entrenoLeerPrefs();
+  var propio = typeof normalizarMaterial === "function" ? normalizarMaterial(prefs.material) : null;
+  if (propio) return propio;
+  return (typeof EQUIPAMIENTO_DISPONIBLE !== "undefined" && EQUIPAMIENTO_DISPONIBLE[prefs.equipamiento]) || ["sin_material"];
+}
+
+/**
+ * Series, repeticiones y descanso de un ejercicio con el objetivo y el nivel
+ * del plan de ahora (prescribirEjercicio): lo que necesita un ejercicio que se
+ * añade o se sustituye. null si no está en el catálogo.
+ */
+function entrenoPautaPara(id) {
+  var cat = _entrenoCatalogo(id);
+  if (!cat || typeof prescribirEjercicio !== "function") return null;
+  var prefs = entrenoLeerPrefs();
+  var objetivo = _entrenoUltimoPlan ? _entrenoUltimoPlan.objetivo
+    : (prefs.objetivo !== "auto" ? prefs.objetivo : (document.getElementById("goal") || {}).value);
+  if (typeof WORKOUT_PRESCRIPCION === "undefined" || !Object.prototype.hasOwnProperty.call(WORKOUT_PRESCRIPCION, objetivo)) objetivo = "maintain";
+  var nivel = _entrenoUltimoPlan ? _entrenoUltimoPlan.nivel : prefs.nivel;
+  var pauta = prescribirEjercicio(cat, objetivo, nivel);
+  return {
+    id: cat.id, name: cat.name, muscle: cat.muscle, compound: !!cat.compound,
+    reps: pauta.reps, descanso: pauta.restSeconds, sets: pauta.sets
+  };
+}
+
+function _entrenoEjercicioDelPlan(id) {
+  var encontrado = null;
+  ((_entrenoUltimoPlan && _entrenoUltimoPlan.sesiones) || []).some(function (s) {
+    return s.exercises.some(function (e) { if (e.id === id) { encontrado = e; return true; } return false; });
+  });
+  return encontrado;
+}
+
+/** ¿Está este ejercicio en el programa de ahora? */
+function entrenoProgramaTiene(id) {
+  return !!_entrenoEjercicioDelPlan(id);
+}
+
+/**
+ * Cambia un ejercicio del programa por otro, en todas las sesiones donde
+ * salga. Si el de ahora ya era un cambio, se cambia el original (y volver al
+ * original quita el cambio).
+ */
+function entrenoProgramaCambiar(idActual, idNuevo) {
+  var e = _entrenoEjercicioDelPlan(idActual);
+  var original = (e && e.cambiadoDe) || idActual;
+  var prefs = entrenoLeerPrefs();
+  if (idNuevo === original) delete prefs.cambios[original];
+  else prefs.cambios[original] = idNuevo;
+  entrenoGuardarPrefs(prefs);
+  renderEntreno();
+}
+
+/** Lo que hacen los botones del programa (data-prog): cambiar, volver, quitar, añadir y deshacer todo. */
+function _entrenoAccionPrograma(boton) {
+  var accion = boton.getAttribute("data-prog");
+  var clave = boton.getAttribute("data-sesion");
+  var id = boton.getAttribute("data-id");
+  var prefs = entrenoLeerPrefs();
+  entrenoVibrar();
+  if (accion === "cambiar" && typeof entrenoCatalogoAbrir === "function") {
+    var sesion = ((_entrenoUltimoPlan && _entrenoUltimoPlan.sesiones) || []).filter(function (s) { return s.key === clave; })[0];
+    entrenoCatalogoAbrir({
+      modo: "elegir",
+      titulo: tFormat("ent.cat_sustituir_titulo", { nombre: entrenoNombre(_entrenoCatalogo(id) || { id: id, name: id }) }),
+      parecidoA: id,
+      excluir: sesion ? sesion.exercises.map(function (e) { return e.id; }) : [id],
+      nota: t("ent.cat_nota_programa"),
+      alElegir: function (nuevo) { entrenoProgramaCambiar(id, nuevo); }
+    });
+    return;
+  }
+  if (accion === "volver") {
+    var e = _entrenoEjercicioDelPlan(id);
+    if (e && e.cambiadoDe) delete prefs.cambios[e.cambiadoDe];
+  } else if (accion === "quitar") {
+    if (boton.getAttribute("data-extra")) {
+      prefs.extras[clave] = (prefs.extras[clave] || []).filter(function (x) { return x !== id; });
+      if (!prefs.extras[clave].length) delete prefs.extras[clave];
+    } else {
+      var patron = boton.getAttribute("data-patron");
+      if (!patron) return;
+      var hueco = clave + ":" + patron;
+      if (prefs.quitados.indexOf(hueco) === -1) prefs.quitados.push(hueco);
+    }
+  } else if (accion === "anadir" && typeof entrenoCatalogoAbrir === "function") {
+    var s = ((_entrenoUltimoPlan && _entrenoUltimoPlan.sesiones) || []).filter(function (x) { return x.key === clave; })[0];
+    entrenoCatalogoAbrir({
+      modo: "elegir",
+      titulo: tFormat("ent.cat_anadir_a", { sesion: tOr("ent.sesion_" + clave, clave) }),
+      excluir: s ? s.exercises.map(function (e) { return e.id; }) : [],
+      nota: t("ent.cat_nota_programa"),
+      alElegir: function (nuevo) {
+        var p = entrenoLeerPrefs();
+        var lista = p.extras[clave] || [];
+        if (lista.indexOf(nuevo) === -1 && lista.length < ENTRENO_MAX_EXTRAS) lista.push(nuevo);
+        p.extras[clave] = lista;
+        entrenoGuardarPrefs(p);
+        renderEntreno();
+      }
+    });
+    return;
+  } else if (accion === "reset") {
+    if (!window.confirm(t("ent.prog_reset_confirmar"))) return;
+    prefs.cambios = {};
+    prefs.quitados = [];
+    prefs.extras = {};
+  } else if (accion === "catalogo" && typeof entrenoCatalogoAbrir === "function") {
+    entrenoCatalogoAbrir({ modo: "ver", titulo: t("ent.cat_titulo") });
+    return;
+  } else {
+    return;
+  }
+  entrenoGuardarPrefs(prefs);
+  renderEntreno();
 }
 
 /** Consejos en tarjetas: título corto y el texto debajo. */
@@ -511,12 +736,26 @@ function renderEntreno() {
     enfoque: prefs.enfoque,
     limitaciones: prefs.limitaciones,
     diasSemana: prefs.diasSemana,
+    cambios: prefs.cambios,
+    quitados: prefs.quitados,
+    extras: prefs.extras,
     semana: prefs.semana
   });
   var fichas = document.getElementById("entrenoResumenFichas");
   var notas = document.getElementById("entrenoResumenNotas");
   if (fichas) fichas.innerHTML = entrenoResumenFichasHtml(plan, prefs);
-  if (notas) notas.innerHTML = plan.ok ? entrenoResumenNotasHtml(plan) : "";
+  if (notas) notas.innerHTML = plan.ok ? entrenoResumenNotasHtml(plan) + entrenoCambiosHtml(prefs) : "";
+
+  // «Hoy» y la semana (2026-10-18): lo primero que se ve, con un solo botón.
+  var datosHoy = (!sinPlan && plan.ok && typeof entrenoHoyDatos === "function") ? entrenoHoyDatos(plan, log, Date.now()) : null;
+  var hoyCaja = document.getElementById("entrenoHoy");
+  var semanaCaja = document.getElementById("entrenoSemanaCaja");
+  if (hoyCaja) { hoyCaja.hidden = !datosHoy; hoyCaja.innerHTML = datosHoy ? entrenoHoyHtml(datosHoy, prefs) : ""; }
+  if (semanaCaja) {
+    semanaCaja.hidden = !datosHoy;
+    var semana = document.getElementById("entrenoSemana");
+    if (semana) semana.innerHTML = datosHoy ? entrenoSemanaHtml(datosHoy) : "";
+  }
 
   if (sinPlan) {
     _entrenoUltimoPlan = null;
@@ -529,6 +768,81 @@ function renderEntreno() {
   salida.innerHTML = plan.ok ? entrenoPlanHtml(plan, log) : "";
   if (typeof entrenoAnimacionesActivar === "function") entrenoAnimacionesActivar(salida);
   if (typeof renderEntrenoProgreso === "function") renderEntrenoProgreso(log, _entrenoUltimoPlan);
+  if (prefs.configurado && typeof entrenoTutorialAuto === "function") entrenoTutorialAuto();
+}
+
+/** Día de la semana de un instante: 1 = lunes … 7 = domingo, como en el plan. */
+function entrenoDiaDeSemana(ms) {
+  return ((new Date(ms).getDay() + 6) % 7) + 1;
+}
+
+/**
+ * Lo que enseñan «Hoy» y la semana: qué toca hoy, si ya está hecho y, si hoy
+ * no toca, cuál es la siguiente. Sin DOM (lo prueban los tests).
+ * @returns {{hoy:number, estado:string, indice:number, sesion:(object|null), siguiente:(object|null), dias:object[]}}
+ *          estado: "sesion" (toca), "hecho" (ya se hizo hoy) o "descanso"
+ */
+function entrenoHoyDatos(plan, log, ahora) {
+  var hoy = entrenoDiaDeSemana(ahora);
+  var lunes = entrenoLogInicioSemana(ahora);
+  var fin = lunes + 7 * 24 * 3600 * 1000;
+  var hechos = {};
+  ((log && log.sesiones) || []).forEach(function (s) {
+    if (lunes <= s.inicio && s.inicio < fin) hechos[entrenoDiaDeSemana(s.inicio)] = true;
+  });
+  var sesiones = (plan && plan.ok && plan.sesiones) || [];
+  var porDia = {};
+  sesiones.forEach(function (s, i) { porDia[s.dia] = { sesion: s, indice: i }; });
+  var dias = [1, 2, 3, 4, 5, 6, 7].map(function (d) {
+    return { dia: d, plan: !!porDia[d], hecho: !!hechos[d], hoy: d === hoy };
+  });
+  var resultado = { hoy: hoy, estado: "descanso", indice: -1, sesion: null, siguiente: null, dias: dias };
+  var actual = porDia[hoy];
+  if (actual) {
+    resultado.estado = hechos[hoy] ? "hecho" : "sesion";
+    resultado.sesion = actual.sesion;
+    resultado.indice = actual.indice;
+  }
+  for (var k = 1; k <= 7; k++) {
+    var siguiente = ((hoy - 1 + k) % 7) + 1;
+    if (porDia[siguiente]) { resultado.siguiente = { dia: siguiente, sesion: porDia[siguiente].sesion }; break; }
+  }
+  return resultado;
+}
+
+/** La tarjeta «Сегодня»: la sesión de hoy con su botón, «ya hecho», o el descanso y la siguiente. */
+function entrenoHoyHtml(datos, prefs) {
+  var h = '<p class="entreno__hoy-ojo">' + entrenoEsc(t("ent.hoy_ojo")) + "</p>";
+  if (datos.estado === "sesion" || datos.estado === "hecho") {
+    var s = datos.sesion;
+    h += '<h3 class="entreno__hoy-titulo">' + entrenoEsc(tOr("ent.sesion_" + s.key, s.name)) + "</h3>";
+    if (datos.estado === "sesion") {
+      h += '<p class="entreno__hoy-datos">' + entrenoEsc(tFormat("ent.hoy_datos", { min: prefs.duracion, n: s.exercises.length })) + "</p>" +
+        '<button type="button" class="entreno__empezar" data-empezar="' + datos.indice + '">' + entrenoEsc(t("ent.empezar")) + "</button>";
+    } else {
+      h += '<p class="entreno__hoy-texto">' + entrenoEsc(t("ent.hoy_hecho")) + "</p>";
+    }
+    return h;
+  }
+  h += '<p class="entreno__hoy-texto">' + entrenoEsc(t("ent.hoy_descanso")) + "</p>";
+  if (datos.siguiente) {
+    h += '<p class="entreno__hoy-datos">' + entrenoEsc(tFormat("ent.hoy_siguiente", {
+      dia: t("ent.dia_corto_" + datos.siguiente.dia),
+      nombre: tOr("ent.sesion_" + datos.siguiente.sesion.key, datos.siguiente.sesion.name)
+    })) + "</p>";
+  }
+  return h;
+}
+
+/** Los siete días: cuáles tocan, cuáles están hechos y cuál es hoy. */
+function entrenoSemanaHtml(datos) {
+  return datos.dias.map(function (x) {
+    var clase = "entreno__dia-semana" + (x.plan ? " is-plan" : "") + (x.hecho ? " is-hecho" : "") + (x.hoy ? " is-hoy" : "");
+    var clave = x.hecho ? "ent.semana_dia_hecho" : (x.plan ? "ent.semana_dia_plan" : "ent.semana_dia_libre");
+    return '<li class="' + clase + '"><span>' + entrenoEsc(t("ent.dia_corto_" + x.dia)) + "</span>" +
+      '<span class="visually-hidden">' + entrenoEsc(tFormat(clave, { dia: t("ent.dia_" + x.dia) })) + "</span>" +
+      '<i class="entreno__dia-semana-marca" aria-hidden="true"></i></li>';
+  }).join("");
 }
 
 /** Descarga el plan de entrenamiento como calendario .ics: un evento semanal por sesión. */
@@ -634,9 +948,9 @@ function initEntreno() {
   var imprimir = document.getElementById("entImprimir");
   if (imprimir) imprimir.addEventListener("click", function () { window.print(); });
 
-  // «Empezar» en la tarjeta de un día abre el modo entrenamiento con esa sesión.
-  var salida = document.getElementById("entrenoSalida");
-  if (salida) salida.addEventListener("click", function (ev) {
+  // «Empezar» (en «Hoy» y en la tarjeta de cada día) abre el modo entrenamiento
+  // con esa sesión. Va en todo el panel porque «Hoy» está fuera de la salida.
+  _entrenoPanel.addEventListener("click", function (ev) {
     var anim = ev.target.closest("[data-anim-abrir]");
     if (anim) { entrenoAbrirAnimacion(anim.getAttribute("data-anim-abrir")); return; }
     var boton = ev.target.closest("[data-empezar]");
@@ -646,8 +960,15 @@ function initEntreno() {
     entrenoVibrar();
     entrenoSesionEmpezar(sesion, _entrenoUltimoPlan.semana);
   });
+  // Los botones que cambian el programa a mano (y el del catálogo), en todo el panel.
+  _entrenoPanel.addEventListener("click", function (ev) {
+    var prog = ev.target.closest("[data-prog]");
+    if (prog && _entrenoPanel.contains(prog)) _entrenoAccionPrograma(prog);
+  });
   if (typeof initEntrenoSesion === "function") initEntrenoSesion();
   if (typeof initEntrenoProgreso === "function") initEntrenoProgreso();
+  if (typeof initEntrenoCatalogo === "function") initEntrenoCatalogo();
+  if (typeof initEntrenoTutorial === "function") initEntrenoTutorial();
   var cerrarAnim = document.getElementById("entrenoAnimCerrar");
   if (cerrarAnim) cerrarAnim.addEventListener("click", _entrenoCerrarAnimacion);
   var dialogoAnim = document.getElementById("entrenoAnimDialogo");

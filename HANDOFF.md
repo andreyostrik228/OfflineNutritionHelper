@@ -18,6 +18,24 @@ llevan al final un bloque «actualización 2026-10-08»). El diario fechado, con
 medidas y causas, está en la cabecera de `STATE.md` (entradas del 2026-10-07 y
 2026-10-08).
 
+### 0.0 Lo nuevo del 2026-10-18 (lee esto antes que 0.1)
+
+- **Lo de 0.1 a 0.5 es del 2026-10-08.** Al 2026-10-18: `main` = `eab3332`,
+  empujado; producción = despliegue `9c27a53f`, sello `?v=20261018za`, 211
+  ficheros idénticos por md5; **1114 tests en verde**. Lo de entre medias
+  (ucraniano, SEO, recetas, registro de peso, .ics, entrenamientos) está en
+  `git log`. El ucraniano ya se sirve: de los siete idiomas pendientes quedan seis.
+- **Entrenamientos es ya una parte entera del sitio** (cuestionario, plan, modo
+  entrenamiento con diario, progreso y una animación por ejercicio). Ficheros,
+  lo que hay y lo que falta: `ROADMAP.md`, primera sección.
+- **La hoja de ruta del dueño para esa parte** (Hevy, Strong, Fitbod, JEFIT, Nike
+  Training Club; funciones A–K; tres etapas) está traducida entera al final de
+  `ROADMAP.md` y es lo que manda en entrenamientos. Aún no ha dicho por dónde
+  seguir: pregúntale antes de empezar.
+- **Textos nuevos: es, en, ru y uk** (las claves `ent.*` están en los cuatro); en
+  ruso, de usted. El test de coherencia no deja que ru o uk sean iguales al español
+  si llevan letras latinas, marcadores incluidos: por eso hay `"{dias} — {lista}"`.
+
 ### 0.1 Dónde está todo exactamente (comprobado el 2026-10-08)
 
 - **Rama `main` = `c4306ad`**, empujada a GitHub (`andreyostrik228/OfflineNutritionHelper`).

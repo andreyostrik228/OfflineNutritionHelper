@@ -278,6 +278,35 @@ function normalizarExcluidos(valor) {
   });
 }
 
+/** Cambios a mano { idDelPlan: idElegido }: solo textos, sin claves heredadas. */
+function normalizarCambios(valor) {
+  var r = {};
+  if (!valor || typeof valor !== "object" || Array.isArray(valor)) return r;
+  Object.keys(valor).forEach(function (de) {
+    if (typeof valor[de] === "string" && valor[de] !== de) r[de] = valor[de];
+  });
+  return r;
+}
+
+/** Huecos quitados a mano ["clave_sesion:patron"] → { "clave_sesion:patron": true }. */
+function normalizarQuitados(valor) {
+  var r = {};
+  (Array.isArray(valor) ? valor : []).forEach(function (q) { if (typeof q === "string") r[q] = true; });
+  return r;
+}
+
+/** Ejercicios añadidos a mano { clave_sesion: [ids] }. */
+function normalizarExtras(valor) {
+  var r = {};
+  if (!valor || typeof valor !== "object" || Array.isArray(valor)) return r;
+  Object.keys(valor).forEach(function (clave) {
+    if (hasOwn(WORKOUT_SESIONES, clave) && Array.isArray(valor[clave])) {
+      r[clave] = valor[clave].filter(function (id) { return typeof id === "string"; });
+    }
+  });
+  return r;
+}
+
 /** true si el nombre del ejercicio, en cualquiera de sus idiomas, contiene un término excluido. */
 function ejercicioExcluido(ejercicio, excluidos) {
   if (!excluidos || !excluidos.length) return false;
@@ -318,8 +347,26 @@ function construirSesion(clave, objetivo, nivel, material, usadosSemana, avisos,
   var tope = Math.min(WORKOUT_LEVEL_CAP[nivel], extra.topeSesion || 99);
   var usadosSesion = {};
   var ejercicios = [];
+  var quitados = extra.quitados || {};
+  var cambios = extra.cambios || {};
 
-  function poner(ejercicio, enfoque) {
+  /**
+   * Lo cambiado a mano manda (2026-10-18): si el usuario cambió este
+   * ejercicio por otro, va el otro, siempre que se pueda hacer con su
+   * material y no esté ya en la sesión. El nivel y las exclusiones no lo
+   * frenan: lo eligió él a propósito.
+   */
+  function conCambio(ejercicio) {
+    if (!ejercicio || !hasOwn(cambios, ejercicio.id)) return ejercicio;
+    var otro = null;
+    EXERCISE_CATALOG.some(function (c) { if (c.id === cambios[ejercicio.id]) { otro = c; return true; } return false; });
+    if (!otro || !puedeHacerse(otro, material) || usadosSesion[otro.id]) return ejercicio;
+    return { cambiadoDe: ejercicio.id, ejercicio: otro };
+  }
+
+  function poner(elegido, enfoque, patron) {
+    var cambio = conCambio(elegido);
+    var ejercicio = cambio && cambio.cambiadoDe ? cambio.ejercicio : elegido;
     usadosSesion[ejercicio.id] = true;
     usadosSemana[ejercicio.id] = (usadosSemana[ejercicio.id] || 0) + 1;
     var pauta = prescribirEjercicio(ejercicio, objetivo, nivel);
@@ -332,9 +379,11 @@ function construirSesion(clave, objetivo, nivel, material, usadosSemana, avisos,
       sets: pauta.sets,
       reps: pauta.reps,
       restSeconds: pauta.restSeconds,
-      rir: pauta.rir
+      rir: pauta.rir,
+      patron: patron
     };
     if (enfoque) e.enfoque = true;
+    if (cambio && cambio.cambiadoDe) e.cambiadoDe = cambio.cambiadoDe;
     ejercicios.push(e);
   }
 
@@ -349,8 +398,12 @@ function construirSesion(clave, objetivo, nivel, material, usadosSemana, avisos,
   var resto = plantilla.patrones.slice(3);
   var orden = base.concat(resto.filter(function (p) { return patronesAcento[p]; }), resto.filter(function (p) { return !patronesAcento[p]; }));
 
+  // Un hueco quitado a mano cuenta para el tope: quitar uno no hace entrar otro.
+  var vacios = 0;
   orden.forEach(function (patron, i) {
-    if (ejercicios.length >= tope) return;
+    if (tope <= ejercicios.length + vacios) return;
+    // El usuario quitó este hueco de esta sesión: se queda vacío, sin aviso.
+    if (quitados[clave + ":" + patron]) { vacios++; return; }
     var ejercicio = elegirEjercicio(patron, material, nivel, usadosSesion, usadosSemana, extra.excluidos, extra.evitar);
     if (!ejercicio && extra.evitar && elegirEjercicio(patron, material, nivel, usadosSesion, usadosSemana, extra.excluidos, null)) {
       // Una molestia ha quitado lo de este patrón: va otro que no cargue esa
@@ -369,7 +422,7 @@ function construirSesion(clave, objetivo, nivel, material, usadosSemana, avisos,
       avisos.push("falta_ejercicio:" + patron);
       return;
     }
-    poner(ejercicio, false);
+    poner(ejercicio, false, patron);
   });
 
   // Enfoque: un ejercicio más del grupo elegido si la sesión lo admite (en un
@@ -382,13 +435,24 @@ function construirSesion(clave, objetivo, nivel, material, usadosSemana, avisos,
     var admitidos = tipo === "todo" ? null : WORKOUT_PATRONES_TIPO[tipo];
     var puestos = 0;
     def.patrones.forEach(function (patron) {
-      if (puestos >= (def.porSesion || 1) || ejercicios.length >= topeEnfoque) return;
+      if ((def.porSesion || 1) <= puestos || topeEnfoque <= ejercicios.length) return;
       if (admitidos && admitidos.indexOf(patron) === -1) return;
+      if (quitados[clave + ":" + patron]) return;
       var ejercicio = elegirEjercicio(patron, material, nivel, usadosSesion, usadosSemana, extra.excluidos, extra.evitar);
       if (!ejercicio) return;
-      poner(ejercicio, true);
+      poner(ejercicio, true, patron);
       puestos++;
     });
+  });
+
+  // Lo añadido a mano a esta sesión, al final y sin tope: lo pidió el usuario.
+  // Si con el material de ahora no se puede hacer, no entra.
+  ((extra.extras && extra.extras[clave]) || []).forEach(function (id) {
+    var cat = null;
+    EXERCISE_CATALOG.some(function (c) { if (c.id === id) { cat = c; return true; } return false; });
+    if (!cat || !puedeHacerse(cat, material) || usadosSesion[cat.id]) return;
+    poner(cat, false, "extra");
+    ejercicios[ejercicios.length - 1].extra = true;
   });
 
   // Y una serie más en todo lo que trabaja esos músculos.
@@ -439,7 +503,11 @@ function normalizarDias(valor, avisos) {
  *                               objetivo: clave de WORKOUT_PRESCRIPCION (manda sobre goal; "auto" = el de goal),
  *                               duracion: 30 | 45 | 60, excluir: texto o lista de nombres,
  *                               enfoque: [grupos de WORKOUT_ENFOQUES], limitaciones: [claves de WORKOUT_LIMITACIONES],
- *                               diasSemana: [1…7] tantos como días (si no, los de WORKOUT_DIAS_SEMANA) }
+ *                               diasSemana: [1…7] tantos como días (si no, los de WORKOUT_DIAS_SEMANA),
+ *                               cambios: { idDelPlan: idElegido }, quitados: ["clave_sesion:patron"],
+ *                               extras: { clave_sesion: [ids] } (lo cambiado a mano, 2026-10-18) }
+ *                  Cada ejercicio del plan lleva `patron` (el hueco que ocupa, "extra" si se añadió
+ *                  a mano), y `cambiadoDe` si es un cambio a mano.
  * @returns {object} plan (ver las claves al final de la función). `ok: false`
  *                   si no hay días de entrenamiento: no hay plan que dar.
  */
@@ -503,7 +571,9 @@ function generateWorkoutPlan(profile, options) {
   var duracion = hasOwn(WORKOUT_DURACIONES, claveDuracion) ? Number(claveDuracion) : 60;
   var opciones = {
     topeSesion: WORKOUT_DURACIONES[duracion], excluidos: normalizarExcluidos(opts.excluir),
-    enfoque: enfoque, evitar: evitar
+    enfoque: enfoque, evitar: evitar,
+    cambios: normalizarCambios(opts.cambios), quitados: normalizarQuitados(opts.quitados),
+    extras: normalizarExtras(opts.extras)
   };
   var diasElegidos = normalizarDiasSemana(opts.diasSemana, dias);
   var sesiones = division.sesiones.map(function (clave, i) {

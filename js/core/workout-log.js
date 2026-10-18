@@ -11,18 +11,31 @@
  * ENTRENO_LOG_CLAVE): no va a la cuenta ni se sincroniza.
  *
  * Forma guardada (todo lo que se lee pasa por entrenoLogLimpiar):
- *   { v: 1, sesiones: [Sesion…] (la más antigua primero), enCurso: Sesion | null }
+ *   { v: 1, sesiones: [Sesion…] (la más antigua primero), enCurso: Sesion | null,
+ *     borradas: [{ id, t }] (sesiones borradas: para que otro dispositivo no las devuelva) }
  *   Sesion    = { id, clave, nombre, semana, inicio (ms), fin (ms, solo las terminadas),
- *                 descansoHasta (ms o null, solo la que está en curso), ejercicios: [Ejercicio…] }
+ *                 descansoHasta (ms o null, solo la que está en curso),
+ *                 pausas (ms en pausa), pausaDesde (ms, solo en curso y pausada),
+ *                 editado (ms, si se cambió después de terminarla), ejercicios: [Ejercicio…] }
  *   Ejercicio = { id, name, muscle, reps (rango del plan: "6-10", "30-45 s"…),
- *                 compound, descanso (s), series: [{ kg, reps, hecha, t }] }
- *   kg y reps pueden ser null (casilla vacía); t es cuándo se marcó hecha.
+ *                 compound, descanso (s), series: [Serie…],
+ *                 grupo ("A"…"H": superserie con los de al lado), nota, saltado }
+ *   Serie     = { kg, reps, hecha, t, tipo }
+ *   kg y reps pueden ser null (casilla vacía); t es cuándo se marcó hecha; tipo
+ *   es "c" (calentamiento), "d" (drop set) o "f" (al fallo), y sin tipo es una
+ *   serie normal. Las de calentamiento NO cuentan para «la última vez», la
+ *   carga sugerida, los récords ni los kilos movidos.
+ *
+ * (2026-10-18, segunda parte) Tipos de serie, superseries, notas, saltar un
+ * ejercicio, pausa, corregir una sesión terminada (entrenoLogReemplazar) y la
+ * lista de borradas, que necesita la copia en la cuenta (js/core/workout-sync.js).
  *
  * Expone (globales): entrenoLogLeer/Guardar/Limpiar/Vacio, entrenoLogRango,
  * entrenoLogUltimaVez, entrenoLogSugerencia, entrenoLogE1rm, entrenoLogRecords,
  * entrenoLogTipoRecord, entrenoLogIniciar, entrenoLogPonerSerie,
  * entrenoLogAnadirSerie, entrenoLogQuitarSerie, entrenoLogTerminar,
- * entrenoLogBorrar, entrenoLogTotales, entrenoLogSemanas, entrenoLogRacha.
+ * entrenoLogBorrar, entrenoLogReemplazar, entrenoLogTotales, entrenoLogPausado,
+ * entrenoLogSemanas, entrenoLogRacha.
  * ─────────────────────────────────────────────────────────────────────────
  */
 
@@ -39,9 +52,13 @@ var ENTRENO_LOG_MS_MAX = 1e15;
 var ENTRENO_LOG_OLVIDO_MS = 30 * 60 * 1000;
 /** Subida en las de aislamiento (las compuestas usan siguienteCarga: 2,5 arriba y 5 abajo). */
 var ENTRENO_LOG_SUBIDA_AISLADO = { superior: 1, inferior: 2 };
+var ENTRENO_LOG_TIPOS_SERIE = ["c", "d", "f"];
+var ENTRENO_LOG_MAX_NOTA = 200;
+var ENTRENO_LOG_MAX_BORRADAS = 300;
+var _LOG_GRUPO = /^[A-H]$/;
 
 function entrenoLogVacio() {
-  return { v: 1, sesiones: [], enCurso: null };
+  return { v: 1, sesiones: [], enCurso: null, borradas: [] };
 }
 
 /** Número válido entre 0 y max; texto vacío, negativo o raro → null. Acepta coma decimal. */
@@ -74,6 +91,7 @@ function _logSerie(s) {
   var serie = { kg: _logKg(s.kg), reps: _logReps(s.reps), hecha: s.hecha === true };
   var t = _logNumero(s.t, ENTRENO_LOG_MS_MAX);
   if (serie.hecha && t !== null) serie.t = t;
+  if (ENTRENO_LOG_TIPOS_SERIE.indexOf(s.tipo) !== -1) serie.tipo = s.tipo;
   return serie;
 }
 
@@ -83,7 +101,7 @@ function _logEjercicio(e) {
     ? e.series.slice(0, ENTRENO_LOG_MAX_SERIES).map(_logSerie).filter(Boolean)
     : [];
   var descanso = _logNumero(e.descanso, ENTRENO_LOG_MAX_DESCANSO);
-  return {
+  var ejercicio = {
     id: e.id.slice(0, 60),
     name: _logTexto(e.name, 120),
     muscle: _logTexto(e.muscle, 30),
@@ -92,6 +110,11 @@ function _logEjercicio(e) {
     descanso: descanso === null ? 90 : Math.round(descanso),
     series: series
   };
+  if (typeof e.grupo === "string" && _LOG_GRUPO.test(e.grupo)) ejercicio.grupo = e.grupo;
+  var nota = _logTexto(e.nota, ENTRENO_LOG_MAX_NOTA).trim();
+  if (nota) ejercicio.nota = nota;
+  if (e.saltado === true) ejercicio.saltado = true;
+  return ejercicio;
 }
 
 function _logSesion(s, terminada) {
@@ -113,19 +136,55 @@ function _logSesion(s, terminada) {
     inicio: inicio,
     ejercicios: ejercicios
   };
-  if (terminada) sesion.fin = fin;
-  else sesion.descansoHasta = _logNumero(s.descansoHasta, ENTRENO_LOG_MS_MAX);
+  var pausas = _logNumero(s.pausas, ENTRENO_LOG_MS_MAX);
+  if (pausas) sesion.pausas = Math.round(pausas);
+  if (terminada) {
+    sesion.fin = fin;
+    var editado = _logNumero(s.editado, ENTRENO_LOG_MS_MAX);
+    if (editado) sesion.editado = editado;
+    // Una pausa nunca dura más que la sesión.
+    if (sesion.pausas && fin - inicio < sesion.pausas) sesion.pausas = fin - inicio;
+  } else {
+    sesion.descansoHasta = _logNumero(s.descansoHasta, ENTRENO_LOG_MS_MAX);
+    var desde = _logNumero(s.pausaDesde, ENTRENO_LOG_MS_MAX);
+    if (desde !== null && inicio <= desde) sesion.pausaDesde = desde;
+  }
   return sesion;
+}
+
+/** La lista de borradas: { id, t } válidas, una por id (la más reciente), las últimas ENTRENO_LOG_MAX_BORRADAS. */
+function _logBorradas(lista) {
+  var porId = {};
+  (Array.isArray(lista) ? lista : []).forEach(function (b) {
+    if (!b || typeof b.id !== "string" || !b.id) return;
+    var t = _logNumero(b.t, ENTRENO_LOG_MS_MAX);
+    if (t === null) return;
+    var id = b.id.slice(0, 60);
+    if (!porId[id] || porId[id].t < t) porId[id] = { id: id, t: t };
+  });
+  return Object.keys(porId).map(function (k) { return porId[k]; })
+    .sort(function (a, b) { return a.t - b.t; })
+    .slice(-ENTRENO_LOG_MAX_BORRADAS);
 }
 
 /** El diario tal como venga (JSON del almacenamiento, de otra versión, roto…) → diario válido. */
 function entrenoLogLimpiar(crudo) {
   var log = entrenoLogVacio();
   if (!crudo || typeof crudo !== "object") return log;
+  log.borradas = _logBorradas(crudo.borradas);
+  var borrada = {};
+  log.borradas.forEach(function (b) { borrada[b.id] = true; });
   if (Array.isArray(crudo.sesiones)) {
+    var vistas = {};
     log.sesiones = crudo.sesiones
       .map(function (s) { return _logSesion(s, true); })
-      .filter(Boolean)
+      .filter(function (s) {
+        // Una por id (la última que llega) y ninguna de las borradas.
+        if (!s || borrada[s.id]) return false;
+        vistas[s.id] = s;
+        return true;
+      })
+      .filter(function (s) { return vistas[s.id] === s; })
       .sort(function (a, b) { return a.inicio - b.inicio; })
       .slice(-ENTRENO_LOG_MAX_SESIONES);
   }
@@ -163,20 +222,28 @@ function _logEsTiempo(ejercicio) {
   return !!(r && r.tiempo);
 }
 
-/** Series hechas de verdad: marcadas y con repeticiones. */
+/** Series hechas de verdad: marcadas y con repeticiones (las de calentamiento también). */
 function _logHechas(ejercicio) {
-  return ejercicio.series.filter(function (s) { return s.hecha && s.reps !== null && s.reps > 0; });
+  return ejercicio.series.filter(function (s) { return s.hecha && s.reps !== null && 0 < s.reps; });
 }
 
-/** La última sesión terminada en que se hizo este ejercicio: { fin, series hechas } o null. */
+/** Las hechas que cuentan: sin las de calentamiento. */
+function _logTrabajo(ejercicio) {
+  return _logHechas(ejercicio).filter(function (s) { return s.tipo !== "c"; });
+}
+
+/**
+ * La última sesión terminada en que se hizo este ejercicio: { fin, series de
+ * trabajo, nota } o null. La nota es la de esa vez, si se escribió alguna.
+ */
 function entrenoLogUltimaVez(log, ejercicioId) {
-  for (var i = log.sesiones.length - 1; i >= 0; i--) {
+  for (var i = log.sesiones.length - 1; 0 <= i; i--) {
     var sesion = log.sesiones[i];
     for (var j = 0; j < sesion.ejercicios.length; j++) {
       var e = sesion.ejercicios[j];
       if (e.id !== ejercicioId) continue;
-      var hechas = _logHechas(e);
-      if (hechas.length) return { fin: sesion.fin, series: hechas };
+      var hechas = _logTrabajo(e);
+      if (hechas.length) return { fin: sesion.fin, series: hechas, nota: e.nota || "" };
     }
   }
   return null;
@@ -254,7 +321,7 @@ function entrenoLogRecords(log, ejercicioId) {
     sesion.ejercicios.forEach(function (e) {
       if (e.id !== ejercicioId) return;
       var volumen = 0;
-      _logHechas(e).forEach(function (s) {
+      _logTrabajo(e).forEach(function (s) {
         var kg = s.kg || 0;
         if (kg > r.kg) r.kg = kg;
         var e1 = entrenoLogE1rm(kg, s.reps);
@@ -361,18 +428,29 @@ function entrenoLogQuitarSerie(log, iEj) {
   return true;
 }
 
-/** Series hechas, kilos movidos (sin los de tiempo) y minutos de una sesión. */
+/**
+ * Series de trabajo hechas, kilos movidos (sin los de tiempo ni el
+ * calentamiento) y minutos de una sesión, sin contar las pausas.
+ */
 function entrenoLogTotales(sesion) {
   var series = 0;
   var volumen = 0;
   sesion.ejercicios.forEach(function (e) {
-    var hechas = _logHechas(e);
+    var hechas = _logTrabajo(e);
     series += hechas.length;
     if (_logEsTiempo(e)) return;
     hechas.forEach(function (s) { volumen += (s.kg || 0) * s.reps; });
   });
   var fin = typeof sesion.fin === "number" ? sesion.fin : sesion.inicio;
-  return { series: series, volumen: Math.round(volumen), minutos: Math.max(1, Math.round((fin - sesion.inicio) / 60000)) };
+  var activa = Math.max(0, fin - sesion.inicio - (sesion.pausas || 0));
+  return { series: series, volumen: Math.round(volumen), minutos: Math.max(1, Math.round(activa / 60000)) };
+}
+
+/** Milisegundos de pausa de una sesión en curso, contando la que siga abierta. */
+function entrenoLogPausado(sesion, ahora) {
+  if (!sesion) return 0;
+  var abierta = (typeof sesion.pausaDesde === "number" && sesion.pausaDesde <= ahora) ? ahora - sesion.pausaDesde : 0;
+  return (sesion.pausas || 0) + abierta;
 }
 
 /**
@@ -393,23 +471,26 @@ function entrenoLogTerminar(log, ahora) {
   s.ejercicios.forEach(function (e) {
     var hechas = _logHechas(e);
     if (!hechas.length) return;
-    hechas.forEach(function (h) { if (h.t > ultimaT) ultimaT = h.t; });
-    var record = _logMejorRecord(entrenoLogRecords(log, e.id), hechas);
+    hechas.forEach(function (h) { if (ultimaT < h.t) ultimaT = h.t; });
+    var record = _logMejorRecord(entrenoLogRecords(log, e.id), _logTrabajo(e));
     if (record) records.push({ id: e.id, name: e.name, tipo: record.tipo, kg: record.kg, reps: record.reps, tiempo: _logEsTiempo(e) });
     var copia = JSON.parse(JSON.stringify(e));
     copia.series = hechas.map(function (h) { return JSON.parse(JSON.stringify(h)); });
+    delete copia.saltado;
     ejercicios.push(copia);
   });
   if (!ejercicios.length) return null;
 
   var fin = ahora;
-  if (ultimaT && ahora - ultimaT > ENTRENO_LOG_OLVIDO_MS) fin = ultimaT + 60000;
+  if (ultimaT && ENTRENO_LOG_OLVIDO_MS < ahora - ultimaT) fin = ultimaT + 60000;
   if (fin < s.inicio) fin = s.inicio;
+  var pausas = Math.min(entrenoLogPausado(s, fin), fin - s.inicio);
 
   var terminada = {
     id: s.id, clave: s.clave, nombre: s.nombre, semana: s.semana,
     inicio: s.inicio, fin: fin, ejercicios: ejercicios
   };
+  if (0 < pausas) terminada.pausas = Math.round(pausas);
   log.sesiones.push(terminada);
   if (log.sesiones.length > ENTRENO_LOG_MAX_SESIONES) log.sesiones = log.sesiones.slice(-ENTRENO_LOG_MAX_SESIONES);
 
@@ -417,11 +498,49 @@ function entrenoLogTerminar(log, ahora) {
   return { series: totales.series, volumen: totales.volumen, minutos: totales.minutos, records: records };
 }
 
-/** Borra una sesión del historial. true si estaba. */
-function entrenoLogBorrar(log, id) {
+/**
+ * Borra una sesión del historial. true si estaba. Queda apuntada en
+ * `borradas`: así otro dispositivo, al fusionar con la cuenta, no la devuelve.
+ */
+function entrenoLogBorrar(log, id, ahora) {
   var antes = log.sesiones.length;
   log.sesiones = log.sesiones.filter(function (s) { return s.id !== id; });
-  return log.sesiones.length !== antes;
+  if (log.sesiones.length === antes) return false;
+  log.borradas = _logBorradas((log.borradas || []).concat([{ id: id, t: typeof ahora === "number" ? ahora : Date.now() }]));
+  return true;
+}
+
+/**
+ * Corrige una sesión terminada (lo que se cambió en la pantalla de la sesión
+ * en modo «corregir»): se queda con su id, su día y su duración, y con las
+ * series que sigan marcadas como hechas. Si no queda ninguna, la sesión se
+ * borra. Lo que llega se limpia como todo lo demás.
+ *
+ * @returns {string|null} "cambiada", "borrada" o null si no estaba
+ */
+function entrenoLogReemplazar(log, id, editada, ahora) {
+  var i = -1;
+  log.sesiones.forEach(function (s, k) { if (s.id === id) i = k; });
+  if (i === -1 || !editada) return null;
+  var original = log.sesiones[i];
+  var ejercicios = (Array.isArray(editada.ejercicios) ? editada.ejercicios : []).map(function (e) {
+    var copia = JSON.parse(JSON.stringify(e));
+    copia.series = (copia.series || []).filter(function (s) { return s && s.hecha === true && 0 < Number(s.reps); });
+    delete copia.saltado;
+    return copia;
+  }).filter(function (e) { return e.series.length; });
+  var limpia = _logSesion({
+    id: original.id, clave: original.clave, nombre: original.nombre, semana: original.semana,
+    inicio: original.inicio, fin: original.fin, pausas: original.pausas,
+    editado: typeof ahora === "number" ? ahora : Date.now(),
+    ejercicios: ejercicios
+  }, true);
+  if (!limpia) {
+    entrenoLogBorrar(log, id, ahora);
+    return "borrada";
+  }
+  log.sesiones[i] = limpia;
+  return "cambiada";
 }
 
 /** Lunes a las 00:00 (hora local) de la semana de ese instante. */

@@ -1,5 +1,147 @@
 # Nutrition Planner — Roadmap
 
+## Entrenamientos: estado y prioridades al 2026-10-18 (esto primero si vas a tocar entrenamientos)
+
+**Sin subir: `main` sigue en `eab3332` (empujado; producción con sello `20261018za`). En el árbol de trabajo hay una segunda parte grande, sin commit ni despliegue: 1164 tests en verde, sello `20261018zb`.**
+
+**Lo que cambió en la segunda parte (2026-10-18, sin commit):**
+- Copia de datos completa («Descargar mis datos» + «Cargar una copia»), con el registro de peso y el cuestionario dentro (`js/core/data-backup.js`).
+- Diario y cuestionario en la cuenta, en `settings._entrenos`, unidos con lo del dispositivo; lo borrado no vuelve (`js/core/workout-sync.js`).
+- Cambios sobre la marcha: sustituir, saltar, quitar, añadir, superseries y circuitos, series de calentamiento, drop set y al fallo, notas, pausa y calculadora de discos (`js/core/workout-edit.js`, `js/ui/entreno-sesion.js`).
+- Corregir una sesión terminada, con «Guardar» y «Cancelar».
+- Programa cambiado a mano: sustituir, quitar huecos y añadir ejercicios, en el generador (`js/engine/workout-generator.js`).
+- Catálogo con búsqueda en cuatro idiomas, filtros por músculo y por material (`js/ui/entreno-catalogo.js`).
+- Progreso por ejercicio con gráfica, carga por músculo, cumplimiento del plan y CSV (`js/core/workout-stats.js`, `js/ui/entreno-progreso.js`).
+- «Hoy» con un solo botón y la semana de siete días; tutorial de cinco pasos (`js/ui/entreno-tutorial.js`).
+- Estilos de todo lo nuevo en `assets/css/style.css`, con un test que exige una regla CSS para cada clase.
+
+**Lo que NO está hecho todavía de la propuesta de diseño:** la navegación inferior de cinco secciones (Главная · План · Тренировка · Прогресс · Профиль), el tema grafito oscuro con acento lima, la página de cada ejercicio con su historial y las animaciones nuevas del flujo. Y la prueba en el móvil real (solo Chrome sin interfaz, 375 px).
+
+La tabla de abajo es el estado ANTES de la segunda parte: ahora mismo el catálogo, la superserie, la corrección, la sincronización y las gráficas por ejercicio sí existen.
+La parte de nutrición sigue donde la deja la sección del 2026-09-14, justo
+debajo de esta.
+
+El 2026-10-18 el dueño pegó un documento largo sobre lo que debe tener una
+buena aplicación de entrenamiento (Hevy, Strong, Fitbod, JEFIT y Nike
+Training Club; funciones de la A a la K; tres etapas) y dijo: «this is the
+roadmap for our project». **Es la hoja de ruta de la parte de
+entrenamientos.** Está entero, traducido, al final de este fichero («Hoja de
+ruta de entrenamientos del dueño (2026-10-18)»). Aquí va lo que ya hay y lo
+que falta, comprobado contra el código ese mismo día.
+
+**Aún no ha elegido por dónde seguir** («don't do anything yet»):
+pregúntale qué parte quiere y propón según la etapa 1. Cuando termines algo
+de estas tablas, actualízalas en el mismo commit.
+
+### Dónde está el código
+
+| Fichero | Qué hace |
+|---|---|
+| `js/ui/entreno-cuestionario.js` | Cuestionario de 6 pantallas. Sale solo la primera vez; luego, «Cambiar» en «Tu programa». |
+| `js/ui/render-entreno.js` | Panel «Entrenamientos»: «Tu programa», el plan, las fichas de ejercicio, las respuestas guardadas (`weekplate-entreno-v1`) y la exportación .ics. |
+| `js/engine/workout-generator.js` | Generador del plan semanal. Lógica pura, sin DOM. |
+| `js/data/exercises.js` | Catálogo `EXERCISE_CATALOG`: 81 ejercicios, con nombre y técnica en es/en/ru/uk (el ucraniano, sin revisar por un nativo). |
+| `js/data/exercise-poses.js`, `js/ui/entreno-figura.js` | Poses y motor de la animación 3D de cada ejercicio, con los músculos que trabajan y los que ayudan. |
+| `js/core/workout-log.js` | Diario (`nutritionPlanner.entrenoDiario.v1`): series, «la última vez», carga sugerida, récords, 1RM, semanas y racha. |
+| `js/ui/entreno-sesion.js` | Modo entrenamiento: la sesión en curso y el descanso. |
+| `js/ui/entreno-progreso.js` | La semana, la racha, el volumen de 8 semanas y el historial. |
+| `js/core/weight-log.js` | Registro del peso corporal (`weekplate-pesos-v1`; con cuenta, viaja en `settings._pesos`). |
+
+Tests: `workout-generator`, `workout-log`, `weight-log`, `exercises-*` y
+`entreno*` en `tests/`. Las claves `ent.*` están en es, en, ru y uk; en
+ruso, de usted.
+
+### Lo que hay y lo que falta, por apartados
+
+| Apartado | Ya hay | Falta |
+|---|---|---|
+| **A. Perfil** | Objetivo (ganar músculo, fuerza, tonificar, perder grasa, salud), experiencia, días a la semana y cuáles, duración (30, 45 o 60 min), dónde entrena y qué material tiene, uno a uno, qué quiere trabajar más (hasta 3 grupos), molestias (rodillas, lumbar, hombros) y ejercicios que no quiere. Edad, altura y peso salen de «Mis datos». | Ejercicios favoritos, objetivo «resistencia», tiempo que lleva entrenando, unidades (kg/lb, cm/in). |
+| **B. Catálogo** | 81 ejercicios con técnica en 4 idiomas, una animación propia cada uno y los músculos que trabajan y los que ayudan. | Pantalla de catálogo (hoy los ejercicios solo se ven dentro del plan), búsqueda, filtros, variantes, sustituir a mano, favoritos, ejercicios propios, notas, errores típicos. |
+| **C. Programas** | Sale solo según los días: cuerpo completo (1–3 días), superior/inferior (4–5) y empuje/tirón/piernas (6), con cada grupo grande dos veces por semana cuando los días dan. Series, repeticiones, descanso y RIR según objetivo y nivel. Descarga cada 5.ª semana (mitad de series, RIR 4). Series por grupo y semana a la vista. Exportación al calendario (.ics). | Editarlo a mano (añadir, quitar, reordenar, sustituir), plantillas, duplicar, pasar una sesión a otro día, planes de 4–12 semanas con periodización, varios programas, programas con nombre (5×5…), importar y exportar programas. |
+| **D. Sesión en curso** | Peso y repeticiones (o segundos) por serie, rellenos con «la última vez». Marcar la serie con un toque; añadir y quitar series. Descanso automático con −15/+15 s, vibración y sonido; pantalla encendida. Aviso de récord al momento y resumen final (tiempo, series, volumen, récords). Cada cambio se guarda al instante y la sesión se reanuda tras recargar. | Series de calentamiento, drop sets y al fallo, superseries y circuitos, notas, saltar, sustituir o reordenar un ejercicio, pausa, editar una sesión terminada (solo se puede borrar). |
+| **E. Entrenador** | Carga sugerida por doble progresión, con el porqué. Las molestias quitan ejercicios y ponen un sustituto; el acento añade una serie o un ejercicio; los ejercicios que no quiere no salen. | Usar el RPE/RIR real, reajustar tras saltarse una sesión, explicar los cambios del programa, estimar la recuperación, ejercicios preferidos. |
+| **F. Estadística** | Récords (kilos, 1RM estimado con Epley, repeticiones), la semana frente al plan (sesiones y kilos), racha de semanas, volumen de las 8 últimas semanas, historial de las 10 últimas sesiones con sus series. | Gráfica por ejercicio, volumen y frecuencia reales por grupo muscular, % del plan cumplido, informes mensuales, comparar periodos, exportar a CSV. |
+| **G. Herramientas** | Temporizador de descanso por ejercicio, ajustable y con aviso; 1RM orientativo. | Descanso distinto para el calentamiento, calculadoras de discos y de calentamiento, kg/lb, cronómetro para planchas, intervalos y HIIT. |
+| **H. Recuperación y seguridad** | Las molestias del cuestionario, el aviso «no es consejo médico» del plan, el texto de calentamiento y la descarga cada 5.ª semana. | Fatiga y ganas del día, sueño, agujetas, RPE/RIR real, sesiones saltadas y por qué, marcar un ejercicio que molesta durante la sesión, aviso de subida brusca de carga, cuándo parar por dolor. |
+| **I. Peso y nutrición** | El sitio es, de base, un planificador de comidas (calorías, macros, compra, despensa), y los entrenamientos por semana de «Mis datos» suben las calorías. Registro de peso corporal con gráfica, que va con la cuenta. | Perímetros, fotos con fecha, objetivos de peso y medidas, recordatorios de medirse. |
+| **J. Motivación** | Racha de semanas y récords. | Recordatorios, calendario de actividad, objetivos de semana o mes, informes, compartir. |
+| **K. Técnica** | Funciona sin internet (service worker), los datos se guardan en el dispositivo, tema claro/oscuro y 10 aspectos, desde 320 px, cuentas con Firebase y borrado de cuenta, «Descargar mis datos». | Lo de la lista de abajo, volver a cargar una copia, notificaciones. |
+
+**K, comprobado en el código el 2026-10-18; es el hueco que más puede doler:**
+
+- El diario vive **solo en este navegador**: no va a la cuenta. Las
+  respuestas del cuestionario tampoco; solo los días, que se guardan en el
+  campo `#workouts` de «Mis datos», y ese sí viaja.
+- «Descargar mis datos» (`exportarMisDatos`, `js/app.js`) copia solo las
+  claves que empiezan por `nutritionPlanner.`: se lleva el diario, pero
+  **no** las respuestas del cuestionario (`weekplate-entreno-v1`), ni el
+  registro de peso (`weekplate-pesos-v1`), ni el plan guardado
+  (`weekplate-plan-v1`). Y no hay forma de volver a cargar esa copia.
+- Para subir el diario a la cuenta: las reglas de Firestore solo admiten
+  cuatro campos, y publicar reglas nuevas lo hace el dueño desde la consola
+  (`HANDOFF.md` §9 y §11). O va dentro de `settings`, como `_pesos` y
+  `_prefs`, o hacen falta reglas nuevas. Un documento de Firestore admite
+  como mucho 1 MiB y el diario guarda hasta 400 sesiones: mide antes.
+
+### Por etapas (sección 4 del documento)
+
+**Etapa 1 — aplicación básica completa**
+
+| Función | Estado | Nota |
+|---|---|---|
+| Perfil y objetivos | Hecho | Apartado A. |
+| Catálogo con filtros | A medias | 81 ejercicios con técnica y animación; sin pantalla de catálogo, búsqueda ni filtros. |
+| Programas y plantillas | A medias | El programa sale solo; no se edita a mano ni se guardan plantillas. |
+| Calendario de entrenamientos | A medias | Días de la semana elegidos y exportación .ics; sin calendario dentro de la aplicación. |
+| Sesión con entrada rápida de series | Hecho | |
+| Resultados anteriores junto a los de hoy | Hecho | «La última vez» y relleno automático. |
+| Temporizador de descanso | Hecho | |
+| Superseries y calentamiento | Falta | Solo un texto general de calentamiento. |
+| Guardar sin perder datos | Hecho en el dispositivo | Cada cambio se guarda al instante; no hay copia en la cuenta. |
+| Historial y gráficas básicas | A medias | Historial y volumen semanal; sin gráfica por ejercicio. |
+| Récords y progreso | Hecho | |
+| Peso corporal y medidas | A medias | Peso sí; medidas no. |
+| Editar una sesión terminada | Falta | Solo se puede borrar. |
+| Técnica básica | Hecho | Texto en 4 idiomas y animación; sin errores típicos. |
+| Local y copia de seguridad | A medias | Local sí; la copia es solo de descarga, incompleta y sin forma de restaurarla. |
+
+**Etapa 2 — personalización inteligente**
+
+| Función | Estado | Nota |
+|---|---|---|
+| Programas listos de distintos niveles | A medias | El generador cambia con el nivel; no hay programas con nombre para elegir. |
+| Sobrecarga progresiva | Hecho | Doble progresión y descarga. |
+| Recomendación de peso y repeticiones | Hecho | Con el porqué. |
+| Sustituir según el material | A medias | Automático al generar el plan; no a mano. |
+| Reajustar tras saltarse una sesión | Falta | |
+| Analítica por grupos musculares | Falta | Solo las series planificadas por grupo. |
+| RPE/RIR y fatiga | A medias | RIR objetivo en el plan; no se apunta el real ni la fatiga. |
+| Fotos de progreso e informes mensuales | Falta | |
+| Planes de varias semanas | A medias | Semanas numeradas con descarga cada 5.ª; sin periodización. |
+
+**Etapa 3 — diferenciarse:** nada, salvo la base de nutrición (es el núcleo
+del sitio, pero con los entrenamientos solo se une por el número de
+entrenamientos a la semana, que sube las calorías). Del historial, lo único
+que adapta algo es la carga sugerida.
+
+### Lo siguiente (propuesta; el dueño aún no ha elegido)
+
+La regla del propio documento: **dejar perfecto el ciclo planificar →
+entrenar → apuntar → ver el progreso → recomendación para la siguiente
+sesión** antes de IA, funciones sociales o un módulo aparte. Con eso, los
+huecos más claros de la etapa 1:
+
+1. **Que no se pierda nada (K):** una copia completa (diario, cuestionario
+   y peso) que se pueda volver a cargar, y el diario en la cuenta. El
+   documento pone la fiabilidad por delante de todo, y hoy cambiar de móvil
+   o borrar los datos del navegador se lleva el diario entero.
+2. **Cambiar el plan a mano (C y D):** sustituir, saltar y reordenar
+   ejercicios en la sesión y en el programa; editar una sesión terminada.
+3. **Tipos de serie (D y G):** calentamiento, drop set y al fallo;
+   superseries y circuitos.
+4. **Progreso por ejercicio (F):** una gráfica por ejercicio y el volumen
+   real por grupo muscular.
+
 ## Estado y prioridades al 2026-09-14 (esto primero)
 
 **657 tests en verde. Desplegado y empujado, sello `20260914c`.**
@@ -857,7 +999,7 @@ decisión de arquitectura de datos.
 | 3 | Deterministic constraint solver and feasibility UX | XL | Milestone 2 (now: migration Fase 2) | Critical | Over-constraining menus; unclear trade-offs | Open |
 | 4 | Recipe, plan history, shopping list, and dashboard | L | Milestone 1–3, persistence | High | Scope creep and weak information architecture | Open |
 | 5 | Progress tracking and adaptive recommendations | L | Milestone 4 | High | Noisy user data and unsafe inferences | Open |
-| 6 | Workout and recovery domains | XL | Profile, progress, safety model | High | Mixing domain rules with unvalidated AI advice | Open |
+| 6 | Workout and recovery domains | XL | Profile, progress, safety model | High | Mixing domain rules with unvalidated AI advice | **En marcha desde 2026-10-17** — estado y hoja de ruta en «Entrenamientos», al principio de este fichero |
 | 7 | AI explanation/orchestration layer | L | Validated domain tools and server boundary | High | Hallucinations, API key exposure, user trust | Open |
 | 8 | Release hardening and portfolio launch | L | All above | High | Accessibility, privacy, and regression debt | Open |
 
@@ -877,6 +1019,548 @@ decisión de arquitectura de datos.
 - Remaining: barcode/import flows, meal-prep batching, calendar
   integration, coach mode, multilingual content, and analytics.
 - Add only after the core plan is trustworthy, explainable, and testable.
+
+## Hoja de ruta de entrenamientos del dueño (2026-10-18)
+
+Traducción fiel del documento que el dueño pegó en ruso el 2026-10-18, con
+la frase «this is the roadmap for our project». Solo se han quitado las
+imágenes, los iconos, los restos del copiado y los `utm_source` de los
+enlaces; el ejemplo de pantalla, que venía como texto suelto, va en un
+bloque. Lo que ya hay y lo que falta de cada punto está al principio de
+este fichero.
+
+Yo no estudiaría una sola aplicación, sino varias a la vez: unas resuelven
+mejor el diario de entrenamiento, otras la creación automática de programas
+y otras la enseñanza de la técnica y la motivación. Si se juntan sus puntos
+fuertes, sale un producto mucho más completo.
+
+He revisado las descripciones oficiales de las funciones de cinco
+aplicaciones conocidas: Hevy, Strong, Fitbod, JEFIT y Nike Training Club.
+Abajo repaso lo que hacen y después hago una lista grande de funciones para
+desarrollar una aplicación propia.
+
+### 1. Cinco aplicaciones de las que aprender
+
+#### Hevy — la mejor referencia para el diario de entrenamiento
+
+Hevy apuesta por registrar rápido los entrenamientos, crear programas y
+analizar el progreso. Funciones principales:
+
+- Registro de series, repeticiones, peso de trabajo y duración del entrenamiento.
+- Calentamiento, drop sets, series al fallo, superseries.
+- Temporizador de descanso, cálculo de discos, RPE (valoración subjetiva de lo dura que fue la serie).
+- Plantillas de entrenamiento y programas propios.
+- Los resultados anteriores junto a las series de hoy.
+- Récords personales, estimación del máximo a una repetición (1RM), volumen de entrenamiento.
+- Estadística por grupos musculares y frecuencia de entrenamiento.
+- Seguimiento del peso corporal, medidas y fotos de progreso.
+- Recordatorios de entrenamiento, rachas de actividad, informes y logros.
+- Feed social, perfiles, comparación de resultados y publicación de entrenamientos.
+- Sincronización con dispositivos ponibles compatibles e integraciones.
+
+Fuente: materiales oficiales de Hevy — [lista de funciones](https://www.hevyapp.com/features/) · [centro de ayuda](https://help.hevyapp.com/).
+
+#### Strong — referencia de minimalismo y comodidad en el gimnasio
+
+Strong sirve sobre todo como ejemplo de interfaz en la que se marcan las
+series y se vuelve a los resultados anteriores sin pasos de más. Funciones
+principales:
+
+- Plantillas y calendario de entrenamientos.
+- Registro de ejercicios, pesos, repeticiones y notas.
+- Ejercicios propios.
+- Superseries y circuitos.
+- Series de calentamiento, drop sets y series al fallo.
+- Temporizador de descanso automático y configurable.
+- Calculadoras de pesos de calentamiento y de discos.
+- RPE y otros indicadores de entrenamiento.
+- Gráficas de progreso avanzadas.
+- Medidas corporales y mapa de carga muscular.
+- Exportación de entrenamientos a CSV.
+- Compartir entrenamientos, tema oscuro, integración con Apple Health, Siri Shortcuts y servicios de terceros.
+
+Fuente: web oficial de Strong y su centro de ayuda — [web](https://www.strong.app/) · [centro de ayuda](https://help.strongapp.io/).
+
+#### Fitbod — referencia de personalización automática
+
+Fitbod no se limita a guardar registros: intenta elegir el siguiente
+entrenamiento según los objetivos, el material y el historial del usuario.
+Funciones principales:
+
+- Perfil con los objetivos de entrenamiento y el nivel de preparación.
+- Elección del material disponible y del lugar donde se entrena.
+- Número de entrenamientos por semana y división del entrenamiento (split).
+- Tiene en cuenta la duración deseada, el calentamiento, la vuelta a la calma, el cardio y las preferencias de variedad.
+- Selección automática de ejercicios.
+- Recomendación de series, repeticiones y peso de trabajo según los resultados recientes.
+- Estimación de la recuperación de los grupos musculares.
+- Sustitución de ejercicios, opinión sobre las preferencias y ajuste de las recomendaciones.
+- Vídeos de demostración de los ejercicios.
+- Actualiza los entrenamientos siguientes según las sesiones registradas.
+
+Diferencia importante: aquí el algoritmo tiene que tener en cuenta el
+historial de entrenamientos, no cambiar ejercicios al azar. Y la estimación
+de la recuperación no puede tomarse como una medida exacta del estado
+fisiológico.
+
+Fuente: centro de ayuda de Fitbod — [web](https://fitbod.me/) · [centro de ayuda](https://help.fitbod.me/).
+
+#### JEFIT — referencia de biblioteca grande y programas
+
+JEFIT junta un planificador, un catálogo de ejercicios amplio, un diario de
+entrenamiento y analítica. Funciones principales:
+
+- Biblioteca de más de 1.500 ejercicios, según el propio servicio.
+- Programas listos, entre ellos 5×5, Push/Pull/Legs y Full Body.
+- Entrenamientos propios y planes de varias semanas.
+- Filtros por grupos musculares, objetivos y material.
+- Registro de series, peso, repeticiones, superseries, drop sets y notas.
+- Instrucciones para hacer los ejercicios.
+- Analítica de volumen, récords personales y 1RM.
+- Métricas de carga y recuperación.
+- Sincronización entre móviles, relojes y versión web compatibles.
+- Comunidad e intercambio de datos de entrenamiento.
+- Planificación adaptativa según los datos del usuario, en las funciones del servicio que la tienen.
+
+Fuente: materiales oficiales de JEFIT — [web](https://www.jefit.com/).
+
+#### Nike Training Club — referencia de enseñanza y sesiones listas
+
+A diferencia de las aplicaciones que sobre todo registran el entrenamiento,
+Nike Training Club ayuda a entender qué hacer y cómo hacer los movimientos.
+Funciones principales:
+
+- Más de 200 entrenamientos y programas, según la página oficial.
+- Sesiones de fuerza, resistencia, HIIT, yoga, pilates y movilidad.
+- Entrenamientos con material y sin él.
+- Vídeos y entrenamientos con instructor.
+- Sesiones de unos 5 a 50 minutos.
+- Programas para principiantes y para usuarios con más experiencia.
+- Planificación de la semana de entrenamiento y programas de varias semanas.
+- Materiales sobre técnica, recuperación y el proceso de entrenamiento.
+- Historial de actividad, registro de las sesiones hechas y logros.
+- Conexión con servicios y dispositivos compatibles.
+
+Fuente: Nike — [Nike Training Club](https://www.nike.com/es/NTC-app).
+
+### 2. Qué enseñan estos ejemplos
+
+- **Hevy y Strong: el diario tiene que ser rápido.** Durante el
+  entrenamiento nadie quiere rellenar formularios largos. Hay que ver el
+  resultado anterior, meter rápido el peso y las repeticiones de hoy,
+  marcar la serie como hecha y descansar entre series.
+- **Fitbod: la aplicación tiene que tener en cuenta el historial.** El
+  siguiente entrenamiento tiene más sentido cuando el sistema sabe qué
+  ejercicios hizo la persona, qué peso levantó y cómo cambiaron sus
+  resultados.
+- **JEFIT: importan la elección y la flexibilidad.** No se puede obligar a
+  todos a seguir una misma plantilla: cada uno tiene sus objetivos, su
+  experiencia, su material y sus preferencias.
+- **Nike Training Club: no basta con nombrar el ejercicio.** Al
+  principiante le sirven una demostración visual, instrucciones y una
+  secuencia de sesiones lista, no solo una lista de «3 series de 10
+  repeticiones».
+
+**Conclusión principal:** una buena aplicación tiene que cerrar el ciclo
+entero del entrenamiento: planificación → ejecución → registro de
+resultados → análisis → ajuste de la siguiente sesión. Funciones como el
+feed social o la inteligencia artificial pueden ser útiles, pero sin ese
+ciclo básico no salvan el producto.
+
+### 3. Lista completa de funciones que conviene prever
+
+Tres prioridades:
+
+- **Obligatorio:** sin esto la aplicación no cumple bien su tarea principal.
+- **Muy deseable:** mejora claramente la experiencia del usuario.
+- **Extra:** puede distinguir el producto de la competencia, pero al
+  principio no hace falta.
+
+#### A. Perfil del usuario y configuración inicial
+
+| Qué | Detalle | Prioridad |
+|---|---|---|
+| Objetivo | Ganar masa muscular, fuerza, perder grasa, forma física general, resistencia. | Obligatorio |
+| Experiencia | Principiante, intermedio, avanzado; cuánto tiempo lleva entrenando. | Obligatorio |
+| Datos del cuerpo | Edad, altura, peso; medidas extra si quiere. | Obligatorio |
+| Lugar | Gimnasio, gimnasio en casa, casa, calle. | Obligatorio |
+| Material | Barra, mancuernas, máquinas, poleas, barra de dominadas, gomas, peso corporal y otros. | Obligatorio |
+| Horario | Días de la semana, número de entrenamientos, duración cómoda de la sesión. | Obligatorio |
+| Preferencias | Ejercicios favoritos, movimientos que quiere excluir, formatos de entrenamiento preferidos. | Obligatorio |
+| Limitaciones | Lesiones, limitaciones de movimiento y contraindicaciones a tener en cuenta: solo los datos necesarios y con una personalización prudente. | Deseable |
+| Unidades | Kilos/libras, centímetros/pulgadas, idioma y formato de hora. | Deseable |
+
+Detalle importante: no hay que obligar a contestar 30 preguntas en el
+primer arranque. El perfil básico tiene que crearse rápido, y los ajustes
+adicionales se pueden ir ofreciendo poco a poco con el uso.
+
+#### B. Catálogo de ejercicios
+
+Prioridad: núcleo obligatorio del producto.
+
+Es una de las partes más importantes de la aplicación. Si la base de
+ejercicios es mala, la creación de programas, la enseñanza de la técnica y
+la búsqueda de sustitutos funcionan peor.
+
+| Función | Qué tiene que hacer |
+|---|---|
+| Búsqueda | Por nombre, sinónimos y tipo de movimiento. |
+| Filtros | Músculos, material, dificultad, tipo de ejercicio, lugar. |
+| Esquema muscular | Mostrar los músculos principales y los secundarios. |
+| Técnica | Demostración, instrucciones paso a paso, errores técnicos principales. |
+| Parámetros | Material, tipo de resistencia, unilateral o bilateral, músculos principales. |
+| Variantes | Otras formas de hacer el mismo movimiento. |
+| Sustitutos | Proponer ejercicios con una tarea parecida si falta el material o no se puede hacer el movimiento original. |
+| Favoritos | Guardar los ejercicios preferidos. |
+| Ejercicios propios | Crear y editar movimientos del usuario. |
+| Notas | Consejos personales de técnica y de ajuste de la máquina. |
+
+Es muy útil tener un vídeo o una animación corta en bucle de cada
+ejercicio, y además una alternativa en texto. Hay que indicar bien que los
+músculos marcados son principales o secundarios, sin afirmar que un
+ejercicio concreto carga aislado un solo músculo.
+
+#### C. Creación de programas de entrenamiento
+
+Prioridad: núcleo obligatorio del producto.
+
+El usuario tiene que poder tanto recibir un programa listo como montarlo
+por su cuenta. Necesario:
+
+- Montar entrenamientos con ejercicios sueltos.
+- Planificar la semana de entrenamiento.
+- Repartir la carga entre los grupos musculares.
+- Divisiones: Full Body, Upper/Lower, Push/Pull/Legs y variantes propias.
+- Ajustar el número de ejercicios, de series de trabajo y de repeticiones.
+- Elegir el rango de repeticiones objetivo y el descanso.
+- Indicar un RPE o RIR objetivo: lo dura que debe sentirse la serie o cuántas repeticiones deben quedar en reserva.
+- Configurar el calentamiento, las series de trabajo y la vuelta a la calma.
+- Guardar plantillas y duplicar entrenamientos existentes.
+- Reordenar ejercicios, añadir nuevos y quitar los que sobran.
+- Pasar entrenamientos a otros días.
+- Editar el programa sin perder el historial ya registrado.
+- Ver qué músculos y movimientos hay planificados en la semana.
+
+Avanzado:
+
+- Planes de 4 a 12 semanas.
+- Periodización: cambiar volumen e intensidad por fases.
+- Semanas de descarga.
+- Subir la carga poco a poco.
+- Ajuste automático del programa si se salta un entrenamiento.
+- Varios programas para distintos objetivos.
+- Importar y exportar programas.
+- Programas listos de autores o entrenadores contrastados.
+- Reglas de progresión propias.
+
+La aplicación no debe presentar ningún programa como el mejor para todo el
+mundo. El esquema adecuado depende del objetivo, la experiencia, el tiempo
+disponible, la recuperación y las limitaciones de cada uno.
+
+#### D. Pantalla del entrenamiento en curso
+
+Prioridad: crítica.
+
+Aquí pasa el usuario buena parte del tiempo. Si la pantalla es incómoda,
+ninguna analítica bonita lo compensa.
+
+Ejemplo de pantalla durante la sesión (ilustración de la estructura
+recomendada, no una captura de una aplicación existente):
+
+```text
+Entrenamiento A                                  En curso
+Press de banca con barra
+Resultado anterior: 60 kg × 10
+Serie 1        Peso, kg: 62,5        Repeticiones: 8
+DESCANSO 01:30          −15 s  ·  Pausa  ·  +15 s
+[ Marcar la serie como hecha ]
+```
+
+Hay que prever sí o sí:
+
+- Añadir y quitar series rápido.
+- Campos separados para peso y repeticiones.
+- Relleno automático con los datos de la sesión anterior, que se pueda corregir.
+- Marcar las series hechas.
+- Temporizador de descanso automático, que también se pueda arrancar a mano y cambiar de duración.
+- Pausas, y poder seguir el entrenamiento después de minimizar la aplicación.
+- Añadir calentamiento, series de trabajo y tipos especiales de serie.
+- Superseries y circuitos.
+- Notas al ejercicio y a cada serie.
+- Saltar, sustituir o reordenar un ejercicio.
+- Ver los ejercicios que quedan.
+- Guardar un entrenamiento sin terminar.
+- Terminar, cancelar y editar la sesión.
+- Recalcular bien la duración y la estadística.
+- Mostrar el récord personal y los resultados anteriores.
+
+Detalle técnico crítico: la serie tiene que guardarse en cuanto se
+confirma, no solo al terminar el entrenamiento entero. Cerrar la
+aplicación, una llamada entrante o pulsar «Atrás» sin querer no deben
+destruir lo introducido.
+
+#### E. Entrenador automático y plan adaptativo
+
+Prioridad: muy deseable, si la tarea de la aplicación es ayudar a entrenar
+y no solo llevar un diario. Aquí el producto puede ser bastante más listo
+que un registro normal.
+
+| Función | Cómo tiene que funcionar |
+|---|---|
+| Recomendación de peso | Propone el peso según las series anteriores, las repeticiones y lo duras que fueron. |
+| Sobrecarga progresiva | Indica cuándo subir el peso, las repeticiones o el número de series. |
+| Sustitutos | Propone un ejercicio alternativo disponible con una tarea de entrenamiento parecida. |
+| Ajuste del volumen | Cuenta las series hechas de verdad, no solo el plan inicial. |
+| Adaptar el calendario | Ayuda a reorganizar el programa tras saltarse una sesión. |
+| Tener en cuenta la opinión | Recuerda qué ejercicios excluye o prefiere el usuario. |
+| Seguimiento de la carga | Muestra el volumen de entrenamiento y cómo cambia en los periodos elegidos. |
+| Estimar la recuperación | Usa el historial, la fatiga que dice el usuario y, si los hay, otros datos; muestra la incertidumbre de la estimación. |
+| Respuestas | Explica los ejercicios, los términos de entrenamiento y la lógica de las recomendaciones. |
+| Por qué cambia | Muestra por qué cambiaron el peso, el número de series o los ejercicios. |
+
+Yo no empezaría prometiendo que la inteligencia artificial «determina a la
+perfección la recuperación muscular» o «sabe exactamente la carga óptima».
+Son afirmaciones exageradas. Mejor un mecanismo de recomendación
+transparente, que el usuario pueda comprobar y cambiar.
+
+#### F. Estadística y análisis del progreso
+
+Prioridad: obligatorio. Registrar entrenamientos sin poder entender qué
+cambió en un mes no basta.
+
+- **Progreso en los ejercicios:** historial de pesos de trabajo y
+  repeticiones, mejor resultado, 1RM estimado, cambio en la semana, el mes
+  y periodos más largos.
+- **Volumen de entrenamiento:** número de series, repeticiones y peso
+  levantado; comparación del volumen por ejercicios y grupos musculares,
+  diciendo con claridad cómo se calcula.
+- **Medidas físicas:** peso corporal, perímetros, fotos de progreso,
+  tendencia y fechas de las medidas.
+
+Lista completa de métricas a considerar:
+
+- Número de entrenamientos por días, semanas y meses.
+- Porcentaje de los entrenamientos planificados que se hicieron.
+- Rachas de actividad y parones.
+- Duración de las sesiones.
+- Pesos de trabajo y repeticiones de cada ejercicio.
+- Récords personales.
+- 1RM previsto, no garantizado.
+- Volumen por ejercicios y grupos musculares.
+- Frecuencia con que se entrena cada grupo muscular.
+- Cumplimiento del plan en series y repeticiones.
+- Historial de peso corporal y medidas.
+- Fotos de progreso por fecha.
+- Informes semanales y mensuales.
+- Comparar los periodos que se elijan.
+- Exportación del historial a CSV u otro formato cómodo.
+
+Además, las cifras tienen que calcularse bien. Por ejemplo, el «peso total
+levantado» no se puede comparar sin más entre ejercicios de distinto tipo,
+y que suba el volumen no demuestra por sí solo que el programa sea más
+eficaz.
+
+#### G. Temporizadores y herramientas
+
+Prioridad: núcleo obligatorio y algunos añadidos útiles.
+
+- Temporizador de descanso con tiempo configurable.
+- Aviso de fin del descanso con sonido, vibración o ambos.
+- Descansos distintos para el calentamiento y las series de trabajo.
+- Calculadora de discos para la barra, contando el peso de la barra.
+- Calculadora de series de calentamiento.
+- 1RM orientativo a partir de las series hechas.
+- Paso de kilos a libras y al revés.
+- Cronómetro para planchas, isometrías y ejercicios por tiempo.
+- Temporizadores de intervalos para circuitos y HIIT.
+- Superseries y circuitos, pasando de un ejercicio al siguiente en orden.
+- Tiempo del entrenamiento en curso.
+- Poder pausar el entrenamiento.
+- Que el temporizador siga con la aplicación minimizada, si la plataforma lo permite.
+
+#### H. Recuperación, cómo se siente y seguridad
+
+Prioridad: muy deseable. Lo útil aquí no es que la aplicación diagnostique,
+sino que ayude a organizar los entrenamientos con más seguridad.
+
+- Autovaloración de la fatiga y de lo preparado que se siente para entrenar.
+- Sueño, por lo que diga el usuario o por integraciones.
+- Notas sobre el dolor muscular (agujetas).
+- Dureza subjetiva de las series con RPE/RIR.
+- Sesiones saltadas y por qué.
+- Recomendaciones de calentamiento y vuelta a la calma.
+- Vídeos con la técnica correcta y los errores frecuentes.
+- Marcar los ejercicios que causan molestias.
+- Aviso si se intenta subir de golpe la carga fijada.
+- Explicar cuándo hay que parar un ejercicio por dolor o por sentirse raro.
+- Recomendaciones de descanso discretas.
+- Recordar que la aplicación no sustituye una valoración médica ante lesiones o síntomas preocupantes.
+
+No conviene que un «porcentaje de recuperación de cada músculo»
+pseudocientífico sea la única base de una decisión de entrenamiento. Mejor
+mostrar una estimación orientativa junto al historial real de carga y lo
+que dice el usuario.
+
+#### I. Peso corporal, nutrición y composición corporal
+
+Prioridad: depende de cómo se posicione la aplicación. Si se orienta al
+culturismo, la hipertrofia o el cambio de composición corporal, es un
+módulo extra útil.
+
+- Historial del peso corporal y su tendencia.
+- Perímetros de cintura, pecho, brazos, caderas y otras zonas.
+- Fotos con fecha.
+- Objetivos de peso corporal y de medidas.
+- Calorías y macronutrientes, si se hace un diario de comidas.
+- Relación entre los objetivos de entrenamiento y el plan de comidas.
+- Historial de cumplimiento del plan.
+- Sincronización con una aplicación de nutrición aparte.
+- Recordatorios de medirse.
+
+No hay que mezclar la analítica de entrenamiento con estimaciones del
+porcentaje de grasa a partir de una foto, poco fiables desde el punto de
+vista médico. Si se muestra un valor calculado, hay que explicar sus
+límites.
+
+#### J. Motivación y retención
+
+Prioridad: añadido útil.
+
+- Recordatorios del entrenamiento planificado.
+- Calendario de actividad.
+- Objetivos de la semana o del mes.
+- Recompensas por coger un ritmo regular.
+- Récords personales e historial de logros.
+- Informe del mes o del año.
+- Visualización clara del progreso.
+- Compartir un entrenamiento o un resultado.
+- Objetivos personales que el usuario puede cambiar.
+- Mensajes discretos tras un parón largo.
+- Flexibilidad al saltarse una sesión, sin mensajes que culpen.
+- Funciones sociales (seguir a otros, feed de entrenamientos, comparar resultados) solo si encajan con la idea de la aplicación.
+
+Lo principal es premiar la constancia y el cumplimiento del plan, no
+empujar a entrenar con dolor ni ignorar la recuperación.
+
+#### K. Sincronización, ajustes y calidad técnica
+
+Prioridad: casi todo es calidad obligatoria del producto.
+
+- Registro e inicio de sesión, si hace falta sincronizar entre dispositivos.
+- Datos guardados en el dispositivo.
+- Copia de seguridad y restauración.
+- Funcionar sin internet hasta donde la arquitectura lo permita.
+- Sincronizar al volver la conexión.
+- Que no se dupliquen registros al sincronizar otra vez.
+- Exportar entrenamientos.
+- Importar el historial de otra aplicación, cuando sea técnicamente posible.
+- Tema oscuro.
+- Interfaz adaptada a distintos tamaños de pantalla.
+- Accesibilidad: elementos de tamaño suficiente, buena legibilidad y etiquetas claras.
+- Notificaciones configurables.
+- Gestión de los datos personales y borrado de la cuenta.
+- Ajustes de privacidad de las fotos y del perfil fáciles de encontrar.
+- Errores comprensibles y poder recuperar un entrenamiento sin terminar.
+
+Especialmente importante: una buena aplicación no debe depender de una
+conexión perfecta en el gimnasio. Como mínimo, el registro básico de
+ejercicios, series y resultados tiene que funcionar en el dispositivo, y la
+sincronización hacerse aparte.
+
+### 4. Qué conjunto de funciones elegiría
+
+No recomiendo crear desde el primer día todas las funciones de las cinco
+aplicaciones a la vez. Aumentaría la complejidad, y algunas funciones no
+serán útiles hasta que haya un público.
+
+Yo construiría el producto en tres etapas.
+
+**Etapa 1. Aplicación básica completa** (prioridad n.º 1)
+
+- Perfil y objetivos de entrenamiento.
+- Catálogo de ejercicios con filtros.
+- Creación de programas y plantillas.
+- Calendario de entrenamientos.
+- Entrenamiento en curso con entrada rápida de series.
+- Resultados anteriores junto a los actuales.
+- Temporizador de descanso.
+- Superseries y calentamiento.
+- Guardar los datos sin pérdidas.
+- Historial de entrenamientos y gráficas básicas.
+- Récords personales y estadística de progreso.
+- Peso corporal y medidas.
+- Editar un entrenamiento terminado.
+- Instrucciones básicas de técnica.
+- Almacenamiento local y copia de seguridad.
+
+**Etapa 2. Personalización inteligente**
+
+- Programas listos de distintos niveles.
+- Sobrecarga progresiva.
+- Recomendaciones de peso y repeticiones.
+- Sustitución de ejercicios según el material.
+- Adaptar el programa tras saltarse una sesión.
+- Analítica ampliada por grupos musculares.
+- RPE/RIR y fatiga subjetiva.
+- Fotos de progreso e informes mensuales.
+- Planes listos de varias semanas.
+
+**Etapa 3. Diferenciarse**
+
+- Asistente con IA que explica sus recomendaciones.
+- Programas adaptativos basados en el historial.
+- Sincronización con relojes y servicios de fitness.
+- Módulo de nutrición ampliado.
+- Feed social e intercambio de entrenamientos.
+- Integraciones para entrenadores y sus clientes.
+- Informes personales ampliados.
+- Herramientas extra de análisis de la técnica, si hay tecnología adecuada.
+
+### 5. Lo que considero más importante
+
+Hay funciones que lucen mucho en una presentación pero valen menos de lo
+que parece. La IA, los logros, las animaciones bonitas y el feed social no
+compensan una entrada de series lenta, una mala base de ejercicios o perder
+el historial de entrenamientos.
+
+Criterios de calidad:
+
+- **Rapidez:** apuntar una serie lleva literalmente unos pocos toques, sin
+  campos obligatorios de más.
+- **Fiabilidad:** el historial no se pierde ni se duplica, y el usuario
+  puede corregir un error.
+- **Personalización:** el sistema tiene en cuenta los entrenamientos
+  pasados y el material, pero deja corregir a mano.
+- **Claridad:** el usuario entiende para qué hace el ejercicio, qué le toca
+  después y cómo cambia su progreso.
+- **Utilidad práctica:** las gráficas y las recomendaciones ayudan a
+  decidir, no solo adornan.
+- **Seguridad y privacidad:** la aplicación no hace promesas médicas ni
+  convierte la motivación en presión.
+
+La regularidad y una carga equilibrada importan más que los adornos: por
+ejemplo, las recomendaciones de la OMS para adultos incluyen actividades de
+fortalecimiento de los grandes grupos musculares al menos dos días por
+semana, junto con actividad aeróbica. Es un buen ejemplo de referencia
+básica para planificar, aunque el programa concreto depende de los
+objetivos y la salud de cada uno. (Fuente: Organización Mundial de la
+Salud.)
+
+### 6. Conclusión final
+
+Yo tomaría Hevy y Strong como base del diario de entrenamiento, Fitbod como
+referencia de planificación adaptativa, JEFIT para la estructura del
+catálogo de ejercicios y Nike Training Club para la enseñanza y la
+demostración de los movimientos.
+
+Una aplicación fuerte no tiene que incluir absolutamente todas estas
+funciones. Pero sí tiene que tener un ciclo de entrenamiento fiable: el
+usuario sabe qué hacer, hace el entrenamiento, apunta rápido el resultado,
+ve su progreso y recibe una recomendación razonable para la siguiente
+sesión.
+
+Es ese ciclo lo que yo dejaría funcionando a la perfección antes de añadir
+una IA compleja, funciones sociales o un módulo de nutrición aparte.
 
 ## Update rule
 
