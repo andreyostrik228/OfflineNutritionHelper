@@ -595,7 +595,8 @@ registerFoodTable("ru", {
   "Ensalada de pollo y pasta con maíz": "Салат с курицей, пастой и кукурузой",
   "Pechuga de pavo al horno con verduras": "Запечённая грудка индейки с овощами",
   "Ternera magra al horno con patata y pimiento": "Запечённая нежирная говядина с картофелем и перцем",
-  "Garbanzos con pollo y tomate al curry": "Нут с курицей и томатами карри"
+  "Garbanzos con pollo y tomate al curry": "Нут с курицей и томатами карри",
+  "Opción no disponible": "Вариант недоступен"
 });
 
 registerDishWords("ru", {

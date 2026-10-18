@@ -727,5 +727,18 @@ registerI18nTable("es", {
   "ics.hora_entreno": "Hora del entreno",
   "ui.resetear_titulo": "¿Borrar el formulario?",
   "ui.resetear_texto": "Se borran los datos del formulario, incluido el presupuesto, y el plan que se muestra.",
-  "ui.resetear_confirmar": "Sí, resetear"
+  "ui.resetear_confirmar": "Sí, resetear",
+  "ui.peso_registro_titulo": "Registro de peso",
+  "ui.peso_registro_placeholder": "ej. 72,5",
+  "ui.peso_guardar": "Guardar",
+  "ui.peso_registro_vacio": "Escribe tu peso de hoy.",
+  "ui.peso_registro_formato": "Escribe solo números, con coma o punto (ej. 72,5).",
+  "ui.peso_registro_rango": "El peso tiene que estar entre 30 y 300 kg.",
+  "ui.peso_registro_paso": "Usa una sola cifra decimal (ej. 72,5).",
+  "ui.peso_registro_guardado": "Peso de hoy guardado.",
+  "ui.peso_registro_sin_guardar": "No se pudo guardar en este navegador.",
+  "ui.peso_registro_dos": "Añade al menos dos pesajes para ver el gráfico.",
+  "ui.peso_registro_grafico": "Gráfico de tu peso de los últimos días",
+  "ui.peso_registro_min": "mín. {v} kg",
+  "ui.peso_registro_max": "máx. {v} kg"
 });

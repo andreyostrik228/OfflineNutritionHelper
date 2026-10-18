@@ -594,7 +594,8 @@ registerFoodTable("uk", {
   "Ensalada de pollo y pasta con maíz": "Салат з куркою, пастою і кукурудзою",
   "Pechuga de pavo al horno con verduras": "Запечене філе індички з овочами",
   "Ternera magra al horno con patata y pimiento": "Запечена пісна яловичина з картоплею та перцем",
-  "Garbanzos con pollo y tomate al curry": "Нут з куркою та томатами карі"
+  "Garbanzos con pollo y tomate al curry": "Нут з куркою та томатами карі",
+  "Opción no disponible": "Варіант недоступний"
 });
 
 // El vocabulario de piezas: solo las etiquetas de proteína (`mainProt`), que

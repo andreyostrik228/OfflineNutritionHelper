@@ -95,7 +95,9 @@ var suites = [
   "ics.test",
   "ics-plan.test",
   "reset-confirm.test",
-  "plan-store.test"
+  "plan-store.test",
+  "weight-log.test",
+  "exercises-tecnica.test"
 ];
 
 (async function () {

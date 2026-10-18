@@ -4072,3 +4072,15 @@ body.modo-entreno .tabbar { display: none !important; }
   color: var(--ink);
 }
 .entreno__hora input:focus-visible { outline: 3px solid var(--volt); outline-offset: 2px; }
+/* ── Registro de peso (js/ui/render-weight.js) ─────────────────────────── */
+.weight-log { grid-column: 1 / -1; }
+.weight-log__row { display: flex; gap: 8px; align-items: stretch; }
+.weight-log__row input { flex: 1 1 auto; min-width: 0; min-height: 42px; padding: 8px 10px; font: inherit; font-size: 0.95rem; border: 1.5px solid var(--field-line); border-radius: var(--r-sm); background: var(--surface); color: var(--ink); }
+.weight-log__row input:focus-visible { outline: 3px solid var(--volt); outline-offset: 2px; }
+.weight-log__msg { margin: 6px 0 0; font-size: 0.9rem; color: var(--text-2); }
+.weight-log__msg--error { color: #b3261e; }
+.weight-log__hint { margin: 8px 0 0; font-size: 0.9rem; color: var(--text-2); }
+.weight-log__chart { margin-top: 10px; color: var(--ink); }
+.weight-log__svg { display: block; width: 100%; height: auto; }
+.weight-log__range,
+.weight-log__dates { display: flex; justify-content: space-between; margin-top: 4px; font-size: 0.85rem; color: var(--text-2); }

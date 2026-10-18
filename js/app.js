@@ -1698,6 +1698,11 @@ document.addEventListener("DOMContentLoaded", function () {
     if (tourBtn) tourBtn.addEventListener("click", repetirExplicacion);
   });
 
+  // Registro de peso bajo «Peso (kg)» (js/core/weight-log.js, js/ui/render-weight.js).
+  safeInit("weight-log", function () {
+    if (typeof initWeightLog === "function") initWeightLog();
+  });
+
   // Último plan guardado en este dispositivo: se vuelve a pintar tal cual, sin
   // generar nada (ver js/core/plan-store.js). Va AQUÍ, con los módulos ya
   // montados: pintar el día necesita el carrusel (_updateDayArrows, más arriba)

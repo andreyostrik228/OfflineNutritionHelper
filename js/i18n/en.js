@@ -824,5 +824,18 @@ registerI18nTable("en", {
   "ics.hora_entreno": "Workout time",
   "ui.resetear_titulo": "Clear the form?",
   "ui.resetear_texto": "This clears the form data, including the budget, and the plan on screen.",
-  "ui.resetear_confirmar": "Yes, reset"
+  "ui.resetear_confirmar": "Yes, reset",
+  "ui.peso_registro_titulo": "Weight log",
+  "ui.peso_registro_placeholder": "e.g. 72.5",
+  "ui.peso_guardar": "Save",
+  "ui.peso_registro_vacio": "Enter today's weight.",
+  "ui.peso_registro_formato": "Use numbers only, with a comma or a dot (e.g. 72.5).",
+  "ui.peso_registro_rango": "Weight must be between 30 and 300 kg.",
+  "ui.peso_registro_paso": "Use one decimal place at most (e.g. 72.5).",
+  "ui.peso_registro_guardado": "Today's weight is saved.",
+  "ui.peso_registro_sin_guardar": "Could not save in this browser.",
+  "ui.peso_registro_dos": "Add at least two weigh-ins to see the chart.",
+  "ui.peso_registro_grafico": "Chart of your weight over recent days",
+  "ui.peso_registro_min": "min {v} kg",
+  "ui.peso_registro_max": "max {v} kg"
 });

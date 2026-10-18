@@ -128,6 +128,19 @@ function entrenoLeerControles() {
   return { nivel: nivel, equipamiento: equipamiento, semana: semana };
 }
 
+/**
+ * Técnica del ejercicio en el idioma de la pantalla: tecnica_en, tecnica_ru o
+ * tecnica_uk del catálogo (js/data/exercises.js). Sin traducción para ese
+ * idioma, la española de siempre.
+ */
+function entrenoTecnica(e) {
+  var lang = typeof getLang === "function" ? getLang() : "es";
+  var catalogo = typeof EXERCISE_CATALOG !== "undefined" ? EXERCISE_CATALOG : [];
+  var ejercicio = catalogo.filter(function (x) { return x.id === e.id; })[0];
+  var texto = (ejercicio && lang !== "es") ? ejercicio["tecnica_" + lang] : null;
+  return (typeof texto === "string" && texto) ? texto : e.tecnica;
+}
+
 function entrenoEsc(texto) {
   return escapeHtml(String(texto));
 }
@@ -170,7 +183,7 @@ function entrenoTablaHtml(sesion) {
       '<td data-label="' + entrenoEsc(etiqueta.reps) + '">' + entrenoEsc(e.reps) + "</td>" +
       '<td data-label="' + entrenoEsc(etiqueta.descanso) + '">' + entrenoDescanso(e.restSeconds) + "</td>" +
       '<td data-label="' + entrenoEsc(etiqueta.rir) + '">' + e.rir + "</td>" +
-      '<td class="entreno__tec" data-label="' + entrenoEsc(etiqueta.tecnica) + '">' + entrenoEsc(e.tecnica) + "</td>" +
+      '<td class="entreno__tec" data-label="' + entrenoEsc(etiqueta.tecnica) + '">' + entrenoEsc(entrenoTecnica(e)) + "</td>" +
       "</tr>";
   }).join("");
   return '<div class="entreno__tabla"><table><thead><tr>' +

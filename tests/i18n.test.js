@@ -641,6 +641,15 @@ function run(t) {
     });
   });
 
+  t.test("el plato de relleno («Opción no disponible») sale traducido en inglés, ruso y ucraniano", function () {
+    // buildPlaceholderDish lo usa cuando no cabe ningún plato. Va como nombre
+    // de plato, así que se traduce con tDish igual que los demás.
+    var s = sandboxDeComida();
+    assert.strictEqual(s.tDish("Opción no disponible", "en"), "Option not available");
+    assert.strictEqual(s.tDish("Opción no disponible", "ru"), "Вариант недоступен");
+    assert.strictEqual(s.tDish("Opción no disponible", "uk"), "Варіант недоступний");
+  });
+
   t.test("fuera del inglés tDish NO compone: o el nombre entero o el original", function () {
     // Los conectores de la composición son ingleses. Componer en ruso
     // daba "Курица with рис".
@@ -710,6 +719,10 @@ function run(t) {
       delCatalogo[d.name] = 1;
       (d.items || []).forEach(function (i) { delCatalogo[i.name] = 1; });
     });
+    // Excepción explícita: el plato de relleno de buildPlaceholderDish
+    // (js/engine/dish-selector.js) no es del catálogo, pero sí llega a
+    // pantalla cuando no cabe ningún plato, y se traduce a propósito.
+    delCatalogo["Opción no disponible"] = 1;
     IDIOMAS_HECHOS.forEach(function (lang) {
       var sobran = Object.keys(s.FOOD_TABLES[lang]).filter(function (n) {
         return !delCatalogo[n];

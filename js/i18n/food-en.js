@@ -126,7 +126,8 @@ registerFoodTable("en", {
   "Merluza": "Hake",
   "Rape": "Monkfish",
   "Salmón": "Salmon",
-  "Sardinas en lata": "Tinned sardines"
+  "Sardinas en lata": "Tinned sardines",
+  "Opción no disponible": "Option not available"
 });
 
 /**

@@ -825,5 +825,19 @@ registerI18nTable("uk", {
   // Claves ui.resetear_*: traducción sin revisar por una persona nativa en ucraniano.
   "ui.resetear_titulo": "Очистити форму?",
   "ui.resetear_texto": "Буде стерто дані форми, зокрема бюджет, і план на екрані.",
-  "ui.resetear_confirmar": "Так, скинути"
+  "ui.resetear_confirmar": "Так, скинути",
+  // Claves ui.peso_registro_* y ui.peso_guardar: traducción sin revisar por una persona nativa en ucraniano.
+  "ui.peso_registro_titulo": "Журнал ваги",
+  "ui.peso_registro_placeholder": "напр. 72,5",
+  "ui.peso_guardar": "Зберегти",
+  "ui.peso_registro_vacio": "Введіть вагу за сьогодні.",
+  "ui.peso_registro_formato": "Лише числа, з комою або крапкою (напр. 72,5).",
+  "ui.peso_registro_rango": "Вага має бути від 30 до 300 кг.",
+  "ui.peso_registro_paso": "Не більше одного знака після коми (напр. 72,5).",
+  "ui.peso_registro_guardado": "Вагу за сьогодні збережено.",
+  "ui.peso_registro_sin_guardar": "Не вдалося зберегти в цьому браузері.",
+  "ui.peso_registro_dos": "Додай принаймні два зважування.",
+  "ui.peso_registro_grafico": "Графік ваги за останні дні",
+  "ui.peso_registro_min": "мін. {v} кг",
+  "ui.peso_registro_max": "макс. {v} кг"
 });

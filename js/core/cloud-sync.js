@@ -209,7 +209,10 @@ function pushPantryToCloud() {
  */
 function _ajustesParaNube() {
   var ajustes = getSettings();
-  return (typeof settingsWithAccountPrefs === "function") ? settingsWithAccountPrefs(ajustes) : ajustes;
+  var conPrefs = (typeof settingsWithAccountPrefs === "function") ? settingsWithAccountPrefs(ajustes) : ajustes;
+  // El registro de peso viaja dentro de `_pesos` (js/core/weight-log.js).
+  if (typeof settingsWithWeightLog !== "function" || typeof pesosLeer !== "function") return conPrefs;
+  return settingsWithWeightLog(conPrefs, pesosLeer(pesosAlmacen()));
 }
 
 function pushSettingsToCloud() {

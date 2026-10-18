@@ -240,6 +240,7 @@ function _hydrateLocalFrom(cloudRow) {
   if (typeof savePantryHistory === "function") savePantryHistory(row.pantry_history || []);
   if (typeof saveSettings === "function") saveSettings(row.settings || {});
   _applyCloudPrefs(row);
+  if (typeof mergeWeightLogFromCloud === "function") mergeWeightLogFromCloud(row.settings && row.settings._pesos);
 }
 
 /**
@@ -267,6 +268,8 @@ function _wipeLocal() {
   if (typeof clearSettings === "function") clearSettings();
   // El aspecto y las marcas del alta son de la cuenta, no del dispositivo.
   if (typeof resetAccountPrefs === "function") resetAccountPrefs();
+  // El registro de peso es de la cuenta: al salir se borra del dispositivo.
+  if (typeof pesosBorrarAlmacen === "function") pesosBorrarAlmacen(pesosAlmacen());
 }
 
 /**
@@ -393,6 +396,7 @@ function resolveConflictMerge(cloudRow) {
   if (typeof savePantryHistory === "function") savePantryHistory(mergedPantryHistory);
   if (typeof saveSettings === "function") saveSettings(mergedSettings);
   _applyCloudPrefs(cloud);
+  if (typeof mergeWeightLogFromCloud === "function") mergeWeightLogFromCloud(cloud.settings && cloud.settings._pesos);
 
   return Promise.resolve((typeof pushAllToCloud === "function") ? pushAllToCloud({ setMigratedAt: true }) : null)
     .then(function () {

@@ -831,5 +831,18 @@ registerI18nTable("ru", {
   "ics.hora_entreno": "Время тренировки",
   "ui.resetear_titulo": "Очистить форму?",
   "ui.resetear_texto": "Сотрутся данные формы, включая бюджет, и план на экране.",
-  "ui.resetear_confirmar": "Да, сбросить"
+  "ui.resetear_confirmar": "Да, сбросить",
+  "ui.peso_registro_titulo": "Журнал веса",
+  "ui.peso_registro_placeholder": "напр. 72,5",
+  "ui.peso_guardar": "Сохранить",
+  "ui.peso_registro_vacio": "Введи вес за сегодня.",
+  "ui.peso_registro_formato": "Только числа, с запятой или точкой (напр. 72,5).",
+  "ui.peso_registro_rango": "Вес должен быть от 30 до 300 кг.",
+  "ui.peso_registro_paso": "Не больше одного знака после запятой (напр. 72,5).",
+  "ui.peso_registro_guardado": "Вес за сегодня сохранён.",
+  "ui.peso_registro_sin_guardar": "Не удалось сохранить в этом браузере.",
+  "ui.peso_registro_dos": "Добавь хотя бы два взвешивания",
+  "ui.peso_registro_grafico": "График веса за последние дни",
+  "ui.peso_registro_min": "мин. {v} кг",
+  "ui.peso_registro_max": "макс. {v} кг"
 });
