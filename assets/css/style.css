@@ -4112,8 +4112,9 @@ body.modo-entreno .tabbar { display: none !important; }
    queda pegada bajo la barra de arriba (.modo-barra: 8 + 46 + 8 px). */
 body.modo-entreno { --alto-modo-barra: 62px; }
 .entreno.is-sesion > :not(.entreno-sesion) { display: none !important; }
-/* Con la sesión abierta, la próxima comida no ocupa sitio bajo la barra de arriba. */
-body.modo-sesion .next-meal-sticky { display: none !important; }
+/* Con la sesión o el cuestionario abiertos, la próxima comida no ocupa sitio bajo la barra de arriba. */
+body.modo-sesion .next-meal-sticky,
+body.modo-cuestionario .next-meal-sticky { display: none !important; }
 
 .entreno__empezar,
 .sesion__terminar,
@@ -4574,6 +4575,148 @@ body.modo-sesion .next-meal-sticky { display: none !important; }
   .sesion__check:active,
   .sesion__boton:active { transform: none; }
   .sesion__descanso.is-fin { animation: none; }
+}
+
+/* ── Entrenamientos: cuestionario y «Tu programa» (2026-10-18) ────────────
+   js/ui/entreno-cuestionario.js. Una pregunta por pantalla con opciones
+   grandes para el pulgar; con .is-cuestionario el panel solo enseña esto. */
+.entreno.is-cuestionario > :not(.cuestionario) { display: none !important; }
+.cuestionario { max-width: 640px; margin: 0 auto; padding: 4px 0 0; }
+.cuestionario__cabeza { display: flex; align-items: center; gap: 12px; margin: 6px 0 18px; }
+.cuestionario__progreso { flex: 1; min-width: 0; display: grid; gap: 6px; }
+.cuestionario__paso {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.cuestionario__barra { display: block; height: 6px; border-radius: var(--pill); background: var(--surface-2); overflow: hidden; }
+.cuestionario__barra i {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--volt);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+  transition: width 0.3s ease;
+}
+.cuestionario__titulo { margin: 0 0 6px; font: 800 clamp(1.9rem, 6vw, 2.5rem)/1.04 var(--font-display); color: var(--ink); }
+.cuestionario__titulo:focus { outline: none; }
+.cuestionario__ayuda { margin: 0 0 16px; font-size: 0.95rem; color: var(--text-2); }
+.cuestionario .entreno__etiqueta { margin-top: 20px; }
+.cuestionario__opciones { display: grid; gap: 10px; }
+@media (min-width: 560px) {
+  .cuestionario__opciones--tres { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+.cuest-op,
+.cuest-chip {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  border: 1.5px solid var(--field-line);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease, color 0.15s ease,
+              transform 0.12s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.cuest-op {
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+  width: 100%;
+  min-height: 64px;
+  padding: 14px 16px;
+  border-radius: var(--r-lg);
+  text-align: left;
+}
+.cuest-op__titulo { font: 800 1.15rem/1.15 var(--font-display); letter-spacing: 0.01em; }
+.cuest-op__texto { font-size: 0.88rem; color: var(--text-2); }
+.cuest-op[aria-pressed="true"] { border-color: var(--ink); background: var(--volt-wash); box-shadow: 0 0 0 1.5px var(--ink); }
+.cuestionario__chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.cuest-chip {
+  min-width: 52px;
+  min-height: 44px;
+  padding: 9px 16px;
+  border-radius: var(--pill);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+.cuestionario__chips--grandes .cuest-chip { min-height: 52px; padding: 12px 20px; font-size: 1rem; }
+.cuest-chip[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: var(--on-ink); }
+.cuest-op:focus-visible,
+.cuest-chip:focus-visible { outline: 3px solid var(--volt); outline-offset: 2px; }
+@media (hover: hover) {
+  .cuest-op:hover,
+  .cuest-chip:hover { border-color: var(--ink); }
+}
+.cuest-op:active,
+.cuest-chip:active { transform: scale(0.97); }
+.cuestionario__texto {
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 12px;
+  border: 1.5px solid var(--field-line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+.cuestionario__texto:focus-visible { outline: 3px solid var(--volt); outline-offset: 2px; }
+.cuestionario .entreno__ayuda.is-aviso { color: var(--warn); font-weight: 600; }
+.cuestionario__pie {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  gap: 10px;
+  margin-top: 22px;
+  padding: 12px 0 calc(12px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(to top, var(--canvas) 72%, transparent);
+}
+#cuestSiguiente { margin-left: auto; min-width: 150px; }
+#cuestSiguiente:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
+
+/* «Tu programa»: las respuestas en fichas, «Cambiar» y la semana */
+.entreno__resumen {
+  display: grid;
+  gap: 12px;
+  margin: 16px 0;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-1);
+}
+.entreno__resumen-cabeza { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.entreno__resumen-titulo { margin: 0; font: 800 1.45rem/1.1 var(--font-display); color: var(--ink); }
+.entreno__resumen-titulo:focus { outline: none; }
+.entreno__resumen-notas:empty { display: none; }
+.entreno__nota-programa { margin: 0; padding: 10px 12px; border-radius: var(--r-sm); background: var(--volt-wash); color: var(--ink); font-size: 0.9rem; }
+.entreno__nota-programa + .entreno__nota-programa { margin-top: 8px; }
+.entreno__nota-programa--salud { background: var(--warn-wash); color: var(--warn); }
+.entreno__badge {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 2px 7px;
+  border-radius: var(--pill);
+  background: var(--volt);
+  color: var(--on-volt);
+  font: 700 0.62rem/1.4 var(--font-body);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+@media print {
+  #entEditar, .cuestionario { display: none !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cuest-op,
+  .cuest-chip,
+  .cuestionario__barra i { transition: none; }
+  .cuest-op:active,
+  .cuest-chip:active { transform: none; }
 }
 
 /* ── Animaciones de los ejercicios (js/ui/entreno-figura.js, 2026-10-18) ──

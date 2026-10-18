@@ -46,12 +46,65 @@ var WORKOUT_DURACIONES = { 30: 4, 45: 5, 60: 99 };
 /** Repeticiones que deben quedar en reserva al terminar cada serie. */
 var WORKOUT_LEVEL_RIR = { principiante: 3, intermedio: 2, avanzado: 1 };
 
-/** Series, repeticiones y descanso por objetivo, para compuestos y aislados. */
+/**
+ * Series, repeticiones y descanso por objetivo, para compuestos y aislados.
+ * Los cuatro primeros salen del objetivo de «Mis datos»; «fuerza» solo se
+ * elige en el cuestionario de entrenamiento (opción `objetivo`).
+ */
 var WORKOUT_PRESCRIPCION = {
   bulk:     { compuesto: { series: 4, reps: "6-10",  descanso: 150 }, aislado: { series: 3, reps: "10-15", descanso: 75 } },
   cut:      { compuesto: { series: 3, reps: "6-10",  descanso: 120 }, aislado: { series: 3, reps: "12-15", descanso: 60 } },
   recomp:   { compuesto: { series: 3, reps: "6-10",  descanso: 120 }, aislado: { series: 3, reps: "10-12", descanso: 75 } },
-  maintain: { compuesto: { series: 3, reps: "8-12",  descanso: 90 },  aislado: { series: 2, reps: "10-15", descanso: 60 } }
+  maintain: { compuesto: { series: 3, reps: "8-12",  descanso: 90 },  aislado: { series: 2, reps: "10-15", descanso: 60 } },
+  fuerza:   { compuesto: { series: 4, reps: "3-6",   descanso: 180 }, aislado: { series: 2, reps: "8-12",  descanso: 90 } }
+};
+
+/** El material que se puede marcar uno a uno (sin_material va siempre). */
+var WORKOUT_MATERIALES = ["barra", "banco", "mancuernas", "maquina", "polea", "dominadas", "paralelas"];
+
+/**
+ * Lo que el usuario quiere trabajar más. Cada grupo: los músculos del catálogo
+ * que cuenta (para darles una serie más) y los patrones con los que se le
+ * añade un ejercicio en las sesiones que lo admiten.
+ */
+var WORKOUT_ENFOQUES = {
+  pecho:   { musculos: ["pecho"], patrones: ["pecho_aislado", "empuje_horizontal"] },
+  espalda: { musculos: ["espalda"], patrones: ["tiron_horizontal", "tiron_vertical"] },
+  hombros: { musculos: ["hombros"], patrones: ["elevacion_lateral", "hombro_posterior", "empuje_vertical"] },
+  brazos:  { musculos: ["biceps", "triceps"], patrones: ["curl_biceps", "extension_triceps"], porSesion: 2 },
+  piernas: { musculos: ["cuadriceps", "isquios", "gemelos"], patrones: ["aislado_pierna", "curl_isquio", "zancada", "sentadilla"] },
+  gluteos: { musculos: ["gluteos"], patrones: ["gluteo", "zancada", "bisagra"] },
+  abdomen: { musculos: ["core"], patrones: ["core"] }
+};
+var WORKOUT_ENFOQUE_MAX = 3;
+
+/** Qué patrones admite cada tipo de sesión al añadir lo del enfoque (cuerpo completo: todos). */
+var WORKOUT_PATRONES_TIPO = {
+  superior: ["empuje_horizontal", "pecho_aislado", "empuje_vertical", "elevacion_lateral", "hombro_posterior", "tiron_horizontal", "tiron_vertical", "curl_biceps", "extension_triceps", "core"],
+  inferior: ["sentadilla", "zancada", "bisagra", "aislado_pierna", "curl_isquio", "gluteo", "pantorrilla", "core"],
+  empuje: ["empuje_horizontal", "pecho_aislado", "empuje_vertical", "elevacion_lateral", "extension_triceps", "core"],
+  tiron: ["tiron_horizontal", "tiron_vertical", "hombro_posterior", "curl_biceps", "core"]
+};
+
+/**
+ * Molestias que el usuario marca: los ejercicios que se quitan para no cargar
+ * esa zona. Es prudencia general, no un diagnóstico (el aviso del plan lo dice).
+ */
+var WORKOUT_LIMITACIONES = {
+  rodillas: ["zancadas", "zancada_mancuernas", "sentadilla_bulgara", "sentadilla_bulgara_sin_material", "sentadilla_isometrica_pared", "extension_cuadriceps", "sentadilla_hack_maquina"],
+  espalda: ["peso_muerto_barra", "buenos_dias_sin_material", "remo_barra", "sentadilla_barra", "press_militar_barra"],
+  hombros: ["fondos_paralelas", "fondos_silla", "press_militar_barra", "press_arnold", "pike_flexiones", "pullover_mancuerna"]
+};
+
+/** Si una molestia deja un patrón sin ejercicio, estos lo sustituyen (en orden). */
+var WORKOUT_SUSTITUTOS = {
+  zancada: ["gluteo", "curl_isquio"],
+  sentadilla: ["gluteo", "aislado_pierna"],
+  bisagra: ["gluteo", "curl_isquio"],
+  aislado_pierna: ["curl_isquio", "gluteo"],
+  empuje_vertical: ["elevacion_lateral", "hombro_posterior"],
+  empuje_horizontal: ["pecho_aislado"],
+  extension_triceps: ["curl_biceps"]
 };
 
 /**
@@ -115,7 +168,8 @@ var WORKOUT_CARDIO = {
   bulk: "Cardio opcional y suave (10-20 minutos al final de la sesión o en días libres), para la salud cardiovascular sin restar energía a la fuerza.",
   cut: "Cardio 2-3 días a la semana, 20-30 minutos a ritmo moderado (andar rápido, bici). Ayuda al gasto diario sin tanto coste en recuperación.",
   recomp: "Cardio opcional: 1-2 sesiones suaves de 20-30 minutos a la semana para la salud cardiovascular.",
-  maintain: "Cardio opcional: 1-2 sesiones suaves de 20-30 minutos a la semana para la salud cardiovascular."
+  maintain: "Cardio opcional: 1-2 sesiones suaves de 20-30 minutos a la semana para la salud cardiovascular.",
+  fuerza: "Cardio suave y corto, 1-2 veces a la semana: lo justo para la salud sin quitar recuperación a la fuerza."
 };
 
 /** true si la clave es propia del objeto (no heredada, p. ej. "constructor"). */
@@ -140,7 +194,63 @@ function prescribirEjercicio(ejercicio, objetivo, nivel) {
   var reps = ejercicio.repsOverride || base.reps;
   // Un principiante aguanta mejor un rango algo más alto para aprender bien el gesto.
   if (nivel === "principiante" && objetivo === "bulk" && ejercicio.compound) reps = "8-12";
+  if (nivel === "principiante" && objetivo === "fuerza" && ejercicio.compound && !ejercicio.repsOverride) reps = "5-8";
   return { sets: series, reps: reps, restSeconds: base.descanso, rir: WORKOUT_LEVEL_RIR[nivel] };
+}
+
+/** Material a partir de lo marcado uno a uno: solo códigos conocidos y sin_material siempre. null si no es una lista. */
+function normalizarMaterial(lista) {
+  if (!Array.isArray(lista)) return null;
+  var material = ["sin_material"];
+  lista.forEach(function (m) {
+    if (WORKOUT_MATERIALES.indexOf(m) !== -1 && material.indexOf(m) === -1) material.push(m);
+  });
+  return material;
+}
+
+/** El nombre del juego de material que coincide con la lista, o "personalizado". */
+function presetDeMaterial(material) {
+  var clave = material.slice().sort().join(",");
+  var encontrado = "personalizado";
+  Object.keys(EQUIPAMIENTO_DISPONIBLE).forEach(function (k) {
+    if (EQUIPAMIENTO_DISPONIBLE[k].slice().sort().join(",") === clave) encontrado = k;
+  });
+  return encontrado;
+}
+
+/** Grupos del enfoque: solo los conocidos, sin repetir y como mucho WORKOUT_ENFOQUE_MAX. */
+function normalizarEnfoque(lista) {
+  if (!Array.isArray(lista)) return [];
+  var r = [];
+  lista.forEach(function (g) { if (hasOwn(WORKOUT_ENFOQUES, g) && r.indexOf(g) === -1) r.push(g); });
+  return r.slice(0, WORKOUT_ENFOQUE_MAX);
+}
+
+/** Molestias marcadas: solo las conocidas y sin repetir. */
+function normalizarLimitaciones(lista) {
+  if (!Array.isArray(lista)) return [];
+  var r = [];
+  lista.forEach(function (l) { if (hasOwn(WORKOUT_LIMITACIONES, l) && r.indexOf(l) === -1) r.push(l); });
+  return r;
+}
+
+/** Días elegidos (1 lunes … 7 domingo), ordenados; null si no cuadran con el número de días. */
+function normalizarDiasSemana(lista, dias) {
+  if (!Array.isArray(lista)) return null;
+  var r = [];
+  lista.forEach(function (d) {
+    var n = Math.floor(Number(d));
+    if (n >= 1 && n <= 7 && r.indexOf(n) === -1) r.push(n);
+  });
+  r.sort(function (a, b) { return a - b; });
+  return r.length === dias ? r : null;
+}
+
+/** Tipo de sesión para el enfoque: "todo" (cuerpo completo), superior, inferior, empuje o tirón. */
+function tipoSesion(clave) {
+  var prefijo = String(clave).split("_")[0];
+  if (prefijo === "piernas") return "inferior";
+  return hasOwn(WORKOUT_PATRONES_TIPO, prefijo) ? prefijo : "todo";
 }
 
 /** Cuántos materiales reales pide un ejercicio (sin_material no cuenta). */
@@ -183,10 +293,10 @@ function ejercicioExcluido(ejercicio, excluidos) {
  * semana (para variar entre sesiones) y luego el orden del catálogo. Nunca
  * repite un ejercicio dentro de la misma sesión.
  */
-function elegirEjercicio(patron, material, nivel, usadosSesion, usadosSemana, excluidos) {
+function elegirEjercicio(patron, material, nivel, usadosSesion, usadosSemana, excluidos, evitar) {
   var candidatos = EXERCISE_CATALOG.filter(function (e) {
     return e.pattern === patron && puedeHacerse(e, material) && nivelAlcanza(e, nivel) && !usadosSesion[e.id]
-      && !ejercicioExcluido(e, excluidos);
+      && !ejercicioExcluido(e, excluidos) && !(evitar && evitar[e.id]);
   });
   if (!candidatos.length) return null;
   // Sin material solo si no hay nada con material: un "buenos días" sin lastre
@@ -209,17 +319,11 @@ function construirSesion(clave, objetivo, nivel, material, usadosSemana, avisos,
   var usadosSesion = {};
   var ejercicios = [];
 
-  plantilla.patrones.forEach(function (patron) {
-    if (ejercicios.length >= tope) return;
-    var ejercicio = elegirEjercicio(patron, material, nivel, usadosSesion, usadosSemana, extra.excluidos);
-    if (!ejercicio) {
-      avisos.push("falta_ejercicio:" + patron);
-      return;
-    }
+  function poner(ejercicio, enfoque) {
     usadosSesion[ejercicio.id] = true;
     usadosSemana[ejercicio.id] = (usadosSemana[ejercicio.id] || 0) + 1;
     var pauta = prescribirEjercicio(ejercicio, objetivo, nivel);
-    ejercicios.push({
+    var e = {
       id: ejercicio.id,
       name: ejercicio.name,
       muscle: ejercicio.muscle,
@@ -229,7 +333,72 @@ function construirSesion(clave, objetivo, nivel, material, usadosSemana, avisos,
       reps: pauta.reps,
       restSeconds: pauta.restSeconds,
       rir: pauta.rir
+    };
+    if (enfoque) e.enfoque = true;
+    ejercicios.push(e);
+  }
+
+  // Con acento, lo del acento entra antes que el resto de aislados: si la
+  // duración recorta, no se cae justo lo que se pidió. Los tres primeros
+  // patrones (los básicos de cada plantilla) van siempre delante.
+  var patronesAcento = {};
+  (extra.enfoque || []).forEach(function (grupo) {
+    WORKOUT_ENFOQUES[grupo].patrones.forEach(function (p) { patronesAcento[p] = true; });
+  });
+  var base = plantilla.patrones.slice(0, 3);
+  var resto = plantilla.patrones.slice(3);
+  var orden = base.concat(resto.filter(function (p) { return patronesAcento[p]; }), resto.filter(function (p) { return !patronesAcento[p]; }));
+
+  orden.forEach(function (patron, i) {
+    if (ejercicios.length >= tope) return;
+    var ejercicio = elegirEjercicio(patron, material, nivel, usadosSesion, usadosSemana, extra.excluidos, extra.evitar);
+    if (!ejercicio && extra.evitar && elegirEjercicio(patron, material, nivel, usadosSesion, usadosSemana, extra.excluidos, null)) {
+      // Una molestia ha quitado lo de este patrón: va otro que no cargue esa
+      // zona. Mejor uno que la sesión no tenga más adelante, para no quitarle
+      // su ejercicio a ese patrón.
+      var pendientes = orden.slice(i + 1);
+      var sustitutos = WORKOUT_SUSTITUTOS[patron] || [];
+      sustitutos.filter(function (o) { return pendientes.indexOf(o) === -1; })
+        .concat(sustitutos.filter(function (o) { return pendientes.indexOf(o) !== -1; }))
+        .some(function (otro) {
+          ejercicio = elegirEjercicio(otro, material, nivel, usadosSesion, usadosSemana, extra.excluidos, extra.evitar);
+          return !!ejercicio;
+        });
+    }
+    if (!ejercicio) {
+      avisos.push("falta_ejercicio:" + patron);
+      return;
+    }
+    poner(ejercicio, false);
+  });
+
+  // Enfoque: un ejercicio más del grupo elegido si la sesión lo admite (en un
+  // día de tirón no entra el tríceps) y si cabe. Con enfoque se permite uno
+  // más que el tope del nivel, nunca más de lo que deja la duración.
+  var topeEnfoque = Math.min(WORKOUT_LEVEL_CAP[nivel] + 1, extra.topeSesion || 99);
+  var tipo = tipoSesion(clave);
+  (extra.enfoque || []).forEach(function (grupo) {
+    var def = WORKOUT_ENFOQUES[grupo];
+    var admitidos = tipo === "todo" ? null : WORKOUT_PATRONES_TIPO[tipo];
+    var puestos = 0;
+    def.patrones.forEach(function (patron) {
+      if (puestos >= (def.porSesion || 1) || ejercicios.length >= topeEnfoque) return;
+      if (admitidos && admitidos.indexOf(patron) === -1) return;
+      var ejercicio = elegirEjercicio(patron, material, nivel, usadosSesion, usadosSemana, extra.excluidos, extra.evitar);
+      if (!ejercicio) return;
+      poner(ejercicio, true);
+      puestos++;
     });
+  });
+
+  // Y una serie más en todo lo que trabaja esos músculos.
+  var musculosEnfoque = {};
+  (extra.enfoque || []).forEach(function (grupo) {
+    WORKOUT_ENFOQUES[grupo].musculos.forEach(function (m) { musculosEnfoque[m] = true; });
+  });
+  var maxSeries = nivel === "principiante" ? 4 : 5;
+  ejercicios.forEach(function (e) {
+    if (musculosEnfoque[e.muscle]) e.sets = Math.min(e.sets + 1, Math.max(e.sets, maxSeries));
   });
 
   // Compuestos primero: es donde más conviene tener energía fresca.
@@ -265,7 +434,12 @@ function normalizarDias(valor, avisos) {
  *
  * @param {object} profile  - { entrenamientos: días/semana, goal: "bulk" | "cut" | "recomp" | "maintain" }
  * @param {object} [options] - { nivel: "principiante" | "intermedio" | "avanzado",
- *                               equipamiento: "gimnasio" | "mancuernas" | "sin_material" }
+ *                               equipamiento: "gimnasio" | "mancuernas" | "sin_material",
+ *                               material: [códigos de WORKOUT_MATERIALES] (manda sobre equipamiento),
+ *                               objetivo: clave de WORKOUT_PRESCRIPCION (manda sobre goal; "auto" = el de goal),
+ *                               duracion: 30 | 45 | 60, excluir: texto o lista de nombres,
+ *                               enfoque: [grupos de WORKOUT_ENFOQUES], limitaciones: [claves de WORKOUT_LIMITACIONES],
+ *                               diasSemana: [1…7] tantos como días (si no, los de WORKOUT_DIAS_SEMANA) }
  * @returns {object} plan (ver las claves al final de la función). `ok: false`
  *                   si no hay días de entrenamiento: no hay plan que dar.
  */
@@ -281,20 +455,34 @@ function generateWorkoutPlan(profile, options) {
     if (hasOwn(WORKOUT_PRESCRIPCION, p.goal)) objetivo = p.goal;
     else avisos.push("objetivo_desconocido");
   }
+  // El objetivo del cuestionario de entrenamiento manda sobre el de «Mis datos».
+  if (opts.objetivo !== undefined && opts.objetivo !== null && opts.objetivo !== "" && opts.objetivo !== "auto") {
+    if (hasOwn(WORKOUT_PRESCRIPCION, opts.objetivo)) objetivo = opts.objetivo;
+    else avisos.push("objetivo_desconocido");
+  }
 
+  // El material marcado uno a uno manda sobre el juego elegido (y entonces
+  // el juego es solo un nombre: "personalizado" no es un error).
+  var material = normalizarMaterial(opts.material);
   var equipamiento = "gimnasio";
-  if (opts.equipamiento !== undefined) {
+  if (opts.equipamiento !== undefined && !material) {
     if (hasOwn(EQUIPAMIENTO_DISPONIBLE, opts.equipamiento)) equipamiento = opts.equipamiento;
     else avisos.push("equipamiento_desconocido");
   }
+  if (material) equipamiento = presetDeMaterial(material);
+  else material = EQUIPAMIENTO_DISPONIBLE[equipamiento];
 
   var nivel = "principiante";
   if (WORKOUT_LEVELS.indexOf(opts.nivel) !== -1) nivel = opts.nivel;
   else avisos.push("nivel_no_indicado");
 
+  var enfoque = normalizarEnfoque(opts.enfoque);
+  var limitaciones = normalizarLimitaciones(opts.limitaciones);
+
   if (dias === 0) {
     return {
       ok: false, warnings: avisos, objetivo: objetivo, nivel: nivel, equipamiento: equipamiento,
+      material: material, enfoque: enfoque, limitaciones: limitaciones,
       dias: 0, division: null, sesiones: [], seriesPorSemana: {},
       progresion: WORKOUT_PROGRESION, descarga: WORKOUT_DESCARGA,
       calentamiento: WORKOUT_CALENTAMIENTO, cardio: WORKOUT_CARDIO[objetivo], aviso: WORKOUT_AVISO
@@ -304,15 +492,23 @@ function generateWorkoutPlan(profile, options) {
   if (dias === 1) avisos.push("un_solo_dia");
 
   var division = WORKOUT_DIVISIONES[dias];
-  var material = EQUIPAMIENTO_DISPONIBLE[equipamiento];
   var usadosSemana = {};
-  // Duración y exclusiones: se aplican igual a todas las sesiones.
+  var evitar = null;
+  limitaciones.forEach(function (l) {
+    evitar = evitar || {};
+    WORKOUT_LIMITACIONES[l].forEach(function (id) { evitar[id] = true; });
+  });
+  // Duración, exclusiones, enfoque y molestias: se aplican igual a todas las sesiones.
   var claveDuracion = String(opts.duracion);
   var duracion = hasOwn(WORKOUT_DURACIONES, claveDuracion) ? Number(claveDuracion) : 60;
-  var opciones = { topeSesion: WORKOUT_DURACIONES[duracion], excluidos: normalizarExcluidos(opts.excluir) };
+  var opciones = {
+    topeSesion: WORKOUT_DURACIONES[duracion], excluidos: normalizarExcluidos(opts.excluir),
+    enfoque: enfoque, evitar: evitar
+  };
+  var diasElegidos = normalizarDiasSemana(opts.diasSemana, dias);
   var sesiones = division.sesiones.map(function (clave, i) {
     var sesion = construirSesion(clave, objetivo, nivel, material, usadosSemana, avisos, opciones);
-    sesion.dia = WORKOUT_DIAS_SEMANA[dias][i];
+    sesion.dia = diasElegidos ? diasElegidos[i] : WORKOUT_DIAS_SEMANA[dias][i];
     return sesion;
   });
 
@@ -341,6 +537,10 @@ function generateWorkoutPlan(profile, options) {
     objetivo: objetivo,
     nivel: nivel,
     equipamiento: equipamiento,
+    material: material,
+    enfoque: enfoque,
+    limitaciones: limitaciones,
+    diasElegidos: !!diasElegidos,
     dias: dias,
     division: division.nombre,
     sesiones: sesiones,

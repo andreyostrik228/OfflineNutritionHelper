@@ -32,8 +32,14 @@
 
 var ENTRENO_CLAVE_PREFS = "weekplate-entreno-v1";
 var ENTRENO_NIVELES = ["principiante", "intermedio", "avanzado"];
-var ENTRENO_EQUIPOS = ["gimnasio", "mancuernas", "sin_material"];
+var ENTRENO_EQUIPOS = ["gimnasio", "mancuernas", "sin_material", "personalizado"];
 var ENTRENO_SEMANA_MAX = 52;
+/** Lo que pregunta el cuestionario (js/ui/entreno-cuestionario.js). */
+var ENTRENO_OBJETIVOS = ["bulk", "fuerza", "recomp", "cut", "maintain"];
+var ENTRENO_MATERIALES = ["barra", "banco", "mancuernas", "maquina", "polea", "dominadas", "paralelas"];
+var ENTRENO_ENFOQUES = ["pecho", "espalda", "hombros", "brazos", "piernas", "gluteos", "abdomen"];
+var ENTRENO_ENFOQUE_MAX = 3;
+var ENTRENO_LIMITACIONES = ["rodillas", "espalda", "hombros"];
 
 var _entrenoBoton = null;
 var _entrenoPanel = null;
@@ -53,9 +59,24 @@ var ENTRENO_AVISOS = {
 /** Duraciones de sesión que ofrece el panel (minutos). */
 var ENTRENO_DURACIONES = [30, 45, 60];
 
-/** Elecciones guardadas en este navegador. Lo que no sea válido vuelve al valor por defecto. */
+/** De una lista guardada, solo los valores permitidos, sin repetir y como mucho «max». */
+function _entrenoLista(valor, permitidos, max) {
+  if (!Array.isArray(valor)) return [];
+  var r = [];
+  valor.forEach(function (v) { if (permitidos.indexOf(v) !== -1 && r.indexOf(v) === -1) r.push(v); });
+  return max ? r.slice(0, max) : r;
+}
+
+/**
+ * Elecciones guardadas en este navegador. Lo que no sea válido vuelve al valor
+ * por defecto. `configurado` dice si ya se contestó el cuestionario; sin él,
+ * el panel lo abre solo la primera vez.
+ */
 function entrenoLeerPrefs() {
-  var prefs = { nivel: "principiante", equipamiento: "gimnasio", semana: 1, duracion: 60, excluir: "" };
+  var prefs = {
+    nivel: "principiante", equipamiento: "gimnasio", semana: 1, duracion: 60, excluir: "",
+    objetivo: "auto", material: null, enfoque: [], limitaciones: [], diasSemana: null, configurado: false
+  };
   try {
     var guardado = JSON.parse(localStorage.getItem(ENTRENO_CLAVE_PREFS) || "null");
     if (guardado && typeof guardado === "object") {
@@ -65,8 +86,16 @@ function entrenoLeerPrefs() {
       if (semana >= 1 && semana <= ENTRENO_SEMANA_MAX) prefs.semana = semana;
       if (ENTRENO_DURACIONES.indexOf(Number(guardado.duracion)) !== -1) prefs.duracion = Number(guardado.duracion);
       if (typeof guardado.excluir === "string") prefs.excluir = guardado.excluir.slice(0, 200);
+      if (ENTRENO_OBJETIVOS.indexOf(guardado.objetivo) !== -1) prefs.objetivo = guardado.objetivo;
+      if (Array.isArray(guardado.material)) prefs.material = _entrenoLista(guardado.material, ENTRENO_MATERIALES);
+      prefs.enfoque = _entrenoLista(guardado.enfoque, ENTRENO_ENFOQUES, ENTRENO_ENFOQUE_MAX);
+      prefs.limitaciones = _entrenoLista(guardado.limitaciones, ENTRENO_LIMITACIONES);
+      var dias = _entrenoLista((guardado.diasSemana || []).map(Number), [1, 2, 3, 4, 5, 6, 7]);
+      if (dias.length) prefs.diasSemana = dias.sort(function (a, b) { return a - b; });
+      prefs.configurado = guardado.configurado === true;
     }
   } catch (e) { /* sin almacenamiento o JSON roto: se queda con los valores por defecto */ }
+  if (prefs.equipamiento === "personalizado" && !prefs.material) prefs.equipamiento = "gimnasio";
   return prefs;
 }
 
@@ -88,7 +117,11 @@ function entrenoPlanParaDatos(datos) {
   var d = datos || {};
   var plan = generateWorkoutPlan(
     { entrenamientos: d.dias, goal: d.objetivo },
-    { nivel: d.nivel, equipamiento: d.equipamiento, duracion: d.duracion, excluir: d.excluir }
+    {
+      nivel: d.nivel, equipamiento: d.equipamiento, duracion: d.duracion, excluir: d.excluir,
+      objetivo: d.objetivoEntreno, material: d.material, enfoque: d.enfoque,
+      limitaciones: d.limitaciones, diasSemana: d.diasSemana
+    }
   );
   var semana = Math.floor(Number(d.semana));
   if (!(semana >= 1)) semana = 1;
@@ -127,19 +160,36 @@ function entrenoPonerSeg(id, valor) {
   });
 }
 
-/** Lo que el usuario ha elegido en la pantalla, ya validado. */
+/**
+ * Lo elegido: las respuestas guardadas del cuestionario y el número de semana
+ * de la pantalla, ya validado.
+ */
 function entrenoLeerControles() {
-  var nivel = entrenoValorSeg("entNivel");
-  var equipamiento = entrenoValorSeg("entEquipo");
-  var semana = Math.floor(Number(document.getElementById("entSemana").value));
-  if (ENTRENO_NIVELES.indexOf(nivel) === -1) nivel = "principiante";
-  if (ENTRENO_EQUIPOS.indexOf(equipamiento) === -1) equipamiento = "gimnasio";
+  var prefs = entrenoLeerPrefs();
+  var semana = Math.floor(Number((document.getElementById("entSemana") || {}).value));
   if (!(semana >= 1)) semana = 1;
   if (semana > ENTRENO_SEMANA_MAX) semana = ENTRENO_SEMANA_MAX;
-  var duracion = Number(entrenoValorSeg("entDuracion"));
-  if (ENTRENO_DURACIONES.indexOf(duracion) === -1) duracion = 60;
-  var excluir = String((document.getElementById("entExcluir") || {}).value || "").trim().slice(0, 200);
-  return { nivel: nivel, equipamiento: equipamiento, semana: semana, duracion: duracion, excluir: excluir };
+  prefs.semana = semana;
+  return prefs;
+}
+
+/**
+ * Cuántos días entrena: el campo «Entrenamientos / semana» de «Mis datos». El
+ * cuestionario lo cambia ahí mismo (también cuenta para las calorías) y lo
+ * guarda con el resto de ajustes.
+ */
+function entrenoGuardarDias(n) {
+  var campo = document.getElementById("workouts");
+  if (!campo || Number(campo.value) === n) return;
+  campo.value = String(n);
+  try {
+    if (typeof getSettings === "function" && typeof saveSettings === "function") {
+      var ajustes = getSettings();
+      ajustes.workouts = n;
+      saveSettings(ajustes);
+      if (typeof pushSettingsToCloud === "function") pushSettingsToCloud();
+    }
+  } catch (e) { /* sin almacenamiento: el campo ya muestra el número nuevo */ }
 }
 
 /**
@@ -266,14 +316,66 @@ function entrenoChip(texto, fuerte) {
   return '<li class="entreno__chip' + (fuerte ? " entreno__chip--fuerte" : "") + '">' + entrenoEsc(texto) + "</li>";
 }
 
-function entrenoChipsHtml(plan) {
-  return '<ul class="entreno__chips">' + [
-    entrenoChip(tOr("ent.division_" + plan.division, plan.division), true),
-    entrenoChip(tFormat("ent.dias_n", { n: plan.dias }), false),
-    entrenoChip(tOr("ent.objetivo_" + plan.objetivo, plan.objetivo), false),
-    entrenoChip(tOr("ent.nivel_" + plan.nivel, plan.nivel), false),
-    entrenoChip(tOr("ent.equipo_" + plan.equipamiento, plan.equipamiento), false)
-  ].join("") + "</ul>";
+/** En minúscula para meterlo en una frase («Acento: pecho, brazos»). */
+function _entrenoMinus(texto) {
+  var lang = typeof getLang === "function" ? getLang() : "es";
+  var locale = (typeof LANG_LOCALES !== "undefined" && LANG_LOCALES[lang]) || undefined;
+  try { return String(texto).toLocaleLowerCase(locale); } catch (e) { return String(texto).toLowerCase(); }
+}
+
+function _entrenoListaTexto(claves, prefijo, minus) {
+  return claves.map(function (k) {
+    var x = tOr(prefijo + k, k);
+    return minus ? _entrenoMinus(x) : x;
+  }).join(", ");
+}
+
+/**
+ * Las fichas de «Tu programa»: objetivo, nivel, días (con cuáles, si se
+ * eligieron), duración, material, acento, molestias y división. Sirve también
+ * sin días de entrenamiento (plan con ok: false): entonces no van días ni división.
+ */
+function entrenoResumenFichasHtml(plan, prefs) {
+  var objetivo = String(tOr("ent.objetivo_" + plan.objetivo, plan.objetivo));
+  var fichas = [entrenoChip(objetivo.charAt(0).toUpperCase() + objetivo.slice(1), true)];
+  fichas.push(entrenoChip(tOr("ent.nivel_" + plan.nivel, plan.nivel), false));
+  if (plan.dias) {
+    var dias = tFormat("ent.dias_n", { n: plan.dias });
+    if (plan.diasElegidos) {
+      dias = tFormat("ent.chip_dias_lista", {
+        dias: dias,
+        lista: plan.sesiones.map(function (s) { return t("ent.dia_corto_" + s.dia); }).join(", ")
+      });
+    }
+    fichas.push(entrenoChip(dias, false));
+  }
+  fichas.push(entrenoChip(t("ent.duracion_" + prefs.duracion), false));
+  var propio = (plan.material || []).filter(function (m) { return m !== "sin_material"; });
+  fichas.push(entrenoChip(plan.equipamiento === "personalizado"
+    ? tFormat("ent.chip_material", { lista: _entrenoListaTexto(propio, "ent.material_", true) })
+    : tOr("ent.equipo_" + plan.equipamiento, plan.equipamiento), false));
+  if (plan.enfoque && plan.enfoque.length) {
+    fichas.push(entrenoChip(tFormat("ent.chip_enfoque", { lista: _entrenoListaTexto(plan.enfoque, "ent.enfoque_", true) }), false));
+  }
+  if (plan.limitaciones && plan.limitaciones.length) {
+    fichas.push(entrenoChip(tFormat("ent.chip_limites", { lista: _entrenoListaTexto(plan.limitaciones, "ent.limite_acus_", false) }), false));
+  }
+  if (plan.division) fichas.push(entrenoChip(tOr("ent.division_" + plan.division, plan.division), false));
+  return fichas.join("");
+}
+
+/** Lo que el acento y las molestias cambian en el plan, dicho en una frase cada uno. */
+function entrenoResumenNotasHtml(plan) {
+  var h = "";
+  if (plan.enfoque && plan.enfoque.length) {
+    h += '<p class="entreno__nota-programa">' +
+      entrenoEsc(tFormat("ent.nota_enfoque", { lista: _entrenoListaTexto(plan.enfoque, "ent.enfoque_", true) })) + "</p>";
+  }
+  if (plan.limitaciones && plan.limitaciones.length) {
+    h += '<p class="entreno__nota-programa entreno__nota-programa--salud">' +
+      entrenoEsc(tFormat("ent.nota_limites", { lista: _entrenoListaTexto(plan.limitaciones, "ent.limite_acus_", false) })) + "</p>";
+  }
+  return h;
 }
 
 /**
@@ -293,7 +395,9 @@ function entrenoTablaHtml(sesion, log) {
     return "<tr>" +
       '<td class="entreno__nombre" data-label="' + entrenoEsc(etiqueta.ejercicio) + '">' +
         '<span class="entreno__nombre-fila">' + entrenoMiniHtml(e) +
-          '<span class="entreno__nombre-texto">' + entrenoEsc(entrenoNombre(e)) + entrenoUltimaHtml(e, log) + "</span>" +
+          '<span class="entreno__nombre-texto">' + entrenoEsc(entrenoNombre(e)) +
+            (e.enfoque ? ' <span class="entreno__badge">' + entrenoEsc(t("ent.badge_enfoque")) + "</span>" : "") +
+            entrenoUltimaHtml(e, log) + "</span>" +
         "</span></td>" +
       '<td data-label="' + entrenoEsc(etiqueta.series) + '">' + e.sets + "</td>" +
       '<td data-label="' + entrenoEsc(etiqueta.reps) + '">' + entrenoEsc(entrenoRepsTexto(e.reps)) + "</td>" +
@@ -344,7 +448,8 @@ function entrenoConsejosHtml(plan) {
 }
 
 function entrenoPlanHtml(plan, log) {
-  var h = [entrenoChipsHtml(plan)];
+  // Las fichas del programa van arriba, en «Tu programa» (entrenoResumenFichasHtml).
+  var h = [];
 
   if (plan.semanaDescarga) {
     h.push('<p class="entreno__aviso entreno__aviso--suave">' + entrenoEsc(tFormat("ent.semana_descarga", { semana: plan.semana })) + "</p>");
@@ -371,17 +476,48 @@ function entrenoPlanHtml(plan, log) {
   return h.join("");
 }
 
-/** Pinta el plan con lo que hay en el formulario de la pantalla. */
+/**
+ * Pinta «Tu programa» y el plan con las respuestas guardadas del cuestionario.
+ * La primera vez (sin cuestionario contestado) abre el cuestionario.
+ */
 function renderEntreno() {
   var salida = document.getElementById("entrenoSalida");
   var sinDias = document.getElementById("entrenoSinDias");
   if (!salida) return;
+
+  var prefs = entrenoLeerControles();
+  var panelLibre = _entrenoPanel && !_entrenoPanel.hidden &&
+    !_entrenoPanel.classList.contains("is-sesion") && !_entrenoPanel.classList.contains("is-cuestionario");
+  if (!prefs.configurado && panelLibre && typeof entrenoCuestionarioAbrir === "function") {
+    entrenoCuestionarioAbrir();
+    return;
+  }
 
   var dias = Math.floor(Number((document.getElementById("workouts") || {}).value));
   var sinPlan = !(dias >= 1);
   if (sinDias) sinDias.hidden = !sinPlan;
   salida.hidden = sinPlan;
   var log = typeof entrenoLogLeer === "function" ? entrenoLogLeer() : null;
+
+  var plan = entrenoPlanParaDatos({
+    dias: sinPlan ? 0 : dias,
+    objetivo: (document.getElementById("goal") || {}).value,
+    objetivoEntreno: prefs.objetivo,
+    nivel: prefs.nivel,
+    equipamiento: prefs.equipamiento,
+    material: prefs.material,
+    duracion: prefs.duracion,
+    excluir: prefs.excluir,
+    enfoque: prefs.enfoque,
+    limitaciones: prefs.limitaciones,
+    diasSemana: prefs.diasSemana,
+    semana: prefs.semana
+  });
+  var fichas = document.getElementById("entrenoResumenFichas");
+  var notas = document.getElementById("entrenoResumenNotas");
+  if (fichas) fichas.innerHTML = entrenoResumenFichasHtml(plan, prefs);
+  if (notas) notas.innerHTML = plan.ok ? entrenoResumenNotasHtml(plan) : "";
+
   if (sinPlan) {
     _entrenoUltimoPlan = null;
     salida.innerHTML = "";
@@ -389,16 +525,6 @@ function renderEntreno() {
     return;
   }
 
-  var controles = entrenoLeerControles();
-  var plan = entrenoPlanParaDatos({
-    dias: dias,
-    objetivo: (document.getElementById("goal") || {}).value,
-    nivel: controles.nivel,
-    equipamiento: controles.equipamiento,
-    duracion: controles.duracion,
-    excluir: controles.excluir,
-    semana: controles.semana
-  });
   _entrenoUltimoPlan = plan.ok ? plan : null;
   salida.innerHTML = plan.ok ? entrenoPlanHtml(plan, log) : "";
   if (typeof entrenoAnimacionesActivar === "function") entrenoAnimacionesActivar(salida);
@@ -481,28 +607,22 @@ function initEntreno() {
   if (!_entrenoBoton || !_entrenoPanel) return;
 
   var prefs = entrenoLeerPrefs();
-  entrenoPonerSeg("entNivel", prefs.nivel);
-  entrenoPonerSeg("entEquipo", prefs.equipamiento);
-  entrenoPonerSeg("entDuracion", String(prefs.duracion));
-  document.getElementById("entExcluir").value = prefs.excluir;
   document.getElementById("entSemana").value = String(prefs.semana);
 
   _entrenoBoton.addEventListener("click", function () { entrenoVibrar(); entrenoMostrar(_entrenoPanel.hidden); });
 
-  ["entNivel", "entEquipo", "entDuracion"].forEach(function (id) {
-    Array.prototype.forEach.call(document.querySelectorAll("#" + id + " .entreno__seg-btn"), function (b) {
-      b.addEventListener("click", function () {
-        entrenoVibrar();
-        entrenoPonerSeg(id, b.getAttribute("data-valor"));
-        entrenoAlCambiar();
-      });
-    });
-  });
+  // Las preguntas (objetivo, nivel, días, material, acento, molestias) están en
+  // el cuestionario (js/ui/entreno-cuestionario.js); aquí queda la semana.
   Array.prototype.forEach.call(document.querySelectorAll(".entreno__paso-btn"), function (b) {
     b.addEventListener("click", function () { entrenoVibrar(); entrenoPasoSemana(Number(b.getAttribute("data-paso"))); });
   });
   document.getElementById("entSemana").addEventListener("change", entrenoAlCambiar);
-  document.getElementById("entExcluir").addEventListener("change", entrenoAlCambiar);
+  var editar = document.getElementById("entEditar");
+  if (editar) editar.addEventListener("click", function () {
+    entrenoVibrar();
+    if (typeof entrenoCuestionarioAbrir === "function") entrenoCuestionarioAbrir();
+  });
+  if (typeof initEntrenoCuestionario === "function") initEntrenoCuestionario();
 
   var abrirDatos = document.getElementById("entAbrirDatos");
   if (abrirDatos) abrirDatos.addEventListener("click", function () {

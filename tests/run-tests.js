@@ -108,6 +108,7 @@ var suites = [
   "workout-log.test",
   "entreno-sesion.test",
   "entreno-figura.test",
+  "entreno-cuestionario.test",
   "accesibilidad.test",
   "textos-coherencia.test",
   "vacios.test",

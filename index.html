@@ -106,8 +106,8 @@
        .css. Si se olvida, lo peor que pasa es lo de siempre; si se sube,
        no hay mezcla posible.
        ══════════════════════════════════════════════════════════════════ -->
-  <link rel="stylesheet" href="assets/css/style.css?v=20261018z">
-  <link rel="stylesheet" href="assets/css/paginas.css?v=20261018z">
+  <link rel="stylesheet" href="assets/css/style.css?v=20261018za">
+  <link rel="stylesheet" href="assets/css/paginas.css?v=20261018za">
 
   <!-- ══ ANTES DE PINTAR NADA ══════════════════════════════════════════
        Decide, de forma SÍNCRONA y antes del primer pintado, si este
@@ -1485,49 +1485,140 @@
            panel solo se ve esto. -->
       <div class="entreno-sesion" id="entrenoSesion" hidden></div>
 
-      <h2 class="entreno__titulo" id="entrenoTitulo" data-i18n="ent.titulo">Entrenamientos de la semana</h2>
-      <p class="entreno__intro" data-i18n="ent.intro">Los días y el objetivo salen de «Mis datos». El nivel, el material y el número de semana los eliges aquí.</p>
-
-      <!-- Sesión sin terminar, progreso e historial (js/ui/entreno-progreso.js). -->
-      <div class="entreno__reanudar" id="entrenoReanudar" role="status" hidden></div>
-      <section class="entreno__progreso" id="entrenoProgreso" aria-labelledby="entrenoProgresoTitulo" hidden></section>
-
-      <div class="entreno__aviso" id="entrenoSinDias" hidden>
-        <p data-i18n="ent.sin_dias">En «Mis datos» no hay días de entrenamiento. Indica cuántos días entrenas a la semana.</p>
-        <button type="button" class="btn-secondary" id="entAbrirDatos" data-i18n="ent.abrir_datos">Abrir «Mis datos»</button>
-      </div>
-
-      <div class="entreno__controles">
-        <div class="entreno__campo">
-          <span class="entreno__etiqueta" id="entNivelEtiq" data-i18n="ent.etiqueta_nivel">Nivel</span>
-          <div class="entreno__seg" id="entNivel" role="group" aria-labelledby="entNivelEtiq">
-            <button type="button" class="entreno__seg-btn" data-valor="principiante" data-i18n="ent.nivel_principiante">Principiante</button>
-            <button type="button" class="entreno__seg-btn" data-valor="intermedio" data-i18n="ent.nivel_intermedio">Intermedio</button>
-            <button type="button" class="entreno__seg-btn" data-valor="avanzado" data-i18n="ent.nivel_avanzado">Avanzado</button>
+      <!-- Cuestionario (js/ui/entreno-cuestionario.js): seis preguntas, una
+           por pantalla, como en las apps de entrenamiento. Con .is-cuestionario
+           en el panel solo se ve esto. Lo contestado se guarda al terminar. -->
+      <section class="cuestionario" id="entrenoCuestionario" data-i18n-aria-label="ent.cuest_titulo" aria-label="Cuestionario de entrenamiento" hidden>
+        <div class="cuestionario__cabeza">
+          <button type="button" class="sesion__icono" id="cuestCerrar" data-i18n-aria-label="ent.cuest_cerrar" aria-label="Cerrar sin cambiar nada">&times;</button>
+          <div class="cuestionario__progreso">
+            <span class="cuestionario__paso" id="cuestPaso" aria-live="polite"></span>
+            <span class="cuestionario__barra" aria-hidden="true"><i id="cuestBarra"></i></span>
           </div>
         </div>
-        <div class="entreno__campo">
-          <span class="entreno__etiqueta" id="entEquipoEtiq" data-i18n="ent.etiqueta_equipo">Material</span>
-          <div class="entreno__seg" id="entEquipo" role="group" aria-labelledby="entEquipoEtiq">
-            <button type="button" class="entreno__seg-btn" data-valor="gimnasio" data-i18n="ent.equipo_gimnasio">Gimnasio</button>
-            <button type="button" class="entreno__seg-btn" data-valor="mancuernas" data-i18n="ent.equipo_mancuernas">Mancuernas y banco</button>
-            <button type="button" class="entreno__seg-btn" data-valor="sin_material" data-i18n="ent.equipo_sin_material">Sin material</button>
+
+        <div class="cuestionario__pantalla" data-paso="1">
+          <h2 class="cuestionario__titulo" id="cuestT1" tabindex="-1" data-i18n="ent.cuest_objetivo_t">¿Cuál es tu objetivo?</h2>
+          <p class="cuestionario__ayuda" data-i18n="ent.cuest_objetivo_a">Del objetivo dependen las repeticiones, el peso y el descanso.</p>
+          <div class="cuestionario__opciones" id="entObjetivo" role="group" aria-labelledby="cuestT1">
+            <button type="button" class="cuest-op" data-valor="bulk" aria-pressed="false"><span class="cuest-op__titulo" data-i18n="ent.obj_bulk_t">Ganar músculo</span><span class="cuest-op__texto" data-i18n="ent.obj_bulk_d">6–12 repeticiones, 2–2,5 minutos de descanso.</span></button>
+            <button type="button" class="cuest-op" data-valor="fuerza" aria-pressed="false"><span class="cuest-op__titulo" data-i18n="ent.obj_fuerza_t">Ganar fuerza</span><span class="cuest-op__texto" data-i18n="ent.obj_fuerza_d">Básicos pesados, 3–6 repeticiones, hasta 3 minutos de descanso.</span></button>
+            <button type="button" class="cuest-op" data-valor="recomp" aria-pressed="false"><span class="cuest-op__titulo" data-i18n="ent.obj_recomp_t">Tonificar</span><span class="cuest-op__texto" data-i18n="ent.obj_recomp_d">Menos grasa y más músculo: peso y ritmo moderados.</span></button>
+            <button type="button" class="cuest-op" data-valor="cut" aria-pressed="false"><span class="cuest-op__titulo" data-i18n="ent.obj_cut_t">Perder grasa</span><span class="cuest-op__texto" data-i18n="ent.obj_cut_d">Mantener el músculo con descansos cortos y algo de cardio.</span></button>
+            <button type="button" class="cuest-op" data-valor="maintain" aria-pressed="false"><span class="cuest-op__titulo" data-i18n="ent.obj_maintain_t">Salud y forma</span><span class="cuest-op__texto" data-i18n="ent.obj_maintain_d">Volumen tranquilo para mantenerte en forma.</span></button>
           </div>
         </div>
-        <div class="entreno__campo">
-          <span class="entreno__etiqueta" id="entDuracionEtiq" data-i18n="ent.etiqueta_duracion">Duración de la sesión</span>
+
+        <div class="cuestionario__pantalla" data-paso="2" hidden>
+          <h2 class="cuestionario__titulo" id="cuestT2" tabindex="-1" data-i18n="ent.cuest_nivel_t">¿Qué experiencia tienes?</h2>
+          <p class="cuestionario__ayuda" data-i18n="ent.cuest_nivel_a">Para quien empieza: ejercicios más sencillos y más margen en cada serie.</p>
+          <div class="cuestionario__opciones" id="entNivel" role="group" aria-labelledby="cuestT2">
+            <button type="button" class="cuest-op" data-valor="principiante" aria-pressed="false"><span class="cuest-op__titulo" data-i18n="ent.nivel_principiante">Principiante</span><span class="cuest-op__texto" data-i18n="ent.nivel_principiante_d">Menos de seis meses, o vuelvo tras un parón largo.</span></button>
+            <button type="button" class="cuest-op" data-valor="intermedio" aria-pressed="false"><span class="cuest-op__titulo" data-i18n="ent.nivel_intermedio">Intermedio</span><span class="cuest-op__texto" data-i18n="ent.nivel_intermedio_d">Entreno con regularidad entre seis meses y dos años.</span></button>
+            <button type="button" class="cuest-op" data-valor="avanzado" aria-pressed="false"><span class="cuest-op__titulo" data-i18n="ent.nivel_avanzado">Avanzado</span><span class="cuest-op__texto" data-i18n="ent.nivel_avanzado_d">Más de dos años y manejo bien las cargas.</span></button>
+          </div>
+        </div>
+
+        <div class="cuestionario__pantalla" data-paso="3" hidden>
+          <h2 class="cuestionario__titulo" id="cuestT3" tabindex="-1" data-i18n="ent.cuest_dias_t">¿Cuánto vas a entrenar?</h2>
+          <span class="entreno__etiqueta" id="cuestDiasEtiq" data-i18n="ent.cuest_dias_n">Entrenamientos por semana</span>
+          <div class="entreno__seg" id="entDias" role="group" aria-labelledby="cuestDiasEtiq">
+            <button type="button" class="entreno__seg-btn" data-valor="1">1</button>
+            <button type="button" class="entreno__seg-btn" data-valor="2">2</button>
+            <button type="button" class="entreno__seg-btn" data-valor="3">3</button>
+            <button type="button" class="entreno__seg-btn" data-valor="4">4</button>
+            <button type="button" class="entreno__seg-btn" data-valor="5">5</button>
+            <button type="button" class="entreno__seg-btn" data-valor="6">6</button>
+          </div>
+          <p class="entreno__ayuda" data-i18n="ent.cuest_dias_nota">Es el mismo número de «Mis datos»: cuenta para las calorías.</p>
+          <span class="entreno__etiqueta" id="cuestDiasSemanaEtiq" data-i18n="ent.cuest_dias_cuales">Qué días</span>
+          <div class="cuestionario__chips" id="entDiasSemana" role="group" aria-labelledby="cuestDiasSemanaEtiq">
+            <button type="button" class="cuest-chip" data-valor="1" aria-pressed="false" data-i18n="ent.dia_corto_1">Lu</button>
+            <button type="button" class="cuest-chip" data-valor="2" aria-pressed="false" data-i18n="ent.dia_corto_2">Ma</button>
+            <button type="button" class="cuest-chip" data-valor="3" aria-pressed="false" data-i18n="ent.dia_corto_3">Mi</button>
+            <button type="button" class="cuest-chip" data-valor="4" aria-pressed="false" data-i18n="ent.dia_corto_4">Ju</button>
+            <button type="button" class="cuest-chip" data-valor="5" aria-pressed="false" data-i18n="ent.dia_corto_5">Vi</button>
+            <button type="button" class="cuest-chip" data-valor="6" aria-pressed="false" data-i18n="ent.dia_corto_6">Sá</button>
+            <button type="button" class="cuest-chip" data-valor="7" aria-pressed="false" data-i18n="ent.dia_corto_7">Do</button>
+          </div>
+          <p class="entreno__ayuda" id="cuestDiasAyuda" aria-live="polite" data-i18n="ent.cuest_dias_cuales_a">Marca tantos días como entrenamientos, o ninguno y los elegimos con descanso entre medias.</p>
+          <span class="entreno__etiqueta" id="entDuracionEtiq" data-i18n="ent.cuest_duracion">Cuánto dura cada sesión</span>
           <div class="entreno__seg" id="entDuracion" role="group" aria-labelledby="entDuracionEtiq">
             <button type="button" class="entreno__seg-btn" data-valor="30" data-i18n="ent.duracion_30">30 min</button>
             <button type="button" class="entreno__seg-btn" data-valor="45" data-i18n="ent.duracion_45">45 min</button>
             <button type="button" class="entreno__seg-btn" data-valor="60" data-i18n="ent.duracion_60">60 min</button>
           </div>
         </div>
-        <div class="entreno__campo entreno__campo--ancho">
+
+        <div class="cuestionario__pantalla" data-paso="4" hidden>
+          <h2 class="cuestionario__titulo" id="cuestT4" tabindex="-1" data-i18n="ent.cuest_material_t">¿Dónde entrenas?</h2>
+          <p class="cuestionario__ayuda" data-i18n="ent.cuest_material_a">Elige el sitio y luego marca lo que tienes de verdad.</p>
+          <div class="cuestionario__opciones cuestionario__opciones--tres" id="entEquipo" role="group" aria-labelledby="cuestT4">
+            <button type="button" class="cuest-op" data-valor="gimnasio" aria-pressed="false"><span class="cuest-op__titulo" data-i18n="ent.equipo_gimnasio">Gimnasio</span><span class="cuest-op__texto" data-i18n="ent.equipo_gimnasio_d">Barra, máquinas y poleas: de todo.</span></button>
+            <button type="button" class="cuest-op" data-valor="mancuernas" aria-pressed="false"><span class="cuest-op__titulo" data-i18n="ent.equipo_mancuernas">Mancuernas y banco</span><span class="cuest-op__texto" data-i18n="ent.equipo_mancuernas_d">Para casa o un gimnasio pequeño.</span></button>
+            <button type="button" class="cuest-op" data-valor="sin_material" aria-pressed="false"><span class="cuest-op__titulo" data-i18n="ent.equipo_sin_material">Sin material</span><span class="cuest-op__texto" data-i18n="ent.equipo_sin_material_d">Solo tu peso, en casa o en la calle.</span></button>
+          </div>
+          <span class="entreno__etiqueta" id="cuestMaterialEtiq" data-i18n="ent.cuest_tengo">Lo que tienes</span>
+          <div class="cuestionario__chips" id="entMaterial" role="group" aria-labelledby="cuestMaterialEtiq">
+            <button type="button" class="cuest-chip" data-valor="barra" aria-pressed="false" data-i18n="ent.material_barra">Barra</button>
+            <button type="button" class="cuest-chip" data-valor="banco" aria-pressed="false" data-i18n="ent.material_banco">Banco</button>
+            <button type="button" class="cuest-chip" data-valor="mancuernas" aria-pressed="false" data-i18n="ent.material_mancuernas">Mancuernas</button>
+            <button type="button" class="cuest-chip" data-valor="maquina" aria-pressed="false" data-i18n="ent.material_maquina">Máquinas</button>
+            <button type="button" class="cuest-chip" data-valor="polea" aria-pressed="false" data-i18n="ent.material_polea">Poleas</button>
+            <button type="button" class="cuest-chip" data-valor="dominadas" aria-pressed="false" data-i18n="ent.material_dominadas">Barra de dominadas</button>
+            <button type="button" class="cuest-chip" data-valor="paralelas" aria-pressed="false" data-i18n="ent.material_paralelas">Paralelas</button>
+          </div>
+        </div>
+
+        <div class="cuestionario__pantalla" data-paso="5" hidden>
+          <h2 class="cuestionario__titulo" id="cuestT5" tabindex="-1" data-i18n="ent.cuest_enfoque_t">¿Qué quieres trabajar más?</h2>
+          <p class="cuestionario__ayuda" id="cuestEnfoqueAyuda" aria-live="polite" data-i18n="ent.cuest_enfoque_a">Hasta tres grupos: les añadimos series y, si cabe, otro ejercicio. Sin elegir nada, todo el cuerpo por igual.</p>
+          <div class="cuestionario__chips cuestionario__chips--grandes" id="entEnfoque" role="group" aria-labelledby="cuestT5">
+            <button type="button" class="cuest-chip" data-valor="pecho" aria-pressed="false" data-i18n="ent.enfoque_pecho">Pecho</button>
+            <button type="button" class="cuest-chip" data-valor="espalda" aria-pressed="false" data-i18n="ent.enfoque_espalda">Espalda</button>
+            <button type="button" class="cuest-chip" data-valor="hombros" aria-pressed="false" data-i18n="ent.enfoque_hombros">Hombros</button>
+            <button type="button" class="cuest-chip" data-valor="brazos" aria-pressed="false" data-i18n="ent.enfoque_brazos">Brazos</button>
+            <button type="button" class="cuest-chip" data-valor="piernas" aria-pressed="false" data-i18n="ent.enfoque_piernas">Piernas</button>
+            <button type="button" class="cuest-chip" data-valor="gluteos" aria-pressed="false" data-i18n="ent.enfoque_gluteos">Glúteos</button>
+            <button type="button" class="cuest-chip" data-valor="abdomen" aria-pressed="false" data-i18n="ent.enfoque_abdomen">Abdomen</button>
+          </div>
+        </div>
+
+        <div class="cuestionario__pantalla" data-paso="6" hidden>
+          <h2 class="cuestionario__titulo" id="cuestT6" tabindex="-1" data-i18n="ent.cuest_limites_t">¿Tienes alguna molestia o lesión?</h2>
+          <p class="cuestionario__ayuda" data-i18n="ent.cuest_limites_a">Quitamos los ejercicios que cargan esa zona y ponemos otros. No sustituye al médico.</p>
+          <div class="cuestionario__chips cuestionario__chips--grandes" id="entLimites" role="group" aria-labelledby="cuestT6">
+            <button type="button" class="cuest-chip" data-valor="rodillas" aria-pressed="false" data-i18n="ent.limite_rodillas">Rodillas</button>
+            <button type="button" class="cuest-chip" data-valor="espalda" aria-pressed="false" data-i18n="ent.limite_espalda">Lumbar</button>
+            <button type="button" class="cuest-chip" data-valor="hombros" aria-pressed="false" data-i18n="ent.limite_hombros">Hombros</button>
+          </div>
           <label class="entreno__etiqueta" id="entExcluirEtiq" for="entExcluir" data-i18n="ent.etiqueta_excluir">Ejercicios que no quieres hacer</label>
-          <input id="entExcluir" type="text" autocomplete="off" maxlength="200" data-i18n-placeholder="ent.excluir_placeholder" placeholder="Press de banca, sentadilla…">
+          <input id="entExcluir" class="cuestionario__texto" type="text" autocomplete="off" maxlength="200" data-i18n-placeholder="ent.excluir_placeholder" placeholder="Press de banca, sentadilla…">
           <p class="entreno__ayuda" data-i18n="ent.ayuda_excluir">Sepáralos con comas. Vale el nombre en cualquier idioma.</p>
         </div>
-        <div class="entreno__campo entreno__campo--ancho">
+
+        <div class="cuestionario__pie">
+          <button type="button" class="btn-secondary" id="cuestAtras" data-i18n="ent.cuest_atras">Atrás</button>
+          <button type="button" class="entreno__empezar" id="cuestSiguiente" data-i18n="ent.cuest_siguiente">Siguiente</button>
+        </div>
+      </section>
+
+      <h2 class="entreno__titulo" id="entrenoTitulo" data-i18n="ent.titulo">Entrenamientos de la semana</h2>
+      <p class="entreno__intro" data-i18n="ent.intro">Responde unas preguntas y armamos un programa a tu medida: objetivo, material y lo que quieres trabajar más.</p>
+
+      <!-- Sesión sin terminar (js/ui/entreno-progreso.js): lo primero, si la hay. -->
+      <div class="entreno__reanudar" id="entrenoReanudar" role="status" hidden></div>
+
+      <!-- Tu programa: lo que se contestó en el cuestionario, en fichas, con
+           «Cambiar» para volver a él, y el número de semana. -->
+      <section class="entreno__resumen" id="entrenoResumen" aria-labelledby="entrenoResumenTitulo">
+        <div class="entreno__resumen-cabeza">
+          <h3 class="entreno__resumen-titulo" id="entrenoResumenTitulo" data-i18n="ent.resumen_programa">Tu programa</h3>
+          <button type="button" class="btn-secondary" id="entEditar" data-i18n="ent.editar_programa">Cambiar</button>
+        </div>
+        <ul class="entreno__chips" id="entrenoResumenFichas"></ul>
+        <div class="entreno__resumen-notas" id="entrenoResumenNotas"></div>
+        <div class="entreno__campo">
           <span class="entreno__etiqueta" id="entSemanaEtiq" data-i18n="ent.etiqueta_semana">Número de semana</span>
           <div class="entreno__paso">
             <button type="button" class="entreno__paso-btn" data-paso="-1" data-i18n-aria-label="ent.menos" aria-label="Menos">&minus;</button>
@@ -1536,7 +1627,15 @@
           </div>
           <p class="entreno__ayuda" data-i18n="ent.ayuda_semana">Cada 5.ª semana es de descarga.</p>
         </div>
+      </section>
+
+      <div class="entreno__aviso" id="entrenoSinDias" hidden>
+        <p data-i18n="ent.sin_dias">En «Mis datos» no hay días de entrenamiento. Indica cuántos días entrenas a la semana.</p>
+        <button type="button" class="btn-secondary" id="entAbrirDatos" data-i18n="ent.abrir_datos">Abrir «Mis datos»</button>
       </div>
+
+      <!-- Progreso e historial (js/ui/entreno-progreso.js). -->
+      <section class="entreno__progreso" id="entrenoProgreso" aria-labelledby="entrenoProgresoTitulo" hidden></section>
 
       <div class="entreno__acciones">
         <button type="button" class="btn-secondary" id="entImprimir" data-i18n="ui.imprimir">Imprimir</button>
@@ -1596,18 +1695,18 @@
  <script src="https://cdn.jsdelivr.net/npm/firebase@12.19.0/firebase-app-compat.js"></script>
  <script src="https://cdn.jsdelivr.net/npm/firebase@12.19.0/firebase-auth-compat.js"></script>
 
-<script src="js/data/firebase-config.js?v=20261018z"></script>
-<script src="js/data/legal.js?v=20261018z"></script>
-<script src="js/data/onboarding-steps.js?v=20261018z"></script>
-<script src="js/data/tour-steps.js?v=20261018z"></script>
-<script src="js/data/dishes.js?v=20261018z"></script>
+<script src="js/data/firebase-config.js?v=20261018za"></script>
+<script src="js/data/legal.js?v=20261018za"></script>
+<script src="js/data/onboarding-steps.js?v=20261018za"></script>
+<script src="js/data/tour-steps.js?v=20261018za"></script>
+<script src="js/data/dishes.js?v=20261018za"></script>
 <!-- dish-instructions.js: equipo/dificultad/makeAhead, ADITIVO y opcional.
      Los PASOS estan en dish-steps.js y se cargan al abrir una receta.
      Un plato sin entrada aqui se comporta exactamente como antes -- por
      eso dishes.js no se toca y los golden-master no se mueven. -->
-<script src="js/data/dish-instructions.js?v=20261018z"></script>
-<script src="js/data/dish-cuisine.js?v=20261018z"></script>
-<script src="js/data/real-products.js?v=20261018z"></script>
+<script src="js/data/dish-instructions.js?v=20261018za"></script>
+<script src="js/data/dish-cuisine.js?v=20261018za"></script>
+<script src="js/data/real-products.js?v=20261018za"></script>
 <!-- Alcampo y Carrefour se cayeron el 2026-09-07: 103 KB que viajaban a
      cada visitante sin que NADIE los leyera. Comprobado antes de quitarlos:
      ningun fichero fuera de ellos mismos menciona REAL_PRODUCTS_ALCAMPO ni
@@ -1615,135 +1714,136 @@
      js/data/prices/ solo existe mercadona.js -- asi que ni con precios
      habrian servido. Si algun dia vuelve el selector de tienda, vuelven
      desde git; ver la cabecera de js/core/pricing.js para el porque. -->
-<script src="js/data/packaging.js?v=20261018z"></script>
-<script src="js/data/servings.js?v=20261018z"></script>
-<script src="js/data/real-ingredient-matches.js?v=20261018z"></script>
-<script src="js/data/product-links.js?v=20261018z"></script>
-<script src="js/data/ingredient-nutrition.js?v=20261018z"></script>
-<script src="js/data/no-cook-classifier.js?v=20261018z"></script>
+<script src="js/data/packaging.js?v=20261018za"></script>
+<script src="js/data/servings.js?v=20261018za"></script>
+<script src="js/data/real-ingredient-matches.js?v=20261018za"></script>
+<script src="js/data/product-links.js?v=20261018za"></script>
+<script src="js/data/ingredient-nutrition.js?v=20261018za"></script>
+<script src="js/data/no-cook-classifier.js?v=20261018za"></script>
 <!-- Raciones/papeles de cada producto y formas de comida del modo "sin
      cocinar" (2026-09-01). serving-sizes.js antes que el generador: sin el
      ANTES no habia gramos por racion y los macros en pantalla eran los de
      100 g. -->
-<script src="js/data/serving-sizes.js?v=20261018z"></script>
-<script src="js/data/no-cook-templates.js?v=20261018z"></script>
-<script src="js/data/prices/mercadona.js?v=20261018z"></script>
-<script src="js/data/budget-presets.js?v=20261018z"></script>
-<script src="js/data/dislike-groups.js?v=20261018z"></script>
-<script src="js/data/shelf-life.js?v=20261018z"></script>
+<script src="js/data/serving-sizes.js?v=20261018za"></script>
+<script src="js/data/no-cook-templates.js?v=20261018za"></script>
+<script src="js/data/prices/mercadona.js?v=20261018za"></script>
+<script src="js/data/budget-presets.js?v=20261018za"></script>
+<script src="js/data/dislike-groups.js?v=20261018za"></script>
+<script src="js/data/shelf-life.js?v=20261018za"></script>
 <!-- Conservación REAL publicada por Mercadona (generado por
      PythonProject/scripts/export_product_storage.py). Tiene prioridad
      sobre shelf-life.js, que es estimación nuestra. -->
-<script src="js/data/product-storage.js?v=20261018z"></script>
+<script src="js/data/product-storage.js?v=20261018za"></script>
 <!-- Alergenos declarados en la etiqueta de Mercadona (generado por
      scratchpad/gen_allergens.js). Solo para MOSTRAR en las tarjetas de
      "sin cocinar" -- no es un filtro, ver js/core/allergens.js. -->
-<script src="js/data/product-allergens.js?v=20261018z"></script>
+<script src="js/data/product-allergens.js?v=20261018za"></script>
 <!-- Estado del tema. Sin DOM: solo guarda, valida y resuelve.
      Antes que cualquier ui/ porque render-menu.js lo usa. -->
-<script src="js/core/theme.js?v=20261018z"></script>
-<script src="js/core/look.js?v=20261018z"></script>
+<script src="js/core/theme.js?v=20261018za"></script>
+<script src="js/core/look.js?v=20261018za"></script>
 <!-- Carga perezosa de los pasos de receta: solo define funciones; no baja
      nada hasta que alguien abre una receta. -->
-<script src="js/core/recipe-assets.js?v=20261018z"></script>
+<script src="js/core/recipe-assets.js?v=20261018za"></script>
 <!-- Idioma. i18n.js ANTES que las tablas: son ellas las que llaman a
      registerI18nTable(). Y las tablas antes que cualquier ui/, que es
      quien pinta. Se cargan TODAS y no solo la elegida: cargarla despues
      de pintar hace parpadear la pagina del espanol al idioma elegido, y
      esconderla hasta que llegue es lo que prohibe 7.2. -->
-<script src="js/core/i18n.js?v=20261018z"></script>
-<script src="js/i18n/es.js?v=20261018z"></script>
-<script src="js/i18n/en.js?v=20261018z"></script>
-<script src="js/i18n/ru.js?v=20261018z"></script>
-<script src="js/i18n/uk.js?v=20261018z"></script>
+<script src="js/core/i18n.js?v=20261018za"></script>
+<script src="js/i18n/es.js?v=20261018za"></script>
+<script src="js/i18n/en.js?v=20261018za"></script>
+<script src="js/i18n/ru.js?v=20261018za"></script>
+<script src="js/i18n/uk.js?v=20261018za"></script>
 <!-- Los nombres de comida van aparte de las cadenas de interfaz: son un
      diccionario, no una lista de frases, y el que traduce nombres de plato
      se compone de piezas para que los platos NUEVOS del generador salgan
      traducidos solos. -->
-<script src="js/i18n/food-en.js?v=20261018z"></script>
-<script src="js/i18n/food-ru.js?v=20261018z"></script>
-<script src="js/i18n/food-uk.js?v=20261018z"></script>
+<script src="js/i18n/food-en.js?v=20261018za"></script>
+<script src="js/i18n/food-ru.js?v=20261018za"></script>
+<script src="js/i18n/food-uk.js?v=20261018za"></script>
 <!-- Los pasos de las recetas (js/data/dish-steps.js y js/i18n/steps-en.js,
      steps-ru.js, steps-uk.js) NO van aqui: js/core/recipe-assets.js los pide
      al abrir una receta, para no descargar ~1,6 MB en cada arranque. -->
 <!-- Las etiquetas de envase ("barra", "tarro", "bandeja"): describen CÓMO
      se compra algo, no el nombre comercial, así que sí se traducen. Llevan
      singular y plural porque en inglés no basta con añadir una "s". -->
-<script src="js/i18n/packages-en.js?v=20261018z"></script>
-<script src="js/i18n/packages-ru.js?v=20261018z"></script>
-<script src="js/i18n/packages-uk.js?v=20261018z"></script>
-<script src="js/core/utils.js?v=20261018z"></script>
-<script src="js/core/pricing.js?v=20261018z"></script>
+<script src="js/i18n/packages-en.js?v=20261018za"></script>
+<script src="js/i18n/packages-ru.js?v=20261018za"></script>
+<script src="js/i18n/packages-uk.js?v=20261018za"></script>
+<script src="js/core/utils.js?v=20261018za"></script>
+<script src="js/core/pricing.js?v=20261018za"></script>
 <!-- servings.js despues de pricing.js (usa normalizeIngredientKey) y de
      data/servings.js + packaging.js, de donde saca las unidades; antes de
      dish-selector/plan-generator y de render.js, que son quienes preguntan. -->
-<script src="js/core/servings.js?v=20261018z"></script>
-<script src="js/core/nutrition.js?v=20261018z"></script>
+<script src="js/core/servings.js?v=20261018za"></script>
+<script src="js/core/nutrition.js?v=20261018za"></script>
 <!-- expiry.js despues de pricing.js (usa normalizeIngredientKey) y de
      shelf-life.js (usa getShelfLife); antes de pantry.js, que lo consulta
      desde listPantryEntries(). Los tres son opcionales: si expiry.js
      faltara, la despensa sigue funcionando sin columna de caducidad. -->
-<script src="js/core/expiry.js?v=20261018z"></script>
+<script src="js/core/expiry.js?v=20261018za"></script>
 <!-- preferences.js despues de pricing.js (reutiliza
      normalizeIngredientKey para no tener dos normalizaciones que puedan
      divergir). Es SOLO preferencias blandas ("no me gusta"); las alergias
      son una restriccion de seguridad y viviran en su propio archivo, a
      proposito -- ver la cabecera de preferences.js. -->
-<script src="js/core/preferences.js?v=20261018z"></script>
+<script src="js/core/preferences.js?v=20261018za"></script>
 <!-- allergens.js: MOSTRAR alergenos de etiqueta, nunca filtrar. Aparte de
      preferences.js a proposito (ver cabecera de ambos). Despues de
      product-allergens.js (usa PRODUCT_ALLERGENS) y utils.js (escapeHtml). -->
-<script src="js/core/allergens.js?v=20261018z"></script>
-<script src="js/core/pantry.js?v=20261018z"></script>
-<script src="js/core/budget.js?v=20261018z"></script>
-<script src="js/core/shopping-checks.js?v=20261018z"></script>
-<script src="js/core/calculator.js?v=20261018z"></script>
-<script src="js/core/meal-helpers.js?v=20261018z"></script>
-<script src="js/core/meal-schedule.js?v=20261018z"></script>
-<script src="js/core/ics-export.js?v=20261018z"></script>
-<script src="js/core/plan-store.js?v=20261018z"></script>
-<script src="js/core/weight-log.js?v=20261018z"></script>
-<script src="js/core/firebase-client.js?v=20261018z"></script>
-<script src="js/core/settings.js?v=20261018z"></script>
-<script src="js/core/onboarding.js?v=20261018z"></script>
-<script src="js/core/account-prefs.js?v=20261018z"></script>
-<script src="js/core/auth.js?v=20261018z"></script>
-<script src="js/core/cloud-sync.js?v=20261018z"></script>
-<script src="js/core/migration.js?v=20261018z"></script>
-<script src="js/engine/dish-selector.js?v=20261018z"></script>
-<script src="js/engine/plan-generator.js?v=20261018z"></script>
-<script src="js/engine/no-cook-generator.js?v=20261018z"></script>
-<script src="js/ui/render.js?v=20261018z"></script>
-<script src="js/ui/render-schedule.js?v=20261018z"></script>
-<script src="js/ui/render-ayuno.js?v=20261018z"></script>
-<script src="js/ui/render-shopping-list.js?v=20261018z"></script>
-<script src="js/ui/form-controls.js?v=20261018z"></script>
-<script src="js/ui/pestanas.js?v=20261018z"></script>
-<script src="js/ui/render-pantry.js?v=20261018z"></script>
-<script src="js/ui/render-insights.js?v=20261018z"></script>
-<script src="js/ui/render-real-products.js?v=20261018z"></script>
-<script src="js/ui/render-no-cook.js?v=20261018z"></script>
-<script src="js/ui/render-auth.js?v=20261018z"></script>
-<script src="js/ui/onboarding-ui.js?v=20261018z"></script>
-<script src="js/ui/tour-fx.js?v=20261018z"></script>
-<script src="js/ui/tour-scenes.js?v=20261018z"></script>
-<script src="js/ui/tour.js?v=20261018z"></script>
-<script src="js/ui/ingredient-suggest.js?v=20261018z"></script>
-<script src="js/ui/animations.js?v=20261018z"></script>
+<script src="js/core/allergens.js?v=20261018za"></script>
+<script src="js/core/pantry.js?v=20261018za"></script>
+<script src="js/core/budget.js?v=20261018za"></script>
+<script src="js/core/shopping-checks.js?v=20261018za"></script>
+<script src="js/core/calculator.js?v=20261018za"></script>
+<script src="js/core/meal-helpers.js?v=20261018za"></script>
+<script src="js/core/meal-schedule.js?v=20261018za"></script>
+<script src="js/core/ics-export.js?v=20261018za"></script>
+<script src="js/core/plan-store.js?v=20261018za"></script>
+<script src="js/core/weight-log.js?v=20261018za"></script>
+<script src="js/core/firebase-client.js?v=20261018za"></script>
+<script src="js/core/settings.js?v=20261018za"></script>
+<script src="js/core/onboarding.js?v=20261018za"></script>
+<script src="js/core/account-prefs.js?v=20261018za"></script>
+<script src="js/core/auth.js?v=20261018za"></script>
+<script src="js/core/cloud-sync.js?v=20261018za"></script>
+<script src="js/core/migration.js?v=20261018za"></script>
+<script src="js/engine/dish-selector.js?v=20261018za"></script>
+<script src="js/engine/plan-generator.js?v=20261018za"></script>
+<script src="js/engine/no-cook-generator.js?v=20261018za"></script>
+<script src="js/ui/render.js?v=20261018za"></script>
+<script src="js/ui/render-schedule.js?v=20261018za"></script>
+<script src="js/ui/render-ayuno.js?v=20261018za"></script>
+<script src="js/ui/render-shopping-list.js?v=20261018za"></script>
+<script src="js/ui/form-controls.js?v=20261018za"></script>
+<script src="js/ui/pestanas.js?v=20261018za"></script>
+<script src="js/ui/render-pantry.js?v=20261018za"></script>
+<script src="js/ui/render-insights.js?v=20261018za"></script>
+<script src="js/ui/render-real-products.js?v=20261018za"></script>
+<script src="js/ui/render-no-cook.js?v=20261018za"></script>
+<script src="js/ui/render-auth.js?v=20261018za"></script>
+<script src="js/ui/onboarding-ui.js?v=20261018za"></script>
+<script src="js/ui/tour-fx.js?v=20261018za"></script>
+<script src="js/ui/tour-scenes.js?v=20261018za"></script>
+<script src="js/ui/tour.js?v=20261018za"></script>
+<script src="js/ui/ingredient-suggest.js?v=20261018za"></script>
+<script src="js/ui/animations.js?v=20261018za"></script>
 <!-- El menu de ajustes. Despues de onboarding-ui.js (usa
      openLegalDialog) y de tour.js (usa startTour via app.js). -->
-<script src="js/ui/render-menu.js?v=20261018z"></script>
-<script src="js/data/exercises.js?v=20261018z"></script>
-<script src="js/data/exercise-poses.js?v=20261018z"></script>
-<script src="js/engine/workout-generator.js?v=20261018z"></script>
-<script src="js/core/workout-log.js?v=20261018z"></script>
-<script src="js/ui/entreno-figura.js?v=20261018z"></script>
-<script src="js/ui/render-entreno.js?v=20261018z"></script>
-<script src="js/ui/entreno-sesion.js?v=20261018z"></script>
-<script src="js/ui/entreno-progreso.js?v=20261018z"></script>
-<script src="js/ui/dialog-focus.js?v=20261018z"></script>
-<script src="js/ui/render-weight.js?v=20261018z"></script>
-<script src="js/app.js?v=20261018z"></script>
+<script src="js/ui/render-menu.js?v=20261018za"></script>
+<script src="js/data/exercises.js?v=20261018za"></script>
+<script src="js/data/exercise-poses.js?v=20261018za"></script>
+<script src="js/engine/workout-generator.js?v=20261018za"></script>
+<script src="js/core/workout-log.js?v=20261018za"></script>
+<script src="js/ui/entreno-figura.js?v=20261018za"></script>
+<script src="js/ui/render-entreno.js?v=20261018za"></script>
+<script src="js/ui/entreno-cuestionario.js?v=20261018za"></script>
+<script src="js/ui/entreno-sesion.js?v=20261018za"></script>
+<script src="js/ui/entreno-progreso.js?v=20261018za"></script>
+<script src="js/ui/dialog-focus.js?v=20261018za"></script>
+<script src="js/ui/render-weight.js?v=20261018za"></script>
+<script src="js/app.js?v=20261018za"></script>
 
 <!-- ══ OFFLINE DE VERDAD (2026-09-07) ═══════════════════════════════════
      Se registra al final y envuelto en try: si el navegador no soporta

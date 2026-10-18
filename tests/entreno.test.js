@@ -110,7 +110,10 @@ function run(t) {
     var s = sandbox();
     s.localStorage = almacenFalso(function () { return null; });
     var nada = s.entrenoLeerPrefs();
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(nada)), { nivel: "principiante", equipamiento: "gimnasio", semana: 1, duracion: 60, excluir: "" });
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(nada)), {
+      nivel: "principiante", equipamiento: "gimnasio", semana: 1, duracion: 60, excluir: "",
+      objetivo: "auto", material: null, enfoque: [], limitaciones: [], diasSemana: null, configurado: false
+    });
 
     s.localStorage = almacenFalso(function () { return "esto no es json {"; });
     assert.strictEqual(s.entrenoLeerPrefs().nivel, "principiante");
