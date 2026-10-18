@@ -81,7 +81,10 @@ function matchesDislike(name, dislikes) {
   var haystack = normalizePreferenceText(name);
   if (!haystack) return false;
 
-  var terms = (typeof expandDislikeTerms === "function") ? expandDislikeTerms(dislikes) : dislikes;
+  // Lo escrito en otro idioma ("курица") se suma a sus nombres españoles
+  // ("pollo"), que es con lo que se comparan platos y productos.
+  var entrada = dislikes.concat(traducirTerminosDislike(dislikes));
+  var terms = (typeof expandDislikeTerms === "function") ? expandDislikeTerms(entrada) : entrada;
 
   for (var i = 0; i < terms.length; i++) {
     var needle = normalizePreferenceText(terms[i]);
@@ -90,6 +93,58 @@ function matchesDislike(name, dislikes) {
   }
 
   return false;
+}
+
+/**
+ * Lo que el usuario escribe en su idioma -> nombres españoles del catálogo.
+ *
+ * El filtro compara contra los nombres españoles de platos y productos. Sin
+ * esto, un "no me gusta" escrito en ruso ("курица", "лук") no tapa nada: el
+ * usuario lo ve escrito y el plan lo sigue trayendo. Se busca en las tablas
+ * de todos los idiomas cargados: la comida entera (FOOD_TABLES, "Cebolla" ->
+ * "Лук") y las piezas sueltas (DISH_WORD_TABLES, "pollo" -> "курица"). Los
+ * términos de menos de 3 letras no se traducen: darían demasiados falsos
+ * positivos.
+ *
+ * Se cachea por la lista exacta: matchesDislike() se llama una vez por plato.
+ *
+ * @param {string[]} dislikes
+ * @returns {string[]} nombres españoles que casan, sin repetir
+ */
+var _dislikeTraduccionCache = { clave: null, terminos: [] };
+
+function traducirTerminosDislike(dislikes) {
+  if (!Array.isArray(dislikes) || !dislikes.length) return [];
+  var clave = dislikes.join("|");
+  if (_dislikeTraduccionCache.clave === clave) return _dislikeTraduccionCache.terminos;
+
+  var buscados = dislikes.map(normalizePreferenceText).filter(function (n) { return n && n.length >= 3; });
+  var vistos = {};
+  var salida = [];
+
+  function recorrer(tabla) {
+    if (!tabla) return;
+    Object.keys(tabla).forEach(function (espanol) {
+      var traduccion = normalizePreferenceText(String(tabla[espanol] || ""));
+      if (!traduccion) return;
+      buscados.forEach(function (n) {
+        if (traduccion.indexOf(n) !== -1 && !vistos[espanol]) {
+          vistos[espanol] = true;
+          salida.push(espanol);
+        }
+      });
+    });
+  }
+
+  if (typeof FOOD_TABLES !== "undefined" && FOOD_TABLES) {
+    Object.keys(FOOD_TABLES).forEach(function (lang) { recorrer(FOOD_TABLES[lang]); });
+  }
+  if (typeof DISH_WORD_TABLES !== "undefined" && DISH_WORD_TABLES) {
+    Object.keys(DISH_WORD_TABLES).forEach(function (lang) { recorrer(DISH_WORD_TABLES[lang]); });
+  }
+
+  _dislikeTraduccionCache = { clave: clave, terminos: salida };
+  return salida;
 }
 
 /**

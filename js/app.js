@@ -420,6 +420,24 @@ document.addEventListener("DOMContentLoaded", function () {
     renderDayDots(lastGeneratedDays.length);
   }
 
+  /**
+   * Repinta la lista de la compra con TODOS los días del plan. La compra es de
+   * los N días juntos: un paquete que cubre varios días se paga una vez. Se usa
+   * al restaurar el plan y tras cada cambio de la despensa. Antes, tras marcar
+   * una compra, se repintaba solo con las tomas del día 1: la lista y el precio
+   * bajaban a un día (con 3 días, de 24 € a 8 €).
+   */
+  function pintarListaDeCompraActual() {
+    if (!lastGeneratedMeals || typeof renderShoppingList !== "function") return;
+    var dias = lastGeneratedDays;
+    if (dias && dias.length > 1) {
+      var todas = dias.reduce(function (acc, d) { return acc.concat(d.meals || []); }, []);
+      renderShoppingList(todas, lastGeneratedStore, dias.length);
+    } else {
+      renderShoppingList(lastGeneratedMeals, lastGeneratedStore);
+    }
+  }
+
   /** Re-pinta el plan en memoria completo tras editar una toma. */
   function rerenderCurrentPlan() {
     if (!lastGeneratedMeals) return;
@@ -459,20 +477,7 @@ document.addEventListener("DOMContentLoaded", function () {
       renderInsights(lastGeneratedProfile, result, lastGeneratedData);
       renderWarnings(lastGeneratedProfile, result, lastGeneratedData);
     }
-    if (typeof renderShoppingList === "function") {
-      safeInit("shopping-list-render", function () {
-        // La compra es de TODOS los días juntos, igual que al generar: un
-        // paquete que cubre varios días se paga una vez. Repintarla solo
-        // con las tomas del día 1 encogía la lista y el precio cada vez que
-        // se cambiaba un plato.
-        if (variosDias) {
-          var todas = dias.reduce(function (acc, d) { return acc.concat(d.meals || []); }, []);
-          renderShoppingList(todas, lastGeneratedStore, dias.length);
-        } else {
-          renderShoppingList(lastGeneratedMeals, lastGeneratedStore);
-        }
-      });
-    }
+    safeInit("shopping-list-render", pintarListaDeCompraActual);
   }
 
   // ── Generar el plan (flujo principal) ────────────────────────────────
@@ -1371,9 +1376,7 @@ document.addEventListener("DOMContentLoaded", function () {
   function syncAfterPantryChange() {
     safeInit("pantry-sync", function () {
       if (typeof renderPantryPanel === "function") renderPantryPanel();
-      if (lastGeneratedMeals && typeof renderShoppingList === "function") {
-        renderShoppingList(lastGeneratedMeals, lastGeneratedStore);
-      }
+      pintarListaDeCompraActual();
     });
     // Empuje en segundo plano a la nube (no-op en modo invitado o sin
     // conexión -- ver js/core/cloud-sync.js, nunca bloquea ni lanza).

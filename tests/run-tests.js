@@ -103,6 +103,8 @@ var suites = [
   "carrusel-dias-ancho.test",
   "sincronizacion-estado.test",
   "recetas-carga.test",
+  "preferences-idioma.test",
+  "entreno-preferencias.test",
   "accesibilidad.test",
   "textos-coherencia.test",
   "vacios.test",

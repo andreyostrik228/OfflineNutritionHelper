@@ -44,9 +44,12 @@ var ENTRENO_AVISOS = {
   nivel_no_indicado: "ent.aviso_nivel_no_indicado"
 };
 
+/** Duraciones de sesión que ofrece el panel (minutos). */
+var ENTRENO_DURACIONES = [30, 45, 60];
+
 /** Elecciones guardadas en este navegador. Lo que no sea válido vuelve al valor por defecto. */
 function entrenoLeerPrefs() {
-  var prefs = { nivel: "principiante", equipamiento: "gimnasio", semana: 1 };
+  var prefs = { nivel: "principiante", equipamiento: "gimnasio", semana: 1, duracion: 60, excluir: "" };
   try {
     var guardado = JSON.parse(localStorage.getItem(ENTRENO_CLAVE_PREFS) || "null");
     if (guardado && typeof guardado === "object") {
@@ -54,6 +57,8 @@ function entrenoLeerPrefs() {
       if (ENTRENO_EQUIPOS.indexOf(guardado.equipamiento) !== -1) prefs.equipamiento = guardado.equipamiento;
       var semana = Math.floor(Number(guardado.semana));
       if (semana >= 1 && semana <= ENTRENO_SEMANA_MAX) prefs.semana = semana;
+      if (ENTRENO_DURACIONES.indexOf(Number(guardado.duracion)) !== -1) prefs.duracion = Number(guardado.duracion);
+      if (typeof guardado.excluir === "string") prefs.excluir = guardado.excluir.slice(0, 200);
     }
   } catch (e) { /* sin almacenamiento o JSON roto: se queda con los valores por defecto */ }
   return prefs;
@@ -77,7 +82,7 @@ function entrenoPlanParaDatos(datos) {
   var d = datos || {};
   var plan = generateWorkoutPlan(
     { entrenamientos: d.dias, goal: d.objetivo },
-    { nivel: d.nivel, equipamiento: d.equipamiento }
+    { nivel: d.nivel, equipamiento: d.equipamiento, duracion: d.duracion, excluir: d.excluir }
   );
   var semana = Math.floor(Number(d.semana));
   if (!(semana >= 1)) semana = 1;
@@ -125,7 +130,10 @@ function entrenoLeerControles() {
   if (ENTRENO_EQUIPOS.indexOf(equipamiento) === -1) equipamiento = "gimnasio";
   if (!(semana >= 1)) semana = 1;
   if (semana > ENTRENO_SEMANA_MAX) semana = ENTRENO_SEMANA_MAX;
-  return { nivel: nivel, equipamiento: equipamiento, semana: semana };
+  var duracion = Number(entrenoValorSeg("entDuracion"));
+  if (ENTRENO_DURACIONES.indexOf(duracion) === -1) duracion = 60;
+  var excluir = String((document.getElementById("entExcluir") || {}).value || "").trim().slice(0, 200);
+  return { nivel: nivel, equipamiento: equipamiento, semana: semana, duracion: duracion, excluir: excluir };
 }
 
 /**
@@ -281,6 +289,8 @@ function renderEntreno() {
     objetivo: (document.getElementById("goal") || {}).value,
     nivel: controles.nivel,
     equipamiento: controles.equipamiento,
+    duracion: controles.duracion,
+    excluir: controles.excluir,
     semana: controles.semana
   });
   _entrenoUltimoPlan = plan.ok ? plan : null;
@@ -361,11 +371,13 @@ function initEntreno() {
   var prefs = entrenoLeerPrefs();
   entrenoPonerSeg("entNivel", prefs.nivel);
   entrenoPonerSeg("entEquipo", prefs.equipamiento);
+  entrenoPonerSeg("entDuracion", String(prefs.duracion));
+  document.getElementById("entExcluir").value = prefs.excluir;
   document.getElementById("entSemana").value = String(prefs.semana);
 
   _entrenoBoton.addEventListener("click", function () { entrenoVibrar(); entrenoMostrar(_entrenoPanel.hidden); });
 
-  ["entNivel", "entEquipo"].forEach(function (id) {
+  ["entNivel", "entEquipo", "entDuracion"].forEach(function (id) {
     Array.prototype.forEach.call(document.querySelectorAll("#" + id + " .entreno__seg-btn"), function (b) {
       b.addEventListener("click", function () {
         entrenoVibrar();
@@ -378,6 +390,7 @@ function initEntreno() {
     b.addEventListener("click", function () { entrenoVibrar(); entrenoPasoSemana(Number(b.getAttribute("data-paso"))); });
   });
   document.getElementById("entSemana").addEventListener("change", entrenoAlCambiar);
+  document.getElementById("entExcluir").addEventListener("change", entrenoAlCambiar);
 
   var abrirDatos = document.getElementById("entAbrirDatos");
   if (abrirDatos) abrirDatos.addEventListener("click", function () {

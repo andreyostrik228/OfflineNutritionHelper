@@ -37,6 +37,12 @@ var WORKOUT_LEVELS = ["principiante", "intermedio", "avanzado"];
  */
 var WORKOUT_LEVEL_CAP = { principiante: 6, intermedio: 6, avanzado: 7 };
 
+/**
+ * Ejercicios por sesión según la duración pedida, en minutos. 60 no recorta
+ * nada: queda el tope del nivel. Cualquier otro valor se trata como 60.
+ */
+var WORKOUT_DURACIONES = { 30: 4, 45: 5, 60: 99 };
+
 /** Repeticiones que deben quedar en reserva al terminar cada serie. */
 var WORKOUT_LEVEL_RIR = { principiante: 3, intermedio: 2, avanzado: 1 };
 
@@ -142,14 +148,45 @@ function pesoMaterial(ejercicio) {
   return ejercicio.equipment.filter(function (i) { return i !== "sin_material"; }).length;
 }
 
+/** Texto para comparar: minúsculas y sin acentos ("Sentadilla" = "sentadilla"). */
+function normalizarTextoEjercicio(texto) {
+  return String(texto || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+}
+
+/**
+ * Los términos que el usuario ha escrito para no hacer ciertos ejercicios.
+ * Acepta una lista o un texto separado por comas. Menos de 3 letras no cuentan:
+ * "de" o "sí" tapan demasiado.
+ */
+function normalizarExcluidos(valor) {
+  var lista = Array.isArray(valor) ? valor : String(valor || "").split(",");
+  var vistos = {};
+  return lista.map(normalizarTextoEjercicio).filter(function (termino) {
+    if (termino.length < 3 || vistos[termino]) return false;
+    vistos[termino] = true;
+    return true;
+  });
+}
+
+/** true si el nombre del ejercicio, en cualquiera de sus idiomas, contiene un término excluido. */
+function ejercicioExcluido(ejercicio, excluidos) {
+  if (!excluidos || !excluidos.length) return false;
+  var nombres = [ejercicio.name, ejercicio.name_en, ejercicio.name_ru, ejercicio.name_uk]
+    .map(normalizarTextoEjercicio);
+  return excluidos.some(function (termino) {
+    return nombres.some(function (nombre) { return nombre.indexOf(termino) !== -1; });
+  });
+}
+
 /**
  * Elige el ejercicio de un patrón. Prefiere los que aún no se han usado en la
  * semana (para variar entre sesiones) y luego el orden del catálogo. Nunca
  * repite un ejercicio dentro de la misma sesión.
  */
-function elegirEjercicio(patron, material, nivel, usadosSesion, usadosSemana) {
+function elegirEjercicio(patron, material, nivel, usadosSesion, usadosSemana, excluidos) {
   var candidatos = EXERCISE_CATALOG.filter(function (e) {
-    return e.pattern === patron && puedeHacerse(e, material) && nivelAlcanza(e, nivel) && !usadosSesion[e.id];
+    return e.pattern === patron && puedeHacerse(e, material) && nivelAlcanza(e, nivel) && !usadosSesion[e.id]
+      && !ejercicioExcluido(e, excluidos);
   });
   if (!candidatos.length) return null;
   // Sin material solo si no hay nada con material: un "buenos días" sin lastre
@@ -165,15 +202,16 @@ function elegirEjercicio(patron, material, nivel, usadosSesion, usadosSemana) {
 }
 
 /** Construye una sesión a partir de sus patrones, respetando el tope por nivel. */
-function construirSesion(clave, objetivo, nivel, material, usadosSemana, avisos) {
+function construirSesion(clave, objetivo, nivel, material, usadosSemana, avisos, opciones) {
   var plantilla = WORKOUT_SESIONES[clave];
-  var tope = WORKOUT_LEVEL_CAP[nivel];
+  var extra = opciones || {};
+  var tope = Math.min(WORKOUT_LEVEL_CAP[nivel], extra.topeSesion || 99);
   var usadosSesion = {};
   var ejercicios = [];
 
   plantilla.patrones.forEach(function (patron) {
     if (ejercicios.length >= tope) return;
-    var ejercicio = elegirEjercicio(patron, material, nivel, usadosSesion, usadosSemana);
+    var ejercicio = elegirEjercicio(patron, material, nivel, usadosSesion, usadosSemana, extra.excluidos);
     if (!ejercicio) {
       avisos.push("falta_ejercicio:" + patron);
       return;
@@ -268,8 +306,12 @@ function generateWorkoutPlan(profile, options) {
   var division = WORKOUT_DIVISIONES[dias];
   var material = EQUIPAMIENTO_DISPONIBLE[equipamiento];
   var usadosSemana = {};
+  // Duración y exclusiones: se aplican igual a todas las sesiones.
+  var claveDuracion = String(opts.duracion);
+  var duracion = hasOwn(WORKOUT_DURACIONES, claveDuracion) ? Number(claveDuracion) : 60;
+  var opciones = { topeSesion: WORKOUT_DURACIONES[duracion], excluidos: normalizarExcluidos(opts.excluir) };
   var sesiones = division.sesiones.map(function (clave, i) {
-    var sesion = construirSesion(clave, objetivo, nivel, material, usadosSemana, avisos);
+    var sesion = construirSesion(clave, objetivo, nivel, material, usadosSemana, avisos, opciones);
     sesion.dia = WORKOUT_DIAS_SEMANA[dias][i];
     return sesion;
   });
