@@ -20,10 +20,10 @@ medidas y causas, está en la cabecera de `STATE.md` (entradas del 2026-10-07 y
 
 ### 0.0 bis Lo nuevo del 2026-10-21 (lee esto antes que 0.0)
 
-- **Estado:** `main` = `835bf72`, empujado; producción con sello `20261018zb`
-  (217 ficheros idénticos). Encima, SIN commit hasta que el dueño diga «да»: la
-  barra de cinco secciones del panel de entrenamientos, sello `20261021a`,
-  **1174 tests en verde**. Qué es y qué se midió: `ROADMAP.md`, primera sección.
+- **Estado:** la barra de cinco secciones del panel de entrenamientos está
+  subida (`0d77cd8`, sello `20261021a`), y encima el paso 1 de «sin cocinar»
+  (sello `20261021b`, **1179 tests en verde**), subido y desplegado con permiso
+  del dueño. Qué es y qué se midió: `ROADMAP.md`, primeras secciones.
 - **El dueño eligió el rediseño** en tres etapas: 1) la barra (hecha), 2) el
   aspecto «Grafito» con acento lima, 3) la prueba completa. Cada etapa, su
   commit y su «да».
@@ -46,6 +46,12 @@ medidas y causas, está en la cabecera de `STATE.md` (entradas del 2026-10-07 y
     globales chocan sin avisar, el fichero que carga después gana.
 - **Idea del dueño sin empezar:** los pasos del día para comer más (ver
   `ROADMAP.md`). Un sitio no puede leer el podómetro.
+- **«Sin cocinar» como el plan normal, en 4 pasos** (tabla al principio de
+  `ROADMAP.md`). El paso 1 (varios días, carrusel, guardado) está hecho, sello
+  `20261021b`. El carrusel ya no vive en ids sueltos: `montarCarruselDias(el)`
+  en `js/app.js` monta los dos; si añades otro, pásale sus elementos, no
+  copies el código. Siguen: compra conjunta y confirmar por fechas (2),
+  despensa y cuenta (3), diálogo de plan activo (4).
 
 ### 0.0 Lo nuevo del 2026-10-18 (lee esto antes que 0.1)
 

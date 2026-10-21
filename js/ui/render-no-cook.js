@@ -13,10 +13,18 @@
  * Inicialización obligatoria:
  *   Llamar a initNoCookRefs(refs) desde js/app.js antes de usar.
  *
+ * Desde el 2026-10-21 el plan puede ser de VARIOS días, como el normal: uno
+ * por día (generateNoCookPlanDays), pintados como diapositivas del mismo
+ * carrusel (los puntos y las flechas los mueve js/app.js), y se guarda en
+ * este dispositivo (js/core/plan-store.js) para que vuelva tras recargar.
+ *
  * Expone (globales):
  *   initNoCookRefs(refs)
- *   runNoCookGenerator(storeId, options)  – genera un plan nuevo y lo pinta
- *   paintNoCookPlan(plan)                 – re-pinta el plan guardado
+ *   runNoCookGenerator(storeId, options, dias) – genera un plan nuevo (1..7 días), lo pinta y lo guarda
+ *   paintNoCookDays(dias)                 – pinta los días (uno: como siempre; varios: carrusel)
+ *   restaurarPlanSinCocinar()             – pinta el plan guardado; devuelve cuántos días (0 si no hay)
+ *   clearNoCookPlan()                     – lo quita de la pantalla y de este dispositivo
+ *   lastNoCookDays / lastNoCookPlan (día 1) / lastNoCookSlots (sus tomas) / lastNoCookStore
  * ─────────────────────────────────────────────────────────────────────────
  */
 
@@ -39,8 +47,10 @@ var lastNoCookStore = null;
 // "Cambiar" re-tire una toma con el mismo presupuesto/prioridad.
 var lastNoCookOptions = null;
 // Plan completo tal cual lo devolvió el generador (totales, coste, avisos):
-// re-pintar tras cambiar una toma necesita recalcularlo entero.
+// re-pintar tras cambiar una toma necesita recalcularlo entero. Es el día 1
+// de lastNoCookDays (todos los días del plan, 2026-10-21).
 var lastNoCookPlan = null;
+var lastNoCookDays = null;
 
 // El nombre de cada nivel de preparación se pide a las tablas de traducción en
 // el momento de pintar (ui.nocook_nivel_N): lo que viaja en el plan es el
@@ -77,10 +87,12 @@ function initNoCookRefs(refs) {
  *   tienda) -- por defecto DEFAULT_STORE_ID dentro de
  *   generateNoCookPlan()/getNoCookEligiblePool() si se omite.
  */
-function runNoCookGenerator(storeId, options) {
+function runNoCookGenerator(storeId, options, dias) {
   if (!noCookResults || typeof generateNoCookPlan !== "function") return;
 
-  var plan = generateNoCookPlan(storeId, options);
+  var planes = (typeof generateNoCookPlanDays === "function")
+    ? generateNoCookPlanDays(storeId, options, dias)
+    : [generateNoCookPlan(storeId, options)];
   lastNoCookStore = storeId || null;
   lastNoCookOptions = options || null;
 
@@ -90,26 +102,94 @@ function runNoCookGenerator(storeId, options) {
   // función entera) para que un fallo aquí solo deje el plan sin horario,
   // nunca sin platos.
   if (typeof computeMealSchedule === "function" && typeof readScheduleSettings === "function") {
-    try {
-      plan.slots = computeMealSchedule(plan.slots, readScheduleSettings());
-    } catch (err) {
-      console.error("[render-no-cook:schedule] no se pudo calcular el horario -- se muestra sin horario:", err);
-    }
+    planes.forEach(function (plan) {
+      try {
+        plan.slots = computeMealSchedule(plan.slots, readScheduleSettings());
+      } catch (err) {
+        console.error("[render-no-cook:schedule] no se pudo calcular el horario -- se muestra sin horario:", err);
+      }
+    });
   }
 
-  if (noCookCount) noCookCount.textContent = plan.poolSize;
+  if (noCookCount) noCookCount.textContent = planes[0].poolSize;
   if (noCookStatus) noCookStatus.textContent = t("ui.nocook_plan_generado");
 
-  paintNoCookPlan(plan);
+  paintNoCookDays(planes);
+  _guardarPlanSinCocinar();
+}
+
+/** Guarda en este dispositivo lo que hay en pantalla (js/core/plan-store.js). Nunca lanza. */
+function _guardarPlanSinCocinar() {
+  if (!lastNoCookDays || typeof planSinCocinarGuardar !== "function" || typeof planAlmacen !== "function") return;
+  planSinCocinarGuardar(planAlmacen(), { dias: lastNoCookDays, store: lastNoCookStore, options: lastNoCookOptions });
 }
 
 /**
- * Pinta un plan completo y lo guarda para poder editarlo por tomas.
+ * Al cargar la página, vuelve a pintar el último plan sin cocinar guardado en
+ * este dispositivo. NO genera nada. Los totales se recalculan de los
+ * productos (lo guardado se trata como si viniera de fuera).
+ * @returns {number} cuántos días se pintaron (0 si no había nada)
+ */
+function restaurarPlanSinCocinar() {
+  if (!noCookResults || typeof planSinCocinarLeer !== "function" || typeof planAlmacen !== "function") return 0;
+  var guardado = planSinCocinarLeer(planAlmacen());
+  if (!guardado) return 0;
+  guardado.dias.forEach(recomputeNoCookPlanTotals);
+  lastNoCookStore = guardado.store;
+  lastNoCookOptions = guardado.options;
+  if (noCookCount && typeof guardado.dias[0].poolSize === "number") noCookCount.textContent = guardado.dias[0].poolSize;
+  paintNoCookDays(guardado.dias);
+  return guardado.dias.length;
+}
+
+/** «Resetear»: fuera de la pantalla y de este dispositivo. */
+function clearNoCookPlan() {
+  if (noCookResults) {
+    noCookResults.innerHTML = "";
+    noCookResults.classList.remove("days-carousel__track--multi");
+  }
+  if (noCookStatus) noCookStatus.textContent = "";
+  lastNoCookDays = null;
+  lastNoCookPlan = null;
+  lastNoCookSlots = null;
+  lastNoCookOptions = null;
+  lastNoCookStore = null;
+  if (typeof planSinCocinarBorrar === "function" && typeof planAlmacen === "function") planSinCocinarBorrar(planAlmacen());
+}
+
+/**
+ * Pinta los días del plan. Con uno, como siempre (resumen y tomas en la
+ * rejilla del panel); con varios, una diapositiva por día en el carrusel, con
+ * la misma cabecera «Día 2 de 3» que el plan normal. Cada toma lleva su día
+ * para que «Cambiar» sepa cuál re-tirar.
+ */
+function paintNoCookDays(dias) {
+  if (!noCookResults || !Array.isArray(dias) || !dias.length) return;
+  var multi = dias.length > 1;
+  // innerHTML deja `scrollLeft` en 0: sin guardarlo, cambiar una toma del día
+  // 3 te devolvía al día 1 (lo mismo que pasaba en el plan normal).
+  var desplazado = noCookResults.scrollLeft;
+  noCookResults.classList.toggle("days-carousel__track--multi", multi);
+  noCookResults.innerHTML = multi
+    ? dias.map(function (plan, i) {
+        var cabeza = typeof renderDaySlideHead === "function" ? renderDaySlideHead(i, dias.length) : "";
+        return '<section class="day-slide" data-day="' + i + '">' + cabeza +
+          '<div class="nocook-dia">' + _noCookDiaHtml(plan, i) + "</div></section>";
+      }).join("")
+    : _noCookDiaHtml(dias[0], 0);
+  if (multi) noCookResults.scrollLeft = desplazado;
+  lastNoCookDays = dias;
+  lastNoCookPlan = dias[0];
+  lastNoCookSlots = dias[0].slots;
+}
+
+/**
+ * Un día: resumen, avisos y tomas.
  *
  * El aviso de alérgenos se arma aquí (y no en runNoCookGenerator) porque
  * también hay que re-pintarlo al cambiar una sola toma.
  */
-function paintNoCookPlan(plan) {
+function _noCookDiaHtml(plan, dayIndex) {
   var allergenNote = (typeof renderAllergenLine === "function")
     ? '<p class="nocook-disclaimer">' + t("html.nocook_aviso_alergenos") + "</p>"
     : "";
@@ -133,10 +213,8 @@ function paintNoCookPlan(plan) {
       }) + "</p>"
     : "";
 
-  noCookResults.innerHTML =
-    renderNoCookSummary(plan) + allergenNote + aproxNote + plan.slots.map(renderNoCookSlot).join("");
-  lastNoCookSlots = plan.slots;
-  lastNoCookPlan = plan;
+  return renderNoCookSummary(plan) + allergenNote + aproxNote +
+    plan.slots.map(function (slot) { return renderNoCookSlot(slot, dayIndex); }).join("");
 }
 
 /**
@@ -149,10 +227,17 @@ function handleSwapNoCookSlot(event) {
   var btn = event.target.closest('button[data-action="swap-nocook-slot"]');
   if (!btn) return;
   var slotKey = btn.dataset.slotKey;
-  if (!slotKey || !lastNoCookPlan || typeof regenerateNoCookSlot !== "function") return;
+  var dayIndex = Number(btn.dataset.day) || 0;
+  var plan = lastNoCookDays && lastNoCookDays[dayIndex];
+  if (!slotKey || !plan || typeof regenerateNoCookSlot !== "function") return;
 
   btn.disabled = true;
-  var res = regenerateNoCookSlot(lastNoCookPlan, slotKey, lastNoCookStore, lastNoCookOptions || {});
+  // La misma regla que al generar: lo «de la noche antes» solo en el día 2+.
+  var opciones = {};
+  var base = lastNoCookOptions || {};
+  for (var k in base) opciones[k] = base[k];
+  opciones.allowMakeAhead = lastNoCookDays.length > 1 && dayIndex > 0;
+  var res = regenerateNoCookSlot(plan, slotKey, lastNoCookStore, opciones);
   if (!res || res.error || !res.slot) {
     btn.disabled = false;
     btn.textContent = t("ui.sin_mas_opciones");
@@ -161,16 +246,17 @@ function handleSwapNoCookSlot(event) {
   }
 
   var idx = -1;
-  for (var i = 0; i < lastNoCookPlan.slots.length; i++) {
-    if (lastNoCookPlan.slots[i].key === slotKey) idx = i;
+  for (var i = 0; i < plan.slots.length; i++) {
+    if (plan.slots[i].key === slotKey) idx = i;
   }
   if (idx === -1) { btn.disabled = false; return; }
-  lastNoCookPlan.slots[idx] = res.slot;
+  plan.slots[idx] = res.slot;
 
   // Totales y coste del día cambian con la toma: se recalculan enteros en
   // vez de parchear la tarjeta, que es como se cuelan las cifras viejas.
-  recomputeNoCookPlanTotals(lastNoCookPlan);
-  paintNoCookPlan(lastNoCookPlan);
+  recomputeNoCookPlanTotals(plan);
+  paintNoCookDays(lastNoCookDays);
+  _guardarPlanSinCocinar();
 }
 
 /** Recalcula totales, coste y avisos del día tras editar una toma. */
@@ -291,7 +377,7 @@ function renderNoCookSummary(plan) {
  * @param {{key:string, label:string, items:object[]}} slot
  * @returns {string}
  */
-function renderNoCookSlot(slot) {
+function renderNoCookSlot(slot, dayIndex) {
   var timeBadge = typeof renderMealTimeBadge === "function" ? renderMealTimeBadge(slot) : "";
 
   // Nombre de la plantilla ("Wrap", "Plato preparado"): dice de un vistazo
@@ -309,13 +395,13 @@ function renderNoCookSlot(slot) {
     ? '<span class="nocook-slot__kcal">' + fmtUnitHtml(round0(slot.total.kcal), "kcal") + "</span>" : "";
 
   var swapBtn = '<button type="button" class="meal-swap-btn" data-action="swap-nocook-slot"' +
-    ' data-slot-key="' + escapeHtml(slot.key || "") + '"' +
+    ' data-slot-key="' + escapeHtml(slot.key || "") + '" data-day="' + (Number(dayIndex) || 0) + '"' +
     ' title="' + escapeHtml(t("ui.cambiar_solo_esta_toma_producto_no_en_tu_tienda")) + '">' +
     "&#8635; " + escapeHtml(t("ui.cambiar")) + "</button>";
 
   // Aviso "de la noche antes" (plantillas makeAhead: avena remojada). Mismo
   // trato que en el modo cocinado -- solo puede salir en el día 2+ de un
-  // plan de varios días, así que hoy no aparece nunca.
+  // plan de varios días.
   var makeAheadNote = (slot.makeAhead && typeof renderMakeAheadNote === "function")
     ? renderMakeAheadNote() : "";
 

@@ -579,6 +579,25 @@ function run(t) {
     };
   }
 
+  t.test("«sin cocinar» de 3 días: una diapositiva por día con «День N из 3», y «Cambiar» sabe su día (2026-10-21)", function () {
+    var s = sandboxCompleto();
+    s.saveLang("ru");
+    seedRandomInContext(s, 31);
+    var cont = contenedor();
+    s.initNoCookRefs({ noCookResults: cont, noCookCount: contenedor(), noCookStatus: contenedor() });
+    s.runNoCookGenerator("mercadona", { calories: 2100, protein: 120, budget: 14 }, 3);
+    var html = cont.innerHTML;
+    assert.strictEqual(html.split('<section class="day-slide"').length - 1, 3, "tres días");
+    assert.ok(html.indexOf("День 3") !== -1 && html.indexOf("из 3") !== -1, "la cabecera de cada día");
+    assert.ok(/data-action="swap-nocook-slot"[^]*?data-day="2"/.test(html), "las tomas del día 3 llevan su día");
+    assert.strictEqual(s.lastNoCookDays.length, 3);
+    assert.strictEqual(s.lastNoCookPlan, s.lastNoCookDays[0], "«Confirmar» sigue con el día 1, que es hoy");
+    // Con un día, como siempre: sin diapositivas.
+    s.runNoCookGenerator("mercadona", { calories: 2100, protein: 120, budget: 14 }, 1);
+    assert.strictEqual(cont.innerHTML.indexOf("day-slide"), -1);
+    assert.ok(cont.innerHTML.indexOf('data-day="0"') !== -1);
+  });
+
   t.test("«sin cocinar» en español dice lo de siempre, y solo la kcal de la toma gana su <span class=\"u\">", function () {
     var s = sandboxCompleto();
     s.saveLang("es");
@@ -678,7 +697,7 @@ function run(t) {
       plan.slots[0].items[0].needsReview = true;
       plan.slots[0].items[0].wholePackage = true;     // la pizza: la toma se acaba el paquete
       plan.slots[0].items[0].policy = "fresh";
-      s.paintNoCookPlan(plan);
+      s.paintNoCookDays([plan]);
       var html = s.noCookResults.innerHTML;
       assert.ok(html.indexOf('<span class="nocook-item__whole">' + s.t("ui.nocook_envase_entero", lang) + "</span>") !== -1, lang + ": «envase entero»");
       var marca = '<span class="nutrition-approx">' + s.t("ui.sin_verificar_tilde", lang) + "</span>";

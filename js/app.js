@@ -780,6 +780,12 @@ document.addEventListener("DOMContentLoaded", function () {
     clearOutput();
     // Y el plan guardado en este dispositivo: si no, volvería al recargar.
     if (typeof planBorrar === "function") planBorrar(planAlmacen());
+    // El sin cocinar también se guarda desde el 2026-10-21: fuera los dos.
+    safeInit("nocook-reset", function () {
+      if (typeof clearNoCookPlan === "function") clearNoCookPlan();
+      if (noCookPanel) noCookPanel.hidden = true;
+      pintarDiasSinCocinar();
+    });
   }
 
   // Solo el modo "custom" muestra el campo de cantidad exacta — elegir un
@@ -1110,39 +1116,21 @@ document.addEventListener("DOMContentLoaded", function () {
   // Puntos + botón por día. El deslizamiento en sí lo hace el navegador
   // (scroll-snap en CSS): aquí solo se sincroniza el punto activo con lo
   // que se está viendo, y se permite saltar pulsando un punto.
-  // Lo asigna el init del carrusel (más abajo), que es quien sabe en qué
-  // día está. Vive aquí porque renderDayDots necesita avisarle al pintar un
-  // plan nuevo, y hasta entonces no debe hacer nada.
-  var _updateDayArrows = function () {};
+  // Los dos carruseles (el del plan normal y, desde el 2026-10-21, el del
+  // sin cocinar) los monta montarCarruselDias, más abajo; hasta entonces
+  // pintar los puntos no hace nada.
+  var _carruselPlan = null;
+  var _carruselSinCocinar = null;
 
   function renderDayDots(count) {
-    var bar = document.getElementById("daysCarouselBar");
-    var dots = document.getElementById("daysDots");
-    if (!bar || !dots) return;
+    if (_carruselPlan) _carruselPlan.pintarPuntos(count);
+  }
 
-    if (count <= 1) {
-      bar.hidden = true;
-      dots.innerHTML = "";
-      _updateDayArrows();          // con un día no hay flechas que enseñar
-      medirBarraDesplazamiento();  // pero la barra de scroll sí puede salir
-      return;
-    }
-    bar.hidden = false;
-    var html = "";
-    for (var i = 0; i < count; i++) {
-      html += '<button type="button" class="days-carousel__dot' + (i === 0 ? " is-active" : "") +
-        '" data-go="' + i + '"' + (i === 0 ? ' aria-current="true"' : "") +
-        ' aria-label="' + escapeHtml(t("ui.dia")) + ' ' + (i + 1) + ' ' + escapeHtml(t("ui.de_contador")) + ' ' + count + '"></button>';
-    }
-    dots.innerHTML = html;
-    // Un plan nuevo empieza en el día 1, así que la flecha de "anterior"
-    // tiene que estar oculta antes de que haya ningún desplazamiento del
-    // que deducirlo.
-    _updateDayArrows();
-    // Y un plan recién pintado es justo cuando aparece la barra de
-    // desplazamiento: hay que volver a medirla o el sangrado a ancho
-    // completo de la franja "siguiente toma" se pasa por su anchura.
-    medirBarraDesplazamiento();
+  /** Los puntos del carrusel del plan sin cocinar, con los días que haya en pantalla. */
+  function pintarDiasSinCocinar() {
+    if (!_carruselSinCocinar) return;
+    var dias = (typeof lastNoCookDays !== "undefined" && lastNoCookDays) ? lastNoCookDays.length : 0;
+    _carruselSinCocinar.pintarPuntos(dias);
   }
 
   // ── Estado de la red (2026-09-08) ────────────────────────────────────
@@ -1174,10 +1162,19 @@ document.addEventListener("DOMContentLoaded", function () {
     pintar();
   });
 
-  safeInit("day-carousel-init", function () {
-    var track = mealsContainer;
-    var dots = document.getElementById("daysDots");
-    if (!track || !dots) return;
+  /**
+   * Un carrusel de días: puntos, flechas y aviso para lectores de pantalla
+   * sobre una pista que desliza el navegador. Era el cuerpo de
+   * "day-carousel-init" y solo servía al plan normal; desde el 2026-10-21 lo
+   * usa también el plan sin cocinar, con los mismos estilos (.days-carousel).
+   *
+   * @param {{carrusel, pista, barra, puntos, anuncio, anterior, siguiente}} el
+   * @returns {{pintarPuntos: function(number)}|null} null si falta la pista o los puntos
+   */
+  function montarCarruselDias(el) {
+    var track = el.pista;
+    var dots = el.puntos;
+    if (!track || !dots) return null;
 
     // Paso entre diapositivas: ancho de una + hueco. Se calcula así y no
     // con `offsetLeft` porque offsetLeft es relativo al offsetParent, que
@@ -1200,8 +1197,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (on) d.setAttribute("aria-current", "true");
         else d.removeAttribute("aria-current");
       });
-      var aviso = document.getElementById("dayAnnounce");
-      if (aviso && total) aviso.textContent = t("ui.dia") + " " + (i + 1) + " " + t("ui.de_contador") + " " + total;
+      if (el.anuncio && total) el.anuncio.textContent = t("ui.dia") + " " + (i + 1) + " " + t("ui.de_contador") + " " + total;
     }
 
     // Flechas del teclado sobre los puntos. Un grupo de botones que
@@ -1239,9 +1235,8 @@ document.addEventListener("DOMContentLoaded", function () {
     var currentDay = 0;
 
     function scrollDayToTop() {
-      var carousel = document.getElementById("daysCarousel");
-      if (!carousel) return;
-      var y = window.pageYOffset + carousel.getBoundingClientRect().top - 70;
+      if (!el.carrusel) return;
+      var y = window.pageYOffset + el.carrusel.getBoundingClientRect().top - 70;
       window.scrollTo({ top: Math.max(0, y), behavior: "auto" });
     }
 
@@ -1278,8 +1273,8 @@ document.addEventListener("DOMContentLoaded", function () {
     // desliza, y los puntos miden 8px. Las flechas NO son otra forma de
     // navegar: llaman al mismo `slideTo` que los puntos, para que no haya
     // dos maneras de mover el carrusel que puedan discrepar.
-    var prevBtn = document.getElementById("dayPrevBtn");
-    var nextBtn = document.getElementById("dayNextBtn");
+    var prevBtn = el.anterior;
+    var nextBtn = el.siguiente;
 
     function updateArrows() {
       if (!prevBtn || !nextBtn) return;
@@ -1288,17 +1283,8 @@ document.addEventListener("DOMContentLoaded", function () {
       // pulsarlo y a pensar que algo va mal. Con un solo día no hay nada
       // entre lo que moverse y desaparecen los dos.
       prevBtn.hidden = (total < 2 || currentDay <= 0);
-      nextBtn.hidden = (total < 2 || currentDay >= total - 1);
+      nextBtn.hidden = (total < 2 || total - 1 <= currentDay);
     }
-    // renderDayDots() lo llama al pintar un plan nuevo, cuando aún no ha
-    // habido ningún desplazamiento del que deducir el estado. Y de paso
-    // vuelve al día 1: al re-renderizar, la pista se queda con
-    // `scrollLeft = 0`, así que dejar `currentDay` en el día 4 del plan
-    // anterior descuadraba las flechas hasta el primer desplazamiento.
-    _updateDayArrows = function () {
-      currentDay = 0;
-      updateArrows();
-    };
 
     function slideTo(i) {
       var slides = track.querySelectorAll(".day-slide");
@@ -1337,6 +1323,64 @@ document.addEventListener("DOMContentLoaded", function () {
       var i = step ? Math.round(track.scrollLeft / step) : 0;
       goToDay(Math.min(i, slides.length - 1));
     }, { passive: true });
+
+    /**
+     * Pinta los puntos de un plan recién pintado. Un plan nuevo empieza en el
+     * día 1: al re-renderizar, la pista se queda con `scrollLeft = 0`, así
+     * que dejar `currentDay` en el día 4 del plan anterior descuadraba las
+     * flechas hasta el primer desplazamiento.
+     */
+    function pintarPuntos(count) {
+      var bar = el.barra;
+      if (!bar) return;
+      currentDay = 0;
+      if (!(1 < count)) {
+        bar.hidden = true;
+        dots.innerHTML = "";
+        updateArrows();              // con un día no hay flechas que enseñar
+        medirBarraDesplazamiento();  // pero la barra de scroll sí puede salir
+        return;
+      }
+      bar.hidden = false;
+      var html = "";
+      for (var i = 0; i < count; i++) {
+        html += '<button type="button" class="days-carousel__dot' + (i === 0 ? " is-active" : "") +
+          '" data-go="' + i + '"' + (i === 0 ? ' aria-current="true"' : "") +
+          ' aria-label="' + escapeHtml(t("ui.dia")) + " " + (i + 1) + " " + escapeHtml(t("ui.de_contador")) + " " + count + '"></button>';
+      }
+      dots.innerHTML = html;
+      updateArrows();
+      // Y un plan recién pintado es justo cuando aparece la barra de
+      // desplazamiento: hay que volver a medirla o el sangrado a ancho
+      // completo de la franja "siguiente toma" se pasa por su anchura.
+      medirBarraDesplazamiento();
+    }
+
+    return { pintarPuntos: pintarPuntos };
+  }
+
+  safeInit("day-carousel-init", function () {
+    _carruselPlan = montarCarruselDias({
+      carrusel: document.getElementById("daysCarousel"),
+      pista: mealsContainer,
+      barra: document.getElementById("daysCarouselBar"),
+      puntos: document.getElementById("daysDots"),
+      anuncio: document.getElementById("dayAnnounce"),
+      anterior: document.getElementById("dayPrevBtn"),
+      siguiente: document.getElementById("dayNextBtn")
+    });
+  });
+
+  safeInit("nocook-carousel-init", function () {
+    _carruselSinCocinar = montarCarruselDias({
+      carrusel: document.getElementById("noCookCarousel"),
+      pista: noCookResults,
+      barra: document.getElementById("noCookDaysBar"),
+      puntos: document.getElementById("noCookDots"),
+      anuncio: document.getElementById("noCookDayAnnounce"),
+      anterior: document.getElementById("noCookPrevBtn"),
+      siguiente: document.getElementById("noCookNextBtn")
+    });
   });
 
   // ── Lista de la compra (aún vacía hasta generar un plan) ─────────────
@@ -1595,12 +1639,9 @@ document.addEventListener("DOMContentLoaded", function () {
         calories: profile.calories,
         protein: profile.protein,
         budget: (typeof data.budget === "number" && isFinite(data.budget)) ? data.budget : undefined,
-        priority: data.priority,
-        // El modo sin cocinar es de 1 DÍA: las plantillas "de la noche
-        // antes" (avena remojada) nunca se pueden dejar hechas la víspera,
-        // así que se excluyen siempre. Explícito para el día que haya
-        // planes de varios días sin cocinar.
-        allowMakeAhead: false,
+        priority: data.priority
+        // Lo «de la noche antes» (avena remojada) lo decide cada día
+        // generateNoCookPlanDays: solo en el día 2+ de un plan de varios.
       };
     } catch (err) {
       console.warn("[no-cook:targets] formulario no utilizable, se usa el objetivo por defecto:", err);
@@ -1612,8 +1653,10 @@ document.addEventListener("DOMContentLoaded", function () {
     safeInit("no-cook-run", function () {
       if (typeof runNoCookGenerator !== "function") return;
       if (noCookPanel) noCookPanel.hidden = false;
-      // Sin storeId: el generador cae en DEFAULT_STORE_ID (Mercadona).
-      runNoCookGenerator(undefined, readNoCookTargets());
+      // Sin storeId: el generador cae en DEFAULT_STORE_ID (Mercadona). Los
+      // días, los mismos 1/3/7 que el plan normal (2026-10-21).
+      runNoCookGenerator(undefined, readNoCookTargets(), planDays);
+      pintarDiasSinCocinar();
       if (noCookPanel && typeof noCookPanel.scrollIntoView === "function") {
         noCookPanel.scrollIntoView({ behavior: "smooth", block: "start" });
       }
@@ -1715,9 +1758,16 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Último plan guardado en este dispositivo: se vuelve a pintar tal cual, sin
   // generar nada (ver js/core/plan-store.js). Va AQUÍ, con los módulos ya
-  // montados: pintar el día necesita el carrusel (_updateDayArrows, más arriba)
+  // montados: pintar el día necesita el carrusel (montarCarruselDias, más arriba)
   // y la lista de la compra no debe quedar pisada por una init posterior.
   safeInit("plan-restore", restaurarPlanGuardado);
+  // Y lo mismo el plan sin cocinar (2026-10-21), en su panel y con su carrusel.
+  safeInit("nocook-restore", function () {
+    if (typeof restaurarPlanSinCocinar !== "function") return;
+    if (!restaurarPlanSinCocinar()) return;
+    if (noCookPanel) noCookPanel.hidden = false;
+    pintarDiasSinCocinar();
+  });
 
   safeInit("onboarding-init", function () {
     if (typeof initOnboarding !== "function") return;
@@ -1729,9 +1779,11 @@ document.addEventListener("DOMContentLoaded", function () {
     var saved = (typeof getSettings === "function") ? getSettings() : {};
     var hasProfile = !!(saved && saved.age && saved.weight && saved.height);
     // Con un plan guardado en este dispositivo no se vuelve a enseñar la
-    // bienvenida al invitado (decisión del dueño, 2026-10-18).
+    // bienvenida al invitado (decisión del dueño, 2026-10-18). Desde el
+    // 2026-10-21 el plan sin cocinar también vuelve tal cual, así que cuenta.
     var hasPlan = typeof planLeer === "function" && typeof planAlmacen === "function" &&
-                  planLeer(planAlmacen()) !== null;
+                  (planLeer(planAlmacen()) !== null ||
+                   (typeof planSinCocinarLeer === "function" && planSinCocinarLeer(planAlmacen()) !== null));
 
     initOnboarding({
       hasProfile: hasProfile,

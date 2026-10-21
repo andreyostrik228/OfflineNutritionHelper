@@ -30,9 +30,9 @@
  *               monta y se come al momento (avena remojada). Misma regla que
  *               los platos makeAhead del modo cocinado: nunca en un plan de
  *               1 día, nunca en el día 1 de uno de varios, y con aviso
- *               cuando sale. Hoy el modo sin cocinar es de 1 día, así que
- *               estas plantillas quedan SIEMPRE fuera; el mecanismo está
- *               listo para cuando haya planes de varios días sin cocinar.
+ *               cuando sale. Desde el 2026-10-21 el modo sin cocinar admite
+ *               planes de varios días (generateNoCookPlanDays), así que
+ *               estas plantillas pueden salir del día 2 en adelante.
  *
  * Los papeles (`role`) los asigna js/data/serving-sizes.js. Un producto sin
  * rol (bebidas, café, azúcar) no puede rellenar ningún hueco y por tanto
@@ -190,8 +190,8 @@ var NO_COOK_TEMPLATES = [
   {
     // Avena remojada: los copos crudos en lácteo frío quedan arenosos, hay
     // que dejarlos ablandar. makeAhead -> nunca en el día 1, aviso cuando
-    // sale (ver la nota de `makeAhead` en la cabecera). Mientras el modo sin
-    // cocinar sea de 1 día, esta plantilla no se usa nunca.
+    // sale (ver la nota de `makeAhead` en la cabecera). Solo en el día 2+ de
+    // un plan sin cocinar de varios días.
     key: "desayuno_remojado",
     label: "Avena remojada",
     slots: ["breakfast"],
@@ -275,8 +275,7 @@ var NO_COOK_TEMPLATES = [
  * @param {boolean} [allowMakeAhead] - si NO es true, se descartan las
  *   plantillas `makeAhead` (avena remojada): no se pueden dejar hechas la
  *   noche antes del día 1. El generador lo pone a true solo en el día 2+ de
- *   un plan de varios días (hoy el modo sin cocinar es de 1 día -> siempre
- *   false).
+ *   un plan de varios días (generateNoCookPlanDays).
  * @returns {object[]}
  */
 function templatesForSlot(slotKey, allowMakeAhead) {

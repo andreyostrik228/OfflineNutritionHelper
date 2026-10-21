@@ -17,6 +17,8 @@
  *   planGuardar(storage, estado)  -> boolean
  *   planLeer(storage)             -> estado o null
  *   planBorrar(storage)
+ *   PLAN_SIN_COCINAR_KEY, planSinCocinarGuardar / planSinCocinarLeer /
+ *   planSinCocinarBorrar, planSinCocinarDiaValido   lo mismo para «sin cocinar»
  * ─────────────────────────────────────────────────────────────────────────
  */
 
@@ -94,6 +96,81 @@ function planBorrar(storage) {
   if (!storage) return;
   try {
     storage.removeItem(PLAN_STORAGE_KEY);
+  } catch (e) {
+    // Sin almacenamiento no hay nada que borrar.
+  }
+}
+
+// ── El plan «sin cocinar» (2026-10-21) ───────────────────────────────────
+// Mismo trato que el plan normal, en su propia clave: los dos se pueden
+// tener a la vez en pantalla y cada uno se rehace por su lado. Cada día es
+// un plan de generateNoCookPlan (js/engine/no-cook-generator.js).
+
+var PLAN_SIN_COCINAR_KEY = "weekplate-plan-sincocinar-v1";
+var PLAN_SIN_COCINAR_MAX_DIAS = 7;
+
+/** Un día válido: tomas con su clave, y productos con id y nombre. */
+function planSinCocinarDiaValido(dia) {
+  if (!dia || typeof dia !== "object" || !Array.isArray(dia.slots) || !dia.slots.length) return false;
+  return dia.slots.every(function (slot) {
+    return !!slot && typeof slot.key === "string" && Array.isArray(slot.items) &&
+      slot.items.every(function (it) {
+        return !!it && (typeof it.id === "string" || typeof it.id === "number") && typeof it.name === "string";
+      });
+  });
+}
+
+function _planSinCocinarDiasValidos(dias) {
+  return Array.isArray(dias) && dias.length > 0 && dias.length <= PLAN_SIN_COCINAR_MAX_DIAS &&
+    dias.every(planSinCocinarDiaValido);
+}
+
+/**
+ * @param {object|null} storage
+ * @param {object} estado - { dias, store, options }
+ * @returns {boolean} true si quedó guardado
+ */
+function planSinCocinarGuardar(storage, estado) {
+  if (!storage || !estado || !_planSinCocinarDiasValidos(estado.dias)) return false;
+  try {
+    storage.setItem(PLAN_SIN_COCINAR_KEY, JSON.stringify({
+      version: PLAN_STORAGE_VERSION,
+      dias: estado.dias,
+      store: estado.store || null,
+      options: estado.options || null
+    }));
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
+ * @param {object|null} storage
+ * @returns {object|null} { dias, store, options }, o null si no hay o no es válido
+ */
+function planSinCocinarLeer(storage) {
+  if (!storage) return null;
+  try {
+    var texto = storage.getItem(PLAN_SIN_COCINAR_KEY);
+    if (!texto) return null;
+    var p = JSON.parse(texto);
+    if (!p || p.version !== PLAN_STORAGE_VERSION || !_planSinCocinarDiasValidos(p.dias)) return null;
+    return {
+      dias: p.dias,
+      store: typeof p.store === "string" ? p.store : null,
+      options: (p.options && typeof p.options === "object" && !Array.isArray(p.options)) ? p.options : null
+    };
+  } catch (e) {
+    return null;
+  }
+}
+
+/** @param {object|null} storage */
+function planSinCocinarBorrar(storage) {
+  if (!storage) return;
+  try {
+    storage.removeItem(PLAN_SIN_COCINAR_KEY);
   } catch (e) {
     // Sin almacenamiento no hay nada que borrar.
   }

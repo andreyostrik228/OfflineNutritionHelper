@@ -41,6 +41,8 @@
  * Expone (global):
  *   generateNoCookPlan(storeId, options) → { slots, poolSize, total, target,
  *                                            shoppingCost, consumedCost, productCount }
+ *   generateNoCookPlanDays(storeId, options, dias) → un plan como el de arriba por día
+ *   regenerateNoCookSlot(plan, slotKey, storeId, options) → { slot } | { error }
  *
  * Se mantiene en UN archivo a propósito, aunque pase de 500 líneas: partirlo
  * en "generador del día" + "montador de una toma" se probó y salía peor --
@@ -643,9 +645,9 @@ function budgetReserveFor(remainingSlots, pool, day) {
 function buildSlot(slotKey, targetKcal, pool, day, opts) {
   var slotDef = NO_COOK_SLOT_DEFS.filter(function (d) { return d.key === slotKey; })[0];
   // allowMakeAhead: las plantillas "de la noche antes" (avena remojada)
-  // solo entran en el día 2+ de un plan de varios días. El modo sin cocinar
-  // hoy es de 1 día, así que opts.allowMakeAhead nunca llega true y quedan
-  // siempre fuera -- misma regla que los platos makeAhead del modo cocinado.
+  // solo entran en el día 2+ de un plan de varios días (lo pone
+  // generateNoCookPlanDays) -- misma regla que los platos makeAhead del modo
+  // cocinado.
   var templates = (typeof templatesForSlot === "function")
     ? templatesForSlot(slotKey, opts && opts.allowMakeAhead === true)
     : [];
@@ -722,6 +724,10 @@ function generateNoCookPlan(storeId, options) {
   };
 
   var targetProtein = (typeof opts.protein === "number" && opts.protein > 0) ? opts.protein : 0;
+  // Lo «de la noche antes» (avena remojada) solo en el día 2+ de un plan de
+  // varios días: lo decide generateNoCookPlanDays. Antes esta opción no
+  // llegaba a ninguna toma y solo la miraba «Cambiar».
+  var allowMakeAhead = opts.allowMakeAhead === true;
 
   // Con poco dinero, 3 tomas en vez de 5: repartir un presupuesto ajustado
   // entre cinco tomas deja las principales flojas y encima obliga a abrir
@@ -752,13 +758,14 @@ function generateNoCookPlan(storeId, options) {
   // toma principal del día, nunca reparte: lo que abre, se lo acaba.
   day.reserve = budgetReserveFor(slotKeys.length - 1, pool, day);
   built.lunch = buildSlot("lunch", kcalFor("lunch"), pool, day, {
-    allowSplitFresh: true, targetProtein: protFor("lunch"),
+    allowSplitFresh: true, targetProtein: protFor("lunch"), allowMakeAhead: allowMakeAhead,
   });
   day.reserve = budgetReserveFor(slotKeys.length - 2, pool, day);
   built.dinner = buildSlot("dinner", kcalFor("dinner"), pool, day, {
     allowSplitFresh: false,
     targetProtein: protFor("dinner"),
     forceTemplateKey: day.freshPending.length ? "principal" : null,
+    allowMakeAhead: allowMakeAhead,
   });
 
   // Desayuno y snacks se reparten lo que QUEDA del día, no su cuota
@@ -779,6 +786,7 @@ function generateNoCookPlan(storeId, options) {
     built[key] = buildSlot(key, remainingKcal * share, pool, day, {
       allowSplitFresh: false,
       targetProtein: remainingProtein * share,
+      allowMakeAhead: allowMakeAhead,
     });
   });
 
@@ -841,6 +849,38 @@ function generateNoCookPlan(storeId, options) {
     threeMealDay: threeMealDay,
     priority: day.priority,
   };
+}
+
+/**
+ * Un plan "sin cocinar" de VARIOS días (2026-10-21), como el plan normal
+ * (generateDietPlanDays): una llamada al generador por día. El presupuesto y
+ * las kcal siguen siendo DIARIOS. Lo único que cambia de un día a otro es la
+ * regla de lo «de la noche antes»: nunca en el día 1 (no lo pudiste dejar
+ * hecho ayer) y nunca en un plan de 1 día.
+ *
+ * No hace falta apartar lo de los días anteriores: el sorteo ya da días
+ * distintos. Medido el 2026-10-21 con 100 planes de 7 días (2.200 kcal,
+ * 12 €): 0 días idénticos de 2.100 pares y un 1,2% de tomas que repiten
+ * exactamente los mismos productos que otro día.
+ *
+ * @param {string} [storeId]
+ * @param {object} [options] - las de generateNoCookPlan
+ * @param {number} dias - 1..7 (lo que no sea un número válido cuenta como 1)
+ * @returns {object[]} un plan de generateNoCookPlan por día
+ */
+function generateNoCookPlanDays(storeId, options, dias) {
+  var n = Math.floor(Number(dias));
+  if (!(n >= 1)) n = 1;
+  if (n > 7) n = 7;
+  var base = options || {};
+  var planes = [];
+  for (var d = 0; d < n; d++) {
+    var opts = {};
+    for (var k in base) opts[k] = base[k];
+    opts.allowMakeAhead = n > 1 && d > 0;
+    planes.push(generateNoCookPlan(storeId, opts));
+  }
+  return planes;
 }
 
 /**

@@ -1,5 +1,45 @@
 # Nutrition Planner — Roadmap
 
+## «Sin cocinar» con la misma arquitectura que el plan normal (2026-10-21)
+
+El dueño pidió que el modo «sin cocinar» esté montado como el plan normal
+(«саму архитектуру, а не логику»). Lo comprobado ese día, en el código y en
+Chrome sin interfaz:
+
+| Qué | Plan normal | «Sin cocinar» antes | Estado |
+|---|---|---|---|
+| Varios días (1/3/7) y carrusel | sí | 1 día siempre | **Hecho, paso 1** |
+| El plan vuelve tras recargar | sí (`weekplate-plan-v1`) | no | **Hecho, paso 1** (`weekplate-plan-sincocinar-v1`) |
+| Compra de todos los días en «Compra» | sí | solo el coste dentro del panel | Paso 2 |
+| Confirmar cada día con su fecha en «Mis planes» | sí | solo hoy | Paso 2 |
+| Lo comprado se ve en la despensa | sí | stock aparte que nadie pinta | Paso 3 |
+| Lo comprado viaja a la cuenta | sí (`pantry_state`) | solo este dispositivo | Paso 3 |
+| Diálogo «ya tienes un plan activo» | sí | no, sale una entrada más | Paso 4 |
+
+**Paso 1 (sello `20261021b`, 1179 tests):**
+- `generateNoCookPlanDays(store, options, dias)` en
+  `js/engine/no-cook-generator.js`: un día por llamada, presupuesto y kcal
+  diarios, como `generateDietPlanDays`. No aparta lo de días anteriores: el
+  sorteo ya da días distintos (100 planes de 7 días: 0 días idénticos de
+  2.100 pares, 1,2% de tomas repetidas exactas). Y arreglado: la opción
+  `allowMakeAhead` no llegaba a ninguna toma; ahora lo «de la noche antes»
+  sale del día 2 en adelante, nunca el día 1 ni en un plan de 1 día.
+- Mismo carrusel: el cuerpo de "day-carousel-init" de `js/app.js` es ahora
+  `montarCarruselDias(el)` y lo usan los dos planes. «Cambiar» lleva su día
+  (`data-day`) y la pista no vuelve al día 1. Cabecera «Día 2 de 3»
+  compartida (`renderDaySlideHead`, `js/ui/render.js`).
+- Guardado en este dispositivo (`planSinCocinarGuardar/Leer/Borrar`,
+  `js/core/plan-store.js`), al generar y al cambiar una toma; se restaura al
+  cargar, «Resetear» lo borra, y cuenta como plan guardado para no volver a
+  enseñar la bienvenida al invitado (decisión del dueño del 2026-10-18).
+- En el carrusel la toma es más estrecha: el nombre pasa a su línea (como
+  `.meal-head`) en vez de partirse («ЗАВТРА / К»). Medido sin cortes en 320,
+  375 y 390 px y en tres aspectos.
+- «Confirmar plan sin cocinar» guarda todavía SOLO el día 1 (hoy): es el paso 2.
+
+Compra conjunta medida para el paso 2: 7 días por separado suman 77,17 € de
+media; juntos (un envase que rinde varios días se paga una vez), 71,87 €.
+
 ## Entrenamientos: estado y prioridades al 2026-10-21 (esto primero si vas a tocar entrenamientos)
 
 **Rediseño, etapa 1 de 3 (2026-10-21): la barra de cinco secciones.** Sello

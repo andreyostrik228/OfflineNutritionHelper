@@ -58,6 +58,32 @@ function run(t) {
 
   // ── 1. Raciones y macros reales ──────────────────────────────────────
 
+  t.test("varios días (2026-10-21): uno por día, distintos, y lo «de la noche antes» nunca el día 1", function () {
+    var s = fullSandbox();
+    require("./lib/seed-random").seedRandomInContext(s, 5);
+    var opciones = { calories: 2200, protein: 110, budget: 14 };
+    var semana = s.generateNoCookPlanDays("mercadona", opciones, 7);
+    assert.strictEqual(semana.length, 7);
+    var firmas = semana.map(function (pl) {
+      return pl.slots.map(function (sl) { return sl.items.map(function (i) { return i.id; }).sort().join("+"); }).join("|");
+    });
+    firmas.forEach(function (f, i) { assert.strictEqual(firmas.indexOf(f), i, "el día " + (i + 1) + " repite otro día entero"); });
+    assert.strictEqual(s.generateNoCookPlanDays("mercadona", opciones, 1).length, 1);
+    assert.strictEqual(s.generateNoCookPlanDays("mercadona", opciones, "x").length, 1, "lo que no es un número cuenta como 1");
+    assert.strictEqual(s.generateNoCookPlanDays("mercadona", opciones, 9).length, 7, "como mucho 7");
+
+    var enElDia1 = 0, despues = 0, deUnDia = 0;
+    for (var p = 0; p < 25; p++) {
+      s.generateNoCookPlanDays("mercadona", opciones, 7).forEach(function (pl, d) {
+        pl.slots.forEach(function (sl) { if (sl.makeAhead) { if (d === 0) enElDia1++; else despues++; } });
+      });
+      s.generateNoCookPlanDays("mercadona", opciones, 1)[0].slots.forEach(function (sl) { if (sl.makeAhead) deUnDia++; });
+    }
+    assert.strictEqual(enElDia1, 0, "el día 1 no se pudo dejar hecho la víspera");
+    assert.strictEqual(deUnDia, 0, "un plan de 1 día tampoco");
+    assert.ok(despues > 0, "del día 2 en adelante sí puede salir (antes la opción no llegaba a ninguna toma)");
+  });
+
   t.test("macrosForGrams(): convierte desde POR 100 G, que es como viene el catálogo", function () {
     var s = servingSandbox();
     var p = { kcal: 200, protein: 10, carbs: 20, fat: 5 };

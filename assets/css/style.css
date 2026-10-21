@@ -1952,6 +1952,18 @@ input[type="time"] { font-variant-numeric: tabular-nums; }
 @container (min-width: 720px) {
   .nocook-results { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
 }
+/* Varios días (2026-10-21): la pista es la del carrusel del plan normal
+   (flex, una diapositiva por día) y cada día lleva dentro la rejilla de
+   siempre. Con un día no hay diapositivas y manda la rejilla de arriba. */
+.nocook-panel .days-carousel { margin-top: 16px; }
+.nocook-panel .nocook-results { margin-top: 0; }
+.nocook-results.days-carousel__track--multi { display: flex; }
+.nocook-dia { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.nocook-dia > .nocook-summary,
+.nocook-dia > .nocook-disclaimer { grid-column: 1 / -1; }
+@container (min-width: 720px) {
+  .nocook-dia { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+}
 .nocook-summary {
   display: grid;
   gap: 8px;
@@ -2006,6 +2018,15 @@ input[type="time"] { font-variant-numeric: tabular-nums; }
   color: var(--text-2);
 }
 .nocook-slot__head .meal-swap-btn { grid-area: swap; justify-self: end; }
+/* Toma estrecha (un día del carrusel en el móvil, o un móvil de 320 px): el
+   nombre en su propia línea, como .meal-head en el plan normal. Si no,
+   «ЗАВТРАК» se partía en «ЗАВТРА / К». */
+.nocook-slot { container-type: inline-size; }
+@container (max-width: 310px) {
+  .nocook-slot__head { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "time kcal" "title title" "kind swap"; }
+  .nocook-slot__head .nocook-slot__kcal { justify-self: end; }
+  .nocook-slot__head .meal-time-badge { justify-self: start; }
+}
 .nocook-slot__assembly { margin-top: 12px; font-size: 14px; line-height: 1.5; color: var(--text-2); }
 .nocook-items { display: grid; gap: 8px; margin-top: 12px; }
 .nocook-item { display: grid; gap: 4px; padding: 12px; border-radius: var(--r-md); background: var(--surface-2); }

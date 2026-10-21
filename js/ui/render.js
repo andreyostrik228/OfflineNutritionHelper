@@ -234,14 +234,23 @@ function renderDayPlans(days) {
       return renderMealCard(meal, getMealTotals(meal), index);
     }).join("");
 
-    var head = multi
-      ? '<div class="day-slide__head"><span class="day-slide__n">' + escapeHtml(t("ui.dia")) + ' ' + (index + 1) +
-        '</span><span class="day-slide__of">' + escapeHtml(t("ui.de_contador")) + ' ' + list.length + "</span></div>"
-      : "";
+    var head = multi ? renderDaySlideHead(index, list.length) : "";
 
     return '<section class="day-slide" data-day="' + index + '">' + head +
       '<div class="meals-grid">' + cards + "</div></section>";
   }).join("");
+}
+
+/**
+ * La cabecera «Día 2 de 3» de una diapositiva del carrusel. La comparten el
+ * plan normal y el sin cocinar (js/ui/render-no-cook.js, 2026-10-21).
+ * @param {number} index - 0 es el día 1
+ * @param {number} total
+ * @returns {string}
+ */
+function renderDaySlideHead(index, total) {
+  return '<div class="day-slide__head"><span class="day-slide__n">' + escapeHtml(t("ui.dia")) + " " + (index + 1) +
+    '</span><span class="day-slide__of">' + escapeHtml(t("ui.de_contador")) + " " + total + "</span></div>";
 }
 
 /**

@@ -155,8 +155,8 @@ function run(t) {
   });
 
   t.test("la restauración va DESPUÉS del carrusel y de la lista de la compra, y ANTES del alta", function () {
-    // renderDayDots usa _updateDayArrows, que se asigna en el carrusel: si la
-    // restauración va antes, lanza y la lista de la compra se queda vacía.
+    // renderDayDots necesita el carrusel montado (montarCarruselDias): si la
+    // restauración va antes, no hay puntos y la lista de la compra se queda vacía.
     var app = fs.readFileSync(projPath("js/app.js"), "utf8").replace(/\r\n/g, "\n");
     var restaurar = app.indexOf('safeInit("plan-restore"');
     assert.ok(restaurar !== -1, "falta la restauración");
@@ -171,6 +171,71 @@ function run(t) {
     var ui = fs.readFileSync(projPath("js/ui/onboarding-ui.js"), "utf8").replace(/\r\n/g, "\n");
     assert.ok(app.indexOf("hasPlan: hasPlan") !== -1, "initOnboarding tiene que recibir hasPlan");
     assert.ok(ui.indexOf("hasPlan: !!o.hasPlan") !== -1, "la UI tiene que pasar hasPlan a nextOnboardingStep");
+  });
+
+  // ── El plan «sin cocinar» (2026-10-21) ─────────────────────────────────
+
+  /** Un día «sin cocinar» con la forma de generateNoCookPlan (lo justo). */
+  function diaSinCocinar(n) {
+    return {
+      slots: [
+        { key: "breakfast", label: "Desayuno", items: [{ id: "1000" + n, name: "Pan " + n, servings: 2, servingsPerPackage: 8, price: 1.2, kcal: 300 }] },
+        { key: "lunch", label: "Comida", items: [{ id: 2000 + n, name: "Hummus " + n, servings: 1, servingsPerPackage: 2, price: 2, kcal: 400 }] }
+      ],
+      total: { kcal: 700, protein: 20, carbs: 80, fat: 25 }, poolSize: 900, budget: 14
+    };
+  }
+
+  t.test("«sin cocinar»: 3 días se guardan en su clave y vuelven igual; el plan normal no se toca", function () {
+    var s = loadBrowserGlobals([projPath("js/core/plan-store.js")]);
+    var almacen = almacenFalso();
+    var dias = [diaSinCocinar(1), diaSinCocinar(2), diaSinCocinar(3)];
+    assert.strictEqual(s.planSinCocinarGuardar(almacen, { dias: dias, store: "mercadona", options: { calories: 2200 } }), true);
+    assert.ok(almacen._mapa["weekplate-plan-sincocinar-v1"], "su propia clave");
+    assert.strictEqual(almacen._mapa["weekplate-plan-v1"], undefined, "no pisa el plan normal");
+    var leido = s.planSinCocinarLeer(almacen);
+    assert.strictEqual(JSON.stringify(leido.dias), JSON.stringify(dias));
+    assert.strictEqual(leido.store, "mercadona");
+    assert.strictEqual(leido.options.calories, 2200);
+    s.planSinCocinarBorrar(almacen);
+    assert.strictEqual(s.planSinCocinarLeer(almacen), null);
+  });
+
+  t.test("«sin cocinar»: lo roto, de otra versión o de más de 7 días se ignora, y un almacén que falla no lanza", function () {
+    var s = loadBrowserGlobals([projPath("js/core/plan-store.js")]);
+    var almacen = almacenFalso();
+    var ocho = [1, 2, 3, 4, 5, 6, 7, 8].map(diaSinCocinar);
+    assert.strictEqual(s.planSinCocinarGuardar(almacen, { dias: ocho }), false, "como mucho 7 días");
+    assert.strictEqual(s.planSinCocinarGuardar(almacen, { dias: [] }), false);
+    var sinNombre = diaSinCocinar(1);
+    delete sinNombre.slots[0].items[0].name;
+    assert.strictEqual(s.planSinCocinarDiaValido(sinNombre), false, "un producto sin nombre no se pinta");
+    assert.strictEqual(s.planSinCocinarDiaValido({ slots: [{ key: 3, items: [] }] }), false);
+    almacen.setItem("weekplate-plan-sincocinar-v1", "{roto");
+    assert.strictEqual(s.planSinCocinarLeer(almacen), null);
+    almacen.setItem("weekplate-plan-sincocinar-v1", JSON.stringify({ version: 99, dias: [diaSinCocinar(1)] }));
+    assert.strictEqual(s.planSinCocinarLeer(almacen), null, "otra versión");
+    var roto = almacenRoto();
+    assert.strictEqual(s.planSinCocinarGuardar(roto, { dias: [diaSinCocinar(1)] }), false);
+    assert.strictEqual(s.planSinCocinarLeer(roto), null);
+    s.planSinCocinarBorrar(roto);
+    assert.strictEqual(s.planSinCocinarGuardar(null, { dias: [diaSinCocinar(1)] }), false);
+  });
+
+  t.test("«sin cocinar» en app.js: usa los días elegidos, restaura tras su carrusel, borra al resetear y cuenta para la bienvenida", function () {
+    var app = fs.readFileSync(projPath("js/app.js"), "utf8").replace(/\r\n/g, "\n");
+    assert.ok(app.indexOf("runNoCookGenerator(undefined, readNoCookTargets(), planDays)") !== -1, "los 1/3/7 días del plan normal");
+    var carrusel = app.indexOf('safeInit("nocook-carousel-init"');
+    var restaurar = app.indexOf('safeInit("nocook-restore"');
+    assert.ok(carrusel !== -1 && restaurar !== -1 && carrusel < restaurar, "restaurar después de montar su carrusel");
+    assert.ok(restaurar < app.indexOf('safeInit("onboarding-init"'), "y antes del alta");
+    var reset = app.slice(app.indexOf("function resetAll() {"), app.indexOf("function updateBudgetCustomVisibility"));
+    assert.ok(reset.indexOf("clearNoCookPlan()") !== -1, "Resetear borra también el plan sin cocinar");
+    assert.ok(app.indexOf("planSinCocinarLeer(planAlmacen()) !== null") !== -1, "un plan sin cocinar guardado cuenta como plan");
+    var html = fs.readFileSync(projPath("index.html"), "utf8");
+    ["noCookCarousel", "noCookDaysBar", "noCookDots", "noCookDayAnnounce", "noCookPrevBtn", "noCookNextBtn"].forEach(function (id) {
+      assert.ok(html.indexOf('id="' + id + '"') !== -1, "falta #" + id);
+    });
   });
 
   t.test("index.html carga js/core/plan-store.js antes de js/app.js", function () {
