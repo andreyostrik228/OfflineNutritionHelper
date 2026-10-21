@@ -137,6 +137,8 @@ var pantryListContainer, pantryEmptyEl, pantryAddForm, pantryAddNameInput, pantr
     pantryIngredientOptionsList, pantryAddError,
     todayPlansPanel, todayPlansContainer, dateStripEl, plansEmptyNoteEl,
     pantryCountEl, planSavedNoticeEl;
+// El apartado de lo comprado para un plan sin cocinar (2026-10-21).
+var pantryNoCookSectionEl, pantryNoCookListEl;
 var pantryOnChange; // callback de app.js — sincroniza la lista de la compra visible
 var pantryIngredientByKey = {}; // clave normalizada -> nombre canónico, para resolver lo tecleado en el alta
 
@@ -186,6 +188,8 @@ function initPantryRefs(refs) {
   plansEmptyNoteEl             = refs.plansEmptyNoteEl;
   pantryCountEl                = refs.pantryCountEl;
   planSavedNoticeEl            = refs.planSavedNoticeEl;
+  pantryNoCookSectionEl        = refs.pantryNoCookSection || null;
+  pantryNoCookListEl           = refs.pantryNoCookList || null;
   pantryOnChange               = typeof refs.onPantryChange === "function" ? refs.onPantryChange : function () {};
 
   planReplaceDialogEl    = refs.planReplaceDialogEl;
@@ -204,6 +208,7 @@ function initPantryRefs(refs) {
   // render, así que los listeners van en los contenedores fijos, no en
   // cada fila/tarjeta individual.
   if (pantryListContainer)  pantryListContainer.addEventListener("click", handlePantryListClick);
+  if (pantryNoCookListEl)   pantryNoCookListEl.addEventListener("click", handleNoCookStockClick);
   if (todayPlansContainer)  todayPlansContainer.addEventListener("click", handleEntryClick);
   if (dateStripEl)          dateStripEl.addEventListener("change", handleDateStripChange);
 
@@ -355,17 +360,58 @@ function renderPantryPanel() {
   if (!pantryListContainer) return;
 
   var entries = listPantryEntries();
-  if (pantryCountEl) pantryCountEl.textContent = entries.length;
+  // Lo comprado para un plan sin cocinar, en su apartado (2026-10-21): antes
+  // se guardaba y no salía en ninguna parte.
+  var sinCocinar = (typeof listNoCookStockEntries === "function") ? listNoCookStockEntries() : [];
+  if (pantryCountEl) pantryCountEl.textContent = entries.length + sinCocinar.length;
 
   if (entries.length === 0) {
     pantryListContainer.innerHTML = "";
-    if (pantryEmptyEl) pantryEmptyEl.hidden = false;
   } else {
-    if (pantryEmptyEl) pantryEmptyEl.hidden = true;
     pantryListContainer.innerHTML = safeRenderRows(entries, renderPantryRow, "stock");
+  }
+  // «Tu despensa está vacía» solo si lo está de verdad: con productos sin
+  // cocinar dentro no lo está.
+  if (pantryEmptyEl) pantryEmptyEl.hidden = !(entries.length === 0 && sinCocinar.length === 0);
+  if (pantryNoCookSectionEl && pantryNoCookListEl) {
+    pantryNoCookSectionEl.hidden = sinCocinar.length === 0;
+    pantryNoCookListEl.innerHTML = safeRenderRows(sinCocinar, renderNoCookStockRow, "stock-sin-cocinar");
   }
 
   renderPantryHistorySections();
+}
+
+/**
+ * Una fila del apartado «sin cocinar»: el producto, cuánto queda en su unidad
+ * de ración y la caducidad cuando se conoce (de solo lectura: los días tras
+ * abrir los publica la tienda), y la «x» de quitar.
+ */
+function renderNoCookStockRow(entry) {
+  var cantidad = round2(entry.quantity);
+  var unidad = (typeof noCookUnitLabel === "function") ? noCookUnitLabel(entry.unit, cantidad) : (entry.unit || "");
+  return (
+    '<li class="pantry-item pantry-item--sin-cocinar" data-nocook-id="' + escapeHtml(entry.id) + '">' +
+      '<span class="pantry-item__name">' + escapeHtml(entry.name) + '</span>' +
+      renderExpiryBadge(entry, true) +
+      '<span class="pantry-item__amount pantry-item__amount--fija">' + escapeHtml(cantidad + (unidad ? " " + unidad : "")) + '</span>' +
+      '<button type="button" class="pantry-item__remove" data-action="remove-nocook" aria-label="' +
+        escapeHtml(tFormat("ui.despensa_quitar", { nombre: entry.name })) + '">&times;</button>' +
+    '</li>'
+  );
+}
+
+function handleNoCookStockClick(event) {
+  try {
+    var boton = event.target.closest('button[data-action="remove-nocook"]');
+    if (!boton) return;
+    var fila = boton.closest(".pantry-item");
+    if (typeof setNoCookProductStock === "function") setNoCookProductStock(fila.getAttribute("data-nocook-id"), 0);
+    renderPantryPanel();
+    pantryOnChange();
+    if (typeof pushNoCookStockToCloud === "function") pushNoCookStockToCloud();
+  } catch (err) {
+    console.error("[render-pantry:sin-cocinar] no se pudo quitar el producto:", err);
+  }
 }
 
 /**
@@ -380,8 +426,10 @@ function renderPantryPanel() {
  * @param {object} entry - fila de listPantryEntries()
  * @returns {string} HTML
  */
-function renderExpiryBadge(entry) {
+function renderExpiryBadge(entry, soloLectura) {
   if (!entry.expiryDate) {
+    // De solo lectura (productos sin cocinar) no hay «+ fecha» que ofrecer.
+    if (soloLectura) return "";
     return '<button type="button" class="pantry-item__expiry pantry-item__expiry--none" ' +
       'data-action="expiry" title="' + escapeHtml(t("ui.caducidad_sin_fecha_titulo")) + '" ' +
       'aria-label="' + escapeHtml(tFormat("ui.caducidad_anadir", { nombre: nombreComida(entry.name) })) + '">' +
@@ -444,6 +492,10 @@ function renderExpiryBadge(entry) {
     title = tFormat("ui.caducidad_fresco_a_medias", { usado: used, caduca: entry.expiryDate }) + " " + title;
   }
 
+  if (soloLectura) {
+    return '<span class="pantry-item__expiry pantry-item__expiry--' + escapeHtml(entry.expiryTier) + '" title="' + escapeHtml(title) + '">' +
+      escapeHtml(label) + '<span class="visually-hidden"> ' + escapeHtml(title) + '</span></span>';
+  }
   return '<button type="button" class="pantry-item__expiry pantry-item__expiry--' + escapeHtml(entry.expiryTier) + '" ' +
     'data-action="expiry" title="' + escapeHtml(title) + '" ' +
     'aria-label="' + escapeHtml(tFormat("ui.caducidad_de", { nombre: nombreComida(entry.name), detalle: title })) + '">' + escapeHtml(label) + '</button>';
@@ -1107,24 +1159,40 @@ function renderNoCookCompletedRow(entry) {
  * con reserva para navegadores sin soporte.
  * @param {object} entry
  */
+/** ¿Está hecha esta toma? Cocinada en un plan normal, comida en uno sin cocinar. */
+function _tomaHecha(entry, toma) {
+  return entry && entry.type === "nocook" ? !!toma.consumed : !!toma.cooked;
+}
+
+/** El nombre de una toma en el idioma de la pantalla, sea de un plan normal o de uno sin cocinar. */
+function _tituloDeTomaDe(entry, toma) {
+  if (entry && entry.type === "nocook") return typeof tMeal === "function" ? tMeal(toma.key, toma.label) : (toma.label || "");
+  return tituloDeToma(toma);
+}
+
 function showPlanReplaceDialog(entry) {
   if (!planReplaceDialogEl || !entry) return;
   _planReplaceEntryId = entry.id;
 
-  var cookedMeals = (entry.meals || []).filter(function (m) { return m.cooked; });
-  var pendingMeals = (entry.meals || []).filter(function (m) { return !m.cooked; });
-  var pendingLabels = pendingMeals.map(function (m) { return tituloDeToma(m); }).join(", ");
+  // El diálogo sirve a los dos planes (2026-10-21): en uno sin cocinar las
+  // tomas son `slots` y lo «hecho» es habérsela comido, no cocinarla.
+  var sinCocinar = entry.type === "nocook";
+  var tomas = (sinCocinar ? entry.slots : entry.meals) || [];
+  var cookedMeals = tomas.filter(function (m) { return _tomaHecha(entry, m); });
+  var pendingMeals = tomas.filter(function (m) { return !_tomaHecha(entry, m); });
+  var pendingLabels = pendingMeals.map(function (m) { return _tituloDeTomaDe(entry, m); }).join(", ");
 
   var cookedNote = cookedMeals.length > 0
     ? '<p class="plan-replace-dialog__note">' +
-      escapeHtml(tFormat("ui.planes_reemplazo_ya_cocinaste", { comidas: cookedMeals.map(function (m) { return tituloDeToma(m); }).join(", ") })) + '</p>'
+      escapeHtml(tFormat(sinCocinar ? "ui.planes_reemplazo_ya_comiste" : "ui.planes_reemplazo_ya_cocinaste",
+        { comidas: cookedMeals.map(function (m) { return _tituloDeTomaDe(entry, m); }).join(", ") })) + '</p>'
     : '';
 
   if (planReplaceBodyEl) {
     // El cuerpo lleva <strong>: la plantilla es HTML y lo que se mete en ella
     // va escapado ANTES (tFormat inserta el valor tal cual).
     planReplaceBodyEl.innerHTML =
-      '<p>' + tFormat("html.planes_reemplazo_sigue_activo", {
+      '<p>' + tFormat(sinCocinar ? "html.planes_reemplazo_sigue_activo_sc" : "html.planes_reemplazo_sigue_activo", {
         fecha: escapeHtml(formatEntryDateTime(entry.createdAt)),
         pendientes: escapeHtml(pendingLabels)
       }) + '</p>' + cookedNote;
@@ -1373,6 +1441,8 @@ function handleEntryClick(event) {
       markNoCookPurchaseDone(confirmNoCookBtn.getAttribute("data-id"));
       renderPantryPanel();
       pantryOnChange();
+      // El stock sin cocinar viaja con los ajustes, no con pantry_state.
+      if (typeof pushNoCookStockToCloud === "function") pushNoCookStockToCloud();
       return;
     }
 
@@ -1385,6 +1455,7 @@ function handleEntryClick(event) {
       markNoCookSlotConsumed(ncId, slotKey, !alreadyConsumed);
       renderPantryPanel();
       pantryOnChange();
+      if (typeof pushNoCookStockToCloud === "function") pushNoCookStockToCloud();
       return;
     }
   } catch (err) {
@@ -1412,13 +1483,17 @@ function handleEntryClick(event) {
  *   o replacePendingMealsForToday
  * @param {boolean} historySaved - si el guardado en localStorage tuvo éxito
  * @param {'created'|'draft-updated'|'active-replaced'} mode
+ * @param {number} [savedDays] - cuántos días se guardaron (uno por fecha)
+ * @param {HTMLElement} [destino] - dónde va el aviso (2026-10-21: el plan sin
+ *   cocinar tiene el suyo en su lista de la compra); sin él, el del plan normal
  */
-function renderPlanSavedNotice(entry, historySaved, mode, savedDays) {
-  if (!planSavedNoticeEl) return;
+function renderPlanSavedNotice(entry, historySaved, mode, savedDays, destino) {
+  var el = destino || planSavedNoticeEl;
+  if (!el) return;
 
   if (!entry) {
-    planSavedNoticeEl.hidden = true;
-    planSavedNoticeEl.innerHTML = "";
+    el.hidden = true;
+    el.innerHTML = "";
     return;
   }
 
@@ -1436,9 +1511,10 @@ function renderPlanSavedNotice(entry, historySaved, mode, savedDays) {
   var title, body;
   if (mode === "active-replaced") {
     title = t("ui.planes_aviso_reemplazado_titulo");
-    var cookedLabels = (entry.meals || []).filter(function (m) { return m.cooked; }).map(function (m) { return tituloDeToma(m); });
+    var tomasHechas = ((entry.type === "nocook" ? entry.slots : entry.meals) || []).filter(function (m) { return _tomaHecha(entry, m); });
+    var cookedLabels = tomasHechas.map(function (m) { return _tituloDeTomaDe(entry, m); });
     var cookedNote = cookedLabels.length > 0
-      ? ' ' + escapeHtml(tFormat("ui.planes_aviso_lo_cocinado", { comidas: cookedLabels.join(", ") }))
+      ? ' ' + escapeHtml(tFormat(entry.type === "nocook" ? "ui.planes_aviso_lo_comido" : "ui.planes_aviso_lo_cocinado", { comidas: cookedLabels.join(", ") }))
       : '';
     body = tFormat("html.planes_aviso_reemplazado", { planes: nombres.planes, boton: nombres.boton, cocinado: cookedNote });
   } else if (mode === "draft-updated") {
@@ -1455,6 +1531,6 @@ function renderPlanSavedNotice(entry, historySaved, mode, savedDays) {
     body = tFormat("html.planes_aviso_confirmado", { planes: nombres.planes, boton: nombres.boton });
   }
 
-  planSavedNoticeEl.hidden = false;
-  planSavedNoticeEl.innerHTML = '<h4>' + escapeHtml(title) + '</h4>' + warning + body;
+  el.hidden = false;
+  el.innerHTML = '<h4>' + escapeHtml(title) + '</h4>' + warning + body;
 }

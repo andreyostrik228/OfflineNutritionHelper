@@ -2490,6 +2490,24 @@ input[type="time"] { font-variant-numeric: tabular-nums; }
   font: 800 18px/1 var(--font-display);
   letter-spacing: 0.03em;
 }
+/* Productos de un plan sin cocinar (2026-10-21): la cantidad es un dato, no
+   un botón (se gasta al consumir una toma en «Mis planes»). */
+.pantry-sin-cocinar { margin-top: 18px; }
+.pantry-sin-cocinar[hidden] { display: none; }
+.pantry-sin-cocinar__titulo { margin: 0 0 8px; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); }
+.pantry-item--sin-cocinar .pantry-item__expiry { cursor: default; }
+/* Dos clases: los aspectos visten .pantry-item__amount como botón y cargan después. */
+.pantry-item--sin-cocinar .pantry-item__amount--fija {
+  display: inline-flex;
+  align-items: center;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-2);
+  font-size: 16px;
+}
 .pantry-item__amount-input,
 .pantry-item__expiry-input { min-height: 40px; padding: 0 10px; font-size: 15px; }
 .pantry-item__amount-input { grid-area: amount; justify-self: end; width: 130px; }

@@ -196,6 +196,7 @@ registerI18nTable("ru", {
   "html.los_precios_son_de_mercadona_por_ahora_es_la": "Цены — из <strong>Mercadona</strong>. Пока это единственный магазин с реальными ценами, так что выбирать не из чего.",
   "html.mis_planes": "Мои <em>планы</em>",
   "html.plan_sin_cocinar": "План <em>без готовки</em>",
+  "html.compra_sin_cocinar": "Покупки <em>без готовки</em>",
   "html.separa_con_comas_se_descarta_cualquier_produ": "Через запятую. Отбрасывается любой товар или блюдо, в названии или составе которого это есть. <strong>Не для аллергий:</strong> это предпочтение, а не гарантия.",
   "html.tu_despensa": "Ваша <em>кладовая</em>",
   "html.tu_despensa_esta_vacia_aqui_guardas_lo_que_y": "<strong>Кладовая пуста.</strong> Здесь хранится то, что у вас уже есть дома, чтобы сайт не просил купить это снова. Добавьте первый продукт выше &uarr;",
@@ -254,7 +255,7 @@ registerI18nTable("ru", {
   "ui.condiciones_de_uso_y_privacidad": "условия использования и политику конфиденциальности",
   "ui.condiciones_de_uso_y_privacidad_2": "Условия использования и конфиденциальность",
   "ui.confirmar_plan_de_hoy": "Сделать планом на сегодня",
-  "ui.confirmar_plan_sin_cocinar": "Сделать план без готовки",
+  "ui.confirmar_plan_sin_cocinar": "Подтвердить план без готовки",
   "ui.continuar_sin_cuenta": "Продолжить без аккаунта",
   "ui.contrasena": "Пароль",
   "ui.crear_cuenta": "Создать аккаунт",
@@ -540,6 +541,7 @@ registerI18nTable("ru", {
   // Una fila de la despensa.
   "ui.despensa_editar_cantidad": "Изменить количество: {nombre}, {cantidad}",
   "ui.despensa_quitar": "Убрать: {nombre}",
+  "ui.despensa_sin_cocinar": "Продукты из плана без готовки",
   "ui.despensa_cantidad_en_gramos": "Количество «{nombre}» в граммах",
   // Caducidad de una fila (render-pantry.js, renderExpiryBadge). El hueco {lugar} es «en nevera» /
   // «in the fridge» / «в холодильнике»; llega con su coma o su espacio delante.
@@ -590,13 +592,16 @@ registerI18nTable("ru", {
   "ui.planes_consumido_sin_compra": "съедено (покупка не записана)",
   // El diálogo «Ya tienes un plan activo hoy».
   "ui.planes_reemplazo_ya_cocinaste": "Сегодня вы уже приготовили: {comidas} — это останется как есть, изменится только остальное.",
+  "ui.planes_reemplazo_ya_comiste": "Сегодня вы уже съели: {comidas} — это останется как есть, изменится только остальное.",
   "html.planes_reemplazo_sigue_activo": "Ваш план от {fecha} всё ещё активен: <strong>{pendientes}</strong> — ещё нужно купить или приготовить.",
+  "html.planes_reemplazo_sigue_activo_sc": "Ваш план без готовки от {fecha} всё ещё активен: <strong>{pendientes}</strong> — ещё нужно купить или съесть.",
   // El aviso que sale al confirmar un plan (renderPlanSavedNotice). Los {planes} y {boton} son los nombres
   // REALES de la pestaña y del botón, para que lo que se señala en negrita sea lo que hay en pantalla.
   "ui.planes_aviso_no_guardado": "Не удалось сохранить в этом браузере (хранилище заполнено или отключено) — изменения пропадут после перезагрузки.",
   "ui.planes_aviso_reemplazado_titulo": "План заменён",
   "html.planes_aviso_reemplazado": "<p>Ваш активный план на сегодня обновлён в разделе <strong>{planes}</strong>.{cocinado} Ингредиенты могли измениться, поэтому нажмите <strong>{boton}</strong> ещё раз, когда сделаете покупки.</p>",
   "ui.planes_aviso_lo_cocinado": "То, что вы уже приготовили ({comidas}), осталось без изменений.",
+  "ui.planes_aviso_lo_comido": "То, что вы уже съели ({comidas}), осталось без изменений.",
   "ui.planes_aviso_actualizado_titulo": "План обновлён",
   "html.planes_aviso_actualizado": "<p>Это всё тот же план на сегодня в разделе <strong>{planes}</strong> — пока ничего не куплено и не приготовлено, и в кладовую ничего не добавлено.</p>",
   "ui.planes_aviso_varios_dias_titulo": "План на {n} дн. подтверждён",

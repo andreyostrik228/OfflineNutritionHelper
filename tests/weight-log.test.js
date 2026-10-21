@@ -256,7 +256,7 @@ function run(t) {
   t.test("cloud-sync y migration llevan el registro a la nube, lo mezclan al bajar y lo borran al salir", function () {
     var cloud = fs.readFileSync(projPath("js/core/cloud-sync.js"), "utf8");
     var mig = fs.readFileSync(projPath("js/core/migration.js"), "utf8");
-    assert.ok(cloud.indexOf("settingsWithWeightLog(conEntrenos") !== -1, "_ajustesParaNube añade el registro (después del diario de entrenamiento)");
+    assert.ok(cloud.indexOf("settingsWithWeightLog(conSinCocinar") !== -1, "_ajustesParaNube añade el registro (después del diario de entrenamiento y del stock sin cocinar)");
     assert.ok(mig.indexOf("mergeWeightLogFromCloud(row.settings") !== -1, "al hidratar se mezcla");
     assert.ok(mig.indexOf("mergeWeightLogFromCloud(cloud.settings") !== -1, "al fusionar se mezcla");
     assert.ok(mig.indexOf("pesosBorrarAlmacen(pesosAlmacen())") !== -1, "al cerrar sesión se borra");

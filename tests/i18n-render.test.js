@@ -535,6 +535,40 @@ function run(t) {
     s.saveLang("es");
   });
 
+  t.test("el diálogo de plan activo con un plan sin cocinar: tomas traducidas y «ya comiste», no «ya cocinaste» (2026-10-21)", function () {
+    var s = sandboxCompleto();
+    var d = despensaConDeTodo(s);
+    s.saveLang("ru");
+    var entrada = {
+      id: "sc1", type: "nocook", createdAt: new Date().toISOString(), purchase: { done: true, runs: [] },
+      slots: [
+        { key: "breakfast", label: "Desayuno", consumed: true, items: [] },
+        { key: "lunch", label: "Comida", consumed: false, items: [] }
+      ]
+    };
+    s.showPlanReplaceDialog(entrada);
+    var texto = visible(d.c.cuerpo.innerHTML);
+    assert.ok(/уже съели/.test(texto), texto);
+    assert.ok(texto.indexOf("Desayuno") === -1 && texto.indexOf("Comida") === -1, "las tomas en ruso: " + texto);
+    assert.deepStrictEqual(detector.analizarTexto(texto, "ru"), [], texto);
+    s.saveLang("es");
+  });
+
+  t.test("la despensa pinta lo comprado sin cocinar: nombre, cantidad con su unidad en ruso y la «x», sin botón de fecha (2026-10-21)", function () {
+    var s = sandboxCompleto();
+    s.saveLang("ru");
+    var fila = s.renderNoCookStockRow({ id: "1234", name: "Pan hot dog Hacendado", quantity: 3, unit: "unidad", expiryDate: null });
+    assert.ok(fila.indexOf('data-nocook-id="1234"') !== -1);
+    assert.ok(fila.indexOf("Pan hot dog Hacendado") !== -1);
+    assert.ok(/3 шт|3 штук/.test(fila), "la unidad en ruso: " + fila);
+    assert.ok(fila.indexOf('data-action="remove-nocook"') !== -1);
+    assert.strictEqual(fila.indexOf('data-action="expiry"'), -1, "sin fecha no se ofrece «+ fecha»: no hay dónde guardarla");
+    var conFecha = s.renderNoCookStockRow({ id: "1", name: "Hummus", quantity: 1, unit: null, expiryDate: "2026-10-24",
+      expirySource: "store", expiryDaysLeft: 3, expiryTotalDays: 4, expiryTier: "pronto", storage: "nevera" });
+    assert.ok(/<span class="pantry-item__expiry pantry-item__expiry--pronto"/.test(conFecha), "la fecha, de solo lectura: " + conFecha);
+    s.saveLang("es");
+  });
+
   t.test("lo que se teclea en el alta de la despensa se entiende en el idioma de la pantalla Y en español", function () {
     var s = sandboxCompleto();
     var d = despensaConDeTodo(s);
@@ -596,6 +630,56 @@ function run(t) {
     s.runNoCookGenerator("mercadona", { calories: 2100, protein: 120, budget: 14 }, 1);
     assert.strictEqual(cont.innerHTML.indexOf("day-slide"), -1);
     assert.ok(cont.innerHTML.indexOf('data-day="0"') !== -1);
+  });
+
+  t.test("«sin cocinar»: la compra de 3 días junta cada producto una vez y no cuesta más que los 3 tickets (2026-10-21)", function () {
+    var s = sandboxCompleto();
+    s.saveLang("ru");
+    seedRandomInContext(s, 41);
+    var dias = s.generateNoCookPlanDays("mercadona", { calories: 2100, protein: 120, budget: 14 }, 3);
+    // Con un día, la MISMA cifra que el ticket que calculó el generador.
+    dias.forEach(function (plan, i) {
+      var uno = s.noCookCompraItems([plan]).reduce(function (a, x) { return a + x.cost; }, 0);
+      assert.strictEqual(Math.round(uno * 100) / 100, plan.shoppingCost, "día " + (i + 1));
+    });
+    var items = s.noCookCompraItems(dias);
+    var vistos = {};
+    items.forEach(function (x) {
+      assert.ok(!vistos[x.id], "producto repetido: " + x.name);
+      vistos[x.id] = true;
+      assert.strictEqual(x.packs, Math.max(1, Math.ceil(x.servings / x.perPack)));
+      assert.strictEqual(x.purchase.packagesToBuy, x.packs);
+    });
+    var junto = items.reduce(function (a, x) { return a + x.cost; }, 0);
+    var separado = dias.reduce(function (a, p) { return a + p.shoppingCost; }, 0);
+    assert.ok(junto <= separado + 0.001, "juntos " + junto + " frente a " + separado + " por separado");
+
+    var panel = contenedor(), lista = contenedor(), resumen = contenedor(), ojo = contenedor();
+    s.initNoCookRefs({ noCookResults: contenedor(), noCookShoppingPanel: panel, noCookShoppingList: lista,
+      noCookShoppingSummary: resumen, noCookShoppingCount: contenedor(), noCookShoppingEyebrow: ojo });
+    s.renderNoCookShoppingList(dias);
+    assert.strictEqual(panel.hidden, false);
+    assert.strictEqual(lista.innerHTML.split('<li class="shopping-item').length - 1, items.length, "una fila por producto");
+    assert.ok(lista.innerHTML.indexOf("Купить: ") !== -1 && lista.innerHTML.indexOf("product-find-btn") !== -1);
+    assert.ok(resumen.innerHTML.indexOf("(3 ") !== -1, "el coste lleva los 3 días");
+    assert.strictEqual(ojo.getAttribute("data-i18n"), null, "con la cifra dentro, sin data-i18n");
+    ["undefined", "NaN", "null"].forEach(function (malo) {
+      assert.strictEqual((lista.innerHTML + resumen.innerHTML).indexOf(malo), -1, "aparece «" + malo + "»");
+    });
+    s.renderNoCookShoppingList([]);
+    assert.strictEqual(panel.hidden, true, "sin plan, sin panel");
+  });
+
+  t.test("«Confirmar plan sin cocinar» está en su lista de la compra y guarda cada día con su fecha (2026-10-21)", function () {
+    var html = fs.readFileSync(projPath("index.html"), "utf8");
+    var panel = html.indexOf('id="noCookShoppingPanel"');
+    var boton = html.indexOf('id="usePlanTodayNoCookBtn"');
+    var fin = html.indexOf("</section>", panel);
+    assert.ok(panel !== -1 && panel < boton && boton < fin, "el botón va dentro de #noCookShoppingPanel");
+    var app = fs.readFileSync(projPath("js/app.js"), "utf8");
+    assert.ok(app.indexOf("saveNoCookPlanForToday(dias[d].slots, storeForEntry, formatLocalDateKey(fecha))") !== -1);
+    var pestanas = fs.readFileSync(projPath("js/ui/pestanas.js"), "utf8");
+    assert.ok(pestanas.indexOf('["#noCookShoppingPanel", "compra"]') !== -1, "en la pestaña «Compra»");
   });
 
   t.test("«sin cocinar» en español dice lo de siempre, y solo la kcal de la toma gana su <span class=\"u\">", function () {

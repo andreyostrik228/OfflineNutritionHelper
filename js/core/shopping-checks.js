@@ -18,20 +18,30 @@
  * Lo pinta js/ui/render-shopping-list.js.
  *
  * Expone (globales):
- *   SHOPPING_CHECKS_KEY
+ *   SHOPPING_CHECKS_KEY, SHOPPING_CHECKS_NOCOOK_KEY
  *   claveDeArticulo(entry)            -> "Nombre|envases"
- *   leerMarcasCompra()                -> { clave: true, ... }
- *   guardarMarcasCompra(marcas, claves) -> marcas podadas a `claves`
- *   alternarMarcaCompra(clave, claves)  -> nuevo estado (boolean)
+ *   leerMarcasCompra(lista?)          -> { clave: true, ... }
+ *   guardarMarcasCompra(marcas, claves, lista?) -> marcas podadas a `claves`
+ *   alternarMarcaCompra(clave, claves, lista?)  -> nuevo estado (boolean)
+ *
+ * `lista` (2026-10-21) es la clave de almacenamiento de cada lista: la del
+ * plan normal (por defecto) y la del plan sin cocinar van APARTE, porque
+ * guardar poda lo que no está en la lista que se pinta, y con una sola clave
+ * pintar una borraba las marcas de la otra.
  *   ordenarPorMarca(items, marcas)    -> sin marcar primero, orden estable
  * ─────────────────────────────────────────────────────────────────────────
  */
 
 var SHOPPING_CHECKS_KEY = "nutritionPlanner.shoppingChecks.v1";
+var SHOPPING_CHECKS_NOCOOK_KEY = "nutritionPlanner.shoppingChecksNoCook.v1";
 
 // Mismo patrón que settings.js: solo se usa si no hay localStorage (tests,
-// ventana privada que lo bloquea).
+// ventana privada que lo bloquea). Una por lista.
 var _marcasEnMemoria = {};
+
+function _listaDeMarcas(lista) {
+  return lista === SHOPPING_CHECKS_NOCOOK_KEY ? SHOPPING_CHECKS_NOCOOK_KEY : SHOPPING_CHECKS_KEY;
+}
 
 /**
  * @param {{name:string, purchase:{packagesToBuy:(number|null)}}} entry
@@ -55,14 +65,18 @@ function _sanearMarcas(raw) {
   return limpio;
 }
 
-/** @returns {Object<string, boolean>} */
-function leerMarcasCompra() {
-  if (typeof localStorage === "undefined") return _sanearMarcas(_marcasEnMemoria);
+/**
+ * @param {string} [lista] - SHOPPING_CHECKS_KEY (por defecto) o SHOPPING_CHECKS_NOCOOK_KEY
+ * @returns {Object<string, boolean>}
+ */
+function leerMarcasCompra(lista) {
+  var clave = _listaDeMarcas(lista);
+  if (typeof localStorage === "undefined") return _sanearMarcas(_marcasEnMemoria[clave]);
   try {
-    var raw = localStorage.getItem(SHOPPING_CHECKS_KEY);
+    var raw = localStorage.getItem(clave);
     return raw ? _sanearMarcas(JSON.parse(raw)) : {};
   } catch (err) {
-    return _sanearMarcas(_marcasEnMemoria);
+    return _sanearMarcas(_marcasEnMemoria[clave]);
   }
 }
 
@@ -71,18 +85,20 @@ function leerMarcasCompra() {
  * hoy en la lista (`claves`): si no, cada plan nuevo dejaría basura.
  * @param {Object<string, boolean>} marcas
  * @param {string[]} [claves]
+ * @param {string} [lista] - qué lista (ver leerMarcasCompra)
  * @returns {Object<string, boolean>} lo que quedó guardado
  */
-function guardarMarcasCompra(marcas, claves) {
+function guardarMarcasCompra(marcas, claves, lista) {
+  var clave = _listaDeMarcas(lista);
   var limpio = _sanearMarcas(marcas);
   if (Array.isArray(claves)) {
     var vigentes = {};
     claves.forEach(function (c) { vigentes[c] = true; });
     Object.keys(limpio).forEach(function (k) { if (!vigentes[k]) delete limpio[k]; });
   }
-  _marcasEnMemoria = limpio;
+  _marcasEnMemoria[clave] = limpio;
   if (typeof localStorage !== "undefined") {
-    try { localStorage.setItem(SHOPPING_CHECKS_KEY, JSON.stringify(limpio)); } catch (err) { /* memoria */ }
+    try { localStorage.setItem(clave, JSON.stringify(limpio)); } catch (err) { /* memoria */ }
   }
   return limpio;
 }
@@ -91,13 +107,14 @@ function guardarMarcasCompra(marcas, claves) {
  * Marca o desmarca un producto.
  * @param {string} clave
  * @param {string[]} [claves] - las de la lista actual, para podar
+ * @param {string} [lista] - qué lista (ver leerMarcasCompra)
  * @returns {boolean} true si queda MARCADO
  */
-function alternarMarcaCompra(clave, claves) {
-  var marcas = leerMarcasCompra();
+function alternarMarcaCompra(clave, claves, lista) {
+  var marcas = leerMarcasCompra(lista);
   if (marcas[clave]) delete marcas[clave];
   else marcas[clave] = true;
-  var guardadas = guardarMarcasCompra(marcas, claves);
+  var guardadas = guardarMarcasCompra(marcas, claves, lista);
   return guardadas[clave] === true;
 }
 

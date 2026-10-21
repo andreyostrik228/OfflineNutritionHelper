@@ -198,6 +198,7 @@ registerI18nTable("uk", {
   "html.los_precios_son_de_mercadona_por_ahora_es_la": "Ціни — з <strong>Mercadona</strong>. Поки що це єдиний магазин із реальними цінами, тож вибирати нема з чого.",
   "html.mis_planes": "Мої <em>плани</em>",
   "html.plan_sin_cocinar": "План <em>без готування</em>",
+  "html.compra_sin_cocinar": "Покупки <em>без готування</em>",
   "html.separa_con_comas_se_descarta_cualquier_produ": "Розділяй комами. Відкидається будь-який продукт або страва, чия назва чи інгредієнти збігаються. <strong>Не підходить для алергій:</strong> це вподобання, а не перевірка безпеки.",
   "html.tu_despensa": "Твоя <em>комора</em>",
   "html.tu_despensa_esta_vacia_aqui_guardas_lo_que_y": "<strong>Твоя комора порожня.</strong> Тут зберігай те, що вже є вдома, щоб сайт не просив купити це знову. Додай перший продукт угорі &uarr;",
@@ -474,6 +475,7 @@ registerI18nTable("uk", {
   // Una fila de la despensa.
   "ui.despensa_editar_cantidad": "Редагувати кількість {nombre}: {cantidad}",
   "ui.despensa_quitar": "Прибрати {nombre}",
+  "ui.despensa_sin_cocinar": "Продукти з плану без готування",
   "ui.despensa_cantidad_en_gramos": "Кількість {nombre} у грамах",
   // Caducidad de una fila (render-pantry.js, renderExpiryBadge). El hueco {lugar} es «en nevera» /
   // «in the fridge» / «в холодильнике»; llega con su coma o su espacio delante.
@@ -524,13 +526,16 @@ registerI18nTable("uk", {
   "ui.planes_consumido_sin_compra": "спожито (без покупки)",
   // El diálogo «Ya tienes un plan activo hoy».
   "ui.planes_reemplazo_ya_cocinaste": "Ти вже приготував(-ла) {comidas} сьогодні — це лишиться як є, зміниться лише решта.",
+  "ui.planes_reemplazo_ya_comiste": "Ти вже з'їв(-ла) {comidas} сьогодні — це лишиться як є, зміниться лише решта.",
   "html.planes_reemplazo_sigue_activo": "Твій план на {fecha} ще активний: <strong>{pendientes}</strong> ще треба купити або приготувати.",
+  "html.planes_reemplazo_sigue_activo_sc": "Твій план без готування на {fecha} ще активний: <strong>{pendientes}</strong> ще треба купити або з'їсти.",
   // El aviso que sale al confirmar un plan (renderPlanSavedNotice). Los {planes} y {boton} son los nombres
   // REALES de la pestaña y del botón, para que lo que se señala en negrita sea lo que hay en pantalla.
   "ui.planes_aviso_no_guardado": "Не вдалося зберегти в цьому браузері (сховище заповнене або вимкнене) — зміни не збережуться після перезавантаження.",
   "ui.planes_aviso_reemplazado_titulo": "План замінено",
   "html.planes_aviso_reemplazado": "<p>Твій активний план на сьогодні оновлено в розділі <strong>{planes}</strong>.{cocinado} Оскільки інгредієнти могли змінитися, познач <strong>{boton}</strong> знову, коли купуватимеш.</p>",
   "ui.planes_aviso_lo_cocinado": "Те, що вже приготовано ({comidas}), залишилося як є.",
+  "ui.planes_aviso_lo_comido": "Те, що вже з'їдено ({comidas}), залишилося як є.",
   "ui.planes_aviso_actualizado_titulo": "План оновлено",
   "html.planes_aviso_actualizado": "<p>Це досі той самий план на сьогодні в розділі <strong>{planes}</strong> — ще нічого не куплено й не приготовано, і в комору нічого не додано.</p>",
   "ui.planes_aviso_varios_dias_titulo": "План на {n} дн. підтверджено",

@@ -24,6 +24,9 @@
  *   paintNoCookDays(dias)                 – pinta los días (uno: como siempre; varios: carrusel)
  *   restaurarPlanSinCocinar()             – pinta el plan guardado; devuelve cuántos días (0 si no hay)
  *   clearNoCookPlan()                     – lo quita de la pantalla y de este dispositivo
+ *   noCookCompraItems(dias)               – la compra de todos los días juntos, sin DOM
+ *   renderNoCookShoppingList(dias)        – la pinta en su panel de «Compra» (o lo esconde)
+ *   noCookAvisoGuardado()                 – el aviso de «plan guardado» de esa lista
  *   lastNoCookDays / lastNoCookPlan (día 1) / lastNoCookSlots (sus tomas) / lastNoCookStore
  * ─────────────────────────────────────────────────────────────────────────
  */
@@ -75,9 +78,184 @@ function initNoCookRefs(refs) {
   noCookResults = refs.noCookResults;
   noCookCount = refs.noCookCount;
   noCookStatus = refs.noCookStatus;
+  _compra = {
+    panel: refs.noCookShoppingPanel || null,
+    lista: refs.noCookShoppingList || null,
+    resumen: refs.noCookShoppingSummary || null,
+    cuenta: refs.noCookShoppingCount || null,
+    ojo: refs.noCookShoppingEyebrow || null,
+    aviso: refs.noCookSavedNotice || null
+  };
   // Delegación: las tarjetas se re-pintan enteras en cada cambio, así que
   // el listener vive en el contenedor y no en cada botón.
   if (noCookResults) noCookResults.addEventListener("click", handleSwapNoCookSlot);
+  if (_compra.lista) _compra.lista.addEventListener("click", _alTocarFilaDeCompra);
+}
+
+// ── La compra de todos los días (2026-10-21) ─────────────────────────────
+// Como la lista del plan normal (js/ui/render-shopping-list.js), en su propio
+// panel de la pestaña «Compra»: los productos de los N días juntos, cada uno
+// con los envases que hacen falta, sus marcas de «ya en el carrito» (en su
+// propia clave, SHOPPING_CHECKS_NOCOOK_KEY) y «Confirmar» debajo. Aquí no hay
+// ingredientes que traducir a envases (js/core/budget.js): cada producto ya
+// es uno real del catálogo, con su precio y sus raciones por envase.
+
+var _compra = {};
+var _compraItems = [];
+
+/**
+ * Los productos de todos los días juntos: cada uno una vez, con las raciones
+ * de todos los días y los envases que hacen falta para ellas (uno que rinde
+ * varios días se paga una vez). Es la MISMA cuenta que el coste de cada día
+ * (recomputeNoCookPlanTotals la usa con un solo día). Sin DOM.
+ * @param {object[]} dias - planes de generateNoCookPlan
+ * @returns {object[]} { id, name, brand, unit, servings, grams, perPack, packs, price, cost, size, sizeUnit,
+ *   purchase: { packagesToBuy } }, de más caro a más barato
+ */
+function noCookCompraItems(dias) {
+  var porId = {};
+  var orden = [];
+  (dias || []).forEach(function (plan) {
+    ((plan && plan.slots) || []).forEach(function (slot) {
+      (slot.items || []).forEach(function (it) {
+        var x = porId[it.id];
+        if (!x) {
+          x = porId[it.id] = {
+            id: it.id, name: it.name, brand: it.brand || null, unit: it.unit || null,
+            servings: 0, grams: 0, perPack: it.servingsPerPackage || 1,
+            price: typeof it.price === "number" ? it.price : null,
+            size: it.size != null ? it.size : null, sizeUnit: it.sizeUnit || null
+          };
+          orden.push(it.id);
+        }
+        x.servings += it.servings || 1;
+        x.grams += it.grams || 0;
+      });
+    });
+  });
+  return orden.map(function (id) {
+    var x = porId[id];
+    x.packs = Math.max(1, Math.ceil(x.servings / x.perPack));
+    x.cost = x.price === null ? 0 : x.price * x.packs;
+    // La forma que espera claveDeArticulo (js/core/shopping-checks.js).
+    x.purchase = { packagesToBuy: x.packs };
+    return x;
+  }).sort(function (a, b) { return b.cost - a.cost; });
+}
+
+function _hayMarcasSinCocinar() {
+  return typeof leerMarcasCompra === "function" && typeof claveDeArticulo === "function" &&
+    typeof SHOPPING_CHECKS_NOCOOK_KEY !== "undefined";
+}
+
+/** Una fila: la casilla, el producto con su foto, lo que se usa, lo que se compra y el precio. */
+function _noCookCompraFilaHtml(x, marcado) {
+  var hayMarcas = _hayMarcasSinCocinar();
+  var casilla = hayMarcas
+    ? '<button type="button" class="shopping-item__check" role="checkbox" aria-checked="' + (marcado ? "true" : "false") + '"' +
+        ' aria-label="' + escapeHtml(t("ui.marcar_como_comprado").replace("{producto}", x.name)) + '"></button>'
+    : '<span class="shopping-item__check" aria-hidden="true"></span>';
+  var raciones = round2(x.servings);
+  var usado = t("ui.usado") + ": " + raciones + " " + noCookUnitLabel(x.unit, raciones) +
+    (x.grams ? " · " + fmtUnit(round0(x.grams), "g") : "");
+  var envase = (x.size != null && x.sizeUnit)
+    ? " (" + escapeHtml(x.size + t("unit.sep_pegada") + tPackageUnit(x.sizeUnit)) + ")" : "";
+  var findBtn = typeof renderProductFindBtn === "function" ? renderProductFindBtn(x) : "";
+  return '<li class="shopping-item' + (marcado ? " is-comprado" : "") + '"' +
+      (hayMarcas ? ' data-clave="' + escapeHtml(claveDeArticulo(x)) + '"' : "") + ">" +
+    casilla +
+    '<div class="shopping-item__main">' +
+      '<div class="shopping-item__name">' + escapeHtml(x.name) + findBtn + "</div>" +
+      (x.brand ? '<div class="shopping-item__meta">' + escapeHtml(x.brand) + "</div>" : "") +
+      '<div class="shopping-item__meta">' + escapeHtml(usado) + "</div>" +
+      '<div class="shopping-item__buy">' + escapeHtml(t("ui.comprar")) + ": " + x.packs + " &times; " +
+        escapeHtml(t("ui.envase")) + envase + "</div>" +
+    "</div>" +
+    '<div class="shopping-item__price">' + (x.price === null ? "" : "&euro;" + round2(x.cost)) + "</div>" +
+  "</li>";
+}
+
+/** Las filas con las marcas de este dispositivo: lo cogido, abajo (como en la otra lista). */
+function _pintarFilasSinCocinar() {
+  if (!_compra.lista) return;
+  var items = _compraItems;
+  var hayMarcas = _hayMarcasSinCocinar();
+  var marcas = {};
+  if (hayMarcas) {
+    marcas = guardarMarcasCompra(leerMarcasCompra(SHOPPING_CHECKS_NOCOOK_KEY), items.map(claveDeArticulo), SHOPPING_CHECKS_NOCOOK_KEY);
+    if (typeof ordenarPorMarca === "function") items = ordenarPorMarca(items, marcas);
+  }
+  // Sin js/core/shopping-checks.js la lista se pinta igual, sin casillas vivas.
+  _compra.lista.innerHTML = items.map(function (x) {
+    return _noCookCompraFilaHtml(x, hayMarcas && marcas[claveDeArticulo(x)] === true);
+  }).join("");
+}
+
+function _alTocarFilaDeCompra(ev) {
+  if (!_hayMarcasSinCocinar()) return;
+  if (ev.target.closest && ev.target.closest("a")) return;
+  var fila = ev.target.closest ? ev.target.closest(".shopping-item") : null;
+  if (!fila || !fila.getAttribute("data-clave")) return;
+  var clave = fila.getAttribute("data-clave");
+  alternarMarcaCompra(clave, _compraItems.map(claveDeArticulo), SHOPPING_CHECKS_NOCOOK_KEY);
+  _pintarFilasSinCocinar();
+  // El foco vuelve a la casilla de ESA fila, que tras reordenar está en otro sitio.
+  var nueva = Array.prototype.find.call(_compra.lista.querySelectorAll(".shopping-item"), function (li) {
+    return li.getAttribute("data-clave") === clave;
+  });
+  if (nueva && ev.detail === 0) {
+    var casilla = nueva.querySelector(".shopping-item__check");
+    if (casilla) casilla.focus();
+  }
+}
+
+/**
+ * Pinta la compra de los días que haya en pantalla, o esconde el panel si no
+ * hay ninguno. La cifra que manda es el ticket de todos los días; con varios,
+ * también lo que sale por día, que es lo que enseña el ahorro.
+ */
+function renderNoCookShoppingList(dias) {
+  if (!_compra.panel || !_compra.lista) return;
+  _compraItems = noCookCompraItems(dias);
+  if (!_compraItems.length) {
+    _compra.panel.hidden = true;
+    _compra.lista.innerHTML = "";
+    return;
+  }
+  _compra.panel.hidden = false;
+  var n = dias.length;
+  var total = _compraItems.reduce(function (s, x) { return s + x.cost; }, 0);
+  var consumo = dias.reduce(function (s, plan) { return s + (plan.consumedCost || 0); }, 0);
+  if (_compra.cuenta) _compra.cuenta.textContent = _compraItems.length;
+  if (_compra.resumen) {
+    _compra.resumen.innerHTML =
+      '<div class="shopping-summary__stat"><span>' + escapeHtml(t("ui.productos_etiqueta")) + "</span><strong>" + _compraItems.length + "</strong></div>" +
+      '<div class="shopping-summary__stat"><span>' + escapeHtml(t("ui.coste_de_compra")) +
+        (1 < n ? " (" + n + " " + escapeHtml(t("ui.dias")) + ")" : "") + "</span><strong>&euro;" + round2(total) + "</strong></div>" +
+      (1 < n ? '<div class="shopping-summary__stat"><span>' + escapeHtml(t("ui.por_dia_etiqueta")) + "</span><strong>&euro;" + round2(total / n) + "</strong></div>" : "") +
+      '<div class="shopping-summary__stat shopping-summary__stat--muted"><span>' + escapeHtml(t("ui.coste_de_uso")) + "</span><strong>&euro;" + round2(consumo) + "</strong></div>";
+  }
+  if (_compra.ojo) {
+    // Con varios días el texto lleva la cifra: sin `data-i18n`, o el barrido
+    // del cambio de idioma lo dejaría con «{n}» a la vista.
+    if (1 < n) {
+      _compra.ojo.removeAttribute("data-i18n");
+      _compra.ojo.textContent = t("ui.cantidades_para_n_dias_del_mismo_plan").replace("{n}", n);
+    } else {
+      _compra.ojo.setAttribute("data-i18n", "ui.todo_lo_que_necesitas_comprar_para_el_plan_d");
+      _compra.ojo.textContent = t("ui.todo_lo_que_necesitas_comprar_para_el_plan_d");
+    }
+  }
+  _pintarFilasSinCocinar();
+}
+
+/** El aviso de «plan guardado» de esta lista (js/app.js lo rellena al confirmar con renderPlanSavedNotice). */
+function noCookAvisoGuardado() { return _compra.aviso || null; }
+
+function _ocultarAvisoGuardado() {
+  if (!_compra.aviso) return;
+  _compra.aviso.hidden = true;
+  _compra.aviso.innerHTML = "";
 }
 
 /**
@@ -113,6 +291,8 @@ function runNoCookGenerator(storeId, options, dias) {
 
   if (noCookCount) noCookCount.textContent = planes[0].poolSize;
   if (noCookStatus) noCookStatus.textContent = t("ui.nocook_plan_generado");
+  // Un plan nuevo todavía no está confirmado: fuera el aviso del anterior.
+  _ocultarAvisoGuardado();
 
   paintNoCookDays(planes);
   _guardarPlanSinCocinar();
@@ -149,6 +329,8 @@ function clearNoCookPlan() {
     noCookResults.classList.remove("days-carousel__track--multi");
   }
   if (noCookStatus) noCookStatus.textContent = "";
+  renderNoCookShoppingList([]);
+  _ocultarAvisoGuardado();
   lastNoCookDays = null;
   lastNoCookPlan = null;
   lastNoCookSlots = null;
@@ -181,6 +363,7 @@ function paintNoCookDays(dias) {
   lastNoCookDays = dias;
   lastNoCookPlan = dias[0];
   lastNoCookSlots = dias[0].slots;
+  renderNoCookShoppingList(dias);
 }
 
 /**
@@ -262,27 +445,23 @@ function handleSwapNoCookSlot(event) {
 /** Recalcula totales, coste y avisos del día tras editar una toma. */
 function recomputeNoCookPlanTotals(plan) {
   var total = { kcal: 0, protein: 0, carbs: 0, fat: 0 };
-  var packs = {};
   var consumed = 0;
 
   plan.slots.forEach(function (slot) {
     slot.items.forEach(function (it) {
       total.kcal += it.kcal || 0; total.protein += it.protein || 0;
       total.carbs += it.carbs || 0; total.fat += it.fat || 0;
-      if (!packs[it.id]) packs[it.id] = { servings: 0, perPack: it.servingsPerPackage || 1, price: it.price };
-      packs[it.id].servings += it.servings || 1;
       if (typeof costForGrams === "function" && typeof it.price === "number" && it.grams) {
         consumed += costForGrams({ price: it.price, size: it.size, sizeUnit: it.sizeUnit }, it.grams);
       }
     });
   });
 
-  var shopping = 0, count = 0;
-  Object.keys(packs).forEach(function (id) {
-    var p = packs[id];
-    count++;
-    if (typeof p.price === "number") shopping += p.price * Math.max(1, Math.ceil(p.servings / p.perPack));
-  });
+  // El ticket del día con la misma cuenta que la lista de la compra de
+  // todos los días (noCookCompraItems): nunca dos cálculos que puedan divergir.
+  var compra = noCookCompraItems([plan]);
+  var shopping = compra.reduce(function (s, x) { return s + x.cost; }, 0);
+  var count = compra.length;
 
   plan.total = total;
   plan.shoppingCost = Math.round(shopping * 100) / 100;

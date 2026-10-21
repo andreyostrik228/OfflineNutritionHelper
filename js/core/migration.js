@@ -243,6 +243,8 @@ function _hydrateLocalFrom(cloudRow) {
   if (typeof mergeWeightLogFromCloud === "function") mergeWeightLogFromCloud(row.settings && row.settings._pesos);
   // El diario de entrenamiento se UNE con el del dispositivo (js/core/workout-sync.js).
   if (typeof mergeWorkoutsFromCloud === "function") mergeWorkoutsFromCloud(row.settings && row.settings._entrenos);
+  // Gana la nube: el stock «sin cocinar» se sustituye, como pantry_state (js/core/pantry.js).
+  if (typeof mergeNoCookStockFromCloud === "function") mergeNoCookStockFromCloud(row.settings && row.settings._sinCocinar, "reemplazar");
 }
 
 /** Tras fijar el marcador: lo que el dispositivo tenía y la nube no, sube. */
@@ -424,6 +426,8 @@ function resolveConflictMerge(cloudRow) {
   _applyCloudPrefs(cloud);
   if (typeof mergeWeightLogFromCloud === "function") mergeWeightLogFromCloud(cloud.settings && cloud.settings._pesos);
   if (typeof mergeWorkoutsFromCloud === "function") mergeWorkoutsFromCloud(cloud.settings && cloud.settings._entrenos);
+  // Se unen los dos: el stock «sin cocinar» se suma, como el de ingredientes.
+  if (typeof mergeNoCookStockFromCloud === "function") mergeNoCookStockFromCloud(cloud.settings && cloud.settings._sinCocinar, "sumar");
 
   return Promise.resolve((typeof pushAllToCloud === "function") ? pushAllToCloud({ setMigratedAt: true }) : null)
     .then(function () {

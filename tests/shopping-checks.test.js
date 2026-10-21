@@ -61,6 +61,20 @@ function run(t) {
     assert.deepStrictEqual(plano(s.leerMarcasCompra()), {});
   });
 
+  t.test("la lista del sin cocinar va en su propia clave: pintar una no borra las marcas de la otra (2026-10-21)", function () {
+    var s = sandbox();
+    s.alternarMarcaCompra("Fresas|1", ["Fresas|1"]);
+    s.alternarMarcaCompra("Pan hot dog Hacendado|1", ["Pan hot dog Hacendado|1"], s.SHOPPING_CHECKS_NOCOOK_KEY);
+    // Pintar la lista normal poda a SUS claves; la del sin cocinar sigue.
+    s.guardarMarcasCompra(s.leerMarcasCompra(), ["Fresas|1"]);
+    s.guardarMarcasCompra(s.leerMarcasCompra(s.SHOPPING_CHECKS_NOCOOK_KEY), ["Pan hot dog Hacendado|1"], s.SHOPPING_CHECKS_NOCOOK_KEY);
+    assert.deepStrictEqual(plano(s.leerMarcasCompra()), { "Fresas|1": true });
+    assert.deepStrictEqual(plano(s.leerMarcasCompra(s.SHOPPING_CHECKS_NOCOOK_KEY)), { "Pan hot dog Hacendado|1": true });
+    assert.notStrictEqual(s.SHOPPING_CHECKS_NOCOOK_KEY, s.SHOPPING_CHECKS_KEY);
+    // Una lista desconocida es la del plan normal, nunca una clave inventada.
+    assert.deepStrictEqual(plano(s.leerMarcasCompra("otra-cosa")), { "Fresas|1": true });
+  });
+
   t.test("sobrevive a 'recargar': otro sandbox con el MISMO almacenamiento", function () {
     var s1 = sandbox();
     s1.alternarMarcaCompra("Fresas|1", ["Fresas|1"]);

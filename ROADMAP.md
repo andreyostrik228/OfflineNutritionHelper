@@ -10,11 +10,11 @@ Chrome sin interfaz:
 |---|---|---|---|
 | Varios días (1/3/7) y carrusel | sí | 1 día siempre | **Hecho, paso 1** |
 | El plan vuelve tras recargar | sí (`weekplate-plan-v1`) | no | **Hecho, paso 1** (`weekplate-plan-sincocinar-v1`) |
-| Compra de todos los días en «Compra» | sí | solo el coste dentro del panel | Paso 2 |
-| Confirmar cada día con su fecha en «Mis planes» | sí | solo hoy | Paso 2 |
-| Lo comprado se ve en la despensa | sí | stock aparte que nadie pinta | Paso 3 |
-| Lo comprado viaja a la cuenta | sí (`pantry_state`) | solo este dispositivo | Paso 3 |
-| Diálogo «ya tienes un plan activo» | sí | no, sale una entrada más | Paso 4 |
+| Compra de todos los días en «Compra» | sí | solo el coste dentro del panel | **Hecho, paso 2** |
+| Confirmar cada día con su fecha en «Mis planes» | sí | solo hoy | **Hecho, paso 2** |
+| Lo comprado se ve en la despensa | sí | stock aparte que nadie pinta | **Hecho, paso 3** |
+| Lo comprado viaja a la cuenta | sí (`pantry_state`) | solo este dispositivo | **Hecho, paso 3** (`settings._sinCocinar`) |
+| Diálogo «ya tienes un plan activo» | sí | no, sale una entrada más | **Hecho, paso 4** |
 
 **Paso 1 (sello `20261021b`, 1179 tests):**
 - `generateNoCookPlanDays(store, options, dias)` en
@@ -37,8 +37,45 @@ Chrome sin interfaz:
   375 y 390 px y en tres aspectos.
 - «Confirmar plan sin cocinar» guarda todavía SOLO el día 1 (hoy): es el paso 2.
 
-Compra conjunta medida para el paso 2: 7 días por separado suman 77,17 € de
-media; juntos (un envase que rinde varios días se paga una vez), 71,87 €.
+**Paso 2 (sello `20261021c`, 1183 tests):**
+- Su lista de la compra en la pestaña «Compra» (`#noCookShoppingPanel`, debajo
+  de la del plan normal), con el mismo marcado: los productos de todos los días
+  juntos y los envases que hacen falta (`noCookCompraItems`,
+  `js/ui/render-no-cook.js`). Es la MISMA cuenta que el ticket de cada día
+  (`recomputeNoCookPlanTotals` la usa con un día, y un test comprueba que da lo
+  mismo que el generador). Medido: 7 días por separado suman 77,17 € de media;
+  juntos, 71,87 €.
+- Marcas de «ya en el carrito» en su propia clave
+  (`SHOPPING_CHECKS_NOCOOK_KEY`, `js/core/shopping-checks.js`): con una sola
+  clave, pintar una lista podaba las marcas de la otra. La insignia de la
+  pestaña «Compra» cuenta lo que falta de las dos.
+- «Confirmar plan sin cocinar» se mudó a esa lista (como «Confirmar plan de
+  hoy») y guarda cada día bajo su fecha (`saveNoCookPlanForToday(slots, store,
+  fecha)`); confirmar otra vez actualiza los borradores, no duplica. El aviso
+  va en la propia lista (`renderPlanSavedNotice(..., destino)`).
+- En ruso el botón decía «Сделать план без готовки» (como si generase uno):
+  ahora «Подтвердить план без готовки».
+
+**Pasos 3 y 4 (sello `20261021d`, 1190 tests; los pasos 2 a 4 van juntos):**
+- La despensa tiene un apartado «Productos del plan sin cocinar»
+  (`#pantryNoCookSection`): nombre, cantidad en su unidad de ración (el stock
+  guarda ahora `unit`), la caducidad de solo lectura cuando se conoce (los días
+  tras abrir de Mercadona van por id de producto, `listNoCookStockEntries`) y
+  la «x». «Tu despensa está vacía» ya no sale si solo hay productos de estos.
+- El stock viaja a la cuenta dentro de `settings._sinCocinar` (como `_pesos`
+  y `_entrenos`; sin reglas nuevas de Firestore). Al hidratar desde la nube se
+  sustituye y al unir se suma, como `pantry_state`; una cuenta sin el campo no
+  vacía lo del dispositivo. Se sube tras comprar, consumir o quitar
+  (`pushNoCookStockToCloud`). **Sin probar contra Firebase real.**
+- «Sin cocinar» con un plan de hoy comprado y a medias abre el mismo diálogo
+  que el plan normal (`findBlockingNoCookEntryToday`); «Cambiar el plan
+  completo» conserva las tomas ya comidas y deja la compra pendiente
+  (`replacePendingNoCookSlotsForToday`). Textos propios: «ya comiste», «por
+  comprar o comer».
+- **Visto y sin tocar (es lógica, no arquitectura):** «Ya compré todo» suma al
+  stock las RACIONES del plan, no el envase entero que se compra; el plan
+  normal suma los envases. Así lo que sobra de un envase no consta en la
+  despensa, aunque el resumen del día dice que «queda en la despensa».
 
 ## Entrenamientos: estado y prioridades al 2026-10-21 (esto primero si vas a tocar entrenamientos)
 

@@ -135,9 +135,13 @@
  *     adjustNoCookProductStock(productId, deltaQuantity, displayName?)
  *   hasRealNoCookAction(entry) → boolean
  *   isNoCookEntryFullyConsumed(entry) → boolean
- *   saveNoCookPlanForToday(slots, storeId) → { entry, historySaved, replaced }
+ *   saveNoCookPlanForToday(slots, storeId, planDateKey?) → { entry, historySaved, replaced }
+ *   findBlockingNoCookEntryToday() → el plan sin cocinar de hoy que frena uno nuevo, o null
+ *   replacePendingNoCookSlotsForToday(entryId, slots, storeId) → { entry, historySaved, replacedSlotKeys, keptSlotKeys } | null
  *   markNoCookPurchaseDone(entryId) → { saved, historySaved, run } | null
  *   markNoCookSlotConsumed(entryId, slotKey, consumed) → { saved, historySaved, entry, slot } | null
+ *   NOCOOK_CLOUD_FIELD, listNoCookStockEntries(todayISO?) → filas del apartado «sin cocinar» de la despensa
+ *   settingsWithNoCookStock(settings) / mergeNoCookStockFromCloud(remoto, modo) / pushNoCookStockToCloud()
  * ─────────────────────────────────────────────────────────────────────────
  */
 
@@ -1083,19 +1087,16 @@ function replaceSingleMealForEntry(entryId, mealKey, newMeal) {
 // entrada como un blob opaco (solo miran `.id`/`.createdAt`), así que
 // compartir el array no les exige ningún cambio.
 //
-// Local-only por ahora, igual que el resto de la despensa (el propio
-// known issue #9 documentaba "sin sincronización entre dispositivos" para
-// TODA la despensa, no solo esto) -- el stock de productos NO está
-// enganchado a cloud-sync.js/migration.js/supabase todavía; ver STATE.md
-// para el razonamiento de alcance de esta sesión. `pantryHistory` (las
-// entradas en sí, incluidas las "nocook") SÍ sincroniza como siempre,
-// solo el stock de PRODUCTOS es local-only por ahora.
+// `pantryHistory` (las entradas en sí, incluidas las "nocook") sincroniza
+// como siempre. El stock de PRODUCTOS fue solo de este dispositivo hasta el
+// 2026-10-21; desde entonces viaja dentro de `settings._sinCocinar` (ver
+// «El stock sin cocinar a la vista y en la cuenta», más abajo).
 //
-// Deliberadamente FUERA de esta sesión: el gate de "Generar plan" +
-// diálogo de reemplazo (2026-08-20, ver arriba) no se extiende aquí --
-// generar un plan "sin cocinar" nuevo con uno activo pendiente simplemente
-// crea una entrada adicional (mismo comportamiento que el modo normal
-// tenía ANTES de 2026-08-20). Revisar esa extensión si se pide.
+// El gate de "Generar plan" + diálogo de reemplazo (2026-08-20, ver
+// arriba) se extendió aquí el 2026-10-21: findBlockingNoCookEntryToday y
+// replacePendingNoCookSlotsForToday, con la misma regla que el plan normal.
+// Y desde ese día el stock de productos SÍ va a la cuenta (ver más abajo,
+// «El stock sin cocinar a la vista y en la cuenta»).
 
 var NOCOOK_STOCK_KEY = "nutritionPlanner.nocookStock.v1";
 var _nocookMemoryStock = null;
@@ -1115,6 +1116,9 @@ function sanitizeNoCookStock(raw) {
       clean[key] = {
         quantity: entry.quantity,
         displayName: typeof entry.displayName === "string" ? entry.displayName : key,
+        // La unidad de la ración ("lata", "unidad"…) para decir en la despensa
+        // qué son esas cantidades (2026-10-21). Las entradas de antes no la traen.
+        unit: typeof entry.unit === "string" ? entry.unit : null,
         updatedAt: typeof entry.updatedAt === "string" ? entry.updatedAt : null,
         // Ver el comentario equivalente en sanitizePantryState(): este
         // saneado también reconstruye campo a campo, así que los campos de
@@ -1190,7 +1194,7 @@ function setNoCookProductStock(productId, quantity, displayName) {
     var nowNoCookISO = new Date().toISOString();
     state[productId] = preserveExpiryFields(
       state[productId],
-      { quantity: q, displayName: displayName || productId, updatedAt: nowNoCookISO },
+      { quantity: q, displayName: displayName || productId, unit: (state[productId] && state[productId].unit) || null, updatedAt: nowNoCookISO },
       nowNoCookISO
     );
   }
@@ -1236,23 +1240,11 @@ function isNoCookEntryFullyConsumed(entry) {
 }
 
 /**
- * Etapa 1 "sin cocinar": registra/confirma el plan del día. Mismo UPSERT
- * sobre el borrador que savePlanForToday() (ver cabecera del archivo) --
- * busca una entrada de HOY, type "nocook", sin ninguna acción real
- * todavía, y la actualiza en vez de crear una copia. Pura contabilidad,
- * cero mutación de stock (igual que la versión de plato).
- * @param {{key:string,label:string,items:object[]}[]} slots - plan.slots de generateNoCookPlan()
- * @param {string} [storeId] - tienda del plan (2026-08-24, selector de
- *   tienda) -- mismo campo `store` que ya usan las entradas de plato
- *   (ver savePlanForToday más abajo), antes ausente aquí.
- * @returns {{ entry:object, historySaved:boolean, replaced:boolean }}
+ * Las tomas de un plan sin cocinar tal como se guardan en el historial: lo
+ * justo de cada producto y sin consumir. La comparten guardar y reemplazar.
  */
-function saveNoCookPlanForToday(slots, storeId) {
-  var now = new Date();
-  var nowISO = now.toISOString();
-  var todayKey = formatLocalDateKey(now);
-
-  var newSlots = (slots || []).map(function (slot) {
+function _noCookSlotsParaGuardar(slots) {
+  return (slots || []).map(function (slot) {
     return {
       key: slot.key,
       label: slot.label,
@@ -1277,6 +1269,31 @@ function saveNoCookPlanForToday(slots, storeId) {
       consumedQuantities: null
     };
   });
+}
+
+/**
+ * Etapa 1 "sin cocinar": registra/confirma el plan del día. Mismo UPSERT
+ * sobre el borrador que savePlanForToday() (ver cabecera del archivo) --
+ * busca una entrada de HOY, type "nocook", sin ninguna acción real
+ * todavía, y la actualiza en vez de crear una copia. Pura contabilidad,
+ * cero mutación de stock (igual que la versión de plato).
+ * @param {{key:string,label:string,items:object[]}[]} slots - plan.slots de generateNoCookPlan()
+ * @param {string} [storeId] - tienda del plan (2026-08-24, selector de
+ *   tienda) -- mismo campo `store` que ya usan las entradas de plato
+ *   (ver savePlanForToday más abajo), antes ausente aquí.
+ * @param {string} [planDateKey] - "YYYY-MM-DD" del día del plan (2026-10-21,
+ *   planes sin cocinar de varios días): mismo parámetro que savePlanForToday.
+ *   Sin él, hoy. El borrador que se actualiza es el de ESA fecha.
+ * @returns {{ entry:object, historySaved:boolean, replaced:boolean }}
+ */
+function saveNoCookPlanForToday(slots, storeId, planDateKey) {
+  var now = new Date();
+  var nowISO = now.toISOString();
+  var todayKey = (typeof planDateKey === "string" && planDateKey)
+    ? planDateKey
+    : formatLocalDateKey(now);
+
+  var newSlots = _noCookSlotsParaGuardar(slots);
 
   var history = getPantryHistory();
   var draft = history.find(function (e) {
@@ -1302,6 +1319,60 @@ function saveNoCookPlanForToday(slots, storeId) {
   };
   var historySaved = appendPantryHistory(entry);
   return { entry: entry, historySaved: historySaved, replaced: false };
+}
+
+/**
+ * El plan sin cocinar de HOY que debe frenar «Sin cocinar» con el diálogo de
+ * «ya tienes un plan activo» (2026-10-21), con la misma regla que el plan
+ * normal (getBlockingActiveEntry, js/app.js): tiene algo real encima (se
+ * compró o se comió alguna toma) y todavía le queda algo. Un borrador puro lo
+ * resuelve el UPSERT de siempre, y uno terminado no tiene nada que pisar.
+ * @returns {object|null}
+ */
+function findBlockingNoCookEntryToday() {
+  var todayKey = formatLocalDateKey(new Date());
+  return getPantryHistory().filter(function (e) {
+    return e.type === "nocook" && getEntryPlanDate(e) === todayKey &&
+      hasRealNoCookAction(e) && !isNoCookEntryFullyConsumed(e);
+  })[0] || null;
+}
+
+/**
+ * «Cambiar el plan completo» sobre un plan sin cocinar activo: las tomas YA
+ * comidas se quedan tal cual y el resto se sustituye por las nuevas; si
+ * cambió algo, la compra vuelve a estar pendiente (los productos pueden ser
+ * otros). Lo que ya está en la despensa no se toca. Mismo trato que
+ * replacePendingMealsForToday() en el plan normal.
+ * @param {string} entryId
+ * @param {object[]} newSlots - plan.slots de generateNoCookPlan
+ * @param {string} [storeId]
+ * @returns {{entry:object, historySaved:boolean, replacedSlotKeys:string[], keptSlotKeys:string[]}|null}
+ */
+function replacePendingNoCookSlotsForToday(entryId, newSlots, storeId) {
+  var history = getPantryHistory();
+  var entry = history.find(function (e) { return e.id === entryId && e.type === "nocook"; });
+  if (!entry) return null;
+
+  var oldByKey = {};
+  (entry.slots || []).forEach(function (s) { oldByKey[s.key] = s; });
+  var nuevas = _noCookSlotsParaGuardar(newSlots);
+  var replacedSlotKeys = [];
+  var keptSlotKeys = [];
+  entry.slots = nuevas.map(function (slot) {
+    var old = oldByKey[slot.key];
+    if (old && old.consumed) {
+      keptSlotKeys.push(slot.key);
+      return old;
+    }
+    replacedSlotKeys.push(slot.key);
+    return slot;
+  });
+  entry.createdAt = new Date().toISOString();
+  entry.store = storeId || entry.store;
+  if (replacedSlotKeys.length > 0) entry.purchase.done = false;
+
+  var historySaved = savePantryHistory(history);
+  return { entry: entry, historySaved: historySaved, replacedSlotKeys: replacedSlotKeys, keptSlotKeys: keptSlotKeys };
 }
 
 /**
@@ -1331,7 +1402,7 @@ function markNoCookPurchaseDone(entryId) {
       var current = getNoCookProductStock(item.id, stock);
       stock[item.id] = preserveExpiryFields(
         stock[item.id],
-        { quantity: current + item.quantity, displayName: item.name, updatedAt: nowISO },
+        { quantity: current + item.quantity, displayName: item.name, unit: item.unit || (stock[item.id] && stock[item.id].unit) || null, updatedAt: nowISO },
         nowISO
       );
       lines.push({ id: item.id, name: item.name, quantity: item.quantity, price: item.price });
@@ -1381,7 +1452,7 @@ function markNoCookSlotConsumed(entryId, slotKey, consumed) {
       var used = Math.min(item.quantity, current);
       stock[item.id] = preserveExpiryFields(
         stock[item.id],
-        { quantity: Math.max(0, current - used), displayName: item.name, updatedAt: nowISO },
+        { quantity: Math.max(0, current - used), displayName: item.name, unit: item.unit || (stock[item.id] && stock[item.id].unit) || null, updatedAt: nowISO },
         nowISO,
         true // consumir la toma es lo que abre el envase
       );
@@ -1398,7 +1469,7 @@ function markNoCookSlotConsumed(entryId, slotKey, consumed) {
       // markMealCooked() si lo hacia; esta se habia quedado atras.
       stock[c.id] = preserveExpiryFields(
         stock[c.id],
-        { quantity: current + c.quantity, displayName: c.name, updatedAt: nowISO },
+        { quantity: current + c.quantity, displayName: c.name, unit: (stock[c.id] && stock[c.id].unit) || null, updatedAt: nowISO },
         nowISO
       );
     });
@@ -1410,6 +1481,120 @@ function markNoCookSlotConsumed(entryId, slotKey, consumed) {
   var saved = saveNoCookStock(stock);
   var historySaved = savePantryHistory(history);
   return { saved: saved, historySaved: historySaved, entry: entry, slot: slot };
+}
+
+// ── El stock «sin cocinar» a la vista y en la cuenta (2026-10-21) ─────────
+// Hasta hoy se escribía y nadie lo pintaba (HANDOFF, medido el 2026-09-04) y
+// se quedaba en este dispositivo. Ahora sale en la despensa, en su propio
+// apartado (js/ui/render-pantry.js), y viaja a la cuenta DENTRO de `settings`
+// bajo `_sinCocinar`, el mismo camino que `_pesos` y `_entrenos`: las reglas
+// de Firestore solo admiten cuatro campos y cambiarlas lo hace el dueño desde
+// la consola. Un producto va por su id de catálogo, no por nombre.
+
+var NOCOOK_CLOUD_FIELD = "_sinCocinar";
+
+/**
+ * Las filas del apartado «sin cocinar» de la despensa: nombre, cantidad, su
+ * unidad y la caducidad, con el mismo resolveExpiry que el resto (los días
+ * «tras abrir» de Mercadona van por id de producto, así que aquí sí se
+ * aprovechan). Ordenadas por nombre.
+ * @param {string} [todayISO]
+ * @returns {object[]}
+ */
+function listNoCookStockEntries(todayISO) {
+  var state = getNoCookStock();
+  var canResolve = typeof resolveExpiry === "function";
+  var today = todayISO || new Date().toISOString().slice(0, 10);
+  // Lo que se acabó no se pinta (sin localStorage el stock vive en memoria y
+  // no pasa por el saneado que descarta las cantidades a cero).
+  return Object.keys(state).filter(function (id) {
+    return state[id] && typeof state[id].quantity === "number" && state[id].quantity > 0;
+  }).map(function (id) {
+    var entry = state[id];
+    var conId = {};
+    Object.keys(entry).forEach(function (k) { conId[k] = entry[k]; });
+    conId.productId = id;
+    var expiry = canResolve
+      ? resolveExpiry(conId, id, today)
+      : { date: null, source: "unknown", daysLeft: null, totalDays: null, tier: "desconocido", storage: null };
+    return {
+      id: id,
+      name: entry.displayName || id,
+      quantity: entry.quantity,
+      unit: entry.unit || null,
+      openedAt: entry.openedAt || null,
+      storage: expiry.storage,
+      expiryDate: expiry.date,
+      expirySource: expiry.source,
+      expiryDaysLeft: expiry.daysLeft,
+      expiryTier: expiry.tier
+    };
+  }).sort(function (a, b) { return a.name.localeCompare(b.name, "es"); });
+}
+
+/** Copia de unos ajustes con el stock «sin cocinar» dentro (`_sinCocinar`), lista para subirse. */
+function settingsWithNoCookStock(settings) {
+  var copia = {};
+  var origen = settings && typeof settings === "object" && !Array.isArray(settings) ? settings : {};
+  Object.keys(origen).forEach(function (k) { copia[k] = origen[k]; });
+  copia[NOCOOK_CLOUD_FIELD] = getNoCookStock();
+  return copia;
+}
+
+/**
+ * Lo que bajó de la cuenta, en este dispositivo. Mismas dos formas que el
+ * stock de ingredientes (js/core/migration.js): "reemplazar" cuando gana la
+ * nube y "sumar" al unir los dos (como mergePantryStateBlobs, que suma
+ * gramos: aquí, raciones). Si la cuenta todavía no trae `_sinCocinar` (todas
+ * las de antes del 2026-10-21) no se toca nada: vaciar lo del dispositivo
+ * porque la nube no lo conoce sería perderlo. Nunca lanza.
+ * @param {*} remoto - settings._sinCocinar de la cuenta
+ * @param {"reemplazar"|"sumar"} modo
+ * @returns {boolean} true si se guardó algo
+ */
+function mergeNoCookStockFromCloud(remoto, modo) {
+  try {
+    if (!remoto || typeof remoto !== "object" || Array.isArray(remoto)) return false;
+    var nube = sanitizeNoCookStock(remoto);
+    if (modo !== "sumar") return saveNoCookStock(nube);
+    var local = getNoCookStock();
+    var nowISO = new Date().toISOString();
+    var unido = {};
+    Object.keys(local).concat(Object.keys(nube)).forEach(function (id) {
+      if (unido[id]) return;
+      var l = local[id], c = nube[id];
+      var base = l || c;
+      var suma = (l ? l.quantity : 0) + (c ? c.quantity : 0);
+      var fila = {};
+      Object.keys(base).forEach(function (k) { fila[k] = base[k]; });
+      fila.quantity = suma;
+      fila.unit = (l && l.unit) || (c && c.unit) || null;
+      fila.updatedAt = nowISO;
+      unido[id] = fila;
+    });
+    return saveNoCookStock(unido);
+  } catch (err) {
+    return false;
+  }
+}
+
+/**
+ * Sube el stock «sin cocinar» a la cuenta, si hay sesión y la reconciliación
+ * de esa cuenta ya terminó (como pushWeightLogToCloud). Va con los ajustes:
+ * el stock de ingredientes (pushPantryToCloud) no lo lleva. Nunca lanza.
+ * @returns {Promise<{error:object|null, skipped:boolean}>}
+ */
+function pushNoCookStockToCloud() {
+  var vacio = Promise.resolve({ error: null, skipped: true });
+  try {
+    var usuario = (typeof getCurrentUser === "function") ? getCurrentUser() : null;
+    if (!usuario) return vacio;
+    if (typeof getCloudSyncedUserId === "function" && getCloudSyncedUserId() !== usuario.id) return vacio;
+    if (typeof pushSettingsToCloud !== "function") return vacio;
+    return pushSettingsToCloud();
+  } catch (err) {
+    return vacio;
+  }
 }
 
 // ── Historial de planes confirmados ───────────────────────────────────────

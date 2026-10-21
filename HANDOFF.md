@@ -48,10 +48,14 @@ medidas y causas, está en la cabecera de `STATE.md` (entradas del 2026-10-07 y
   `ROADMAP.md`). Un sitio no puede leer el podómetro.
 - **«Sin cocinar» como el plan normal, en 4 pasos** (tabla al principio de
   `ROADMAP.md`). El paso 1 (varios días, carrusel, guardado) está hecho, sello
-  `20261021b`. El carrusel ya no vive en ids sueltos: `montarCarruselDias(el)`
-  en `js/app.js` monta los dos; si añades otro, pásale sus elementos, no
-  copies el código. Siguen: compra conjunta y confirmar por fechas (2),
-  despensa y cuenta (3), diálogo de plan activo (4).
+  `20261021b`, y el paso 2 (su compra en «Compra» y confirmar por fechas),
+  sello `20261021c`. El carrusel ya no vive en ids sueltos:
+  `montarCarruselDias(el)` en `js/app.js` monta los dos; si añades otro,
+  pásale sus elementos, no copies el código. Las marcas de la compra van por
+  lista (`leerMarcasCompra(lista)`): no mezcles las dos. Y los pasos 3
+  (despensa y cuenta, `settings._sinCocinar`) y 4 (diálogo de plan activo),
+  sello `20261021d`. Queda una cosa de LÓGICA anotada en `ROADMAP.md`: la
+  compra sin cocinar suma raciones, no envases enteros.
 
 ### 0.0 Lo nuevo del 2026-10-18 (lee esto antes que 0.1)
 

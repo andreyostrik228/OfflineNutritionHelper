@@ -43,6 +43,7 @@ var PESTANAS_SECCIONES = [
   ["#noCookPanel", "menu"],
   ["#insightsBox", "menu"],
   ["#shoppingPanel", "compra"],
+  ["#noCookShoppingPanel", "compra"],
   ["#verifiedPanel", "compra"],
   ["#todayPlansPanel", "planes"]
 ];
@@ -106,6 +107,7 @@ function initPestanas() {
     }
   });
   _observar("shoppingListContainer", _pintarCuentaDeCompra, true);
+  _observar("noCookShoppingList", _pintarCuentaDeCompra, true);
 
   // La barra "siguiente toma" lleva a una tarjeta del menú: si estás en
   // otra pestaña, primero se cambia (en captura, antes que su manejador).
@@ -144,15 +146,16 @@ function _observar(id, fn, conAtributos) {
   });
 }
 
-/** El número de la pestaña "Compra": lo que falta por coger. */
+/** El número de la pestaña "Compra": lo que falta por coger, de las dos listas (la del sin cocinar, desde el 2026-10-21). */
 function _pintarCuentaDeCompra() {
   if (!_pestanaBarra) return;
   var cuenta = _pestanaBarra.querySelector(".tabbar__cuenta");
   if (!cuenta) return;
-  var panel = document.getElementById("shoppingPanel");
-  var faltan = (panel && !panel.hidden)
-    ? document.querySelectorAll("#shoppingListContainer .shopping-item:not(.is-comprado)").length
-    : 0;
+  var faltan = 0;
+  [["shoppingPanel", "shoppingListContainer"], ["noCookShoppingPanel", "noCookShoppingList"]].forEach(function (par) {
+    var panel = document.getElementById(par[0]);
+    if (panel && !panel.hidden) faltan += document.querySelectorAll("#" + par[1] + " .shopping-item:not(.is-comprado)").length;
+  });
   cuenta.textContent = faltan > 99 ? "99+" : String(faltan);
   cuenta.hidden = faltan === 0;
 }

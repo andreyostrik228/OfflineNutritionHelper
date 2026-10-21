@@ -195,6 +195,7 @@ registerI18nTable("es", {
   "html.los_precios_son_de_mercadona_por_ahora_es_la": "Los precios son de <strong>Mercadona</strong>. Por ahora es la única tienda con precios reales, así que no hay nada que elegir.",
   "html.mis_planes": "Mis <em>planes</em>",
   "html.plan_sin_cocinar": "Plan <em>sin cocinar</em>",
+  "html.compra_sin_cocinar": "Compra <em>sin cocinar</em>",
   "html.separa_con_comas_se_descarta_cualquier_produ": "Separa con comas. Se descarta cualquier producto o plato cuyo nombre o ingredientes coincidan. <strong>No sirve para alergias:</strong> es una preferencia, no una comprobación de seguridad.",
   "html.tu_despensa": "Tu <em>despensa</em>",
   "html.tu_despensa_esta_vacia_aqui_guardas_lo_que_y": "<strong>Tu despensa está vacía.</strong> Aquí guardas lo que ya tienes en casa, para que el sitio no te lo vuelva a pedir comprar. Añade tu primer producto arriba &uarr;",
@@ -471,6 +472,7 @@ registerI18nTable("es", {
   // Una fila de la despensa.
   "ui.despensa_editar_cantidad": "Editar cantidad de {nombre}: {cantidad}",
   "ui.despensa_quitar": "Quitar {nombre}",
+  "ui.despensa_sin_cocinar": "Productos del plan sin cocinar",
   "ui.despensa_cantidad_en_gramos": "Cantidad de {nombre} en gramos",
   // Caducidad de una fila (render-pantry.js, renderExpiryBadge). El hueco {lugar} es «en nevera» /
   // «in the fridge» / «в холодильнике»; llega con su coma o su espacio delante.
@@ -521,13 +523,16 @@ registerI18nTable("es", {
   "ui.planes_consumido_sin_compra": "consumido (sin registrar compra)",
   // El diálogo «Ya tienes un plan activo hoy».
   "ui.planes_reemplazo_ya_cocinaste": "Ya cocinaste {comidas} hoy — eso se mantiene tal cual, solo cambiaría el resto.",
+  "ui.planes_reemplazo_ya_comiste": "Ya comiste {comidas} hoy — eso se mantiene tal cual, solo cambiaría el resto.",
   "html.planes_reemplazo_sigue_activo": "Tu plan de {fecha} sigue activo: <strong>{pendientes}</strong> todavía por comprar o cocinar.",
+  "html.planes_reemplazo_sigue_activo_sc": "Tu plan sin cocinar de {fecha} sigue activo: <strong>{pendientes}</strong> todavía por comprar o comer.",
   // El aviso que sale al confirmar un plan (renderPlanSavedNotice). Los {planes} y {boton} son los nombres
   // REALES de la pestaña y del botón, para que lo que se señala en negrita sea lo que hay en pantalla.
   "ui.planes_aviso_no_guardado": "No se ha podido guardar en este navegador (almacenamiento lleno o deshabilitado) — los cambios no persistirán al recargar.",
   "ui.planes_aviso_reemplazado_titulo": "Plan reemplazado",
   "html.planes_aviso_reemplazado": "<p>Se actualizó tu plan activo de hoy en <strong>{planes}</strong>.{cocinado} Como los ingredientes pueden haber cambiado, marca <strong>{boton}</strong> de nuevo cuando compres.</p>",
   "ui.planes_aviso_lo_cocinado": "Lo que ya cocinaste ({comidas}) se mantuvo tal cual.",
+  "ui.planes_aviso_lo_comido": "Lo que ya comiste ({comidas}) se mantuvo tal cual.",
   "ui.planes_aviso_actualizado_titulo": "Plan actualizado",
   "html.planes_aviso_actualizado": "<p>Sigue siendo el mismo plan de hoy en <strong>{planes}</strong> — no se ha comprado ni cocinado nada todavía, ni se ha añadido nada a tu despensa.</p>",
   "ui.planes_aviso_varios_dias_titulo": "Plan de {n} días confirmado",

@@ -254,6 +254,9 @@ document.addEventListener("DOMContentLoaded", function () {
   // usarse una vez, y también al "Resetear" (clearOutput) para que nunca
   // sobreviva a un plan distinto generado después sin pasar por el diálogo.
   var pendingReplaceEntryId = null;
+  // Lo mismo para el plan sin cocinar (2026-10-21): la entry de hoy que la
+  // próxima confirmación sustituye (replacePendingNoCookSlotsForToday).
+  var pendingReplaceNoCookEntryId = null;
 
   var budgetModeRadios   = document.querySelectorAll('input[name="budgetMode"]');
   var budgetCustomField  = document.getElementById("budgetCustomField");
@@ -552,6 +555,14 @@ document.addEventListener("DOMContentLoaded", function () {
    * @param {string} entryId
    */
   function handleReplaceWholePlan(entryId) {
+    // El diálogo es el mismo para los dos planes (2026-10-21): si el activo
+    // es uno sin cocinar, se rehace ese.
+    var entrada = (typeof getPantryHistory === "function")
+      ? getPantryHistory().filter(function (e) { return e.id === entryId; })[0] : null;
+    if (entrada && entrada.type === "nocook") {
+      generarSinCocinar(entryId);
+      return;
+    }
     var parsed = readValidatedFormData();
     if (parsed.error) {
       showWarning(parsed.error);
@@ -781,6 +792,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // Y el plan guardado en este dispositivo: si no, volvería al recargar.
     if (typeof planBorrar === "function") planBorrar(planAlmacen());
     // El sin cocinar también se guarda desde el 2026-10-21: fuera los dos.
+    pendingReplaceNoCookEntryId = null;
     safeInit("nocook-reset", function () {
       if (typeof clearNoCookPlan === "function") clearNoCookPlan();
       if (noCookPanel) noCookPanel.hidden = true;
@@ -1523,6 +1535,10 @@ document.addEventListener("DOMContentLoaded", function () {
    * patrón que handleUsePlanToday(), sin la rama de reemplazo (el gate de
    * "Generar plan" de 2026-08-20 no se extendió aquí a propósito, ver
    * cabecera del bloque "sin cocinar" en pantry.js).
+   *
+   * Desde el 2026-10-21, como el plan normal: cada día del plan va bajo SU
+   * fecha, empezando hoy, y el aviso va en la lista de la compra del sin
+   * cocinar, que es donde está el botón.
    */
   function handleUseNoCookPlanToday() {
     safeInit("use-nocook-plan-today", function () {
@@ -1532,8 +1548,25 @@ document.addEventListener("DOMContentLoaded", function () {
       usePlanTodayNoCookBtn.disabled = true;
       try {
         var storeForEntry = (typeof lastNoCookStore !== "undefined") ? lastNoCookStore : undefined;
-        var result = saveNoCookPlanForToday(lastNoCookSlots, storeForEntry);
+        var result, mode;
+        if (pendingReplaceNoCookEntryId && typeof replacePendingNoCookSlotsForToday === "function") {
+          // «Cambiar el plan completo»: sobre ESA entry, conservando lo ya comido.
+          result = replacePendingNoCookSlotsForToday(pendingReplaceNoCookEntryId, lastNoCookSlots, storeForEntry);
+          pendingReplaceNoCookEntryId = null;
+          mode = "active-replaced";
+        } else {
+          result = saveNoCookPlanForToday(lastNoCookSlots, storeForEntry);
+          mode = result && result.replaced ? "draft-updated" : "created";
+        }
         if (!result) return;
+        var dias = (typeof lastNoCookDays !== "undefined" && lastNoCookDays) ? lastNoCookDays : [];
+        // El día 0 ya lo guardó la llamada de arriba (con su UPSERT sobre el
+        // borrador de hoy): repetirlo crearía una segunda entrada de hoy.
+        for (var d = 1; d < dias.length; d++) {
+          var fecha = new Date();
+          fecha.setDate(fecha.getDate() + d);
+          saveNoCookPlanForToday(dias[d].slots, storeForEntry, formatLocalDateKey(fecha));
+        }
 
         safeInit("select-today-in-plans", function () {
           if (typeof selectPlanDate === "function" && typeof formatLocalDateKey === "function") {
@@ -1543,7 +1576,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (typeof renderPantryPanel === "function") renderPantryPanel();
         if (typeof renderPlanSavedNotice === "function") {
-          renderPlanSavedNotice(result.entry, result.historySaved, result.replaced ? "draft-updated" : "created");
+          var avisoSinCocinar = (typeof noCookAvisoGuardado === "function") ? noCookAvisoGuardado() : null;
+          renderPlanSavedNotice(result.entry, result.historySaved, mode,
+                                Math.max(1, dias.length), avisoSinCocinar || undefined);
         }
 
         safeInit("nocook-plan-saved-cloud-push", function () {
@@ -1589,7 +1624,10 @@ document.addEventListener("DOMContentLoaded", function () {
         planReplaceCancelBtn: planReplaceCancelBtn,
         onReplaceWholePlan: handleReplaceWholePlan,
         despensaDialogEl: pantryPanel,
-        despensaCloseBtn: pantryCloseBtn
+        despensaCloseBtn: pantryCloseBtn,
+        // Lo comprado para un plan sin cocinar, en su apartado (2026-10-21).
+        pantryNoCookSection: document.getElementById("pantryNoCookSection"),
+        pantryNoCookList: document.getElementById("pantryNoCookList")
       });
       if (typeof renderPantryPanel === "function") renderPantryPanel();
     }
@@ -1649,7 +1687,37 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
+  /**
+   * Plan sin cocinar de hoy que debe interrumpir «Sin cocinar» con el
+   * diálogo de plan activo (2026-10-21), como getBlockingActiveEntry() para el
+   * plan normal. Nunca lanza: un fallo aquí no impide generar.
+   */
+  function getBlockingNoCookEntry() {
+    try {
+      return (typeof findBlockingNoCookEntryToday === "function") ? findBlockingNoCookEntryToday() : null;
+    } catch (err) {
+      console.error("[plan-replace-gate:sin-cocinar] fallo comprobando el plan activo -- se deja generar:", err);
+      return null;
+    }
+  }
+
   function handleNoCook() {
+    var activa = getBlockingNoCookEntry();
+    if (activa) {
+      safeInit("nocook-replace-prompt", function () {
+        if (typeof showPlanReplaceDialog === "function") showPlanReplaceDialog(activa);
+      });
+      return;
+    }
+    generarSinCocinar(null);
+  }
+
+  /**
+   * Cuerpo de «Sin cocinar», también para «Cambiar el plan completo» del
+   * diálogo (con `reemplazarId`, la entry de hoy que la confirmación sustituye).
+   */
+  function generarSinCocinar(reemplazarId) {
+    pendingReplaceNoCookEntryId = reemplazarId || null;
     safeInit("no-cook-run", function () {
       if (typeof runNoCookGenerator !== "function") return;
       if (noCookPanel) noCookPanel.hidden = false;
@@ -1668,7 +1736,14 @@ document.addEventListener("DOMContentLoaded", function () {
       initNoCookRefs({
         noCookResults: noCookResults,
         noCookCount: noCookCount,
-        noCookStatus: noCookStatus
+        noCookStatus: noCookStatus,
+        // Su lista de la compra, en la pestaña «Compra» (2026-10-21).
+        noCookShoppingPanel: document.getElementById("noCookShoppingPanel"),
+        noCookShoppingList: document.getElementById("noCookShoppingList"),
+        noCookShoppingSummary: document.getElementById("noCookShoppingSummary"),
+        noCookShoppingCount: document.getElementById("noCookShoppingCount"),
+        noCookShoppingEyebrow: document.getElementById("noCookShoppingEyebrow"),
+        noCookSavedNotice: document.getElementById("noCookPlanSavedNotice")
       });
     }
     if (noCookBtn) noCookBtn.addEventListener("click", handleNoCook);
