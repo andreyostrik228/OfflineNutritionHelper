@@ -24,6 +24,13 @@
  *   entrenoEjerciciosHtml(log)            marcado del progreso por ejercicio, sin DOM
  *   entrenoMusculosCargaHtml(log, ahora)  marcado de la carga por músculo, sin DOM
  *   entrenoHace(ms)                       "hace 25 min" / "hace 3 h" / "hace 2 d"
+ *   entrenoUltimaSesionHtml(log)          «Inicio»: la última sesión y el último récord, sin DOM
+ *   entrenoUltimoRecord(log)              el ejercicio del récord más reciente, o null
+ *   entrenoPesoHtml(lista, ahora)         «Progreso»: el peso corporal, sin DOM
+ *
+ * Con la barra de secciones (js/ui/entreno-pestanas.js, 2026-10-21) el aviso de
+ * la sesión sin terminar sale en «Inicio» y en «Entrenar», la última sesión en
+ * «Inicio», y el resto y el peso en «Progreso».
  * ─────────────────────────────────────────────────────────────────────────
  */
 
@@ -236,7 +243,7 @@ function _progresoSesionHtml(s) {
         (calentar && trabajo.length ? " · " + _progresoEsc(tFormat("ent.hist_calentamiento", { n: calentar })) : "") + "</span>" +
       (e.nota ? '<span class="entreno__hist-nota">' + _progresoEsc(e.nota) + "</span>" : "") + "</li>";
   }).join("");
-  return '<li class="entreno__hist-item"><details>' +
+  return '<li class="entreno__hist-item" data-sesion="' + _progresoEsc(s.id) + '"><details>' +
     "<summary>" +
       '<span class="entreno__hist-fecha">' + _progresoEsc(_progresoFecha(s.inicio)) + "</span>" +
       '<span class="entreno__hist-nombre">' + _progresoEsc(_progresoNombreSesion(s)) +
@@ -272,14 +279,105 @@ function entrenoProgresoHtml(log, plan, ahora) {
   return h;
 }
 
+/** La sesión más reciente del diario, o null. */
+function _progresoUltimaSesion(log) {
+  var ultima = null;
+  ((log && log.sesiones) || []).forEach(function (s) {
+    if (!ultima || ultima.inicio < s.inicio) ultima = s;
+  });
+  return ultima;
+}
+
+/**
+ * El último récord: el ejercicio cuya mejor marca es la más reciente, siempre
+ * que esa marca superase a una sesión anterior (la primera vez no es récord:
+ * sería récord todo). null si no hay ninguno.
+ */
+function entrenoUltimoRecord(log) {
+  if (!log || typeof entrenoStatsEjercicios !== "function") return null;
+  var elegido = null;
+  entrenoStatsEjercicios(log).forEach(function (x) {
+    // `mejor` es la PRIMERA vez que se llegó a la marca más alta: si no es la primera sesión, batió a todas las de antes.
+    if (x.puntos.length < 2 || !x.mejor || !(x.puntos[0].t < x.mejor.t)) return;
+    if (!elegido || elegido.mejor.t < x.mejor.t) elegido = x;
+  });
+  return elegido;
+}
+
+/** «Inicio» (2026-10-21): la última sesión, con el botón a sus resultados, y el último récord. "" sin historial. */
+function entrenoUltimaSesionHtml(log) {
+  var s = _progresoUltimaSesion(log);
+  if (!s) return "";
+  var tot = entrenoLogTotales(s);
+  var hechos = s.ejercicios.filter(function (e) { return !e.saltado; }).length;
+  var h = '<article class="entreno__tarjeta entreno__ultima-sesion">' +
+    '<p class="entreno__tarjeta-ojo">' + _progresoEsc(t("ent.ultima_titulo")) + "</p>" +
+    '<h3 class="entreno__tarjeta-titulo">' + _progresoEsc(_progresoNombreSesion(s)) + "</h3>" +
+    '<p class="entreno__tarjeta-datos">' + _progresoEsc(tFormat("ent.ultima_datos", { n: hechos, min: tot.minutos }) + " · " + _progresoFecha(s.inicio)) + "</p>" +
+    '<button type="button" class="btn-secondary" data-ver-sesion="' + _progresoEsc(s.id) + '">' + _progresoEsc(t("ent.ultima_ver")) + "</button>" +
+  "</article>";
+  var r = entrenoUltimoRecord(log);
+  if (r) {
+    h += '<article class="entreno__tarjeta entreno__record">' +
+      '<p class="entreno__tarjeta-ojo">' + _progresoEsc(t("ent.record_ultimo")) + "</p>" +
+      '<h3 class="entreno__tarjeta-titulo">' + _progresoEsc(entrenoNombre({ id: r.id, name: r.name })) + "</h3>" +
+      '<p class="entreno__record-valor">' + _progresoEsc(_progresoValorTexto(r, r.mejor)) + "</p>" +
+      '<p class="entreno__tarjeta-datos">' + _progresoEsc(_progresoFecha(r.mejor.t)) + "</p>" +
+    "</article>";
+  }
+  return h;
+}
+
+/** De "2026-10-21" a la medianoche de ese día, en ms. */
+function _progresoMsDeFecha(fecha) {
+  var p = String(fecha).split("-");
+  return new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2])).getTime();
+}
+
+/**
+ * «Progreso» (2026-10-21): el peso corporal, el último y cuánto ha cambiado
+ * en 30 días. Se apunta en «Mis datos» (js/ui/render-weight.js). Sin DOM.
+ * @param {{fecha:string, kg:number}[]} lista  el registro, ordenado por fecha (pesosLeer)
+ */
+function entrenoPesoHtml(lista, ahora) {
+  var h = '<h3 class="entreno__subtitulo" id="entrenoPesoTitulo">' + _progresoEsc(t("ent.peso_titulo")) + "</h3>";
+  var boton = '<button type="button" class="btn-secondary" data-abrir-peso>' + _progresoEsc(t("ent.peso_abrir")) + "</button>";
+  if (!lista || !lista.length) return h + '<p class="entreno__peso-texto">' + _progresoEsc(t("ent.peso_vacio")) + "</p>" + boton;
+  var ultimo = lista[lista.length - 1];
+  var desde = ahora - 30 * 24 * 3600 * 1000;
+  var base = lista.filter(function (e) { return !(_progresoMsDeFecha(e.fecha) < desde); })[0];
+  var cambio = "";
+  if (base && base !== ultimo) {
+    var d = Math.round((ultimo.kg - base.kg) * 10) / 10;
+    var signo = 0 < d ? "+" : (d < 0 ? "−" : "±");
+    cambio = '<span class="entreno__peso-cambio">' + _progresoEsc(tFormat("ent.peso_cambio", { kg: signo + entrenoKg(Math.abs(d)) })) + "</span>";
+  }
+  return h +
+    '<p class="entreno__peso-linea"><strong class="entreno__peso-valor">' + _progresoEsc(entrenoKg(ultimo.kg)) + "</strong>" +
+      '<span class="entreno__peso-fecha">' + _progresoEsc(_progresoFecha(_progresoMsDeFecha(ultimo.fecha))) + "</span>" + cambio + "</p>" +
+    boton;
+}
+
 function renderEntrenoProgreso(log, plan) {
   var aviso = document.getElementById("entrenoReanudar");
   var caja = document.getElementById("entrenoProgreso");
+  var ultima = document.getElementById("entrenoUltima");
+  var peso = document.getElementById("entrenoPeso");
   var ahora = Date.now();
   if (aviso) {
     var html = entrenoReanudarHtml(log, ahora);
     aviso.innerHTML = html;
     aviso.hidden = !html;
+  }
+  if (ultima) {
+    var htmlUltima = log ? entrenoUltimaSesionHtml(log) : "";
+    ultima.innerHTML = htmlUltima;
+    ultima.hidden = !htmlUltima;
+  }
+  if (peso) {
+    var pesos = (typeof pesosLeer === "function" && typeof pesosAlmacen === "function") ? pesosLeer(pesosAlmacen()) : null;
+    peso.innerHTML = pesos ? entrenoPesoHtml(pesos, ahora) : "";
+    peso.hidden = !pesos;
   }
   if (caja) {
     // Lo desplegado (un ejercicio, una sesión) sigue desplegado al repintar.

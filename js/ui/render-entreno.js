@@ -27,6 +27,12 @@
  * js/ui/entreno-sesion.js), cada ejercicio enseña «La última vez» del diario
  * (js/core/workout-log.js) y encima del plan va el progreso
  * (js/ui/entreno-progreso.js). Sin esos ficheros el plan se pinta como antes.
+ *
+ * Desde el 2026-10-21 el panel va en cinco secciones con su barra abajo
+ * (js/ui/entreno-pestanas.js). De aquí salen además la línea con la fecha de
+ * «Inicio» (entrenoOjoTexto), la cuenta de la semana (entrenoSemanaCuentaTexto),
+ * los músculos de hoy (entrenoHoyMusculosHtml), las demás sesiones para
+ * empezar desde «Entrenar» (entrenoElegirHtml) y las fichas de «Perfil».
  * ─────────────────────────────────────────────────────────────────────────
  */
 
@@ -743,19 +749,34 @@ function renderEntreno() {
   });
   var fichas = document.getElementById("entrenoResumenFichas");
   var notas = document.getElementById("entrenoResumenNotas");
+  var fichasPerfil = document.getElementById("entrenoPerfilFichas");
   if (fichas) fichas.innerHTML = entrenoResumenFichasHtml(plan, prefs);
+  if (fichasPerfil) fichasPerfil.innerHTML = entrenoResumenFichasHtml(plan, prefs);
   if (notas) notas.innerHTML = plan.ok ? entrenoResumenNotasHtml(plan) + entrenoCambiosHtml(prefs) : "";
 
   // «Hoy» y la semana (2026-10-18): lo primero que se ve, con un solo botón.
-  var datosHoy = (!sinPlan && plan.ok && typeof entrenoHoyDatos === "function") ? entrenoHoyDatos(plan, log, Date.now()) : null;
+  var ahora = Date.now();
+  var datosHoy = (!sinPlan && plan.ok && typeof entrenoHoyDatos === "function") ? entrenoHoyDatos(plan, log, ahora) : null;
+  var ojo = document.getElementById("entrenoOjo");
+  if (ojo) { ojo.textContent = entrenoOjoTexto(datosHoy, ahora); ojo.hidden = false; }
   var hoyCaja = document.getElementById("entrenoHoy");
   var semanaCaja = document.getElementById("entrenoSemanaCaja");
   if (hoyCaja) { hoyCaja.hidden = !datosHoy; hoyCaja.innerHTML = datosHoy ? entrenoHoyHtml(datosHoy, prefs) : ""; }
   if (semanaCaja) {
     semanaCaja.hidden = !datosHoy;
     var semana = document.getElementById("entrenoSemana");
+    var cuenta = document.getElementById("entrenoSemanaCuenta");
     if (semana) semana.innerHTML = datosHoy ? entrenoSemanaHtml(datosHoy) : "";
+    if (cuenta) cuenta.textContent = datosHoy ? entrenoSemanaCuentaTexto(datosHoy) : "";
   }
+  // «Entrenar» sin sesión abierta (2026-10-21): las demás sesiones del plan, para empezar otra.
+  var elegir = document.getElementById("entrenoElegir");
+  if (elegir) {
+    var elegirHtml = (!sinPlan && plan.ok) ? entrenoElegirHtml(datosHoy, plan) : "";
+    elegir.innerHTML = elegirHtml;
+    elegir.hidden = !elegirHtml;
+  }
+  if (typeof entrenoPerfilPintar === "function") entrenoPerfilPintar();
 
   if (sinPlan) {
     _entrenoUltimoPlan = null;
@@ -769,6 +790,54 @@ function renderEntreno() {
   if (typeof entrenoAnimacionesActivar === "function") entrenoAnimacionesActivar(salida);
   if (typeof renderEntrenoProgreso === "function") renderEntrenoProgreso(log, _entrenoUltimoPlan);
   if (prefs.configurado && typeof entrenoTutorialAuto === "function") entrenoTutorialAuto();
+}
+
+/** La línea sobre el título de «Inicio»: «miércoles, 21 de octubre · día de descanso». */
+function entrenoOjoTexto(datos, ahora) {
+  var lang = typeof getLang === "function" ? getLang() : "es";
+  var locale = (typeof LANG_LOCALES !== "undefined" && LANG_LOCALES[lang]) || "es-ES";
+  var fecha;
+  try {
+    fecha = new Date(ahora).toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long" });
+  } catch (e) {
+    fecha = t("ent.dia_" + entrenoDiaDeSemana(ahora));
+  }
+  if (!datos) return fecha;
+  return fecha + " · " + t(datos.estado === "descanso" ? "ent.dia_tipo_descanso" : "ent.dia_tipo_entreno");
+}
+
+/** «2 de 4» junto a «Tu semana»: días con sesión hecha frente a los días del plan. */
+function entrenoSemanaCuentaTexto(datos) {
+  var hechos = datos.dias.filter(function (d) { return d.hecho; }).length;
+  var previstos = datos.dias.filter(function (d) { return d.plan; }).length;
+  return tFormat("ent.semana_cuenta", { n: hechos, total: previstos });
+}
+
+/**
+ * «Entrenar» sin sesión abierta: las sesiones del plan (menos la de hoy, que
+ * ya está en la tarjeta de arriba), cada una con «Empezar». Sin DOM.
+ */
+function entrenoElegirHtml(datos, plan) {
+  if (!plan || !plan.ok || !plan.sesiones || !plan.sesiones.length) return "";
+  var hechos = {};
+  ((datos && datos.dias) || []).forEach(function (d) { if (d.hecho) hechos[d.dia] = true; });
+  var hayHoy = !!(datos && datos.estado === "sesion");
+  var filas = plan.sesiones.map(function (s, i) {
+    if (hayHoy && i === datos.indice) return "";
+    var hecha = !!hechos[s.dia];
+    return '<li class="entreno__elegir-item' + (hecha ? " is-hecho" : "") + '">' +
+      '<span class="entreno__elegir-dia">' + entrenoEsc(t("ent.dia_corto_" + s.dia)) + "</span>" +
+      '<span class="entreno__elegir-texto">' +
+        '<strong class="entreno__elegir-nombre">' + entrenoEsc(tOr("ent.sesion_" + s.key, s.name)) + "</strong>" +
+        '<span class="entreno__elegir-datos">' + entrenoEsc(tFormat("ent.elegir_datos", { n: s.exercises.length }) +
+          (hecha ? " · " + t("ent.elegir_hecha") : "")) + "</span>" +
+      "</span>" +
+      '<button type="button" class="btn-secondary entreno__elegir-btn" data-empezar="' + i + '">' + entrenoEsc(t("ent.elegir_empezar")) + "</button>" +
+    "</li>";
+  }).join("");
+  if (!filas) return "";
+  return '<h3 class="entreno__subtitulo" id="entrenoElegirTitulo">' + entrenoEsc(t(hayHoy ? "ent.elegir_otra" : "ent.elegir_titulo")) + "</h3>" +
+    '<ul class="entreno__elegir">' + filas + "</ul>";
 }
 
 /** Día de la semana de un instante: 1 = lunes … 7 = domingo, como en el plan. */
@@ -818,6 +887,7 @@ function entrenoHoyHtml(datos, prefs) {
     h += '<h3 class="entreno__hoy-titulo">' + entrenoEsc(tOr("ent.sesion_" + s.key, s.name)) + "</h3>";
     if (datos.estado === "sesion") {
       h += '<p class="entreno__hoy-datos">' + entrenoEsc(tFormat("ent.hoy_datos", { min: prefs.duracion, n: s.exercises.length })) + "</p>" +
+        entrenoHoyMusculosHtml(s) +
         '<button type="button" class="entreno__empezar" data-empezar="' + datos.indice + '">' + entrenoEsc(t("ent.empezar")) + "</button>";
     } else {
       h += '<p class="entreno__hoy-texto">' + entrenoEsc(t("ent.hoy_hecho")) + "</p>";
@@ -832,6 +902,19 @@ function entrenoHoyHtml(datos, prefs) {
     })) + "</p>";
   }
   return h;
+}
+
+/** Los grupos principales de la sesión de hoy (como mucho cuatro), en fichas. "" si no hay. */
+function entrenoHoyMusculosHtml(sesion) {
+  var grupos = [];
+  (sesion.exercises || []).forEach(function (e) {
+    if (e.muscle && grupos.indexOf(e.muscle) === -1) grupos.push(e.muscle);
+  });
+  if (!grupos.length) return "";
+  return '<ul class="entreno__hoy-musculos">' + grupos.slice(0, 4).map(function (g) {
+    var nombre = tOr("ent.grupo_" + g, g);
+    return '<li class="entreno__hoy-musculo">' + entrenoEsc(nombre.charAt(0).toLocaleUpperCase() + nombre.slice(1)) + "</li>";
+  }).join("") + "</ul>";
 }
 
 /** Los siete días: cuáles tocan, cuáles están hechos y cuál es hoy. */
@@ -893,8 +976,9 @@ function entrenoMostrar(activo) {
   window.scrollTo(0, 0);
 }
 
-/** Pulsación corta en los móviles que vibran (Android). En el resto no hace nada. */
+/** Pulsación corta en los móviles que vibran (Android), si no se ha quitado en «Perfil». En el resto no hace nada. */
 function entrenoVibrar() {
+  if (typeof entrenoVibracionOn === "function" && !entrenoVibracionOn()) return;
   try {
     if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") navigator.vibrate(8);
   } catch (e) { /* sin vibración: no pasa nada */ }
@@ -969,6 +1053,7 @@ function initEntreno() {
   if (typeof initEntrenoProgreso === "function") initEntrenoProgreso();
   if (typeof initEntrenoCatalogo === "function") initEntrenoCatalogo();
   if (typeof initEntrenoTutorial === "function") initEntrenoTutorial();
+  if (typeof initEntrenoPestanas === "function") initEntrenoPestanas();
   var cerrarAnim = document.getElementById("entrenoAnimCerrar");
   if (cerrarAnim) cerrarAnim.addEventListener("click", _entrenoCerrarAnimacion);
   var dialogoAnim = document.getElementById("entrenoAnimDialogo");

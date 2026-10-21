@@ -468,7 +468,7 @@ select{background-image:__CHEV__;background-position:right 2px center;background
 @media(max-width:599px){.site-footer{flex-direction:column;gap:2px}.site-footer__sep{display:none}}
 
 /* ── tab bar: a full-width ruled paper bar ── */
-@media screen and (max-width:900px){
+@media screen{
   body.con-pestanas .tabbar{left:0;right:0;bottom:0;width:100%;transform:none;border-radius:0;gap:0;padding:0 4px env(safe-area-inset-bottom,0px);
     background:var(--g-band);border-top:1px solid #161310;box-shadow:none}
   .tabbar__btn{min-height:64px;padding:9px 2px 8px;gap:5px;border-radius:0;background:transparent;color:#6B6257;font-weight:500;letter-spacing:.01em}

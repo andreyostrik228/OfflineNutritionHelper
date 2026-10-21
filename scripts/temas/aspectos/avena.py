@@ -467,7 +467,7 @@ select{background-image:__CHEVRON__,linear-gradient(#E6DAC2,#E6DAC2);background-
 .pantry-purchase-checklist-wrap{background:#F7F0E2}
 
 /* ── tab bar: a paper strip with a stitched top edge ── */
-@media screen and (max-width:900px){
+@media screen{
   body.con-pestanas .tabbar{border-radius:16px;padding:12px 6px 6px;gap:2px;
     background:__GRAIN_CARD__ repeat 0 0 / 160px 160px,#FFFCF5;
     box-shadow:0 0 0 1px rgba(140,122,94,.3),0 18px 36px -14px rgba(46,36,27,.55),0 3px 8px -2px rgba(46,36,27,.18)}

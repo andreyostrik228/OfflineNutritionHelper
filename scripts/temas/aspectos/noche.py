@@ -557,7 +557,7 @@ select{background-image:__ARROW__;background-repeat:no-repeat;background-positio
 }
 
 /* ── tab bar: dark glass dock, glowing mint indicator ── */
-@media screen and (max-width:900px){
+@media screen{
   body.con-pestanas .tabbar{padding:6px;gap:2px;border-radius:26px;background:rgba(12,24,19,.8);-webkit-backdrop-filter:blur(18px) saturate(140%);backdrop-filter:blur(18px) saturate(140%);
     border:1px solid rgba(255,255,255,.08);box-shadow:0 26px 46px -14px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,255,255,.07)}
   .tabbar__btn{min-height:60px;border-radius:20px;background:transparent;color:#9FB8AA;font-weight:600}

@@ -156,7 +156,7 @@ function run(t) {
   t.test("cada clase de las pantallas nuevas tiene su regla en style.css", function () {
     var css = fs.readFileSync(projPath("assets/css/style.css"), "utf8");
     var ficheros = ["js/ui/render-entreno.js", "js/ui/entreno-sesion.js", "js/ui/entreno-progreso.js",
-      "js/ui/entreno-catalogo.js", "js/ui/entreno-tutorial.js"];
+      "js/ui/entreno-catalogo.js", "js/ui/entreno-tutorial.js", "js/ui/entreno-pestanas.js"];
     var sinRegla = [];
     ficheros.forEach(function (f) {
       var codigo = fs.readFileSync(projPath(f), "utf8");

@@ -33,7 +33,8 @@
  *   entrenoSesionEmpezar(sesionPlan, semana)  empieza (si ya hay otra, pregunta) y abre
  *   entrenoSesionAbrir(log?)             abre la que está en curso
  *   entrenoSesionCorregir(id)            abre una terminada para corregirla
- *   entrenoSesionCerrar()                vuelve al plan; la sesión sigue en curso
+ *   entrenoSesionCerrar(destino?)        vuelve al plan (o a esa sección); la sesión sigue en curso
+ *   entrenoSesionSalir()                 cerrar para ir a otra sección; false si se queda (corrigiendo con cambios)
  *   entrenoSesionDescartar()             borra la que está en curso (pregunta)
  *   entrenoSesionAlMostrar() / entrenoSesionAlOcultar()  el panel se enseña o se esconde
  *   entrenoSesionRepintar()              repinta si está abierta (cambio de idioma)
@@ -43,10 +44,17 @@
  *   entrenoSeriesTexto(series, tiempo)   "60 kg × 10, 10, 9"
  *   entrenoDiscosTexto(kg)               "20 + 5 + 1,25" por lado, o ""
  *   entrenoNumero(n) / entrenoKg(kg) / entrenoMiles(n) / entrenoReloj(ms) / entrenoLocale()
+ *   entrenoSonidoOn() / entrenoSonidoPoner(on)        el sonido al acabar el descanso
+ *   entrenoVibracionOn() / entrenoVibracionPoner(on)  la vibración (se quita en «Perfil»)
+ *
+ * Con la barra de secciones (js/ui/entreno-pestanas.js, 2026-10-21) esta
+ * pantalla es la sección «Entrenar»: al abrirse la marca, y la flecha vuelve
+ * a la sección de antes (corrigiendo, al historial de «Progreso»).
  * ─────────────────────────────────────────────────────────────────────────
  */
 
 var ENTRENO_CLAVE_SONIDO = "nutritionPlanner.entrenoSonido.v1";
+var ENTRENO_CLAVE_VIBRACION = "nutritionPlanner.entrenoVibracion.v1";
 var ENTRENO_DESCANSO_PASO_S = 15;
 
 var _sesionLog = null;
@@ -399,7 +407,7 @@ function entrenoSesionPantallaHtml(sesion, log, ahora, opciones) {
   var corrigiendo = !!(opciones && opciones.corrigiendo);
   var cuenta = _sesionContar(sesion);
   var pct = cuenta.total ? Math.round(cuenta.hechas / cuenta.total * 100) : 0;
-  var sonido = _sesionSonidoOn();
+  var sonido = entrenoSonidoOn();
   var pausada = typeof sesion.pausaDesde === "number";
   var meta = corrigiendo
     ? _sesionEsc(tFormat("ent.corrigiendo_meta", {
@@ -410,7 +418,7 @@ function entrenoSesionPantallaHtml(sesion, log, ahora, opciones) {
       " · <span data-cuenta>" + _sesionEsc(tFormat("ent.series_hechas", cuenta)) + "</span>";
   var cabeza = '<header class="sesion__cabeza' + (corrigiendo ? " sesion__cabeza--corregir" : "") + '">' +
       '<button type="button" class="sesion__icono" data-accion="cerrar" data-foco="cerrar" aria-label="' +
-        _sesionEsc(t(corrigiendo ? "ent.corregir_cancelar" : "ent.volver_plan")) + '">' + SESION_ICONOS.atras + "</button>" +
+        _sesionEsc(t(corrigiendo ? "ent.corregir_cancelar" : "ent.volver")) + '">' + SESION_ICONOS.atras + "</button>" +
       '<div class="sesion__titulos">' +
         (corrigiendo ? '<p class="sesion__ojo">' + _sesionEsc(t("ent.corregir_titulo")) + "</p>" : "") +
         '<h3 class="sesion__titulo" tabindex="-1" data-foco="titulo">' + _sesionEsc(_sesionNombre(sesion)) + "</h3>" +
@@ -475,17 +483,26 @@ function entrenoResumenHtml(r) {
 
 // ── Sonido, vibración y pantalla encendida ──────────────────────────────
 
-function _sesionSonidoOn() {
+function entrenoSonidoOn() {
   try { return localStorage.getItem(ENTRENO_CLAVE_SONIDO) !== "0"; } catch (e) { return true; }
 }
 
-function _sesionPonerSonido(on) {
+function entrenoSonidoPoner(on) {
   try { localStorage.setItem(ENTRENO_CLAVE_SONIDO, on ? "1" : "0"); } catch (e) { /* solo esta visita */ }
+}
+
+/** La vibración (al marcar una serie, al acabar el descanso, en los botones): se quita en «Perfil». */
+function entrenoVibracionOn() {
+  try { return localStorage.getItem(ENTRENO_CLAVE_VIBRACION) !== "0"; } catch (e) { return true; }
+}
+
+function entrenoVibracionPoner(on) {
+  try { localStorage.setItem(ENTRENO_CLAVE_VIBRACION, on ? "1" : "0"); } catch (e) { /* solo esta visita */ }
 }
 
 /** El audio solo puede arrancar tras un toque: se prepara al marcar una serie. */
 function _sesionPrepararAudio() {
-  if (!_sesionSonidoOn()) return;
+  if (!entrenoSonidoOn()) return;
   try {
     var Ctx = window.AudioContext || window.webkitAudioContext;
     if (!Ctx) return;
@@ -497,7 +514,7 @@ function _sesionPrepararAudio() {
 /** Dos pitidos cortos y suaves. */
 function _sesionPitido() {
   var a = _sesionAudio;
-  if (!a || !_sesionSonidoOn()) return;
+  if (!a || !entrenoSonidoOn()) return;
   try {
     [0, 0.24].forEach(function (desfase) {
       var o = a.createOscillator();
@@ -517,6 +534,7 @@ function _sesionPitido() {
 }
 
 function _sesionVibrar(patron) {
+  if (!entrenoVibracionOn()) return;
   try {
     if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") navigator.vibrate(patron);
   } catch (e) { /* sin vibración */ }
@@ -732,7 +750,7 @@ function _sesionTerminar() {
     if (!window.confirm(t("ent.confirmar_terminar_vacio"))) return;
     _sesionLog.enCurso = null;
     _sesionGuardar();
-    entrenoSesionCerrar();
+    entrenoSesionCerrar(_sesionDestino());
     return;
   }
   if (cuenta.hechas < cuenta.total && !window.confirm(t("ent.confirmar_terminar"))) return;
@@ -759,7 +777,7 @@ function _sesionGuardarEdicion() {
   _sesionSubirANube();
   _sesionEdicion = null;
   _sesionLog = real;
-  entrenoSesionCerrar();
+  entrenoSesionCerrar("progreso");
 }
 
 /**
@@ -823,11 +841,12 @@ function _sesionAnadir() {
 function _sesionAccion(accion, boton) {
   var iEj = Number(boton.getAttribute("data-ej"));
   var iSerie = Number(boton.getAttribute("data-serie"));
-  if (accion === "listo") { _sesionResumen = null; entrenoSesionCerrar(); return; }
+  if (accion === "listo") { _sesionResumen = null; entrenoSesionCerrar(_sesionDestino()); return; }
   if (accion === "cerrar") {
     if (_sesionEdicion && _sesionEdicion.cambios && !window.confirm(t("ent.corregir_descartar"))) return;
+    var destino = _sesionDestino();
     _sesionEdicion = null;
-    entrenoSesionCerrar();
+    entrenoSesionCerrar(destino);
     return;
   }
   if (!_sesionLog || !_sesionLog.enCurso) return;
@@ -885,7 +904,7 @@ function _sesionAccion(accion, boton) {
   else if (accion === "terminar") _sesionTerminar();
   else if (accion === "guardar-edicion") _sesionGuardarEdicion();
   else if (accion === "descartar") entrenoSesionDescartar();
-  else if (accion === "sonido") { _sesionPonerSonido(!_sesionSonidoOn()); _sesionPrepararAudio(); _sesionPintar("sonido"); }
+  else if (accion === "sonido") { entrenoSonidoPoner(!entrenoSonidoOn()); _sesionPrepararAudio(); _sesionPintar("sonido"); }
   else if (accion === "descanso-menos") _sesionAjustarDescanso(-ENTRENO_DESCANSO_PASO_S);
   else if (accion === "descanso-mas") _sesionAjustarDescanso(ENTRENO_DESCANSO_PASO_S);
   else if (accion === "descanso-saltar") {
@@ -905,6 +924,8 @@ function _sesionMostrarPantalla() {
   panel.classList.add("is-sesion");
   document.body.classList.add("modo-sesion");
   caja.hidden = false;
+  // Con la barra de secciones (js/ui/entreno-pestanas.js), esta pantalla es «Entrenar».
+  if (typeof entrenoPestanaMarcar === "function") entrenoPestanaMarcar("sesion", true);
   _sesionPintar("titulo");
   window.scrollTo(0, 0);
   return true;
@@ -956,8 +977,12 @@ function entrenoSesionEmpezar(sesionPlan, semana) {
   return entrenoSesionAbrir(log);
 }
 
-/** Vuelve al plan. La sesión, si la hay, sigue en curso y el panel ofrece continuarla. */
-function entrenoSesionCerrar() {
+/**
+ * Vuelve al plan. La sesión, si la hay, sigue en curso y el panel ofrece continuarla.
+ * Con la barra de secciones, `destino` es la sección a la que se vuelve; sin
+ * él se queda la que haya (es lo que pasa cuando se toca otra en la barra).
+ */
+function entrenoSesionCerrar(destino) {
   _sesionPararTic();
   _sesionDespierta(false);
   _sesionResumen = null;
@@ -971,7 +996,27 @@ function entrenoSesionCerrar() {
     caja.innerHTML = "";
   }
   if (typeof renderEntreno === "function") renderEntreno();
+  if (destino && typeof entrenoPestanaMarcar === "function") entrenoPestanaMarcar(destino, true);
   window.scrollTo(0, 0);
+}
+
+/** Adónde se vuelve al cerrar: al historial si se corregía una terminada; si no, a la sección de antes. */
+function _sesionDestino() {
+  if (_sesionEdicion) return "progreso";
+  return typeof entrenoPestanaAnterior === "function" ? entrenoPestanaAnterior() : null;
+}
+
+/**
+ * Irse de la pantalla a otra sección (js/ui/entreno-pestanas.js). La sesión en
+ * curso sigue; corrigiendo una terminada con cambios, pregunta antes.
+ * @returns {boolean} false si el usuario prefiere quedarse
+ */
+function entrenoSesionSalir() {
+  if (!_sesionAbierta()) return true;
+  if (_sesionEdicion && _sesionEdicion.cambios && !window.confirm(t("ent.corregir_descartar"))) return false;
+  _sesionEdicion = null;
+  entrenoSesionCerrar();
+  return true;
 }
 
 /** Borra la sesión en curso, si el usuario lo confirma. */
@@ -982,7 +1027,7 @@ function entrenoSesionDescartar() {
   log.enCurso = null;
   entrenoLogGuardar(log);
   _sesionLog = log;
-  if (_sesionAbierta()) entrenoSesionCerrar();
+  if (_sesionAbierta()) entrenoSesionCerrar(_sesionDestino());
   else if (typeof renderEntreno === "function") renderEntreno();
   return true;
 }

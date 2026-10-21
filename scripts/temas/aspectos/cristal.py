@@ -384,7 +384,7 @@ select{background-image:__CHEV__}
 .pantry-active-card__summary{color:#3A5552}
 
 /* ── floating glass dock ── */
-@media screen and (max-width:900px){
+@media screen{
   body.con-pestanas .tabbar{width:min(480px,calc(100% - 20px));border:1px solid rgba(255,255,255,.92);border-radius:32px;padding:5px;gap:0;
     background:linear-gradient(180deg,rgba(255,255,255,.84),rgba(255,255,255,.68));
     -webkit-backdrop-filter:blur(22px) saturate(1.7);backdrop-filter:blur(22px) saturate(1.7);

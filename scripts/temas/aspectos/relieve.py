@@ -413,7 +413,7 @@ select{background-image:__CHEVRON__}
 .pantry-active-card__purchase--done{background:#D6E6DA;box-shadow:var(--press-sm);border-radius:14px}
 
 /* ── tab bar: a raised pill; the active tab is pressed in ── */
-@media screen and (max-width:900px){
+@media screen{
   body.con-pestanas .tabbar{background:#E6EDE5;border-radius:32px;padding:8px;gap:6px;
     box-shadow:8px 8px 22px rgba(120,142,126,.6),-5px -5px 14px rgba(255,255,255,.9),inset 1px 1px 0 rgba(255,255,255,.7)}
   .tabbar__btn{min-height:62px;color:#3B5045;font-weight:600;background:transparent;border-radius:24px;transition:box-shadow .18s ease,background .18s ease}

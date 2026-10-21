@@ -3257,6 +3257,46 @@ html.tour-abierto body { overflow: hidden; }
 .tabbar { display: none; }
 .next-meal-sticky { display: none; }
 
+/* Los botones de la barra, fuera del @media: la de entrenamientos
+   (.tabbar--entreno, al final del fichero) sale también en el portátil. La del menú
+   sigue escondida por encima de 900 px, así que esto no la cambia. */
+.tabbar__btn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 0;
+  min-height: 60px;
+  padding: 8px 4px;
+  border: 0;
+  border-radius: 20px;
+  background: transparent;
+  color: var(--on-ink-2);
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.1;
+  transition: background-color 0.18s ease, color 0.18s ease;
+}
+.tabbar__btn.is-activa { background: var(--volt); color: var(--on-volt); font-weight: 700; }
+.tabbar__texto { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tabbar__cuenta {
+  position: absolute;
+  top: 4px;
+  left: calc(50% + 6px);
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  border-radius: var(--pill);
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 0 0 0 2.5px var(--ink);
+  font: 900 15px/22px var(--font-display);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
 @media screen and (max-width: 900px) {
   body.con-pestanas .tabbar {
     position: fixed;
@@ -3272,42 +3312,6 @@ html.tour-abierto body { overflow: hidden; }
     border-radius: 26px;
     background: var(--primary);
     box-shadow: var(--shadow-2), 0 0 0 1px rgba(255, 255, 255, 0.08);
-  }
-  .tabbar__btn {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
-    min-width: 0;
-    min-height: 60px;
-    padding: 8px 4px;
-    border: 0;
-    border-radius: 20px;
-    background: transparent;
-    color: var(--on-ink-2);
-    font-size: 11.5px;
-    font-weight: 600;
-    line-height: 1.1;
-    transition: background-color 0.18s ease, color 0.18s ease;
-  }
-  .tabbar__btn.is-activa { background: var(--volt); color: var(--on-volt); font-weight: 700; }
-  .tabbar__texto { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .tabbar__cuenta {
-    position: absolute;
-    top: 4px;
-    left: calc(50% + 6px);
-    min-width: 22px;
-    height: 22px;
-    padding: 0 5px;
-    border-radius: var(--pill);
-    background: #fff;
-    color: var(--ink);
-    box-shadow: 0 0 0 2.5px var(--ink);
-    font: 900 15px/22px var(--font-display);
-    text-align: center;
-    font-variant-numeric: tabular-nums;
   }
 
   .next-meal-sticky:not([hidden]) {
@@ -3622,7 +3626,7 @@ html.tour-abierto body { overflow: hidden; }
   box-shadow: var(--shadow-1);
 }
 .modo-btn:focus-visible { outline: 3px solid var(--volt); outline-offset: 3px; }
-body.modo-entreno .tabbar { display: none !important; }
+body.modo-entreno .tabbar:not(.tabbar--entreno) { display: none !important; }
 
 .entreno { max-width: 920px; margin: 0 auto; padding: 4px var(--gutter) 48px; }
 .entreno [hidden] { display: none !important; }
@@ -5152,8 +5156,216 @@ body.modo-cuestionario .next-meal-sticky { display: none !important; }
 .tut__botones { display: flex; justify-content: space-between; gap: 8px; }
 .tut__botones .entreno__empezar,
 .tut__botones .btn-secondary { min-height: 46px; }
-.entreno__ayuda-btn { justify-self: start; margin-bottom: 10px; }
 @media (prefers-reduced-motion: reduce) {
   .entreno__hoy .entreno__empezar { animation: none; }
   .entreno__musculo-barra i { transition: none; }
 }
+
+/* ── Entrenamientos: las cinco secciones y su barra (2026-10-21) ──────────
+   js/ui/entreno-pestanas.js. Cada bloque del panel dice en `data-en` en qué
+   secciones sale, y el panel, con `data-pestana`, cuál está abierta; sin ese
+   fichero no hay `data-pestana` y se ve todo. Solo los bloques de primer
+   nivel llevan `data-en`. La barra usa las clases de la del menú (.tabbar)
+   para que cada aspecto la vista igual, pero sale en cualquier ancho y solo
+   en el modo entrenamientos. */
+.entreno[data-pestana="inicio"] [data-en]:not([data-en~="inicio"]),
+.entreno[data-pestana="plan"] [data-en]:not([data-en~="plan"]),
+.entreno[data-pestana="sesion"] [data-en]:not([data-en~="sesion"]),
+.entreno[data-pestana="progreso"] [data-en]:not([data-en~="progreso"]),
+.entreno[data-pestana="perfil"] [data-en]:not([data-en~="perfil"]) { display: none !important; }
+
+/* --barra-entreno: lo que ocupa la barra desde el borde de abajo, medido por
+   js/ui/entreno-pestanas.js (cada aspecto la hace de un alto, y en algunos la
+   pestaña activa sobresale). Sin medida, lo de la barra del menú. */
+body.modo-entreno.con-entreno-pestanas {
+  padding-bottom: calc(var(--barra-entreno, calc(var(--dock) + 12px + env(safe-area-inset-bottom, 0px))) + 16px);
+}
+
+.tabbar--entreno {
+  position: fixed;
+  left: 50%;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  z-index: 60;
+  width: min(480px, calc(100% - 16px));
+  padding: 6px;
+  transform: translateX(-50%);
+  border-radius: 26px;
+  background: var(--primary);
+  box-shadow: var(--shadow-2), 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+/* Cinco nombres de una palabra en el ancho de un móvil (medido en los diez
+   aspectos y los cuatro idiomas, de 320 a 1280 px, el 2026-10-21): sin hueco
+   entre botones, la del medio un poco más ancha («Тренировка», «Тренування»)
+   y la letra baja un poco solo en pantallas estrechas. Una palabra no se
+   parte por la mitad («Трениров-ка»). */
+body.modo-entreno .tabbar.tabbar--entreno {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0;
+}
+body:not(.modo-entreno) .tabbar--entreno,
+body.modo-cuestionario .tabbar--entreno { display: none !important; }
+.tabbar--entreno .tabbar__btn { padding-inline: 1px; }
+.tabbar--entreno .tabbar__texto {
+  overflow-wrap: normal;
+  word-break: normal;
+  font-size: min(var(--fs-cap, 11.5px), 3.3vw);
+}
+@media (max-width: 359px) {
+  .tabbar--entreno .tabbar__texto { font-size: min(var(--fs-cap, 11.5px), 3.1vw); }
+}
+/* «Entrenar», en medio, es el camino corto a la sesión: su icono va en un
+   círculo de acento mientras no es la sección abierta (abierta, manda el
+   estilo de la pestaña activa de cada aspecto). */
+.tabbar--entreno .tabbar__btn--principal:not(.is-activa) svg {
+  box-sizing: content-box;
+  padding: 5px;
+  margin: -5px 0;
+  border-radius: 50%;
+  background: var(--volt);
+  color: var(--on-volt);
+}
+/* El descanso, encima de la barra (con aire para la pestaña que sobresale) */
+body.con-entreno-pestanas .sesion__descanso {
+  bottom: calc(var(--barra-entreno, calc(var(--dock) + 12px + env(safe-area-inset-bottom, 0px))) + 16px);
+}
+
+/* La línea con la fecha sobre el título de «Inicio» */
+.entreno__ojo {
+  margin: 12px 0 4px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+/* «Hoy»: los grupos que se trabajan */
+.entreno__hoy-musculos { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.entreno__hoy-musculo {
+  padding: 4px 10px;
+  border-radius: var(--pill);
+  box-shadow: inset 0 0 0 1px currentColor;
+  font-size: 0.8rem;
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+/* «Tu semana · 2 de 4» */
+.entreno__semana-cabeza { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.entreno__semana-cuenta { font-size: 0.86rem; font-weight: 700; color: var(--text-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* Tarjetas de «Inicio» (la última sesión, el último récord) y de «Perfil» */
+.entreno__tarjeta {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+}
+.entreno__tarjeta .btn-secondary { justify-self: start; }
+.entreno__tarjeta-ojo { margin: 0; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); }
+.entreno__tarjeta-titulo { margin: 0; font: 800 1.35rem/1.1 var(--font-display); color: var(--ink); overflow-wrap: anywhere; }
+.entreno__tarjeta-datos { margin: 0; font-size: 0.88rem; color: var(--text-2); }
+.entreno__ultima-caja { display: grid; gap: 12px; margin: 0 0 16px; }
+.entreno__ultima-caja[hidden],
+.entreno__peso[hidden],
+.entreno__perfil[hidden] { display: none; }
+@media (min-width: 640px) {
+  .entreno__ultima-caja { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+}
+.entreno__ultima-sesion { border-color: var(--line-strong); }
+.entreno__record { background: var(--volt-wash); }
+.entreno__record-valor { margin: 0; font: 800 1.6rem/1 var(--font-display); color: var(--ink); font-variant-numeric: tabular-nums; }
+
+/* «Entrenar» sin sesión abierta: las demás sesiones de la semana */
+.entreno__elegir-caja { margin: 0 0 16px; }
+.entreno__elegir { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.entreno__elegir-item {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+.entreno__elegir-item.is-hecho { background: var(--surface-2); }
+.entreno__elegir-dia {
+  display: grid;
+  place-items: center;
+  height: 44px;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  font: 800 0.95rem/1 var(--font-display);
+  color: var(--ink);
+}
+.entreno__elegir-item.is-hecho .entreno__elegir-dia { background: var(--volt); color: var(--on-volt); }
+.entreno__elegir-texto { display: grid; gap: 2px; min-width: 0; }
+.entreno__elegir-nombre { color: var(--ink); overflow-wrap: anywhere; }
+.entreno__elegir-datos { font-size: 0.82rem; color: var(--text-2); }
+.entreno__elegir-btn { min-height: 44px; }
+
+/* «Progreso»: el peso corporal */
+.entreno__peso {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+}
+.entreno__peso .entreno__subtitulo { margin: 0; }
+.entreno__peso .btn-secondary { justify-self: start; }
+.entreno__peso-texto { margin: 0; font-size: 0.93rem; color: var(--text-2); max-width: 62ch; }
+.entreno__peso-linea { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin: 0; }
+.entreno__peso-valor { font: 800 1.8rem/1 var(--font-display); color: var(--ink); font-variant-numeric: tabular-nums; }
+.entreno__peso-fecha,
+.entreno__peso-cambio { font-size: 0.88rem; color: var(--text-2); }
+.entreno__peso-cambio { font-weight: 700; }
+
+/* «Perfil» */
+.entreno__perfil { display: grid; gap: 12px; margin: 16px 0; }
+.entreno__perfil .entreno__subtitulo { margin: 0; }
+.entreno__perfil-cuenta { margin: 0; font-size: 0.93rem; color: var(--text-2); max-width: 62ch; }
+.entreno__perfil-botones { display: flex; flex-wrap: wrap; gap: 8px; }
+/* Un interruptor: el texto y, a la derecha, el carril con la bola (la bola
+   cambia de lado, así que no depende solo del color). */
+.entreno__interruptor {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 52px;
+  padding: 10px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  text-align: start;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.entreno__interruptor::after {
+  content: "";
+  flex: none;
+  width: 46px;
+  height: 28px;
+  border-radius: var(--pill);
+  background: radial-gradient(circle at 14px 50%, var(--surface) 0 10px, transparent 11px), var(--line-strong);
+}
+.entreno__interruptor[aria-pressed="true"]::after {
+  background: radial-gradient(circle at 32px 50%, var(--on-volt) 0 10px, transparent 11px), var(--volt);
+}
+.entreno__interruptor:focus-visible { outline: 3px solid var(--volt); outline-offset: 2px; }

@@ -368,7 +368,7 @@ select{background-image:__CHEV__;background-size:22px 22px;background-position:r
 .pantry-meal-chip--cooked .pantry-meal-chip__time{color:#4A1F33}
 
 /* ── tab bar: a white floating dock, the active tab is a raspberry bubble with a bow ── */
-@media screen and (max-width:900px){
+@media screen{
   body.con-pestanas .tabbar{background:#fff;border-radius:30px;padding:7px;gap:4px;box-shadow:0 0 0 2px #FBD0DE,0 6px 0 #F9CADB,0 18px 34px -10px rgba(194,37,92,.5)}
   .tabbar__btn{min-height:60px;color:#86506A;font-weight:800;border-radius:24px;background:transparent}
   .tabbar__btn.is-activa{background:var(--k-rasp);color:#fff;box-shadow:0 0 0 2px #fff,0 6px 14px -4px rgba(194,37,92,.6)}

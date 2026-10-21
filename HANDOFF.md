@@ -18,6 +18,35 @@ llevan al final un bloque «actualización 2026-10-08»). El diario fechado, con
 medidas y causas, está en la cabecera de `STATE.md` (entradas del 2026-10-07 y
 2026-10-08).
 
+### 0.0 bis Lo nuevo del 2026-10-21 (lee esto antes que 0.0)
+
+- **Estado:** `main` = `835bf72`, empujado; producción con sello `20261018zb`
+  (217 ficheros idénticos). Encima, SIN commit hasta que el dueño diga «да»: la
+  barra de cinco secciones del panel de entrenamientos, sello `20261021a`,
+  **1174 tests en verde**. Qué es y qué se midió: `ROADMAP.md`, primera sección.
+- **El dueño eligió el rediseño** en tres etapas: 1) la barra (hecha), 2) el
+  aspecto «Grafito» con acento lima, 3) la prueba completa. Cada etapa, su
+  commit y su «да».
+- **Su propuesta de diseño del 2026-10-18 no estaba en el repo**; ahora está
+  resumida al final de `ROADMAP.md`. Si hace falta el texto entero, estaba en
+  la sesión `132914d5…` (línea 22876 del `.jsonl`, un mensaje en cola).
+- **Reglas nuevas de la barra (no las rompas):**
+  - Cada bloque de primer nivel de `#entrenoPanel` lleva `data-en="…"` con sus
+    secciones; un bloque nuevo sin `data-en` sale en TODAS. `#entrenoSesion` y
+    `#entrenoCuestionario` no lo llevan a propósito.
+  - La sección solo la cambian `entrenoPestanaIr` (un toque) y
+    `entrenoPestanaMarcar` (sin efectos). La pantalla de la sesión marca
+    «sesion» al abrirse; `entrenoSesionCerrar(destino)` vuelve a la sección que
+    le digan; `entrenoSesionSalir()` pregunta si se corregía con cambios.
+  - La barra usa `.tabbar`: cualquier regla nueva de la barra del menú en un
+    aspecto la toca también. El bloque de la barra de cada aspecto va en
+    `@media screen` (antes `max-width:900px`) para que sirva en el portátil.
+  - Ya había una función `entrenoUltimaHtml` («la última vez» de la tabla del
+    plan): la de la última sesión se llama `entrenoUltimaSesionHtml`. Los
+    globales chocan sin avisar, el fichero que carga después gana.
+- **Idea del dueño sin empezar:** los pasos del día para comer más (ver
+  `ROADMAP.md`). Un sitio no puede leer el podómetro.
+
 ### 0.0 Lo nuevo del 2026-10-18 (lee esto antes que 0.1)
 
 - **Lo de 0.1 a 0.5 es del 2026-10-08.** Al 2026-10-18: `main` = `eab3332`,

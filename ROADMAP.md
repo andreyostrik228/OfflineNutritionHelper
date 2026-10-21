@@ -1,8 +1,55 @@
 # Nutrition Planner — Roadmap
 
-## Entrenamientos: estado y prioridades al 2026-10-18 (esto primero si vas a tocar entrenamientos)
+## Entrenamientos: estado y prioridades al 2026-10-21 (esto primero si vas a tocar entrenamientos)
 
-**Subido y desplegado: `main` = `01a5494` (empujado) y producción con sello `20261018zb` (217 de 217 ficheros idénticos). 1164 tests en verde.**
+**Rediseño, etapa 1 de 3 (2026-10-21): la barra de cinco secciones.** Sello
+`20261021a`, 1174 tests en verde. Se hizo sobre `835bf72`. **Sin commit ni
+despliegue hasta que el dueño diga «да».**
+
+- El panel de entrenamientos va en cinco secciones con su barra abajo
+  (`js/ui/entreno-pestanas.js`): Главная · План · Тренировка · Прогресс ·
+  Профиль (es: Inicio · Plan · Entrenar · Progreso · Perfil). Cada bloque del
+  panel dice en `data-en` en qué secciones sale; el CSS esconde los demás.
+  Sin ese fichero, el panel es la página larga de antes.
+- **Inicio:** la fecha con «día de entrenamiento / de descanso», «Hoy» con los
+  músculos de la sesión, «Tu semana · 2 de 4», la última sesión (con «Ver los
+  resultados», que abre esa sesión en Progreso) y el último récord.
+- **Entrenar:** la pantalla de la sesión. Sin sesión abierta, la de hoy y las
+  demás de la semana, cada una con «Empezar». Ir a otra sección cierra la
+  pantalla, pero la sesión sigue en curso; corrigiendo una terminada con
+  cambios, pregunta antes. La flecha vuelve a la sección de antes (corrigiendo,
+  a Progreso). El descanso se coloca encima de la barra según lo que mide la
+  barra en cada aspecto (`--barra-entreno`).
+- **Plan:** «Tu programa», los días, el catálogo, .ics e imprimir.
+- **Progreso:** lo de antes, más el peso corporal (el último y el cambio en 30
+  días; se apunta en «Mis datos»).
+- **Perfil:** las respuestas del cuestionario con «Cambiar», interruptores de
+  sonido y de **vibración** (nueva clave `nutritionPlanner.entrenoVibracion.v1`),
+  el tutorial, la copia de datos y si el diario va a la cuenta.
+- La barra sale en cualquier ancho (también en el portátil) y usa las clases de
+  la del menú (`.tabbar`), así que cada aspecto la viste. Para eso el bloque de
+  la barra de los nueve aspectos pasó de `@media (max-width:900px)` a
+  `@media screen` (en el portátil la del menú sigue escondida).
+- El tutorial cuenta las cinco secciones. Última sección abierta recordada en
+  `nutritionPlanner.entrenoPestana.v1`.
+- Medido con Chrome sin interfaz: los nombres de la barra caben en los 10
+  aspectos × 4 idiomas × 320/360/375/390/768/1280 px; el descanso queda 16 px
+  por encima de la barra en los 10 aspectos; los recorridos (resultados,
+  corregir, empezar desde el plan, flecha, borrar, perfil, cuestionario,
+  recargar, volver al menú) en ru/es/uk/en, sin errores de JS. **No probado en
+  un móvil de verdad.**
+
+**Lo que queda del rediseño:** etapa 2, el aspecto «Grafito» (fondo grafito,
+acento lima); etapa 3, la prueba completa. Y, aparte, la página de cada
+ejercicio y las animaciones nuevas del flujo.
+
+**Idea del dueño (2026-10-21), sin empezar:** contar los pasos. Un sitio web no
+puede leer el podómetro del móvil (ni Google Fit ni Apple Health), así que la
+propuesta es escribir los pasos de un día normal en «Mis datos» y sacar de ahí
+el nivel de actividad (hoy es un desplegable «Sedentario…Muy alto» que ya
+sube las calorías; sumarlos aparte contaría la marcha dos veces).
+
+**Antes, al 2026-10-18 — subido y desplegado: `main` = `01a5494` (empujado) y producción con sello `20261018zb` (217 de 217 ficheros idénticos). 1164 tests en verde.**
 
 **Lo que cambió en esta tanda (2026-10-18, en `01a5494`):**
 - Copia de datos completa («Descargar mis datos» + «Cargar una copia»), con el registro de peso y el cuestionario dentro (`js/core/data-backup.js`).
@@ -15,9 +62,16 @@
 - «Hoy» con un solo botón y la semana de siete días; tutorial de cinco pasos (`js/ui/entreno-tutorial.js`).
 - Estilos de todo lo nuevo en `assets/css/style.css`, con un test que exige una regla CSS para cada clase.
 
-**Lo que NO está hecho todavía de la propuesta de diseño:** la navegación inferior de cinco secciones (Главная · План · Тренировка · Прогресс · Профиль), el tema grafito oscuro con acento lima, la página de cada ejercicio con su historial y las animaciones nuevas del flujo. Y la prueba en el móvil real (solo Chrome sin interfaz, 375 px).
+**Lo que NO está hecho todavía de la propuesta de diseño** (resumida al final
+de este fichero, «Propuesta de diseño del dueño»): el tema grafito oscuro con
+acento lima, la página de cada ejercicio con su historial y las animaciones
+nuevas del flujo. Y la prueba en el móvil real. La barra de cinco secciones ya
+está (arriba, 2026-10-21).
 
-La tabla de abajo es el estado ANTES de esta tanda: ahora mismo el catálogo, la superserie, la corrección, la sincronización y las gráficas por ejercicio sí existen.
+La tabla «Lo que hay y lo que falta, por apartados» es el estado ANTES de la
+tanda del 2026-10-18: ahora el catálogo, la superserie, la corrección, la
+sincronización y las gráficas por ejercicio sí existen. La de «Etapa 1» está al
+día (2026-10-21).
 La parte de nutrición sigue donde la deja la sección del 2026-09-14, justo
 debajo de esta.
 
@@ -44,7 +98,8 @@ de estas tablas, actualízalas en el mismo commit.
 | `js/data/exercise-poses.js`, `js/ui/entreno-figura.js` | Poses y motor de la animación 3D de cada ejercicio, con los músculos que trabajan y los que ayudan. |
 | `js/core/workout-log.js` | Diario (`nutritionPlanner.entrenoDiario.v1`): series, «la última vez», carga sugerida, récords, 1RM, semanas y racha. |
 | `js/ui/entreno-sesion.js` | Modo entrenamiento: la sesión en curso y el descanso. |
-| `js/ui/entreno-progreso.js` | La semana, la racha, el volumen de 8 semanas y el historial. |
+| `js/ui/entreno-progreso.js` | La semana, la racha, el volumen de 8 semanas y el historial; la última sesión y el récord de «Inicio» y el peso de «Progreso». |
+| `js/ui/entreno-pestanas.js` | Las cinco secciones y su barra abajo (2026-10-21), y «Perfil». |
 | `js/core/weight-log.js` | Registro del peso corporal (`weekplate-pesos-v1`; con cuenta, viaja en `settings._pesos`). |
 
 Tests: `workout-generator`, `workout-log`, `weight-log`, `exercises-*` y
@@ -89,21 +144,21 @@ ruso, de usted.
 
 | Función | Estado | Nota |
 |---|---|---|
-| Perfil y objetivos | Hecho | Apartado A. |
-| Catálogo con filtros | A medias | 81 ejercicios con técnica y animación; sin pantalla de catálogo, búsqueda ni filtros. |
-| Programas y plantillas | A medias | El programa sale solo; no se edita a mano ni se guardan plantillas. |
-| Calendario de entrenamientos | A medias | Días de la semana elegidos y exportación .ics; sin calendario dentro de la aplicación. |
+| Perfil y objetivos | Hecho | Apartado A; las respuestas se ven y se cambian en «Perfil». |
+| Catálogo con filtros | Hecho | 81 ejercicios con técnica y animación; pantalla con búsqueda en 4 idiomas y filtros por músculo y material. Falta la página de cada ejercicio con su historial. |
+| Programas y plantillas | A medias | El programa sale solo y se cambia a mano (sustituir, quitar, añadir); sin plantillas ni duplicar. |
+| Calendario de entrenamientos | A medias | La semana de siete días en «Inicio», todas las sesiones en «Entrenar» y exportación .ics; sin calendario de meses. |
 | Sesión con entrada rápida de series | Hecho | |
 | Resultados anteriores junto a los de hoy | Hecho | «La última vez» y relleno automático. |
 | Temporizador de descanso | Hecho | |
-| Superseries y calentamiento | Falta | Solo un texto general de calentamiento. |
-| Guardar sin perder datos | Hecho en el dispositivo | Cada cambio se guarda al instante; no hay copia en la cuenta. |
-| Historial y gráficas básicas | A medias | Historial y volumen semanal; sin gráfica por ejercicio. |
-| Récords y progreso | Hecho | |
-| Peso corporal y medidas | A medias | Peso sí; medidas no. |
-| Editar una sesión terminada | Falta | Solo se puede borrar. |
+| Superseries y calentamiento | Hecho | Superseries y circuitos, series de calentamiento, drop set y al fallo. |
+| Guardar sin perder datos | Hecho | Al instante en el dispositivo; diario y cuestionario en la cuenta (`settings._entrenos`). |
+| Historial y gráficas básicas | Hecho | Historial, volumen de 8 semanas, gráfica por ejercicio, carga por músculo y CSV. |
+| Récords y progreso | Hecho | El último récord también en «Inicio». |
+| Peso corporal y medidas | A medias | Peso sí (también en «Progreso»); perímetros no. |
+| Editar una sesión terminada | Hecho | «Corregir», con «Guardar» y «Cancelar». |
 | Técnica básica | Hecho | Texto en 4 idiomas y animación; sin errores típicos. |
-| Local y copia de seguridad | A medias | Local sí; la copia es solo de descarga, incompleta y sin forma de restaurarla. |
+| Local y copia de seguridad | Hecho | Descargar y cargar una copia completa (también desde «Perfil»). |
 
 **Etapa 2 — personalización inteligente**
 
@@ -124,7 +179,10 @@ del sitio, pero con los entrenamientos solo se une por el número de
 entrenamientos a la semana, que sube las calorías). Del historial, lo único
 que adapta algo es la carga sugerida.
 
-### Lo siguiente (propuesta; el dueño aún no ha elegido)
+### Lo siguiente (propuesta del 2026-10-18; los cuatro puntos se hicieron ese día)
+
+Al 2026-10-21 el dueño eligió el rediseño (barra de cinco secciones y aspecto
+«Grafito»): ver arriba. Lo que sigue es la propuesta original, ya hecha.
 
 La regla del propio documento: **dejar perfecto el ciclo planificar →
 entrenar → apuntar → ver el progreso → recomendación para la siguiente
@@ -1561,6 +1619,69 @@ sesión.
 
 Es ese ciclo lo que yo dejaría funcionando a la perfección antes de añadir
 una IA compleja, funciones sociales o un módulo de nutrición aparte.
+
+## Propuesta de diseño del dueño (2026-10-18)
+
+El dueño la pegó en ruso el 2026-10-18 junto con la hoja de ruta de arriba; no
+estaba en el repositorio y el 2026-10-21 se recuperó de la sesión de ese día.
+Aquí va resumida, con sus puntos y en su orden. Los ejemplos de pantalla del
+original eran maquetas «conceptuales», no requisitos al pie de la letra.
+
+**Principio:** como un buen registrador de entrenamientos, atractivo pero sobre
+todo cómodo durante la sesión; sin decenas de tarjetas, gráficas y botones. En
+pocos segundos hay que saber qué toca hoy, empezar y anotar las series.
+
+1. **Cinco secciones con barra abajo:** Главная (qué toca hoy y el acceso
+   rápido), План (calendario, programas listos, editar sesiones, catálogo),
+   Тренировка (la sesión en curso, las series y los temporizadores; el botón
+   principal), Прогресс (fuerza, gráficas, medidas e historial) y Профиль
+   (objetivos, ajustes, material, avisos, sincronización y cuenta). Nada de
+   feed social en la barra al principio.
+2. **Inicio:** responde qué hago hoy, cómo voy y cómo empiezo rápido. Primero
+   la tarjeta de la próxima sesión con un solo botón (nombre, minutos,
+   ejercicios, músculos, «EMPEZAR»); luego la semana («1 de 4»); luego la
+   última sesión y UN dato útil de progreso (un récord). No diez gráficas,
+   calorías, sueño, pulso y agua a la vez.
+3. **Sesión en curso:** la pantalla más cuidada. Resultado anterior a la
+   vista, peso y repeticiones con zonas grandes, marcar con un toque, descanso
+   automático que se puede pausar y cambiar, añadir serie, sustituir y ver la
+   técnica, guardado tras cada cambio, seguir tras cerrar la aplicación,
+   resumen al terminar (y que «terminar» no se pulse sin querer en vez de
+   marcar). Vibración al marcar y al acabar el descanso, que se pueda quitar.
+4. **Plan:** gestionar el programa, no entrenar. Programa actual (p. ej.
+   Upper / Lower, 4 días), una tarjeta por día con su estado, «Añadir
+   entrenamiento»; dentro, cambiar ejercicios, series, repeticiones y carga;
+   copiar, renombrar y guardar como plantilla; programas listos con filtros.
+5. **Catálogo y página del ejercicio:** biblioteca propia, también desde la
+   sesión. En la página: vídeo o animación, nombre, etiquetas (músculo,
+   material, nivel), «Cómo hacerlo» paso a paso, «En qué fijarse», músculos
+   principales y secundarios, «Añadir al entrenamiento»; el historial y las
+   gráficas de ese ejercicio. Búsqueda y filtros por músculo, material,
+   dificultad y tipo de movimiento; resultados en tarjetas compactas.
+6. **Progreso:** respuestas a preguntas concretas (¿soy más fuerte?, ¿con qué
+   regularidad entreno?, ¿cómo cambia el volumen?, ¿qué pasa con el peso y las
+   medidas?). Cuatro apartados: Fuerza, Volumen, Regularidad, Cuerpo. Arriba
+   unas cifras clave; debajo gráficas con periodo (7 días, mes, 3 meses, año,
+   todo). Tocar un punto abre la sesión de ese resultado. Resumen compacto y
+   el detalle al tocar.
+7. **Estilo:** tema oscuro como uno de los principales, fondo **grafito** (no
+   negro), tarjetas algo más claras, bordes tranquilos; también tema claro.
+   **Un solo color de acento** (verde lima, naranja o turquesa) para las
+   acciones principales, las series hechas y algunas cifras, no para todo.
+   Tipografía clara y neutra, cifras grandes para peso, repeticiones y reloj.
+   Un solo juego de iconos; ilustraciones de ejercicios uniformes. Contraste,
+   texto escalable y elementos grandes (se marca la serie con una mano).
+8. **Reglas:** lo frecuente a mano; no pedir dos veces lo mismo (rellenar con
+   lo anterior, editable); guardar solo; no depender solo del color; mínimos
+   campos obligatorios (RPE, notas y sensaciones, opcionales); separar plan y
+   hecho; funcionar sin red; pocas animaciones (la rapidez manda); el usuario
+   decide (la aplicación propone, no cambia nada a escondidas); privacidad de
+   medidas y fotos a la vista.
+
+**Su recomendación final:** empezar por tres pantallas (inicio, sesión en
+curso y crear programa) y, si quedan cómodas, seguir con el catálogo, el
+progreso y lo demás. Que la interfaz sea clara, coherente y rápida, no
+«rica» en elementos.
 
 ## Update rule
 

@@ -451,10 +451,12 @@ select{background-image:__ARROW__;background-size:30px 30px;background-position:
 .pantry-active-card__purchase--done{border:2px solid #1F1A17}
 
 /* ── tab bar ── */
-@media screen and (max-width:900px){
+@media screen{
   body.con-pestanas .tabbar{background:#FFFAF0;border:2.5px solid #1F1A17;border-radius:20px;padding:6px;gap:4px;box-shadow:5px 5px 0 #1F1A17}
   .tabbar__btn{color:#1F1A17;font-weight:700;border-radius:13px;border:2px solid transparent;transition:background-color .15s ease,transform .08s ease}
   .tabbar__btn.is-activa{background:#F3B431;color:#1F1A17;border-color:#1F1A17;box-shadow:2px 2px 0 #1F1A17}
+  /* la barra de entrenamientos: cinco nombres y botones con borde de 2px, a 320 px «Прогресс» no cabía */
+  .tabbar--entreno .tabbar__texto{letter-spacing:-.03em}
   .tabbar__cuenta{top:-3px;left:calc(50% + 4px);min-width:28px;height:28px;padding:0 3px;border-radius:0;background:__BURST__ center / 100% 100% no-repeat;color:#1F1A17;box-shadow:none;line-height:28px}
 }
 

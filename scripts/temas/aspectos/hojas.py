@@ -195,7 +195,7 @@ h2 em{background:linear-gradient(transparent 62%,#CFE8AE 62%,#CFE8AE 92%,transpa
 .confirm-receipt{background:#EEF6E4;box-shadow:none;border-radius:16px}
 
 /* floating tab bar with a raised green bubble */
-@media screen and (max-width:900px){
+@media screen{
   body.con-pestanas .tabbar{background:#fff;border-radius:32px;padding:8px 6px 6px;gap:0;box-shadow:0 20px 40px -14px rgba(29,53,39,.5),0 0 0 1px rgba(45,122,78,.10)}
   .tabbar__btn{min-height:62px;color:#587060;font-weight:800;background:transparent;border-radius:24px}
   .tabbar__btn.is-activa{background:transparent;color:#1C5B38}

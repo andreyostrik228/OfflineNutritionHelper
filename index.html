@@ -106,8 +106,8 @@
        .css. Si se olvida, lo peor que pasa es lo de siempre; si se sube,
        no hay mezcla posible.
        ══════════════════════════════════════════════════════════════════ -->
-  <link rel="stylesheet" href="assets/css/style.css?v=20261018zb">
-  <link rel="stylesheet" href="assets/css/paginas.css?v=20261018zb">
+  <link rel="stylesheet" href="assets/css/style.css?v=20261021a">
+  <link rel="stylesheet" href="assets/css/paginas.css?v=20261021a">
 
   <!-- ══ ANTES DE PINTAR NADA ══════════════════════════════════════════
        Decide, de forma SÍNCRONA y antes del primer pintado, si este
@@ -373,6 +373,16 @@
     </symbol>
     <symbol id="icon-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <circle cx="12" cy="8" r="4"/><path d="M4.5 20.5c1.2-3.6 4.1-5.5 7.5-5.5s6.3 1.9 7.5 5.5"/>
+    </symbol>
+    <!-- Las tres de la barra de entrenamientos (js/ui/entreno-pestanas.js). -->
+    <symbol id="icon-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3.5 10.5 12 3.5l8.5 7"/><path d="M5.5 9v11.5h13V9"/><path d="M10 20.5v-6h4v6"/>
+    </symbol>
+    <symbol id="icon-dumbbell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M8 12h8"/><rect x="4.5" y="7" width="3.5" height="10" rx="1.2"/><rect x="16" y="7" width="3.5" height="10" rx="1.2"/><path d="M2.5 10v4M21.5 10v4"/>
+    </symbol>
+    <symbol id="icon-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3.5 20.5h17"/><path d="M5 16l4.5-5 3.5 3 6-7"/><path d="M15 7h4v4"/>
     </symbol>
     <symbol id="icon-cart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <circle cx="9" cy="21" r="1.4" fill="currentColor" stroke="none"/>
@@ -1604,24 +1614,36 @@
         </div>
       </section>
 
+      <!-- Las cinco secciones (js/ui/entreno-pestanas.js): cada bloque dice en
+           `data-en` en cuáles sale, y el panel, con `data-pestana`, cuál está
+           abierta. Sin ese fichero no hay `data-pestana` y se ve todo, como antes. -->
+      <p class="entreno__ojo" id="entrenoOjo" data-en="inicio" hidden></p>
       <h2 class="entreno__titulo" id="entrenoTitulo" data-i18n="ent.titulo">Entrenamientos de la semana</h2>
-      <p class="entreno__intro" data-i18n="ent.intro">Responde unas preguntas y armamos un programa a tu medida: objetivo, material y lo que quieres trabajar más.</p>
-      <button type="button" class="btn-secondary entreno__ayuda-btn" id="entTutorial" data-i18n="ent.tut_abrir">Cómo se usa</button>
+      <p class="entreno__intro" data-en="perfil" data-i18n="ent.intro">Responde unas preguntas y armamos un programa a tu medida: objetivo, material y lo que quieres trabajar más.</p>
 
       <!-- Sesión sin terminar (js/ui/entreno-progreso.js): lo primero, si la hay. -->
-      <div class="entreno__reanudar" id="entrenoReanudar" role="status" hidden></div>
+      <div class="entreno__reanudar" id="entrenoReanudar" data-en="inicio sesion" role="status" hidden></div>
 
       <!-- Hoy y la semana (js/ui/render-entreno.js, entrenoHoyHtml y entrenoSemanaHtml):
            lo que toca hoy, con un solo botón, y los siete días. -->
-      <div class="entreno__hoy" id="entrenoHoy" hidden></div>
-      <section class="entreno__semana-caja" id="entrenoSemanaCaja" aria-labelledby="entrenoSemanaTitulo" hidden>
-        <h3 class="entreno__subtitulo" id="entrenoSemanaTitulo" data-i18n="ent.semana_titulo">Tu semana</h3>
+      <div class="entreno__hoy" id="entrenoHoy" data-en="inicio sesion" hidden></div>
+      <section class="entreno__semana-caja" id="entrenoSemanaCaja" data-en="inicio" aria-labelledby="entrenoSemanaTitulo" hidden>
+        <div class="entreno__semana-cabeza">
+          <h3 class="entreno__subtitulo" id="entrenoSemanaTitulo" data-i18n="ent.semana_titulo">Tu semana</h3>
+          <span class="entreno__semana-cuenta" id="entrenoSemanaCuenta"></span>
+        </div>
         <ol class="entreno__semana" id="entrenoSemana"></ol>
       </section>
 
+      <!-- La última sesión y el último récord (js/ui/entreno-progreso.js, entrenoUltimaHtml). -->
+      <div class="entreno__ultima-caja" id="entrenoUltima" data-en="inicio" hidden></div>
+
+      <!-- «Entrenar» sin sesión abierta: las demás sesiones del plan, para empezar otra (entrenoElegirHtml). -->
+      <section class="entreno__elegir-caja" id="entrenoElegir" data-en="sesion" aria-labelledby="entrenoElegirTitulo" hidden></section>
+
       <!-- Tu programa: lo que se contestó en el cuestionario, en fichas, con
            «Cambiar» para volver a él, y el número de semana. -->
-      <section class="entreno__resumen" id="entrenoResumen" aria-labelledby="entrenoResumenTitulo">
+      <section class="entreno__resumen" id="entrenoResumen" data-en="plan" aria-labelledby="entrenoResumenTitulo">
         <div class="entreno__resumen-cabeza">
           <h3 class="entreno__resumen-titulo" id="entrenoResumenTitulo" data-i18n="ent.resumen_programa">Tu programa</h3>
           <button type="button" class="btn-secondary" id="entEditar" data-i18n="ent.editar_programa">Cambiar</button>
@@ -1639,24 +1661,51 @@
         </div>
       </section>
 
-      <div class="entreno__aviso" id="entrenoSinDias" hidden>
+      <div class="entreno__aviso" id="entrenoSinDias" data-en="inicio plan sesion" hidden>
         <p data-i18n="ent.sin_dias">En «Mis datos» no hay días de entrenamiento. Indica cuántos días entrenas a la semana.</p>
         <button type="button" class="btn-secondary" id="entAbrirDatos" data-i18n="ent.abrir_datos">Abrir «Mis datos»</button>
       </div>
 
       <!-- Progreso e historial (js/ui/entreno-progreso.js). -->
-      <section class="entreno__progreso" id="entrenoProgreso" aria-labelledby="entrenoProgresoTitulo" hidden></section>
+      <section class="entreno__progreso" id="entrenoProgreso" data-en="progreso" aria-labelledby="entrenoProgresoTitulo" hidden></section>
+      <!-- El peso corporal: el último y cómo va; se apunta en «Mis datos» (entrenoPesoHtml). -->
+      <section class="entreno__peso" id="entrenoPeso" data-en="progreso" aria-labelledby="entrenoPesoTitulo" hidden></section>
 
-      <div class="entreno__acciones">
+      <!-- Perfil (js/ui/entreno-pestanas.js): las respuestas, el sonido y la
+           vibración, el tutorial, la copia de los datos y la cuenta. -->
+      <section class="entreno__perfil" id="entrenoPerfil" data-en="perfil" aria-labelledby="entrenoPerfilRespT" hidden>
+        <div class="entreno__tarjeta">
+          <h3 class="entreno__subtitulo" id="entrenoPerfilRespT" data-i18n="ent.perfil_respuestas">Sus respuestas</h3>
+          <ul class="entreno__chips" id="entrenoPerfilFichas"></ul>
+          <button type="button" class="btn-secondary" data-perfil="cuestionario" data-i18n="ent.perfil_cambiar">Cambiar las respuestas</button>
+        </div>
+        <div class="entreno__tarjeta">
+          <h3 class="entreno__subtitulo" data-i18n="ent.perfil_sesion">Durante el entrenamiento</h3>
+          <button type="button" class="entreno__interruptor" data-perfil="sonido" aria-pressed="true"><span data-i18n="ent.sonido">Sonido al acabar el descanso</span></button>
+          <button type="button" class="entreno__interruptor" data-perfil="vibracion" aria-pressed="true"><span data-i18n="ent.vibracion">Vibración al marcar una serie y al acabar el descanso</span></button>
+          <button type="button" class="btn-secondary" id="entTutorial" data-i18n="ent.tut_abrir">Cómo se usa</button>
+        </div>
+        <div class="entreno__tarjeta">
+          <h3 class="entreno__subtitulo" data-i18n="ent.perfil_datos">Sus datos</h3>
+          <p class="entreno__perfil-cuenta" id="entrenoPerfilCuenta"></p>
+          <div class="entreno__perfil-botones">
+            <button type="button" class="btn-secondary" data-perfil="entrar" data-i18n="ent.perfil_entrar">Entrar en la cuenta</button>
+            <button type="button" class="btn-secondary" data-perfil="exportar" data-i18n="ui.descargar_mis_datos">Descargar mis datos</button>
+            <button type="button" class="btn-secondary" data-perfil="importar" data-i18n="ui.cargar_copia">Cargar una copia</button>
+          </div>
+        </div>
+      </section>
+
+      <div class="entreno__acciones" data-en="plan">
         <button type="button" class="btn-secondary" id="entImprimir" data-i18n="ui.imprimir">Imprimir</button>
         <label class="entreno__hora" for="entHora"><span data-i18n="ics.hora_entreno">Hora del entreno</span> <input id="entHora" type="time" value="18:00" autocomplete="off"></label>
         <button type="button" class="btn-secondary" id="entIcs" data-i18n="ics.boton_entreno">Descargar entrenamientos (.ics)</button>
         <button type="button" class="btn-secondary" data-prog="catalogo" data-i18n="ent.cat_titulo">Catálogo de ejercicios</button>
       </div>
 
-      <div class="entreno__salida" id="entrenoSalida" aria-live="polite"></div>
+      <div class="entreno__salida" id="entrenoSalida" data-en="plan" aria-live="polite"></div>
 
-      <p class="entreno__nota" data-i18n="ent.nota_idioma">Los nombres de los ejercicios y la técnica están por ahora en español.</p>
+      <p class="entreno__nota" data-en="plan" data-i18n="ent.nota_idioma">Los nombres de los ejercicios y la técnica están por ahora en español.</p>
     </section>
 
     <!-- Cómo se hace un ejercicio: la animación grande, los músculos y la
@@ -1731,18 +1780,18 @@
  <script src="https://cdn.jsdelivr.net/npm/firebase@12.19.0/firebase-app-compat.js"></script>
  <script src="https://cdn.jsdelivr.net/npm/firebase@12.19.0/firebase-auth-compat.js"></script>
 
-<script src="js/data/firebase-config.js?v=20261018zb"></script>
-<script src="js/data/legal.js?v=20261018zb"></script>
-<script src="js/data/onboarding-steps.js?v=20261018zb"></script>
-<script src="js/data/tour-steps.js?v=20261018zb"></script>
-<script src="js/data/dishes.js?v=20261018zb"></script>
+<script src="js/data/firebase-config.js?v=20261021a"></script>
+<script src="js/data/legal.js?v=20261021a"></script>
+<script src="js/data/onboarding-steps.js?v=20261021a"></script>
+<script src="js/data/tour-steps.js?v=20261021a"></script>
+<script src="js/data/dishes.js?v=20261021a"></script>
 <!-- dish-instructions.js: equipo/dificultad/makeAhead, ADITIVO y opcional.
      Los PASOS estan en dish-steps.js y se cargan al abrir una receta.
      Un plato sin entrada aqui se comporta exactamente como antes -- por
      eso dishes.js no se toca y los golden-master no se mueven. -->
-<script src="js/data/dish-instructions.js?v=20261018zb"></script>
-<script src="js/data/dish-cuisine.js?v=20261018zb"></script>
-<script src="js/data/real-products.js?v=20261018zb"></script>
+<script src="js/data/dish-instructions.js?v=20261021a"></script>
+<script src="js/data/dish-cuisine.js?v=20261021a"></script>
+<script src="js/data/real-products.js?v=20261021a"></script>
 <!-- Alcampo y Carrefour se cayeron el 2026-09-07: 103 KB que viajaban a
      cada visitante sin que NADIE los leyera. Comprobado antes de quitarlos:
      ningun fichero fuera de ellos mismos menciona REAL_PRODUCTS_ALCAMPO ni
@@ -1750,142 +1799,143 @@
      js/data/prices/ solo existe mercadona.js -- asi que ni con precios
      habrian servido. Si algun dia vuelve el selector de tienda, vuelven
      desde git; ver la cabecera de js/core/pricing.js para el porque. -->
-<script src="js/data/packaging.js?v=20261018zb"></script>
-<script src="js/data/servings.js?v=20261018zb"></script>
-<script src="js/data/real-ingredient-matches.js?v=20261018zb"></script>
-<script src="js/data/product-links.js?v=20261018zb"></script>
-<script src="js/data/ingredient-nutrition.js?v=20261018zb"></script>
-<script src="js/data/no-cook-classifier.js?v=20261018zb"></script>
+<script src="js/data/packaging.js?v=20261021a"></script>
+<script src="js/data/servings.js?v=20261021a"></script>
+<script src="js/data/real-ingredient-matches.js?v=20261021a"></script>
+<script src="js/data/product-links.js?v=20261021a"></script>
+<script src="js/data/ingredient-nutrition.js?v=20261021a"></script>
+<script src="js/data/no-cook-classifier.js?v=20261021a"></script>
 <!-- Raciones/papeles de cada producto y formas de comida del modo "sin
      cocinar" (2026-09-01). serving-sizes.js antes que el generador: sin el
      ANTES no habia gramos por racion y los macros en pantalla eran los de
      100 g. -->
-<script src="js/data/serving-sizes.js?v=20261018zb"></script>
-<script src="js/data/no-cook-templates.js?v=20261018zb"></script>
-<script src="js/data/prices/mercadona.js?v=20261018zb"></script>
-<script src="js/data/budget-presets.js?v=20261018zb"></script>
-<script src="js/data/dislike-groups.js?v=20261018zb"></script>
-<script src="js/data/shelf-life.js?v=20261018zb"></script>
+<script src="js/data/serving-sizes.js?v=20261021a"></script>
+<script src="js/data/no-cook-templates.js?v=20261021a"></script>
+<script src="js/data/prices/mercadona.js?v=20261021a"></script>
+<script src="js/data/budget-presets.js?v=20261021a"></script>
+<script src="js/data/dislike-groups.js?v=20261021a"></script>
+<script src="js/data/shelf-life.js?v=20261021a"></script>
 <!-- Conservación REAL publicada por Mercadona (generado por
      PythonProject/scripts/export_product_storage.py). Tiene prioridad
      sobre shelf-life.js, que es estimación nuestra. -->
-<script src="js/data/product-storage.js?v=20261018zb"></script>
+<script src="js/data/product-storage.js?v=20261021a"></script>
 <!-- Alergenos declarados en la etiqueta de Mercadona (generado por
      scratchpad/gen_allergens.js). Solo para MOSTRAR en las tarjetas de
      "sin cocinar" -- no es un filtro, ver js/core/allergens.js. -->
-<script src="js/data/product-allergens.js?v=20261018zb"></script>
+<script src="js/data/product-allergens.js?v=20261021a"></script>
 <!-- Estado del tema. Sin DOM: solo guarda, valida y resuelve.
      Antes que cualquier ui/ porque render-menu.js lo usa. -->
-<script src="js/core/theme.js?v=20261018zb"></script>
-<script src="js/core/look.js?v=20261018zb"></script>
+<script src="js/core/theme.js?v=20261021a"></script>
+<script src="js/core/look.js?v=20261021a"></script>
 <!-- Carga perezosa de los pasos de receta: solo define funciones; no baja
      nada hasta que alguien abre una receta. -->
-<script src="js/core/recipe-assets.js?v=20261018zb"></script>
+<script src="js/core/recipe-assets.js?v=20261021a"></script>
 <!-- Idioma. i18n.js ANTES que las tablas: son ellas las que llaman a
      registerI18nTable(). Y las tablas antes que cualquier ui/, que es
      quien pinta. Se cargan TODAS y no solo la elegida: cargarla despues
      de pintar hace parpadear la pagina del espanol al idioma elegido, y
      esconderla hasta que llegue es lo que prohibe 7.2. -->
-<script src="js/core/i18n.js?v=20261018zb"></script>
-<script src="js/i18n/es.js?v=20261018zb"></script>
-<script src="js/i18n/en.js?v=20261018zb"></script>
-<script src="js/i18n/ru.js?v=20261018zb"></script>
-<script src="js/i18n/uk.js?v=20261018zb"></script>
+<script src="js/core/i18n.js?v=20261021a"></script>
+<script src="js/i18n/es.js?v=20261021a"></script>
+<script src="js/i18n/en.js?v=20261021a"></script>
+<script src="js/i18n/ru.js?v=20261021a"></script>
+<script src="js/i18n/uk.js?v=20261021a"></script>
 <!-- Los nombres de comida van aparte de las cadenas de interfaz: son un
      diccionario, no una lista de frases, y el que traduce nombres de plato
      se compone de piezas para que los platos NUEVOS del generador salgan
      traducidos solos. -->
-<script src="js/i18n/food-en.js?v=20261018zb"></script>
-<script src="js/i18n/food-ru.js?v=20261018zb"></script>
-<script src="js/i18n/food-uk.js?v=20261018zb"></script>
+<script src="js/i18n/food-en.js?v=20261021a"></script>
+<script src="js/i18n/food-ru.js?v=20261021a"></script>
+<script src="js/i18n/food-uk.js?v=20261021a"></script>
 <!-- Los pasos de las recetas (js/data/dish-steps.js y js/i18n/steps-en.js,
      steps-ru.js, steps-uk.js) NO van aqui: js/core/recipe-assets.js los pide
      al abrir una receta, para no descargar ~1,6 MB en cada arranque. -->
 <!-- Las etiquetas de envase ("barra", "tarro", "bandeja"): describen CÓMO
      se compra algo, no el nombre comercial, así que sí se traducen. Llevan
      singular y plural porque en inglés no basta con añadir una "s". -->
-<script src="js/i18n/packages-en.js?v=20261018zb"></script>
-<script src="js/i18n/packages-ru.js?v=20261018zb"></script>
-<script src="js/i18n/packages-uk.js?v=20261018zb"></script>
-<script src="js/core/utils.js?v=20261018zb"></script>
-<script src="js/core/pricing.js?v=20261018zb"></script>
+<script src="js/i18n/packages-en.js?v=20261021a"></script>
+<script src="js/i18n/packages-ru.js?v=20261021a"></script>
+<script src="js/i18n/packages-uk.js?v=20261021a"></script>
+<script src="js/core/utils.js?v=20261021a"></script>
+<script src="js/core/pricing.js?v=20261021a"></script>
 <!-- servings.js despues de pricing.js (usa normalizeIngredientKey) y de
      data/servings.js + packaging.js, de donde saca las unidades; antes de
      dish-selector/plan-generator y de render.js, que son quienes preguntan. -->
-<script src="js/core/servings.js?v=20261018zb"></script>
-<script src="js/core/nutrition.js?v=20261018zb"></script>
+<script src="js/core/servings.js?v=20261021a"></script>
+<script src="js/core/nutrition.js?v=20261021a"></script>
 <!-- expiry.js despues de pricing.js (usa normalizeIngredientKey) y de
      shelf-life.js (usa getShelfLife); antes de pantry.js, que lo consulta
      desde listPantryEntries(). Los tres son opcionales: si expiry.js
      faltara, la despensa sigue funcionando sin columna de caducidad. -->
-<script src="js/core/expiry.js?v=20261018zb"></script>
+<script src="js/core/expiry.js?v=20261021a"></script>
 <!-- preferences.js despues de pricing.js (reutiliza
      normalizeIngredientKey para no tener dos normalizaciones que puedan
      divergir). Es SOLO preferencias blandas ("no me gusta"); las alergias
      son una restriccion de seguridad y viviran en su propio archivo, a
      proposito -- ver la cabecera de preferences.js. -->
-<script src="js/core/preferences.js?v=20261018zb"></script>
+<script src="js/core/preferences.js?v=20261021a"></script>
 <!-- allergens.js: MOSTRAR alergenos de etiqueta, nunca filtrar. Aparte de
      preferences.js a proposito (ver cabecera de ambos). Despues de
      product-allergens.js (usa PRODUCT_ALLERGENS) y utils.js (escapeHtml). -->
-<script src="js/core/allergens.js?v=20261018zb"></script>
-<script src="js/core/pantry.js?v=20261018zb"></script>
-<script src="js/core/budget.js?v=20261018zb"></script>
-<script src="js/core/shopping-checks.js?v=20261018zb"></script>
-<script src="js/core/calculator.js?v=20261018zb"></script>
-<script src="js/core/meal-helpers.js?v=20261018zb"></script>
-<script src="js/core/meal-schedule.js?v=20261018zb"></script>
-<script src="js/core/ics-export.js?v=20261018zb"></script>
-<script src="js/core/plan-store.js?v=20261018zb"></script>
-<script src="js/core/weight-log.js?v=20261018zb"></script>
-<script src="js/core/data-backup.js?v=20261018zb"></script>
-<script src="js/core/firebase-client.js?v=20261018zb"></script>
-<script src="js/core/settings.js?v=20261018zb"></script>
-<script src="js/core/onboarding.js?v=20261018zb"></script>
-<script src="js/core/account-prefs.js?v=20261018zb"></script>
-<script src="js/core/auth.js?v=20261018zb"></script>
-<script src="js/core/cloud-sync.js?v=20261018zb"></script>
-<script src="js/core/migration.js?v=20261018zb"></script>
-<script src="js/engine/dish-selector.js?v=20261018zb"></script>
-<script src="js/engine/plan-generator.js?v=20261018zb"></script>
-<script src="js/engine/no-cook-generator.js?v=20261018zb"></script>
-<script src="js/ui/render.js?v=20261018zb"></script>
-<script src="js/ui/render-schedule.js?v=20261018zb"></script>
-<script src="js/ui/render-ayuno.js?v=20261018zb"></script>
-<script src="js/ui/render-shopping-list.js?v=20261018zb"></script>
-<script src="js/ui/form-controls.js?v=20261018zb"></script>
-<script src="js/ui/pestanas.js?v=20261018zb"></script>
-<script src="js/ui/render-pantry.js?v=20261018zb"></script>
-<script src="js/ui/render-insights.js?v=20261018zb"></script>
-<script src="js/ui/render-real-products.js?v=20261018zb"></script>
-<script src="js/ui/render-no-cook.js?v=20261018zb"></script>
-<script src="js/ui/render-auth.js?v=20261018zb"></script>
-<script src="js/ui/onboarding-ui.js?v=20261018zb"></script>
-<script src="js/ui/tour-fx.js?v=20261018zb"></script>
-<script src="js/ui/tour-scenes.js?v=20261018zb"></script>
-<script src="js/ui/tour.js?v=20261018zb"></script>
-<script src="js/ui/ingredient-suggest.js?v=20261018zb"></script>
-<script src="js/ui/animations.js?v=20261018zb"></script>
+<script src="js/core/allergens.js?v=20261021a"></script>
+<script src="js/core/pantry.js?v=20261021a"></script>
+<script src="js/core/budget.js?v=20261021a"></script>
+<script src="js/core/shopping-checks.js?v=20261021a"></script>
+<script src="js/core/calculator.js?v=20261021a"></script>
+<script src="js/core/meal-helpers.js?v=20261021a"></script>
+<script src="js/core/meal-schedule.js?v=20261021a"></script>
+<script src="js/core/ics-export.js?v=20261021a"></script>
+<script src="js/core/plan-store.js?v=20261021a"></script>
+<script src="js/core/weight-log.js?v=20261021a"></script>
+<script src="js/core/data-backup.js?v=20261021a"></script>
+<script src="js/core/firebase-client.js?v=20261021a"></script>
+<script src="js/core/settings.js?v=20261021a"></script>
+<script src="js/core/onboarding.js?v=20261021a"></script>
+<script src="js/core/account-prefs.js?v=20261021a"></script>
+<script src="js/core/auth.js?v=20261021a"></script>
+<script src="js/core/cloud-sync.js?v=20261021a"></script>
+<script src="js/core/migration.js?v=20261021a"></script>
+<script src="js/engine/dish-selector.js?v=20261021a"></script>
+<script src="js/engine/plan-generator.js?v=20261021a"></script>
+<script src="js/engine/no-cook-generator.js?v=20261021a"></script>
+<script src="js/ui/render.js?v=20261021a"></script>
+<script src="js/ui/render-schedule.js?v=20261021a"></script>
+<script src="js/ui/render-ayuno.js?v=20261021a"></script>
+<script src="js/ui/render-shopping-list.js?v=20261021a"></script>
+<script src="js/ui/form-controls.js?v=20261021a"></script>
+<script src="js/ui/pestanas.js?v=20261021a"></script>
+<script src="js/ui/render-pantry.js?v=20261021a"></script>
+<script src="js/ui/render-insights.js?v=20261021a"></script>
+<script src="js/ui/render-real-products.js?v=20261021a"></script>
+<script src="js/ui/render-no-cook.js?v=20261021a"></script>
+<script src="js/ui/render-auth.js?v=20261021a"></script>
+<script src="js/ui/onboarding-ui.js?v=20261021a"></script>
+<script src="js/ui/tour-fx.js?v=20261021a"></script>
+<script src="js/ui/tour-scenes.js?v=20261021a"></script>
+<script src="js/ui/tour.js?v=20261021a"></script>
+<script src="js/ui/ingredient-suggest.js?v=20261021a"></script>
+<script src="js/ui/animations.js?v=20261021a"></script>
 <!-- El menu de ajustes. Despues de onboarding-ui.js (usa
      openLegalDialog) y de tour.js (usa startTour via app.js). -->
-<script src="js/ui/render-menu.js?v=20261018zb"></script>
-<script src="js/data/exercises.js?v=20261018zb"></script>
-<script src="js/data/exercise-poses.js?v=20261018zb"></script>
-<script src="js/engine/workout-generator.js?v=20261018zb"></script>
-<script src="js/core/workout-log.js?v=20261018zb"></script>
-<script src="js/core/workout-edit.js?v=20261018zb"></script>
-<script src="js/core/workout-stats.js?v=20261018zb"></script>
-<script src="js/ui/entreno-figura.js?v=20261018zb"></script>
-<script src="js/ui/render-entreno.js?v=20261018zb"></script>
-<script src="js/ui/entreno-cuestionario.js?v=20261018zb"></script>
-<script src="js/ui/entreno-sesion.js?v=20261018zb"></script>
-<script src="js/ui/entreno-progreso.js?v=20261018zb"></script>
-<script src="js/ui/entreno-catalogo.js?v=20261018zb"></script>
-<script src="js/ui/entreno-tutorial.js?v=20261018zb"></script>
-<script src="js/core/workout-sync.js?v=20261018zb"></script>
-<script src="js/ui/dialog-focus.js?v=20261018zb"></script>
-<script src="js/ui/render-weight.js?v=20261018zb"></script>
-<script src="js/app.js?v=20261018zb"></script>
+<script src="js/ui/render-menu.js?v=20261021a"></script>
+<script src="js/data/exercises.js?v=20261021a"></script>
+<script src="js/data/exercise-poses.js?v=20261021a"></script>
+<script src="js/engine/workout-generator.js?v=20261021a"></script>
+<script src="js/core/workout-log.js?v=20261021a"></script>
+<script src="js/core/workout-edit.js?v=20261021a"></script>
+<script src="js/core/workout-stats.js?v=20261021a"></script>
+<script src="js/ui/entreno-figura.js?v=20261021a"></script>
+<script src="js/ui/render-entreno.js?v=20261021a"></script>
+<script src="js/ui/entreno-cuestionario.js?v=20261021a"></script>
+<script src="js/ui/entreno-sesion.js?v=20261021a"></script>
+<script src="js/ui/entreno-progreso.js?v=20261021a"></script>
+<script src="js/ui/entreno-catalogo.js?v=20261021a"></script>
+<script src="js/ui/entreno-tutorial.js?v=20261021a"></script>
+<script src="js/ui/entreno-pestanas.js?v=20261021a"></script>
+<script src="js/core/workout-sync.js?v=20261021a"></script>
+<script src="js/ui/dialog-focus.js?v=20261021a"></script>
+<script src="js/ui/render-weight.js?v=20261021a"></script>
+<script src="js/app.js?v=20261021a"></script>
 
 <!-- ══ OFFLINE DE VERDAD (2026-09-07) ═══════════════════════════════════
      Se registra al final y envuelto en try: si el navegador no soporta

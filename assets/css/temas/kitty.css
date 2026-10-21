@@ -49,7 +49,7 @@
 .onboarding__brand-mark{transform:none}
 .onboarding__summary li::before{transform:none}
 @media (max-height: 600px){.tour__counter{font-size:13px}}
-@media screen and (max-width: 900px){.tabbar__btn{font-size:13px}}
+.tabbar__btn{font-size:13px}
 /* ── núcleo común: una escala de tamaños, una escalera de alturas ── */
 
 /* ═══════════════ KIT — one size system for every style ═══════════════
@@ -380,7 +380,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .pantry-meal-chip--cooked .pantry-meal-chip__time{color:#4A1F33}
 
 
-@media screen and (max-width:900px){
+@media screen{
   body.con-pestanas .tabbar{background:#fff;border-radius:30px;padding:7px;gap:4px;box-shadow:0 0 0 2px #FBD0DE,0 6px 0 #F9CADB,0 18px 34px -10px rgba(194,37,92,.5)}
   .tabbar__btn{min-height:60px;color:#86506A;font-weight:800;border-radius:24px;background:transparent}
   .tabbar__btn.is-activa{background:var(--k-rasp);color:#fff;box-shadow:0 0 0 2px #fff,0 6px 14px -4px rgba(194,37,92,.6)}

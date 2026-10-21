@@ -65,7 +65,7 @@
 .onboarding__brand-mark{transform:none}
 .onboarding__summary li::before{transform:none}
 @media (max-height: 600px){.tour__counter{font-size:13px}}
-@media screen and (max-width: 900px){.tabbar__btn{font-size:13px}}
+.tabbar__btn{font-size:13px}
 /* ── núcleo común: una escala de tamaños, una escalera de alturas ── */
 
 /* ═══════════════ KIT — one size system for every style ═══════════════
@@ -495,7 +495,7 @@ h2 em{display:inline-block;padding:.02em .2em 0;margin:0 .04em;background:#C0422
 .disclosure__chevron{color:#2B2118}
 
 
-@media screen and (max-width:900px){
+@media screen{
   body.con-pestanas .tabbar{border-radius:0;background:none;padding:12px 6px 10px;gap:2px;box-shadow:none;
     filter:drop-shadow(0 1px 0 rgba(43,33,24,.3)) drop-shadow(0 14px 16px rgba(43,33,24,.42))}
   body.con-pestanas .tabbar::before{content:"";position:absolute;inset:0;z-index:-1;-webkit-mask:var(--zz);mask:var(--zz);

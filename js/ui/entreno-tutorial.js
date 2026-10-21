@@ -2,8 +2,9 @@
  * js/ui/entreno-tutorial.js
  * ─────────────────────────────────────────────────────────────────────────
  * TUTORIAL DEL PANEL DE ENTRENAMIENTOS (2026-10-18). Cinco pasos cortos que
- * explican el recorrido (Hoy → anotar series → comparar con la última vez →
- * cambiar sobre la marcha → progreso e historial). Sale solo la primera vez
+ * explican el recorrido; desde el 2026-10-21 siguen las cinco secciones de la
+ * barra (Inicio, anotar series en «Entrenar», cambiar sobre la marcha, Plan,
+ * Progreso y Perfil). Sale solo la primera vez
  * que hay programa, y luego con «Cómo se usa». Es un <dialog> aparte del
  * recorrido general (js/ui/tour.js), que no se toca.
  *
@@ -28,8 +29,8 @@ var _tutCableado = false;
 var ENTRENO_TUT_ILUSTRACIONES = [
   '<svg viewBox="0 0 48 48" aria-hidden="true" focusable="false"><path d="M9 24h30M24 9l15 15-15 15" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   '<svg viewBox="0 0 48 48" aria-hidden="true" focusable="false"><path d="M10 25l9 9 19-20" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-  '<svg viewBox="0 0 48 48" aria-hidden="true" focusable="false"><path d="M8 34h10l6-14 6 14h10" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   '<svg viewBox="0 0 48 48" aria-hidden="true" focusable="false"><circle cx="12" cy="24" r="4" fill="currentColor"/><circle cx="24" cy="24" r="4" fill="currentColor"/><circle cx="36" cy="24" r="4" fill="currentColor"/></svg>',
+  '<svg viewBox="0 0 48 48" aria-hidden="true" focusable="false"><rect x="9" y="11" width="30" height="28" rx="4" fill="none" stroke="currentColor" stroke-width="3.2"/><path d="M9 20h30M17 7v8M31 7v8" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/></svg>',
   '<svg viewBox="0 0 48 48" aria-hidden="true" focusable="false"><path d="M8 36V24M18 36V16M28 36V21M38 36V10" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>'
 ];
 
