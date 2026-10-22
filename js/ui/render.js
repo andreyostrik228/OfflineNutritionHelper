@@ -127,8 +127,23 @@ function _nombreSinAcentos(s) {
  * @returns {string}
  */
 function nombreComidaDoble(n) {
+  return _nombreDoble(n, nombreComida(n));
+}
+
+/**
+ * Lo mismo para un producto del catálogo en el modo "sin cocinar"
+ * (2026-10-22): "перевод / etiqueta". Sin tabla del idioma (aún no ha
+ * llegado, o el idioma no tiene), solo la etiqueta.
+ */
+function nombreProducto(n) {
+  return (typeof tProduct === "function") ? tProduct(n) : n;
+}
+function nombreProductoDoble(n) {
+  return _nombreDoble(n, nombreProducto(n));
+}
+
+function _nombreDoble(n, traducido) {
   if (typeof n !== "string" || !n) return n;
-  var traducido = nombreComida(n);
   if (typeof traducido !== "string" || !traducido) return n;
   if (_nombreSinAcentos(traducido) === _nombreSinAcentos(n)) return n;
   return traducido + " / " + n;
@@ -583,6 +598,7 @@ function renderFoodRow(item, storeId) {
             : ' <span class="food-macro__unavailable">' + escapeHtml(t("ui.macros_por_ingrediente_no_verificados")) + '</span>') +
         '</div>' +
         formatPurchaseLine(info, realMatch, purchase) +
+        renderBotonNoMeGusta(item.name, nombreComidaDoble(item.name)) +
       '</div>' +
       '<div class="food-right">' +
         '<div>' + fmtUnitHtml(round0(item.kcal), "kcal") + '</div>' +
@@ -596,6 +612,21 @@ function renderFoodRow(item, storeId) {
       '</div>' +
     '</div>'
   );
+}
+
+/**
+ * «No me gusta» (2026-10-22): quita ese ingrediente del plan, lo añade a
+ * «Alimentos que no te gustan» y re-elige las comidas que lo llevan (lo hace
+ * js/app.js, handleQuitarIngrediente). `nombre` es la clave española; lo que
+ * se lee, el nombre traducido. Lo usan las tarjetas y la lista de la compra.
+ * @param {string} nombre
+ * @param {string} [leido]
+ * @returns {string}
+ */
+function renderBotonNoMeGusta(nombre, leido) {
+  return '<button type="button" class="no-me-gusta-btn" data-action="quitar-ingrediente" data-nombre="' + escapeHtml(nombre) + '"' +
+    ' aria-label="' + escapeHtml(tFormat("ui.no_me_gusta_aria", { nombre: leido || nombre })) + '">' +
+    escapeHtml(t("ui.no_me_gusta")) + '</button>';
 }
 
 /**

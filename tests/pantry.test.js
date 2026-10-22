@@ -1146,7 +1146,7 @@ function run(t) {
     assert.strictEqual(Object.prototype.hasOwnProperty.call(dishAfter, "slots"), false, "una entrada de plato nunca debe ganar un campo .slots espurio");
   });
 
-  t.test("markNoCookPurchaseDone() suma quantity de cada producto (por id) al stock, acumulando entre varias compras", function () {
+  t.test("markNoCookPurchaseDone() sin envase conocido (plan guardado antes) compra lo justo, y una segunda compra solo lo que falte", function () {
     var s = freshPantrySandbox();
     var saved = s.saveNoCookPlanForToday(fakeNoCookSlots({
       breakfast: [fakeProduct("p1", "Yogur pack 4", 1, 2.0)],
@@ -1159,10 +1159,66 @@ function run(t) {
     assert.strictEqual(run1.run.totals.purchaseCost, 5.5);
     assert.strictEqual(s.getPantryHistory()[0].purchase.done, true);
 
-    // Segunda compra (viaje aparte) SUMA, nunca sobrescribe.
-    s.markNoCookPurchaseDone(saved.entry.id);
-    assert.strictEqual(s.getNoCookProductStock("p1"), 2);
+    // Segunda compra (viaje aparte): como en el plan normal, relee la
+    // despensa y ya no falta nada.
+    var run2 = s.markNoCookPurchaseDone(saved.entry.id);
+    assert.strictEqual(s.getNoCookProductStock("p1"), 1);
+    assert.strictEqual(run2.run.totals.purchaseCost, 0);
     assert.strictEqual(s.getPantryHistory()[0].purchase.runs.length, 2);
+  });
+
+  // ── Envases enteros (2026-10-22) ─────────────────────────────────────────
+
+  function productoConEnvase(id, nombre, raciones, porEnvase, precio) {
+    var p = fakeProduct(id, nombre, raciones, precio);
+    p.servingsPerPackage = porEnvase;
+    return p;
+  }
+
+  t.test("«Ya compré todo» sin cocinar mete envases ENTEROS: pack de 6 del que se comen 2 -> 6 en la despensa, 4 tras comer", function () {
+    var s = freshPantrySandbox();
+    var saved = s.saveNoCookPlanForToday(fakeNoCookSlots({
+      breakfast: [productoConEnvase("y6", "Yogur pack 6", 1, 6, 1.8)],
+      snack: [productoConEnvase("y6", "Yogur pack 6", 1, 6, 1.8)]
+    }));
+    assert.strictEqual(saved.entry.slots[0].items[0].servingsPerPackage, 6, "se guarda con el plan");
+    var r = s.markNoCookPurchaseDone(saved.entry.id);
+    assert.strictEqual(s.getNoCookProductStock("y6"), 6);
+    assert.strictEqual(r.run.lines.length, 1, "el mismo producto en dos tomas es una línea");
+    assert.strictEqual(r.run.lines[0].packagesToBuy, 1);
+    assert.strictEqual(r.run.totals.purchaseCost, 1.8, "un envase, no dos raciones a precio de envase");
+    s.markNoCookSlotConsumed(saved.entry.id, "breakfast", true);
+    s.markNoCookSlotConsumed(saved.entry.id, "snack", true);
+    assert.strictEqual(s.getNoCookProductStock("y6"), 4, "lo que sobra queda en la despensa");
+  });
+
+  t.test("«Ya compré todo» sin cocinar no compra lo que ya hay en la despensa, y redondea al envase lo que falta", function () {
+    var s = freshPantrySandbox();
+    s.setNoCookProductStock("y6", 5, "Yogur pack 6");
+    var saved = s.saveNoCookPlanForToday(fakeNoCookSlots({ breakfast: [productoConEnvase("y6", "Yogur pack 6", 4, 6, 1.8)] }));
+    var r = s.markNoCookPurchaseDone(saved.entry.id);
+    assert.strictEqual(r.run.lines[0].coveredFromPantry, 4);
+    assert.strictEqual(r.run.lines[0].packagesToBuy, 0);
+    assert.strictEqual(s.getNoCookProductStock("y6"), 5, "con 5 en casa y 4 en el plan, nada que comprar");
+    var otro = s.saveNoCookPlanForToday(fakeNoCookSlots({ breakfast: [productoConEnvase("p2", "Pan 2 raciones", 4, 2, 1)] }), null, "2099-01-01");
+    s.markNoCookPurchaseDone(otro.entry.id);
+    assert.strictEqual(s.getNoCookProductStock("p2"), 4, "4 raciones / 2 por envase = 2 envases justos, no 3");
+  });
+
+  t.test("plan de varios días: el envase comprado para el día 1 no cuenta como libre para el día 2 (mismo total que la lista de la compra)", function () {
+    var s = freshPantrySandbox();
+    var manana = s.formatLocalDateKey(new Date(Date.now() + 86400000));
+    var d1 = s.saveNoCookPlanForToday(fakeNoCookSlots({ breakfast: [productoConEnvase("y6", "Yogur pack 6", 4, 6, 1.8)] }));
+    var d2 = s.saveNoCookPlanForToday(fakeNoCookSlots({ breakfast: [productoConEnvase("y6", "Yogur pack 6", 4, 6, 1.8)] }), null, manana);
+    s.markNoCookPurchaseDone(d1.entry.id);
+    assert.strictEqual(s.getNoCookProductStock("y6"), 6);
+    var r2 = s.markNoCookPurchaseDone(d2.entry.id);
+    assert.strictEqual(r2.run.lines[0].packagesToBuy, 1, "8 raciones en dos días = 2 envases, como dice la lista");
+    assert.strictEqual(s.getNoCookProductStock("y6"), 12);
+    // Con el día 1 ya comido, su reserva desaparece: nada de comprar de más.
+    s.markNoCookSlotConsumed(d1.entry.id, "breakfast", true);
+    var r3 = s.markNoCookPurchaseDone(d2.entry.id);
+    assert.strictEqual(r3.run.lines[0].packagesToBuy, 0);
   });
 
   // ── Paso 3 (2026-10-21): el stock sin cocinar a la vista y en la cuenta ──

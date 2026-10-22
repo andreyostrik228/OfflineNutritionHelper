@@ -1,7 +1,7 @@
 // Aspecto y marcas del alta POR CUENTA, con la nube SIMULADA (no toca Firebase).
 //   node scripts/qa/cuenta.mjs <url> <carpeta> [ancho] [alto]
-// Recorre: cuenta A con «noche» y alta hecha -> cerrar sesión (vuelve de fábrica: hojas, alta vacía) ->
-// entra B, nueva (sube {look:"hojas"}) -> entra C, con `_prefs` en la nube (kitty y marcas suyas, sin subir nada).
+// Recorre: cuenta A con «noche» y alta hecha -> cerrar sesión (vuelve de fábrica: grafito, alta vacía) ->
+// entra B, nueva (sube {look:"grafito"}) -> entra C, con `_prefs` en la nube (kitty y marcas suyas, sin subir nada).
 // Lo que NO prueba: Firebase de verdad (HANDOFF, sección 11). Sale con código 1 si algo no es lo esperado.
 import { lanzar, QUITAR_BIENVENIDA, sleep } from "./cdp.mjs";
 
@@ -22,14 +22,14 @@ try {
 
   await js("onAuthSignOut(); authOnDataReconciled(); 1");
   await sleep(1500);
-  esperar("2. tras CERRAR SESIÓN: de fábrica (hojas, alta vacía)", JSON.parse(await js(VER)), (v) => v.look === "hojas" && !v.alta.intakeDoneAt && !v.alta.tourDoneAt);
+  esperar("2. tras CERRAR SESIÓN: de fábrica (grafito, alta vacía)", JSON.parse(await js(VER)), (v) => v.look === "grafito" && !v.alta.intakeDoneAt && !v.alta.tourDoneAt);
 
   // Entra B, recién creada: la nube está vacía
   await js(`window.__subidas = []; getCurrentUser = function(){ return {id:"user-B"}; }; pullCloudUserData = function(){ return Promise.resolve({pantry_state:{},pantry_history:[],settings:{},migrated_at:null}); }; pushSettingsToCloud = function(){ window.__subidas.push(JSON.parse(JSON.stringify(settingsWithAccountPrefs(getSettings())))); return Promise.resolve({error:null,skipped:false}); }; 1`);
   const estadoB = await js("runReconciliation().then(function(r){ authOnDataReconciled(); return r.status; })");
   await sleep(1500);
   const subidasB = JSON.parse(await js("JSON.stringify(window.__subidas.map(function(s){return s._prefs;}))"));
-  esperar("3. entra B (nueva, " + estadoB + "): hojas, sin marcas, sube su aspecto", { ...JSON.parse(await js(VER)), subidasB }, (v) => v.look === "hojas" && !v.alta.tourDoneAt && subidasB.length >= 1 && subidasB[0].look === "hojas");
+  esperar("3. entra B (nueva, " + estadoB + "): grafito, sin marcas, sube su aspecto", { ...JSON.parse(await js(VER)), subidasB }, (v) => v.look === "grafito" && !v.alta.tourDoneAt && subidasB.length >= 1 && subidasB[0].look === "grafito");
 
   // Cierra B y entra C, que ya tenía sus preferencias en la nube
   await js("onAuthSignOut(); authOnDataReconciled(); 1");

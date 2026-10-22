@@ -670,6 +670,92 @@ function run(t) {
     assert.strictEqual(panel.hidden, true, "sin plan, sin panel");
   });
 
+  t.test("«No me gusta» en un producto sin cocinar: sale de los 3 días, queda en la lista y lo demás no cambia (2026-10-22)", function () {
+    var s = sandboxCompleto();
+    var vm = require("vm");
+    ["js/data/dislike-groups.js", "js/core/preferences.js"].forEach(function (f) {
+      vm.runInContext(fs.readFileSync(projPath(f), "utf8"), s, { filename: f });
+    });
+    var campo = { value: "" };
+    s.document = { getElementById: function (id) { return id === "dislikes" ? campo : null; } };
+    s.saveLang("ru");
+    seedRandomInContext(s, 77);
+    s.initNoCookRefs({ noCookResults: contenedor(), noCookCount: contenedor(), noCookStatus: contenedor() });
+    s.runNoCookGenerator("mercadona", { calories: 2100, protein: 120, budget: 14 }, 3);
+    var dias = s.lastNoCookDays;
+    var it = dias[0].slots[1].items[0];
+    function tomasCon(id) {
+      var r = [];
+      s.lastNoCookDays.forEach(function (plan, d) {
+        plan.slots.forEach(function (sl) { if (sl.items.some(function (x) { return String(x.id) === String(id); })) r.push(d + ":" + sl.key); });
+      });
+      return r;
+    }
+    var antes = tomasCon(it.id);
+    var intactas = [];
+    s.lastNoCookDays.forEach(function (plan, d) {
+      plan.slots.forEach(function (sl) { if (antes.indexOf(d + ":" + sl.key) === -1) intactas.push(JSON.stringify(sl.items.map(function (x) { return x.id; }))); });
+    });
+    assert.ok(antes.length, "el producto sale en el plan");
+    s.quitarProductoSinCocinar(it.id, it.name);
+    assert.deepStrictEqual(tomasCon(it.id), [], "ya no sale en ningún día");
+    assert.ok(campo.value.indexOf(it.name.replace(/,/g, " ").replace(/\s+/g, " ").trim()) !== -1, "queda en «no me gusta»: " + campo.value);
+    var despues = [];
+    s.lastNoCookDays.forEach(function (plan, d) {
+      plan.slots.forEach(function (sl) { if (antes.indexOf(d + ":" + sl.key) === -1) despues.push(JSON.stringify(sl.items.map(function (x) { return x.id; }))); });
+    });
+    assert.deepStrictEqual(despues, intactas, "las tomas sin ese producto no se tocan");
+    s.saveLang("es");
+  });
+
+  t.test("sin cocinar en ruso con su tabla: «перевод / etiqueta» en tarjetas y compra, y «Не нравится» guarda el nombre en ruso (2026-10-22)", function () {
+    var s = sandboxCompleto();
+    var vm = require("vm");
+    ["js/data/dislike-groups.js", "js/core/preferences.js", "js/i18n/productos-ru.js"].forEach(function (f) {
+      vm.runInContext(fs.readFileSync(projPath(f), "utf8"), s, { filename: f });
+    });
+    var campo = { value: "" };
+    s.document = { getElementById: function (id) { return id === "dislikes" ? campo : null; } };
+    s.saveLang("ru");
+    seedRandomInContext(s, 77);
+    var resultados = contenedor(), lista = contenedor();
+    s.initNoCookRefs({ noCookResults: resultados, noCookCount: contenedor(), noCookStatus: contenedor(),
+      noCookShoppingPanel: contenedor(), noCookShoppingList: lista });
+    s.runNoCookGenerator("mercadona", { calories: 2100, protein: 120, budget: 14 }, 2);
+    var it = s.lastNoCookDays[0].slots[1].items[0];
+    var ru = s.PRODUCT_TABLES.ru[it.name];
+    assert.ok(ru, "el producto tiene traducción: " + it.name);
+    var doble = s.escapeHtml(ru + " / " + it.name);
+    assert.ok(resultados.innerHTML.indexOf(doble) !== -1, "la tarjeta dice «" + ru + " / " + it.name + "»");
+    assert.ok(lista.innerHTML.indexOf(doble) !== -1, "y la lista de la compra también");
+    assert.ok(lista.innerHTML.indexOf('data-nombre="' + s.escapeHtml(it.name) + '"') !== -1, "el botón lleva la etiqueta como clave");
+    s.quitarProductoSinCocinar(it.id, it.name);
+    assert.strictEqual(campo.value, ru, "en «no me gusta», tal como se lee");
+    s.lastNoCookDays.forEach(function (plan) {
+      plan.slots.forEach(function (sl) {
+        assert.ok(!sl.items.some(function (x) { return String(x.id) === String(it.id); }), "sigue en el plan");
+      });
+    });
+    s.saveLang("es");
+  });
+
+  t.test("los botones «No me gusta» van en las tarjetas y en la compra, y app.js los escucha (en captura en la lista)", function () {
+    var s = sandboxCompleto();
+    s.saveLang("ru");
+    var fila = s.renderFoodRow({ name: "Arroz blanco cocido", grams: 150, kcal: 190, cost: 0.2, protein: 4, carbs: 40, fat: 0.5, nutritionSource: "real" }, "mercadona");
+    assert.ok(fila.indexOf('data-action="quitar-ingrediente"') !== -1 && fila.indexOf('data-nombre="Arroz blanco cocido"') !== -1, fila);
+    assert.ok(fila.indexOf("Не нравится") !== -1);
+    var app = fs.readFileSync(projPath("js/app.js"), "utf8");
+    assert.ok(app.indexOf('mealsContainer.addEventListener("click", handleQuitarIngrediente)') !== -1);
+    assert.ok(app.indexOf('shoppingListContainerEl.addEventListener("click", handleQuitarIngrediente, true)') !== -1);
+    var lista = fs.readFileSync(projPath("js/ui/render-shopping-list.js"), "utf8");
+    assert.ok(lista.indexOf("renderBotonNoMeGusta(entry.name") !== -1);
+    var html = fs.readFileSync(projPath("index.html"), "utf8");
+    var aviso = html.indexOf('<script src="js/ui/aviso-deshacer.js');
+    assert.ok(aviso !== -1 && aviso < html.indexOf('<script src="js/app.js'), "el aviso carga antes de app.js");
+    s.saveLang("es");
+  });
+
   t.test("«Confirmar plan sin cocinar» está en su lista de la compra y guarda cada día con su fecha (2026-10-21)", function () {
     var html = fs.readFileSync(projPath("index.html"), "utf8");
     var panel = html.indexOf('id="noCookShoppingPanel"');

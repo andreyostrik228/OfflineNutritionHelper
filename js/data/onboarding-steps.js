@@ -130,18 +130,17 @@ var ONBOARDING_STEPS = [
     unit: "cm", unitKey: "unit.cm"
   },
   {
-    id: "activity",
-    field: "activity",
-    kind: "choice",
-    title: "¿Cuánto te mueves en un día normal?", titleKey: "ui.ob_actividad_titulo",
-    hint: "Cuenta tu día entero, no solo el gimnasio.", hintKey: "ui.ob_actividad_pista",
-    options: [
-      { value: "1.2",   label: "Sedentario", labelKey: "ui.sedentario", note: "Escritorio, poco andar", noteKey: "ui.nota_actividad_sedentario" },
-      { value: "1.375", label: "Ligero", labelKey: "ui.ligero",     note: "Algo de paseo diario", noteKey: "ui.nota_actividad_ligero" },
-      { value: "1.55",  label: "Moderado", labelKey: "ui.moderado",   note: "En pie a ratos, o deporte 3-4 días", noteKey: "ui.nota_actividad_moderado" },
-      { value: "1.725", label: "Alto", labelKey: "ui.alto",       note: "Trabajo físico, o deporte casi diario", noteKey: "ui.nota_actividad_alto" },
-      { value: "1.9",   label: "Muy alto", labelKey: "ui.muy_alto",   note: "Trabajo duro más entrenamiento", noteKey: "ui.nota_actividad_muy_alto" }
-    ]
+    // Pasos al día (2026-10-22) en vez de «¿Cuánto te mueves?» con cinco
+    // niveles: el número lo da el móvil y no hay que adivinar qué es
+    // «Moderado». El nivel se deriva de él (PASOS_TRAMOS, calculator.js).
+    id: "steps",
+    field: "steps",
+    kind: "number",
+    title: "¿Cuántos pasos das en un día normal?", titleKey: "ui.ob_pasos_titulo",
+    hint: "Míralo en la app de salud del móvil. Si no lo sabes: trabajo sentado, unos 4000; andar a diario, unos 8000; trabajo de pie o físico, 12 000 o más.", hintKey: "ui.ob_pasos_pista",
+    min: 0,
+    max: 40000,
+    unit: "pasos", unitKey: "ui.ob_unidad_pasos"
   },
   {
     id: "workouts",

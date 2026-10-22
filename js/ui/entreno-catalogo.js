@@ -173,7 +173,8 @@ function entrenoCatalogoHtml(opciones, estado, material) {
 }
 
 function _catDetalleHtml(id, elegir) {
-  var ficha = typeof entrenoFichaHtml === "function" ? entrenoFichaHtml(id) : "";
+  var ficha = typeof entrenoFichaHtml === "function"
+    ? entrenoFichaHtml(id, typeof entrenoFichaDiario === "function" ? entrenoFichaDiario() : null) : "";
   return '<button type="button" class="btn-secondary cat__volver" data-cat-volver>' + _catEsc(t("ent.cat_volver")) + "</button>" +
     ficha +
     (elegir ? '<button type="button" class="entreno__empezar cat__elegir-grande" data-cat-elegir="' + _catEsc(id) + '">' + _catEsc(t("ent.cat_elegir")) + "</button>" : "");

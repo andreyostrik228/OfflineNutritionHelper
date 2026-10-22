@@ -1261,7 +1261,11 @@ function _noCookSlotsParaGuardar(slots) {
           kcal: typeof item.kcal === "number" ? item.kcal : null,
           size: typeof item.size === "number" ? item.size : null,
           sizeUnit: item.sizeUnit || null,
-          price: typeof item.price === "number" ? item.price : null
+          price: typeof item.price === "number" ? item.price : null,
+          // Raciones que trae un envase (2026-10-22): «Ya compré todo» mete
+          // en la despensa envases ENTEROS, no las raciones del plan. Los
+          // planes guardados antes no lo traen y compran lo justo.
+          servingsPerPackage: (typeof item.servingsPerPackage === "number" && item.servingsPerPackage > 0) ? item.servingsPerPackage : null
         };
       }),
       consumed: false,
@@ -1376,14 +1380,67 @@ function replacePendingNoCookSlotsForToday(entryId, newSlots, storeId) {
 }
 
 /**
- * Etapa 2 "sin cocinar": "Ya compré todo esto" -- añade quantity de cada
- * producto (por id de catálogo, no por nombre) al stock de productos.
- * A diferencia de markPurchaseDone() (ingredientes agregados, checklist
- * de exclusión parcial contra un tamaño de paquete a redondear), aquí es
- * todo-o-nada: cada producto ya es una unidad discreta e identificada, no
- * hay "cuánto falta" que calcular -- si algo no se compró de verdad, no
- * confirmar la compra hasta tenerlo todo (o repetir la acción más tarde,
- * es idempotente-seguro: cada llamada solo SUMA lo de esa llamada).
+ * Las raciones que pide un plan sin cocinar, juntas por producto (un mismo
+ * yogur en el desayuno y en la merienda es UN producto que comprar).
+ * @param {object} entry
+ * @returns {{id:string, name:string, unit:string|null, quantity:number, perPack:number|null, price:number|null}[]}
+ */
+function _noCookNecesidadPorProducto(entry) {
+  var porId = {};
+  var orden = [];
+  (entry.slots || []).forEach(function (slot) {
+    (slot.items || []).forEach(function (item) {
+      var p = porId[item.id];
+      if (!p) {
+        p = porId[item.id] = {
+          id: item.id, name: item.name, unit: item.unit || null, quantity: 0,
+          perPack: (typeof item.servingsPerPackage === "number" && item.servingsPerPackage > 0) ? item.servingsPerPackage : null,
+          price: typeof item.price === "number" ? item.price : null
+        };
+        orden.push(item.id);
+      }
+      p.quantity += item.quantity || 0;
+    });
+  });
+  return orden.map(function (id) { return porId[id]; });
+}
+
+/**
+ * Raciones de la despensa que ya son de OTROS planes sin cocinar: comprados,
+ * de hoy en adelante y con la toma sin comer. Sin esto, con un plan de varios
+ * días el día 2 veía en la despensa el envase comprado para el día 1 y no
+ * compraba nada, aunque la lista de la compra contara dos envases.
+ * @param {object[]} history
+ * @param {object} entry - el plan que se está comprando (no cuenta)
+ * @returns {Object<string, number>} id de producto -> raciones
+ */
+function _noCookReservadoPorOtros(history, entry) {
+  var hoy = formatLocalDateKey(new Date());
+  var reservado = {};
+  history.forEach(function (e) {
+    if (e === entry || e.type !== "nocook" || !e.purchase || !e.purchase.done) return;
+    if (getEntryPlanDate(e) < hoy) return;
+    (e.slots || []).forEach(function (slot) {
+      if (slot.consumed) return;
+      (slot.items || []).forEach(function (item) {
+        reservado[item.id] = (reservado[item.id] || 0) + (item.quantity || 0);
+      });
+    });
+  });
+  return reservado;
+}
+
+/**
+ * Etapa 2 "sin cocinar": "Ya compré todo esto". Como markPurchaseDone() en
+ * el plan normal (2026-10-22): de cada producto se compra solo lo que FALTA
+ * (lo que pide el plan menos lo libre en la despensa) y en envases ENTEROS,
+ * que es lo que entra en casa. El yogur de pack de 6 del que el plan come 2
+ * deja 6 en la despensa, y al comer la toma quedan 4. Hasta hoy entraban las
+ * 2 raciones justas y los otros 4 yogures no existían para nadie.
+ *
+ * Se puede llamar más de una vez (varios viajes): relee el stock cada vez y
+ * la segunda solo compra lo que siga faltando. Un plan guardado antes de
+ * conocer los envases (sin servingsPerPackage) compra lo justo.
  * @param {string} entryId
  * @returns {{ saved:boolean, historySaved:boolean, run:object }|null}
  */
@@ -1394,20 +1451,33 @@ function markNoCookPurchaseDone(entryId) {
 
   var stock = getNoCookStock();
   var nowISO = new Date().toISOString();
+  var reservado = _noCookReservadoPorOtros(history, entry);
   var lines = [];
   var totalCost = 0;
 
-  (entry.slots || []).forEach(function (slot) {
-    (slot.items || []).forEach(function (item) {
-      var current = getNoCookProductStock(item.id, stock);
-      stock[item.id] = preserveExpiryFields(
-        stock[item.id],
-        { quantity: current + item.quantity, displayName: item.name, unit: item.unit || (stock[item.id] && stock[item.id].unit) || null, updatedAt: nowISO },
+  _noCookNecesidadPorProducto(entry).forEach(function (p) {
+    var current = getNoCookProductStock(p.id, stock);
+    var libre = Math.max(0, current - (reservado[p.id] || 0));
+    var falta = Math.max(0, p.quantity - libre);
+    // 1e-9: 4 raciones / 2 por envase no puede dar 3 envases por un decimal.
+    var envases = p.perPack ? (falta > 0 ? Math.ceil(falta / p.perPack - 1e-9) : 0) : null;
+    var comprado = p.perPack ? envases * p.perPack : falta;
+    if (comprado > 0) {
+      stock[p.id] = preserveExpiryFields(
+        stock[p.id],
+        { quantity: current + comprado, displayName: p.name, unit: p.unit || (stock[p.id] && stock[p.id].unit) || null, updatedAt: nowISO },
         nowISO
       );
-      lines.push({ id: item.id, name: item.name, quantity: item.quantity, price: item.price });
-      totalCost += (item.price || 0) * item.quantity;
+    }
+    // El precio del catálogo es el de UN envase.
+    var coste = p.price === null ? 0 : p.price * (p.perPack ? envases : falta);
+    lines.push({
+      id: p.id, name: p.name, quantity: p.quantity,
+      coveredFromPantry: round2(Math.min(p.quantity, libre)),
+      purchasedQuantity: round2(comprado), packagesToBuy: envases,
+      price: p.price, purchaseCost: round2(coste)
     });
+    totalCost += coste;
   });
 
   var saved = saveNoCookStock(stock);

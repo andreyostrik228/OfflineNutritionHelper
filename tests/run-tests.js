@@ -104,6 +104,7 @@ var suites = [
   "sincronizacion-estado.test",
   "recetas-carga.test",
   "preferences-idioma.test",
+  "productos-idioma.test",
   "entreno-preferencias.test",
   "workout-log.test",
   "entreno-sesion.test",

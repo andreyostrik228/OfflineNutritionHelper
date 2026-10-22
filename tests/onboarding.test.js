@@ -443,7 +443,7 @@ function run(t) {
   t.test("el alta pregunta lo que el cálculo necesita, y no más", function () {
     var s = freshSandbox();
     var ids = s.ONBOARDING_STEPS.map(function (x) { return x.id; });
-    ["sex", "age", "weight", "height", "activity", "goal"].forEach(function (need) {
+    ["sex", "age", "weight", "height", "steps", "goal"].forEach(function (need) {
       assert.ok(ids.indexOf(need) !== -1, "sin " + need + " no se puede calcular nada");
     });
     // El tope subió de 8 a 15 el 2026-09-03: el usuario pidió que se
@@ -843,7 +843,7 @@ function run(t) {
 
     // Simula el alta entera: cada paso guarda su respuesta.
     var respuestas = { sex: "female", age: 31, weight: 64.5, height: 170,
-                       activity: 1.725, goal: "cut", budgetMode: "small" };
+                       steps: 11000, goal: "cut", budgetMode: "small" };
     s.ONBOARDING_STEPS.forEach(function (step) {
       var actual = s.getSettings() || {};
       var merged = {};

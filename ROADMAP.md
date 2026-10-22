@@ -1,5 +1,74 @@
 # Nutrition Planner — Roadmap
 
+## Lo del 2026-10-22 (sello `20261022a`, 1212 tests)
+
+El dueño lo pidió todo junto («Всё берём»): las cuatro cosas que quedaban y
+tres nuevas. Cada una con sus tests y probada en Chrome sin interfaz a 390 px.
+
+| Qué | Dónde | Estado |
+|---|---|---|
+| «Не нравится» en el plan y en la compra, con «Вернуть» | `handleQuitarIngrediente` (`js/app.js`), `renderBotonNoMeGusta` (`render.js`), `js/ui/aviso-deshacer.js` | **Hecho** |
+| Lo mismo en «sin cocinar» (tarjetas y compra) | `quitarProductoSinCocinar` (`render-no-cook.js`) | **Hecho** |
+| Nombres de producto de «sin cocinar» en ru/en/uk | `js/i18n/productos-*.js`, `js/core/productos-idioma.js`, `tProduct` | **Hecho** |
+| «Ya compré todo» sin cocinar con envases enteros | `markNoCookPurchaseDone` (`pantry.js`) | **Hecho** |
+| Pasos al día en vez de «Nivel de actividad» | `PASOS_TRAMOS` (`calculator.js`), `#steps` | **Hecho** |
+| Aspecto «Grafito» (etapa 2 del rediseño) | `scripts/temas/aspectos/grafito.py` | **Hecho**, y es el de por defecto |
+| Página del ejercicio: récords, gráfica, últimas veces | `entrenoStatsFicha` (`workout-stats.js`), `entrenoFichaResultadosHtml` | **Hecho** |
+
+**«Не нравится».** El producto pasa a «Alimentos que no te gustan» con el
+nombre TAL COMO SE LEE (traducido) y se re-tiran al momento las tomas que lo
+llevan, en todos los días; lo demás no cambia. Si una toma no tiene otra
+opción en lo que queda del presupuesto del día, se rehace ese día entero
+(`regenerarDiaDelPlan`). Medido antes del arreglo: «yogur griego» seguía en
+1 de 4 tomas. Causa de fondo, arreglada en el motor: la fase 2 de `pickDish`
+(buscar en TODA la categoría cuando nada cabe) ignoraba los «no me gusta»;
+ahora los respeta y solo cae a la categoría entera si no queda ningún plato
+(`_sinPlatosNoGustados`, `dish-selector.js`; 8 de 40 picks traían yogur sin
+el arreglo, 0 con él).
+
+**Productos traducidos.** 1274 nombres (los que puede elegir el generador)
+por idioma, escritos a mano; las marcas se quedan. Se enseña «перевод /
+etiqueta» (`nombreProductoDoble`), nunca la traducción sola: la etiqueta es
+lo que se busca en la tienda. Solo se descarga la tabla del idioma en uso
+(~150 KB) y al llegar se repinta lo que haya en pantalla. Un producto nuevo
+del catálogo sin traducir hace fallar `tests/productos-idioma.test.js`.
+El «no me gusta» de un producto vuelve a su etiqueta con `PRODUCT_TABLES`
+(`traducirTerminosDislike`); ojo: si se cambia de idioma, la tabla del
+idioma anterior ya no está cargada y ese término deja de tapar el producto.
+
+**Envases enteros.** Como `markPurchaseDone` del plan normal: de cada
+producto se compra lo que FALTA (lo del plan menos lo libre en la despensa)
+en envases enteros, y se guardan las raciones por envase con el plan
+(`servingsPerPackage`). Lo comprado para OTROS planes sin cocinar de hoy en
+adelante y sin comer no cuenta como libre: con 3 días, la despensa queda con
+los mismos envases que dice la lista de la compra (comprobado en el
+navegador, 22 de 22 productos). El plan normal NO hace esta reserva todavía.
+
+**Pasos al día.** Cinco tramos que dan los cinco multiplicadores de siempre
+(<5000 → 1,2; <7500 → 1,375; <10000 → 1,55; <12500 → 1,725; más → 1,9).
+Debajo del campo se dice el nivel. Un perfil guardado antes solo trae
+`activity`: se pasa a unos pasos de su mismo tramo (`pasosPorActividad`) y
+sus calorías no cambian (comprobado: 3116 = 3116). Se guardan `steps` y
+`activity`. El alta pregunta los pasos en vez de los cinco niveles.
+
+**Grafito.** Hecho a partir de «Ночной лес» sin el decorado (curvas, estrellas,
+órbitas): grafito, tarjetas con filo fino, acento lima `#C8F04A`, Manrope e
+Inter. La miniatura se sacó con `scripts/qa/cdp.mjs` (Playwright no está):
+enseña la interfaz de hoy, con el botón «Тренировки», y las otras son de
+antes. **Es el aspecto por defecto** (el dueño, el mismo día: «сделай по
+умолчанию»); quien había elegido otro lo conserva.
+
+**Página del ejercicio.** La ficha de siempre (animación, músculos, técnica)
+lleva debajo «Tus resultados»: récords con la fecha de la primera vez (1RM
+estimado, más peso, más volumen; sin peso, más repeticiones o más tiempo), la
+gráfica de cada sesión y las últimas 5 veces con sus series. Sale igual desde
+el catálogo, desde la animación del plan o de la sesión, y desde «Progreso»
+(«Открыть упражнение» en cada ejercicio).
+
+**De paso:** la «x» de «Не нравится» salía «�D7»: un byte NUL en `style.css`
+en vez de `\00D7`. Y la nota de Ajustes que decía que los nombres «siguen en
+español» ya no era verdad; ahora dice que van traducidos junto a la etiqueta.
+
 ## «Sin cocinar» con la misma arquitectura que el plan normal (2026-10-21)
 
 El dueño pidió que el modo «sin cocinar» esté montado como el plan normal
@@ -76,6 +145,7 @@ Chrome sin interfaz:
   stock las RACIONES del plan, no el envase entero que se compra; el plan
   normal suma los envases. Así lo que sobra de un envase no consta en la
   despensa, aunque el resumen del día dice que «queda en la despensa».
+  **Arreglado el 2026-10-22** (ver arriba, «Envases enteros»).
 
 ## Entrenamientos: estado y prioridades al 2026-10-21 (esto primero si vas a tocar entrenamientos)
 

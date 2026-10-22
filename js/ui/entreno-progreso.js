@@ -27,6 +27,7 @@
  *   entrenoUltimaSesionHtml(log)          «Inicio»: la última sesión y el último récord, sin DOM
  *   entrenoUltimoRecord(log)              el ejercicio del récord más reciente, o null
  *   entrenoPesoHtml(lista, ahora)         «Progreso»: el peso corporal, sin DOM
+ *   entrenoFichaResultadosHtml(id, log)   la página de un ejercicio: récords, gráfica y últimas veces, sin DOM
  *
  * Con la barra de secciones (js/ui/entreno-pestanas.js, 2026-10-21) el aviso de
  * la sesión sin terminar sale en «Inicio» y en «Entrenar», la última sesión en
@@ -220,6 +221,9 @@ function entrenoEjerciciosHtml(log) {
       "</summary>" +
       _progresoLineaHtml(x) +
       '<p class="entreno__ej-mejor">' + _progresoEsc(mejor) + "</p>" +
+      // La página entera del ejercicio: récords, últimas veces y cómo se hace.
+      '<button type="button" class="btn-secondary entreno__ej-ficha" data-anim-abrir="' + _progresoEsc(x.id) + '">' +
+        _progresoEsc(t("ent.ficha_abrir")) + "</button>" +
     "</details></li>";
   }).join("");
   return '<h4 class="entreno__progreso-sub">' + _progresoEsc(t("ent.progreso_ejercicios")) + "</h4>" +
@@ -326,6 +330,47 @@ function entrenoUltimaSesionHtml(log) {
     "</article>";
   }
   return h;
+}
+
+// ── La página de un ejercicio: «Tus resultados» (2026-10-22) ─────────────
+// Debajo de la animación, los músculos y la técnica (entrenoFichaHtml,
+// render-entreno.js): los récords con su fecha, la gráfica de cada sesión y
+// las últimas veces con sus series. Sale igual desde el catálogo, desde la
+// animación del plan o de la sesión, y desde «Progreso».
+
+var ENTRENO_FICHA_ULTIMAS = 5;
+
+function _fichaRecordHtml(etiqueta, valor, t0) {
+  return '<li class="anim-record"><span class="anim-record__etiqueta">' + _progresoEsc(etiqueta) + "</span>" +
+    '<strong class="anim-record__valor">' + _progresoEsc(valor) + "</strong>" +
+    '<span class="anim-record__fecha">' + _progresoEsc(_progresoFecha(t0)) + "</span></li>";
+}
+
+/** «Tus resultados» de un ejercicio. Sin historia, una frase que dice qué saldrá aquí. Sin DOM. */
+function entrenoFichaResultadosHtml(id, log) {
+  var h = '<section class="anim-ficha__resultados"><h3 class="anim-ficha__subtitulo">' + _progresoEsc(t("ent.ficha_resultados")) + "</h3>";
+  var f = (log && log.sesiones && typeof entrenoStatsFicha === "function") ? entrenoStatsFicha(log, id, ENTRENO_FICHA_ULTIMAS) : null;
+  if (!f) return h + '<p class="anim-ficha__vacio">' + _progresoEsc(t("ent.ficha_sin_datos")) + "</p></section>";
+  var r = f.records;
+  var filas = [];
+  if (f.tipo === "peso") {
+    if (r.e1rm) filas.push(_fichaRecordHtml(t("ent.ficha_rec_e1rm"), entrenoKg(r.e1rm.valor) + " (" + entrenoKg(r.e1rm.kg) + " × " + r.e1rm.reps + ")", r.e1rm.t));
+    if (r.kg) filas.push(_fichaRecordHtml(t("ent.ficha_rec_peso"), entrenoKg(r.kg.kg) + " × " + r.kg.reps, r.kg.t));
+    if (r.volumen) filas.push(_fichaRecordHtml(t("ent.ficha_rec_volumen"), entrenoMiles(Math.round(r.volumen.valor)) + " " + t("ent.kg"), r.volumen.t));
+  } else if (r.reps) {
+    var valor = f.tipo === "tiempo" ? tFormat("ent.segundos", { n: r.reps.reps }) : tFormat("ent.reps_n", { n: r.reps.reps });
+    filas.push(_fichaRecordHtml(t(f.tipo === "tiempo" ? "ent.ficha_rec_tiempo" : "ent.ficha_rec_reps"), valor, r.reps.t));
+  }
+  h += '<h4 class="entreno__progreso-sub">' + _progresoEsc(t("ent.ficha_records")) + "</h4>" +
+    '<ul class="anim-records">' + filas.join("") + "</ul>";
+  h += '<h4 class="entreno__progreso-sub">' + _progresoEsc(tFormat("ent.ficha_grafica", { n: f.sesiones })) + "</h4>" +
+    _progresoLineaHtml({ id: f.id, name: f.name, tipo: f.tipo, puntos: f.puntos });
+  h += '<h4 class="entreno__progreso-sub">' + _progresoEsc(t("ent.ficha_ultimas")) + "</h4>" +
+    '<ul class="anim-ficha__ultimas">' + f.ultimas.map(function (v) {
+      return "<li><span class=\"anim-ficha__ultima-fecha\">" + _progresoEsc(_progresoFecha(v.t)) + "</span>" +
+        "<span>" + _progresoEsc(entrenoSeriesTexto(v.series, f.tipo === "tiempo")) + "</span></li>";
+    }).join("") + "</ul>";
+  return h + "</section>";
 }
 
 /** De "2026-10-21" a la medianoche de ese día, en ms. */

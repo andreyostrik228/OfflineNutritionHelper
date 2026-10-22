@@ -556,6 +556,8 @@ function renderShoppingRow(entry, storeId, marcado) {
         '<div class="shopping-item__meta">' + escapeHtml(usedText) + '</div>' +
         pantryNote +
         '<div class="shopping-item__buy">' + buyText + '</div>' +
+        // «No me gusta» (2026-10-22): no marca la fila (js/app.js lo escucha en captura).
+        (typeof renderBotonNoMeGusta === "function" ? renderBotonNoMeGusta(entry.name, nombreComidaDoble(entry.name)) : "") +
       '</div>' +
       '<div class="shopping-item__price">' +
         '&euro;' + round2(p.purchaseCost) +

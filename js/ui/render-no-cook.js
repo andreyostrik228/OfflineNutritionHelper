@@ -27,6 +27,7 @@
  *   noCookCompraItems(dias)               – la compra de todos los días juntos, sin DOM
  *   renderNoCookShoppingList(dias)        – la pinta en su panel de «Compra» (o lo esconde)
  *   noCookAvisoGuardado()                 – el aviso de «plan guardado» de esa lista
+ *   quitarProductoSinCocinar(id, nombre)  – «No me gusta»: lo quita y re-tira sus tomas (2026-10-22)
  *   lastNoCookDays / lastNoCookPlan (día 1) / lastNoCookSlots (sus tomas) / lastNoCookStore
  * ─────────────────────────────────────────────────────────────────────────
  */
@@ -89,7 +90,83 @@ function initNoCookRefs(refs) {
   // Delegación: las tarjetas se re-pintan enteras en cada cambio, así que
   // el listener vive en el contenedor y no en cada botón.
   if (noCookResults) noCookResults.addEventListener("click", handleSwapNoCookSlot);
+  if (noCookResults) noCookResults.addEventListener("click", _alTocarQuitarProducto);
   if (_compra.lista) _compra.lista.addEventListener("click", _alTocarFilaDeCompra);
+  if (_compra.lista) _compra.lista.addEventListener("click", _alTocarQuitarProducto);
+}
+
+// ── «No me gusta» (2026-10-22) ───────────────────────────────────────────
+// Como en el plan normal (js/app.js, handleQuitarIngrediente): el producto pasa
+// a «Alimentos que no te gustan» con su nombre de la etiqueta (el filtro de
+// productos compara contra él) y se re-tiran AL MOMENTO las tomas que lo
+// llevan, en todos los días; lo demás no cambia. «Deshacer» lo devuelve todo.
+
+/** El nombre del producto en el idioma de ahora (sin render.js, la etiqueta). */
+function _nombreProductoLeido(nombre) {
+  return typeof nombreProducto === "function" ? nombreProducto(nombre) : nombre;
+}
+function _nombreProductoDoble(nombre) {
+  return typeof nombreProductoDoble === "function" ? nombreProductoDoble(nombre) : nombre;
+}
+
+function _botonQuitarProducto(item) {
+  return '<button type="button" class="no-me-gusta-btn" data-action="quitar-producto"' +
+    ' data-id="' + escapeHtml(String(item.id)) + '" data-nombre="' + escapeHtml(item.name) + '"' +
+    ' aria-label="' + escapeHtml(tFormat("ui.no_me_gusta_aria", { nombre: _nombreProductoLeido(item.name) })) + '">' +
+    escapeHtml(t("ui.no_me_gusta")) + "</button>";
+}
+
+function _alTocarQuitarProducto(ev) {
+  var btn = ev.target.closest ? ev.target.closest('button[data-action="quitar-producto"]') : null;
+  if (!btn) return;
+  quitarProductoSinCocinar(btn.getAttribute("data-id"), btn.getAttribute("data-nombre"));
+}
+
+/**
+ * Quita un producto del plan sin cocinar: «no me gusta» y, en cada día, se
+ * vuelve a tirar cada toma que lo lleva. Avisa de cuántas cambiaron (y de las
+ * que no tenían otra opción), con «Deshacer».
+ * La lista de «no me gusta» se lleva el nombre TAL COMO SE LEE (traducido,
+ * si hay tabla): es una lista que escribe y lee el usuario.
+ * traducirTerminosDislike lo devuelve a la etiqueta con la misma tabla.
+ *
+ * @param {string} id - del catálogo
+ * @param {string} nombre - el de la etiqueta
+ */
+function quitarProductoSinCocinar(id, nombre) {
+  if (!lastNoCookDays || !nombre || typeof regenerateNoCookSlot !== "function") return;
+  var antes = JSON.parse(JSON.stringify(lastNoCookDays));
+  var termino = _nombreProductoLeido(nombre);
+  var anadido = (typeof agregarNoMeGusta === "function") ? agregarNoMeGusta(termino) : false;
+  var cambiadas = 0;
+  var sinCambio = 0;
+  lastNoCookDays.forEach(function (plan, d) {
+    plan.slots.forEach(function (slot, idx) {
+      var lleva = (slot.items || []).some(function (it) { return String(it.id) === String(id); });
+      if (!lleva) return;
+      var opciones = {};
+      var base = lastNoCookOptions || {};
+      for (var k in base) opciones[k] = base[k];
+      opciones.allowMakeAhead = lastNoCookDays.length > 1 && d > 0;
+      var res = regenerateNoCookSlot(plan, slot.key, lastNoCookStore, opciones);
+      if (!res || res.error || !res.slot) { sinCambio++; return; }
+      plan.slots[idx] = res.slot;
+      cambiadas++;
+    });
+    recomputeNoCookPlanTotals(plan);
+  });
+  paintNoCookDays(lastNoCookDays);
+  _guardarPlanSinCocinar();
+  var texto = sinCambio
+    ? tFormat("ui.quitado_sin_alternativa", { nombre: termino, n: sinCambio })
+    : tFormat("ui.quitado_n", { nombre: termino, n: cambiadas });
+  if (typeof mostrarAvisoDeshacer === "function") {
+    mostrarAvisoDeshacer(texto, function () {
+      if (anadido && typeof quitarNoMeGusta === "function") quitarNoMeGusta(termino);
+      paintNoCookDays(antes);
+      _guardarPlanSinCocinar();
+    });
+  }
 }
 
 // ── La compra de todos los días (2026-10-21) ─────────────────────────────
@@ -153,7 +230,7 @@ function _noCookCompraFilaHtml(x, marcado) {
   var hayMarcas = _hayMarcasSinCocinar();
   var casilla = hayMarcas
     ? '<button type="button" class="shopping-item__check" role="checkbox" aria-checked="' + (marcado ? "true" : "false") + '"' +
-        ' aria-label="' + escapeHtml(t("ui.marcar_como_comprado").replace("{producto}", x.name)) + '"></button>'
+        ' aria-label="' + escapeHtml(t("ui.marcar_como_comprado").replace("{producto}", _nombreProductoLeido(x.name))) + '"></button>'
     : '<span class="shopping-item__check" aria-hidden="true"></span>';
   var raciones = round2(x.servings);
   var usado = t("ui.usado") + ": " + raciones + " " + noCookUnitLabel(x.unit, raciones) +
@@ -165,11 +242,12 @@ function _noCookCompraFilaHtml(x, marcado) {
       (hayMarcas ? ' data-clave="' + escapeHtml(claveDeArticulo(x)) + '"' : "") + ">" +
     casilla +
     '<div class="shopping-item__main">' +
-      '<div class="shopping-item__name">' + escapeHtml(x.name) + findBtn + "</div>" +
+      '<div class="shopping-item__name">' + escapeHtml(_nombreProductoDoble(x.name)) + findBtn + "</div>" +
       (x.brand ? '<div class="shopping-item__meta">' + escapeHtml(x.brand) + "</div>" : "") +
       '<div class="shopping-item__meta">' + escapeHtml(usado) + "</div>" +
       '<div class="shopping-item__buy">' + escapeHtml(t("ui.comprar")) + ": " + x.packs + " &times; " +
         escapeHtml(t("ui.envase")) + envase + "</div>" +
+      _botonQuitarProducto(x) +
     "</div>" +
     '<div class="shopping-item__price">' + (x.price === null ? "" : "&euro;" + round2(x.cost)) + "</div>" +
   "</li>";
@@ -193,7 +271,7 @@ function _pintarFilasSinCocinar() {
 
 function _alTocarFilaDeCompra(ev) {
   if (!_hayMarcasSinCocinar()) return;
-  if (ev.target.closest && ev.target.closest("a")) return;
+  if (ev.target.closest && ev.target.closest("a, [data-action=\"quitar-producto\"]")) return;
   var fila = ev.target.closest ? ev.target.closest(".shopping-item") : null;
   if (!fila || !fila.getAttribute("data-clave")) return;
   var clave = fila.getAttribute("data-clave");
@@ -701,12 +779,13 @@ function renderNoCookItem(item) {
   return (
     '<div class="nocook-item">' +
       levelBadge + wholeBadge +
-      '<div class="nocook-item__name">' + escapeHtml(item.name) + findBtn + "</div>" +
+      '<div class="nocook-item__name">' + escapeHtml(_nombreProductoDoble(item.name)) + findBtn + "</div>" +
       (item.brand ? '<div class="nocook-item__brand">' + escapeHtml(item.brand) + "</div>" : "") +
       '<div class="nocook-item__qty">' + qtyText + "</div>" +
       macrosLine +
       '<div class="nocook-item__package">' + packageLine + "</div>" +
       allergenLine +
+      _botonQuitarProducto(item) +
     "</div>"
   );
 }

@@ -4865,6 +4865,21 @@ body.modo-cuestionario .next-meal-sticky { display: none !important; }
 .anim-musculo--s { background: var(--surface-2); color: var(--text-2); }
 .anim-ficha__tecnica { margin: 12px 0 0; color: var(--ink); }
 .anim-ficha__leyenda { margin: 8px 0 0; font-size: 0.8rem; color: var(--text-3); }
+/* «Tus resultados» en la página de un ejercicio (2026-10-22): récords con su
+   fecha, la gráfica de cada sesión y las últimas veces. */
+.anim-ficha__resultados { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+.anim-ficha__subtitulo { margin: 0; font-size: 1.15rem; line-height: 1.2; color: var(--ink); }
+.anim-ficha__vacio { margin: 6px 0 0; color: var(--text-2); }
+.anim-records { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.anim-record { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 10px 12px; border-radius: var(--r-md); background: var(--surface-2); }
+.anim-record__etiqueta { color: var(--text-2); font-size: 0.86rem; }
+.anim-record__valor { grid-column: 2; grid-row: 1 / span 2; align-self: center; text-align: right; font-size: 1.05rem; color: var(--ink); }
+.anim-record__fecha { color: var(--text-3); font-size: 0.8rem; }
+.anim-ficha__ultimas { list-style: none; margin: 0; padding: 0; }
+.anim-ficha__ultimas li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.anim-ficha__ultima-fecha { color: var(--text-3); }
+.anim-ficha__resultados .entreno__linea { padding: 0; }
+.entreno__ej-ficha { margin-top: 10px; }
 @media (prefers-reduced-motion: reduce) {
   .entreno__anim,
   .sesion__ej-anim { transition: none; }
@@ -5408,3 +5423,58 @@ body.con-entreno-pestanas .sesion__descanso {
   background: radial-gradient(circle at 32px 50%, var(--on-volt) 0 10px, transparent 11px), var(--volt);
 }
 .entreno__interruptor:focus-visible { outline: 3px solid var(--volt); outline-offset: 2px; }
+
+/* ── «No me gusta» y el aviso con «Deshacer» (2026-10-22) ────────────────
+   El botón va en cada ingrediente del plan y de la lista de la compra (y en
+   cada producto sin cocinar): discreto, porque hay uno por fila. El aviso
+   flota encima de la barra de abajo. */
+.no-me-gusta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 32px;
+  margin-top: 6px;
+  padding: 4px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--pill);
+  background: transparent;
+  color: var(--text-2);
+  font: 600 0.8rem/1.1 var(--font-body);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.no-me-gusta-btn::before { content: "\00D7"; font-weight: 800; }
+.no-me-gusta-btn:focus-visible { outline: 3px solid var(--volt); outline-offset: 2px; }
+.aviso-deshacer {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--dock) + 24px + env(safe-area-inset-bottom, 0px));
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: min(520px, calc(100% - 24px));
+  padding: 12px 14px 12px 16px;
+  transform: translateX(-50%);
+  border-radius: 18px;
+  background: var(--ink);
+  color: var(--on-ink);
+  box-shadow: var(--shadow-2);
+}
+.aviso-deshacer[hidden] { display: none; }
+.aviso-deshacer__texto { flex: 1 1 auto; margin: 0; font-size: 0.92rem; line-height: 1.35; }
+.aviso-deshacer__boton {
+  flex: none;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--pill);
+  background: var(--volt);
+  color: var(--on-volt);
+  font: 800 0.9rem/1 var(--font-body);
+  cursor: pointer;
+}
+.aviso-deshacer__boton[hidden] { display: none; }
+@media (min-width: 901px) {
+  .aviso-deshacer { bottom: 24px; }
+}

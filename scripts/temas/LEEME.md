@@ -3,8 +3,9 @@
 El usuario elige el **aspecto** de la aplicación en *Ajustes → Aspecto*
 (`ajustesAspecto` en `index.html`, lógica en `js/ui/render-menu.js`, estado en
 `js/core/look.js`). El primero —arriba a la izquierda— es el **aspecto por
-defecto**, `entreno`: es `assets/css/style.css` tal cual y no tiene hoja propia.
-Los demás son hojas de `assets/css/temas/` que se cargan **encima** de `style.css`.
+defecto**, `grafito` (desde el 2026-10-22; antes `hojas`). `entreno` es
+`assets/css/style.css` tal cual y es el único sin hoja propia. Los demás son hojas
+de `assets/css/temas/` que se cargan **encima** de `style.css`.
 
 | id | nombre (ru) | de qué va |
 |---|---|---|
@@ -17,6 +18,7 @@ Los demás son hojas de `assets/css/temas/` que se cargan **encima** de `style.c
 | `mercadillo` | Рынок | papel de estraza, toldo, tickets, etiqueta nutricional |
 | `revista` | Журнал | revista de cocina: papel, filetes, cifras en serif |
 | `noche` | Ночной лес | oscuro, curvas de nivel, brillo menta |
+| `grafito` | Графит | oscuro y sin decorado: grafito, tarjetas con filo fino, acento lima (2026-10-22) |
 | `kitty` | Китти | rosa «kawaii»: lazos, corazones, lunares, gingham y orejitas (el ambiente de Hello Kitty, **sin dibujar el personaje ni su nombre**: es una marca de Sanrio) |
 
 ## Cómo se genera una hoja

@@ -389,13 +389,16 @@ function renderPantryPanel() {
 function renderNoCookStockRow(entry) {
   var cantidad = round2(entry.quantity);
   var unidad = (typeof noCookUnitLabel === "function") ? noCookUnitLabel(entry.unit, cantidad) : (entry.unit || "");
+  // "перевод / etiqueta", como en el plan sin cocinar (render.js).
+  var doble = (typeof nombreProductoDoble === "function") ? nombreProductoDoble(entry.name) : entry.name;
+  var leido = (typeof nombreProducto === "function") ? nombreProducto(entry.name) : entry.name;
   return (
     '<li class="pantry-item pantry-item--sin-cocinar" data-nocook-id="' + escapeHtml(entry.id) + '">' +
-      '<span class="pantry-item__name">' + escapeHtml(entry.name) + '</span>' +
+      '<span class="pantry-item__name">' + escapeHtml(doble) + '</span>' +
       renderExpiryBadge(entry, true) +
       '<span class="pantry-item__amount pantry-item__amount--fija">' + escapeHtml(cantidad + (unidad ? " " + unidad : "")) + '</span>' +
       '<button type="button" class="pantry-item__remove" data-action="remove-nocook" aria-label="' +
-        escapeHtml(tFormat("ui.despensa_quitar", { nombre: entry.name })) + '">&times;</button>' +
+        escapeHtml(tFormat("ui.despensa_quitar", { nombre: leido })) + '">&times;</button>' +
     '</li>'
   );
 }
@@ -1070,9 +1073,9 @@ function renderMealChips(entry) {
 /**
  * Tarjeta de un plan "sin cocinar" con algo pendiente (comprar y/o
  * consumir alguna toma) -- equivalente a renderActiveEntryCard() para
- * planes de plato, pero sin checklist de exclusión parcial (los
- * productos son unidades discretas, no hay "cuánto falta" que calcular,
- * ver markNoCookPurchaseDone en pantry.js).
+ * planes de plato, pero sin checklist de exclusión parcial: «Ya compré
+ * todo» compra lo que falte en envases enteros (markNoCookPurchaseDone en
+ * pantry.js).
  * @param {object} entry
  * @returns {string}
  */

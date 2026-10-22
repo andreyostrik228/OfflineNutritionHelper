@@ -9,8 +9,9 @@
  * ── Qué es un aspecto ───────────────────────────────────────────────────
  * Una hoja de estilos de assets/css/temas/ que se carga ENCIMA de
  * assets/css/style.css y cambia el aspecto entero: fondo, botones, tarjetas,
- * tipografías. El aspecto por defecto es "hojas" (el dueño lo pidió el
- * 2026-10-07: «основной стиль должен быть листва»). "entreno" ES style.css
+ * tipografías. El aspecto por defecto es "grafito" desde el 2026-10-22 (el
+ * dueño, al terminar la etapa 2 del rediseño: «сделай по умолчанию»; antes
+ * fue "hojas", desde el 2026-10-07). "entreno" ES style.css
  * y es el único sin hoja propia: sigue ahí como una opción más. Las hojas
  * se GENERAN (scripts/temas/construir.py); no se editan a mano.
  *
@@ -31,14 +32,14 @@
 /** Clave propia, NO dentro de los ajustes. */
 var LOOK_STORAGE_KEY = "nutritionPlanner.look.v1";
 
-/** El aspecto por defecto: el diseño de style.css, sin hoja de aspecto. */
-var DEFAULT_LOOK = "hojas";
+/** El aspecto por defecto: el de quien no ha elegido ninguno. */
+var DEFAULT_LOOK = "grafito";
 
 /**
  * Los aspectos, en el orden en que salen en el menú. El por defecto va el
- * PRIMERO (arriba a la izquierda): decisión del dueño, 2026-10-06; desde el
- * 2026-10-07 el por defecto es "hojas", y "entreno" (style.css sin hoja)
- * pasa a ser el segundo.
+ * PRIMERO (arriba a la izquierda): decisión del dueño, 2026-10-06. Desde el
+ * 2026-10-22 el por defecto es "grafito"; "hojas" (el de antes) y "entreno"
+ * (style.css sin hoja) van detrás.
  *
  *   id      lo que se guarda y lo que lleva `data-look` en <html>
  *   file    la hoja, o null para el aspecto por defecto
@@ -46,6 +47,8 @@ var DEFAULT_LOOK = "hojas";
  *   dark    true si el lienzo es oscuro (decide el icono/contraste de las ayudas)
  */
 var LOOKS = [
+  // Графит (2026-10-22, etapa 2 del rediseño): oscuro y sin decorado, acento lima.
+  { id: "grafito",    file: "assets/css/temas/grafito.css",    color: "#15171B", dark: true },
   { id: "hojas",      file: "assets/css/temas/hojas.css",      color: "#E9F1E3", dark: false },
   { id: "entreno",    file: null,                            color: "#edeff3", dark: false },
   { id: "cristal",    file: "assets/css/temas/cristal.css",    color: "#EEF5F2", dark: false },

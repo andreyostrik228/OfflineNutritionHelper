@@ -344,8 +344,14 @@ function entrenoMusculosHtml(id) {
   return grupo(m.p, "ent.musculos_trabajan", "p") + grupo(m.s, "ent.musculos_ayudan", "s");
 }
 
-/** Lo que va en la ventana de un ejercicio: la animación grande, los músculos y la técnica. */
-function entrenoFichaHtml(id) {
+/**
+ * La página de un ejercicio: la animación grande, los músculos, la técnica y,
+ * desde el 2026-10-22, «Tus resultados» (récords, gráfica y últimas veces,
+ * entrenoFichaResultadosHtml en entreno-progreso.js) a partir del diario.
+ * @param {string} id
+ * @param {object} [log] - el diario (entrenoLogLeer); sin él, sin resultados
+ */
+function entrenoFichaHtml(id, log) {
   var e = _entrenoCatalogo(id);
   if (!e) return "";
   return '<div class="anim-ficha">' +
@@ -353,7 +359,13 @@ function entrenoFichaHtml(id) {
     entrenoMusculosHtml(id) +
     '<p class="anim-ficha__tecnica">' + entrenoEsc(entrenoTecnica(e)) + "</p>" +
     '<p class="anim-ficha__leyenda">' + entrenoEsc(t("ent.animacion_leyenda")) + "</p>" +
+    (log && typeof entrenoFichaResultadosHtml === "function" ? entrenoFichaResultadosHtml(id, log) : "") +
   "</div>";
+}
+
+/** El diario para la página de un ejercicio, o null si no hay. */
+function entrenoFichaDiario() {
+  return typeof entrenoLogLeer === "function" ? entrenoLogLeer() : null;
 }
 
 /** Abre la ventana con la animación grande de un ejercicio. */
@@ -363,7 +375,8 @@ function entrenoAbrirAnimacion(id) {
   if (!dialogo || !e) return;
   document.getElementById("entrenoAnimTitulo").textContent = entrenoNombre(e);
   var cuerpo = document.getElementById("entrenoAnimCuerpo");
-  cuerpo.innerHTML = entrenoFichaHtml(id);
+  cuerpo.innerHTML = entrenoFichaHtml(id, entrenoFichaDiario());
+  cuerpo.scrollTop = 0;
   if (typeof dialogo.showModal === "function") dialogo.showModal();
   else dialogo.setAttribute("open", "");
   if (typeof entrenoAnimacionesActivar === "function") entrenoAnimacionesActivar(cuerpo);

@@ -19,6 +19,7 @@
  * Expone (globales):
  *   ENTRENO_STATS_GRUPOS
  *   entrenoStatsEjercicios(log)                      → [{ id, name, muscle, tipo, sesiones, ultima, mejor, puntos }]
+ *   entrenoStatsFicha(log, id, n)                    → { tipo, puntos, records, ultimas, … } | null (página del ejercicio)
  *   entrenoStatsMusculos(log, ahora, dias)           → [{ grupo, series, porSemana }]
  *   entrenoStatsCumplimiento(log, dias, ahora, n)    → { hechas, previstas, pct, semanas } | null
  *   entrenoStatsGrafico(puntos, ancho, alto)         → { path, marcas, min, max } | null
@@ -85,6 +86,46 @@ function entrenoStatsEjercicios(log) {
       mejor: mejor, puntos: puntos
     };
   }).sort(function (a, b) { return b.ultima - a.ultima; });
+}
+
+/**
+ * Lo que enseña la PÁGINA de un ejercicio (2026-10-22): sus récords, cada uno
+ * con la fecha en que se consiguió por primera vez, los puntos de la gráfica
+ * (los de entrenoStatsEjercicios) y las últimas `n` veces con sus series de
+ * trabajo, la más reciente primero. null si nunca se hizo.
+ *   records.e1rm     { valor, kg, reps, t }  solo con peso (Epley, hasta 12 reps)
+ *   records.kg       { kg, reps, t }         el peso más alto (a igual peso, más reps)
+ *   records.reps     { reps, kg, t }         más repeticiones (o segundos) en una serie
+ *   records.volumen  { valor, t }            más kilos × reps en una sesión
+ * Los que no aplican (sin peso: e1rm, kg, volumen) quedan en null.
+ */
+function entrenoStatsFicha(log, id, n) {
+  var x = entrenoStatsEjercicios(log).filter(function (e) { return e.id === id; })[0];
+  if (!x) return null;
+  var rec = { e1rm: null, kg: null, reps: null, volumen: null };
+  var veces = [];
+  log.sesiones.forEach(function (sesion) {
+    sesion.ejercicios.forEach(function (e) {
+      if (e.id !== id) return;
+      var trabajo = _statsTrabajo(e);
+      if (!trabajo.length) return;
+      var volumen = 0;
+      trabajo.forEach(function (s) {
+        var kg = s.kg || 0;
+        var e1 = entrenoLogE1rm(kg, s.reps);
+        if (e1 && (!rec.e1rm || rec.e1rm.valor < e1)) rec.e1rm = { valor: e1, kg: kg, reps: s.reps, t: sesion.inicio };
+        if (0 < kg && (!rec.kg || rec.kg.kg < kg || (rec.kg.kg === kg && rec.kg.reps < s.reps))) rec.kg = { kg: kg, reps: s.reps, t: sesion.inicio };
+        if (!rec.reps || rec.reps.reps < s.reps) rec.reps = { reps: s.reps, kg: kg, t: sesion.inicio };
+        volumen += kg * s.reps;
+      });
+      if (0 < volumen && (!rec.volumen || rec.volumen.valor < volumen)) rec.volumen = { valor: volumen, t: sesion.inicio };
+      veces.push({ t: sesion.inicio, series: trabajo });
+    });
+  });
+  return {
+    id: x.id, name: x.name, tipo: x.tipo, sesiones: x.sesiones, puntos: x.puntos, mejor: x.mejor,
+    records: rec, ultimas: veces.slice(-(n || 5)).reverse()
+  };
 }
 
 /**

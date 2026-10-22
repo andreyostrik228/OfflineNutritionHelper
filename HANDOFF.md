@@ -18,6 +18,37 @@ llevan al final un bloque «actualización 2026-10-08»). El diario fechado, con
 medidas y causas, está en la cabecera de `STATE.md` (entradas del 2026-10-07 y
 2026-10-08).
 
+### 0.0 ter Lo nuevo del 2026-10-22 (lee esto antes que 0.0 bis)
+
+- **Estado:** sello `20261022a`, **1212 tests en verde**. Siete cosas a la vez
+  (tabla al principio de `ROADMAP.md`): «Не нравится» con «Вернуть» en el plan,
+  la compra y «sin cocinar»; nombres de producto de «sin cocinar» traducidos;
+  «Ya compré todo» sin cocinar con envases enteros; pasos al día en vez del
+  nivel de actividad; el aspecto «Grafito»; la página del ejercicio con
+  récords, gráfica y últimas veces. Lo de 0.0 bis que decía «sin empezar»
+  (los pasos) y «queda una cosa de LÓGICA» (los envases) ya está hecho.
+- **Reglas nuevas (no las rompas):**
+  - `#activity` ya no existe: los pasos (`#steps`) mandan y `activity` se
+    deriva en `readForm()` con `actividadPorPasos`. `calculateProfile` sigue
+    leyendo `data.activity`.
+  - Un nombre de producto del catálogo NUNCA pasa por `nombreComida`/`tFood`:
+    tiene su propia tabla (`PRODUCT_TABLES`, `tProduct`, `nombreProductoDoble`),
+    que llega tarde. Lo pintado antes de que llegue lo repinta `js/app.js`
+    ("productos-idioma"); si pintas productos en un sitio nuevo, añádelo ahí.
+  - Los «no me gusta» de producto se guardan traducidos y vuelven a la
+    etiqueta con `traducirTerminosDislike`; su caché lleva en la clave las
+    tablas cargadas.
+  - Las claves i18n `ent.record_*` ya existían (avisos de récord en la
+    sesión, con `{valor}`): las de la página del ejercicio son `ent.ficha_rec_*`.
+    Antes de inventar una clave, búscala: `insertar-i18n.js` salta las que ya
+    existen y avisa, no las pisa.
+  - `style.css` llegó a tener un byte NUL (escrito desde un `node -e` con
+    `"\00D7"`): escribe los escapes CSS desde un fichero, no desde la línea
+    de comandos.
+- **«Grafito» es el aspecto por defecto** (`DEFAULT_LOOK` en `js/core/look.js`,
+  el primero de `LOOKS`, y `var id` del IIFE del `<head>`; `tests/look.test.js`
+  vigila que coincidan). Queda la etapa 3 del rediseño (la prueba completa).
+
 ### 0.0 bis Lo nuevo del 2026-10-21 (lee esto antes que 0.0)
 
 - **Estado:** la barra de cinco secciones del panel de entrenamientos está

@@ -281,6 +281,25 @@ function estimateScaledCost(dish, target, storeId) {
 }
 
 /**
+ * Quita de una lista los platos con algún ingrediente (o nombre) de la lista
+ * "no me gusta" — el mismo criterio que filterDishesByTimeTaste(). Si no
+ * queda ninguno, devuelve la lista tal cual: antes un plato que no gusta
+ * que dejar la toma vacía.
+ *
+ * @param {object[]} dishes
+ * @returns {object[]}
+ */
+function _sinPlatosNoGustados(dishes) {
+  var dislikes = (typeof getDislikes === "function") ? getDislikes() : [];
+  if (!dislikes.length || typeof matchesDislike !== "function") return dishes;
+  var quedan = dishes.filter(function (dish) {
+    if (dish.items && dish.items.some(function (item) { return matchesDislike(item.name, dislikes); })) return false;
+    return !matchesDislike(dish.name, dislikes);
+  });
+  return quedan.length ? quedan : dishes;
+}
+
+/**
  * Coste mínimo REALISTA de una categoría: el plato más barato, a ración
  * normal (0.70×–MAX_PORTION_SCALE, sin recurrir a la simplificación de emergencia).
  * Se usa para reservar presupuesto para las tomas siguientes del día
@@ -858,8 +877,12 @@ function pickDish(category, data, usedState, tier, maxCost, target, storeId, tar
   }
 
   // Fase 2: nada en el pool filtrado cabe → buscar en TODA la categoría
-  // (ignora tiempo/sabor, nunca el presupuesto)
-  var wholeCategory = DISH_DB.filter(function (d) { return d.category === category; });
+  // (ignora tiempo/sabor, nunca el presupuesto). Los "no me gusta" se
+  // siguen respetando aquí: antes también se ignoraban, y con el
+  // presupuesto justo «No me gusta» del plan volvía a traer el producto
+  // que se acababa de quitar (medido: yogur griego, 1 de 4 tomas). Solo si
+  // no queda NINGÚN plato de la categoría se cae a la categoría entera.
+  var wholeCategory = _sinPlatosNoGustados(DISH_DB.filter(function (d) { return d.category === category; }));
   if (wholeCategory.length === 0) {
     return { dish: null, scaleFactor: 1, simplified: false, reason: "no_dishes_in_category", minPossibleCost: null };
   }

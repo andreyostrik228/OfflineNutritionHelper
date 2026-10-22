@@ -16,8 +16,51 @@
  *   validateInput(data)      → string de error o "" si todo es válido
  *   resolveBudget(data)      → número final para data.budget, o null
  *   calculateProfile(data)   → { bmr, tdee, calories, protein, fats, carbs }
+ *   actividadPorPasos(pasos) → multiplicador de actividad (1.2 … 1.9)
+ *   nivelPorPasos(pasos)     → { activity, labelKey } del tramo
+ *   pasosPorActividad(a)     → pasos de un perfil guardado con el nivel de antes
  * ─────────────────────────────────────────────────────────────────────────
  */
+
+// ── La actividad sale de los PASOS al día (2026-10-22) ────────────────────
+// Pedido del dueño: «просто написать сколько обычно ходишь в день, чтобы
+// можно было больше скушать». «Sedentario / Ligero / Moderado» era una
+// adivinanza; los pasos los da el móvil. Los tramos llevan a los MISMOS cinco
+// multiplicadores de siempre, así que el cálculo no cambia de forma: solo
+// deja de depender de cómo se ve cada uno. Los entrenamientos siguen sumando
+// aparte (workoutAdjustment), como antes.
+var PASOS_TRAMOS = [
+  { hasta: 5000,     activity: 1.2,   labelKey: "ui.sedentario" },
+  { hasta: 7500,     activity: 1.375, labelKey: "ui.ligero" },
+  { hasta: 10000,    activity: 1.55,  labelKey: "ui.moderado" },
+  { hasta: 12500,    activity: 1.725, labelKey: "ui.alto" },
+  { hasta: Infinity, activity: 1.9,   labelKey: "ui.muy_alto" }
+];
+
+// Un perfil guardado antes solo trae el multiplicador: se pasa a unos pasos
+// DENTRO de su tramo, para que sus calorías no cambien al actualizar.
+var PASOS_POR_ACTIVIDAD = { "1.2": 4000, "1.375": 6000, "1.55": 8500, "1.725": 11000, "1.9": 13000 };
+
+/** @param {number} pasos @returns {{hasta:number, activity:number, labelKey:string}} */
+function nivelPorPasos(pasos) {
+  var n = Number(pasos);
+  if (!isFinite(n) || n < 0) n = 0;
+  for (var i = 0; i < PASOS_TRAMOS.length; i++) {
+    if (n < PASOS_TRAMOS[i].hasta) return PASOS_TRAMOS[i];
+  }
+  return PASOS_TRAMOS[PASOS_TRAMOS.length - 1];
+}
+
+/** @param {number} pasos @returns {number} */
+function actividadPorPasos(pasos) {
+  return nivelPorPasos(pasos).activity;
+}
+
+/** @param {number} activity @returns {number|null} null si no es un nivel conocido */
+function pasosPorActividad(activity) {
+  var clave = String(activity);
+  return Object.prototype.hasOwnProperty.call(PASOS_POR_ACTIVIDAD, clave) ? PASOS_POR_ACTIVIDAD[clave] : null;
+}
 
 /**
  * Lee todos los campos del formulario y devuelve un objeto tipado.
@@ -28,18 +71,23 @@
  * budgetMode es null si el usuario no ha elegido ninguna — validateInput()
  * lo rechaza explícitamente, nunca se asume un valor por defecto aquí.
  *
- * @returns {{age, sex, weight, height, activity, workouts, goal, budgetMode, budgetCustom, cookTime, taste}}
+ * @returns {{age, sex, weight, height, steps, activity, workouts, goal, budgetMode, budgetCustom, cookTime, taste}}
  */
 function readForm() {
   var budgetModeInput = document.querySelector('input[name="budgetMode"]:checked');
   var budgetCustomEl = document.getElementById("budgetCustom");
+  // Los pasos mandan; `activity` se deriva de ellos (ver PASOS_TRAMOS) y se
+  // sigue llamando así porque es lo que leen calculateProfile() y los planes
+  // guardados.
+  var pasos = Number((document.getElementById("steps") || {}).value);
 
   return {
     age:      Number(document.getElementById("age").value),
     sex:      document.getElementById("sex").value,
     weight:   Number(document.getElementById("weight").value),
     height:   Number(document.getElementById("height").value),
-    activity: Number(document.getElementById("activity").value),
+    steps:    pasos,
+    activity: actividadPorPasos(pasos),
     workouts: Number(document.getElementById("workouts").value),
     goal:     document.getElementById("goal").value,
     budgetMode:   budgetModeInput ? budgetModeInput.value : null,
@@ -72,6 +120,9 @@ function validateInput(data) {
   if (!data.weight || data.weight < 35  || data.weight > 250) return _calcTexto("ui.val_peso", "Peso no válido.");
   if (!data.height || data.height < 130 || data.height > 230) return _calcTexto("ui.val_altura", "Altura no válida.");
   if (data.workouts < 0 || data.workouts > 14)                return _calcTexto("ui.val_entrenos", "Entrenamientos por semana no válidos.");
+  if (typeof data.steps === "number" && !(data.steps >= 0 && data.steps <= 40000)) {
+    return _calcTexto("ui.val_pasos", "Pasos al día no válidos.");
+  }
 
   if (!data.budgetMode) {
     return _calcTexto("ui.val_elige_presupuesto",

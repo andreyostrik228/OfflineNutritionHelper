@@ -201,6 +201,57 @@ function run(t) {
     });
     for (var k = 1; k < orden.length; k++) assert.ok(orden[k - 1] < orden[k], "orden de carga roto en " + k);
   });
+
+  // ── La página de un ejercicio (2026-10-22) ──────────────────────────────
+
+  t.test("entrenoStatsFicha: récords con la fecha de la PRIMERA vez, sin calentamiento ni series sin hacer, y las últimas veces de la más reciente a la más antigua", function () {
+    var s = sandbox();
+    var log = logEjemplo(s);
+    var f = s.entrenoStatsFicha(log, "press_banca_barra", 2);
+    assert.strictEqual(f.tipo, "peso");
+    assert.strictEqual(f.records.kg.kg, 65, "el 70 × 3 no se hizo: no cuenta");
+    assert.strictEqual(f.records.kg.reps, 8, "a 65 kg, la serie de 8");
+    assert.strictEqual(f.records.kg.t, HOY - 6 * DIA);
+    assert.strictEqual(f.records.e1rm.valor, 82.3);
+    assert.strictEqual(f.records.reps.reps, 10 - 2, "el calentamiento de 10 no cuenta: 8, y de la primera sesión");
+    assert.strictEqual(f.records.reps.t, HOY - 20 * DIA, "empatar no mueve la fecha");
+    assert.strictEqual(f.records.volumen.valor, 60 * 8 + 60 * 8, "960 de la primera sesión gana a 937,5 y a 910");
+    assert.strictEqual(f.records.volumen.t, HOY - 20 * DIA);
+    assert.strictEqual(f.ultimas.length, 2);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(f.ultimas.map(function (v) { return v.t; }))), [HOY - 6 * DIA, HOY - 13 * DIA]);
+    assert.strictEqual(f.puntos.length, 3, "la gráfica sigue teniendo todas");
+    var plancha = s.entrenoStatsFicha(log, "plancha");
+    assert.strictEqual(plancha.tipo, "tiempo");
+    assert.strictEqual(plancha.records.reps.reps, 45);
+    assert.strictEqual(plancha.records.kg, null);
+    assert.strictEqual(plancha.records.volumen, null);
+    assert.strictEqual(s.entrenoStatsFicha(log, "sentadilla_barra"), null, "nunca hecho");
+  });
+
+  t.test("la página del ejercicio: «Ваши результаты» con récords, gráfica y últimas veces; sin historia, la frase de qué saldrá; sin huecos en los cuatro idiomas", function () {
+    ["ru", "es", "en", "uk"].forEach(function (lang) {
+      var s = sandbox(lang);
+      var log = logEjemplo(s);
+      var html = s.entrenoFichaResultadosHtml("press_banca_barra", log);
+      assert.ok(html.indexOf(s.t("ent.ficha_resultados")) !== -1, lang);
+      assert.strictEqual(html.split('class="anim-record"').length - 1, 3, lang + ": 1RM, peso y volumen");
+      assert.ok(html.indexOf("<svg") !== -1, lang + ": la gráfica");
+      assert.strictEqual(html.split("anim-ficha__ultima-fecha").length - 1, 3, lang + ": las tres veces");
+      sinHuecos(html, lang);
+      var vacio = s.entrenoFichaResultadosHtml("sentadilla_barra", log);
+      assert.ok(vacio.indexOf(s.escapeHtml(s.t("ent.ficha_sin_datos"))) !== -1 && vacio.indexOf("anim-record") === -1, lang + ": vacío");
+      var dom = s.entrenoFichaResultadosHtml("dominadas", log);
+      assert.strictEqual(dom.split('class="anim-record"').length - 1, 1, lang + ": sin peso, solo repeticiones");
+      sinHuecos(dom, lang + " dominadas");
+    });
+    var s2 = sandbox("ru");
+    s2.entrenoAnimacionHtml = function () { return ""; }; // la animación no es de esta prueba
+    var ficha = s2.entrenoFichaHtml("press_banca_barra", logEjemplo(s2));
+    assert.ok(ficha.indexOf("anim-ficha__tecnica") !== -1 && ficha.indexOf("anim-ficha__resultados") !== -1, "técnica y resultados en la misma página");
+    assert.strictEqual(s2.entrenoFichaHtml("press_banca_barra").indexOf("anim-ficha__resultados"), -1, "sin diario, sin resultados");
+    var progreso = s2.entrenoEjerciciosHtml(logEjemplo(s2));
+    assert.ok(progreso.indexOf('data-anim-abrir="press_banca_barra"') !== -1, "«Progreso» abre la página del ejercicio");
+  });
 }
 
 module.exports = { run: run };

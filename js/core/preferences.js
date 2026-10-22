@@ -30,6 +30,7 @@
  *   matchesDislike(name, dislikes)
  *   filterDislikedProducts(products, dislikes)
  *   getDislikes()
+ *   agregarNoMeGusta(termino) / quitarNoMeGusta(termino)   el botón «No me gusta» (2026-10-22)
  *   getCuisinePreference()
  *   getEatingPriority()
  * ─────────────────────────────────────────────────────────────────────────
@@ -102,7 +103,8 @@ function matchesDislike(name, dislikes) {
  * esto, un "no me gusta" escrito en ruso ("курица", "лук") no tapa nada: el
  * usuario lo ve escrito y el plan lo sigue trayendo. Se busca en las tablas
  * de todos los idiomas cargados: la comida entera (FOOD_TABLES, "Cebolla" ->
- * "Лук") y las piezas sueltas (DISH_WORD_TABLES, "pollo" -> "курица"). Los
+ * "Лук"), las piezas sueltas (DISH_WORD_TABLES, "pollo" -> "курица") y los
+ * productos del modo "sin cocinar" que estén cargados (PRODUCT_TABLES). Los
  * términos de menos de 3 letras no se traducen: darían demasiados falsos
  * positivos.
  *
@@ -115,7 +117,10 @@ var _dislikeTraduccionCache = { clave: null, terminos: [] };
 
 function traducirTerminosDislike(dislikes) {
   if (!Array.isArray(dislikes) || !dislikes.length) return [];
-  var clave = dislikes.join("|");
+  // Las tablas de producto llegan tarde (js/core/productos-idioma.js): la
+  // misma lista con una tabla más ya traduce otra cosa.
+  var hayProductos = (typeof PRODUCT_TABLES !== "undefined" && PRODUCT_TABLES) ? Object.keys(PRODUCT_TABLES).join(",") : "";
+  var clave = dislikes.join("|") + "#" + hayProductos;
   if (_dislikeTraduccionCache.clave === clave) return _dislikeTraduccionCache.terminos;
 
   var buscados = dislikes.map(normalizePreferenceText).filter(function (n) { return n && n.length >= 3; });
@@ -141,6 +146,11 @@ function traducirTerminosDislike(dislikes) {
   }
   if (typeof DISH_WORD_TABLES !== "undefined" && DISH_WORD_TABLES) {
     Object.keys(DISH_WORD_TABLES).forEach(function (lang) { recorrer(DISH_WORD_TABLES[lang]); });
+  }
+  // Los productos del modo "sin cocinar" (2026-10-22): su «No me gusta»
+  // guarda el nombre traducido, y tiene que volver a tapar ese producto.
+  if (hayProductos) {
+    Object.keys(PRODUCT_TABLES).forEach(function (lang) { recorrer(PRODUCT_TABLES[lang]); });
   }
 
   _dislikeTraduccionCache = { clave: clave, terminos: salida };
@@ -202,6 +212,60 @@ function getDislikes() {
   return Array.isArray(settings.dislikes) ? settings.dislikes : [];
 }
 
+
+/**
+ * Añade un término a «Alimentos que no te gustan» (2026-10-22): lo usa el
+ * botón «No me gusta» del plan y de la lista de la compra, para no tener que
+ * escribirlo a mano. Va al campo #dislikes (es lo que lee getDislikes() en
+ * la siguiente generación) y a los ajustes guardados (con cuenta, también a
+ * la nube). No repite: si ya hay un término que lo tapa, no añade nada.
+ * Las comas se quitan: separan términos en el campo.
+ * @param {string} termino - como lo lee el usuario (traducido) o el nombre del producto
+ * @returns {boolean} true si se añadió
+ */
+function agregarNoMeGusta(termino) {
+  var limpio = String(termino || "").replace(/,/g, " ").replace(/\s+/g, " ").trim();
+  if (!limpio) return false;
+  var lista = getDislikes();
+  if (matchesDislike(limpio, lista)) return false;
+  _guardarNoMeGusta(lista.concat([limpio]));
+  return true;
+}
+
+/**
+ * Quita un término de la lista (el «Вернуть» del aviso). Compara sin
+ * mayúsculas ni tildes, como el filtro.
+ * @returns {boolean} true si estaba y se quitó
+ */
+function quitarNoMeGusta(termino) {
+  var buscado = normalizePreferenceText(String(termino || "").replace(/,/g, " "));
+  if (!buscado) return false;
+  var lista = getDislikes();
+  var queda = lista.filter(function (x) { return normalizePreferenceText(x) !== buscado; });
+  if (queda.length === lista.length) return false;
+  _guardarNoMeGusta(queda);
+  return true;
+}
+
+/** Escribe la lista en el campo y en los ajustes. Nunca lanza. */
+function _guardarNoMeGusta(lista) {
+  try {
+    if (typeof document !== "undefined" && document.getElementById) {
+      var el = document.getElementById("dislikes");
+      if (el) el.value = lista.join(", ");
+    }
+    if (typeof getSettings === "function" && typeof saveSettings === "function") {
+      // Se parte de lo guardado: saveSettings() reemplaza el objeto entero.
+      var ajustes = getSettings();
+      delete ajustes.updatedAt;
+      ajustes.dislikes = lista.slice();
+      saveSettings(ajustes);
+      if (typeof pushSettingsToCloud === "function") pushSettingsToCloud();
+    }
+  } catch (err) {
+    console.error("[preferences:no-me-gusta] no se pudo guardar la lista:", err);
+  }
+}
 
 /**
  * Qué se busca al comer, más allá del objetivo de peso:

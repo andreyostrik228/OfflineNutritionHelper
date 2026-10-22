@@ -386,6 +386,109 @@ document.addEventListener("DOMContentLoaded", function () {
     guardarPlanActual();
   }
 
+  // ── «No me gusta» (2026-10-22) ────────────────────────────────────────
+  // Un toque en un ingrediente del plan o de la lista de la compra: pasa a
+  // «Alimentos que no te gustan» (sin escribirlo a mano) y se re-eligen AL
+  // MOMENTO las comidas que lo llevan, en todos los días; lo demás no se
+  // toca, así se puede ir quitando hasta que el plan guste. «Deshacer»
+  // devuelve el plan de antes y la lista como estaba.
+  function handleQuitarIngrediente(event) {
+    var btn = event.target.closest('button[data-action="quitar-ingrediente"]');
+    if (!btn) return;
+    event.stopPropagation();
+    var nombre = btn.getAttribute("data-nombre");
+    if (!nombre || !lastGeneratedDays || typeof regeneratePlanMeal !== "function") return;
+
+    // Lo que se guarda es lo que el usuario LEE (traducido): el filtro lo
+    // devuelve al español con las tablas de comida (traducirTerminosDislike).
+    var termino = (typeof nombreComida === "function") ? nombreComida(nombre) : nombre;
+    var antes = JSON.parse(JSON.stringify(lastGeneratedDays));
+    var informeAntes = lastGeneratedReport;
+    var anadido = (typeof agregarNoMeGusta === "function") ? agregarNoMeGusta(termino) : false;
+    var pantryState = (typeof getPantryState === "function") ? getPantryState() : null;
+    var cambiadas = 0;
+    var diasAtascados = [];
+
+    function lleva(meal) {
+      return (meal.items || []).some(function (it) {
+        return typeof matchesDislike === "function" ? matchesDislike(it.name, [nombre]) : it.name === nombre;
+      });
+    }
+
+    lastGeneratedDays.forEach(function (day, d) {
+      (day.meals || []).forEach(function (meal, idx) {
+        if (!lleva(meal)) return;
+        var opciones = Object.assign({}, lastGeneratedDayOptions, { planDays: lastGeneratedDays.length, dayIndex: d });
+        var res = regeneratePlanMeal(day.meals, meal.key, opciones, lastGeneratedStore, pantryState);
+        if (!res || res.error || !res.meal || lleva(res.meal)) {
+          if (diasAtascados.indexOf(d) === -1) diasAtascados.push(d);
+          return;
+        }
+        if (typeof meal.time === "string") res.meal.time = meal.time;
+        if (typeof meal.timeMinutes === "number") res.meal.timeMinutes = meal.timeMinutes;
+        day.meals[idx] = res.meal;
+        cambiadas++;
+      });
+    });
+
+    // Una comida que no tiene otra opción dentro de lo que queda del
+    // presupuesto del día (medido: «yogur griego» con el presupuesto
+    // ajustado, 1 de 5) se resuelve rehaciendo ESE día entero, como al
+    // generar: el reparto del dinero entre comidas cambia y suele caber.
+    var sinCambio = 0;
+    diasAtascados.forEach(function (d) {
+      var dia = regenerarDiaDelPlan(d);
+      if (dia && !(dia.meals || []).some(lleva)) {
+        lastGeneratedDays[d] = dia;
+        if (d === 0) { lastGeneratedMeals = dia.meals; lastGeneratedReport = dia.report || lastGeneratedReport; }
+        cambiadas += (dia.meals || []).length;
+      } else {
+        sinCambio += (lastGeneratedDays[d].meals || []).filter(lleva).length;
+      }
+    });
+
+    rerenderCurrentPlan();
+    guardarPlanActual();
+    var texto = sinCambio
+      ? tFormat("ui.quitado_sin_alternativa", { nombre: termino, n: sinCambio })
+      : tFormat("ui.quitado_n", { nombre: termino, n: cambiadas });
+    if (typeof mostrarAvisoDeshacer === "function") {
+      mostrarAvisoDeshacer(texto, function () {
+        if (anadido && typeof quitarNoMeGusta === "function") quitarNoMeGusta(termino);
+        lastGeneratedDays = antes;
+        lastGeneratedMeals = antes[0].meals;
+        lastGeneratedReport = informeAntes;
+        rerenderCurrentPlan();
+        guardarPlanActual();
+      });
+    }
+  }
+
+  /**
+   * Rehace un día del plan en pantalla con el mismo perfil y los mismos datos,
+   * evitando los platos de los demás días (como generateDietPlanDays) y con
+   * su horario. null si no se puede (sin perfil o sin motor). No lo pinta.
+   */
+  function regenerarDiaDelPlan(d) {
+    if (!lastGeneratedProfile || !lastGeneratedData || typeof generateDietPlan !== "function") return null;
+    try {
+      var data = Object.assign({}, lastGeneratedData, { dayIndex: d, planDays: lastGeneratedDays.length });
+      data.avoidDishNames = [];
+      lastGeneratedDays.forEach(function (day, i) {
+        if (i === d) return;
+        (day.meals || []).forEach(function (m) { if (m && m.dishName) data.avoidDishNames.push(m.dishName); });
+      });
+      var dia = generateDietPlan(lastGeneratedProfile, data);
+      if (typeof computeMealSchedule === "function" && typeof readScheduleSettings === "function") {
+        dia.meals = computeMealSchedule(dia.meals, readScheduleSettings());
+      }
+      return dia;
+    } catch (err) {
+      console.error("[no-me-gusta] no se pudo rehacer el día " + (d + 1) + ":", err);
+      return null;
+    }
+  }
+
   /**
    * Guarda el plan que está en pantalla en este dispositivo (ver
    * js/core/plan-store.js). Se llama tras generar y tras "Cambiar" un plato.
@@ -728,6 +831,9 @@ document.addEventListener("DOMContentLoaded", function () {
   // con `undefined` un valor por defecto del HTML si ese campo nunca se
   // guardó (usuario nuevo, o campo añadido después de que se guardara por
   // última vez).
+  // La pista de debajo de «Pasos al día» (la monta "field-hints", más abajo).
+  var repintarPistaPasos = function () {};
+
   function applySettingsToForm(settings) {
     if (!settings) return;
 
@@ -747,7 +853,12 @@ document.addEventListener("DOMContentLoaded", function () {
     setVal("sex", settings.sex);
     setVal("weight", settings.weight);
     setVal("height", settings.height);
-    setVal("activity", settings.activity);
+    // Pasos al día (2026-10-22). Un perfil guardado antes solo trae el nivel
+    // de actividad: se pasa a unos pasos de su mismo tramo, y sus calorías no
+    // cambian.
+    setVal("steps", typeof settings.steps === "number" ? settings.steps
+      : (typeof pasosPorActividad === "function" ? pasosPorActividad(settings.activity) : null));
+    repintarPistaPasos();
     setVal("workouts", settings.workouts);
     setVal("goal", settings.goal);
     setVal("cookTime", settings.cookTime);
@@ -839,6 +950,10 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   });
   if (mealsContainer) mealsContainer.addEventListener("click", handleSwapPlanMeal);
+  // «No me gusta» en las tarjetas y en la lista de la compra (2026-10-22). En la
+  // lista va en CAPTURA: tocar la fila marca «en el carrito», y este botón no.
+  if (mealsContainer) mealsContainer.addEventListener("click", handleQuitarIngrediente);
+  if (shoppingListContainerEl) shoppingListContainerEl.addEventListener("click", handleQuitarIngrediente, true);
 
   budgetModeRadios.forEach(function (radio) {
     radio.addEventListener("change", updateBudgetCustomVisibility);
@@ -891,9 +1006,28 @@ document.addEventListener("DOMContentLoaded", function () {
   // estaba escrito. Dos copias del mismo texto acaban diciendo cosas
   // distintas, y el alta y el formulario preguntan exactamente lo mismo.
   safeInit("field-hints", function () {
+    // Los pasos al día dicen debajo a qué nivel de actividad corresponden
+    // (2026-10-22): «Nivel de actividad: Moderado». Es lo que de verdad
+    // entra en el cálculo, y así se ve sin abrir nada.
+    var pasosEl = document.getElementById("steps");
+    var pasosHint = document.getElementById("stepsHint");
+    if (pasosEl && pasosHint && typeof nivelPorPasos === "function") {
+      var pintarPasos = function () {
+        var n = Number(pasosEl.value);
+        pasosHint.textContent = (pasosEl.value !== "" && n >= 0 && n <= 40000)
+          ? tFormat("ui.pasos_nivel", { nivel: t(nivelPorPasos(n).labelKey) })
+          : "";
+      };
+      pasosEl.addEventListener("input", pintarPasos);
+      pasosEl.addEventListener("change", pintarPasos);
+      pintarPasos();
+      // Restaurar los ajustes escribe el valor sin disparar eventos.
+      repintarPistaPasos = pintarPasos;
+    }
+
     if (typeof ONBOARDING_STEPS === "undefined") return;
 
-    [["activity", "activityHint"], ["goal", "goalHint"]].forEach(function (par) {
+    [["goal", "goalHint"]].forEach(function (par) {
       var select = document.getElementById(par[0]);
       var hint = document.getElementById(par[1]);
       if (!select || !hint) return;
@@ -1842,6 +1976,25 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!restaurarPlanSinCocinar()) return;
     if (noCookPanel) noCookPanel.hidden = false;
     pintarDiasSinCocinar();
+  });
+
+  // Los nombres de producto del modo sin cocinar en el idioma de la pantalla
+  // (js/core/productos-idioma.js, 2026-10-22). Llegan después de pintar: lo
+  // que ya está en pantalla se vuelve a pintar con ellos (el plan, su compra
+  // y lo comprado de la despensa). Sin red y sin copia, se queda la etiqueta.
+  safeInit("productos-idioma", function () {
+    if (typeof productosCargar !== "function" || typeof getLang !== "function") return;
+    productosCargar(getLang()).then(function (llegaron) {
+      if (!llegaron) return;
+      safeInit("productos-idioma-repintar", function () {
+        if (typeof lastNoCookDays !== "undefined" && lastNoCookDays && typeof paintNoCookDays === "function") {
+          paintNoCookDays(lastNoCookDays);
+        }
+        if (typeof renderPantryPanel === "function") renderPantryPanel();
+      });
+    }, function (err) {
+      console.warn("[productos-idioma] sin traducción de productos:", err && err.message);
+    });
   });
 
   safeInit("onboarding-init", function () {

@@ -414,6 +414,50 @@ function run(t) {
     assert.deepStrictEqual(rotos, [], rotos.join(" | "));
   });
 
+  // ── Pasos al día en vez de «Nivel de actividad» (2026-10-22) ────────────
+  // Viven en calculator.js junto a validateInput, por eso van aquí.
+
+  t.test("los pasos al día dan los cinco multiplicadores de siempre, con los cortes en 5000/7500/10000/12500", function () {
+    var s = freshCalculatorSandbox();
+    [[0, 1.2], [4999, 1.2], [5000, 1.375], [7499, 1.375], [7500, 1.55], [9999, 1.55],
+     [10000, 1.725], [12499, 1.725], [12500, 1.9], [40000, 1.9]].forEach(function (c) {
+      assert.strictEqual(s.actividadPorPasos(c[0]), c[1], c[0] + " pasos");
+    });
+    assert.strictEqual(s.actividadPorPasos(NaN), 1.2, "sin número, el tramo más bajo");
+    assert.strictEqual(s.nivelPorPasos(8500).labelKey, "ui.moderado");
+  });
+
+  t.test("un perfil guardado con el nivel de antes pasa a unos pasos de SU tramo: las calorías no cambian", function () {
+    var s = freshCalculatorSandbox();
+    [1.2, 1.375, 1.55, 1.725, 1.9].forEach(function (a) {
+      var pasos = s.pasosPorActividad(a);
+      assert.ok(typeof pasos === "number", "sin pasos para " + a);
+      assert.strictEqual(s.actividadPorPasos(pasos), a, a + " -> " + pasos + " pasos -> " + s.actividadPorPasos(pasos));
+    });
+    assert.strictEqual(s.pasosPorActividad(undefined), null);
+    assert.strictEqual(s.pasosPorActividad(1.3), null);
+  });
+
+  t.test("validateInput rechaza pasos fuera de 0..40000, y sin el campo no dice nada", function () {
+    var s = freshCalculatorSandbox();
+    var base = { age: 27, weight: 78, height: 178, workouts: 4, budgetMode: "custom", budgetCustom: 10 };
+    function con(p) { var d = Object.assign({}, base); d.steps = p; return d; }
+    assert.strictEqual(s.validateInput(con(8500)), "");
+    assert.strictEqual(s.validateInput(con(0)), "");
+    assert.ok(/pasos/i.test(s.validateInput(con(-1))));
+    assert.ok(/pasos/i.test(s.validateInput(con(50000))));
+    assert.ok(/pasos/i.test(s.validateInput(con(NaN))));
+    assert.strictEqual(s.validateInput(base), "", "un llamador viejo sin steps sigue valiendo");
+  });
+
+  t.test("el formulario pide los pasos (con los mismos límites que el alta) y ya no trae el desplegable de actividad", function () {
+    var html = fs.readFileSync(projPath("index.html"), "utf8");
+    assert.ok(/<input id="steps" type="number" min="0" max="40000"[^>]*required>/.test(html));
+    assert.strictEqual(html.indexOf('id="activity"'), -1);
+    var app = fs.readFileSync(projPath("js/app.js"), "utf8");
+    assert.ok(app.indexOf("pasosPorActividad(settings.activity)") !== -1, "un perfil de antes se pasa a pasos al restaurar");
+  });
+
 }
 
 module.exports = { run: run };

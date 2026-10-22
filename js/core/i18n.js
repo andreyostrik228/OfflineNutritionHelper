@@ -4,12 +4,13 @@
  * En qué idioma se lee la aplicación. SIN DOM: aquí solo se guarda, se
  * valida y se busca la cadena. Quien la pinta es la capa `js/ui`.
  *
- * ── Lo que NO se traduce, y por qué ─────────────────────────────────────
- * La comida se queda en español SIEMPRE: 2.994 nombres de producto de
- * Mercadona, 434 platos y 83 ingredientes. La lista de la compra tiene que
- * decir lo que pone en la etiqueta del supermercado, o deja de servir para
- * lo único que existe. Así que un usuario en inglés ve la interfaz en
- * inglés y "Pechuga de pollo" en español, a propósito.
+ * ── Lo que NO se sustituye, y por qué ───────────────────────────────────
+ * El nombre de la ETIQUETA del supermercado se enseña siempre tal cual: la
+ * lista de la compra tiene que decir lo que pone en la estantería, o deja de
+ * servir para lo único que existe. Lo que sí se traduce (ingredientes,
+ * platos y, desde el 2026-10-22, los productos del modo "sin cocinar") va
+ * AL LADO del original, nunca en su lugar: ver "Los nombres de COMIDA" y
+ * tProduct() más abajo.
  *
  * ── Por qué se cargan TODOS los idiomas y no solo el elegido ────────────
  * Cargar el idioma después de pintar hace que la página parpadee del
@@ -242,6 +243,48 @@ function tFood(nombre, lang) {
   var idioma = (typeof lang === "string") ? sanitizeLang(lang) : getLang();
   if (idioma === DEFAULT_LANG) return nombre;
   var tabla = FOOD_TABLES[idioma];
+  if (tabla && typeof tabla[nombre] === "string") return tabla[nombre];
+  return nombre;
+}
+
+// ── Los nombres de PRODUCTO del modo "sin cocinar" (2026-10-22) ──────────
+//
+// Lo de arriba sigue en pie: el nombre de la ETIQUETA no se sustituye nunca.
+// Pero el plan "sin cocinar" está hecho SOLO de productos de Mercadona, y en
+// ruso era una pantalla entera en español. Así que se traduce lo que el
+// producto ES y se enseña al lado de la etiqueta, nunca en su lugar:
+//
+//   "Чёрные оливки без косточек Hacendado / Aceitunas negras sin hueso Hacendado"
+//
+// Tabla aparte de FOOD_TABLES porque son 1.274 nombres por idioma (~100 KB):
+// js/core/productos-idioma.js pide SOLO la del idioma en uso. La clave es el
+// nombre del catálogo tal cual (real-products.js); sin traducción, el original.
+
+/** Diccionarios de nombres de producto por idioma (js/i18n/productos-*.js). */
+var PRODUCT_TABLES = {};
+
+/**
+ * @param {string} lang
+ * @param {object} tabla - {"Aceitunas negras sin hueso Hacendado": "...", ...}
+ */
+function registerProductTable(lang, tabla) {
+  if (LANGS.indexOf(lang) === -1) return;
+  if (!tabla || typeof tabla !== "object") return;
+  PRODUCT_TABLES[lang] = tabla;
+}
+
+/**
+ * El nombre de un producto del catálogo en el idioma que toque, o el
+ * original si no hay traducción (o la tabla aún no ha llegado).
+ * @param {string} nombre - tal cual en real-products.js
+ * @param {string} [lang]
+ * @returns {string}
+ */
+function tProduct(nombre, lang) {
+  if (typeof nombre !== "string" || !nombre) return nombre;
+  var idioma = (typeof lang === "string") ? sanitizeLang(lang) : getLang();
+  if (idioma === DEFAULT_LANG) return nombre;
+  var tabla = PRODUCT_TABLES[idioma];
   if (tabla && typeof tabla[nombre] === "string") return tabla[nombre];
   return nombre;
 }

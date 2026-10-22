@@ -91,16 +91,16 @@ function run(t) {
 
   // ── Validación: esto acaba en un atributo del DOM y en una URL ─────────
 
-  t.test("sin nada guardado el aspecto es 'hojas' (pedido del dueño, 2026-10-07)", function () {
+  t.test("sin nada guardado el aspecto es 'grafito' (pedido del dueño, 2026-10-22; antes 'hojas')", function () {
     var s = freshLookSandbox();
-    assert.strictEqual(s.DEFAULT_LOOK, "hojas");
-    assert.strictEqual(s.getLook(), "hojas");
+    assert.strictEqual(s.DEFAULT_LOOK, "grafito");
+    assert.strictEqual(s.getLook(), "grafito");
   });
 
   t.test("el aspecto por defecto va el PRIMERO (arriba a la izquierda) y 'entreno' es el único sin hoja", function () {
     var s = freshLookSandbox();
     assert.strictEqual(s.LOOKS[0].id, s.DEFAULT_LOOK);
-    assert.ok(s.LOOKS[0].file, "el por defecto, 'hojas', tiene su hoja");
+    assert.ok(s.LOOKS[0].file, "el por defecto, 'grafito', tiene su hoja");
     // 'entreno' (style.css tal cual) sigue siendo elegible y es el único sin hoja
     var sinHoja = JSON.parse(JSON.stringify(s.LOOKS)).filter(function (l) { return !l.file; });
     assert.deepStrictEqual(sinHoja.map(function (l) { return l.id; }), ["entreno"]);
@@ -109,9 +109,9 @@ function run(t) {
   t.test("un id inventado cae al aspecto por defecto y NO llega a una ruta", function () {
     var s = freshLookSandbox();
     ["../x", "hojas.css", "HOJAS", "hojas ", "entreno ", "ENTRENO", "entreno.css", "", null, undefined, 7, {}, [], true, "javascript:alert(1)", "assets/css/temas/hojas"].forEach(function (basura) {
-      assert.strictEqual(s.sanitizeLook(basura), "hojas", "deberia rechazar " + JSON.stringify(basura));
+      assert.strictEqual(s.sanitizeLook(basura), "grafito", "deberia rechazar " + JSON.stringify(basura));
       // la única ruta posible es la de la hoja del aspecto por defecto, nunca algo derivado de la basura
-      assert.strictEqual(s.lookCssHref(basura, "20261006a"), "assets/css/temas/hojas.css?v=20261006a");
+      assert.strictEqual(s.lookCssHref(basura, "20261006a"), "assets/css/temas/grafito.css?v=20261006a");
     });
   });
 
@@ -119,7 +119,7 @@ function run(t) {
     var s = freshLookSandbox();
     s.localStorage = createFakeLocalStorage();
     s.localStorage.setItem("nutritionPlanner.look.v1", "<script>");
-    assert.strictEqual(s.getLook(), "hojas");
+    assert.strictEqual(s.getLook(), "grafito");
   });
 
   t.test("guarda y devuelve cada aspecto de la lista", function () {
@@ -134,8 +134,8 @@ function run(t) {
   t.test("saveLook devuelve lo que QUEDÓ, no lo que se pidió", function () {
     var s = freshLookSandbox();
     s.localStorage = createFakeLocalStorage();
-    assert.strictEqual(s.saveLook("verde-lima"), "hojas");
-    assert.strictEqual(s.getLook(), "hojas");
+    assert.strictEqual(s.saveLook("verde-lima"), "grafito");
+    assert.strictEqual(s.getLook(), "grafito");
   });
 
   t.test("el aspecto vive en su PROPIA clave, no dentro de los ajustes", function () {
