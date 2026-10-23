@@ -188,7 +188,7 @@ function _sesionContar(sesion) {
 }
 
 function _sesionNombre(sesion) {
-  return tOr("ent.sesion_" + sesion.clave, sesion.nombre || "");
+  return typeof entrenoLogNombreSesion === "function" ? entrenoLogNombreSesion(sesion) : tOr("ent.sesion_" + sesion.clave, sesion.nombre || "");
 }
 
 /** Letra corta del tipo de serie ("Р", "Д", "О" en ruso) o el número de serie de trabajo. */

@@ -152,6 +152,149 @@ function run(t) {
     assert.ok(html.indexOf("разминка: 1") !== -1, "el historial dice el calentamiento aparte");
   });
 
+  // ── «Progreso» por periodos (2026-10-23) ───────────────────────────────
+
+  t.test("periodos: 7 días por día, mes y 3 meses por semana, año por mes; «todo» desde la primera sesión; una clave rara es el mes", function () {
+    var s = sandbox("ru");
+    var log = logEjemplo(s);
+    var p7 = s.entrenoStatsPeriodo("7d", log, HOY);
+    assert.strictEqual(p7.paso, "dia");
+    assert.strictEqual(p7.dias, 7);
+    assert.strictEqual(p7.desde, new Date(2026, 9, 12).getTime(), "de la medianoche del lunes 12 al domingo 18");
+    assert.strictEqual(s.entrenoStatsTramos(log, p7).length, 7);
+    var raro = s.entrenoStatsPeriodo("siglo", log, HOY);
+    assert.strictEqual(raro.clave, "mes");
+    assert.strictEqual(raro.paso, "semana");
+    assert.strictEqual(s.entrenoStatsPeriodo("3m", log, HOY).paso, "semana");
+    var ano = s.entrenoStatsPeriodo("ano", log, HOY);
+    assert.strictEqual(ano.paso, "mes");
+    assert.strictEqual(s.entrenoStatsTramos(log, ano).length, 13, "de octubre de 2025 a octubre de 2026");
+    var todo = s.entrenoStatsPeriodo("todo", log, HOY);
+    assert.strictEqual(todo.desde, new Date(2026, 8, 28).getTime(), "la primera sesión, 20 días antes");
+    assert.strictEqual(todo.dias, 21);
+    var vacio = s.entrenoStatsPeriodo("todo", s.entrenoLogVacio(), HOY);
+    assert.strictEqual(vacio.dias, 1, "sin sesiones, «todo» es hoy");
+  });
+
+  t.test("cifras y récords del periodo: sesiones dentro, récords cuando se bate a TODAS las anteriores", function () {
+    var s = sandbox("ru");
+    var log = logEjemplo(s);
+    var mes = s.entrenoStatsResumen(log, s.entrenoStatsPeriodo("mes", log, HOY));
+    assert.strictEqual(mes.sesiones, 3);
+    assert.strictEqual(mes.minutos, 180);
+    assert.strictEqual(mes.records.length, 3, "banca dos veces (62,5 y 65) y plancha (45 s); las dominadas solo una vez");
+    assert.strictEqual(mes.records[0].punto.t, HOY - 6 * DIA, "lo más reciente primero");
+    assert.strictEqual(mes.records[2].punto.sid, "s" + (HOY - 13 * DIA), "cada récord sabe su sesión");
+    var p7 = s.entrenoStatsPeriodo("7d", log, HOY);
+    var semana = s.entrenoStatsResumen(log, p7);
+    assert.strictEqual(semana.sesiones, 1);
+    assert.strictEqual(semana.records.length, 2);
+    var tramos = s.entrenoStatsTramos(log, p7);
+    assert.strictEqual(tramos[0].sesiones, 1, "el lunes 12");
+    assert.strictEqual(tramos.reduce(function (n, x) { return n + x.sesiones; }, 0), 1);
+    assert.strictEqual(tramos[0].volumen, semana.volumen);
+  });
+
+  t.test("«Прогресс»: periodos, cuatro cifras, cuatro apartados en pestañas (los demás con hidden), sin huecos", function () {
+    ["ru", "es", "en", "uk"].forEach(function (lang) {
+      var s = sandbox(lang);
+      ["7d", "mes", "3m", "ano", "todo"].forEach(function (p) {
+        var html = s.entrenoProgresoHtml(logEjemplo(s), { dias: 2 }, HOY, { periodo: p, vista: "volumen" });
+        sinHuecos(html, lang + " " + p);
+        assert.strictEqual(html.split("data-progreso-periodo=").length - 1, 5, lang + " " + p + ": cinco periodos");
+        assert.ok(html.indexOf('aria-pressed="true" data-progreso-periodo="' + p + '"') !== -1, lang + " " + p + ": el elegido, marcado");
+        assert.strictEqual(html.split('role="tab"').length - 1, 4, lang + ": cuatro pestañas");
+        assert.ok(html.indexOf('id="progresoTab-volumen" aria-controls="progresoVista-volumen" aria-selected="true"') !== -1, lang + ": «Volumen» elegido");
+        assert.ok(html.indexOf('id="progresoVista-volumen" aria-labelledby="progresoTab-volumen">') !== -1, lang + ": su panel se ve");
+        assert.strictEqual(html.split('role="tabpanel"').length - 1, 4);
+        assert.strictEqual((html.match(/role="tabpanel"[^>]* hidden>/g) || []).length, 3, lang + ": los otros tres, escondidos");
+        assert.strictEqual(html.split('class="entreno__cifra"').length - 1, 4 + 3, lang + ": cuatro cifras del periodo y las tres de la semana");
+      });
+    });
+    var ru = sandbox("ru");
+    var html = ru.entrenoProgresoHtml(logEjemplo(ru), { dias: 2 }, HOY, { periodo: "7d" });
+    assert.ok(html.indexOf('entreno__cifra-valor">1 ч</strong>') !== -1, "una hora justa en 7 días, sin «0 мин»");
+    assert.ok(html.indexOf("Объём по дням") !== -1 && html.indexOf("Тренировки по дням") !== -1);
+    assert.ok(html.indexOf('aria-selected="true" tabindex="0" data-progreso-vista="fuerza"') !== -1, "sin apartado guardado, «Сила»");
+  });
+
+  t.test("los puntos de la gráfica y los récords abren su sesión; en la página del ejercicio, no", function () {
+    var s = sandbox("ru");
+    var log = logEjemplo(s);
+    var html = s.entrenoProgresoHtml(log, { dias: 2 }, HOY, { periodo: "mes" });
+    assert.ok(html.indexOf('class="entreno__linea-toque"') !== -1);
+    assert.ok(/<circle class="entreno__linea-toque"[^>]* data-ver-sesion="s\d+" aria-label="[^"]+"/.test(html), "cada punto, con su sesión y su nombre");
+    assert.ok(html.indexOf('data-ver-sesion="s' + (HOY - 20 * DIA) + '"') !== -1, "también el primero");
+    assert.ok(html.indexOf('role="group"') !== -1, "con puntos que se pulsan, el SVG no es una imagen");
+    assert.ok(html.indexOf('class="entreno__record-fila" data-ver-sesion="s' + (HOY - 6 * DIA) + '"') !== -1, "el récord abre su sesión");
+    assert.ok(html.indexOf("Нажмите на точку графика") !== -1);
+    var ficha = s.entrenoFichaResultadosHtml("press_banca_barra", log);
+    assert.strictEqual(ficha.indexOf("entreno__linea-toque"), -1, "la página del ejercicio va en un diálogo aparte");
+  });
+
+  t.test("un ejercicio con una sola sesión en el periodo se compara con la anterior; lo que no se hizo en el periodo no sale", function () {
+    var s = sandbox("ru");
+    var log = logEjemplo(s);
+    var p7 = s.entrenoStatsPeriodo("7d", log, HOY);
+    var html = s.entrenoEjerciciosHtml(log, p7);
+    assert.ok(html.indexOf("Жим штанги лёжа") !== -1);
+    assert.ok(html.indexOf("тренировок: 1") !== -1, "cuenta solo la sesión del periodo");
+    assert.ok(html.indexOf("+4 %") !== -1, "de 79,2 (la anterior) a 82,3: " + html);
+    assert.ok(html.indexOf("entreno__linea-trazo") !== -1, "con la anterior ya hay línea");
+    var dominadas = s.entrenoNombre({ id: "dominadas", name: "dominadas" });
+    assert.strictEqual(html.indexOf(dominadas), -1, "las dominadas no se hicieron en estos 7 días");
+  });
+
+  t.test("la sesión pedida sale en el historial aunque caiga fuera del periodo", function () {
+    var s = sandbox("ru");
+    var log = logEjemplo(s);
+    var vieja = 's' + (HOY - 20 * DIA);
+    var sin = s.entrenoProgresoHtml(log, { dias: 2 }, HOY, { periodo: "7d" });
+    assert.strictEqual(sin.indexOf('class="entreno__hist-item" data-sesion="' + vieja + '"'), -1);
+    var con = s.entrenoProgresoHtml(log, { dias: 2 }, HOY, { periodo: "7d", forzada: vieja });
+    assert.ok(con.indexOf('class="entreno__hist-item" data-sesion="' + vieja + '"') !== -1);
+    assert.strictEqual(con.split('class="entreno__hist-item"').length - 1, 2, "la del periodo y la pedida");
+  });
+
+  t.test("«Тело»: el cambio y la gráfica del peso dentro del periodo; «todo» lo ve entero", function () {
+    var s = sandbox("ru");
+    var log = logEjemplo(s);
+    var pesos = [
+      { fecha: "2026-07-01", kg: 85, t: 1 },
+      { fecha: "2026-09-25", kg: 82.4, t: 2 },
+      { fecha: "2026-10-10", kg: 81.6, t: 3 },
+      { fecha: "2026-10-17", kg: 80.9, t: 4 }
+    ];
+    var mes = s.entrenoPesoHtml(pesos, HOY, s.entrenoStatsPeriodo("mes", log, HOY));
+    assert.ok(mes.indexOf("−1,5 кг за период") !== -1, mes);
+    assert.ok(mes.indexOf("entreno__peso-grafica") !== -1);
+    sinHuecos(mes, "peso mes");
+    var todo = s.entrenoPesoHtml(pesos, HOY, s.entrenoStatsPeriodo("todo", log, HOY));
+    assert.ok(todo.indexOf("−4,1 кг за период") !== -1, "desde julio, antes de la primera sesión: " + todo);
+    var semana = s.entrenoPesoHtml(pesos, HOY, s.entrenoStatsPeriodo("7d", log, HOY));
+    assert.strictEqual(semana.indexOf("entreno__peso-cambio"), -1, "una sola medida en 7 días: sin cambio");
+    assert.strictEqual(semana.indexOf("entreno__peso-grafica"), -1, "ni gráfica");
+    var panel = s.entrenoProgresoHtml(log, { dias: 2 }, HOY, { periodo: "mes", vista: "cuerpo", pesos: pesos });
+    assert.ok(panel.indexOf('id="progresoVista-cuerpo" aria-labelledby="progresoTab-cuerpo"><div class="entreno__cuerpo">') !== -1);
+    var sinSesiones = s.entrenoProgresoHtml(s.entrenoLogVacio(), { dias: 2 }, HOY, { pesos: pesos });
+    assert.ok(sinSesiones.indexOf("entreno__progreso-vacio") !== -1 && sinSesiones.indexOf("80,9 кг") !== -1, "sin sesiones, el peso sigue a la vista");
+  });
+
+  t.test("el periodo y el apartado se recuerdan; lo raro o sin almacenamiento, el mes y «Сила»", function () {
+    var s = sandbox("ru");
+    var guardado = {};
+    s.localStorage = { getItem: function (k) { return k in guardado ? guardado[k] : null; }, setItem: function (k, v) { guardado[k] = String(v); } };
+    assert.strictEqual(JSON.stringify(s.entrenoProgresoEstadoLeer()), '{"periodo":"mes","vista":"fuerza"}');
+    guardado[s.ENTRENO_PROGRESO_CLAVE] = JSON.stringify({ periodo: "3m", vista: "cuerpo" });
+    assert.strictEqual(JSON.stringify(s.entrenoProgresoEstadoLeer()), '{"periodo":"3m","vista":"cuerpo"}');
+    guardado[s.ENTRENO_PROGRESO_CLAVE] = JSON.stringify({ periodo: "siglo", vista: "constructor" });
+    assert.strictEqual(JSON.stringify(s.entrenoProgresoEstadoLeer()), '{"periodo":"mes","vista":"fuerza"}');
+    guardado[s.ENTRENO_PROGRESO_CLAVE] = "{roto";
+    assert.strictEqual(JSON.stringify(s.entrenoProgresoEstadoLeer()), '{"periodo":"mes","vista":"fuerza"}');
+    s.localStorage = { getItem: function () { throw new Error("bloqueado"); } };
+    assert.strictEqual(JSON.stringify(s.entrenoProgresoEstadoLeer()), '{"periodo":"mes","vista":"fuerza"}');
+  });
+
   t.test("catálogo: busca en ruso, filtra por músculo y por material, y pone primero lo parecido", function () {
     var s = sandbox("ru");
     var todos = s.entrenoCatalogoLista({}, {}, null);

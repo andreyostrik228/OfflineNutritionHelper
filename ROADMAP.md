@@ -1,5 +1,55 @@
 # Nutrition Planner — Roadmap
 
+## Lo del 2026-10-23 (sello `20261023a`, 1236 tests)
+
+El dueño pidió comprobar su lista de entrenamientos (la «Hoja de ruta» y la
+«Propuesta de diseño», al final de este fichero) contra lo hecho, y luego
+(«Ок делай») las tres cosas que faltaban. Probado en Chrome sin interfaz a
+390 px (y 360 px las pestañas), sin errores de JS.
+
+| Qué | Dónde | Estado |
+|---|---|---|
+| «Plan»: añadir, copiar, renombrar, quitar y mover de día una sesión | `js/ui/entreno-programas.js` (`entrenoEstructuraOperar`), `normalizarEstructura` (`workout-generator.js`) | **Hecho** |
+| Plantillas propias (hasta 8) y 7 programas listos con filtros | `WORKOUT_PROGRAMAS`, `estructuraDePrograma` (`workout-generator.js`), `entrenoProgramasHtml` | **Hecho** |
+| «Progreso» por periodos, en cuatro apartados | `entrenoStatsPeriodo/Tramos/Resumen/RecordsPeriodo` (`workout-stats.js`), `entrenoProgresoHtml` (`entreno-progreso.js`) | **Hecho** |
+| Tocar un punto de una gráfica o un récord abre esa sesión | `entrenoProgresoVerSesion` (`entreno-progreso.js`), `_initEntrenoAtajos` (`entreno-pestanas.js`) | **Hecho** |
+| La técnica en ruso, de «вы» | `tecnica_ru` (`js/data/exercises.js`), test en `exercises-tecnica.test.js` | **Hecho** |
+
+**Plan.** La semana deja de salir solo de «cuántos días»: en cuanto se toca
+(copiar, renombrar, añadir una sesión libre o de un tipo, quitar, cambiar de
+día) se guarda como `estructura` en las respuestas (`weekplate-entreno-v1`,
+viaja en `settings._entrenos`): una lista de `{i, k, n, d}` (id de la
+instancia, tipo de sesión de `WORKOUT_SESIONES`, nombre propio, día 1–7).
+Los cambios, quitados y añadidos de una sesión van por su id de instancia, así
+que dos copias del mismo tipo se cambian por separado. Una sesión renombrada
+se apunta en el diario con la clave `~Nombre` (`entrenoLogNombreSesion`).
+Programas listos: cuerpo completo 2 y 3 días, 5×5 (5 series de 5, 3 min),
+empuje/tirón/piernas 3 y 6 días, superior/inferior 4 y 5 días; cada uno con
+sus niveles y objetivos, para los filtros. Si los días del programa no
+coinciden con los de «Mis datos», un aviso deja elegir: mantener la semana
+o rehacerla. Cambiar los días en el cuestionario borra la estructura.
+
+**Progreso.** Arriba el periodo (7 días, mes, 3 meses, año, todo) y cuatro
+cifras (sesiones, tiempo, kilos, récords); debajo cuatro pestañas: «Сила»
+(récords del periodo y cada ejercicio con su gráfica), «Объём» (kilos por
+día, semana o mes y carga por músculo), «Регулярность» (la semana, sesiones
+por tramo, historial del periodo y CSV) y «Тело» (el peso con su gráfica; el
+bloque aparte `#entrenoPeso` ya no existe). Récord = una serie mejor que
+TODAS las anteriores de ese ejercicio (la primera vez no cuenta). Con una
+sola sesión en el periodo, la gráfica de un ejercicio antepone la anterior
+para que se vea el cambio. Periodo y pestaña se recuerdan en
+`nutritionPlanner.entrenoProgreso.v1`. Los puntos son círculos de SVG con
+`tabindex` y `role="button"` (Intro y espacio los pulsan); la sesión pedida
+sale en el historial aunque caiga fuera del periodo.
+
+**Técnica.** Los 81 textos en ruso pasan de «ты» a «вы», como el resto de la
+interfaz rusa. Un test vigila los imperativos de «ты» de antes y cualquier
+reflexivo en -йся/-ись. El ucraniano sigue de «ти».
+
+**No probado en un móvil de verdad.** Queda de la lista: calendario de meses,
+planes de varias semanas con periodización, perímetros y fotos, RPE/RIR real
+y fatiga, reajustar tras saltarse una sesión, informes mensuales.
+
 ## Lo del 2026-10-22 (sello `20261022a`, 1212 tests)
 
 El dueño lo pidió todo junto («Всё берём»): las cuatro cosas que quedaban y
@@ -149,6 +199,11 @@ Chrome sin interfaz:
 
 ## Entrenamientos: estado y prioridades al 2026-10-21 (esto primero si vas a tocar entrenamientos)
 
+**Al 2026-10-23:** lo nuevo está arriba («Lo del 2026-10-23» y «Lo del
+2026-10-22»). Las tablas «Dónde está el código» y «Por etapas» de esta sección
+están al día; lo que se cuenta del rediseño justo debajo es del 2026-10-21
+(la etapa 2, «Grafito», y la página de cada ejercicio se hicieron el 2026-10-22).
+
 **Rediseño, etapa 1 de 3 (2026-10-21): la barra de cinco secciones.** Sello
 `20261021a`, 1174 tests en verde. Se hizo sobre `835bf72`. **Sin commit ni
 despliegue hasta que el dueño diga «да».**
@@ -230,9 +285,11 @@ entrenamientos.** Está entero, traducido, al final de este fichero («Hoja de
 ruta de entrenamientos del dueño (2026-10-18)»). Aquí va lo que ya hay y lo
 que falta, comprobado contra el código ese mismo día.
 
-**Aún no ha elegido por dónde seguir** («don't do anything yet»):
-pregúntale qué parte quiere y propón según la etapa 1. Cuando termines algo
-de estas tablas, actualízalas en el mismo commit.
+El 2026-10-18 aún no había elegido por dónde seguir («don't do anything
+yet»); desde entonces eligió el rediseño (2026-10-21), el aspecto y la página
+del ejercicio (2026-10-22) y el plan, el progreso y la técnica de «вы»
+(2026-10-23). Cuando termines algo de estas tablas, actualízalas en el mismo
+commit.
 
 ### Dónde está el código
 
@@ -245,7 +302,9 @@ de estas tablas, actualízalas en el mismo commit.
 | `js/data/exercise-poses.js`, `js/ui/entreno-figura.js` | Poses y motor de la animación 3D de cada ejercicio, con los músculos que trabajan y los que ayudan. |
 | `js/core/workout-log.js` | Diario (`nutritionPlanner.entrenoDiario.v1`): series, «la última vez», carga sugerida, récords, 1RM, semanas y racha. |
 | `js/ui/entreno-sesion.js` | Modo entrenamiento: la sesión en curso y el descanso. |
-| `js/ui/entreno-progreso.js` | La semana, la racha, el volumen de 8 semanas y el historial; la última sesión y el récord de «Inicio» y el peso de «Progreso». |
+| `js/ui/entreno-progreso.js` | «Progreso» por periodos en cuatro pestañas (Fuerza, Volumen, Regularidad, Cuerpo), con puntos que abren su sesión; la última sesión y el récord de «Inicio»; la página de resultados de un ejercicio. |
+| `js/core/workout-stats.js` | Cuentas del progreso: por ejercicio, por músculo, cumplimiento, periodos y tramos, récords del periodo, CSV. |
+| `js/ui/entreno-programas.js` | «Plan» (2026-10-23): la semana a mano (añadir, copiar, renombrar, quitar, mover de día), plantillas y programas listos con filtros. |
 | `js/ui/entreno-pestanas.js` | Las cinco secciones y su barra abajo (2026-10-21), y «Perfil». |
 | `js/core/weight-log.js` | Registro del peso corporal (`weekplate-pesos-v1`; con cuenta, viaja en `settings._pesos`). |
 
@@ -292,31 +351,31 @@ ruso, de usted.
 | Función | Estado | Nota |
 |---|---|---|
 | Perfil y objetivos | Hecho | Apartado A; las respuestas se ven y se cambian en «Perfil». |
-| Catálogo con filtros | Hecho | 81 ejercicios con técnica y animación; pantalla con búsqueda en 4 idiomas y filtros por músculo y material. Falta la página de cada ejercicio con su historial. |
-| Programas y plantillas | A medias | El programa sale solo y se cambia a mano (sustituir, quitar, añadir); sin plantillas ni duplicar. |
+| Catálogo con filtros | Hecho | 81 ejercicios con técnica y animación; pantalla con búsqueda en 4 idiomas y filtros por músculo y material. La página de cada ejercicio con sus récords, gráfica y últimas veces (2026-10-22). |
+| Programas y plantillas | Hecho | El programa sale solo y se cambia a mano: ejercicios (sustituir, quitar, añadir) y sesiones (añadir, copiar, renombrar, quitar, mover de día). Hasta 8 plantillas propias y 7 programas listos con filtros (2026-10-23). |
 | Calendario de entrenamientos | A medias | La semana de siete días en «Inicio», todas las sesiones en «Entrenar» y exportación .ics; sin calendario de meses. |
 | Sesión con entrada rápida de series | Hecho | |
 | Resultados anteriores junto a los de hoy | Hecho | «La última vez» y relleno automático. |
 | Temporizador de descanso | Hecho | |
 | Superseries y calentamiento | Hecho | Superseries y circuitos, series de calentamiento, drop set y al fallo. |
 | Guardar sin perder datos | Hecho | Al instante en el dispositivo; diario y cuestionario en la cuenta (`settings._entrenos`). |
-| Historial y gráficas básicas | Hecho | Historial, volumen de 8 semanas, gráfica por ejercicio, carga por músculo y CSV. |
-| Récords y progreso | Hecho | El último récord también en «Inicio». |
-| Peso corporal y medidas | A medias | Peso sí (también en «Progreso»); perímetros no. |
+| Historial y gráficas básicas | Hecho | Por periodo (7 días a todo): cifras, kilos y sesiones por tramo, gráfica por ejercicio (tocar un punto abre la sesión), carga por músculo, historial y CSV (2026-10-23). |
+| Récords y progreso | Hecho | Récords del periodo en «Сила»; el último también en «Inicio». |
+| Peso corporal y medidas | A medias | Peso sí, con gráfica del periodo en «Тело»; perímetros no. |
 | Editar una sesión terminada | Hecho | «Corregir», con «Guardar» y «Cancelar». |
-| Técnica básica | Hecho | Texto en 4 idiomas y animación; sin errores típicos. |
+| Técnica básica | Hecho | Texto en 4 idiomas (el ruso de «вы» desde el 2026-10-23) y animación; sin errores típicos. |
 | Local y copia de seguridad | Hecho | Descargar y cargar una copia completa (también desde «Perfil»). |
 
 **Etapa 2 — personalización inteligente**
 
 | Función | Estado | Nota |
 |---|---|---|
-| Programas listos de distintos niveles | A medias | El generador cambia con el nivel; no hay programas con nombre para elegir. |
+| Programas listos de distintos niveles | Hecho | 7 programas con nombre, filtrables por días, nivel y objetivo (2026-10-23). |
 | Sobrecarga progresiva | Hecho | Doble progresión y descarga. |
 | Recomendación de peso y repeticiones | Hecho | Con el porqué. |
-| Sustituir según el material | A medias | Automático al generar el plan; no a mano. |
+| Sustituir según el material | Hecho | Automático al generar el plan, y a mano desde el catálogo (filtrado por el material de cada uno) en el plan y en la sesión. |
 | Reajustar tras saltarse una sesión | Falta | |
-| Analítica por grupos musculares | Falta | Solo las series planificadas por grupo. |
+| Analítica por grupos musculares | Hecho | Series reales por músculo en el periodo elegido, con la media por semana. |
 | RPE/RIR y fatiga | A medias | RIR objetivo en el plan; no se apunta el real ni la fatiga. |
 | Fotos de progreso e informes mensuales | Falta | |
 | Planes de varias semanas | A medias | Semanas numeradas con descarga cada 5.ª; sin periodización. |
@@ -1829,6 +1888,19 @@ pocos segundos hay que saber qué toca hoy, empezar y anotar las series.
 curso y crear programa) y, si quedan cómodas, seguir con el catálogo, el
 progreso y lo demás. Que la interfaz sea clara, coherente y rápida, no
 «rica» en elementos.
+
+**Estado de los ocho puntos al 2026-10-23** (comprobado contra el código):
+
+| Punto | Estado | Lo que falta |
+|---|---|---|
+| 1. Cinco secciones | Hecho (2026-10-21) | |
+| 2. Inicio | Hecho | |
+| 3. Sesión en curso | Hecho | |
+| 4. Plan | Hecho (2026-10-23) | Calendario de meses. |
+| 5. Catálogo y página del ejercicio | Casi | La técnica es un solo texto: sin «paso a paso» ni «En qué fijarse» separados. |
+| 6. Progreso | Hecho (2026-10-23) | Medidas (perímetros) en «Тело». |
+| 7. Estilo | Hecho (2026-10-22, «Grafito») | |
+| 8. Reglas | Se siguen | RPE y sensaciones del día, que aún no se apuntan. |
 
 ## Update rule
 

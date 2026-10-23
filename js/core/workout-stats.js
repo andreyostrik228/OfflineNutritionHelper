@@ -20,6 +20,10 @@
  *   ENTRENO_STATS_GRUPOS
  *   entrenoStatsEjercicios(log)                      → [{ id, name, muscle, tipo, sesiones, ultima, mejor, puntos }]
  *   entrenoStatsFicha(log, id, n)                    → { tipo, puntos, records, ultimas, … } | null (página del ejercicio)
+ *   entrenoStatsPeriodo(clave, log, ahora)           → { clave, desde, hasta, dias, paso } («Progreso», 2026-10-23)
+ *   entrenoStatsTramos(log, periodo)                 → [{ inicio, fin, sesiones, series, volumen, minutos }]
+ *   entrenoStatsResumen(log, periodo)                → { sesiones, minutos, series, volumen, records }
+ *   entrenoStatsRecordsPeriodo(log, periodo)         → [{ id, name, tipo, punto }] lo más reciente primero
  *   entrenoStatsMusculos(log, ahora, dias)           → [{ grupo, series, porSemana }]
  *   entrenoStatsCumplimiento(log, dias, ahora, n)    → { hechas, previstas, pct, semanas } | null
  *   entrenoStatsGrafico(puntos, ancho, alto)         → { path, marcas, min, max } | null
@@ -69,7 +73,7 @@ function entrenoStatsEjercicios(log) {
         orden.push(e.id);
       }
       if (trabajo.some(function (s) { return 0 < (s.kg || 0); })) x.conPeso = true;
-      x.filas.push({ t: sesion.inicio, series: trabajo });
+      x.filas.push({ t: sesion.inicio, sid: sesion.id, series: trabajo });
     });
   });
   return orden.map(function (id) {
@@ -77,7 +81,8 @@ function entrenoStatsEjercicios(log) {
     var tipo = x.tiempo ? "tiempo" : (x.conPeso ? "peso" : "reps");
     var puntos = x.filas.map(function (f) {
       var m = _statsMejor(f.series, tipo);
-      return { t: f.t, valor: m.valor, kg: m.kg, reps: m.reps };
+      // `sid`: la sesión de ese punto, para abrirla al tocarlo en la gráfica (2026-10-23).
+      return { t: f.t, sid: f.sid, valor: m.valor, kg: m.kg, reps: m.reps };
     });
     var mejor = puntos.reduce(function (a, p) { return (!a || a.valor < p.valor) ? p : a; }, null);
     return {
@@ -126,6 +131,103 @@ function entrenoStatsFicha(log, id, n) {
     id: x.id, name: x.name, tipo: x.tipo, sesiones: x.sesiones, puntos: x.puntos, mejor: x.mejor,
     records: rec, ultimas: veces.slice(-(n || 5)).reverse()
   };
+}
+
+// ── «Progreso» por periodos (2026-10-23) ──────────────────────────────────
+// La propuesta de diseño del dueño, punto 6: arriba unas cifras, debajo las
+// gráficas, todo para el periodo que se elija (7 días, mes, 3 meses, año o todo).
+
+var ENTRENO_PERIODOS = ["7d", "mes", "3m", "ano", "todo"];
+var _STATS_DIAS_PERIODO = { "7d": 7, mes: 30, "3m": 91, ano: 365 };
+
+function _statsInicioDia(ms) {
+  var d = new Date(ms);
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+}
+
+/**
+ * El periodo: desde la medianoche del primer día hasta `ahora`, cuántos días
+ * cubre y cómo se agrupan sus gráficas (por día con 7 días, por semana hasta
+ * unos 4 meses, por mes a partir de ahí). «todo» empieza en la primera sesión.
+ * @returns {{clave:string, desde:number, hasta:number, dias:number, paso:string}}
+ */
+function entrenoStatsPeriodo(clave, log, ahora) {
+  var c = ENTRENO_PERIODOS.indexOf(clave) !== -1 ? clave : "mes";
+  var hoy = _statsInicioDia(ahora);
+  var desde;
+  if (c === "todo") {
+    var primera = ((log && log.sesiones) || []).reduce(function (m, s) { return Math.min(m, s.inicio); }, Infinity);
+    desde = isFinite(primera) ? _statsInicioDia(primera) : hoy;
+  } else {
+    var d = new Date(hoy);
+    desde = new Date(d.getFullYear(), d.getMonth(), d.getDate() - (_STATS_DIAS_PERIODO[c] - 1)).getTime();
+  }
+  var dias = Math.max(1, Math.round((hoy - desde) / _STATS_DIA) + 1);
+  return { clave: c, desde: desde, hasta: ahora, dias: dias, paso: c === "7d" ? "dia" : (dias <= 120 ? "semana" : "mes") };
+}
+
+/**
+ * El periodo en tramos (días, semanas que empiezan en lunes o meses), cada uno
+ * con sus sesiones, series, kilos y minutos. Solo cuenta lo que cae dentro del
+ * periodo, aunque el primer tramo empiece antes.
+ */
+function entrenoStatsTramos(log, periodo) {
+  var tramos = [];
+  var inicio = periodo.desde;
+  if (periodo.paso === "semana") inicio = entrenoLogInicioSemana(periodo.desde);
+  if (periodo.paso === "mes") { var m = new Date(periodo.desde); inicio = new Date(m.getFullYear(), m.getMonth(), 1).getTime(); }
+  while (inicio <= periodo.hasta && tramos.length < 400) {
+    var d = new Date(inicio);
+    var fin = periodo.paso === "dia" ? new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime()
+      : periodo.paso === "semana" ? new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7).getTime()
+      : new Date(d.getFullYear(), d.getMonth() + 1, 1).getTime();
+    tramos.push({ inicio: inicio, fin: fin, sesiones: 0, series: 0, volumen: 0, minutos: 0 });
+    inicio = fin;
+  }
+  ((log && log.sesiones) || []).forEach(function (s) {
+    if (s.inicio < periodo.desde || periodo.hasta < s.inicio) return;
+    for (var k = 0; k < tramos.length; k++) {
+      if (s.inicio < tramos[k].inicio || tramos[k].fin <= s.inicio) continue;
+      var tot = entrenoLogTotales(s);
+      tramos[k].sesiones++;
+      tramos[k].series += tot.series;
+      tramos[k].volumen += tot.volumen;
+      tramos[k].minutos += tot.minutos;
+      break;
+    }
+  });
+  return tramos;
+}
+
+/**
+ * Los récords batidos en el periodo: cada vez que un ejercicio superó a TODAS
+ * sus sesiones anteriores (la primera vez no cuenta: sería récord todo). Lo
+ * más reciente primero. { id, name, tipo, punto: { t, sid, valor, kg, reps } }
+ */
+function entrenoStatsRecordsPeriodo(log, periodo) {
+  var r = [];
+  entrenoStatsEjercicios(log).forEach(function (x) {
+    var mejor = -Infinity;
+    x.puntos.forEach(function (p, i) {
+      if (0 < i && mejor < p.valor && periodo.desde <= p.t && p.t <= periodo.hasta) r.push({ id: x.id, name: x.name, tipo: x.tipo, punto: p });
+      if (mejor < p.valor) mejor = p.valor;
+    });
+  });
+  return r.sort(function (a, b) { return b.punto.t - a.punto.t; });
+}
+
+/** Las cifras del periodo: sesiones, minutos, series, kilos y récords. */
+function entrenoStatsResumen(log, periodo) {
+  var r = { sesiones: 0, minutos: 0, series: 0, volumen: 0, records: entrenoStatsRecordsPeriodo(log, periodo) };
+  ((log && log.sesiones) || []).forEach(function (s) {
+    if (s.inicio < periodo.desde || periodo.hasta < s.inicio) return;
+    var tot = entrenoLogTotales(s);
+    r.sesiones++;
+    r.minutos += tot.minutos;
+    r.series += tot.series;
+    r.volumen += tot.volumen;
+  });
+  return r;
 }
 
 /**

@@ -113,7 +113,7 @@ function run(t) {
     assert.deepStrictEqual(JSON.parse(JSON.stringify(nada)), {
       nivel: "principiante", equipamiento: "gimnasio", semana: 1, duracion: 60, excluir: "",
       objetivo: "auto", material: null, enfoque: [], limitaciones: [], diasSemana: null, configurado: false,
-      cambios: {}, quitados: [], extras: {}, t: 0
+      cambios: {}, quitados: [], extras: {}, estructura: null, programa: "", plantillas: [], t: 0
     });
 
     s.localStorage = almacenFalso(function () { return "esto no es json {"; });

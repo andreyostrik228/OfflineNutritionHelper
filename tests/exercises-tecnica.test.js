@@ -53,6 +53,21 @@ function run(t) {
     });
   });
 
+  t.test("la técnica en ruso trata de «вы», como el resto de la interfaz", function () {
+    // Los imperativos de «ты» que tuvo hasta el 2026-10-23, y cualquier reflexivo en -йся / -ись («опускайся», «держись»).
+    var TY = ["опускай", "выжимай", "отрегулируй", "почувствуешь", "наклонись", "поджимай", "разводи", "прогибай", "поднимай",
+      "тяни", "выбери", "приседай", "отрывай", "отводи", "толкай", "сожми", "встань", "раскачивай", "поворачивай", "разгибай",
+      "напряги", "дыши", "сворачивай", "вставай", "веди", "возвращай", "держи", "сгибай", "наклони", "подними", "подтяни",
+      "сведи", "запрыгни", "начинай", "контролируй", "упри", "разведи", "выталкивай", "стой", "сядь", "вытяни", "сделай",
+      "опусти", "можешь", "контролируешь"];
+    catalogo().forEach(function (e) {
+      var palabras = e.tecnica_ru.toLowerCase().split(/[^а-яё]+/);
+      palabras.forEach(function (p) {
+        assert.ok(TY.indexOf(p) === -1 && !/(йся|ись)$/.test(p), e.id + ": «" + p + "» es de «ты»: " + e.tecnica_ru);
+      });
+    });
+  });
+
   t.test("entrenoTecnica da el texto del idioma de la pantalla y cae al español si falta", function () {
     var s = loadBrowserGlobals([projPath("js/data/exercises.js"), projPath("js/ui/render-entreno.js")]);
     var e = { id: "flexiones", tecnica: "Cuerpo recto de cabeza a talones; baja con los codos a unos 45 grados del tronco." };

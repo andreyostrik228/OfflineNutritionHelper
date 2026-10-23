@@ -128,8 +128,42 @@ var WORKOUT_SESIONES = {
   tiron_A:           { name: "Tirón A",           patrones: ["tiron_vertical", "tiron_horizontal", "hombro_posterior", "curl_biceps"] },
   tiron_B:           { name: "Tirón B",           patrones: ["tiron_horizontal", "tiron_vertical", "hombro_posterior", "curl_biceps"] },
   piernas_A:         { name: "Piernas A",         patrones: ["sentadilla", "bisagra", "aislado_pierna", "curl_isquio", "pantorrilla", "core"] },
-  piernas_B:         { name: "Piernas B",         patrones: ["zancada", "bisagra", "gluteo", "curl_isquio", "pantorrilla", "core"] }
+  piernas_B:         { name: "Piernas B",         patrones: ["zancada", "bisagra", "gluteo", "curl_isquio", "pantorrilla", "core"] },
+  // Las dos del programa 5×5 (2026-10-23): tres básicos, alternando A y B.
+  cinco_A:           { name: "5×5 A",             patrones: ["sentadilla", "empuje_horizontal", "tiron_horizontal"] },
+  cinco_B:           { name: "5×5 B",             patrones: ["sentadilla", "empuje_vertical", "bisagra"] },
+  // «Añadir entrenamiento → libre» (2026-10-23): sin huecos; solo lleva lo
+  // que se le añada a mano.
+  libre:             { name: "Sesión libre",      patrones: [] }
 };
+
+/**
+ * Programas listos para elegir en «Plan» (2026-10-23). Cada uno es la lista de
+ * sesiones de la semana (claves de WORKOUT_SESIONES); los ejercicios los sigue
+ * eligiendo el generador con el material, el nivel y lo cambiado a mano.
+ *   niveles, objetivos  para los filtros ("masa", "fuerza", "forma")
+ *   pauta               solo 5×5: series, repeticiones y descanso de los compuestos
+ */
+var WORKOUT_PROGRAMAS = [
+  { id: "cuerpo_completo_2", sesiones: ["cuerpo_completo_A", "cuerpo_completo_B"],
+    niveles: ["principiante", "intermedio"], objetivos: ["masa", "forma"] },
+  { id: "cuerpo_completo_3", sesiones: ["cuerpo_completo_A", "cuerpo_completo_B", "cuerpo_completo_A"],
+    niveles: ["principiante", "intermedio"], objetivos: ["masa", "fuerza", "forma"] },
+  { id: "cinco_por_cinco", sesiones: ["cinco_A", "cinco_B", "cinco_A"],
+    niveles: ["principiante", "intermedio"], objetivos: ["fuerza"], pauta: { series: 5, reps: "5-5", descanso: 180 } },
+  { id: "empuje_tiron_piernas_3", sesiones: ["empuje_A", "tiron_A", "piernas_A"],
+    niveles: ["intermedio", "avanzado"], objetivos: ["masa", "forma"] },
+  { id: "superior_inferior_4", sesiones: ["superior_A", "inferior_A", "superior_B", "inferior_B"],
+    niveles: ["intermedio", "avanzado"], objetivos: ["masa", "fuerza", "forma"] },
+  { id: "superior_inferior_5", sesiones: ["superior_A", "inferior_A", "superior_B", "inferior_B", "cuerpo_completo_A"],
+    niveles: ["intermedio", "avanzado"], objetivos: ["masa"] },
+  { id: "empuje_tiron_piernas_6", sesiones: ["empuje_A", "tiron_A", "piernas_A", "empuje_B", "tiron_B", "piernas_B"],
+    niveles: ["avanzado"], objetivos: ["masa"] }
+];
+
+/** Como mucho siete sesiones a la semana en una estructura propia. */
+var WORKOUT_ESTRUCTURA_MAX = 7;
+var WORKOUT_NOMBRE_SESION_MAX = 30;
 
 /** Qué sesiones se hacen según los días a la semana. */
 var WORKOUT_DIVISIONES = {
@@ -160,7 +194,8 @@ var WORKOUT_DIAS_SEMANA = {
   3: [1, 3, 5],
   4: [1, 2, 4, 5],
   5: [1, 2, 4, 5, 6],
-  6: [1, 2, 3, 4, 5, 6]
+  6: [1, 2, 3, 4, 5, 6],
+  7: [1, 2, 3, 4, 5, 6, 7]
 };
 
 /** Recomendación de cardio según el objetivo. Es orientativa, no un plan médico. */
@@ -187,8 +222,14 @@ function nivelAlcanza(ejercicio, nivel) {
   return WORKOUT_LEVELS.indexOf(ejercicio.level) <= WORKOUT_LEVELS.indexOf(nivel);
 }
 
-/** Series, repeticiones, descanso y RIR de un ejercicio según objetivo y nivel. */
-function prescribirEjercicio(ejercicio, objetivo, nivel) {
+/**
+ * Series, repeticiones, descanso y RIR de un ejercicio según objetivo y nivel.
+ * Con `pauta` (la del programa 5×5) los compuestos llevan esa, tal cual.
+ */
+function prescribirEjercicio(ejercicio, objetivo, nivel, pauta) {
+  if (pauta && ejercicio.compound) {
+    return { sets: pauta.series, reps: pauta.reps, restSeconds: pauta.descanso, rir: WORKOUT_LEVEL_RIR[nivel] };
+  }
   var base = WORKOUT_PRESCRIPCION[objetivo][ejercicio.compound ? "compuesto" : "aislado"];
   var series = nivel === "principiante" ? Math.min(base.series, 3) : base.series;
   var reps = ejercicio.repsOverride || base.reps;
@@ -295,16 +336,62 @@ function normalizarQuitados(valor) {
   return r;
 }
 
-/** Ejercicios añadidos a mano { clave_sesion: [ids] }. */
+/**
+ * Ejercicios añadidos a mano { sesion: [ids] }. La sesión es la clave de
+ * WORKOUT_SESIONES o, con estructura propia, el id de esa sesión ("p3").
+ */
 function normalizarExtras(valor) {
   var r = {};
   if (!valor || typeof valor !== "object" || Array.isArray(valor)) return r;
   Object.keys(valor).forEach(function (clave) {
-    if (hasOwn(WORKOUT_SESIONES, clave) && Array.isArray(valor[clave])) {
+    if (WORKOUT_ID_SESION.test(clave) && Array.isArray(valor[clave])) {
       r[clave] = valor[clave].filter(function (id) { return typeof id === "string"; });
     }
   });
   return r;
+}
+
+/** Id de una sesión de la estructura, o clave de WORKOUT_SESIONES: letras, cifras y «_». */
+var WORKOUT_ID_SESION = /^[A-Za-z0-9_]{1,40}$/;
+
+/**
+ * La semana tal como la ha montado el usuario (2026-10-23): una lista de
+ * sesiones { i: id propio, k: clave de WORKOUT_SESIONES, n: nombre propio ("" =
+ * el de siempre), d: día 1…7 (0 = el que toque) }. null si no hay ninguna
+ * válida. Como mucho WORKOUT_ESTRUCTURA_MAX; ids sin repetir.
+ */
+function normalizarEstructura(lista) {
+  if (!Array.isArray(lista)) return null;
+  var r = [];
+  var vistos = {};
+  lista.forEach(function (x) {
+    if (!x || typeof x !== "object" || r.length >= WORKOUT_ESTRUCTURA_MAX) return;
+    if (typeof x.i !== "string" || !/^[a-z0-9]{1,12}$/.test(x.i) || vistos[x.i]) return;
+    if (!hasOwn(WORKOUT_SESIONES, x.k)) return;
+    var n = typeof x.n === "string" ? x.n.replace(/[\u0000-\u001f<>]/g, "").trim().slice(0, WORKOUT_NOMBRE_SESION_MAX) : "";
+    var d = Math.floor(Number(x.d));
+    vistos[x.i] = true;
+    r.push({ i: x.i, k: x.k, n: n, d: d >= 1 && d <= 7 ? d : 0 });
+  });
+  return r.length ? r : null;
+}
+
+/** Un programa listo por su id, o null. */
+function programaPorId(id) {
+  for (var i = 0; i < WORKOUT_PROGRAMAS.length; i++) if (WORKOUT_PROGRAMAS[i].id === id) return WORKOUT_PROGRAMAS[i];
+  return null;
+}
+
+/**
+ * La estructura de un programa listo: sus sesiones con ids p1, p2… y sus días
+ * (los que eligió el usuario si son tantos como sesiones; si no, los de siempre).
+ */
+function estructuraDePrograma(id, diasSemana) {
+  var programa = programaPorId(id);
+  if (!programa) return null;
+  var n = programa.sesiones.length;
+  var dias = normalizarDiasSemana(diasSemana, n) || WORKOUT_DIAS_SEMANA[n];
+  return programa.sesiones.map(function (k, j) { return { i: "p" + (j + 1), k: k, n: "", d: dias[j] }; });
 }
 
 /** true si el nombre del ejercicio, en cualquiera de sus idiomas, contiene un término excluido. */
@@ -340,10 +427,16 @@ function elegirEjercicio(patron, material, nivel, usadosSesion, usadosSemana, ex
   return candidatos[0];
 }
 
-/** Construye una sesión a partir de sus patrones, respetando el tope por nivel. */
-function construirSesion(clave, objetivo, nivel, material, usadosSemana, avisos, opciones) {
+/**
+ * Construye una sesión a partir de sus patrones, respetando el tope por nivel.
+ * `instancia` es la sesión a la que van los huecos quitados y lo añadido a mano:
+ * la propia clave sin estructura, o su id ("p3") con ella (2026-10-23), para
+ * que dos copias de la misma plantilla se cambien cada una por su lado.
+ */
+function construirSesion(clave, objetivo, nivel, material, usadosSemana, avisos, opciones, instancia) {
   var plantilla = WORKOUT_SESIONES[clave];
   var extra = opciones || {};
+  var sitio = instancia || clave;
   var tope = Math.min(WORKOUT_LEVEL_CAP[nivel], extra.topeSesion || 99);
   var usadosSesion = {};
   var ejercicios = [];
@@ -369,7 +462,7 @@ function construirSesion(clave, objetivo, nivel, material, usadosSemana, avisos,
     var ejercicio = cambio && cambio.cambiadoDe ? cambio.ejercicio : elegido;
     usadosSesion[ejercicio.id] = true;
     usadosSemana[ejercicio.id] = (usadosSemana[ejercicio.id] || 0) + 1;
-    var pauta = prescribirEjercicio(ejercicio, objetivo, nivel);
+    var pauta = prescribirEjercicio(ejercicio, objetivo, nivel, extra.pauta);
     var e = {
       id: ejercicio.id,
       name: ejercicio.name,
@@ -403,7 +496,7 @@ function construirSesion(clave, objetivo, nivel, material, usadosSemana, avisos,
   orden.forEach(function (patron, i) {
     if (tope <= ejercicios.length + vacios) return;
     // El usuario quitó este hueco de esta sesión: se queda vacío, sin aviso.
-    if (quitados[clave + ":" + patron]) { vacios++; return; }
+    if (quitados[sitio + ":" + patron]) { vacios++; return; }
     var ejercicio = elegirEjercicio(patron, material, nivel, usadosSesion, usadosSemana, extra.excluidos, extra.evitar);
     if (!ejercicio && extra.evitar && elegirEjercicio(patron, material, nivel, usadosSesion, usadosSemana, extra.excluidos, null)) {
       // Una molestia ha quitado lo de este patrón: va otro que no cargue esa
@@ -430,14 +523,15 @@ function construirSesion(clave, objetivo, nivel, material, usadosSemana, avisos,
   // más que el tope del nivel, nunca más de lo que deja la duración.
   var topeEnfoque = Math.min(WORKOUT_LEVEL_CAP[nivel] + 1, extra.topeSesion || 99);
   var tipo = tipoSesion(clave);
-  (extra.enfoque || []).forEach(function (grupo) {
+  // Una sesión libre no tiene huecos: el acento no le mete nada que no se pidió.
+  (plantilla.patrones.length ? (extra.enfoque || []) : []).forEach(function (grupo) {
     var def = WORKOUT_ENFOQUES[grupo];
     var admitidos = tipo === "todo" ? null : WORKOUT_PATRONES_TIPO[tipo];
     var puestos = 0;
     def.patrones.forEach(function (patron) {
       if ((def.porSesion || 1) <= puestos || topeEnfoque <= ejercicios.length) return;
       if (admitidos && admitidos.indexOf(patron) === -1) return;
-      if (quitados[clave + ":" + patron]) return;
+      if (quitados[sitio + ":" + patron]) return;
       var ejercicio = elegirEjercicio(patron, material, nivel, usadosSesion, usadosSemana, extra.excluidos, extra.evitar);
       if (!ejercicio) return;
       poner(ejercicio, true, patron);
@@ -447,7 +541,7 @@ function construirSesion(clave, objetivo, nivel, material, usadosSemana, avisos,
 
   // Lo añadido a mano a esta sesión, al final y sin tope: lo pidió el usuario.
   // Si con el material de ahora no se puede hacer, no entra.
-  ((extra.extras && extra.extras[clave]) || []).forEach(function (id) {
+  ((extra.extras && hasOwn(extra.extras, sitio) && extra.extras[sitio]) || []).forEach(function (id) {
     var cat = null;
     EXERCISE_CATALOG.some(function (c) { if (c.id === id) { cat = c; return true; } return false; });
     if (!cat || !puedeHacerse(cat, material) || usadosSesion[cat.id]) return;
@@ -468,7 +562,7 @@ function construirSesion(clave, objetivo, nivel, material, usadosSemana, avisos,
   // Compuestos primero: es donde más conviene tener energía fresca.
   ejercicios.sort(function (a, b) { return (b.compound ? 1 : 0) - (a.compound ? 1 : 0); });
 
-  return { key: clave, name: plantilla.name, exercises: ejercicios };
+  return { key: clave, instancia: sitio, name: plantilla.name, exercises: ejercicios };
 }
 
 /** Días a la semana: número entero entre 0 y 6. Avisa si no es válido. */
@@ -505,7 +599,12 @@ function normalizarDias(valor, avisos) {
  *                               enfoque: [grupos de WORKOUT_ENFOQUES], limitaciones: [claves de WORKOUT_LIMITACIONES],
  *                               diasSemana: [1…7] tantos como días (si no, los de WORKOUT_DIAS_SEMANA),
  *                               cambios: { idDelPlan: idElegido }, quitados: ["clave_sesion:patron"],
- *                               extras: { clave_sesion: [ids] } (lo cambiado a mano, 2026-10-18) }
+ *                               extras: { clave_sesion: [ids] } (lo cambiado a mano, 2026-10-18),
+ *                               estructura: [{ i, k, n, d }] la semana montada a mano (manda sobre
+ *                               los días; ver normalizarEstructura), programa: id de WORKOUT_PROGRAMAS
+ *                               (2026-10-23) }
+ *                  Cada sesión lleva `instancia` (su id en la estructura, o su clave) y, con
+ *                  nombre propio, `nombrePropio: true` y ese `name`.
  *                  Cada ejercicio del plan lleva `patron` (el hueco que ocupa, "extra" si se añadió
  *                  a mano), y `cambiadoDe` si es un cambio a mano.
  * @returns {object} plan (ver las claves al final de la función). `ok: false`
@@ -516,7 +615,10 @@ function generateWorkoutPlan(profile, options) {
   var opts = options || {};
   var avisos = [];
 
-  var dias = normalizarDias(p.entrenamientos, avisos);
+  // La semana montada a mano (2026-10-23) manda sobre los días: son sus sesiones.
+  var estructura = normalizarEstructura(opts.estructura);
+  var programa = programaPorId(opts.programa);
+  var dias = estructura ? estructura.length : normalizarDias(p.entrenamientos, avisos);
 
   var objetivo = "maintain";
   if (p.goal !== undefined && p.goal !== null) {
@@ -559,7 +661,7 @@ function generateWorkoutPlan(profile, options) {
 
   if (dias === 1) avisos.push("un_solo_dia");
 
-  var division = WORKOUT_DIVISIONES[dias];
+  var division = estructura ? null : WORKOUT_DIVISIONES[dias];
   var usadosSemana = {};
   var evitar = null;
   limitaciones.forEach(function (l) {
@@ -573,12 +675,16 @@ function generateWorkoutPlan(profile, options) {
     topeSesion: WORKOUT_DURACIONES[duracion], excluidos: normalizarExcluidos(opts.excluir),
     enfoque: enfoque, evitar: evitar,
     cambios: normalizarCambios(opts.cambios), quitados: normalizarQuitados(opts.quitados),
-    extras: normalizarExtras(opts.extras)
+    extras: normalizarExtras(opts.extras),
+    pauta: programa && estructura ? programa.pauta : null
   };
   var diasElegidos = normalizarDiasSemana(opts.diasSemana, dias);
-  var sesiones = division.sesiones.map(function (clave, i) {
-    var sesion = construirSesion(clave, objetivo, nivel, material, usadosSemana, avisos, opciones);
-    sesion.dia = diasElegidos ? diasElegidos[i] : WORKOUT_DIAS_SEMANA[dias][i];
+  // Sin estructura, la de siempre según los días; cada sesión es su propia clave.
+  var lista = estructura || division.sesiones.map(function (clave) { return { i: clave, k: clave, n: "", d: 0 }; });
+  var sesiones = lista.map(function (x, i) {
+    var sesion = construirSesion(x.k, objetivo, nivel, material, usadosSemana, avisos, opciones, x.i);
+    sesion.dia = x.d || (diasElegidos ? diasElegidos[i] : WORKOUT_DIAS_SEMANA[dias][i]);
+    if (x.n) { sesion.name = x.n; sesion.nombrePropio = true; }
     return sesion;
   });
 
@@ -610,9 +716,12 @@ function generateWorkoutPlan(profile, options) {
     material: material,
     enfoque: enfoque,
     limitaciones: limitaciones,
-    diasElegidos: !!diasElegidos,
+    diasElegidos: !!diasElegidos || !!estructura,
     dias: dias,
-    division: division.nombre,
+    // Con estructura: el programa listo del que salió, o "propia" si es suya.
+    division: estructura ? (programa ? null : "propia") : division.nombre,
+    programa: estructura && programa ? programa.id : null,
+    estructura: !!estructura,
     sesiones: sesiones,
     seriesPorSemana: seriesPorSemana,
     progresion: WORKOUT_PROGRESION,

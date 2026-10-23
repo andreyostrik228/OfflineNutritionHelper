@@ -387,6 +387,10 @@ select{background-image:__ARROW__;background-repeat:no-repeat;background-positio
 .legal-dialog__body ul{color:#B9BEC6}
 .legal-dialog__version{color:#9097A1}
 .suggest-list{background:#1F2227}
+
+/* ── 2026-10-23: lo que style.css pinta con --ink de fondo (claro aquí) y el rojo pequeño ── */
+.cat__chip.is-on{background:#C8F04A;border-color:#C8F04A;color:#171A0B}
+.entreno__mini-btn--quitar{color:#FF9C8F;border-color:rgba(255,156,143,.4)}
 """
 
 for k, v in dict(__CHECK__=CHECK, __ARROW__=ARROW).items():

@@ -18,6 +18,31 @@ llevan al final un bloque «actualización 2026-10-08»). El diario fechado, con
 medidas y causas, está en la cabecera de `STATE.md` (entradas del 2026-10-07 y
 2026-10-08).
 
+### 0.0 quater Lo nuevo del 2026-10-23 (lee esto antes que 0.0 ter)
+
+- **Estado:** sello `20261023a`, **1236 tests en verde**. Tres cosas (tabla
+  al principio de `ROADMAP.md`): «Plan» con la semana a mano, plantillas y
+  programas listos (`js/ui/entreno-programas.js`); «Progreso» por periodos en
+  cuatro pestañas, con puntos de las gráficas que abren su sesión; la técnica
+  en ruso de «вы». Las tablas «Por etapas» y los ocho puntos de la propuesta
+  de diseño, al día en `ROADMAP.md`.
+- **Reglas nuevas (no las rompas):**
+  - Con `prefs.estructura` la semana es esa lista y NO sale de los días de
+    «Mis datos»; `plan.dias` es su largo. Todo lo de una sesión (cambios,
+    quitados, añadidos) va por su **id de instancia** (`s.instancia`, p1…),
+    no por el tipo (`s.key`). El botón de cada sesión lleva `data-sesion` =
+    instancia. Un mapa de ids que venga de fuera, con `Object.create(null)`:
+    un `{}` deja pasar `"constructor"`.
+  - El nombre de una sesión se pinta SIEMPRE con `entrenoNombreSesion(s)`
+    (plan) o `entrenoLogNombreSesion(s)` (diario): una renombrada se guarda en
+    el diario como `clave: "~Nombre"`.
+  - «Progreso» pinta los cuatro apartados a la vez (los demás con `hidden`) y
+    cambiar de pestaña NO repinta; cambiar de periodo sí. Para abrir una sesión
+    desde cualquier sitio, `data-ver-sesion="<id>"`: lo recoge
+    `_initEntrenoAtajos` y llama a `entrenoProgresoVerSesion`.
+  - Un texto ruso nuevo para la técnica de un ejercicio, de «вы»
+    (`exercises-tecnica.test.js` lo vigila).
+
 ### 0.0 ter Lo nuevo del 2026-10-22 (lee esto antes que 0.0 bis)
 
 - **Estado:** sello `20261022a`, **1212 tests en verde**. Siete cosas a la vez

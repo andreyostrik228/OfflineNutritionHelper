@@ -82,6 +82,61 @@ function _entrenoIdValido(id) {
 
 var ENTRENO_MAX_CAMBIOS = 60;
 var ENTRENO_MAX_EXTRAS = 4;
+/** Plantillas guardadas (2026-10-23): como mucho estas, con un nombre de hasta 30 letras. */
+var ENTRENO_MAX_PLANTILLAS = 8;
+var ENTRENO_NOMBRE_MAX = 30;
+
+/** Un nombre escrito por el usuario: sin saltos ni < >, recortado. */
+function entrenoNombreLimpio(valor) {
+  return typeof valor === "string" ? valor.replace(/[\u0000-\u001f<>]/g, "").trim().slice(0, ENTRENO_NOMBRE_MAX) : "";
+}
+
+/** La semana montada a mano, validada (normalizarEstructura del generador; sin él, nada). */
+function _entrenoEstructuraLimpia(valor) {
+  return typeof normalizarEstructura === "function" ? normalizarEstructura(valor) : null;
+}
+
+/**
+ * Lo cambiado a mano de un programa (cambios, quitados, extras, estructura y
+ * programa listo), validado: lo comparten las respuestas y las plantillas.
+ */
+function _entrenoProgramaLimpio(guardado, destino) {
+  var cambios = guardado.cambios;
+  if (cambios && typeof cambios === "object" && !Array.isArray(cambios)) {
+    Object.keys(cambios).slice(0, ENTRENO_MAX_CAMBIOS).forEach(function (de) {
+      var a = cambios[de];
+      if (de !== a && _entrenoIdValido(de) && _entrenoIdValido(a)) destino.cambios[de] = a;
+    });
+  }
+  destino.estructura = _entrenoEstructuraLimpia(guardado.estructura);
+  // Las sesiones a las que puede ir algo quitado o añadido: las plantillas y, con estructura, sus ids.
+  // Sin prototipo: «constructor» o «toString» no pueden pasar por una sesión.
+  var sesiones = Object.create(null);
+  if (typeof WORKOUT_SESIONES !== "undefined") Object.keys(WORKOUT_SESIONES).forEach(function (k) { sesiones[k] = true; });
+  (destino.estructura || []).forEach(function (x) { sesiones[x.i] = true; });
+  var sinCatalogo = typeof WORKOUT_SESIONES === "undefined";
+  if (Array.isArray(guardado.quitados)) {
+    guardado.quitados.forEach(function (q) {
+      var m = typeof q === "string" ? /^([A-Za-z0-9_]{1,40}):[A-Za-z_]{1,40}$/.exec(q) : null;
+      if (m && (sinCatalogo || sesiones[m[1]]) &&
+          destino.quitados.indexOf(q) === -1 && destino.quitados.length < ENTRENO_MAX_CAMBIOS) destino.quitados.push(q);
+    });
+  }
+  var extras = guardado.extras;
+  if (extras && typeof extras === "object" && !Array.isArray(extras)) {
+    Object.keys(extras).forEach(function (clave) {
+      if (!/^[A-Za-z0-9_]{1,40}$/.test(clave) || !Array.isArray(extras[clave])) return;
+      if (!sinCatalogo && !sesiones[clave]) return;
+      var ids = [];
+      extras[clave].forEach(function (id) {
+        if (_entrenoIdValido(id) && ids.indexOf(id) === -1 && ids.length < ENTRENO_MAX_EXTRAS) ids.push(id);
+      });
+      if (ids.length) destino.extras[clave] = ids;
+    });
+  }
+  destino.programa = (typeof programaPorId === "function" && programaPorId(guardado.programa)) ? guardado.programa : "";
+  return destino;
+}
 
 /**
  * Las elecciones tal como vengan (del almacenamiento, de la cuenta, de una
@@ -94,12 +149,18 @@ var ENTRENO_MAX_EXTRAS = 4;
  *   quitados ["clave_sesion:patron", …]     ese hueco de esa sesión se queda vacío
  *   extras   { clave_sesion: [ids] }        ejercicios añadidos al final de esa sesión
  *   t        cuándo se guardó (para elegir, entre cuenta y dispositivo, lo más nuevo)
+ *
+ * Y desde el 2026-10-23 la semana montada a mano y las plantillas:
+ *   estructura [{ i, k, n, d }] | null   las sesiones de la semana (normalizarEstructura);
+ *                                        con ella, quitados y extras van por el id de cada sesión
+ *   programa   ""                        el programa listo del que salió (WORKOUT_PROGRAMAS)
+ *   plantillas [{ nombre, estructura, programa, cambios, quitados, extras }]
  */
 function entrenoPrefsLimpiar(guardado) {
   var prefs = {
     nivel: "principiante", equipamiento: "gimnasio", semana: 1, duracion: 60, excluir: "",
     objetivo: "auto", material: null, enfoque: [], limitaciones: [], diasSemana: null, configurado: false,
-    cambios: {}, quitados: [], extras: {}, t: 0
+    cambios: {}, quitados: [], extras: {}, estructura: null, programa: "", plantillas: [], t: 0
   };
   if (guardado && typeof guardado === "object" && !Array.isArray(guardado)) {
     if (ENTRENO_NIVELES.indexOf(guardado.nivel) !== -1) prefs.nivel = guardado.nivel;
@@ -116,29 +177,17 @@ function entrenoPrefsLimpiar(guardado) {
     if (dias.length) prefs.diasSemana = dias.sort(function (a, b) { return a - b; });
     prefs.configurado = guardado.configurado === true;
 
-    var cambios = guardado.cambios;
-    if (cambios && typeof cambios === "object" && !Array.isArray(cambios)) {
-      Object.keys(cambios).slice(0, ENTRENO_MAX_CAMBIOS).forEach(function (de) {
-        var a = cambios[de];
-        if (de !== a && _entrenoIdValido(de) && _entrenoIdValido(a)) prefs.cambios[de] = a;
-      });
-    }
-    if (Array.isArray(guardado.quitados)) {
-      guardado.quitados.forEach(function (q) {
-        if (typeof q === "string" && /^[A-Za-z_]{1,40}:[A-Za-z_]{1,40}$/.test(q) &&
-            prefs.quitados.indexOf(q) === -1 && prefs.quitados.length < ENTRENO_MAX_CAMBIOS) prefs.quitados.push(q);
-      });
-    }
-    var extras = guardado.extras;
-    if (extras && typeof extras === "object" && !Array.isArray(extras)) {
-      Object.keys(extras).forEach(function (clave) {
-        if (!/^[A-Za-z_]{1,40}$/.test(clave) || !Array.isArray(extras[clave])) return;
-        if (typeof WORKOUT_SESIONES !== "undefined" && !Object.prototype.hasOwnProperty.call(WORKOUT_SESIONES, clave)) return;
-        var ids = [];
-        extras[clave].forEach(function (id) {
-          if (_entrenoIdValido(id) && ids.indexOf(id) === -1 && ids.length < ENTRENO_MAX_EXTRAS) ids.push(id);
+    _entrenoProgramaLimpio(guardado, prefs);
+    if (Array.isArray(guardado.plantillas)) {
+      guardado.plantillas.slice(0, ENTRENO_MAX_PLANTILLAS).forEach(function (p) {
+        if (!p || typeof p !== "object" || Array.isArray(p)) return;
+        var nombre = entrenoNombreLimpio(p.nombre);
+        var limpia = _entrenoProgramaLimpio(p, { cambios: {}, quitados: [], extras: {} });
+        // Una plantilla es una semana: sin estructura no hay nada que guardar.
+        if (nombre && limpia.estructura) prefs.plantillas.push({
+          nombre: nombre, estructura: limpia.estructura, programa: limpia.programa,
+          cambios: limpia.cambios, quitados: limpia.quitados, extras: limpia.extras
         });
-        if (ids.length) prefs.extras[clave] = ids;
       });
     }
     var t = Number(guardado.t);
@@ -192,7 +241,8 @@ function entrenoPlanParaDatos(datos) {
       nivel: d.nivel, equipamiento: d.equipamiento, duracion: d.duracion, excluir: d.excluir,
       objetivo: d.objetivoEntreno, material: d.material, enfoque: d.enfoque,
       limitaciones: d.limitaciones, diasSemana: d.diasSemana,
-      cambios: d.cambios, quitados: d.quitados, extras: d.extras
+      cambios: d.cambios, quitados: d.quitados, extras: d.extras,
+      estructura: d.estructura, programa: d.programa
     }
   );
   var semana = Math.floor(Number(d.semana));
@@ -294,6 +344,15 @@ function entrenoEsc(texto) {
 }
 
 /**
+ * El nombre de una sesión del plan: el que le puso el usuario (2026-10-23) o
+ * el de su plantilla en el idioma de la pantalla.
+ */
+function entrenoNombreSesion(s) {
+  if (!s) return "";
+  return s.nombrePropio ? s.name : tOr("ent.sesion_" + s.key, s.name);
+}
+
+/**
  * Repeticiones del plan en el idioma de la pantalla: "6-10" → "6–10",
  * "10-12 por lado" → "10–12 на сторону", "30-45 s" → "30–45 с". Lo que no
  * tenga esa forma sale tal cual.
@@ -301,7 +360,8 @@ function entrenoEsc(texto) {
 function entrenoRepsTexto(reps) {
   var m = /^(\d+)-(\d+)( s)?( por lado)?$/.exec(String(reps));
   if (!m) return String(reps);
-  return m[1] + "–" + m[2] + (m[3] ? " " + t("ent.seg_abrev") : "") + (m[4] ? " " + t("ent.por_lado") : "");
+  // "5-5" (el 5×5) es un número fijo, no un rango.
+  return (m[1] === m[2] ? m[1] : m[1] + "–" + m[2]) + (m[3] ? " " + t("ent.seg_abrev") : "") + (m[4] ? " " + t("ent.por_lado") : "");
 }
 
 /** «La última vez: 60 kg × 10, 10, 9» de un ejercicio, si hay diario y se hizo alguna vez. */
@@ -445,7 +505,8 @@ function entrenoResumenFichasHtml(plan, prefs) {
   if (plan.limitaciones && plan.limitaciones.length) {
     fichas.push(entrenoChip(tFormat("ent.chip_limites", { lista: _entrenoListaTexto(plan.limitaciones, "ent.limite_acus_", false) }), false));
   }
-  if (plan.division) fichas.push(entrenoChip(tOr("ent.division_" + plan.division, plan.division), false));
+  if (plan.programa) fichas.push(entrenoChip(tOr("ent.programa_" + plan.programa, plan.programa), false));
+  else if (plan.division) fichas.push(entrenoChip(tOr("ent.division_" + plan.division, plan.division), false));
   return fichas.join("");
 }
 
@@ -465,7 +526,7 @@ function entrenoResumenNotasHtml(plan) {
 
 /** Botones para cambiar a mano un ejercicio del programa: sustituir, quitar y, si era un cambio, volver. */
 function _entrenoBotonesProgramaHtml(sesion, e) {
-  var datos = ' data-sesion="' + entrenoEsc(sesion.key) + '" data-id="' + entrenoEsc(e.id) + '"' +
+  var datos = ' data-sesion="' + entrenoEsc(sesion.instancia || sesion.key) + '" data-id="' + entrenoEsc(e.id) + '"' +
     ' data-patron="' + entrenoEsc(e.patron || "") + '"' + (e.extra ? ' data-extra="1"' : "");
   var nombre = entrenoNombre(e);
   return '<span class="entreno__ej-botones">' +
@@ -534,21 +595,29 @@ function entrenoTablaHtml(sesion, log, editable) {
  */
 function entrenoSesionHtml(s, i, log) {
   var editable = typeof i === "number";
-  var empezar = (editable && typeof entrenoSesionEmpezar === "function")
+  // Una sesión libre sin nada añadido no se puede empezar: no hay qué apuntar.
+  var empezar = (editable && s.exercises.length && typeof entrenoSesionEmpezar === "function")
     ? '<button type="button" class="entreno__empezar" data-empezar="' + i + '">' + entrenoEsc(t("ent.empezar")) + "</button>"
     : "";
   var anadir = (editable && typeof entrenoCatalogoAbrir === "function")
-    ? '<button type="button" class="btn-secondary entreno__anadir" data-prog="anadir" data-sesion="' + entrenoEsc(s.key) + '">' +
+    ? '<button type="button" class="btn-secondary entreno__anadir" data-prog="anadir" data-sesion="' + entrenoEsc(s.instancia || s.key) + '">' +
         entrenoEsc(t("ent.anadir_ejercicio")) + "</button>"
     : "";
-  return '<section class="entreno__sesion">' +
+  // Renombrar, copiar, quitar y cambiar de día (js/ui/entreno-programas.js, 2026-10-23).
+  var herramientas = (editable && typeof entrenoSesionHerramientasHtml === "function") ? entrenoSesionHerramientasHtml(s) : "";
+  var titulo = (editable && typeof entrenoTituloSesionHtml === "function")
+    ? entrenoTituloSesionHtml(s)
+    : '<h4 class="entreno__sesion-titulo">' + entrenoEsc(entrenoNombreSesion(s)) + "</h4>";
+  return '<section class="entreno__sesion" data-instancia="' + entrenoEsc(s.instancia || s.key) + '">' +
     '<header class="entreno__sesion-cabeza">' +
       '<span class="entreno__dia">' + entrenoEsc(t("ent.dia_" + s.dia)) + "</span>" +
-      '<h4 class="entreno__sesion-titulo">' + entrenoEsc(tOr("ent.sesion_" + s.key, s.name)) + "</h4>" +
+      titulo +
       '<span class="entreno__n">' + entrenoEsc(tFormat("ent.n_ejercicios", { n: s.exercises.length })) + "</span>" +
       empezar +
     "</header>" +
-    entrenoTablaHtml(s, log, editable && typeof entrenoCatalogoAbrir === "function") +
+    herramientas +
+    (s.exercises.length ? entrenoTablaHtml(s, log, editable && typeof entrenoCatalogoAbrir === "function")
+      : '<p class="entreno__sesion-vacia">' + entrenoEsc(t("ent.sesion_vacia")) + "</p>") +
     anadir +
   "</section>";
 }
@@ -613,14 +682,28 @@ function entrenoProgramaCambiar(idActual, idNuevo) {
 }
 
 /** Lo que hacen los botones del programa (data-prog): cambiar, volver, quitar, añadir y deshacer todo. */
+/** La sesión del plan de ahora por su id en la estructura (o su clave, sin estructura). */
+function entrenoSesionDelPlan(instancia) {
+  return ((_entrenoUltimoPlan && _entrenoUltimoPlan.sesiones) || []).filter(function (s) {
+    return (s.instancia || s.key) === instancia;
+  })[0] || null;
+}
+
+/** El plan que se ve ahora (o null): lo usan las acciones de js/ui/entreno-programas.js. */
+function entrenoPlanActual() {
+  return _entrenoUltimoPlan;
+}
+
 function _entrenoAccionPrograma(boton) {
   var accion = boton.getAttribute("data-prog");
   var clave = boton.getAttribute("data-sesion");
   var id = boton.getAttribute("data-id");
+  // Lo de la semana entera y las plantillas (2026-10-23) va en su propio fichero.
+  if (typeof entrenoProgramasAccion === "function" && entrenoProgramasAccion(boton)) return;
   var prefs = entrenoLeerPrefs();
   entrenoVibrar();
   if (accion === "cambiar" && typeof entrenoCatalogoAbrir === "function") {
-    var sesion = ((_entrenoUltimoPlan && _entrenoUltimoPlan.sesiones) || []).filter(function (s) { return s.key === clave; })[0];
+    var sesion = entrenoSesionDelPlan(clave);
     entrenoCatalogoAbrir({
       modo: "elegir",
       titulo: tFormat("ent.cat_sustituir_titulo", { nombre: entrenoNombre(_entrenoCatalogo(id) || { id: id, name: id }) }),
@@ -645,10 +728,10 @@ function _entrenoAccionPrograma(boton) {
       if (prefs.quitados.indexOf(hueco) === -1) prefs.quitados.push(hueco);
     }
   } else if (accion === "anadir" && typeof entrenoCatalogoAbrir === "function") {
-    var s = ((_entrenoUltimoPlan && _entrenoUltimoPlan.sesiones) || []).filter(function (x) { return x.key === clave; })[0];
+    var s = entrenoSesionDelPlan(clave);
     entrenoCatalogoAbrir({
       modo: "elegir",
-      titulo: tFormat("ent.cat_anadir_a", { sesion: tOr("ent.sesion_" + clave, clave) }),
+      titulo: tFormat("ent.cat_anadir_a", { sesion: s ? entrenoNombreSesion(s) : clave }),
       excluir: s ? s.exercises.map(function (e) { return e.id; }) : [],
       nota: t("ent.cat_nota_programa"),
       alElegir: function (nuevo) {
@@ -704,6 +787,8 @@ function entrenoPlanHtml(plan, log) {
   }
 
   plan.sesiones.forEach(function (s, i) { h.push(entrenoSesionHtml(s, i, log)); });
+  // «Añadir entrenamiento» (2026-10-23): una sesión más en la semana.
+  if (typeof entrenoNuevaSesionHtml === "function") h.push(entrenoNuevaSesionHtml(plan));
 
   var grupos = Object.keys(plan.seriesPorSemana).map(function (m) {
     return entrenoChip(tFormat("ent.series_linea", {
@@ -738,7 +823,9 @@ function renderEntreno() {
   }
 
   var dias = Math.floor(Number((document.getElementById("workouts") || {}).value));
-  var sinPlan = !(dias >= 1);
+  // Con la semana montada a mano, el plan son sus sesiones aunque «Mis datos»
+  // diga otra cosa (entrenoProgramasAvisoHtml lo avisa y deja elegir).
+  var sinPlan = !prefs.estructura && !(dias >= 1);
   if (sinDias) sinDias.hidden = !sinPlan;
   salida.hidden = sinPlan;
   var log = typeof entrenoLogLeer === "function" ? entrenoLogLeer() : null;
@@ -758,6 +845,8 @@ function renderEntreno() {
     cambios: prefs.cambios,
     quitados: prefs.quitados,
     extras: prefs.extras,
+    estructura: prefs.estructura,
+    programa: prefs.programa,
     semana: prefs.semana
   });
   var fichas = document.getElementById("entrenoResumenFichas");
@@ -765,7 +854,10 @@ function renderEntreno() {
   var fichasPerfil = document.getElementById("entrenoPerfilFichas");
   if (fichas) fichas.innerHTML = entrenoResumenFichasHtml(plan, prefs);
   if (fichasPerfil) fichasPerfil.innerHTML = entrenoResumenFichasHtml(plan, prefs);
-  if (notas) notas.innerHTML = plan.ok ? entrenoResumenNotasHtml(plan) + entrenoCambiosHtml(prefs) : "";
+  var avisoDias = typeof entrenoProgramasAvisoHtml === "function" ? entrenoProgramasAvisoHtml(prefs, dias) : "";
+  if (notas) notas.innerHTML = avisoDias + (plan.ok ? entrenoResumenNotasHtml(plan) + entrenoCambiosHtml(prefs) : "");
+  // Programas listos y plantillas (js/ui/entreno-programas.js, 2026-10-23).
+  if (typeof entrenoProgramasPintar === "function") entrenoProgramasPintar(prefs, plan);
 
   // «Hoy» y la semana (2026-10-18): lo primero que se ve, con un solo botón.
   var ahora = Date.now();
@@ -837,11 +929,12 @@ function entrenoElegirHtml(datos, plan) {
   var hayHoy = !!(datos && datos.estado === "sesion");
   var filas = plan.sesiones.map(function (s, i) {
     if (hayHoy && i === datos.indice) return "";
+    if (!s.exercises.length) return "";
     var hecha = !!hechos[s.dia];
     return '<li class="entreno__elegir-item' + (hecha ? " is-hecho" : "") + '">' +
       '<span class="entreno__elegir-dia">' + entrenoEsc(t("ent.dia_corto_" + s.dia)) + "</span>" +
       '<span class="entreno__elegir-texto">' +
-        '<strong class="entreno__elegir-nombre">' + entrenoEsc(tOr("ent.sesion_" + s.key, s.name)) + "</strong>" +
+        '<strong class="entreno__elegir-nombre">' + entrenoEsc(entrenoNombreSesion(s)) + "</strong>" +
         '<span class="entreno__elegir-datos">' + entrenoEsc(tFormat("ent.elegir_datos", { n: s.exercises.length }) +
           (hecha ? " · " + t("ent.elegir_hecha") : "")) + "</span>" +
       "</span>" +
@@ -897,8 +990,10 @@ function entrenoHoyHtml(datos, prefs) {
   var h = '<p class="entreno__hoy-ojo">' + entrenoEsc(t("ent.hoy_ojo")) + "</p>";
   if (datos.estado === "sesion" || datos.estado === "hecho") {
     var s = datos.sesion;
-    h += '<h3 class="entreno__hoy-titulo">' + entrenoEsc(tOr("ent.sesion_" + s.key, s.name)) + "</h3>";
-    if (datos.estado === "sesion") {
+    h += '<h3 class="entreno__hoy-titulo">' + entrenoEsc(entrenoNombreSesion(s)) + "</h3>";
+    if (datos.estado === "sesion" && !s.exercises.length) {
+      h += '<p class="entreno__hoy-texto">' + entrenoEsc(t("ent.sesion_vacia")) + "</p>";
+    } else if (datos.estado === "sesion") {
       h += '<p class="entreno__hoy-datos">' + entrenoEsc(tFormat("ent.hoy_datos", { min: prefs.duracion, n: s.exercises.length })) + "</p>" +
         entrenoHoyMusculosHtml(s) +
         '<button type="button" class="entreno__empezar" data-empezar="' + datos.indice + '">' + entrenoEsc(t("ent.empezar")) + "</button>";
@@ -911,7 +1006,7 @@ function entrenoHoyHtml(datos, prefs) {
   if (datos.siguiente) {
     h += '<p class="entreno__hoy-datos">' + entrenoEsc(tFormat("ent.hoy_siguiente", {
       dia: t("ent.dia_corto_" + datos.siguiente.dia),
-      nombre: tOr("ent.sesion_" + datos.siguiente.sesion.key, datos.siguiente.sesion.name)
+      nombre: entrenoNombreSesion(datos.siguiente.sesion)
     })) + "</p>";
   }
   return h;
@@ -950,7 +1045,7 @@ function entrenoExportarIcs() {
     sello: ahora,
     horaMinutos: icsHoraEntreno((document.getElementById("entHora") || {}).value),
     titulo: function (sesion) {
-      return tFormat("ics.entreno_titulo", { sesion: tOr("ent.sesion_" + sesion.key, sesion.name) });
+      return tFormat("ics.entreno_titulo", { sesion: entrenoNombreSesion(sesion) });
     },
     linea: function (e) {
       return tFormat("ics.linea_ejercicio", {
@@ -1065,6 +1160,7 @@ function initEntreno() {
   if (typeof initEntrenoSesion === "function") initEntrenoSesion();
   if (typeof initEntrenoProgreso === "function") initEntrenoProgreso();
   if (typeof initEntrenoCatalogo === "function") initEntrenoCatalogo();
+  if (typeof initEntrenoProgramas === "function") initEntrenoProgramas();
   if (typeof initEntrenoTutorial === "function") initEntrenoTutorial();
   if (typeof initEntrenoPestanas === "function") initEntrenoPestanas();
   var cerrarAnim = document.getElementById("entrenoAnimCerrar");

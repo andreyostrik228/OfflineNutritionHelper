@@ -52,6 +52,8 @@ function _cuestJuegoDe(material) {
 function _cuestDatosIniciales() {
   var prefs = entrenoLeerPrefs();
   var dias = Math.floor(Number((document.getElementById("workouts") || {}).value));
+  // Con la semana montada a mano, los días son sus sesiones (2026-10-23).
+  if (prefs.estructura) dias = prefs.estructura.length;
   if (!(dias >= 1)) dias = 3;
   if (dias > 6) dias = 6;
   var objetivo = prefs.objetivo;
@@ -205,7 +207,14 @@ function entrenoCuestionarioCerrar(guardar) {
     prefs.limitaciones = d.limitaciones.slice();
     prefs.diasSemana = d.diasSemana.length === d.dias ? d.diasSemana.slice() : null;
     prefs.excluir = String(document.getElementById("entExcluir").value || "").trim().slice(0, 200);
-    if (d.dias !== d.diasIniciales) entrenoGuardarDias(d.dias);
+    if (d.dias !== d.diasIniciales) {
+      entrenoGuardarDias(d.dias);
+      // Otro número de días es otra semana: la montada a mano (o el programa
+      // listo) se deja y el plan vuelve a salir solo. Lo cambiado en los
+      // ejercicios sueltos se queda.
+      prefs.estructura = null;
+      prefs.programa = "";
+    }
   }
   prefs.configurado = true;
   entrenoGuardarPrefs(prefs);

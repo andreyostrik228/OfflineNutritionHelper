@@ -115,7 +115,7 @@ function run(t) {
     var mapa = {
       entrenoOjo: "inicio", entrenoReanudar: "inicio sesion", entrenoHoy: "inicio sesion", entrenoSemanaCaja: "inicio",
       entrenoUltima: "inicio", entrenoElegir: "sesion", entrenoResumen: "plan", entrenoSinDias: "inicio plan sesion",
-      entrenoProgreso: "progreso", entrenoPeso: "progreso", entrenoPerfil: "perfil", entrenoSalida: "plan"
+      entrenoProgreso: "progreso", entrenoPerfil: "perfil", entrenoSalida: "plan"
     };
     Object.keys(mapa).forEach(function (id) {
       assert.ok(lineaDe(html, id).indexOf('data-en="' + mapa[id] + '"') !== -1, "#" + id + " debería salir en «" + mapa[id] + "»");

@@ -4279,9 +4279,11 @@ body.modo-cuestionario .next-meal-sticky { display: none !important; }
   background: var(--surface);
 }
 .entreno__punto.is-hecho { border-color: var(--ink); background: var(--volt); }
+/* Una barra por tramo del periodo: de 5 a 14, según el periodo (2026-10-23). */
 .entreno__grafica {
   display: grid;
-  grid-template-columns: repeat(8, minmax(0, 1fr));
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   gap: 6px;
   height: 120px;
   margin: 0;
@@ -4300,7 +4302,13 @@ body.modo-cuestionario .next-meal-sticky { display: none !important; }
 .entreno__barra-col i { display: block; width: 100%; border-radius: 6px 6px 0 0; background: var(--ink); }
 .entreno__barra.is-actual .entreno__barra-col i { background: var(--volt); box-shadow: inset 0 0 0 1.5px var(--ink); }
 .entreno__barra-fecha {
-  overflow: hidden;
+  /* Sin fecha (con muchas barras, va solo en algunas) ocupa lo mismo: las barras no se descuadran.
+     Centrada con flex, una fecha más ancha que su barra sale por los dos lados, sobre las vecinas sin fecha. */
+  display: flex;
+  justify-content: center;
+  min-height: 1.3em;
+  line-height: 1.3;
+  overflow: visible;
   font-size: 0.66rem;
   font-variant-numeric: tabular-nums;
   text-align: center;
@@ -4308,6 +4316,8 @@ body.modo-cuestionario .next-meal-sticky { display: none !important; }
   color: var(--text-3);
 }
 .entreno__hist { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+/* Abierta desde un punto de una gráfica, la sesión queda por debajo de la barra fija de arriba. */
+.entreno__hist-item { scroll-margin-top: 84px; }
 .entreno__hist-item details {
   border: 1.5px solid var(--field-line);
   border-radius: var(--r-md);
@@ -4976,6 +4986,62 @@ body.modo-cuestionario .next-meal-sticky { display: none !important; }
 .entreno__nota-programa--tuyo { color: var(--ink); }
 .entreno__anadir { margin-top: 10px; }
 
+/* «Plan» (2026-10-23): cada sesión con su día, renombrar, copiar y quitar;
+   «Añadir entrenamiento»; programas listos y plantillas. */
+.entreno__sesion-herr { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 4px 0 10px; }
+.entreno__sesion-dia-campo { display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: 700; color: var(--text-2); }
+.entreno__sesion-dia-campo select {
+  min-height: 34px;
+  /* Hueco para la flecha que dibujan los aspectos (20 px a 14 px del borde). */
+  padding: 4px 40px 4px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--pill);
+  background-color: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.82rem;
+}
+.entreno__mini-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.entreno__sesion-vacia { margin: 6px 0 0; padding: 12px; border: 1px dashed var(--line-strong); border-radius: var(--r-sm); color: var(--text-2); font-size: 0.9rem; }
+.entreno__renombrar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; flex: 1 1 220px; min-width: 0; }
+.entreno__renombrar-campo { flex: 1 1 160px; min-width: 0; }
+.entreno__nueva { margin: 4px 0 18px; }
+.entreno__nueva-btn { width: 100%; }
+.entreno__nueva-tipos { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 0; padding: 0; list-style: none; }
+.entreno__programas { margin: 0 0 16px; }
+.entreno__programas-det {
+  padding: 0 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-1);
+}
+.entreno__programas-det[open] { padding-bottom: 16px; }
+.entreno__programas-sum { min-height: 52px; display: flex; align-items: center; cursor: pointer; font: 800 1.1rem/1.2 var(--font-display); color: var(--ink); }
+.entreno__programas-sum:focus-visible { outline: 3px solid var(--volt); outline-offset: 2px; }
+.entreno__prog-filtro { margin-top: 6px; }
+/* Aquí los filtros caben en dos líneas: mejor verlos todos que esconder «5 дн.» de lado. */
+.entreno__prog-filtro .cat__filtros { flex-wrap: wrap; overflow: visible; }
+.entreno__programas-lista { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.entreno__programa { display: grid; gap: 6px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface-2); }
+.entreno__programa.is-actual { border-color: var(--ink); }
+.entreno__programa-nombre { margin: 0; font: 800 1.05rem/1.2 var(--font-display); color: var(--ink); }
+.entreno__programa-texto { margin: 0; color: var(--text-2); font-size: 0.9rem; }
+.entreno__programa-meta { margin: 0; color: var(--text-3); font-size: 0.8rem; font-weight: 700; }
+.entreno__programa-sesiones { display: flex; flex-wrap: wrap; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.entreno__programa-sesiones li { padding: 2px 8px; border-radius: var(--pill); background: var(--surface); color: var(--text-2); font-size: 0.78rem; }
+.entreno__programa .btn-secondary, .entreno__programa .entreno__badge { justify-self: start; margin-left: 0; }
+.entreno__plantillas { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.entreno__plantilla { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 10px 12px; border-radius: var(--r-md); background: var(--surface-2); }
+.entreno__plantilla-nombre { flex: 1 1 140px; min-width: 0; font-weight: 700; color: var(--ink); overflow-wrap: anywhere; }
+.entreno__plantilla-meta { color: var(--text-3); font-size: 0.8rem; }
+.entreno__plantilla-nueva { display: grid; gap: 6px; margin-top: 12px; }
+.entreno__plantilla-fila { display: flex; flex-wrap: wrap; gap: 6px; }
+.entreno__plantilla-fila .cat__campo { flex: 1 1 180px; min-width: 0; }
+.entreno__prog-estado { margin: 0; min-height: 1.2em; color: var(--text-2); font-size: 0.85rem; }
+.entreno__aviso-dias p { margin: 0 0 8px; }
+.entreno__aviso-botones { display: flex; flex-wrap: wrap; gap: 6px; }
+
 /* Menú «⋯» de cada ejercicio en la sesión */
 .sesion__mas { position: relative; flex: none; }
 /* El menú flota sobre la tarjeta: abierto, no empuja el nombre del ejercicio. */
@@ -5327,7 +5393,6 @@ body.con-entreno-pestanas .sesion__descanso {
 .entreno__tarjeta-datos { margin: 0; font-size: 0.88rem; color: var(--text-2); }
 .entreno__ultima-caja { display: grid; gap: 12px; margin: 0 0 16px; }
 .entreno__ultima-caja[hidden],
-.entreno__peso[hidden],
 .entreno__perfil[hidden] { display: none; }
 @media (min-width: 640px) {
   .entreno__ultima-caja { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
@@ -5365,19 +5430,70 @@ body.con-entreno-pestanas .sesion__descanso {
 .entreno__elegir-datos { font-size: 0.82rem; color: var(--text-2); }
 .entreno__elegir-btn { min-height: 44px; }
 
-/* «Progreso»: el peso corporal */
-.entreno__peso {
-  display: grid;
-  gap: 10px;
-  margin: 16px 0;
-  padding: 16px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  background: var(--surface);
-  box-shadow: var(--shadow-1);
+/* «Progreso»: el periodo, sus cifras y los cuatro apartados (2026-10-23) */
+.entreno__periodos { flex-wrap: wrap; overflow: visible; margin-bottom: 6px; }
+.entreno__cifras--periodo .entreno__cifra-valor { font-size: 1.2rem; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+@media (min-width: 640px) {
+  .entreno__cifras--periodo { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
-.entreno__peso .entreno__subtitulo { margin: 0; }
-.entreno__peso .btn-secondary { justify-self: start; }
+/* Las cuatro pestañas caben en una fila a 390 px en los cuatro idiomas; más estrecho, pasan a dos. */
+.entreno__vistas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin: 16px 0 4px;
+  padding: 3px;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+.entreno__vista-btn {
+  flex: 1 1 auto;
+  min-height: 40px;
+  padding: 8px 4px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.entreno__vista-btn.is-on { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-1); }
+.entreno__vista-btn:focus-visible { outline: 3px solid var(--volt); outline-offset: 1px; }
+.entreno__vista[hidden] { display: none; }
+.entreno__records { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.entreno__record-fila {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 12px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.entreno__record-fila:focus-visible { outline: 3px solid var(--volt); outline-offset: 2px; }
+.entreno__record-ej { font-weight: 700; overflow-wrap: anywhere; }
+.entreno__record-marca { grid-row: span 2; align-self: center; font: 800 1.05rem/1.1 var(--font-display); font-variant-numeric: tabular-nums; }
+.entreno__record-fecha { font-size: 0.8rem; color: var(--text-2); }
+/* El círculo que se toca en un punto de la gráfica: invisible, más grande que el punto. */
+.entreno__linea .entreno__linea-toque { fill: transparent; stroke: none; cursor: pointer; }
+.entreno__linea .entreno__linea-toque:hover { stroke: var(--line-strong); stroke-width: 1.5; }
+.entreno__linea .entreno__linea-toque:focus { outline: none; }
+.entreno__linea .entreno__linea-toque:focus-visible { stroke: var(--ink); stroke-width: 2.5; stroke-dasharray: 3 2; }
+.entreno__peso-grafica { padding: 0; }
+
+/* «Progreso», apartado «Cuerpo»: el peso corporal */
+.entreno__cuerpo { display: grid; gap: 10px; margin-top: 16px; }
+.entreno__cuerpo .entreno__subtitulo { margin: 0; }
+.entreno__cuerpo .btn-secondary { justify-self: start; }
 .entreno__peso-texto { margin: 0; font-size: 0.93rem; color: var(--text-2); max-width: 62ch; }
 .entreno__peso-linea { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin: 0; }
 .entreno__peso-valor { font: 800 1.8rem/1 var(--font-display); color: var(--ink); font-variant-numeric: tabular-nums; }

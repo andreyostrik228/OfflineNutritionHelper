@@ -16,31 +16,47 @@
  * músculos, de js/core/workout-stats.js. Lo pinta renderEntreno()
  * (js/ui/render-entreno.js) cada vez que pinta el plan.
  *
+ * Desde el 2026-10-23 (propuesta de diseño del dueño, punto 6) «Progreso» va
+ * por periodos (7 días, mes, 3 meses, año, todo): arriba las cifras del
+ * periodo y debajo cuatro apartados en pestañas: «Fuerza» (récords y cada
+ * ejercicio), «Volumen» (kilos por tramo y músculos), «Regularidad» (la
+ * semana, sesiones por tramo e historial) y «Cuerpo» (el peso). Tocar un
+ * punto de una gráfica o un récord abre esa sesión en el historial. El
+ * periodo y el apartado se recuerdan en ENTRENO_PROGRESO_CLAVE.
+ *
  * Expone (globales):
  *   initEntrenoProgreso()                 cablea los botones (una vez)
- *   renderEntrenoProgreso(log, plan)      pinta #entrenoReanudar y #entrenoProgreso
+ *   renderEntrenoProgreso(log, plan)      pinta #entrenoReanudar, #entrenoUltima y #entrenoProgreso
  *   entrenoReanudarHtml(log, ahora)       marcado del aviso de sesión sin terminar ("" si no hay)
- *   entrenoProgresoHtml(log, plan, ahora) marcado del progreso, sin DOM (lo prueban los tests)
- *   entrenoEjerciciosHtml(log)            marcado del progreso por ejercicio, sin DOM
- *   entrenoMusculosCargaHtml(log, ahora)  marcado de la carga por músculo, sin DOM
+ *   entrenoProgresoHtml(log, plan, ahora, estado)
+ *                                         marcado del progreso, sin DOM (lo prueban los tests);
+ *                                         estado: { periodo, vista, pesos, forzada }
+ *   entrenoProgresoEstadoLeer()           el periodo y el apartado guardados
+ *   entrenoProgresoVerSesion(id)          enseña esa sesión, abierta, en «Regularidad»
+ *   entrenoEjerciciosHtml(log, periodo)   marcado del progreso por ejercicio, sin DOM
+ *   entrenoMusculosCargaHtml(log, ahora, periodo)  marcado de la carga por músculo, sin DOM
  *   entrenoHace(ms)                       "hace 25 min" / "hace 3 h" / "hace 2 d"
  *   entrenoUltimaSesionHtml(log)          «Inicio»: la última sesión y el último récord, sin DOM
  *   entrenoUltimoRecord(log)              el ejercicio del récord más reciente, o null
- *   entrenoPesoHtml(lista, ahora)         «Progreso»: el peso corporal, sin DOM
+ *   entrenoPesoHtml(lista, ahora, periodo) el peso corporal (con periodo, también su gráfica), sin DOM
  *   entrenoFichaResultadosHtml(id, log)   la página de un ejercicio: récords, gráfica y últimas veces, sin DOM
  *
  * Con la barra de secciones (js/ui/entreno-pestanas.js, 2026-10-21) el aviso de
  * la sesión sin terminar sale en «Inicio» y en «Entrenar», la última sesión en
- * «Inicio», y el resto y el peso en «Progreso».
+ * «Inicio», y el resto en «Progreso».
  * ─────────────────────────────────────────────────────────────────────────
  */
 
-var ENTRENO_HISTORIAL_N = 10;
-var ENTRENO_SEMANAS_GRAFICA = 8;
+var ENTRENO_HISTORIAL_N = 30;
 var ENTRENO_EJERCICIOS_N = 12;
 var ENTRENO_PUNTOS_GRAFICA = 16;
 var ENTRENO_DIAS_MUSCULOS = 28;
+var ENTRENO_RECORDS_N = 8;
+var ENTRENO_VISTAS = ["fuerza", "volumen", "regularidad", "cuerpo"];
+var ENTRENO_PROGRESO_CLAVE = "nutritionPlanner.entrenoProgreso.v1";
 var _progresoCableado = false;
+// La sesión que se pidió ver (un punto de una gráfica, un récord): sale en el historial aunque caiga fuera del periodo.
+var _progresoForzada = "";
 
 function _progresoEsc(texto) { return escapeHtml(String(texto)); }
 
@@ -73,7 +89,7 @@ function _progresoDiaMes(ms) {
 }
 
 function _progresoNombreSesion(s) {
-  return tOr("ent.sesion_" + s.clave, s.nombre || "");
+  return typeof entrenoLogNombreSesion === "function" ? entrenoLogNombreSesion(s) : tOr("ent.sesion_" + s.clave, s.nombre || "");
 }
 
 function _progresoMayuscula(texto) {
@@ -131,24 +147,48 @@ function _progresoSemanaHtml(semanas, log, plan, ahora) {
   "</div>";
 }
 
-function _progresoGraficaHtml(semanas) {
-  var max = semanas.reduce(function (m, s) { return Math.max(m, s.volumen); }, 0);
+/** Cómo se llama un tramo: el día, la semana (por su lunes) o el mes; `corta`, para debajo de la barra. */
+function _progresoTramoFecha(tramo, paso, corta) {
+  var d = new Date(tramo.inicio);
+  try {
+    if (paso === "mes") return d.toLocaleDateString(_progresoLocale(), corta ? { month: "short" } : { month: "long", year: "numeric" });
+    if (paso === "dia") return corta ? d.toLocaleDateString(_progresoLocale(), { weekday: "short" }) : _progresoFecha(tramo.inicio);
+  } catch (e) {
+    return (paso === "mes" ? "" : d.getDate() + ".") + (d.getMonth() + 1);
+  }
+  return corta ? _progresoDiaMes(tramo.inicio) : tFormat("ent.tramo_semana", { fecha: _progresoDiaMes(tramo.inicio) });
+}
+
+/**
+ * Una barra por tramo del periodo con los kilos ("volumen") o las sesiones
+ * ("sesiones"). Con muchas barras, la fecha va solo en una de cada pocas,
+ * contando desde la última. "" si todo es cero.
+ */
+function _progresoBarrasHtml(tramos, campo, periodo) {
+  var max = tramos.reduce(function (m, x) { return Math.max(m, x[campo]); }, 0);
   if (!max) return "";
-  var barras = semanas.map(function (s, i) {
-    var alto = s.volumen ? Math.max(4, Math.round(s.volumen / max * 100)) : 0;
-    var etiqueta = tFormat("ent.grafica_semana", { fecha: _progresoDiaMes(s.inicio), kg: entrenoMiles(s.volumen) + " " + t("ent.kg") });
-    return '<li class="entreno__barra' + (i === semanas.length - 1 ? " is-actual" : "") + '" aria-label="' + _progresoEsc(etiqueta) + '">' +
+  var n = tramos.length;
+  var cada = n <= 8 ? 1 : Math.ceil(n / 7);
+  var barras = tramos.map(function (x, i) {
+    var alto = x[campo] ? Math.max(4, Math.round(x[campo] / max * 100)) : 0;
+    var valor = campo === "volumen" ? entrenoMiles(x.volumen) + " " + t("ent.kg") : tFormat("ent.barra_sesiones", { n: x.sesiones });
+    var etiqueta = tFormat("ent.grafica_barra", { fecha: _progresoTramoFecha(x, periodo.paso, false), valor: valor });
+    var fecha = (n - 1 - i) % cada === 0 ? _progresoTramoFecha(x, periodo.paso, true) : "";
+    return '<li class="entreno__barra' + (i === n - 1 ? " is-actual" : "") + '" aria-label="' + _progresoEsc(etiqueta) + '">' +
       '<span class="entreno__barra-col"><i style="height:' + alto + '%"></i></span>' +
-      '<span class="entreno__barra-fecha" aria-hidden="true">' + _progresoEsc(_progresoDiaMes(s.inicio)) + "</span></li>";
+      '<span class="entreno__barra-fecha" aria-hidden="true">' + _progresoEsc(fecha) + "</span></li>";
   }).join("");
-  return '<h4 class="entreno__progreso-sub">' + _progresoEsc(t("ent.volumen_8")) + "</h4>" +
+  return '<h4 class="entreno__progreso-sub">' + _progresoEsc(t("ent." + campo + "_paso_" + periodo.paso)) + "</h4>" +
     '<ol class="entreno__grafica">' + barras + "</ol>";
 }
 
-/** Carga por músculo en las últimas 4 semanas: una barra por grupo, con la media por semana. */
-function entrenoMusculosCargaHtml(log, ahora) {
+/**
+ * Carga por músculo: una barra por grupo, con la media por semana. Sin
+ * periodo, las últimas 4 semanas; con él, los días del periodo.
+ */
+function entrenoMusculosCargaHtml(log, ahora, periodo) {
   if (typeof entrenoStatsMusculos !== "function") return "";
-  var grupos = entrenoStatsMusculos(log, ahora, ENTRENO_DIAS_MUSCULOS);
+  var grupos = entrenoStatsMusculos(log, ahora, periodo ? periodo.dias : ENTRENO_DIAS_MUSCULOS);
   var max = grupos.reduce(function (m, g) { return Math.max(m, g.series); }, 0);
   if (!max) return "";
   var filas = grupos.map(function (g) {
@@ -160,7 +200,7 @@ function entrenoMusculosCargaHtml(log, ahora) {
       '<span class="entreno__musculo-barra" aria-hidden="true"><i style="width:' + ancho + '%"></i></span>' +
       '<span class="entreno__musculo-valor">' + _progresoEsc(valor) + "</span></li>";
   }).join("");
-  return '<h4 class="entreno__progreso-sub">' + _progresoEsc(t("ent.musculos_titulo")) + "</h4>" +
+  return '<h4 class="entreno__progreso-sub">' + _progresoEsc(t(periodo ? "ent.musculos_titulo_periodo" : "ent.musculos_titulo")) + "</h4>" +
     '<ul class="entreno__musculos">' + filas + "</ul>" +
     '<p class="entreno__progreso-nota">' + _progresoEsc(t("ent.musculos_como")) + "</p>";
 }
@@ -171,8 +211,12 @@ function _progresoValorTexto(x, p) {
   return entrenoKg(p.kg) + " × " + p.reps;
 }
 
-/** La gráfica de un ejercicio: línea y puntos, con la escala abajo. "" con menos de dos sesiones. */
-function _progresoLineaHtml(x) {
+/**
+ * La gráfica de un ejercicio: línea y puntos, con la escala abajo. "" con
+ * menos de dos sesiones. `tocable`: cada punto abre su sesión (data-ver-sesion,
+ * js/ui/entreno-pestanas.js), con un círculo invisible más grande que el dedo.
+ */
+function _progresoLineaHtml(x, tocable) {
   var puntos = x.puntos.slice(-ENTRENO_PUNTOS_GRAFICA);
   var g = typeof entrenoStatsGrafico === "function" ? entrenoStatsGrafico(puntos, 300, 90) : null;
   if (!g) return '<p class="entreno__ej-solo">' + _progresoEsc(t("ent.progreso_una_vez")) + "</p>";
@@ -185,19 +229,50 @@ function _progresoLineaHtml(x) {
     return '<circle cx="' + m.x + '" cy="' + m.y + '" r="' + (i === g.marcas.length - 1 ? 4 : 2.6) + '"' +
       (i === g.marcas.length - 1 ? ' class="is-ultimo"' : "") + "/>";
   }).join("");
+  var toques = "";
+  if (tocable && g.marcas.length === puntos.length) {
+    toques = puntos.map(function (p, i) {
+      if (!p.sid) return "";
+      var texto = tFormat("ent.punto_ver", { fecha: _progresoFecha(p.t), valor: _progresoValorTexto(x, p) });
+      return '<circle class="entreno__linea-toque" cx="' + g.marcas[i].x + '" cy="' + g.marcas[i].y + '" r="11" tabindex="0" role="button"' +
+        ' data-ver-sesion="' + _progresoEsc(p.sid) + '" aria-label="' + _progresoEsc(texto) + '"><title>' + _progresoEsc(texto) + "</title></circle>";
+    }).join("");
+  }
   return '<figure class="entreno__linea">' +
-    '<svg viewBox="0 0 300 90" role="img" aria-label="' + _progresoEsc(etiqueta) + '" focusable="false">' +
-      '<path class="entreno__linea-trazo" d="' + g.path + '"/>' + marcas + "</svg>" +
+    // Con puntos que se tocan es un grupo: lo que hay dentro de role="img" no se puede pulsar.
+    '<svg viewBox="0 0 300 90" role="' + (toques ? "group" : "img") + '" aria-label="' + _progresoEsc(etiqueta) + '" focusable="false">' +
+      '<path class="entreno__linea-trazo" d="' + g.path + '"/>' + marcas + toques + "</svg>" +
     '<figcaption class="entreno__linea-pie"><span>' + _progresoEsc(_progresoDiaMes(puntos[0].t)) + "</span>" +
       '<span>' + _progresoEsc(x.tipo === "peso" ? t("ent.grafica_e1rm") : t("ent.grafica_mejor")) + "</span>" +
       "<span>" + _progresoEsc(_progresoDiaMes(puntos[puntos.length - 1].t)) + "</span></figcaption>" +
   "</figure>";
 }
 
-/** El progreso de cada ejercicio hecho (los más recientes primero), desplegable con su gráfica. */
-function entrenoEjerciciosHtml(log) {
+/**
+ * Un ejercicio dentro del periodo: sus puntos del periodo y cuántas sesiones
+ * caen dentro, o null si no se hizo en él. Con una sola sesión dentro se
+ * antepone la anterior, para ver cuánto cambió desde entonces.
+ */
+function _progresoEjercicioEnPeriodo(x, periodo) {
+  var dentro = x.puntos.filter(function (p) { return periodo.desde <= p.t && p.t <= periodo.hasta; });
+  if (!dentro.length) return null;
+  var n = dentro.length;
+  if (n === 1) {
+    var antes = x.puntos.filter(function (p) { return p.t < periodo.desde; });
+    if (antes.length) dentro.unshift(antes[antes.length - 1]);
+  }
+  return { id: x.id, name: x.name, tipo: x.tipo, sesiones: n, puntos: dentro, mejor: x.mejor };
+}
+
+/**
+ * El progreso de cada ejercicio hecho (los más recientes primero), desplegable
+ * con su gráfica. Con periodo, solo lo de ese periodo y con puntos que se tocan.
+ */
+function entrenoEjerciciosHtml(log, periodo) {
   if (typeof entrenoStatsEjercicios !== "function") return "";
-  var lista = entrenoStatsEjercicios(log).slice(0, ENTRENO_EJERCICIOS_N);
+  var lista = entrenoStatsEjercicios(log);
+  if (periodo) lista = lista.map(function (x) { return _progresoEjercicioEnPeriodo(x, periodo); }).filter(Boolean);
+  lista = lista.slice(0, ENTRENO_EJERCICIOS_N);
   if (!lista.length) return "";
   var items = lista.map(function (x) {
     var nombre = entrenoNombre({ id: x.id, name: x.name });
@@ -219,7 +294,7 @@ function entrenoEjerciciosHtml(log) {
         '<span class="entreno__ej-datos">' + _progresoEsc(tFormat("ent.ej_sesiones", { n: x.sesiones }) + " · " + _progresoValorTexto(x, ultimo)) + "</span>" +
         cambio +
       "</summary>" +
-      _progresoLineaHtml(x) +
+      _progresoLineaHtml(x, !!periodo) +
       '<p class="entreno__ej-mejor">' + _progresoEsc(mejor) + "</p>" +
       // La página entera del ejercicio: récords, últimas veces y cómo se hace.
       '<button type="button" class="btn-secondary entreno__ej-ficha" data-anim-abrir="' + _progresoEsc(x.id) + '">' +
@@ -228,7 +303,7 @@ function entrenoEjerciciosHtml(log) {
   }).join("");
   return '<h4 class="entreno__progreso-sub">' + _progresoEsc(t("ent.progreso_ejercicios")) + "</h4>" +
     '<ul class="entreno__ejs">' + items + "</ul>" +
-    '<p class="entreno__progreso-nota">' + _progresoEsc(t("ent.progreso_como")) + "</p>";
+    '<p class="entreno__progreso-nota">' + _progresoEsc(t("ent.progreso_como") + (periodo ? " " + t("ent.grafica_toca") : "")) + "</p>";
 }
 
 function _progresoSesionHtml(s) {
@@ -262,24 +337,113 @@ function _progresoSesionHtml(s) {
   "</details></li>";
 }
 
-/** Progreso de la semana, gráficas e historial. Sin historia, solo una frase que explica cómo empezar. */
-function entrenoProgresoHtml(log, plan, ahora) {
-  var h = '<h3 class="entreno__progreso-titulo" id="entrenoProgresoTitulo">' + _progresoEsc(t("ent.progreso")) + "</h3>";
-  if (!log || !log.sesiones.length) {
-    return h + '<p class="entreno__progreso-vacio">' + _progresoEsc(t("ent.historial_vacio")) + "</p>";
+/** Las sesiones del periodo (las más recientes primero, hasta ENTRENO_HISTORIAL_N) y la descarga en CSV. */
+function _progresoHistorialHtml(log, periodo, forzada) {
+  var dentro = log.sesiones.filter(function (s) { return periodo.desde <= s.inicio && s.inicio <= periodo.hasta; });
+  var lista = dentro.slice(-ENTRENO_HISTORIAL_N);
+  if (forzada && !lista.some(function (s) { return s.id === forzada; })) {
+    var pedida = log.sesiones.filter(function (s) { return s.id === forzada; })[0];
+    if (pedida) lista = lista.concat([pedida]).sort(function (a, b) { return a.inicio - b.inicio; });
   }
-  var semanas = entrenoLogSemanas(log, ahora, ENTRENO_SEMANAS_GRAFICA);
-  h += _progresoSemanaHtml(semanas, log, plan, ahora);
-  h += _progresoGraficaHtml(semanas);
-  h += entrenoMusculosCargaHtml(log, ahora);
-  h += entrenoEjerciciosHtml(log);
-  var ultimas = log.sesiones.slice(-ENTRENO_HISTORIAL_N).reverse();
-  h += '<h4 class="entreno__progreso-sub">' + _progresoEsc(t("ent.historial")) + "</h4>" +
-    '<ul class="entreno__hist">' + ultimas.map(_progresoSesionHtml).join("") + "</ul>" +
-    '<div class="entreno__hist-pie">' +
+  lista.reverse();
+  var h = '<h4 class="entreno__progreso-sub">' + _progresoEsc(t("ent.historial")) + "</h4>";
+  h += lista.length
+    ? '<ul class="entreno__hist">' + lista.map(_progresoSesionHtml).join("") + "</ul>"
+    : '<p class="entreno__progreso-vacio">' + _progresoEsc(t("ent.historial_periodo_vacio")) + "</p>";
+  if (ENTRENO_HISTORIAL_N < dentro.length) h += '<p class="entreno__progreso-nota">' + _progresoEsc(tFormat("ent.historial_mas", { n: ENTRENO_HISTORIAL_N })) + "</p>";
+  return h + '<div class="entreno__hist-pie">' +
       '<button type="button" class="btn-secondary" data-csv>' + _progresoEsc(t("ent.csv")) + "</button>" +
       '<p class="entreno__progreso-nota">' + _progresoEsc(t("ent.guardado_local")) + "</p>" +
     "</div>";
+}
+
+/** Los récords batidos en el periodo; cada uno abre su sesión. */
+function _progresoRecordsHtml(records) {
+  var h = '<h4 class="entreno__progreso-sub">' + _progresoEsc(t("ent.records_periodo")) + "</h4>";
+  if (!records.length) return h + '<p class="entreno__progreso-vacio">' + _progresoEsc(t("ent.records_vacio")) + "</p>";
+  return h + '<ul class="entreno__records">' + records.slice(0, ENTRENO_RECORDS_N).map(function (r) {
+    var nombre = entrenoNombre({ id: r.id, name: r.name });
+    var valor = _progresoValorTexto(r, r.punto);
+    var fecha = _progresoFecha(r.punto.t);
+    return '<li><button type="button" class="entreno__record-fila" data-ver-sesion="' + _progresoEsc(r.punto.sid) + '"' +
+        ' aria-label="' + _progresoEsc(tFormat("ent.abrir_sesion_aria", { nombre: nombre, valor: valor, fecha: fecha })) + '">' +
+      '<span class="entreno__record-ej">' + _progresoEsc(nombre) + "</span>" +
+      '<strong class="entreno__record-marca">' + _progresoEsc(valor) + "</strong>" +
+      '<span class="entreno__record-fecha">' + _progresoEsc(fecha) + "</span>" +
+    "</button></li>";
+  }).join("") + "</ul>";
+}
+
+function _progresoTiempo(min) {
+  var h = Math.floor(min / 60);
+  if (!h) return tFormat("ent.tiempo_m", { m: min });
+  return min % 60 ? tFormat("ent.tiempo_hm", { h: h, m: min % 60 }) : tFormat("ent.tiempo_h", { h: h });
+}
+
+/** Las cuatro cifras del periodo: sesiones, tiempo, kilos y récords. */
+function _progresoResumenHtml(r) {
+  var cifras = [
+    ["ent.cifra_sesiones", String(r.sesiones)],
+    ["ent.cifra_tiempo", _progresoTiempo(r.minutos)],
+    ["ent.cifra_volumen", entrenoMiles(r.volumen) + " " + t("ent.kg")],
+    ["ent.cifra_records", String(r.records.length)]
+  ];
+  return '<div class="entreno__cifras entreno__cifras--periodo">' + cifras.map(function (c) {
+    return '<div class="entreno__cifra"><span class="entreno__cifra-etiqueta">' + _progresoEsc(t(c[0])) + "</span>" +
+      '<strong class="entreno__cifra-valor">' + _progresoEsc(c[1]) + "</strong></div>";
+  }).join("") + "</div>";
+}
+
+function _progresoPeriodosHtml(clave) {
+  return '<div class="cat__filtros entreno__periodos" role="group" aria-label="' + _progresoEsc(t("ent.periodo_aria")) + '">' +
+    ENTRENO_PERIODOS.map(function (p) {
+      var on = p === clave;
+      return '<button type="button" class="cat__chip' + (on ? " is-on" : "") + '" aria-pressed="' + on + '" data-progreso-periodo="' + p + '">' +
+        _progresoEsc(t("ent.periodo_" + p)) + "</button>";
+    }).join("") + "</div>";
+}
+
+function _progresoVistasHtml(vista) {
+  return '<div class="entreno__vistas" role="tablist" aria-label="' + _progresoEsc(t("ent.vistas_aria")) + '">' +
+    ENTRENO_VISTAS.map(function (v) {
+      var on = v === vista;
+      return '<button type="button" class="entreno__vista-btn' + (on ? " is-on" : "") + '" role="tab" id="progresoTab-' + v + '"' +
+        ' aria-controls="progresoVista-' + v + '" aria-selected="' + on + '" tabindex="' + (on ? 0 : -1) + '" data-progreso-vista="' + v + '">' +
+        _progresoEsc(t("ent.vista_" + v)) + "</button>";
+    }).join("") + "</div>";
+}
+
+/**
+ * «Progreso»: el periodo, sus cifras y los cuatro apartados (todos pintados;
+ * los que no se ven, con hidden). Sin historia, una frase que explica cómo
+ * empezar y el peso.
+ * @param {{periodo?:string, vista?:string, pesos?:object[], forzada?:string}} [estado]
+ */
+function entrenoProgresoHtml(log, plan, ahora, estado) {
+  var e = estado || {};
+  var pesos = e.pesos || [];
+  var h = '<h3 class="entreno__progreso-titulo" id="entrenoProgresoTitulo">' + _progresoEsc(t("ent.progreso")) + "</h3>";
+  if (!log || !log.sesiones.length) {
+    return h + '<p class="entreno__progreso-vacio">' + _progresoEsc(t("ent.historial_vacio")) + "</p>" +
+      '<div class="entreno__cuerpo">' + entrenoPesoHtml(pesos, ahora) + "</div>";
+  }
+  var vista = ENTRENO_VISTAS.indexOf(e.vista) !== -1 ? e.vista : "fuerza";
+  var periodo = entrenoStatsPeriodo(e.periodo, log, ahora);
+  var resumen = entrenoStatsResumen(log, periodo);
+  var tramos = entrenoStatsTramos(log, periodo);
+  var paneles = {
+    fuerza: _progresoRecordsHtml(resumen.records) + entrenoEjerciciosHtml(log, periodo),
+    volumen: _progresoBarrasHtml(tramos, "volumen", periodo) + entrenoMusculosCargaHtml(log, ahora, periodo),
+    regularidad: _progresoSemanaHtml(entrenoLogSemanas(log, ahora, 1), log, plan, ahora) +
+      _progresoBarrasHtml(tramos, "sesiones", periodo) + _progresoHistorialHtml(log, periodo, e.forzada),
+    cuerpo: '<div class="entreno__cuerpo">' + entrenoPesoHtml(pesos, ahora, periodo) + "</div>"
+  };
+  if (!paneles.volumen) paneles.volumen = '<p class="entreno__progreso-vacio">' + _progresoEsc(t("ent.volumen_vacio")) + "</p>";
+  h += _progresoPeriodosHtml(periodo.clave) + _progresoResumenHtml(resumen) + _progresoVistasHtml(vista);
+  ENTRENO_VISTAS.forEach(function (v) {
+    h += '<div class="entreno__vista" role="tabpanel" id="progresoVista-' + v + '" aria-labelledby="progresoTab-' + v + '"' +
+      (v === vista ? "" : " hidden") + ">" + paneles[v] + "</div>";
+  });
   return h;
 }
 
@@ -379,35 +543,133 @@ function _progresoMsDeFecha(fecha) {
   return new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2])).getTime();
 }
 
+/** La línea del peso dentro del periodo, con el primero y el último abajo. "" con menos de dos medidas. */
+function _progresoPesoGraficaHtml(medidas) {
+  var puntos = medidas.map(function (e) { return { t: _progresoMsDeFecha(e.fecha), valor: e.kg }; });
+  var g = typeof entrenoStatsGrafico === "function" ? entrenoStatsGrafico(puntos, 300, 90) : null;
+  if (!g) return "";
+  var etiqueta = tFormat("ent.grafica_peso", { desde: entrenoKg(g.min), hasta: entrenoKg(g.max), n: puntos.length });
+  var ultima = g.marcas[g.marcas.length - 1];
+  return '<figure class="entreno__linea entreno__peso-grafica">' +
+    '<svg viewBox="0 0 300 90" role="img" aria-label="' + _progresoEsc(etiqueta) + '" focusable="false">' +
+      '<path class="entreno__linea-trazo" d="' + g.path + '"/>' +
+      '<circle cx="' + ultima.x + '" cy="' + ultima.y + '" r="4" class="is-ultimo"/></svg>' +
+    '<figcaption class="entreno__linea-pie"><span>' + _progresoEsc(_progresoDiaMes(puntos[0].t)) + "</span>" +
+      "<span>" + _progresoEsc(entrenoKg(g.min) + " – " + entrenoKg(g.max)) + "</span>" +
+      "<span>" + _progresoEsc(_progresoDiaMes(puntos[puntos.length - 1].t)) + "</span></figcaption>" +
+  "</figure>";
+}
+
 /**
- * «Progreso» (2026-10-21): el peso corporal, el último y cuánto ha cambiado
- * en 30 días. Se apunta en «Mis datos» (js/ui/render-weight.js). Sin DOM.
+ * El peso corporal (2026-10-21): el último y cuánto ha cambiado. Sin periodo,
+ * en 30 días; con él (el apartado «Cuerpo», 2026-10-23), en el periodo y con
+ * su gráfica. Se apunta en «Mis datos» (js/ui/render-weight.js). Sin DOM.
  * @param {{fecha:string, kg:number}[]} lista  el registro, ordenado por fecha (pesosLeer)
  */
-function entrenoPesoHtml(lista, ahora) {
+function entrenoPesoHtml(lista, ahora, periodo) {
   var h = '<h3 class="entreno__subtitulo" id="entrenoPesoTitulo">' + _progresoEsc(t("ent.peso_titulo")) + "</h3>";
   var boton = '<button type="button" class="btn-secondary" data-abrir-peso>' + _progresoEsc(t("ent.peso_abrir")) + "</button>";
   if (!lista || !lista.length) return h + '<p class="entreno__peso-texto">' + _progresoEsc(t("ent.peso_vacio")) + "</p>" + boton;
   var ultimo = lista[lista.length - 1];
-  var desde = ahora - 30 * 24 * 3600 * 1000;
-  var base = lista.filter(function (e) { return !(_progresoMsDeFecha(e.fecha) < desde); })[0];
+  // «Todo» empieza en la primera sesión, pero el peso se ve entero.
+  var desde = !periodo ? ahora - 30 * 24 * 3600 * 1000 : (periodo.clave === "todo" ? -Infinity : periodo.desde);
+  var dentro = lista.filter(function (e) { return !(_progresoMsDeFecha(e.fecha) < desde); });
+  var base = dentro[0];
   var cambio = "";
   if (base && base !== ultimo) {
     var d = Math.round((ultimo.kg - base.kg) * 10) / 10;
     var signo = 0 < d ? "+" : (d < 0 ? "−" : "±");
-    cambio = '<span class="entreno__peso-cambio">' + _progresoEsc(tFormat("ent.peso_cambio", { kg: signo + entrenoKg(Math.abs(d)) })) + "</span>";
+    cambio = '<span class="entreno__peso-cambio">' +
+      _progresoEsc(tFormat(periodo ? "ent.peso_cambio_periodo" : "ent.peso_cambio", { kg: signo + entrenoKg(Math.abs(d)) })) + "</span>";
   }
   return h +
     '<p class="entreno__peso-linea"><strong class="entreno__peso-valor">' + _progresoEsc(entrenoKg(ultimo.kg)) + "</strong>" +
       '<span class="entreno__peso-fecha">' + _progresoEsc(_progresoFecha(_progresoMsDeFecha(ultimo.fecha))) + "</span>" + cambio + "</p>" +
+    (periodo ? _progresoPesoGraficaHtml(dentro) : "") +
     boton;
+}
+
+/** El periodo y el apartado guardados; sin almacenamiento, el mes y «Fuerza». */
+function entrenoProgresoEstadoLeer() {
+  var e = { periodo: "mes", vista: "fuerza" };
+  try {
+    var g = JSON.parse(localStorage.getItem(ENTRENO_PROGRESO_CLAVE) || "null");
+    if (g && typeof ENTRENO_PERIODOS !== "undefined" && ENTRENO_PERIODOS.indexOf(g.periodo) !== -1) e.periodo = g.periodo;
+    if (g && ENTRENO_VISTAS.indexOf(g.vista) !== -1) e.vista = g.vista;
+  } catch (err) { /* lo de siempre */ }
+  return e;
+}
+
+function _progresoEstadoGuardar(e) {
+  try { localStorage.setItem(ENTRENO_PROGRESO_CLAVE, JSON.stringify({ periodo: e.periodo, vista: e.vista })); } catch (err) { /* solo dura esta visita */ }
+}
+
+function _progresoRepintar() {
+  renderEntrenoProgreso(entrenoLogLeer(), typeof entrenoPlanActual === "function" ? entrenoPlanActual() : null);
+}
+
+function _progresoCambiarPeriodo(clave) {
+  var e = entrenoProgresoEstadoLeer();
+  e.periodo = clave;
+  _progresoEstadoGuardar(e);
+  _progresoForzada = "";
+  _progresoRepintar();
+  var boton = document.querySelector('#entrenoProgreso [data-progreso-periodo="' + clave + '"]');
+  if (boton) boton.focus();
+}
+
+/** Enseña un apartado sin repintar (los cuatro ya están pintados). */
+function _progresoVista(v, conFoco) {
+  if (ENTRENO_VISTAS.indexOf(v) === -1) return;
+  ENTRENO_VISTAS.forEach(function (x) {
+    var boton = document.getElementById("progresoTab-" + x);
+    var panel = document.getElementById("progresoVista-" + x);
+    if (boton) {
+      boton.setAttribute("aria-selected", String(x === v));
+      boton.tabIndex = x === v ? 0 : -1;
+      boton.classList.toggle("is-on", x === v);
+    }
+    if (panel) panel.hidden = x !== v;
+  });
+  var activo = document.getElementById("progresoTab-" + v);
+  if (conFoco && activo) activo.focus();
+  var e = entrenoProgresoEstadoLeer();
+  e.vista = v;
+  _progresoEstadoGuardar(e);
+}
+
+/**
+ * Lo que hace tocar un punto de una gráfica, un récord o «Ver los resultados»
+ * de «Inicio»: «Regularidad» con esa sesión en el historial, abierta. false
+ * si la sesión ya no está en el diario.
+ */
+function entrenoProgresoVerSesion(id) {
+  var caja = document.getElementById("entrenoProgreso");
+  if (!caja || !id) return false;
+  var e = entrenoProgresoEstadoLeer();
+  e.vista = "regularidad";
+  _progresoEstadoGuardar(e);
+  _progresoForzada = String(id);
+  _progresoRepintar();
+  var item = null;
+  Array.prototype.forEach.call(caja.querySelectorAll(".entreno__hist-item"), function (li) {
+    if (li.getAttribute("data-sesion") === String(id)) item = li;
+  });
+  if (!item) return false;
+  var detalle = item.querySelector("details");
+  if (detalle) detalle.open = true;
+  if (typeof item.scrollIntoView === "function") item.scrollIntoView({ block: "start" });
+  var resumen = item.querySelector("summary");
+  if (resumen) {
+    try { resumen.focus({ preventScroll: true }); } catch (err) { resumen.focus(); }
+  }
+  return true;
 }
 
 function renderEntrenoProgreso(log, plan) {
   var aviso = document.getElementById("entrenoReanudar");
   var caja = document.getElementById("entrenoProgreso");
   var ultima = document.getElementById("entrenoUltima");
-  var peso = document.getElementById("entrenoPeso");
   var ahora = Date.now();
   if (aviso) {
     var html = entrenoReanudarHtml(log, ahora);
@@ -419,15 +681,14 @@ function renderEntrenoProgreso(log, plan) {
     ultima.innerHTML = htmlUltima;
     ultima.hidden = !htmlUltima;
   }
-  if (peso) {
-    var pesos = (typeof pesosLeer === "function" && typeof pesosAlmacen === "function") ? pesosLeer(pesosAlmacen()) : null;
-    peso.innerHTML = pesos ? entrenoPesoHtml(pesos, ahora) : "";
-    peso.hidden = !pesos;
-  }
   if (caja) {
+    var estado = entrenoProgresoEstadoLeer();
+    // El peso va en el apartado «Cuerpo»; se apunta en «Mis datos» (js/ui/render-weight.js).
+    estado.pesos = (typeof pesosLeer === "function" && typeof pesosAlmacen === "function") ? pesosLeer(pesosAlmacen()) : [];
+    estado.forzada = _progresoForzada;
     // Lo desplegado (un ejercicio, una sesión) sigue desplegado al repintar.
     var abiertos = Array.prototype.map.call(caja.querySelectorAll("details[open] summary"), function (s) { return s.textContent; });
-    caja.innerHTML = log ? entrenoProgresoHtml(log, plan, ahora) : "";
+    caja.innerHTML = log ? entrenoProgresoHtml(log, plan, ahora, estado) : "";
     caja.hidden = !log;
     Array.prototype.forEach.call(caja.querySelectorAll("details summary"), function (s) {
       if (abiertos.indexOf(s.textContent) !== -1) s.parentNode.open = true;
@@ -460,7 +721,31 @@ function initEntrenoProgreso() {
   var panel = document.getElementById("entrenoPanel");
   if (!panel || _progresoCableado) return;
   _progresoCableado = true;
+  panel.addEventListener("keydown", function (ev) {
+    if (!ev.target.closest) return;
+    // Las pestañas de los apartados: flechas, Inicio y Fin (el patrón de pestañas de WAI-ARIA).
+    var pestana = ev.target.closest("[data-progreso-vista]");
+    if (pestana) {
+      var i = ENTRENO_VISTAS.indexOf(pestana.getAttribute("data-progreso-vista"));
+      var n = ENTRENO_VISTAS.length;
+      var destino = { ArrowRight: (i + 1) % n, ArrowLeft: (i + n - 1) % n, Home: 0, End: n - 1 }[ev.key];
+      if (destino === undefined) return;
+      ev.preventDefault();
+      _progresoVista(ENTRENO_VISTAS[destino], true);
+      return;
+    }
+    // Los puntos de las gráficas son círculos de SVG, no botones: Intro y espacio los pulsan.
+    var punto = ev.target.closest("[data-ver-sesion]");
+    if (punto && punto.tagName.toLowerCase() !== "button" && (ev.key === "Enter" || ev.key === " ")) {
+      ev.preventDefault();
+      punto.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    }
+  });
   panel.addEventListener("click", function (ev) {
+    var periodo = ev.target.closest("[data-progreso-periodo]");
+    if (periodo && panel.contains(periodo)) { _progresoCambiarPeriodo(periodo.getAttribute("data-progreso-periodo")); return; }
+    var vista = ev.target.closest("[data-progreso-vista]");
+    if (vista && panel.contains(vista)) { _progresoVista(vista.getAttribute("data-progreso-vista"), false); return; }
     var boton = ev.target.closest("[data-reanudar], [data-descartar-curso], [data-borrar-sesion], [data-corregir-sesion], [data-csv]");
     if (!boton || !panel.contains(boton)) return;
     if (boton.hasAttribute("data-reanudar")) {

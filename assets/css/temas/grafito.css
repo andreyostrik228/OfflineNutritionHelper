@@ -514,5 +514,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .legal-dialog__version{color:#9097A1}
 .suggest-list{background:#1F2227}
 
+
+.cat__chip.is-on{background:#C8F04A;border-color:#C8F04A;color:#171A0B}
+.entreno__mini-btn--quitar{color:#FF9C8F;border-color:rgba(255,156,143,.4)}
+
 /* ── fichas de aspecto (Ajustes): la maquetación manda sobre el estilo de ficha ── */
 .aspecto-card{display:grid;grid-template-rows:auto auto;align-content:start;justify-items:stretch;gap:8px;min-height:0;padding:8px 8px 10px;text-align:center;font-size:14px;line-height:1.2;transform:none}.aspecto-card__vista{display:block;aspect-ratio:6/5;overflow:hidden;border-radius:8px;background:var(--line);margin:0}.aspecto-card__nombre{display:block;overflow-wrap:anywhere}

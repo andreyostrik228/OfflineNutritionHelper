@@ -26,6 +26,7 @@ function sandbox(lang) {
     projPath("js/data/exercises.js"),
     projPath("js/engine/workout-generator.js"),
     projPath("js/core/workout-log.js"),
+    projPath("js/core/workout-stats.js"),
     projPath("js/ui/render-entreno.js"),
     projPath("js/ui/entreno-sesion.js"),
     projPath("js/ui/entreno-progreso.js")
@@ -172,7 +173,7 @@ function run(t) {
     assert.strictEqual(s.entrenoHace(3 * DIA), "3 дн. назад");
   });
 
-  t.test("el progreso sin historia explica cómo empezar; con historia trae semana, racha, gráfica e historial", function () {
+  t.test("el progreso sin historia explica cómo empezar; con historia trae semana, racha, gráficas del periodo e historial", function () {
     var s = sandbox("ru");
     var vacio = s.entrenoProgresoHtml(s.entrenoLogVacio(), { dias: 4 }, HOY);
     assert.ok(vacio.indexOf("entreno__progreso-vacio") !== -1);
@@ -187,7 +188,10 @@ function run(t) {
     assert.ok(html.indexOf("Тренировки: 2 из 4") !== -1, "dos de cuatro esta semana");
     assert.ok(html.indexOf("2 нед.") !== -1, "racha de dos semanas");
     assert.ok(/1\s000 кг/.test(html), "kilos de esta semana: 62,5 × 8 × 2 = 1000 (la plancha no suma)");
-    assert.strictEqual(html.split('<li class="entreno__barra').length - 1, 8, "ocho barras");
+    // El mes por defecto va por semanas: una barra por semana en «Volumen» y otra en «Regularidad».
+    var tramos = s.entrenoStatsTramos(log, s.entrenoStatsPeriodo("mes", log, HOY));
+    assert.strictEqual(tramos.length, 5, "del 14.09 (lunes) a la semana del 12.10");
+    assert.strictEqual(html.split('<li class="entreno__barra').length - 1, 2 * tramos.length, "una barra por semana, en las dos gráficas");
     assert.strictEqual(html.split("data-borrar-sesion=").length - 1, 3, "cada sesión del historial se puede borrar");
     assert.ok(html.indexOf("is-hecho") !== -1, "los puntos de la semana");
     sinHuecos(html, "progreso");

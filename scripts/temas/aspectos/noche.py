@@ -625,6 +625,10 @@ select{background-image:__ARROW__;background-repeat:no-repeat;background-positio
 .legal-dialog__body ul{color:#B5C9BC}
 .legal-dialog__version{color:#93AB9D}
 .suggest-list{background:#15261E}
+
+/* ── 2026-10-23: lo que style.css pinta con --ink de fondo (claro aquí) y el rojo pequeño ── */
+.cat__chip.is-on{background:#7BE0B0;border-color:#7BE0B0;color:#06231A}
+.entreno__mini-btn--quitar{color:#FF9C8F;border-color:rgba(255,156,143,.4)}
 """
 
 for k, v in dict(__STARS__=STARS, __SUMMIT__=SUMMIT, __ORB_KCAL__=ORB_KCAL,

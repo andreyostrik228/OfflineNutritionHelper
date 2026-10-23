@@ -35,7 +35,7 @@
  * entrenoLogTipoRecord, entrenoLogIniciar, entrenoLogPonerSerie,
  * entrenoLogAnadirSerie, entrenoLogQuitarSerie, entrenoLogTerminar,
  * entrenoLogBorrar, entrenoLogReemplazar, entrenoLogTotales, entrenoLogPausado,
- * entrenoLogSemanas, entrenoLogRacha.
+ * entrenoLogSemanas, entrenoLogRacha, entrenoLogNombreSesion (2026-10-23).
  * ─────────────────────────────────────────────────────────────────────────
  */
 
@@ -386,10 +386,25 @@ function entrenoLogIniciar(log, sesionPlan, semana, ahora) {
   }).filter(Boolean);
   log.enCurso = _logSesion({
     id: "s" + ahora.toString(36) + Math.floor(Math.random() * 1679616).toString(36),
-    clave: sesionPlan.key, nombre: sesionPlan.name, semana: semana, inicio: ahora,
+    // Con nombre propio (2026-10-23) la clave lleva el nombre detrás de «~»: es
+    // lo único de la sesión que viaja a la cuenta (workout-sync.js), y así el
+    // historial lo enseña igual en el otro dispositivo.
+    clave: sesionPlan.nombrePropio ? "~" + String(sesionPlan.name).slice(0, 39) : sesionPlan.key,
+    nombre: sesionPlan.name, semana: semana, inicio: ahora,
     ejercicios: ejercicios
   }, false);
   return log.enCurso;
+}
+
+/**
+ * El nombre de una sesión del diario: el propio (clave «~Nombre») o el de su
+ * plantilla en el idioma de la pantalla.
+ */
+function entrenoLogNombreSesion(s) {
+  var clave = (s && s.clave) || "";
+  if (clave.charAt(0) === "~") return clave.slice(1);
+  var nombre = (s && s.nombre) || "";
+  return typeof tOr === "function" ? tOr("ent.sesion_" + clave, nombre) : nombre;
 }
 
 function _logSerieEnCurso(log, iEj, iSerie) {

@@ -182,13 +182,19 @@ function _entPestMedir() {
 
 // ── Atajos de una sección a otra ────────────────────────────────────────
 
-/** «Ver los resultados» de la última sesión (Inicio) y «Abrir «Mis datos»» del peso (Progreso). */
+/**
+ * «Ver los resultados» de la última sesión (Inicio), un récord o un punto de
+ * una gráfica (Progreso), y «Abrir «Mis datos»» del peso (Progreso).
+ */
 function _initEntrenoAtajos() {
   _entPestPanel.addEventListener("click", function (ev) {
     var ver = ev.target.closest("[data-ver-sesion]");
     if (ver && _entPestPanel.contains(ver)) {
+      var id = ver.getAttribute("data-ver-sesion");
       entrenoPestanaIr("progreso");
-      var item = _entPestPanel.querySelector('.entreno__hist-item[data-sesion="' + ver.getAttribute("data-ver-sesion") + '"] details');
+      // Desde el 2026-10-23 «Progreso» va por periodos y apartados: lo enseña él (entreno-progreso.js).
+      if (typeof entrenoProgresoVerSesion === "function") { entrenoProgresoVerSesion(id); return; }
+      var item = _entPestPanel.querySelector('.entreno__hist-item[data-sesion="' + id + '"] details');
       if (item) {
         item.open = true;
         if (typeof item.scrollIntoView === "function") item.scrollIntoView({ block: "start" });

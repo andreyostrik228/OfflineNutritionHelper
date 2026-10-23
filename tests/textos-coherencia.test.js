@@ -30,7 +30,11 @@ var VACIOS_PERMITIDOS = ["unit.sep_pegada", "ui.fraccion_conector"];
 // que se buscan contra el catálogo español (ver la cabecera de js/i18n/ru.js).
 var IGUALES_PERMITIDOS = [
   "ui.mercadona", "ui.weekplate", "ui.email", "ui.aspecto_kitty", "ent.col_rir", "ent.series_linea",
-  "ui.cebolla_queso_azul_salmon", "ui.que_tienes_ej_arroz_blanco_cocido"
+  "ui.cebolla_queso_azul_salmon", "ui.que_tienes_ej_arroz_blanco_cocido",
+  // «5×5 A/B»: el nombre del programa es la cifra misma, en cualquier idioma (2026-10-23).
+  "ent.sesion_cinco_A", "ent.sesion_cinco_B",
+  // «{fecha}: {valor}»: solo un formato, sin palabras (2026-10-23).
+  "ent.grafica_barra"
 ];
 
 // Ejemplos que se teclean y se buscan contra el catálogo español: van en español a propósito.
