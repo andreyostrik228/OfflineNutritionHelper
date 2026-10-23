@@ -241,6 +241,7 @@ function _hydrateLocalFrom(cloudRow) {
   if (typeof saveSettings === "function") saveSettings(row.settings || {});
   _applyCloudPrefs(row);
   if (typeof mergeWeightLogFromCloud === "function") mergeWeightLogFromCloud(row.settings && row.settings._pesos);
+  if (typeof mergeMeasuresFromCloud === "function") mergeMeasuresFromCloud(row.settings && row.settings._medidas);
   // El diario de entrenamiento se UNE con el del dispositivo (js/core/workout-sync.js).
   if (typeof mergeWorkoutsFromCloud === "function") mergeWorkoutsFromCloud(row.settings && row.settings._entrenos);
   // Gana la nube: el stock «sin cocinar» se sustituye, como pantry_state (js/core/pantry.js).
@@ -279,6 +280,8 @@ function _wipeLocal() {
   if (typeof resetAccountPrefs === "function") resetAccountPrefs();
   // El registro de peso es de la cuenta: al salir se borra del dispositivo.
   if (typeof pesosBorrarAlmacen === "function") pesosBorrarAlmacen(pesosAlmacen());
+  // Las medidas del cuerpo, igual (js/core/body-measures.js).
+  if (typeof medidasBorrarAlmacen === "function") medidasBorrarAlmacen(medidasAlmacen());
   // Y el diario de entrenamiento y el cuestionario, igual.
   if (typeof entrenoNubeBorrarDispositivo === "function") entrenoNubeBorrarDispositivo();
 }
@@ -425,6 +428,7 @@ function resolveConflictMerge(cloudRow) {
   if (typeof saveSettings === "function") saveSettings(mergedSettings);
   _applyCloudPrefs(cloud);
   if (typeof mergeWeightLogFromCloud === "function") mergeWeightLogFromCloud(cloud.settings && cloud.settings._pesos);
+  if (typeof mergeMeasuresFromCloud === "function") mergeMeasuresFromCloud(cloud.settings && cloud.settings._medidas);
   if (typeof mergeWorkoutsFromCloud === "function") mergeWorkoutsFromCloud(cloud.settings && cloud.settings._entrenos);
   // Se unen los dos: el stock «sin cocinar» se suma, como el de ingredientes.
   if (typeof mergeNoCookStockFromCloud === "function") mergeNoCookStockFromCloud(cloud.settings && cloud.settings._sinCocinar, "sumar");

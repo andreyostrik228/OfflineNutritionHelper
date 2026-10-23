@@ -18,6 +18,25 @@ llevan al final un bloque «actualización 2026-10-08»). El diario fechado, con
 medidas y causas, está en la cabecera de `STATE.md` (entradas del 2026-10-07 y
 2026-10-08).
 
+### 0.0 quinquies Segunda tanda del 2026-10-23 (lee esto antes que 0.0 quater)
+
+- **Estado:** sello `20261023b`, **1249 tests en verde**. El calendario del mes
+  en «Plan» (`js/ui/entreno-calendario.js`) y las medidas del cuerpo en
+  «Progreso → Тело» (`js/core/body-measures.js`, `js/ui/entreno-medidas.js`).
+  Con eso, la etapa 1 de la hoja de ruta del dueño queda hecha salvo los
+  «errores típicos» de la técnica.
+- **Reglas nuevas (no las rompas):**
+  - Una `<table>` dentro de `.entreno` hereda las reglas de las tablas de
+    ejercicios (`.entreno table/tr/td`: filas como tarjetas, `td::before` con
+    `data-label`). El calendario las deshace con `.entreno .entreno__cal …`;
+    una tabla nueva tendrá que hacer lo mismo.
+  - Las medidas van en `settings._medidas`, como `_pesos`: si tocas
+    `_ajustesParaNube` (cloud-sync.js) o `_hydrateLocalFrom` / la fusión /
+    `_wipeLocal` (migration.js), mantén las tres. `body-measures.test.js`
+    vigila el cableado. **No probado con Firebase de verdad.**
+  - Guardar medidas de hoy MEZCLA con las de hoy (`medidasGuardarHoy`): un
+    campo vacío no borra lo que ya había ese día.
+
 ### 0.0 quater Lo nuevo del 2026-10-23 (lee esto antes que 0.0 ter)
 
 - **Estado:** sello `20261023a`, **1236 tests en verde**. Tres cosas (tabla

@@ -30,7 +30,7 @@
  *   entrenoReanudarHtml(log, ahora)       marcado del aviso de sesión sin terminar ("" si no hay)
  *   entrenoProgresoHtml(log, plan, ahora, estado)
  *                                         marcado del progreso, sin DOM (lo prueban los tests);
- *                                         estado: { periodo, vista, pesos, forzada }
+ *                                         estado: { periodo, vista, pesos, medidas, forzada }
  *   entrenoProgresoEstadoLeer()           el periodo y el apartado guardados
  *   entrenoProgresoVerSesion(id)          enseña esa sesión, abierta, en «Regularidad»
  *   entrenoEjerciciosHtml(log, periodo)   marcado del progreso por ejercicio, sin DOM
@@ -417,15 +417,19 @@ function _progresoVistasHtml(vista) {
  * «Progreso»: el periodo, sus cifras y los cuatro apartados (todos pintados;
  * los que no se ven, con hidden). Sin historia, una frase que explica cómo
  * empezar y el peso.
- * @param {{periodo?:string, vista?:string, pesos?:object[], forzada?:string}} [estado]
+ * @param {{periodo?:string, vista?:string, pesos?:object[], medidas?:object[], forzada?:string}} [estado]
  */
 function entrenoProgresoHtml(log, plan, ahora, estado) {
   var e = estado || {};
   var pesos = e.pesos || [];
   var h = '<h3 class="entreno__progreso-titulo" id="entrenoProgresoTitulo">' + _progresoEsc(t("ent.progreso")) + "</h3>";
+  // Las medidas del cuerpo (js/ui/entreno-medidas.js, 2026-10-23), debajo del peso.
+  var medidas = function (periodo) {
+    return typeof entrenoMedidasHtml === "function" ? entrenoMedidasHtml(e.medidas || [], ahora, periodo) : "";
+  };
   if (!log || !log.sesiones.length) {
     return h + '<p class="entreno__progreso-vacio">' + _progresoEsc(t("ent.historial_vacio")) + "</p>" +
-      '<div class="entreno__cuerpo">' + entrenoPesoHtml(pesos, ahora) + "</div>";
+      '<div class="entreno__cuerpo">' + entrenoPesoHtml(pesos, ahora) + medidas(null) + "</div>";
   }
   var vista = ENTRENO_VISTAS.indexOf(e.vista) !== -1 ? e.vista : "fuerza";
   var periodo = entrenoStatsPeriodo(e.periodo, log, ahora);
@@ -436,7 +440,7 @@ function entrenoProgresoHtml(log, plan, ahora, estado) {
     volumen: _progresoBarrasHtml(tramos, "volumen", periodo) + entrenoMusculosCargaHtml(log, ahora, periodo),
     regularidad: _progresoSemanaHtml(entrenoLogSemanas(log, ahora, 1), log, plan, ahora) +
       _progresoBarrasHtml(tramos, "sesiones", periodo) + _progresoHistorialHtml(log, periodo, e.forzada),
-    cuerpo: '<div class="entreno__cuerpo">' + entrenoPesoHtml(pesos, ahora, periodo) + "</div>"
+    cuerpo: '<div class="entreno__cuerpo">' + entrenoPesoHtml(pesos, ahora, periodo) + medidas(periodo) + "</div>"
   };
   if (!paneles.volumen) paneles.volumen = '<p class="entreno__progreso-vacio">' + _progresoEsc(t("ent.volumen_vacio")) + "</p>";
   h += _progresoPeriodosHtml(periodo.clave) + _progresoResumenHtml(resumen) + _progresoVistasHtml(vista);
@@ -685,6 +689,7 @@ function renderEntrenoProgreso(log, plan) {
     var estado = entrenoProgresoEstadoLeer();
     // El peso va en el apartado «Cuerpo»; se apunta en «Mis datos» (js/ui/render-weight.js).
     estado.pesos = (typeof pesosLeer === "function" && typeof pesosAlmacen === "function") ? pesosLeer(pesosAlmacen()) : [];
+    estado.medidas = (typeof medidasLeer === "function" && typeof medidasAlmacen === "function") ? medidasLeer(medidasAlmacen()) : [];
     estado.forzada = _progresoForzada;
     // Lo desplegado (un ejercicio, una sesión) sigue desplegado al repintar.
     var abiertos = Array.prototype.map.call(caja.querySelectorAll("details[open] summary"), function (s) { return s.textContent; });

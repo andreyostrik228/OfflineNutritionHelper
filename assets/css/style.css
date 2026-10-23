@@ -5501,6 +5501,169 @@ body.con-entreno-pestanas .sesion__descanso {
 .entreno__peso-cambio { font-size: 0.88rem; color: var(--text-2); }
 .entreno__peso-cambio { font-weight: 700; }
 
+/* «Cuerpo»: las medidas, debajo del peso (2026-10-23) */
+.entreno__medidas { display: grid; gap: 10px; margin-top: 14px; padding-top: 16px; border-top: 1px solid var(--line); }
+.entreno__medidas .entreno__subtitulo { margin: 0; }
+.entreno__medidas > .btn-secondary { justify-self: start; }
+.entreno__medidas-lista { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.entreno__medida details { border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface-2); }
+.entreno__medida summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 2px 12px;
+  min-height: 44px;
+  padding: 10px 12px;
+  list-style: none;
+  cursor: pointer;
+}
+.entreno__medida summary::-webkit-details-marker { display: none; }
+.entreno__medida summary:focus-visible { outline: 3px solid var(--volt); outline-offset: 2px; border-radius: var(--r-md); }
+.entreno__medida-nombre { font-weight: 700; color: var(--ink); overflow-wrap: anywhere; }
+.entreno__medida-valor { font: 800 1.1rem/1.1 var(--font-display); color: var(--ink); font-variant-numeric: tabular-nums; }
+.entreno__medida-cambio { grid-column: 1 / -1; font-size: 0.84rem; color: var(--text-2); }
+.entreno__medida-grafica { padding: 0 12px 10px; }
+.entreno__medida .entreno__ej-solo { margin: 0; padding: 0 12px 10px; }
+.entreno__medidas-estado { margin: 0; font-size: 0.88rem; font-weight: 700; color: var(--ink); }
+.entreno__medidas-estado:empty { display: none; }
+.entreno__medidas-form {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+.entreno__medidas-form[hidden] { display: none; }
+.entreno__medidas-ayuda { margin: 0; font-size: 0.86rem; color: var(--text-2); }
+.entreno__medidas-campos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (min-width: 640px) {
+  .entreno__medidas-campos { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+/* `align-content: end`: si un nombre ocupa dos líneas, los campos de la fila siguen alineados. */
+.entreno__medidas-campo { display: grid; align-content: end; gap: 4px; min-width: 0; font-size: 0.84rem; font-weight: 700; color: var(--text-2); }
+.entreno__medidas-campo input {
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1.5px solid var(--field-line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+.entreno__medidas-campo input::placeholder { color: var(--text-3); }
+.entreno__medidas-campo input:focus-visible { outline: 3px solid var(--volt); outline-offset: 1px; border-color: var(--ink); }
+.entreno__medidas-campo input[aria-invalid="true"] { border-color: var(--danger); }
+.entreno__medidas-error { margin: 0; padding: 8px 10px; border-radius: var(--r-sm); background: var(--danger-wash); color: var(--danger-deep); font-size: 0.88rem; font-weight: 700; }
+.entreno__medidas-error[hidden] { display: none; }
+.entreno__medidas-botones { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* «Plan»: el calendario del mes (2026-10-23) */
+.entreno__calendario {
+  margin: 16px 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+}
+.entreno__calendario[hidden] { display: none; }
+.entreno__cal-cabeza { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.entreno__cal-cabeza .entreno__subtitulo { margin: 0; }
+.entreno__cal-nav { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; gap: 8px; margin: 10px 0 6px; }
+.entreno__cal-flecha {
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.entreno__cal-flecha:disabled { opacity: 0.35; cursor: default; }
+.entreno__cal-flecha:focus-visible { outline: 3px solid var(--volt); outline-offset: 2px; }
+.entreno__cal-mes { display: grid; justify-items: center; gap: 2px; margin: 0; font: 800 1.15rem/1.2 var(--font-display); color: var(--ink); text-align: center; }
+.entreno__cal-cuenta { font: 600 0.8rem/1.2 var(--font-body); color: var(--text-2); }
+/* El calendario es una tabla de verdad: aquí se deshacen las reglas de las
+   tablas de ejercicios (`.entreno table/tr/td`, que las vuelven tarjetas). */
+.entreno .entreno__cal { display: table; width: 100%; border-collapse: separate; border-spacing: 3px; table-layout: fixed; font-size: inherit; }
+.entreno .entreno__cal thead { display: table-header-group; }
+.entreno .entreno__cal tbody { display: table-row-group; }
+.entreno .entreno__cal tr,
+.entreno .entreno__cal tr:last-child,
+.entreno .entreno__cal tr:hover { display: table-row; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; transition: none; }
+.entreno .entreno__cal th {
+  display: table-cell;
+  padding: 4px 0;
+  border: 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-align: center;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.entreno .entreno__cal td { display: table-cell; min-width: 0; padding: 0; border: 0; font-size: inherit; font-weight: inherit; text-align: center; vertical-align: middle; }
+.entreno .entreno__cal td::before { content: none; display: none; }
+.entreno__cal-celda { height: 44px; }
+.entreno__cal-num { line-height: 1; }
+.entreno__cal-dia.is-fuera { color: var(--text-3); opacity: 0.5; cursor: default; }
+.entreno__cal-dia {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 3px;
+  width: 100%;
+  height: 44px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.entreno__cal-marca { width: 6px; height: 6px; border-radius: 50%; background: transparent; }
+.entreno__cal-dia.is-plan { border-color: var(--line-strong); color: var(--ink); }
+.entreno__cal-dia.is-plan .entreno__cal-marca { background: var(--ink); }
+.entreno__cal-dia.is-hecho { border-color: var(--volt); background: var(--volt); color: var(--on-volt); }
+.entreno__cal-dia.is-hecho .entreno__cal-marca { background: var(--on-volt); }
+.entreno__cal-dia.is-hoy { box-shadow: inset 0 0 0 2px var(--ink); }
+.entreno__cal-dia.is-elegido { outline: 2px solid var(--ink); outline-offset: 1px; }
+.entreno__cal-dia:focus-visible { outline: 3px solid var(--volt); outline-offset: 2px; }
+.entreno__cal-leyenda { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 8px 0 0; padding: 0; list-style: none; font-size: 0.78rem; color: var(--text-2); }
+.entreno__cal-leyenda li { display: flex; align-items: center; gap: 6px; }
+.entreno__cal-muestra { width: 14px; height: 14px; border: 1px solid var(--line-strong); border-radius: 4px; background: var(--surface); }
+.entreno__cal-muestra.is-hecho { border-color: var(--volt); background: var(--volt); }
+.entreno__cal-muestra.is-hoy { border-color: transparent; box-shadow: inset 0 0 0 2px var(--ink); }
+.entreno__cal-detalle { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.entreno__cal-detalle-titulo { margin: 0 0 8px; font: 800 1.05rem/1.2 var(--font-display); color: var(--ink); }
+.entreno__cal-sesiones { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+/* Con flex y salto: si el nombre no cabe al lado del botón, el botón baja. */
+.entreno__cal-sesion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+.entreno__cal-sesion-texto { display: grid; flex: 1 1 150px; gap: 2px; min-width: 0; }
+.entreno__cal-sesion-texto strong { color: var(--ink); overflow-wrap: anywhere; }
+.entreno__cal-sesion-texto span { font-size: 0.84rem; color: var(--text-2); }
+.entreno__cal-vacio { margin: 0; font-size: 0.9rem; color: var(--text-2); }
+
 /* «Perfil» */
 .entreno__perfil { display: grid; gap: 12px; margin: 16px 0; }
 .entreno__perfil .entreno__subtitulo { margin: 0; }

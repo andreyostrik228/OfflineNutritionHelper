@@ -882,6 +882,8 @@ function renderEntreno() {
     elegir.hidden = !elegirHtml;
   }
   if (typeof entrenoPerfilPintar === "function") entrenoPerfilPintar();
+  // El calendario del mes, en «Plan» (js/ui/entreno-calendario.js, 2026-10-23).
+  if (typeof renderEntrenoCalendario === "function") renderEntrenoCalendario(!sinPlan && plan.ok ? plan : null, log);
 
   if (sinPlan) {
     _entrenoUltimoPlan = null;
@@ -1161,6 +1163,8 @@ function initEntreno() {
   if (typeof initEntrenoProgreso === "function") initEntrenoProgreso();
   if (typeof initEntrenoCatalogo === "function") initEntrenoCatalogo();
   if (typeof initEntrenoProgramas === "function") initEntrenoProgramas();
+  if (typeof initEntrenoCalendario === "function") initEntrenoCalendario();
+  if (typeof initEntrenoMedidas === "function") initEntrenoMedidas();
   if (typeof initEntrenoTutorial === "function") initEntrenoTutorial();
   if (typeof initEntrenoPestanas === "function") initEntrenoPestanas();
   var cerrarAnim = document.getElementById("entrenoAnimCerrar");

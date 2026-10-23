@@ -1,5 +1,38 @@
 # Nutrition Planner — Roadmap
 
+## Lo del 2026-10-23, segunda tanda (sello `20261023b`, 1249 tests)
+
+Después de desplegar la primera tanda (`647ab71`), el dueño dejó elegir lo
+siguiente («можешь делать то что ты хотел»). Se cerraron los dos huecos de la
+etapa 1 que quedaban «a medias». Probado en Chrome sin interfaz a 390 px, sin
+errores de JS; el contraste, en cinco aspectos.
+
+| Qué | Dónde | Estado |
+|---|---|---|
+| Calendario del mes en «Plan» | `js/ui/entreno-calendario.js` (`entrenoCalendarioDatos`, `entrenoCalendarioHtml`) | **Hecho** |
+| Medidas del cuerpo en «Progreso → Тело» | `js/core/body-measures.js`, `js/ui/entreno-medidas.js` | **Hecho** |
+
+**Calendario.** Cuadrícula de lunes a domingo: los días con sesión hecha (del
+diario) y los que tocan según el plan de ahora, solo de hoy en adelante (el
+plan de semanas pasadas no se guarda, así que no se inventa qué tocaba). Al
+tocar un día, debajo: lo hecho con «Посмотреть результаты» (abre la sesión en
+«Регулярность»), lo que toca (hoy, con «Начать») o «descanso». Hacia atrás
+hasta el mes de la primera sesión, hacia delante 3 meses. Es una `<table>` de
+verdad: lleva un bloque CSS que deshace las reglas `.entreno table/tr/td` de
+las tablas de ejercicios, que la volvían tarjetas. Con el teclado, solo el día
+elegido entra en el tabulador y las flechas lo mueven (cambian de mes si hace
+falta).
+
+**Medidas.** Cintura, pecho, cadera («Ягодицы»), brazo y muslo, en cm (10–250,
+una cifra decimal). Una entrada por día que se MEZCLA con lo de hoy: lo que se
+deja vacío no borra lo de antes. En «Тело», debajo del peso: el último valor
+de cada parte, el cambio en el periodo y la gráfica al desplegar. El
+formulario trae lo de la última vez de ejemplo (placeholder) y solo guarda lo
+escrito. Viaja a la cuenta en `settings._medidas`, como `_pesos` (mismas
+reglas de Firestore), se mezcla al entrar y se borra del dispositivo al salir.
+Clave local `weekplate-medidas-v1`, así que entra en «Descargar mis datos».
+**Sin probar con Firebase de verdad.**
+
 ## Lo del 2026-10-23 (sello `20261023a`, 1236 tests)
 
 El dueño pidió comprobar su lista de entrenamientos (la «Hoja de ruta» y la
@@ -48,7 +81,8 @@ reflexivo en -йся/-ись. El ucraniano sigue de «ти».
 
 **No probado en un móvil de verdad.** Queda de la lista: calendario de meses,
 planes de varias semanas con periodización, perímetros y fotos, RPE/RIR real
-y fatiga, reajustar tras saltarse una sesión, informes mensuales.
+y fatiga, reajustar tras saltarse una sesión, informes mensuales. (El
+calendario y los perímetros se hicieron en la segunda tanda, arriba.)
 
 ## Lo del 2026-10-22 (sello `20261022a`, 1212 tests)
 
@@ -307,6 +341,8 @@ commit.
 | `js/ui/entreno-programas.js` | «Plan» (2026-10-23): la semana a mano (añadir, copiar, renombrar, quitar, mover de día), plantillas y programas listos con filtros. |
 | `js/ui/entreno-pestanas.js` | Las cinco secciones y su barra abajo (2026-10-21), y «Perfil». |
 | `js/core/weight-log.js` | Registro del peso corporal (`weekplate-pesos-v1`; con cuenta, viaja en `settings._pesos`). |
+| `js/core/body-measures.js`, `js/ui/entreno-medidas.js` | Medidas del cuerpo (`weekplate-medidas-v1`; con cuenta, `settings._medidas`) y su bloque en «Тело» (2026-10-23). |
+| `js/ui/entreno-calendario.js` | El calendario del mes en «Plan» (2026-10-23). |
 
 Tests: `workout-generator`, `workout-log`, `weight-log`, `exercises-*` y
 `entreno*` en `tests/`. Las claves `ent.*` están en es, en, ru y uk; en
@@ -353,7 +389,7 @@ ruso, de usted.
 | Perfil y objetivos | Hecho | Apartado A; las respuestas se ven y se cambian en «Perfil». |
 | Catálogo con filtros | Hecho | 81 ejercicios con técnica y animación; pantalla con búsqueda en 4 idiomas y filtros por músculo y material. La página de cada ejercicio con sus récords, gráfica y últimas veces (2026-10-22). |
 | Programas y plantillas | Hecho | El programa sale solo y se cambia a mano: ejercicios (sustituir, quitar, añadir) y sesiones (añadir, copiar, renombrar, quitar, mover de día). Hasta 8 plantillas propias y 7 programas listos con filtros (2026-10-23). |
-| Calendario de entrenamientos | A medias | La semana de siete días en «Inicio», todas las sesiones en «Entrenar» y exportación .ics; sin calendario de meses. |
+| Calendario de entrenamientos | Hecho | La semana en «Inicio», el calendario del mes en «Plan» (lo hecho y lo que toca, cada día abre lo suyo; 2026-10-23) y exportación .ics. |
 | Sesión con entrada rápida de series | Hecho | |
 | Resultados anteriores junto a los de hoy | Hecho | «La última vez» y relleno automático. |
 | Temporizador de descanso | Hecho | |
@@ -361,7 +397,7 @@ ruso, de usted.
 | Guardar sin perder datos | Hecho | Al instante en el dispositivo; diario y cuestionario en la cuenta (`settings._entrenos`). |
 | Historial y gráficas básicas | Hecho | Por periodo (7 días a todo): cifras, kilos y sesiones por tramo, gráfica por ejercicio (tocar un punto abre la sesión), carga por músculo, historial y CSV (2026-10-23). |
 | Récords y progreso | Hecho | Récords del periodo en «Сила»; el último también en «Inicio». |
-| Peso corporal y medidas | A medias | Peso sí, con gráfica del periodo en «Тело»; perímetros no. |
+| Peso corporal y medidas | Hecho | Peso y cinco perímetros en «Тело», con su cambio y su gráfica del periodo (2026-10-23); en la cuenta. Sin fotos (eso es de la etapa 2). |
 | Editar una sesión terminada | Hecho | «Corregir», con «Guardar» y «Cancelar». |
 | Técnica básica | Hecho | Texto en 4 idiomas (el ruso de «вы» desde el 2026-10-23) y animación; sin errores típicos. |
 | Local y copia de seguridad | Hecho | Descargar y cargar una copia completa (también desde «Perfil»). |
@@ -1896,9 +1932,9 @@ progreso y lo demás. Que la interfaz sea clara, coherente y rápida, no
 | 1. Cinco secciones | Hecho (2026-10-21) | |
 | 2. Inicio | Hecho | |
 | 3. Sesión en curso | Hecho | |
-| 4. Plan | Hecho (2026-10-23) | Calendario de meses. |
+| 4. Plan | Hecho (2026-10-23, con el calendario del mes) | |
 | 5. Catálogo y página del ejercicio | Casi | La técnica es un solo texto: sin «paso a paso» ni «En qué fijarse» separados. |
-| 6. Progreso | Hecho (2026-10-23) | Medidas (perímetros) en «Тело». |
+| 6. Progreso | Hecho (2026-10-23, con los perímetros en «Тело») | Fotos. |
 | 7. Estilo | Hecho (2026-10-22, «Grafito») | |
 | 8. Reglas | Se siguen | RPE y sensaciones del día, que aún no se apuntan. |
 

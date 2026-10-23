@@ -249,9 +249,12 @@ function _ajustesParaNube() {
   var conEntrenos = (typeof settingsWithWorkouts === "function") ? settingsWithWorkouts(conPrefs) : conPrefs;
   // El stock de productos «sin cocinar» viaja en `_sinCocinar` (js/core/pantry.js, 2026-10-21).
   var conSinCocinar = (typeof settingsWithNoCookStock === "function") ? settingsWithNoCookStock(conEntrenos) : conEntrenos;
+  // Las medidas del cuerpo viajan en `_medidas` (js/core/body-measures.js, 2026-10-23).
+  var conMedidas = (typeof settingsWithMeasures === "function" && typeof medidasLeer === "function")
+    ? settingsWithMeasures(conSinCocinar, medidasLeer(medidasAlmacen())) : conSinCocinar;
   // El registro de peso viaja dentro de `_pesos` (js/core/weight-log.js).
-  if (typeof settingsWithWeightLog !== "function" || typeof pesosLeer !== "function") return conSinCocinar;
-  return settingsWithWeightLog(conSinCocinar, pesosLeer(pesosAlmacen()));
+  if (typeof settingsWithWeightLog !== "function" || typeof pesosLeer !== "function") return conMedidas;
+  return settingsWithWeightLog(conMedidas, pesosLeer(pesosAlmacen()));
 }
 
 function pushSettingsToCloud() {
