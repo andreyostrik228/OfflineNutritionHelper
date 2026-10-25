@@ -18,6 +18,22 @@ llevan al final un bloque «actualización 2026-10-08»). El diario fechado, con
 medidas y causas, está en la cabecera de `STATE.md` (entradas del 2026-10-07 y
 2026-10-08).
 
+### 0.0 septies Segunda tanda del 2026-10-25 (lee esto antes que 0.0 sexies)
+
+- **Estado:** sello `20261025b`, **1264 tests en verde**. Aparatos concretos de
+  barra, banco, máquinas y poleas en el cuestionario, el plan y el catálogo
+  (tabla al principio de `ROADMAP.md`).
+- **Reglas nuevas (no las rompas):**
+  - Para saber si un ejercicio se puede hacer, siempre `puedeHacerse(e,
+    disponible)` con la lista de `materialConAparatos` (o `plan.disponible`,
+    o `entrenoMaterialActual()`); con solo los materiales, todo lo que pide un
+    aparato sale como imposible.
+  - Un ejercicio nuevo que necesite una máquina, una polea, un banco
+    inclinable o soportes lleva su `aparato`; un aparato nuevo en
+    `WORKOUT_APARATOS` necesita su botón en `#cuestAparatos`, su texto
+    `ent.aparato_*` y algún ejercicio que lo pida (`entreno-aparatos.test.js`
+    lo vigila).
+
 ### 0.0 sexies Lo nuevo del 2026-10-25 (lee esto antes que 0.0 quinquies)
 
 - **Estado:** sello `20261025a`, **1257 tests en verde**. Reserva de cada serie

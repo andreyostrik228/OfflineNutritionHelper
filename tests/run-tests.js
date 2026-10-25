@@ -115,6 +115,7 @@ var suites = [
   "entreno-edicion.test",
   "entreno-nube.test",
   "entreno-reserva.test",
+  "entreno-aparatos.test",
   "entreno-stats.test",
   "entreno-hoy.test",
   "entreno-pestanas.test",

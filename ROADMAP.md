@@ -1,5 +1,39 @@
 # Nutrition Planner — Roadmap
 
+## Lo del 2026-10-25, segunda tanda (sello `20261025b`, 1264 tests)
+
+El dueño: «Нужно чтобы можно было указывать какие конкретно снаряды у тебя
+есть». Ya se marcaban siete materiales (barra, banco, mancuernas, máquinas,
+poleas, dominadas, paralelas), pero «máquinas» eran 13 aparatos distintos y
+«poleas», tres. Probado en Chrome sin interfaz a 390 px (ru, en) y 360 px (uk),
+sin errores de JS.
+
+| Qué | Dónde | Estado |
+|---|---|---|
+| Aparatos concretos de barra, banco, máquinas y poleas (19) | `WORKOUT_APARATOS`, `materialConAparatos`, `puedeHacerse` (`workout-generator.js`) | **Hecho** |
+| Qué aparato pide cada ejercicio (35 de 81) | campo `aparato` en `js/data/exercises.js` | **Hecho** |
+| Elegirlos en el cuestionario (paso 4) | `#cuestAparatos` (`index.html`), `_cuestPintarAparatos` (`entreno-cuestionario.js`) | **Hecho** |
+| «Ваша программа», catálogo y plan | `entrenoResumenFichasHtml`, `_catPuede`, `_catMetaTexto`, `entrenoMaterialActual` | **Hecho** |
+
+**Cómo es.** En el paso 4, debajo de los materiales, sale un grupo plegado por
+cada material marcado que tiene aparatos («Тренажёры: есть всё (13)»). Dentro,
+todos marcados; se quita lo que no hay y el resumen dice «есть 11 из 13».
+Elegir un juego entero (спортзал, гантели…) vuelve a ponerlo todo. Se guarda
+como `aparatosFaltan` en las respuestas (viaja con ellas a la cuenta).
+«Ваша программа» dice «Нет: …» (solo de los materiales marcados) y el
+catálogo enseña el aparato en la línea del ejercicio («Тренажёры:
+гакк-машина»; con alternativas, «кроссовер / верхний блок»).
+
+**La regla.** `aparato` es una lista de grupos de alternativas: hace falta uno
+de cada grupo (`[["polea_alta", "cruce_poleas"]]` = un jalón o un cruce).
+`plan.material` sigue siendo solo los materiales (para las fichas);
+`plan.disponible` lleva además los aparatos y es lo que entiende
+`puedeHacerse`. Un test exige que cada aparato lo pida algún ejercicio (si no,
+sería un botón que no hace nada) y que cada uno sea de un material del ejercicio.
+
+**Lo que no se hizo:** gomas, kettlebells, TRX o barra EZ: el catálogo no tiene
+ejercicios para ellos, así que no hay qué ofrecer todavía.
+
 ## Lo del 2026-10-25 (sello `20261025a`, 1257 tests)
 
 El dueño eligió «необязательные RPE/RIR и самочувствие в тренировке» (etapa 2,
@@ -388,7 +422,7 @@ ruso, de usted.
 
 | Apartado | Ya hay | Falta |
 |---|---|---|
-| **A. Perfil** | Objetivo (ganar músculo, fuerza, tonificar, perder grasa, salud), experiencia, días a la semana y cuáles, duración (30, 45 o 60 min), dónde entrena y qué material tiene, uno a uno, qué quiere trabajar más (hasta 3 grupos), molestias (rodillas, lumbar, hombros) y ejercicios que no quiere. Edad, altura y peso salen de «Mis datos». | Ejercicios favoritos, objetivo «resistencia», tiempo que lleva entrenando, unidades (kg/lb, cm/in). |
+| **A. Perfil** | Objetivo (ganar músculo, fuerza, tonificar, perder grasa, salud), experiencia, días a la semana y cuáles, duración (30, 45 o 60 min), dónde entrena y qué material tiene, uno a uno (y, desde el 2026-10-25, qué máquinas, poleas, banco y soportes concretos), qué quiere trabajar más (hasta 3 grupos), molestias (rodillas, lumbar, hombros) y ejercicios que no quiere. Edad, altura y peso salen de «Mis datos». | Ejercicios favoritos, objetivo «resistencia», tiempo que lleva entrenando, unidades (kg/lb, cm/in). |
 | **B. Catálogo** | 81 ejercicios con técnica en 4 idiomas, una animación propia cada uno y los músculos que trabajan y los que ayudan. | Pantalla de catálogo (hoy los ejercicios solo se ven dentro del plan), búsqueda, filtros, variantes, sustituir a mano, favoritos, ejercicios propios, notas, errores típicos. |
 | **C. Programas** | Sale solo según los días: cuerpo completo (1–3 días), superior/inferior (4–5) y empuje/tirón/piernas (6), con cada grupo grande dos veces por semana cuando los días dan. Series, repeticiones, descanso y RIR según objetivo y nivel. Descarga cada 5.ª semana (mitad de series, RIR 4). Series por grupo y semana a la vista. Exportación al calendario (.ics). | Editarlo a mano (añadir, quitar, reordenar, sustituir), plantillas, duplicar, pasar una sesión a otro día, planes de 4–12 semanas con periodización, varios programas, programas con nombre (5×5…), importar y exportar programas. |
 | **D. Sesión en curso** | Peso y repeticiones (o segundos) por serie, rellenos con «la última vez». Marcar la serie con un toque; añadir y quitar series. Descanso automático con −15/+15 s, vibración y sonido; pantalla encendida. Aviso de récord al momento y resumen final (tiempo, series, volumen, récords). Cada cambio se guarda al instante y la sesión se reanuda tras recargar. | Series de calentamiento, drop sets y al fallo, superseries y circuitos, notas, saltar, sustituir o reordenar un ejercicio, pausa, editar una sesión terminada (solo se puede borrar). |
@@ -445,7 +479,7 @@ ruso, de usted.
 | Programas listos de distintos niveles | Hecho | 7 programas con nombre, filtrables por días, nivel y objetivo (2026-10-23). |
 | Sobrecarga progresiva | Hecho | Doble progresión y descarga. |
 | Recomendación de peso y repeticiones | Hecho | Con el porqué. |
-| Sustituir según el material | Hecho | Automático al generar el plan, y a mano desde el catálogo (filtrado por el material de cada uno) en el plan y en la sesión. |
+| Sustituir según el material | Hecho | Automático al generar el plan, y a mano desde el catálogo (filtrado por el material de cada uno) en el plan y en la sesión. Desde el 2026-10-25, también por los aparatos concretos que hay. |
 | Reajustar tras saltarse una sesión | Falta | |
 | Analítica por grupos musculares | Hecho | Series reales por músculo en el periodo elegido, con la media por semana. |
 | RPE/RIR y fatiga | Hecho | RIR objetivo en el plan; la reserva real de cada serie y el ánimo del día, opcionales; la reserva mueve la carga sugerida (2026-10-25). Sin sueño ni agujetas. |

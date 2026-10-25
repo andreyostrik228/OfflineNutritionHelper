@@ -63,6 +63,21 @@ var WORKOUT_PRESCRIPCION = {
 var WORKOUT_MATERIALES = ["barra", "banco", "mancuernas", "maquina", "polea", "dominadas", "paralelas"];
 
 /**
+ * Los aparatos concretos de los materiales «paraguas» (2026-10-25): un
+ * gimnasio puede tener prensa y no gakk, o jalón y no cruce de poleas. Con el
+ * material marcado se tienen todos sus aparatos, menos los que el usuario
+ * desmarque (`aparatosFaltan`). Los ejercicios que piden uno llevan `aparato`
+ * en el catálogo (js/data/exercises.js).
+ */
+var WORKOUT_APARATOS = {
+  barra: ["rack"],
+  banco: ["banco_inclinable", "banco_declinable"],
+  maquina: ["maq_pecho", "maq_pecho_inclinado", "maq_hombro", "maq_remo", "gravitron", "prensa", "hack",
+    "extension_piernas", "femoral_tumbado", "femoral_sentado", "gemelos_pie", "gemelos_sentado", "maq_hip_thrust"],
+  polea: ["polea_alta", "polea_baja", "cruce_poleas"]
+};
+
+/**
  * Lo que el usuario quiere trabajar más. Cada grupo: los músculos del catálogo
  * que cuenta (para darles una serie más) y los patrones con los que se le
  * añade un ejercicio en las sesiones que lo admiten.
@@ -212,9 +227,45 @@ function hasOwn(obj, clave) {
   return typeof clave === "string" && Object.prototype.hasOwnProperty.call(obj, clave);
 }
 
-/** true si el ejercicio se puede hacer con el material disponible. */
+/**
+ * true si el ejercicio se puede hacer con el material disponible: todo su
+ * material y, si pide aparatos (`aparato`: grupos de alternativas), uno de
+ * cada grupo. `material` es lo que da materialConAparatos (materiales y
+ * aparatos juntos).
+ */
 function puedeHacerse(ejercicio, material) {
-  return ejercicio.equipment.every(function (item) { return material.indexOf(item) !== -1; });
+  return ejercicio.equipment.every(function (item) { return material.indexOf(item) !== -1; }) &&
+    (ejercicio.aparato || []).every(function (grupo) {
+      return grupo.some(function (a) { return material.indexOf(a) !== -1; });
+    });
+}
+
+/** Todos los aparatos conocidos, en orden. */
+function aparatosConocidos() {
+  var todos = [];
+  Object.keys(WORKOUT_APARATOS).forEach(function (m) { todos = todos.concat(WORKOUT_APARATOS[m]); });
+  return todos;
+}
+
+/** Los aparatos desmarcados: solo los conocidos, sin repetir, en el orden de WORKOUT_APARATOS. */
+function normalizarAparatosFaltan(lista) {
+  if (!Array.isArray(lista)) return [];
+  return aparatosConocidos().filter(function (a) { return lista.indexOf(a) !== -1; });
+}
+
+/**
+ * Los materiales y, detrás, los aparatos que se tienen: los de cada material
+ * marcado menos los desmarcados. Es la lista que entiende puedeHacerse.
+ */
+function materialConAparatos(material, faltan) {
+  var fuera = normalizarAparatosFaltan(faltan);
+  var lista = material.slice();
+  material.forEach(function (m) {
+    (hasOwn(WORKOUT_APARATOS, m) ? WORKOUT_APARATOS[m] : []).forEach(function (a) {
+      if (fuera.indexOf(a) === -1 && lista.indexOf(a) === -1) lista.push(a);
+    });
+  });
+  return lista;
 }
 
 /** true si el ejercicio está al alcance del nivel (no se sube de nivel solo). */
@@ -594,6 +645,7 @@ function normalizarDias(valor, avisos) {
  * @param {object} [options] - { nivel: "principiante" | "intermedio" | "avanzado",
  *                               equipamiento: "gimnasio" | "mancuernas" | "sin_material",
  *                               material: [códigos de WORKOUT_MATERIALES] (manda sobre equipamiento),
+ *                               aparatosFaltan: [aparatos de WORKOUT_APARATOS que no hay] (2026-10-25),
  *                               objetivo: clave de WORKOUT_PRESCRIPCION (manda sobre goal; "auto" = el de goal),
  *                               duracion: 30 | 45 | 60, excluir: texto o lista de nombres,
  *                               enfoque: [grupos de WORKOUT_ENFOQUES], limitaciones: [claves de WORKOUT_LIMITACIONES],
@@ -641,6 +693,9 @@ function generateWorkoutPlan(profile, options) {
   }
   if (material) equipamiento = presetDeMaterial(material);
   else material = EQUIPAMIENTO_DISPONIBLE[equipamiento];
+  // Y dentro de cada material, los aparatos que de verdad hay (2026-10-25).
+  var aparatosFaltan = normalizarAparatosFaltan(opts.aparatosFaltan);
+  var disponible = materialConAparatos(material, aparatosFaltan);
 
   var nivel = "principiante";
   if (WORKOUT_LEVELS.indexOf(opts.nivel) !== -1) nivel = opts.nivel;
@@ -652,7 +707,7 @@ function generateWorkoutPlan(profile, options) {
   if (dias === 0) {
     return {
       ok: false, warnings: avisos, objetivo: objetivo, nivel: nivel, equipamiento: equipamiento,
-      material: material, enfoque: enfoque, limitaciones: limitaciones,
+      material: material, disponible: disponible, aparatosFaltan: aparatosFaltan, enfoque: enfoque, limitaciones: limitaciones,
       dias: 0, division: null, sesiones: [], seriesPorSemana: {},
       progresion: WORKOUT_PROGRESION, descarga: WORKOUT_DESCARGA,
       calentamiento: WORKOUT_CALENTAMIENTO, cardio: WORKOUT_CARDIO[objetivo], aviso: WORKOUT_AVISO
@@ -682,7 +737,7 @@ function generateWorkoutPlan(profile, options) {
   // Sin estructura, la de siempre según los días; cada sesión es su propia clave.
   var lista = estructura || division.sesiones.map(function (clave) { return { i: clave, k: clave, n: "", d: 0 }; });
   var sesiones = lista.map(function (x, i) {
-    var sesion = construirSesion(x.k, objetivo, nivel, material, usadosSemana, avisos, opciones, x.i);
+    var sesion = construirSesion(x.k, objetivo, nivel, disponible, usadosSemana, avisos, opciones, x.i);
     sesion.dia = x.d || (diasElegidos ? diasElegidos[i] : WORKOUT_DIAS_SEMANA[dias][i]);
     if (x.n) { sesion.name = x.n; sesion.nombrePropio = true; }
     return sesion;
@@ -714,6 +769,9 @@ function generateWorkoutPlan(profile, options) {
     nivel: nivel,
     equipamiento: equipamiento,
     material: material,
+    // Los materiales con sus aparatos (lo que entiende puedeHacerse) y los aparatos que no hay.
+    disponible: disponible,
+    aparatosFaltan: aparatosFaltan,
     enfoque: enfoque,
     limitaciones: limitaciones,
     diasElegidos: !!diasElegidos || !!estructura,

@@ -159,7 +159,7 @@ function _entrenoProgramaLimpio(guardado, destino) {
 function entrenoPrefsLimpiar(guardado) {
   var prefs = {
     nivel: "principiante", equipamiento: "gimnasio", semana: 1, duracion: 60, excluir: "",
-    objetivo: "auto", material: null, enfoque: [], limitaciones: [], diasSemana: null, configurado: false,
+    objetivo: "auto", material: null, aparatosFaltan: [], enfoque: [], limitaciones: [], diasSemana: null, configurado: false,
     cambios: {}, quitados: [], extras: {}, estructura: null, programa: "", plantillas: [], t: 0
   };
   if (guardado && typeof guardado === "object" && !Array.isArray(guardado)) {
@@ -171,6 +171,8 @@ function entrenoPrefsLimpiar(guardado) {
     if (typeof guardado.excluir === "string") prefs.excluir = guardado.excluir.slice(0, 200);
     if (ENTRENO_OBJETIVOS.indexOf(guardado.objetivo) !== -1) prefs.objetivo = guardado.objetivo;
     if (Array.isArray(guardado.material)) prefs.material = _entrenoLista(guardado.material, ENTRENO_MATERIALES);
+    // Los aparatos que no hay (2026-10-25): solo los que conoce el generador.
+    if (typeof normalizarAparatosFaltan === "function") prefs.aparatosFaltan = normalizarAparatosFaltan(guardado.aparatosFaltan);
     prefs.enfoque = _entrenoLista(guardado.enfoque, ENTRENO_ENFOQUES, ENTRENO_ENFOQUE_MAX);
     prefs.limitaciones = _entrenoLista(guardado.limitaciones, ENTRENO_LIMITACIONES);
     var dias = _entrenoLista((Array.isArray(guardado.diasSemana) ? guardado.diasSemana : []).map(Number), [1, 2, 3, 4, 5, 6, 7]);
@@ -239,7 +241,7 @@ function entrenoPlanParaDatos(datos) {
     { entrenamientos: d.dias, goal: d.objetivo },
     {
       nivel: d.nivel, equipamiento: d.equipamiento, duracion: d.duracion, excluir: d.excluir,
-      objetivo: d.objetivoEntreno, material: d.material, enfoque: d.enfoque,
+      objetivo: d.objetivoEntreno, material: d.material, aparatosFaltan: d.aparatosFaltan, enfoque: d.enfoque,
       limitaciones: d.limitaciones, diasSemana: d.diasSemana,
       cambios: d.cambios, quitados: d.quitados, extras: d.extras,
       estructura: d.estructura, programa: d.programa
@@ -499,6 +501,13 @@ function entrenoResumenFichasHtml(plan, prefs) {
   fichas.push(entrenoChip(plan.equipamiento === "personalizado"
     ? tFormat("ent.chip_material", { lista: _entrenoListaTexto(propio, "ent.material_", true) })
     : tOr("ent.equipo_" + plan.equipamiento, plan.equipamiento), false));
+  // Los aparatos que no hay (2026-10-25), de los materiales marcados.
+  var faltan = (plan.aparatosFaltan || []).filter(function (a) {
+    return propio.some(function (m) { return typeof WORKOUT_APARATOS !== "undefined" && (WORKOUT_APARATOS[m] || []).indexOf(a) !== -1; });
+  });
+  if (faltan.length) {
+    fichas.push(entrenoChip(tFormat("ent.chip_aparatos_faltan", { lista: _entrenoListaTexto(faltan, "ent.aparato_", true) }), false));
+  }
   if (plan.enfoque && plan.enfoque.length) {
     fichas.push(entrenoChip(tFormat("ent.chip_enfoque", { lista: _entrenoListaTexto(plan.enfoque, "ent.enfoque_", true) }), false));
   }
@@ -624,13 +633,16 @@ function entrenoSesionHtml(s, i, log) {
 
 // ── Cambiar el programa a mano (2026-10-18) ─────────────────────────────
 
-/** El material con el que se hace el plan de ahora (para el catálogo y los cambios). */
+/**
+ * El material con el que se hace el plan de ahora, con sus aparatos
+ * (materialConAparatos): lo que entiende puedeHacerse (para el catálogo y los cambios).
+ */
 function entrenoMaterialActual() {
-  if (_entrenoUltimoPlan && Array.isArray(_entrenoUltimoPlan.material)) return _entrenoUltimoPlan.material;
+  if (_entrenoUltimoPlan && Array.isArray(_entrenoUltimoPlan.disponible)) return _entrenoUltimoPlan.disponible;
   var prefs = entrenoLeerPrefs();
   var propio = typeof normalizarMaterial === "function" ? normalizarMaterial(prefs.material) : null;
-  if (propio) return propio;
-  return (typeof EQUIPAMIENTO_DISPONIBLE !== "undefined" && EQUIPAMIENTO_DISPONIBLE[prefs.equipamiento]) || ["sin_material"];
+  var material = propio || (typeof EQUIPAMIENTO_DISPONIBLE !== "undefined" && EQUIPAMIENTO_DISPONIBLE[prefs.equipamiento]) || ["sin_material"];
+  return typeof materialConAparatos === "function" ? materialConAparatos(material, prefs.aparatosFaltan) : material;
 }
 
 /**
@@ -837,6 +849,7 @@ function renderEntreno() {
     nivel: prefs.nivel,
     equipamiento: prefs.equipamiento,
     material: prefs.material,
+    aparatosFaltan: prefs.aparatosFaltan,
     duracion: prefs.duracion,
     excluir: prefs.excluir,
     enfoque: prefs.enfoque,

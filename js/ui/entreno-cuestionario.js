@@ -6,7 +6,8 @@
  *   1. objetivo (ganar músculo, fuerza, tonificar, perder grasa, salud)
  *   2. experiencia
  *   3. cuántos días, cuáles (opcional) y cuánto dura cada sesión
- *   4. dónde entrena y qué material tiene, uno a uno
+ *   4. dónde entrena y qué material tiene, uno a uno; y, de las máquinas,
+ *      poleas, banco y barra, qué aparatos concretos (2026-10-25)
  *   5. qué quiere trabajar más (hasta tres grupos)
  *   6. molestias (rodillas, lumbar, hombros) y ejercicios que no quiere
  *
@@ -71,6 +72,7 @@ function _cuestDatosIniciales() {
     duracion: prefs.duracion,
     equipamiento: _cuestJuegoDe(material),
     material: material,
+    aparatosFaltan: (prefs.aparatosFaltan || []).slice(),
     enfoque: prefs.enfoque.slice(),
     limitaciones: prefs.limitaciones.slice(),
     excluir: prefs.excluir
@@ -117,6 +119,7 @@ function _cuestPintar(enfocar) {
   _cuestMarcar("entDuracion", d.duracion);
   _cuestMarcar("entEquipo", d.equipamiento);
   _cuestMarcar("entMaterial", d.material);
+  _cuestPintarAparatos(caja, d);
   _cuestMarcar("entEnfoque", d.enfoque);
   _cuestMarcar("entLimites", d.limitaciones);
 
@@ -143,7 +146,34 @@ function _cuestPintar(enfocar) {
   }
 }
 
-/** Un toque en una opción: una sola en su grupo, o varias (días, material, acento, molestias). */
+/**
+ * Los aparatos de cada material marcado (2026-10-25): un grupo desplegable
+ * por material, con «Тренажёры: есть 10 из 13» en el resumen. Marcado = lo hay.
+ */
+function _cuestPintarAparatos(caja, d) {
+  if (typeof WORKOUT_APARATOS === "undefined") return;
+  var alguno = false;
+  Object.keys(WORKOUT_APARATOS).forEach(function (m) {
+    var grupo = caja.querySelector('.cuestionario__aparatos-grupo[data-material="' + m + '"]');
+    if (!grupo) return;
+    var tiene = d.material.indexOf(m) !== -1;
+    grupo.hidden = !tiene;
+    if (!tiene) return;
+    alguno = true;
+    var todos = WORKOUT_APARATOS[m];
+    var hay = todos.filter(function (a) { return d.aparatosFaltan.indexOf(a) === -1; });
+    _cuestMarcar("entAparatos-" + m, hay);
+    var resumen = grupo.querySelector("[data-aparatos-resumen]");
+    if (resumen) {
+      resumen.textContent = tFormat(hay.length === todos.length ? "ent.aparatos_todos" : "ent.aparatos_resumen",
+        { grupo: t("ent.material_" + m), n: hay.length, total: todos.length });
+    }
+  });
+  var bloque = document.getElementById("cuestAparatos");
+  if (bloque) bloque.hidden = !alguno;
+}
+
+/** Un toque en una opción: una sola en su grupo, o varias (días, material, acento, molestias, aparatos). */
 function _cuestElegir(grupo, valor) {
   var d = _cuest.datos;
   function alternar(lista, v) {
@@ -163,6 +193,11 @@ function _cuestElegir(grupo, valor) {
   else if (grupo === "entEquipo") {
     d.equipamiento = valor;
     d.material = _cuestMaterialDe(valor);
+    // Un juego entero es «hay de todo»: los aparatos quitados vuelven.
+    d.aparatosFaltan = [];
+  } else if (grupo.indexOf("entAparatos-") === 0) {
+    // Marcado es que lo hay: al tocarlo se quita (o vuelve) de los que faltan.
+    alternar(d.aparatosFaltan, valor);
   } else if (grupo === "entMaterial") {
     alternar(d.material, valor);
     d.equipamiento = _cuestJuegoDe(d.material);
@@ -203,6 +238,7 @@ function entrenoCuestionarioCerrar(guardar) {
     prefs.duracion = d.duracion;
     prefs.material = d.material.slice();
     prefs.equipamiento = d.equipamiento;
+    prefs.aparatosFaltan = typeof normalizarAparatosFaltan === "function" ? normalizarAparatosFaltan(d.aparatosFaltan) : [];
     prefs.enfoque = d.enfoque.slice(0, ENTRENO_ENFOQUE_MAX);
     prefs.limitaciones = d.limitaciones.slice();
     prefs.diasSemana = d.diasSemana.length === d.dias ? d.diasSemana.slice() : null;

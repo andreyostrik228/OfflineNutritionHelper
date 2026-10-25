@@ -4697,6 +4697,16 @@ body.modo-cuestionario .next-meal-sticky { display: none !important; }
   font-weight: 600;
 }
 .cuestionario__chips--grandes .cuest-chip { min-height: 52px; padding: 12px 20px; font-size: 1rem; }
+/* Los aparatos concretos de cada material marcado, plegados por material (2026-10-25) */
+.cuestionario__aparatos { display: grid; gap: 8px; margin-top: 18px; }
+.cuestionario__aparatos[hidden],
+.cuestionario__aparatos-grupo[hidden] { display: none; }
+.cuestionario__aparatos .cuestionario__ayuda { margin: 0; }
+.cuestionario__aparatos-grupo { border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); }
+.cuestionario__aparatos-sum { padding: 13px 14px; font-weight: 700; color: var(--ink); cursor: pointer; }
+.cuestionario__aparatos-sum:focus-visible { outline: 3px solid var(--volt); outline-offset: 2px; border-radius: var(--r-md); }
+.cuestionario__aparatos-grupo .cuestionario__chips { padding: 0 12px 12px; }
+.cuestionario__aparatos-grupo .cuest-chip { min-height: 40px; padding: 7px 13px; font-size: 0.88rem; }
 .cuest-chip[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: var(--on-ink); }
 .cuest-op:focus-visible,
 .cuest-chip:focus-visible { outline: 3px solid var(--volt); outline-offset: 2px; }

@@ -112,7 +112,7 @@ function run(t) {
     var nada = s.entrenoLeerPrefs();
     assert.deepStrictEqual(JSON.parse(JSON.stringify(nada)), {
       nivel: "principiante", equipamiento: "gimnasio", semana: 1, duracion: 60, excluir: "",
-      objetivo: "auto", material: null, enfoque: [], limitaciones: [], diasSemana: null, configurado: false,
+      objetivo: "auto", material: null, aparatosFaltan: [], enfoque: [], limitaciones: [], diasSemana: null, configurado: false,
       cambios: {}, quitados: [], extras: {}, estructura: null, programa: "", plantillas: [], t: 0
     });
 

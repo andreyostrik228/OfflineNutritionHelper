@@ -39,7 +39,9 @@ function _catMayuscula(texto) {
   return s.charAt(0).toLocaleUpperCase() + s.slice(1);
 }
 
+/** Con el generador, su regla (también los aparatos, 2026-10-25); sin él, solo el material. */
 function _catPuede(e, material) {
+  if (typeof puedeHacerse === "function") return puedeHacerse(e, material);
   return (e.equipment || []).every(function (m) { return material.indexOf(m) !== -1; });
 }
 
@@ -93,13 +95,16 @@ function entrenoCatalogoLista(opciones, estado, material) {
   return lista;
 }
 
-/** «Pecho · Barra, banco · Intermedio» */
+/** «Pecho · Barra, banco: soportes · Intermedio» (con el aparato concreto, si lo pide). */
 function _catMetaTexto(e) {
   var material = (e.equipment || []).filter(function (m) { return m !== "sin_material"; }).map(function (m) {
     return tOr("ent.material_" + m, m);
   });
+  var aparatos = (e.aparato || []).map(function (grupo) {
+    return grupo.map(function (a) { return tOr("ent.aparato_" + a, a).toLocaleLowerCase(); }).join(" / ");
+  }).join(", ");
   var partes = [_catMayuscula(tOr("ent.grupo_" + e.muscle, e.muscle))];
-  partes.push(material.length ? material.join(", ") : t("ent.equipo_sin_material"));
+  partes.push(material.length ? material.join(", ") + (aparatos ? ": " + aparatos : "") : t("ent.equipo_sin_material"));
   partes.push(tOr("ent.nivel_" + e.level, e.level));
   return partes.join(" · ");
 }
