@@ -4977,6 +4977,13 @@ body.modo-cuestionario .next-meal-sticky { display: none !important; }
 .entreno__dia-semana-marca { width: 8px; height: 8px; border-radius: 50%; background: var(--line-strong); }
 .entreno__dia-semana.is-plan .entreno__dia-semana-marca { background: var(--ink); }
 .entreno__dia-semana.is-hecho .entreno__dia-semana-marca { background: var(--on-volt); }
+/* Una sesión saltada (2026-10-25): borde a rayas y marca de aviso; no depende solo del color (dice «пропущено» al lector). */
+.entreno__dia-semana.is-perdido { border-style: dashed; border-color: var(--warn); color: var(--warn); }
+.entreno__dia-semana.is-perdido .entreno__dia-semana-marca { background: var(--warn); }
+.entreno__perdida { margin: 0 0 16px; border-color: var(--warn); }
+.entreno__tarjeta[hidden],
+.entreno__perdida[hidden] { display: none; }
+.entreno__perdida-botones { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 4px; }
 
 /* Botones pequeños del programa (cambiar, quitar, volver) */
 .entreno__ej-botones { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
@@ -5207,6 +5214,14 @@ body.modo-cuestionario .next-meal-sticky { display: none !important; }
 .sesion__grupo-titulo { margin: 0 0 8px; font-size: 0.78rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink); }
 .sesion__grupo-ayuda { font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--text-3); }
 .sesion__ej.is-saltado { opacity: 0.6; border-style: dashed; box-shadow: none; }
+/* El cronómetro de las series de tiempo (2026-10-25) */
+.sesion__crono { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 10px 0 0; }
+.sesion__crono.is-activo { padding: 10px 12px; border-radius: var(--r-md); background: var(--volt-wash); }
+.sesion__crono-btn svg { vertical-align: -4px; }
+.sesion__crono-reloj { font: 800 1.9rem/1 var(--font-display); color: var(--ink); font-variant-numeric: tabular-nums; }
+.sesion__crono-meta { font-size: 0.86rem; color: var(--text-2); }
+.sesion__crono.is-activo .sesion__crono-meta { color: var(--ink); font-weight: 600; }
+.sesion__crono-botones { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
 .sesion__discos {
   margin: 8px 0 0;
   padding: 7px 10px;
@@ -5504,6 +5519,8 @@ body.con-entreno-pestanas .sesion__descanso {
   color: var(--ink);
 }
 .entreno__elegir-item.is-hecho .entreno__elegir-dia { background: var(--volt); color: var(--on-volt); }
+.entreno__elegir-item.is-perdida { border-color: var(--warn); border-style: dashed; }
+.entreno__elegir-item.is-perdida .entreno__elegir-dia { background: var(--warn-wash); color: var(--warn); }
 .entreno__elegir-texto { display: grid; gap: 2px; min-width: 0; }
 .entreno__elegir-nombre { color: var(--ink); overflow-wrap: anywhere; }
 .entreno__elegir-datos { font-size: 0.82rem; color: var(--text-2); }

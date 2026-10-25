@@ -32,7 +32,9 @@
  * botones; un día malo propone ir más suave, sin cambiar nada); y al marcar
  * una serie de trabajo, debajo, cuántas repeticiones le quedaban (0–4+). Cada
  * serie hecha lleva su «запас», para cambiarla luego. Se quitan las dos en
- * «Perfil» (ENTRENO_CLAVE_PREGUNTAS).
+ * «Perfil» (ENTRENO_CLAVE_PREGUNTAS). Y en los ejercicios de tiempo, un
+ * cronómetro: avisa al llegar a lo bajo del rango y «Стоп — записать» apunta
+ * los segundos y marca la serie.
  *
  * Expone (globales):
  *   initEntrenoSesion()                  cablea la pantalla (una vez; lo llama initEntreno)
@@ -83,6 +85,8 @@ var _sesionCableado = false;
 var _sesionEdicion = null;
 /** El menú «Más» que tiene que seguir abierto tras repintar (subir y bajar varias veces). */
 var _sesionMasAbierto = null;
+/** El cronómetro de una serie de tiempo (2026-10-25): { ej, serie, desde, avisado } o null. Solo en memoria. */
+var _sesionCrono = null;
 
 var SESION_ICONOS = {
   atras: '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -260,6 +264,40 @@ function _sesionRirPreguntaHtml(i, serie, j, n) {
     '<p class="sesion__rir-pregunta">' + _sesionEsc(t("ent.rir_pregunta")) + "</p>" +
     '<div class="sesion__rir-botones">' + opciones + salir + "</div>" +
     '<p class="sesion__rir-ayuda">' + _sesionEsc(t("ent.rir_ayuda")) + "</p>" +
+  "</div>";
+}
+
+/**
+ * El cronómetro de los ejercicios de tiempo (plancha…, 2026-10-25): «Секундомер:
+ * подход 2» para la primera serie sin hacer; en marcha, el reloj, la meta del
+ * rango y «Стоп — записать», que apunta los segundos y marca la serie.
+ * @param {{ej:number, serie:number, desde:number, avisado:boolean}|null} crono
+ */
+function _sesionCronoHtml(e, i, crono, ahora) {
+  var corriendo = !!(crono && crono.ej === i);
+  var j = corriendo ? crono.serie : -1;
+  if (!corriendo) {
+    for (var k = 0; k < e.series.length; k++) { if (!e.series[k].hecha) { j = k; break; } }
+  }
+  if (j === -1 || !e.series[j]) return "";
+  var meta = tFormat("ent.crono_meta", { meta: typeof entrenoRepsTexto === "function" ? entrenoRepsTexto(e.reps) : e.reps });
+  var datos = ' data-ej="' + i + '" data-serie="' + j + '"';
+  if (!corriendo) {
+    return '<div class="sesion__crono">' +
+      '<button type="button" class="sesion__boton sesion__crono-btn" data-accion="crono"' + datos + ' data-foco="crono-' + i + '">' +
+        SESION_ICONOS.seguir + " " + _sesionEsc(tFormat("ent.crono_empezar", { n: j + 1 })) + "</button>" +
+      '<span class="sesion__crono-meta">' + _sesionEsc(meta) + "</span>" +
+    "</div>";
+  }
+  return '<div class="sesion__crono is-activo">' +
+    '<strong class="sesion__crono-reloj" data-crono role="timer" aria-label="' + _sesionEsc(tFormat("ent.crono_aria", { n: j + 1 })) + '">' +
+      entrenoReloj(Math.max(0, ahora - crono.desde)) + "</strong>" +
+    '<span class="sesion__crono-meta" data-crono-meta aria-live="polite">' + _sesionEsc(crono.avisado ? t("ent.crono_listo") : meta) + "</span>" +
+    '<span class="sesion__crono-botones">' +
+      '<button type="button" class="sesion__boton sesion__boton--fuerte" data-accion="crono-parar"' + datos + ' data-foco="crono-parar-' + i + '">' +
+        _sesionEsc(t("ent.crono_parar")) + "</button>" +
+      '<button type="button" class="sesion__boton" data-accion="crono-cancelar"' + datos + ">" + _sesionEsc(t("ent.crono_cancelar")) + "</button>" +
+    "</span>" +
   "</div>";
 }
 
@@ -462,6 +500,8 @@ function _sesionEjercicioHtml(sesion, e, i, log, corrigiendo, opciones) {
     h += _sesionSerieHtml(i, serie, j, numeroTrabajo || 1, antes, tiempo, { abierta: rirAbierto === i + "-" + j, mostrar: preguntas });
   });
   h += "</div>";
+  // De tiempo: el cronómetro de la siguiente serie (corrigiendo una terminada, no).
+  if (tiempo && !corrigiendo) h += _sesionCronoHtml(e, i, opciones && opciones.crono, (opciones && opciones.ahora) || 0);
   // Con barra: qué discos poner a cada lado para la próxima serie de trabajo.
   if (typeof entrenoEditUsaBarra === "function" && entrenoEditUsaBarra(e.id)) {
     var proxima = e.series.filter(function (s) { return !s.hecha && s.tipo !== "c"; })[0] || e.series[e.series.length - 1];
@@ -507,7 +547,8 @@ function _sesionRelojTexto(sesion, ahora) {
  * Toda la pantalla de una sesión. Sin DOM.
  * @param {object} opciones  { corrigiendo: true } para una sesión terminada que se corrige;
  *        rirAbierto: "ej-serie" cuya reserva se pregunta; animoAbierto: los cinco botones
- *        del ánimo aunque ya haya uno; preguntas: false si se quitaron en «Perfil»
+ *        del ánimo aunque ya haya uno; preguntas: false si se quitaron en «Perfil»;
+ *        crono: { ej, serie, desde, avisado } el cronómetro en marcha de una serie de tiempo
  */
 function entrenoSesionPantallaHtml(sesion, log, ahora, opciones) {
   var corrigiendo = !!(opciones && opciones.corrigiendo);
@@ -552,8 +593,12 @@ function entrenoSesionPantallaHtml(sesion, log, ahora, opciones) {
     "</div>";
   // El ánimo: con las preguntas quitadas, solo si ya se había elegido.
   var animo = (preguntas || sesion.animo) ? _sesionAnimoHtml(sesion, !!(opciones && opciones.animoAbierto)) : "";
+  var porEjercicio = {
+    preguntas: preguntas, rirAbierto: opciones && opciones.rirAbierto,
+    crono: opciones && opciones.crono, ahora: ahora
+  };
   return cabeza + animo +
-    '<ol class="sesion__lista">' + sesion.ejercicios.map(function (e, i) { return _sesionEjercicioHtml(sesion, e, i, log, corrigiendo, opciones); }).join("") + "</ol>" +
+    '<ol class="sesion__lista">' + sesion.ejercicios.map(function (e, i) { return _sesionEjercicioHtml(sesion, e, i, log, corrigiendo, porEjercicio); }).join("") + "</ol>" +
     pie +
     (corrigiendo ? "" : _sesionDescansoHtml(sesion, ahora));
 }
@@ -701,6 +746,22 @@ function _sesionTic() {
     var texto = _sesionRelojTexto(s, ahora);
     if (reloj.textContent !== texto) reloj.textContent = texto;
   }
+  // El cronómetro de una serie de tiempo: avisa una vez al llegar a lo bajo del rango.
+  if (_sesionCrono) {
+    var crono = caja.querySelector("[data-crono]");
+    var paso = ahora - _sesionCrono.desde;
+    var textoCrono = entrenoReloj(Math.max(0, paso));
+    if (crono && crono.textContent !== textoCrono) crono.textContent = textoCrono;
+    var ejCrono = s.ejercicios[_sesionCrono.ej];
+    var rangoCrono = ejCrono && entrenoLogRango(ejCrono.reps);
+    if (rangoCrono && !_sesionCrono.avisado && rangoCrono.min * 1000 <= paso) {
+      _sesionCrono.avisado = true;
+      _sesionVibrar([120, 60, 120]);
+      _sesionPitido();
+      var metaCrono = caja.querySelector("[data-crono-meta]");
+      if (metaCrono) metaCrono.textContent = t("ent.crono_listo");
+    }
+  }
   var barra = caja.querySelector("[data-descanso]");
   if (!barra) return;
   var etiqueta = barra.querySelector("[data-descanso-etiqueta]");
@@ -761,7 +822,8 @@ function _sesionPintar(foco) {
       corrigiendo: !!_sesionEdicion,
       rirAbierto: _sesionRirAbierto,
       animoAbierto: _sesionAnimoAbierto,
-      preguntas: entrenoPreguntasOn()
+      preguntas: entrenoPreguntasOn(),
+      crono: _sesionCrono
     });
     abiertas.forEach(function (n) {
       var d = caja.querySelector('details[data-tec="' + n + '"]');
@@ -808,6 +870,8 @@ function _sesionMarcar(iEj, iSerie) {
   var e = s.ejercicios[iEj];
   var serie = e && e.series[iSerie];
   if (!serie) return;
+  // Marcada a mano la serie que se cronometraba: el cronómetro sobra.
+  if (_sesionCrono && _sesionCrono.ej === iEj && _sesionCrono.serie === iSerie) _sesionCrono = null;
   _sesionLeerCasillas(iEj, iSerie);
   var hecha = !serie.hecha;
   if (hecha && !(0 < serie.reps)) {
@@ -849,6 +913,22 @@ function _sesionMarcar(iEj, iSerie) {
   }
 }
 
+/** «Стоп — записать»: los segundos van a la casilla de la serie y la serie se marca (con su descanso). */
+function _sesionPararCrono() {
+  var c = _sesionCrono;
+  _sesionCrono = null;
+  if (!c || !_sesionLog || !_sesionLog.enCurso) return;
+  var segundos = Math.min(ENTRENO_LOG_MAX_REPS, Math.round((Date.now() - c.desde) / 1000));
+  var serie = _sesionLog.enCurso.ejercicios[c.ej] && _sesionLog.enCurso.ejercicios[c.ej].series[c.serie];
+  if (!serie || !(0 < segundos)) { _sesionPintar("crono-" + c.ej); return; }
+  // _sesionMarcar lee la casilla: se escribe ahí lo medido.
+  var casilla = _sesionCaja().querySelector('input[data-campo="reps"][data-ej="' + c.ej + '"][data-serie="' + c.serie + '"]');
+  if (casilla) casilla.value = String(segundos);
+  entrenoLogPonerSerie(_sesionLog, c.ej, c.serie, { reps: segundos });
+  if (!serie.hecha) _sesionMarcar(c.ej, c.serie);
+  else { _sesionGuardar(); _sesionPintar("check-" + c.ej + "-" + c.serie); }
+}
+
 function _sesionAjustarDescanso(segundos) {
   var s = _sesionLog.enCurso;
   if (!s.descansoHasta) return;
@@ -875,6 +955,7 @@ function _sesionTerminar() {
   }
   if (cuenta.hechas < cuenta.total && !window.confirm(t("ent.confirmar_terminar"))) return;
   var nombre = _sesionNombre(s);
+  _sesionCrono = null;
   _sesionResumen = entrenoLogTerminar(_sesionLog, Date.now());
   if (_sesionResumen) _sesionResumen.nombre = nombre;
   _sesionGuardar();
@@ -973,6 +1054,8 @@ function _sesionAccion(accion, boton) {
   var s = _sesionLog.enCurso;
   // Lo que mueve, quita o cambia series deja la pregunta de la reserva apuntando a otra: se cierra.
   if (!/^(rir|check|descanso|sonido|tecnica|animo)/.test(accion)) _sesionRirAbierto = null;
+  // Y el cronómetro, si lo que se toca cambia qué serie es cuál.
+  if (!/^(rir|check|descanso|sonido|tecnica|animo|crono|mas|pausa)/.test(accion)) _sesionCrono = null;
   if (accion === "tecnica") {
     // La animación pequeña abre (o cierra) la técnica con la grande.
     var d = _sesionCaja().querySelector('details[data-tec="' + iEj + '"]');
@@ -1006,6 +1089,18 @@ function _sesionAccion(accion, boton) {
     _sesionPintar("animo-cambiar");
   }
   else if (accion === "animo-cambiar") { _sesionAnimoAbierto = true; _sesionPintar("animo-" + (s.animo || 3)); }
+  else if (accion === "crono") {
+    // Empieza la serie: el descanso, si quedaba, se acaba.
+    _sesionCrono = { ej: iEj, serie: iSerie, desde: Date.now(), avisado: false };
+    s.descansoHasta = null;
+    _sesionAvisoHasta = 0;
+    _sesionPrepararAudio();
+    _sesionVibrar(10);
+    _sesionGuardar();
+    _sesionPintar("crono-parar-" + iEj);
+  }
+  else if (accion === "crono-parar") _sesionPararCrono();
+  else if (accion === "crono-cancelar") { _sesionCrono = null; _sesionPintar("crono-" + iEj); }
   else if (accion === "mas") { if (entrenoLogAnadirSerie(_sesionLog, iEj)) { _sesionGuardar(); _sesionPintar("mas-" + iEj); } }
   else if (accion === "menos") { if (entrenoLogQuitarSerie(_sesionLog, iEj)) { _sesionGuardar(); _sesionPintar("menos-" + iEj); } }
   else if (accion === "tipo") {
@@ -1121,6 +1216,7 @@ function entrenoSesionEmpezar(sesionPlan, semana) {
   entrenoLogGuardar(log);
   _sesionResumen = null;
   _sesionAvisoHasta = 0;
+  _sesionCrono = null;
   return entrenoSesionAbrir(log);
 }
 

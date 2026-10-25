@@ -1,5 +1,33 @@
 # Nutrition Planner — Roadmap
 
+## Lo del 2026-10-25, tercera tanda (sello `20261025c`, 1271 tests)
+
+El dueño dejó elegir («новое что-то придумай или из списка возьми»). Dos
+cosas de la lista que faltaban. Probado en Chrome sin interfaz a 390 px, sin
+errores de JS; el contraste, en cinco aspectos.
+
+| Qué | Dónde | Estado |
+|---|---|---|
+| Sesiones saltadas: «Сделать сегодня» o «Не переносить» | `js/ui/entreno-perdidas.js` (`entrenoPerdidasDatos`), `#entrenoPerdida` | **Hecho** |
+| Saltadas marcadas en la semana de «Inicio» y en «Entrenar» | `entrenoSemanaHtml`, `entrenoElegirHtml` (`render-entreno.js`) | **Hecho** |
+| Cronómetro de las series de tiempo (plancha…) | `_sesionCronoHtml`, `_sesionPararCrono` (`entreno-sesion.js`) | **Hecho** |
+
+**Saltadas.** Del lunes a ayer, las sesiones del plan con ejercicios que no
+se hicieron esta semana (hacer el jueves la del miércoles cuenta). Se casan
+por la clave del diario (`cuerpo_A`, o `~Nombre`), de la más temprana a la más
+tardía: con dos «Cuerpo A» y una hecha, una sigue saltada. No cuentan con el
+diario vacío ni los días anteriores al último cambio del programa de esta
+semana (`prefs.t`). En «Inicio», la más reciente con «Сделать сегодня» (la
+empieza) y «Не переносить» (solo esta semana, `nutritionPlanner.entrenoPerdidas.v1`);
+la semana las marca con borde a rayas y «пропущено» para el lector; «Entrenar»
+las marca «пропущена». La semana no se cambia sola.
+
+**Cronómetro.** En los ejercicios de tiempo, «Секундомер: подход N» para la
+primera serie sin hacer, con la meta del rango. Al empezar corta el descanso;
+al llegar a lo bajo del rango vibra, suena y dice «Цель достигнута»; «Стоп —
+записать» apunta los segundos y marca la serie (con su descanso); «Отмена» no
+apunta nada. Solo en memoria: recargar la página lo para.
+
 ## Lo del 2026-10-25, segunda tanda (sello `20261025b`, 1264 tests)
 
 El dueño: «Нужно чтобы можно было указывать какие конкретно снаряды у тебя
@@ -428,7 +456,7 @@ ruso, de usted.
 | **D. Sesión en curso** | Peso y repeticiones (o segundos) por serie, rellenos con «la última vez». Marcar la serie con un toque; añadir y quitar series. Descanso automático con −15/+15 s, vibración y sonido; pantalla encendida. Aviso de récord al momento y resumen final (tiempo, series, volumen, récords). Cada cambio se guarda al instante y la sesión se reanuda tras recargar. | Series de calentamiento, drop sets y al fallo, superseries y circuitos, notas, saltar, sustituir o reordenar un ejercicio, pausa, editar una sesión terminada (solo se puede borrar). |
 | **E. Entrenador** | Carga sugerida por doble progresión, con el porqué. Las molestias quitan ejercicios y ponen un sustituto; el acento añade una serie o un ejercicio; los ejercicios que no quiere no salen. | Usar el RPE/RIR real, reajustar tras saltarse una sesión, explicar los cambios del programa, estimar la recuperación, ejercicios preferidos. |
 | **F. Estadística** | Récords (kilos, 1RM estimado con Epley, repeticiones), la semana frente al plan (sesiones y kilos), racha de semanas, volumen de las 8 últimas semanas, historial de las 10 últimas sesiones con sus series. | Gráfica por ejercicio, volumen y frecuencia reales por grupo muscular, % del plan cumplido, informes mensuales, comparar periodos, exportar a CSV. |
-| **G. Herramientas** | Temporizador de descanso por ejercicio, ajustable y con aviso; 1RM orientativo. | Descanso distinto para el calentamiento, calculadoras de discos y de calentamiento, kg/lb, cronómetro para planchas, intervalos y HIIT. |
+| **G. Herramientas** | Temporizador de descanso por ejercicio, ajustable y con aviso; 1RM orientativo. Desde el 2026-10-18, calculadora de discos y series de calentamiento; desde el 2026-10-25, cronómetro para las series de tiempo. | Descanso distinto para el calentamiento, kg/lb, intervalos y HIIT. |
 | **H. Recuperación y seguridad** | Las molestias del cuestionario, el aviso «no es consejo médico» del plan, el texto de calentamiento y la descarga cada 5.ª semana. | Fatiga y ganas del día, sueño, agujetas, RPE/RIR real, sesiones saltadas y por qué, marcar un ejercicio que molesta durante la sesión, aviso de subida brusca de carga, cuándo parar por dolor. |
 | **I. Peso y nutrición** | El sitio es, de base, un planificador de comidas (calorías, macros, compra, despensa), y los entrenamientos por semana de «Mis datos» suben las calorías. Registro de peso corporal con gráfica, que va con la cuenta. | Perímetros, fotos con fecha, objetivos de peso y medidas, recordatorios de medirse. |
 | **J. Motivación** | Racha de semanas y récords. | Recordatorios, calendario de actividad, objetivos de semana o mes, informes, compartir. |
@@ -480,7 +508,7 @@ ruso, de usted.
 | Sobrecarga progresiva | Hecho | Doble progresión y descarga. |
 | Recomendación de peso y repeticiones | Hecho | Con el porqué. |
 | Sustituir según el material | Hecho | Automático al generar el plan, y a mano desde el catálogo (filtrado por el material de cada uno) en el plan y en la sesión. Desde el 2026-10-25, también por los aparatos concretos que hay. |
-| Reajustar tras saltarse una sesión | Falta | |
+| Reajustar tras saltarse una sesión | Hecho | «Inicio» avisa de la saltada de esta semana y ofrece hacerla hoy o dejarla; la semana y «Entrenar» la marcan (2026-10-25). No mueve el resto de la semana. |
 | Analítica por grupos musculares | Hecho | Series reales por músculo en el periodo elegido, con la media por semana. |
 | RPE/RIR y fatiga | Hecho | RIR objetivo en el plan; la reserva real de cada serie y el ánimo del día, opcionales; la reserva mueve la carga sugerida (2026-10-25). Sin sueño ni agujetas. |
 | Fotos de progreso e informes mensuales | Falta | |

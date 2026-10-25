@@ -18,6 +18,19 @@ llevan al final un bloque «actualización 2026-10-08»). El diario fechado, con
 medidas y causas, está en la cabecera de `STATE.md` (entradas del 2026-10-07 y
 2026-10-08).
 
+### 0.0 octies Tercera tanda del 2026-10-25 (lee esto antes que 0.0 septies)
+
+- **Estado:** sello `20261025c`, **1271 tests en verde**. Sesiones saltadas
+  de la semana (`js/ui/entreno-perdidas.js`) y cronómetro de las series de
+  tiempo (`entreno-sesion.js`). Tabla al principio de `ROADMAP.md`.
+- **Reglas nuevas (no las rompas):**
+  - Una saltada se casa con lo hecho por la clave del diario: si cambias cómo
+    `entrenoLogIniciar` fija `clave`, cambia `_perdClave` igual.
+  - Guardar las respuestas (`entrenoGuardarPrefs`) mueve `prefs.t`, y los días
+    de esta semana anteriores a ese momento dejan de contar como saltados.
+  - Un `<article class="entreno__tarjeta …" hidden>` necesita
+    `.entreno__tarjeta[hidden]` (ya está): un test de `index.html` lo exige.
+
 ### 0.0 septies Segunda tanda del 2026-10-25 (lee esto antes que 0.0 sexies)
 
 - **Estado:** sello `20261025b`, **1264 tests en verde**. Aparatos concretos de

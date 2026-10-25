@@ -877,6 +877,15 @@ function renderEntreno() {
   var datosHoy = (!sinPlan && plan.ok && typeof entrenoHoyDatos === "function") ? entrenoHoyDatos(plan, log, ahora) : null;
   var ojo = document.getElementById("entrenoOjo");
   if (ojo) { ojo.textContent = entrenoOjoTexto(datosHoy, ahora); ojo.hidden = false; }
+  // Las sesiones saltadas de esta semana (js/ui/entreno-perdidas.js, 2026-10-25):
+  // su tarjeta en «Inicio», y marcadas en la semana y en «Entrenar».
+  var perdidas = (!sinPlan && plan.ok && typeof renderEntrenoPerdidas === "function") ? renderEntrenoPerdidas(plan, log, prefs) : [];
+  var cajaPerdida = document.getElementById("entrenoPerdida");
+  if (cajaPerdida && !perdidas.length) { cajaPerdida.hidden = true; cajaPerdida.innerHTML = ""; }
+  if (datosHoy) {
+    datosHoy.perdidas = perdidas.map(function (p) { return p.indice; });
+    datosHoy.dias.forEach(function (d) { d.perdido = !d.hecho && perdidas.some(function (p) { return p.dia === d.dia; }); });
+  }
   var hoyCaja = document.getElementById("entrenoHoy");
   var semanaCaja = document.getElementById("entrenoSemanaCaja");
   if (hoyCaja) { hoyCaja.hidden = !datosHoy; hoyCaja.innerHTML = datosHoy ? entrenoHoyHtml(datosHoy, prefs) : ""; }
@@ -946,12 +955,13 @@ function entrenoElegirHtml(datos, plan) {
     if (hayHoy && i === datos.indice) return "";
     if (!s.exercises.length) return "";
     var hecha = !!hechos[s.dia];
-    return '<li class="entreno__elegir-item' + (hecha ? " is-hecho" : "") + '">' +
+    var perdida = !hecha && !!(datos && datos.perdidas && datos.perdidas.indexOf(i) !== -1);
+    return '<li class="entreno__elegir-item' + (hecha ? " is-hecho" : "") + (perdida ? " is-perdida" : "") + '">' +
       '<span class="entreno__elegir-dia">' + entrenoEsc(t("ent.dia_corto_" + s.dia)) + "</span>" +
       '<span class="entreno__elegir-texto">' +
         '<strong class="entreno__elegir-nombre">' + entrenoEsc(entrenoNombreSesion(s)) + "</strong>" +
         '<span class="entreno__elegir-datos">' + entrenoEsc(tFormat("ent.elegir_datos", { n: s.exercises.length }) +
-          (hecha ? " · " + t("ent.elegir_hecha") : "")) + "</span>" +
+          (hecha ? " · " + t("ent.elegir_hecha") : "") + (perdida ? " · " + t("ent.elegir_perdida") : "")) + "</span>" +
       "</span>" +
       '<button type="button" class="btn-secondary entreno__elegir-btn" data-empezar="' + i + '">' + entrenoEsc(t("ent.elegir_empezar")) + "</button>" +
     "</li>";
@@ -1043,8 +1053,9 @@ function entrenoHoyMusculosHtml(sesion) {
 /** Los siete días: cuáles tocan, cuáles están hechos y cuál es hoy. */
 function entrenoSemanaHtml(datos) {
   return datos.dias.map(function (x) {
-    var clase = "entreno__dia-semana" + (x.plan ? " is-plan" : "") + (x.hecho ? " is-hecho" : "") + (x.hoy ? " is-hoy" : "");
-    var clave = x.hecho ? "ent.semana_dia_hecho" : (x.plan ? "ent.semana_dia_plan" : "ent.semana_dia_libre");
+    var clase = "entreno__dia-semana" + (x.plan ? " is-plan" : "") + (x.hecho ? " is-hecho" : "") + (x.hoy ? " is-hoy" : "") +
+      (x.perdido ? " is-perdido" : "");
+    var clave = x.hecho ? "ent.semana_dia_hecho" : (x.perdido ? "ent.semana_dia_perdido" : (x.plan ? "ent.semana_dia_plan" : "ent.semana_dia_libre"));
     return '<li class="' + clase + '"><span>' + entrenoEsc(t("ent.dia_corto_" + x.dia)) + "</span>" +
       '<span class="visually-hidden">' + entrenoEsc(tFormat(clave, { dia: t("ent.dia_" + x.dia) })) + "</span>" +
       '<i class="entreno__dia-semana-marca" aria-hidden="true"></i></li>';
@@ -1178,6 +1189,7 @@ function initEntreno() {
   if (typeof initEntrenoProgramas === "function") initEntrenoProgramas();
   if (typeof initEntrenoCalendario === "function") initEntrenoCalendario();
   if (typeof initEntrenoMedidas === "function") initEntrenoMedidas();
+  if (typeof initEntrenoPerdidas === "function") initEntrenoPerdidas();
   if (typeof initEntrenoTutorial === "function") initEntrenoTutorial();
   if (typeof initEntrenoPestanas === "function") initEntrenoPestanas();
   var cerrarAnim = document.getElementById("entrenoAnimCerrar");
