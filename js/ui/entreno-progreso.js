@@ -313,13 +313,17 @@ function _progresoSesionHtml(s) {
     tFormat("ent.n_series", { n: tot.series })
   ];
   if (tot.volumen) resumen.push(entrenoMiles(tot.volumen) + " " + t("ent.kg"));
+  // Cómo se encontraba ese día (2026-10-25), si lo apuntó.
+  if (s.animo) resumen.push(tFormat("ent.hist_animo", { animo: t("ent.animo_" + s.animo).toLocaleLowerCase() }));
   var ejercicios = s.ejercicios.map(function (e) {
     var tiempo = / s( por lado)?$/.test(String(e.reps));
     var trabajo = e.series.filter(function (x) { return x.tipo !== "c"; });
     var calentar = e.series.length - trabajo.length;
+    var reserva = typeof entrenoRirTexto === "function" ? entrenoRirTexto(trabajo) : "";
     return "<li><span>" + _progresoEsc(entrenoNombre({ id: e.id, name: e.name })) + "</span> " +
       '<span class="entreno__hist-series">' + _progresoEsc(entrenoSeriesTexto(trabajo.length ? trabajo : e.series, tiempo)) +
-        (calentar && trabajo.length ? " · " + _progresoEsc(tFormat("ent.hist_calentamiento", { n: calentar })) : "") + "</span>" +
+        (calentar && trabajo.length ? " · " + _progresoEsc(tFormat("ent.hist_calentamiento", { n: calentar })) : "") +
+        (reserva ? " · " + _progresoEsc(reserva) : "") + "</span>" +
       (e.nota ? '<span class="entreno__hist-nota">' + _progresoEsc(e.nota) + "</span>" : "") + "</li>";
   }).join("");
   return '<li class="entreno__hist-item" data-sesion="' + _progresoEsc(s.id) + '"><details>' +
@@ -706,7 +710,7 @@ function renderEntrenoProgreso(log, plan) {
 function _progresoDescargarCsv() {
   if (typeof entrenoStatsCsv !== "function") return;
   var texto = entrenoStatsCsv(entrenoLogLeer(), {
-    cabecera: ["fecha", "hora", "sesion", "ejercicio", "serie", "tipo", "kg", "reps", "nota"].map(function (c) { return t("ent.csv_" + c); }),
+    cabecera: ["fecha", "hora", "sesion", "ejercicio", "serie", "tipo", "kg", "reps", "rir", "nota", "animo"].map(function (c) { return t("ent.csv_" + c); }),
     sesion: _progresoNombreSesion,
     ejercicio: function (e) { return entrenoNombre({ id: e.id, name: e.name }); },
     tipo: function (tipo) { return tipo ? t("ent.tipo_" + tipo) : ""; }

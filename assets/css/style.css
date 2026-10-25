@@ -5099,8 +5099,77 @@ body.modo-cuestionario .next-meal-sticky { display: none !important; }
 }
 .sesion__ej-cabeza { position: relative; }
 
+/* La reserva de cada serie y el ánimo del día (2026-10-25). «запас» va bajo el
+   número de la serie (la celda salta de línea); la pregunta, bajo la fila. */
+.sesion__rir-btn {
+  min-height: 26px;
+  padding: 3px 7px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--pill);
+  background: transparent;
+  color: var(--text-2);
+  font: 700 0.66rem/1 var(--font-body);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.sesion__rir-btn.is-puesto { border-style: solid; border-color: var(--ink); background: var(--surface); color: var(--ink); }
+.sesion__rir-btn:focus-visible,
+.sesion__rir-op:focus-visible,
+.sesion__rir-salir:focus-visible,
+.sesion__animo-op:focus-visible { outline: 3px solid var(--volt); outline-offset: 2px; }
+.sesion__rir { display: grid; gap: 6px; margin: -2px 4px 4px; padding: 10px 12px; border-radius: var(--r-sm); background: var(--surface-2); }
+.sesion__rir-pregunta { margin: 0; font-size: 0.86rem; font-weight: 700; color: var(--ink); }
+.sesion__rir-botones { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.sesion__rir-op {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1.5px solid var(--field-line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font: 800 1rem/1 var(--font-display);
+  cursor: pointer;
+}
+.sesion__rir-op.is-on { border-color: var(--ink); background: var(--volt); color: var(--on-volt); }
+.sesion__rir-salir {
+  min-height: 44px;
+  padding: 0 10px;
+  border: 0;
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.sesion__rir-ayuda { margin: 0; font-size: 0.78rem; color: var(--text-3); }
+.sesion__animo { display: grid; gap: 8px; margin: 0 0 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); }
+.sesion__animo.is-elegido { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 8px 8px 14px; }
+.sesion__animo-pregunta,
+.sesion__animo-texto { margin: 0; font-size: 0.92rem; font-weight: 700; color: var(--ink); }
+.sesion__animo-opcional { font-weight: 400; color: var(--text-3); }
+.sesion__animo-botones { display: flex; flex-wrap: wrap; gap: 6px; }
+.sesion__animo-op {
+  flex: 1 1 auto;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1.5px solid var(--field-line);
+  border-radius: var(--pill);
+  background: var(--surface-2);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.sesion__animo-op.is-on { border-color: var(--ink); background: var(--volt); color: var(--on-volt); }
+.sesion__animo-consejo { margin: -6px 0 14px; padding: 10px 12px; border-radius: var(--r-sm); background: var(--warn-wash); color: var(--warn); font-size: 0.86rem; }
+.sesion__resumen-animo { margin: 0; font-size: 0.92rem; color: var(--text-2); }
+
 /* Calentamiento, drop set y al fallo: el número de la serie cambia de forma */
-.sesion__n-celda { display: flex; align-items: center; gap: 4px; padding-left: 4px; }
+.sesion__n-celda { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding-left: 4px; }
 .sesion__n {
   min-width: 40px;
   min-height: 40px;

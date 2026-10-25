@@ -1,5 +1,41 @@
 # Nutrition Planner — Roadmap
 
+## Lo del 2026-10-25 (sello `20261025a`, 1257 tests)
+
+El dueño eligió «необязательные RPE/RIR и самочувствие в тренировке» (etapa 2,
+«RPE/RIR y fatiga»). Probado en Chrome sin interfaz a 390 px en ru y en, sin
+errores de JS; el contraste, en cinco aspectos.
+
+| Qué | Dónde | Estado |
+|---|---|---|
+| Reserva de cada serie (RIR 0–4+), opcional | `rir` en la serie (`workout-log.js`), pregunta y «запас» en `entreno-sesion.js` | **Hecho** |
+| Ánimo del día (1–5), opcional, con propuesta si es bajo | `animo` en la sesión, `entrenoLogAnimo`, `_sesionAnimoHtml` | **Hecho** |
+| La carga sugerida usa la reserva | `entrenoLogSugerencia`, motivo `rir` | **Hecho** |
+| Historial, resumen, CSV y cuenta | `entreno-progreso.js`, `entrenoStatsCsv`, `workout-sync.js` | **Hecho** |
+
+**Cómo se usa.** Arriba de la sesión, «Как самочувствие сегодня?» con cinco
+botones (Плохо…Отлично); elegido, queda una línea con «Изменить». Con «Плохо»
+o «Так себе» sale una propuesta (bajar un 5–10 % o una serie menos, «Решать
+вам»); no se cambia ningún número solo. Al marcar una serie de trabajo con
+repeticiones (no calentamiento, no las de tiempo), debajo se abre «Сколько ещё
+повторов вы могли сделать?» con 0 1 2 3 4+ y «Пропустить»; se contesta en el
+descanso o no. Cada serie hecha lleva su «запас 2» / «запас?» bajo el número
+para cambiarla. Las dos preguntas se quitan en «Perfil» («Спрашивать
+самочувствие и запас повторов», clave `nutritionPlanner.entrenoPreguntas.v1`);
+lo ya apuntado se sigue viendo. Corrigiendo una sesión terminada también se
+cambian.
+
+**La carga.** Regla nueva en la doble progresión: si en TODAS las series de
+más peso de la última vez había reserva apuntada y repeticiones + reserva
+pasaba del tope del rango, se sube ya («Сегодня: 62,5 кг. В прошлый раз
+оставался запас…»), con las mismas subidas de siempre. Sin reserva en alguna
+serie, nada cambia. Llegar arriba sigue subiendo aunque fuera al fallo.
+
+**Datos.** Serie `rir` (entero 0–4; 4 = «4+»), sesión `animo` (1–5); lo
+demás se quita al leer. En la cuenta van al final de sus filas (cuarta y
+novena posición), solo si existen: un bloque sin ellos es igual que antes y la
+versión anterior de la web los ignora. CSV: columnas «rir» y «animo».
+
 ## Lo del 2026-10-23, segunda tanda (sello `20261023b`, 1249 tests)
 
 Después de desplegar la primera tanda (`647ab71`), el dueño dejó elegir lo
@@ -412,7 +448,7 @@ ruso, de usted.
 | Sustituir según el material | Hecho | Automático al generar el plan, y a mano desde el catálogo (filtrado por el material de cada uno) en el plan y en la sesión. |
 | Reajustar tras saltarse una sesión | Falta | |
 | Analítica por grupos musculares | Hecho | Series reales por músculo en el periodo elegido, con la media por semana. |
-| RPE/RIR y fatiga | A medias | RIR objetivo en el plan; no se apunta el real ni la fatiga. |
+| RPE/RIR y fatiga | Hecho | RIR objetivo en el plan; la reserva real de cada serie y el ánimo del día, opcionales; la reserva mueve la carga sugerida (2026-10-25). Sin sueño ni agujetas. |
 | Fotos de progreso e informes mensuales | Falta | |
 | Planes de varias semanas | A medias | Semanas numeradas con descarga cada 5.ª; sin periodización. |
 
@@ -1936,7 +1972,7 @@ progreso y lo demás. Que la interfaz sea clara, coherente y rápida, no
 | 5. Catálogo y página del ejercicio | Casi | La técnica es un solo texto: sin «paso a paso» ni «En qué fijarse» separados. |
 | 6. Progreso | Hecho (2026-10-23, con los perímetros en «Тело») | Fotos. |
 | 7. Estilo | Hecho (2026-10-22, «Grafito») | |
-| 8. Reglas | Se siguen | RPE y sensaciones del día, que aún no se apuntan. |
+| 8. Reglas | Se siguen | (La reserva y el ánimo, opcionales, desde el 2026-10-25.) |
 
 ## Update rule
 

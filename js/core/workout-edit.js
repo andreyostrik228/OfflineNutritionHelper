@@ -187,6 +187,8 @@ function entrenoEditTipo(s, i, j) {
   var siguiente = _EDIT_TIPOS[(actual + 1) % _EDIT_TIPOS.length];
   if (siguiente) serie.tipo = siguiente;
   else delete serie.tipo;
+  // La reserva no cuenta en el calentamiento (2026-10-25).
+  if (siguiente === "c") delete serie.rir;
   return siguiente;
 }
 

@@ -16,8 +16,9 @@
  * Un documento de Firestore admite como mucho 1 MiB y el diario guarda hasta
  * 400 sesiones, así que en la nube va compacto:
  *   { v: 1, s: [Sesion…], b: [[id, t]…], p: respuestas | null, pt: ms }
- *   Sesion    = [id, clave, semana, inicio, fin, pausas, editado, [Ejercicio…]]
- *   Ejercicio = [id, reps, descanso, [[kg, reps, tipo]…], extra]
+ *   Sesion    = [id, clave, semana, inicio, fin, pausas, editado, [Ejercicio…], animo?]
+ *   Ejercicio = [id, reps, descanso, [[kg, reps, tipo, rir?]…], extra]
+ *     animo (1–5) y rir (0–4), desde el 2026-10-25, solo si se apuntaron
  *     tipo: 0 normal, 1 calentamiento, 2 drop set, 3 al fallo
  *     extra: { n, m, c } (nombre, músculo, compuesto) solo si el catálogo no
  *            conoce el ejercicio; g (superserie) y o (nota) si los hay
@@ -65,7 +66,10 @@ function _nubeCatalogo(id) {
 
 function _nubeEjercicio(e) {
   var series = e.series.map(function (s) {
-    return [s.kg, s.reps, _NUBE_TIPOS[s.tipo || ""] || 0];
+    var fila = [s.kg, s.reps, _NUBE_TIPOS[s.tipo || ""] || 0];
+    // La reserva (2026-10-25) va cuarta, solo si se apuntó: lo de antes no cambia de tamaño.
+    if (typeof s.rir === "number") fila.push(s.rir);
+    return fila;
   });
   var extra = {};
   var cat = _nubeCatalogo(e.id);
@@ -78,7 +82,10 @@ function _nubeEjercicio(e) {
 }
 
 function _nubeSesion(s) {
-  return [s.id, s.clave, s.semana, s.inicio, s.fin, s.pausas || 0, s.editado || 0, s.ejercicios.map(_nubeEjercicio)];
+  var fila = [s.id, s.clave, s.semana, s.inicio, s.fin, s.pausas || 0, s.editado || 0, s.ejercicios.map(_nubeEjercicio)];
+  // El ánimo (2026-10-25) va noveno, solo si se apuntó.
+  if (s.animo) fila.push(s.animo);
+  return fila;
 }
 
 /**
@@ -120,7 +127,7 @@ function entrenoNubeLeerBloque(bloque) {
       ? WORKOUT_SESIONES[clave] : null;
     return {
       id: f[0], clave: clave, nombre: plantilla ? plantilla.name : "", semana: f[2],
-      inicio: f[3], fin: f[4], pausas: f[5], editado: f[6],
+      inicio: f[3], fin: f[4], pausas: f[5], editado: f[6], animo: f[8],
       ejercicios: f[7].map(function (x) {
         if (!Array.isArray(x) || !Array.isArray(x[3])) return null;
         var extra = (x[4] && typeof x[4] === "object") ? x[4] : {};
@@ -132,7 +139,7 @@ function entrenoNubeLeerBloque(bloque) {
           grupo: extra.g, nota: extra.o,
           series: x[3].map(function (s) {
             if (!Array.isArray(s)) return null;
-            return { kg: s[0], reps: s[1], hecha: true, tipo: _NUBE_TIPOS_DE[s[2]] || undefined };
+            return { kg: s[0], reps: s[1], hecha: true, tipo: _NUBE_TIPOS_DE[s[2]] || undefined, rir: s[3] };
           })
         };
       })

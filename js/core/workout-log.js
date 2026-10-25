@@ -16,15 +16,17 @@
  *   Sesion    = { id, clave, nombre, semana, inicio (ms), fin (ms, solo las terminadas),
  *                 descansoHasta (ms o null, solo la que está en curso),
  *                 pausas (ms en pausa), pausaDesde (ms, solo en curso y pausada),
- *                 editado (ms, si se cambió después de terminarla), ejercicios: [Ejercicio…] }
+ *                 editado (ms, si se cambió después de terminarla),
+ *                 animo (1–5, cómo se encontraba; opcional), ejercicios: [Ejercicio…] }
  *   Ejercicio = { id, name, muscle, reps (rango del plan: "6-10", "30-45 s"…),
  *                 compound, descanso (s), series: [Serie…],
  *                 grupo ("A"…"H": superserie con los de al lado), nota, saltado }
- *   Serie     = { kg, reps, hecha, t, tipo }
+ *   Serie     = { kg, reps, hecha, t, tipo, rir }
  *   kg y reps pueden ser null (casilla vacía); t es cuándo se marcó hecha; tipo
  *   es "c" (calentamiento), "d" (drop set) o "f" (al fallo), y sin tipo es una
  *   serie normal. Las de calentamiento NO cuentan para «la última vez», la
- *   carga sugerida, los récords ni los kilos movidos.
+ *   carga sugerida, los récords ni los kilos movidos. rir (opcional, 0–4; 4 es
+ *   «4 o más») son las repeticiones que aún quedaban (2026-10-25).
  *
  * (2026-10-18, segunda parte) Tipos de serie, superseries, notas, saltar un
  * ejercicio, pausa, corregir una sesión terminada (entrenoLogReemplazar) y la
@@ -35,7 +37,8 @@
  * entrenoLogTipoRecord, entrenoLogIniciar, entrenoLogPonerSerie,
  * entrenoLogAnadirSerie, entrenoLogQuitarSerie, entrenoLogTerminar,
  * entrenoLogBorrar, entrenoLogReemplazar, entrenoLogTotales, entrenoLogPausado,
- * entrenoLogSemanas, entrenoLogRacha, entrenoLogNombreSesion (2026-10-23).
+ * entrenoLogSemanas, entrenoLogRacha, entrenoLogNombreSesion (2026-10-23),
+ * entrenoLogAnimo (2026-10-25).
  * ─────────────────────────────────────────────────────────────────────────
  */
 
@@ -55,6 +58,10 @@ var ENTRENO_LOG_SUBIDA_AISLADO = { superior: 1, inferior: 2 };
 var ENTRENO_LOG_TIPOS_SERIE = ["c", "d", "f"];
 var ENTRENO_LOG_MAX_NOTA = 200;
 var ENTRENO_LOG_MAX_BORRADAS = 300;
+/** Repeticiones en reserva: 0…4, y 4 es «4 o más». */
+var ENTRENO_LOG_RIR_MAX = 4;
+/** Cómo se encontraba al empezar: 1 (mal) … 5 (muy bien). */
+var ENTRENO_LOG_ANIMO_MAX = 5;
 var _LOG_GRUPO = /^[A-H]$/;
 
 function entrenoLogVacio() {
@@ -92,7 +99,14 @@ function _logSerie(s) {
   var t = _logNumero(s.t, ENTRENO_LOG_MS_MAX);
   if (serie.hecha && t !== null) serie.t = t;
   if (ENTRENO_LOG_TIPOS_SERIE.indexOf(s.tipo) !== -1) serie.tipo = s.tipo;
+  var rir = _logEntero(s.rir, 0, ENTRENO_LOG_RIR_MAX);
+  if (rir !== null) serie.rir = rir;
   return serie;
+}
+
+/** Un entero entre min y max, o null (lo que no sea un número así no se guarda). */
+function _logEntero(valor, min, max) {
+  return (typeof valor === "number" && isFinite(valor) && Math.floor(valor) === valor && min <= valor && valor <= max) ? valor : null;
 }
 
 function _logEjercicio(e) {
@@ -138,6 +152,8 @@ function _logSesion(s, terminada) {
   };
   var pausas = _logNumero(s.pausas, ENTRENO_LOG_MS_MAX);
   if (pausas) sesion.pausas = Math.round(pausas);
+  var animo = _logEntero(s.animo, 1, ENTRENO_LOG_ANIMO_MAX);
+  if (animo !== null) sesion.animo = animo;
   if (terminada) {
     sesion.fin = fin;
     var editado = _logNumero(s.editado, ENTRENO_LOG_MS_MAX);
@@ -258,6 +274,8 @@ function _logRedondearAbajo(kg, paso) {
  * Carga y repeticiones para hoy, a partir de la última vez (doble progresión):
  *   - todas las series en lo alto del rango → «subir» (o «variante» si es sin peso)
  *   - la mayoría por debajo del rango       → «bajar» un 10 %
+ *   - con peso y, en todas las de más peso, reserva apuntada que pasaba del
+ *     tope del rango                        → «subir» con motivo «rir» (2026-10-25)
  *   - si no                                 → «mantener» e intentar una repetición más
  *   - sin historia                          → «nuevo» (se empieza por lo bajo del rango)
  *   - de tiempo o con un rango que no se entiende → «mantener» lo de la última vez
@@ -295,16 +313,35 @@ function entrenoLogSugerencia(log, ejercicio) {
     : null;
   if (sig && sig.ok && sig.sube) {
     if (tope === 0) return { tipo: "variante", kg: 0, reps: rango.max, ultima: ultima };
-    var inferior = typeof WORKOUT_MUSCULOS_INFERIORES !== "undefined" &&
-      WORKOUT_MUSCULOS_INFERIORES.indexOf(ejercicio.muscle) !== -1;
-    var kg = ejercicio.compound
-      ? sig.pesoKg
-      : tope + (inferior ? ENTRENO_LOG_SUBIDA_AISLADO.inferior : ENTRENO_LOG_SUBIDA_AISLADO.superior);
-    return { tipo: "subir", kg: Math.round(kg * 100) / 100, reps: rango.min, ultima: ultima };
+    return { tipo: "subir", kg: _logKgSubida(ejercicio, tope, sig), reps: rango.min, ultima: ultima };
+  }
+
+  // Con las repeticiones en reserva apuntadas (2026-10-25): si en TODAS las
+  // series de más peso quedaban para pasar del tope del rango (repeticiones +
+  // reserva > máximo), se sube ya, aunque no se llegara al tope.
+  var deTope = ultima.series.filter(function (s) { return (s.kg || 0) === tope; });
+  var sobraba = 0 < tope && completas && deTope.every(function (s) {
+    return typeof s.rir === "number" && rango.max < s.reps + s.rir;
+  });
+  if (sobraba && typeof siguienteCarga === "function") {
+    var conMargen = siguienteCarga(tope, ejercicio.reps, deTope.map(function () { return rango.max; }), ejercicio.muscle);
+    if (conMargen && conMargen.ok && conMargen.sube) {
+      return { tipo: "subir", motivo: "rir", kg: _logKgSubida(ejercicio, tope, conMargen), reps: rango.min, ultima: ultima };
+    }
   }
 
   var peor = Math.min.apply(null, reps);
   return { tipo: "mantener", kg: tope, reps: Math.min(rango.max, peor + 1), ultima: ultima };
+}
+
+/** El peso de «subir»: el de siguienteCarga en los compuestos; en los de aislamiento, un paso fijo. */
+function _logKgSubida(ejercicio, tope, sig) {
+  var inferior = typeof WORKOUT_MUSCULOS_INFERIORES !== "undefined" &&
+    WORKOUT_MUSCULOS_INFERIORES.indexOf(ejercicio.muscle) !== -1;
+  var kg = ejercicio.compound
+    ? sig.pesoKg
+    : tope + (inferior ? ENTRENO_LOG_SUBIDA_AISLADO.inferior : ENTRENO_LOG_SUBIDA_AISLADO.superior);
+  return Math.round(kg * 100) / 100;
 }
 
 /** 1RM estimado (Epley). Solo con peso y entre 1 y 12 repeticiones; si no, 0. */
@@ -412,18 +449,35 @@ function _logSerieEnCurso(log, iEj, iSerie) {
   return e ? (e.series[iSerie] || null) : null;
 }
 
-/** Cambia una serie de la sesión en curso: { kg?, reps?, hecha? }. Devuelve la serie o null. */
+/**
+ * Cambia una serie de la sesión en curso: { kg?, reps?, hecha?, rir? }
+ * (rir null o fuera de 0–4: se quita). Devuelve la serie o null.
+ */
 function entrenoLogPonerSerie(log, iEj, iSerie, cambios, ahora) {
   var serie = _logSerieEnCurso(log, iEj, iSerie);
   if (!serie || !cambios) return null;
   if (Object.prototype.hasOwnProperty.call(cambios, "kg")) serie.kg = _logKg(cambios.kg);
   if (Object.prototype.hasOwnProperty.call(cambios, "reps")) serie.reps = _logReps(cambios.reps);
+  if (Object.prototype.hasOwnProperty.call(cambios, "rir")) {
+    var rir = _logEntero(cambios.rir, 0, ENTRENO_LOG_RIR_MAX);
+    if (rir === null) delete serie.rir;
+    else serie.rir = rir;
+  }
   if (Object.prototype.hasOwnProperty.call(cambios, "hecha")) {
     serie.hecha = cambios.hecha === true;
     if (serie.hecha && typeof ahora === "number") serie.t = ahora;
     else delete serie.t;
   }
   return serie;
+}
+
+/** Cómo se encontraba al empezar (1–5) en una sesión; null o fuera de rango lo quita. Devuelve lo que queda. */
+function entrenoLogAnimo(sesion, valor) {
+  if (!sesion) return null;
+  var animo = _logEntero(valor, 1, ENTRENO_LOG_ANIMO_MAX);
+  if (animo === null) delete sesion.animo;
+  else sesion.animo = animo;
+  return animo;
 }
 
 /** Una serie más al final, copiando la última. false si ya hay el máximo. */
@@ -506,11 +560,12 @@ function entrenoLogTerminar(log, ahora) {
     inicio: s.inicio, fin: fin, ejercicios: ejercicios
   };
   if (0 < pausas) terminada.pausas = Math.round(pausas);
+  if (s.animo) terminada.animo = s.animo;
   log.sesiones.push(terminada);
   if (log.sesiones.length > ENTRENO_LOG_MAX_SESIONES) log.sesiones = log.sesiones.slice(-ENTRENO_LOG_MAX_SESIONES);
 
   var totales = entrenoLogTotales(terminada);
-  return { series: totales.series, volumen: totales.volumen, minutos: totales.minutos, records: records };
+  return { series: totales.series, volumen: totales.volumen, minutos: totales.minutos, records: records, animo: s.animo || null };
 }
 
 /**
@@ -548,6 +603,8 @@ function entrenoLogReemplazar(log, id, editada, ahora) {
     id: original.id, clave: original.clave, nombre: original.nombre, semana: original.semana,
     inicio: original.inicio, fin: original.fin, pausas: original.pausas,
     editado: typeof ahora === "number" ? ahora : Date.now(),
+    // El ánimo se puede corregir también (2026-10-25); lo que llega se valida en _logSesion.
+    animo: editada.animo,
     ejercicios: ejercicios
   }, true);
   if (!limpia) {

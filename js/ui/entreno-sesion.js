@@ -28,6 +28,12 @@
  * sin reloj ni descansos, con «Guardar» y «Cancelar». Mientras se corrige no
  * se guarda nada: el diario solo cambia al pulsar «Guardar».
  *
+ * (2026-10-25) Dos preguntas opcionales: arriba, cómo se encuentra hoy (cinco
+ * botones; un día malo propone ir más suave, sin cambiar nada); y al marcar
+ * una serie de trabajo, debajo, cuántas repeticiones le quedaban (0–4+). Cada
+ * serie hecha lleva su «запас», para cambiarla luego. Se quitan las dos en
+ * «Perfil» (ENTRENO_CLAVE_PREGUNTAS).
+ *
  * Expone (globales):
  *   initEntrenoSesion()                  cablea la pantalla (una vez; lo llama initEntreno)
  *   entrenoSesionEmpezar(sesionPlan, semana)  empieza (si ya hay otra, pregunta) y abre
@@ -46,6 +52,8 @@
  *   entrenoNumero(n) / entrenoKg(kg) / entrenoMiles(n) / entrenoReloj(ms) / entrenoLocale()
  *   entrenoSonidoOn() / entrenoSonidoPoner(on)        el sonido al acabar el descanso
  *   entrenoVibracionOn() / entrenoVibracionPoner(on)  la vibración (se quita en «Perfil»)
+ *   entrenoPreguntasOn() / entrenoPreguntasPoner(on)  el ánimo y la reserva (se quitan en «Perfil»)
+ *   entrenoRirValor(rir) / entrenoRirTexto(series)    "4+" / «запас: 2, 1, —»
  *
  * Con la barra de secciones (js/ui/entreno-pestanas.js, 2026-10-21) esta
  * pantalla es la sección «Entrenar»: al abrirse la marca, y la flecha vuelve
@@ -55,7 +63,13 @@
 
 var ENTRENO_CLAVE_SONIDO = "nutritionPlanner.entrenoSonido.v1";
 var ENTRENO_CLAVE_VIBRACION = "nutritionPlanner.entrenoVibracion.v1";
+/** Si se pregunta cómo se encuentra y la reserva de cada serie (2026-10-25; se quita en «Perfil»). */
+var ENTRENO_CLAVE_PREGUNTAS = "nutritionPlanner.entrenoPreguntas.v1";
 var ENTRENO_DESCANSO_PASO_S = 15;
+// La serie cuya reserva se pregunta ahora ("ej-serie"): se abre al marcarla o al tocar su «запас»; null si ninguna.
+var _sesionRirAbierto = null;
+// Los cinco botones del ánimo, abiertos otra vez con «Изменить» aunque ya haya uno elegido.
+var _sesionAnimoAbierto = false;
 
 var _sesionLog = null;
 var _sesionTicId = null;
@@ -160,7 +174,7 @@ function entrenoSugerenciaTexto(sug, ejercicio, sinPeso) {
   }
   if (sug.tipo === "variante") return t("ent.sug_variante");
   var kg = 0 < sug.kg ? entrenoKg(sug.kg) : t("ent.peso_corporal");
-  if (sug.tipo === "subir") return tFormat("ent.sug_subir", { kg: kg });
+  if (sug.tipo === "subir") return tFormat(sug.motivo === "rir" ? "ent.sug_subir_rir" : "ent.sug_subir", { kg: kg });
   if (sug.tipo === "bajar") return tFormat("ent.sug_bajar", { kg: kg });
   return tFormat("ent.sug_mantener", { kg: kg, reps: sug.reps });
 }
@@ -196,17 +210,102 @@ function _sesionEtiquetaSerie(serie, numero) {
   return serie.tipo ? t("ent.tipo_" + serie.tipo + "_corto") : String(numero);
 }
 
-function _sesionSerieHtml(i, serie, j, numero, antes, tiempo) {
+// ── Reserva de cada serie y ánimo del día (2026-10-25) ───────────────────
+// Los dos opcionales: la hoja de ruta del dueño (etapa 2, «RPE/RIR y fatiga»)
+// y su regla de pocos campos obligatorios. La reserva (RIR) son las
+// repeticiones que aún quedaban; la usa la carga sugerida (entrenoLogSugerencia).
+
+function entrenoPreguntasOn() {
+  try { return localStorage.getItem(ENTRENO_CLAVE_PREGUNTAS) !== "0"; } catch (e) { return true; }
+}
+
+function entrenoPreguntasPoner(on) {
+  try { localStorage.setItem(ENTRENO_CLAVE_PREGUNTAS, on ? "1" : "0"); } catch (e) { /* solo esta visita */ }
+}
+
+/** "2", o "4+" en el tope. */
+function entrenoRirValor(rir) {
+  return ENTRENO_LOG_RIR_MAX <= rir ? ENTRENO_LOG_RIR_MAX + "+" : String(rir);
+}
+
+/** «запас: 2, 1, —» de unas series; "" si ninguna lo lleva. */
+function entrenoRirTexto(series) {
+  if (!series.some(function (s) { return typeof s.rir === "number"; })) return "";
+  return tFormat("ent.rir_lista", {
+    lista: series.map(function (s) { return typeof s.rir === "number" ? entrenoRirValor(s.rir) : "—"; }).join(", ")
+  });
+}
+
+/** El botón pequeño «запас 2» / «запас?» de una serie hecha. */
+function _sesionRirBotonHtml(i, serie, j, n, abierto) {
+  var puesto = typeof serie.rir === "number";
+  var valor = puesto ? entrenoRirValor(serie.rir) : "";
+  return '<button type="button" class="sesion__rir-btn' + (puesto ? " is-puesto" : "") + '" data-accion="rir-abrir"' +
+    ' data-ej="' + i + '" data-serie="' + j + '" data-foco="rir-' + i + "-" + j + '" aria-expanded="' + abierto + '"' +
+    ' aria-label="' + _sesionEsc(tFormat(puesto ? "ent.rir_aria_puesto" : "ent.rir_aria_vacio", { n: n, rir: valor })) + '">' +
+    _sesionEsc(puesto ? tFormat("ent.rir_corto", { rir: valor }) : t("ent.rir_poner")) + "</button>";
+}
+
+/** La pregunta de la reserva bajo una serie: 0 1 2 3 4+ y «no ahora» (o «quitar» si ya hay una). */
+function _sesionRirPreguntaHtml(i, serie, j, n) {
+  var datos = ' data-ej="' + i + '" data-serie="' + j + '"';
+  var opciones = [0, 1, 2, 3, ENTRENO_LOG_RIR_MAX].map(function (v) {
+    return '<button type="button" class="sesion__rir-op' + (serie.rir === v ? " is-on" : "") + '" data-accion="rir" data-valor="' + v + '"' + datos +
+      ' data-foco="rirop-' + i + "-" + j + "-" + v + '" aria-pressed="' + (serie.rir === v) + '">' + _sesionEsc(entrenoRirValor(v)) + "</button>";
+  }).join("");
+  var salir = typeof serie.rir === "number"
+    ? '<button type="button" class="sesion__rir-salir" data-accion="rir" data-valor=""' + datos + ">" + _sesionEsc(t("ent.rir_quitar")) + "</button>"
+    : '<button type="button" class="sesion__rir-salir" data-accion="rir-cerrar"' + datos + ">" + _sesionEsc(t("ent.rir_omitir")) + "</button>";
+  return '<div class="sesion__rir" role="group" aria-label="' + _sesionEsc(tFormat("ent.rir_grupo", { n: n })) + '">' +
+    '<p class="sesion__rir-pregunta">' + _sesionEsc(t("ent.rir_pregunta")) + "</p>" +
+    '<div class="sesion__rir-botones">' + opciones + salir + "</div>" +
+    '<p class="sesion__rir-ayuda">' + _sesionEsc(t("ent.rir_ayuda")) + "</p>" +
+  "</div>";
+}
+
+/** Arriba de la sesión: cómo se encuentra hoy (cinco botones), o lo elegido con «Изменить». */
+function _sesionAnimoHtml(sesion, abierto) {
+  var valor = sesion.animo;
+  var h;
+  if (valor && !abierto) {
+    h = '<div class="sesion__animo is-elegido">' +
+      '<p class="sesion__animo-texto">' + _sesionEsc(tFormat("ent.animo_elegido", { animo: t("ent.animo_" + valor).toLocaleLowerCase() })) + "</p>" +
+      '<button type="button" class="sesion__boton" data-accion="animo-cambiar" data-foco="animo-cambiar">' + _sesionEsc(t("ent.animo_cambiar")) + "</button>" +
+    "</div>";
+  } else {
+    h = '<div class="sesion__animo" role="group" aria-labelledby="sesionAnimoPregunta">' +
+      '<p class="sesion__animo-pregunta" id="sesionAnimoPregunta">' + _sesionEsc(t("ent.animo_pregunta")) +
+        ' <span class="sesion__animo-opcional">' + _sesionEsc(t("ent.animo_opcional")) + "</span></p>" +
+      '<div class="sesion__animo-botones">' + [1, 2, 3, 4, 5].map(function (v) {
+        return '<button type="button" class="sesion__animo-op' + (valor === v ? " is-on" : "") + '" data-accion="animo" data-valor="' + v + '"' +
+          ' data-foco="animo-' + v + '" aria-pressed="' + (valor === v) + '">' + _sesionEsc(t("ent.animo_" + v)) + "</button>";
+      }).join("") + "</div>" +
+    "</div>";
+  }
+  // Un día malo, una propuesta, no un cambio: los pesos los decide el usuario.
+  if (valor && valor <= 2) h += '<p class="sesion__animo-consejo">' + _sesionEsc(t("ent.animo_consejo")) + "</p>";
+  return h;
+}
+
+/**
+ * @param {{abierta:boolean, mostrar:boolean}} rir  si su pregunta está abierta y si
+ *        se enseña el botón (con las preguntas quitadas, solo si ya tiene una)
+ */
+function _sesionSerieHtml(i, serie, j, numero, antes, tiempo, rir) {
   var record = serie.hecha && serie.tipo !== "c" ? entrenoLogTipoRecord(antes, serie) : null;
   var datos = ' data-ej="' + i + '" data-serie="' + j + '"';
   var nombreSerie = serie.tipo ? t("ent.tipo_" + serie.tipo) : tFormat("ent.serie_n", { n: numero });
   var n = serie.tipo ? (j + 1) : numero;
+  // La reserva, solo en las series de trabajo hechas y con repeticiones (no en las de tiempo).
+  var conRir = serie.hecha && serie.tipo !== "c" && !tiempo && !!rir && (rir.mostrar || typeof serie.rir === "number");
+  var abierta = conRir && rir.abierta;
   return '<div class="sesion__fila' + (serie.hecha ? " is-hecha" : "") + (serie.tipo ? " sesion__fila--" + serie.tipo : "") + '">' +
     '<span class="sesion__n-celda">' +
       '<button type="button" class="sesion__n' + (serie.tipo ? " sesion__n--" + serie.tipo : "") + '" data-accion="tipo"' + datos +
         ' data-foco="tipo-' + i + "-" + j + '" aria-label="' + _sesionEsc(nombreSerie + ". " + t("ent.tipo_cambiar")) + '">' +
         _sesionEsc(_sesionEtiquetaSerie(serie, numero)) + "</button>" +
       (record ? '<b class="sesion__record">' + _sesionEsc(t("ent.record")) + "</b>" : "") +
+      (conRir ? _sesionRirBotonHtml(i, serie, j, n, abierta) : "") +
     "</span>" +
     '<input class="sesion__campo" type="text" inputmode="decimal" autocomplete="off" maxlength="6" placeholder="—"' +
       ' data-campo="kg"' + datos + ' data-foco="kg-' + i + "-" + j + '"' +
@@ -219,7 +318,8 @@ function _sesionSerieHtml(i, serie, j, numero, antes, tiempo) {
     '<button type="button" class="sesion__check" data-accion="check"' + datos + ' data-foco="check-' + i + "-" + j + '"' +
       ' aria-pressed="' + (serie.hecha ? "true" : "false") + '"' +
       ' aria-label="' + _sesionEsc(tFormat("ent.marcar_serie", { n: n })) + '">' + SESION_ICONOS.check + "</button>" +
-  "</div>";
+  "</div>" +
+  (abierta ? _sesionRirPreguntaHtml(i, serie, j, n) : "");
 }
 
 /** Posición de un ejercicio en su superserie: "" (no va en ninguna), "ini", "med" o "fin". */
@@ -283,8 +383,10 @@ function _sesionEjercicioSaltadoHtml(e, i) {
   "</li>";
 }
 
-function _sesionEjercicioHtml(sesion, e, i, log, corrigiendo) {
+function _sesionEjercicioHtml(sesion, e, i, log, corrigiendo, opciones) {
   if (e.saltado) return _sesionEjercicioSaltadoHtml(e, i);
+  var preguntas = !opciones || opciones.preguntas !== false;
+  var rirAbierto = opciones && opciones.rirAbierto;
   var rango = entrenoLogRango(e.reps);
   var tiempo = !!(rango && rango.tiempo);
   var sinPeso = _sesionSinPeso(e.id);
@@ -325,7 +427,9 @@ function _sesionEjercicioHtml(sesion, e, i, log, corrigiendo) {
       _sesionMasHtml(sesion, e, i, corrigiendo) +
     "</header>";
   if (sug.ultima) {
-    h += '<p class="sesion__ultima">' + _sesionEsc(tFormat("ent.ultima_vez", { series: entrenoSeriesTexto(sug.ultima.series, tiempo) })) + "</p>";
+    var reservaAntes = entrenoRirTexto(sug.ultima.series);
+    h += '<p class="sesion__ultima">' + _sesionEsc(tFormat("ent.ultima_vez", { series: entrenoSeriesTexto(sug.ultima.series, tiempo) }) +
+      (reservaAntes ? " · " + reservaAntes : "")) + "</p>";
     if (sug.ultima.nota && sug.ultima.nota !== e.nota) {
       h += '<p class="sesion__nota-vieja">' + _sesionEsc(tFormat("ent.nota_ultima", { nota: sug.ultima.nota })) + "</p>";
     }
@@ -355,7 +459,7 @@ function _sesionEjercicioHtml(sesion, e, i, log, corrigiendo) {
   var numeroTrabajo = 0;
   e.series.forEach(function (serie, j) {
     if (serie.tipo !== "c") numeroTrabajo++;
-    h += _sesionSerieHtml(i, serie, j, numeroTrabajo || 1, antes, tiempo);
+    h += _sesionSerieHtml(i, serie, j, numeroTrabajo || 1, antes, tiempo, { abierta: rirAbierto === i + "-" + j, mostrar: preguntas });
   });
   h += "</div>";
   // Con barra: qué discos poner a cada lado para la próxima serie de trabajo.
@@ -401,10 +505,13 @@ function _sesionRelojTexto(sesion, ahora) {
 
 /**
  * Toda la pantalla de una sesión. Sin DOM.
- * @param {object} opciones  { corrigiendo: true } para una sesión terminada que se corrige
+ * @param {object} opciones  { corrigiendo: true } para una sesión terminada que se corrige;
+ *        rirAbierto: "ej-serie" cuya reserva se pregunta; animoAbierto: los cinco botones
+ *        del ánimo aunque ya haya uno; preguntas: false si se quitaron en «Perfil»
  */
 function entrenoSesionPantallaHtml(sesion, log, ahora, opciones) {
   var corrigiendo = !!(opciones && opciones.corrigiendo);
+  var preguntas = !opciones || opciones.preguntas !== false;
   var cuenta = _sesionContar(sesion);
   var pct = cuenta.total ? Math.round(cuenta.hechas / cuenta.total * 100) : 0;
   var sonido = entrenoSonidoOn();
@@ -443,8 +550,10 @@ function entrenoSesionPantallaHtml(sesion, log, ahora, opciones) {
       '<p class="sesion__nota">' + _sesionEsc(t("ent.tipo_ayuda")) + "</p>" +
       '<p class="sesion__nota">' + _sesionEsc(t("ent.guardado_local")) + "</p>" +
     "</div>";
-  return cabeza +
-    '<ol class="sesion__lista">' + sesion.ejercicios.map(function (e, i) { return _sesionEjercicioHtml(sesion, e, i, log, corrigiendo); }).join("") + "</ol>" +
+  // El ánimo: con las preguntas quitadas, solo si ya se había elegido.
+  var animo = (preguntas || sesion.animo) ? _sesionAnimoHtml(sesion, !!(opciones && opciones.animoAbierto)) : "";
+  return cabeza + animo +
+    '<ol class="sesion__lista">' + sesion.ejercicios.map(function (e, i) { return _sesionEjercicioHtml(sesion, e, i, log, corrigiendo, opciones); }).join("") + "</ol>" +
     pie +
     (corrigiendo ? "" : _sesionDescansoHtml(sesion, ahora));
 }
@@ -471,7 +580,8 @@ function entrenoResumenHtml(r) {
     '<h3 class="sesion__resumen-titulo" tabindex="-1" data-foco="resumen">' + _sesionEsc(t("ent.resumen_titulo")) + "</h3>" +
     '<dl class="sesion__stats">' + datos.map(function (d) {
       return "<div><dt>" + _sesionEsc(d[0]) + "</dt><dd>" + _sesionEsc(d[1]) + "</dd></div>";
-    }).join("") + "</dl>";
+    }).join("") + "</dl>" +
+    (r.animo ? '<p class="sesion__resumen-animo">' + _sesionEsc(tFormat("ent.animo_elegido", { animo: t("ent.animo_" + r.animo).toLocaleLowerCase() })) + "</p>" : "");
   if (r.records.length) {
     h += '<h4 class="sesion__resumen-sub">' + _sesionEsc(t("ent.records_nuevos")) + '</h4><ul class="sesion__records">' +
       r.records.map(function (rec) {
@@ -647,7 +757,12 @@ function _sesionPintar(foco) {
     var abiertas = Array.prototype.map.call(caja.querySelectorAll("details[data-tec][open]"), function (d) {
       return d.getAttribute("data-tec");
     });
-    caja.innerHTML = entrenoSesionPantallaHtml(_sesionLog.enCurso, _sesionLog, Date.now(), { corrigiendo: !!_sesionEdicion });
+    caja.innerHTML = entrenoSesionPantallaHtml(_sesionLog.enCurso, _sesionLog, Date.now(), {
+      corrigiendo: !!_sesionEdicion,
+      rirAbierto: _sesionRirAbierto,
+      animoAbierto: _sesionAnimoAbierto,
+      preguntas: entrenoPreguntasOn()
+    });
     abiertas.forEach(function (n) {
       var d = caja.querySelector('details[data-tec="' + n + '"]');
       if (d) d.open = true;
@@ -706,6 +821,11 @@ function _sesionMarcar(iEj, iSerie) {
     return;
   }
   entrenoLogPonerSerie(_sesionLog, iEj, iSerie, { hecha: hecha }, Date.now());
+  // Recién hecha una serie de trabajo, la pregunta de la reserva se abre debajo
+  // (se contesta durante el descanso, o no). Corrigiendo una terminada, no.
+  var rango = entrenoLogRango(e.reps);
+  var preguntar = hecha && !_sesionEdicion && serie.tipo !== "c" && !(rango && rango.tiempo) && entrenoPreguntasOn();
+  _sesionRirAbierto = preguntar ? iEj + "-" + iSerie : null;
   if (hecha && serie.kg !== null && serie.tipo !== "c") {
     // El peso de esta serie pasa a las siguientes de trabajo que aún no tienen: no hay que escribirlo tres veces.
     e.series.slice(iSerie + 1).forEach(function (x) { if (!x.hecha && x.kg === null && x.tipo !== "c") x.kg = serie.kg; });
@@ -851,6 +971,8 @@ function _sesionAccion(accion, boton) {
   }
   if (!_sesionLog || !_sesionLog.enCurso) return;
   var s = _sesionLog.enCurso;
+  // Lo que mueve, quita o cambia series deja la pregunta de la reserva apuntando a otra: se cierra.
+  if (!/^(rir|check|descanso|sonido|tecnica|animo)/.test(accion)) _sesionRirAbierto = null;
   if (accion === "tecnica") {
     // La animación pequeña abre (o cierra) la técnica con la grande.
     var d = _sesionCaja().querySelector('details[data-tec="' + iEj + '"]');
@@ -861,6 +983,29 @@ function _sesionAccion(accion, boton) {
     return;
   }
   if (accion === "check") _sesionMarcar(iEj, iSerie);
+  else if (accion === "rir-abrir") {
+    var clave = iEj + "-" + iSerie;
+    _sesionRirAbierto = _sesionRirAbierto === clave ? null : clave;
+    var actual = s.ejercicios[iEj] && s.ejercicios[iEj].series[iSerie];
+    var marcada = actual && typeof actual.rir === "number" ? actual.rir : 0;
+    _sesionPintar(_sesionRirAbierto ? "rirop-" + clave + "-" + marcada : "rir-" + clave);
+  }
+  else if (accion === "rir" || accion === "rir-cerrar") {
+    if (accion === "rir") {
+      var valor = boton.getAttribute("data-valor");
+      entrenoLogPonerSerie(_sesionLog, iEj, iSerie, { rir: valor === "" ? null : Number(valor) });
+      _sesionGuardar();
+    }
+    _sesionRirAbierto = null;
+    _sesionPintar("rir-" + iEj + "-" + iSerie);
+  }
+  else if (accion === "animo") {
+    entrenoLogAnimo(s, Number(boton.getAttribute("data-valor")));
+    _sesionAnimoAbierto = false;
+    _sesionGuardar();
+    _sesionPintar("animo-cambiar");
+  }
+  else if (accion === "animo-cambiar") { _sesionAnimoAbierto = true; _sesionPintar("animo-" + (s.animo || 3)); }
   else if (accion === "mas") { if (entrenoLogAnadirSerie(_sesionLog, iEj)) { _sesionGuardar(); _sesionPintar("mas-" + iEj); } }
   else if (accion === "menos") { if (entrenoLogQuitarSerie(_sesionLog, iEj)) { _sesionGuardar(); _sesionPintar("menos-" + iEj); } }
   else if (accion === "tipo") {
@@ -921,6 +1066,8 @@ function _sesionMostrarPantalla() {
   var panel = _sesionPanel();
   var caja = _sesionCaja();
   if (!panel || !caja) return false;
+  _sesionRirAbierto = null;
+  _sesionAnimoAbierto = false;
   panel.classList.add("is-sesion");
   document.body.classList.add("modo-sesion");
   caja.hidden = false;

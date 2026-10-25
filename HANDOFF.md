@@ -18,6 +18,23 @@ llevan al final un bloque «actualización 2026-10-08»). El diario fechado, con
 medidas y causas, está en la cabecera de `STATE.md` (entradas del 2026-10-07 y
 2026-10-08).
 
+### 0.0 sexies Lo nuevo del 2026-10-25 (lee esto antes que 0.0 quinquies)
+
+- **Estado:** sello `20261025a`, **1257 tests en verde**. Reserva de cada serie
+  (RIR) y ánimo del día, los dos opcionales (tabla al principio de
+  `ROADMAP.md`); la reserva mueve la carga sugerida.
+- **Reglas nuevas (no las rompas):**
+  - `rir` (serie, 0–4) y `animo` (sesión, 1–5) son opcionales: todo lo que
+    los lea tiene que aguantar que no estén. En la cuenta van al final de sus
+    filas compactas y solo si existen (`_nubeEjercicio`/`_nubeSesion`): no
+    metas campos nuevos en medio de esas filas, que la versión anterior de la
+    web lee por posición.
+  - La pregunta de la reserva se abre al marcar una serie (`_sesionRirAbierto`
+    = "ej-serie"); cualquier acción que mueva, quite o cambie series la cierra
+    (el filtro al principio de `_sesionAccion`). Una acción nueva que mueva
+    series tiene que cerrarla también.
+  - Pasar una serie a calentamiento le quita la reserva (`entrenoEditTipo`).
+
 ### 0.0 quinquies Segunda tanda del 2026-10-23 (lee esto antes que 0.0 quater)
 
 - **Estado:** sello `20261023b`, **1249 tests en verde**. El calendario del mes

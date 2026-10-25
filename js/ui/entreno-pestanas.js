@@ -226,7 +226,9 @@ function entrenoPerfilPintar() {
     var cual = b.getAttribute("data-perfil");
     var on = cual === "sonido"
       ? (typeof entrenoSonidoOn !== "function" || entrenoSonidoOn())
-      : (typeof entrenoVibracionOn !== "function" || entrenoVibracionOn());
+      : cual === "preguntas"
+        ? (typeof entrenoPreguntasOn !== "function" || entrenoPreguntasOn())
+        : (typeof entrenoVibracionOn !== "function" || entrenoVibracionOn());
     b.setAttribute("aria-pressed", on ? "true" : "false");
   });
   var usuario = typeof getCurrentUser === "function" ? getCurrentUser() : null;
@@ -257,6 +259,10 @@ function _initEntrenoPerfil() {
       if (typeof entrenoCuestionarioAbrir === "function") entrenoCuestionarioAbrir();
     } else if (accion === "sonido") {
       if (typeof entrenoSonidoPoner === "function") entrenoSonidoPoner(!entrenoSonidoOn());
+      entrenoPerfilPintar();
+    } else if (accion === "preguntas") {
+      // Cómo se encuentra y la reserva de cada serie (js/ui/entreno-sesion.js, 2026-10-25).
+      if (typeof entrenoPreguntasPoner === "function") entrenoPreguntasPoner(!entrenoPreguntasOn());
       entrenoPerfilPintar();
     } else if (accion === "vibracion") {
       if (typeof entrenoVibracionPoner === "function") entrenoVibracionPoner(!entrenoVibracionOn());

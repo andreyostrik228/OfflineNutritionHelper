@@ -316,7 +316,8 @@ function _statsDosCifras(n) { return (n < 10 ? "0" : "") + n; }
  */
 function entrenoStatsCsv(log, nombres) {
   var n = nombres || {};
-  var cabecera = n.cabecera || ["fecha", "hora", "sesion", "ejercicio", "serie", "tipo", "kg", "reps", "nota"];
+  // «rir» (repeticiones en reserva) y «animo» (1–5), desde el 2026-10-25: vacíos si no se apuntaron.
+  var cabecera = n.cabecera || ["fecha", "hora", "sesion", "ejercicio", "serie", "tipo", "kg", "reps", "rir", "nota", "animo"];
   var filas = [cabecera.map(_statsCampo).join(",")];
   log.sesiones.forEach(function (sesion) {
     var d = new Date(sesion.inicio);
@@ -329,7 +330,8 @@ function entrenoStatsCsv(log, nombres) {
         if (!s.hecha) return;
         filas.push([
           fecha, hora, nombreSesion, nombre, k + 1, n.tipo ? n.tipo(s.tipo || "") : (s.tipo || ""),
-          s.kg === null ? "" : s.kg, s.reps, k === 0 ? (e.nota || "") : ""
+          s.kg === null ? "" : s.kg, s.reps, typeof s.rir === "number" ? s.rir : "",
+          k === 0 ? (e.nota || "") : "", sesion.animo || ""
         ].map(_statsCampo).join(","));
       });
     });
