@@ -18,6 +18,21 @@ llevan al final un bloque «actualización 2026-10-08»). El diario fechado, con
 medidas y causas, está en la cabecera de `STATE.md` (entradas del 2026-10-07 y
 2026-10-08).
 
+### 0.0 decies Quinta tanda del 2026-10-25 (lee esto antes que 0.0 nonies)
+
+- **Estado:** sello `20261025e`, **1284 tests en verde**. Tambor propio para
+  las horas de despertar y de dormir (`js/ui/hora-selector.js`), el mismo en
+  iOS y Android: en el formulario, en una hoja (`#horaDialogo`); en el
+  cuestionario, en la pregunta. Tabla al principio de `ROADMAP.md`.
+- **Reglas nuevas (no las rompas):**
+  - `#wakeTime`/`#sleepTime` siguen siendo `<input type="time">`, ocultos: no
+    los cambies a texto ni los quites. Lo que los escribe a mano se ve gracias
+    al setter de `value` (`mejorarHoraConRueda`).
+  - Un tambor creado dentro de un `<dialog>` cerrado no tiene medidas: llama a
+    `ajustar()` después de `showModal()`.
+  - `hora-selector.js` carga antes que `form-controls.js` y `onboarding-ui.js`
+    (lo exige un test).
+
 ### 0.0 nonies Cuarta tanda del 2026-10-25 (lee esto antes que 0.0 octies)
 
 - **Estado:** sello `20261025d`, **1279 tests en verde**.

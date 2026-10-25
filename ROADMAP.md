@@ -1,5 +1,34 @@
 # Nutrition Planner — Roadmap
 
+## Lo del 2026-10-25, quinta tanda (sello `20261025e`, 1284 tests)
+
+El dueño: «выбор времени подъёма и сна… одинаковым для iOS и Android… на
+андроиде это сейчас просто ужас, нужно что-то своё». Probado en Chrome sin
+interfaz a 390 px (también con toques de verdad y agente de Android), en dos
+aspectos, sin errores de JS.
+
+| Qué | Dónde | Estado |
+|---|---|---|
+| Tambor de horas y minutos, igual en iOS y Android | `js/ui/hora-selector.js` (`horaRueda`) | **Hecho** |
+| Formulario: botón con la hora que abre una hoja con el tambor | `mejorarHoraConRueda` (`form-controls.js`), `#horaDialogo` | **Hecho** |
+| Cuestionario: el tambor en las preguntas de despertar y dormir | `_obRenderStep` (`onboarding-ui.js`) | **Hecho** |
+
+**Cómo es.**
+
+- Dos columnas con scroll-snap: horas de 00 a 23, minutos de 5 en 5. Si la
+  hora guardada trae otro minuto (05:12), ese minuto entra en la lista y se
+  conserva.
+- Da la vuelta: tras 23 viene 00. La lista va repetida cinco veces y, al
+  soltar el dedo, vuelve sin que se note a la copia del medio.
+- Cada columna es un `spinbutton`: flechas, Re Pág/Av Pág, Inicio/Fin.
+  Botones «больше/меньше» que solo ve el lector de pantalla.
+- Los `<input type="time">` siguen en la página, ocultos. Son el campo que
+  leen `settings.js` y `meal-schedule.js`. Un `.value` puesto a mano
+  (restaurar ajustes) se ve en el botón: el setter está interceptado, como en
+  las baldosas.
+- La hora del entreno (`#entHora`, el calendario `.ics`) sigue con el
+  `<input type="time">` del sistema: no se pidió.
+
 ## Lo del 2026-10-25, cuarta tanda (sello `20261025d`, 1279 tests)
 
 El dueño pidió «Сделай гифки у упражнений лучше» y, a mitad, «руки

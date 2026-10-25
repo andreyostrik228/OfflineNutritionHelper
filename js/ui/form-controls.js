@@ -8,6 +8,9 @@
  *     tiempo, gusto, cocina, prioridad) se enseña como BALDOSAS que se
  *     tocan con el pulgar, en vez de un desplegable que abre una rueda.
  *   - Edad, peso, altura y entrenamientos llevan botones − y + a los lados.
+ *   - (2026-10-25) Las horas de despertar y de dormir, un botón que abre una
+ *     hoja con el tambor de hora-selector.js: el mismo en iOS y en Android
+ *     (el <input type="time"> abría la esfera de reloj de Android).
  *
  * Es MEJORA PROGRESIVA: el <select> y el <input> siguen siendo la fuente de
  * verdad y los lee el resto de la aplicación como siempre. Sin este fichero
@@ -21,6 +24,7 @@
  *
  * Expone (globales):
  *   initFormControls()
+ *   mejorarHoraConRueda(input)
  *   initResetConfirm(refs)
  * ─────────────────────────────────────────────────────────────────────────
  */
@@ -29,6 +33,7 @@
 // un número, que va con − y + de 500 en 500.
 var FORM_BALDOSAS = ["sex", "goal", "cookTime", "taste", "cuisine", "priority"];
 var FORM_PASOS = { age: 1, weight: 1, height: 1, workouts: 1, steps: 500 };
+var FORM_HORAS = ["wakeTime", "sleepTime"];
 
 function initFormControls() {
   FORM_BALDOSAS.forEach(function (id) {
@@ -38,6 +43,10 @@ function initFormControls() {
   Object.keys(FORM_PASOS).forEach(function (id) {
     var i = document.getElementById(id);
     if (i && i.tagName === "INPUT") mejorarNumeroConBotones(i, FORM_PASOS[id]);
+  });
+  FORM_HORAS.forEach(function (id) {
+    var h = document.getElementById(id);
+    if (h && h.tagName === "INPUT") mejorarHoraConRueda(h);
   });
 }
 
@@ -249,4 +258,104 @@ function mejorarNumeroConBotones(input, paso) {
     // Teclado o lector de pantalla: un `click` sin puntero antes.
     b.addEventListener("click", function (ev) { if (ev.detail === 0) mover(signo); });
   });
+}
+
+// ── Hora con tambor ──────────────────────────────────────────────────────
+
+// La hoja es una para todos los campos: se rellena al abrirla.
+var _horaAbierta = null;
+
+function _horaCerrar(dialogo) {
+  if (typeof dialogo.close === "function" && dialogo.open) dialogo.close();
+  else dialogo.removeAttribute("open");
+  _horaAbierta = null;
+}
+
+function _horaPrepararDialogo(dialogo) {
+  if (dialogo._hora) return;
+  dialogo._hora = true;
+  var listo = document.getElementById("horaDialogoListo");
+  var cerrar = document.getElementById("horaDialogoCerrar");
+  function aceptar() {
+    var a = _horaAbierta;
+    if (!a) return;
+    var v = a.rueda.valor();
+    if (v !== a.input.value) {
+      a.input.value = v;
+      _avisarCambio(a.input);
+    }
+    _horaCerrar(dialogo);
+  }
+  if (listo) listo.addEventListener("click", aceptar);
+  if (cerrar) cerrar.addEventListener("click", function () { _horaCerrar(dialogo); });
+  // Intro en el tambor vale lo mismo que «Готово».
+  dialogo.addEventListener("keydown", function (ev) {
+    if (ev.key === "Enter" && ev.target && ev.target.classList && ev.target.classList.contains("hora-rueda__col")) {
+      ev.preventDefault();
+      aceptar();
+    }
+  });
+  dialogo.addEventListener("close", function () { _horaAbierta = null; });
+}
+
+function _horaAbrir(input, label) {
+  var dialogo = document.getElementById("horaDialogo");
+  var cuerpo = document.getElementById("horaDialogoRueda");
+  var titulo = document.getElementById("horaDialogoTitulo");
+  if (!dialogo || !cuerpo) return;
+  _horaPrepararDialogo(dialogo);
+  if (titulo) titulo.textContent = label ? label.textContent.trim() : "";
+  var rueda = horaRueda(input.value || input.defaultValue, { etiquetadoPor: "horaDialogoTitulo" });
+  cuerpo.innerHTML = "";
+  cuerpo.appendChild(rueda.el);
+  _horaAbierta = { input: input, rueda: rueda };
+  if (typeof dialogo.showModal === "function") dialogo.showModal();
+  else dialogo.setAttribute("open", "");
+  // Ya abierta tiene medidas: ahora sí se colocan las columnas.
+  rueda.ajustar();
+  rueda.enfocar();
+}
+
+function mejorarHoraConRueda(input) {
+  if (input._rueda || typeof horaRueda !== "function" || !document.getElementById("horaDialogo")) return;
+  input._rueda = true;
+
+  var label = document.querySelector('label[for="' + input.id + '"]');
+  if (label && !label.id) label.id = input.id + "Etiqueta";
+
+  var boton = document.createElement("button");
+  boton.type = "button";
+  boton.className = "hora-campo";
+  boton.id = input.id + "Boton";
+  boton.setAttribute("aria-haspopup", "dialog");
+  var valor = document.createElement("span");
+  valor.className = "hora-campo__valor";
+  valor.id = input.id + "Valor";
+  boton.appendChild(valor);
+  boton.insertAdjacentHTML("beforeend", '<svg class="hora-campo__icono" width="20" height="20" aria-hidden="true"><use href="#icon-clock"/></svg>');
+  if (label) {
+    // Tocar la etiqueta abre la hoja, y el lector oye «Время подъёма 07:00».
+    label.setAttribute("for", boton.id);
+    boton.setAttribute("aria-labelledby", label.id + " " + valor.id);
+  }
+  input.parentNode.insertBefore(boton, input.nextSibling);
+  input.hidden = true;
+  input.tabIndex = -1;
+
+  // Como en las baldosas: lo que la aplicación escriba a mano también se ve.
+  var _valorOriginal = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
+  function sincronizar() {
+    var p = horaPartes(_valorOriginal.get.call(input));
+    valor.textContent = p ? horaTexto(p.h, p.m) : "—:—";
+  }
+  Object.defineProperty(input, "value", {
+    configurable: true,
+    get: function () { return _valorOriginal.get.call(this); },
+    set: function (v) { _valorOriginal.set.call(this, v); sincronizar(); }
+  });
+  input.addEventListener("change", sincronizar);
+  if (input.form) input.form.addEventListener("reset", function () { setTimeout(sincronizar, 0); });
+
+  boton.addEventListener("click", function () { _horaAbrir(input, label); });
+  sincronizar();
 }

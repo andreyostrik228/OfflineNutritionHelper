@@ -768,6 +768,94 @@ select {
 select.select--baldosas { display: none; }
 input[type="time"] { font-variant-numeric: tabular-nums; }
 
+/* ── Hora con tambor (2026-10-25) ─────────────────────────────────────────
+   js/ui/hora-selector.js: el mismo selector en iOS y Android (el <input
+   type="time"> abría la esfera de reloj de Android). En el formulario, un
+   botón con la hora que abre #horaDialogo; en el cuestionario, el tambor en
+   la propia pregunta. Las filas miden 44 px (HORA_FILA) y se ven cinco. */
+.hora-campo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 14px;
+  border: 1.5px solid var(--field-line);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  color: var(--ink);
+  font: 800 20px/1 var(--font-display);
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+.hora-campo:hover { border-color: var(--primary); }
+.hora-campo__icono { flex: none; color: var(--text-3); }
+
+.hora-rueda {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 220px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.hora-rueda__banda {
+  position: absolute;
+  top: 88px;
+  right: 0;
+  left: 0;
+  height: 44px;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1.5px var(--field-line);
+  pointer-events: none;
+}
+.hora-rueda__col {
+  position: relative;
+  flex: 0 0 96px;
+  height: 100%;
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  touch-action: pan-y;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 32%, #000 68%, transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 32%, #000 68%, transparent);
+}
+.hora-rueda__col::-webkit-scrollbar { display: none; }
+/* La máscara se comería el contorno de la columna: el foco se marca en la fila
+   del centro, que siempre se ve. */
+.hora-rueda__col:focus-visible { outline: none; box-shadow: none; }
+.hora-rueda__col:focus-visible .hora-rueda__item.is-sel {
+  border-radius: var(--r-md);
+  box-shadow: inset 0 0 0 2px var(--ink), inset 0 0 0 5px var(--volt);
+}
+.hora-rueda__lista { padding: 88px 0; }
+.hora-rueda__item {
+  display: grid;
+  place-items: center;
+  height: 44px;
+  scroll-snap-align: center;
+  color: var(--text-2);
+  font: 700 26px/1 var(--font-display);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  backface-visibility: hidden;
+}
+.hora-rueda__item.is-sel { color: var(--ink); font-weight: 900; }
+.hora-rueda__dos { position: relative; color: var(--ink); font: 900 30px/1 var(--font-display); }
+
+.hora-dialogo__rueda { padding: 4px 0 6px; }
+.hora-dialogo .btn-primary { width: 100%; }
+@media (min-width: 640px) {
+  .hora-dialogo { width: min(400px, calc(100% - 32px)); }
+}
+
 /* ── Contador − 78 + ────────────────────────────────────────────────── */
 .paso-a-paso {
   display: flex;
@@ -2810,6 +2898,9 @@ body.is-onboarding { overflow: hidden; overscroll-behavior: none; }
 }
 .onboarding__text { font: 600 18px/1.3 var(--font-body); text-align: left; min-height: 60px; }
 .onboarding__time { text-align: center; }
+.onboarding__answer--time .hora-rueda__col { flex-basis: 112px; }
+.onboarding__answer--time .hora-rueda__item { font-size: 30px; }
+.onboarding__answer--time .hora-rueda__dos { font-size: 34px; }
 .onboarding__number:focus,
 .onboarding__time:focus,
 .onboarding__text:focus { border-color: var(--primary); background: var(--surface); }

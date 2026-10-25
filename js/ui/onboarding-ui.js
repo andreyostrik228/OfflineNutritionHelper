@@ -415,6 +415,29 @@ function _obRenderStep() {
   // _obWriteAnswer/_obCurrentValue tal cual: escriben en el control REAL
   // del formulario, igual que el resto -- lo unico propio es que input
   // pintar.
+  // (2026-10-25) La hora va con el tambor de hora-selector.js, el mismo en iOS
+  // y en Android; el <input type="time"> queda solo si ese fichero no cargó.
+  // El tambor escribe en un campo oculto con el mismo id, así que la
+  // validación de _obNext no cambia.
+  if (step.kind === "time" && typeof horaRueda === "function") {
+    box.className = "onboarding__answer onboarding__answer--time";
+    var oculto = document.createElement("input");
+    oculto.type = "hidden";
+    oculto.id = "onboardingFreeInput";
+    var real = _obEl(step.field);
+    var rueda = horaRueda(current || (real && real.defaultValue) || "", {
+      etiquetadoPor: "onboardingQuestion",
+      alCambiar: function (v) { oculto.value = v; }
+    });
+    oculto.value = rueda.valor();
+    rueda.el.addEventListener("keydown", function (ev) {
+      if (ev.key === "Enter") { ev.preventDefault(); _obNext(); }
+    });
+    box.appendChild(rueda.el);
+    box.appendChild(oculto);
+    return;
+  }
+
   if (step.kind === "time" || step.kind === "text") {
     box.className = "onboarding__answer onboarding__answer--" + step.kind;
     var libre = document.createElement("input");
