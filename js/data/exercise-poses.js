@@ -315,8 +315,9 @@ function _pZancada(s, o) {
 function _pManosCadera(P, h) {
   var d = h.cadera(P.pelvis, P.giro, 1);
   var i = h.cadera(P.pelvis, P.giro, -1);
-  P.brazoD = { mano: [d[0] - 1, d[1] + 9, d[2] + 6], polo: [-0.6, 0, 1] };
-  P.brazoI = { mano: [i[0] - 1, i[1] + 9, i[2] - 6], polo: [-0.6, 0, -1] };
+  // El codo, hacia fuera y apenas atrás: con -0.6 en x se veía clavado hacia atrás.
+  P.brazoD = { mano: [d[0] - 1, d[1] + 9, d[2] + 6], polo: [-0.15, 0, 1] };
+  P.brazoI = { mano: [i[0] - 1, i[1] + 9, i[2] - 6], polo: [-0.15, 0, -1] };
 }
 
 function _pMancuernasColgando(P, h, extraF) {
@@ -546,8 +547,10 @@ EJERCICIO_POSES.curl_femoral_toalla = {
     var hombro = [-40, 9.5, 0];
     var ang = (8 + 20 * s) * Math.PI / 180;
     var pelvis = [hombro[0] + 42 * Math.cos(ang), hombro[1] + 42 * Math.sin(ang), 0];
-    var giro = { pitch: -90 + (8 + 20 * s) };
-    var P = { pelvis: pelvis, giro: giro, tronco: {}, cabeza: { flex: 18 } };
+    // Como en _pPuente: de la pelvis a los hombros, inclinado hacia abajo.
+    var giro = { pitch: -90 - (8 + 20 * s) };
+    // La cabeza sigue apoyada: se dobla tanto como baja el tronco.
+    var P = { pelvis: pelvis, giro: giro, tronco: {}, cabeza: { flex: 14 + 26 * s } };
     var talonX = 66 - 34 * s;
     P.piernaD = { tobillo: [talonX, 7, 11], pieDir: [0.3, 0.95, 0.05], pieArriba: [-0.95, 0.3, 0], polo: [0.2, 1, 0.2] };
     P.piernaI = { tobillo: [talonX, 7, -11], pieDir: [0.3, 0.95, -0.05], pieArriba: [-0.95, 0.3, 0], polo: [0.2, 1, -0.2] };
@@ -566,7 +569,10 @@ function _pPuente(s, hombro, a0, a1, pies) {
   var grados = a0 + (a1 - a0) * s;
   var ang = grados * Math.PI / 180;
   var pelvis = [hombro[0] + 42 * Math.cos(ang), hombro[1] + 42 * Math.sin(ang), 0];
-  var P = { pelvis: pelvis, giro: { pitch: -90 + grados }, tronco: {}, cabeza: { flex: 20 + grados * 0.4 } };
+  // El tronco va de la pelvis a «hombro»: inclinado «grados» sobre la horizontal,
+  // así que el giro es -90 − grados (con +grados, 2026-10-25, los hombros
+  // subían en el puente y bajaban del banco al suelo en el hip thrust).
+  var P = { pelvis: pelvis, giro: { pitch: -90 - grados }, tronco: {}, cabeza: { flex: 20 + grados * 0.4 } };
   P.piernaD = { tobillo: [pies, 6, 13], pieDir: [0.98, 0, 0.15], polo: [0.3, 1, 0.3] };
   P.piernaI = { tobillo: [pies, 6, -13], pieDir: [0.98, 0, -0.15], polo: [0.3, 1, -0.3] };
   return P;
@@ -579,7 +585,8 @@ EJERCICIO_POSES.hip_thrust_barra = {
     var P = _pPuente(s, [-34, 50, 0], -40, 0, 30);
     var B = h.B(P.giro);
     var barra = h.mezcla([P.pelvis, 1], [B.X, 13.5]);
-    _pManos(P, [barra[0] - 2, barra[1] + 1, 22], [-0.3, 1, 0.6]);
+    // Codos abajo y fuera, junto al tronco (con el polo hacia arriba apuntaban al techo).
+    _pManos(P, [barra[0] - 2, barra[1] + 1, 22], [-0.3, -1, 0.7]);
     P.props = _pProps(
       [{ tipo: "caja", c: [-52, 33, 0], t: [16, 9, 18] }],
       _pBarra(barra, 36, 15)
@@ -596,7 +603,7 @@ EJERCICIO_POSES.hip_thrust_maquina = {
     var P = _pPuente(s, [-34, 50, 0], -40, 0, 30);
     var B = h.B(P.giro);
     var almohadilla = h.mezcla([P.pelvis, 1], [B.X, 14]);
-    _pManos(P, [almohadilla[0] - 3, almohadilla[1] + 1, 21], [-0.3, 1, 0.6]);
+    _pManos(P, [almohadilla[0] - 3, almohadilla[1] + 1, 21], [-0.3, -1, 0.7]);
     P.props = [
       { tipo: "caja", c: [-52, 33, 0], t: [16, 9, 18] },
       { tipo: "barra", a: [almohadilla[0], almohadilla[1], -17], b: [almohadilla[0], almohadilla[1], 17], ancho: 8, clase: "anim__almohadilla" },
@@ -799,7 +806,7 @@ EJERCICIO_POSES.press_inclinado_maquina = {
     var P = _pRecostado(50);
     var T = h.T(P.giro, P.tronco);
     var pecho = h.enTronco(P.pelvis, P.giro, P.tronco, 14, 36, 0);
-    var lejos = h.mezcla([pecho, 1], [T.X, 38], [T.Y, 4]);
+    var lejos = h.mezcla([pecho, 1], [T.X, 35.5], [T.Y, 4]);
     var c = _pLerp3(lejos, pecho, s);
     var asa = [c[0], c[1], 22];
     _pManos(P, asa, [0.3, -1, 0.7]);
@@ -842,7 +849,8 @@ EJERCICIO_POSES.press_pecho_maquina = {
   musculos: { p: ["pecho", "triceps"], s: ["deltoide_ant"] },
   pose: function (s, h) {
     var P = _pSentado([0, 46, 0], -4, 0);
-    var asa = [52 - 42 * s, 84, 22];
+    // Con el brazo estirado, las asas al alcance de la mano (a 52 se quedaban a 5).
+    var asa = [46 - 36 * s, 84, 22];
     _pManos(P, asa, [-0.4, -1, 0.7]);
     P.props = [
       { tipo: "caja", c: [2, 37, 0], t: [15, 3, 14] },
@@ -1075,7 +1083,9 @@ EJERCICIO_POSES.elevaciones_laterales_polea = {
     var abre = -14 + 96 * s;
     var b = { f: 12, s: abre, cf: 18, cs: abre - 8 };
     P.brazoD = b;
-    P.brazoI = { mano: [6, 104, -40], polo: [0, -1, -1] };
+    // La otra mano, en el poste: el codo cae hacia abajo (con [0, -1, -1] el polo
+    // iba casi a lo largo del brazo y el codo quedaba a merced del redondeo).
+    P.brazoI = { mano: [6, 104, -40], polo: [-0.3, -1, 0] };
     var d = h.agarre(P.pelvis, P.giro, P.tronco, "D", b);
     P.props = _pProps(_pPolea([6, 10, -44], 180), [_pCable([6, 10, -44], d)]);
     P.clave = d;
@@ -1215,10 +1225,12 @@ EJERCICIO_POSES.remo_maquina = {
   pose: function (s, h) {
     var P = _pSentado([0, 46, 0], 26, 0);
     P.cabeza = { flex: -16 };
-    var lejos = [52, 92, 18];
+    // Delante, casi con el brazo estirado; los codos van atrás (con el polo
+    // hacia arriba, al empezar los codos quedaban por encima de las manos).
+    var lejos = [65, 89, 17];
     var cerca = h.enTronco(P.pelvis, P.giro, P.tronco, 12, 24, 19);
     var mano = _pLerp3(lejos, cerca, s);
-    _pManos(P, mano, [-0.6, 0.2, 0.7]);
+    _pManos(P, mano, [-0.7, -0.1, 0.7]);
     P.props = [
       { tipo: "caja", c: [2, 37, 0], t: [14, 3, 13] },
       { tipo: "poste", a: [2, 0, 0], b: [2, 34, 0], ancho: 5 },
@@ -1237,7 +1249,9 @@ EJERCICIO_POSES.remo_maquina = {
 function _pJalon(s, h, ancho, abajoZ) {
   var P = _pSentado([0, 46, 0], -10, 2);
   P.cabeza = { flex: -6 };
-  var arriba = [5, 160, ancho];
+  // Arriba, al alcance del brazo casi estirado (a 160 la barra quedaba 25 por
+  // encima de las manos: no la agarraban).
+  var arriba = [5, ancho > 10 ? 131 : 134, ancho];
   var abajo = h.enTronco(P.pelvis, P.giro, P.tronco, 13, 40, abajoZ);
   var mano = _pLerp3(arriba, abajo, s);
   _pManos(P, mano, [-0.3, -1, abajoZ > 10 ? 0.9 : 0.25]);
@@ -1267,8 +1281,11 @@ EJERCICIO_POSES.jalon_agarre_estrecho = {
   pose: function (s, h) {
     var P = _pJalon(s, h, 5, 5);
     var abajo = h.enTronco(P.pelvis, P.giro, P.tronco, 13, 33, 5);
-    var mano = _pLerp3([5, 160, 5], abajo, s);
-    _pManos(P, mano, [-0.5, -1, 0.15]);
+    var mano = _pLerp3([5, 134, 5], abajo, s);
+    // Con las manos arriba, un polo hacia abajo va casi a lo largo del brazo y el
+    // codo se cruzaba delante de la cara (2026-10-25): arriba, los codos van
+    // por delante y algo fuera; abajo, pegados al tronco.
+    _pManos(P, mano, _pLerp3([0.6, -0.2, 0.6], [-0.4, -1, 0.5], s));
     P.props[P.props.length - 1] = { tipo: "barra", a: [mano[0], mano[1], -7], b: [mano[0], mano[1], 7], ancho: 3 };
     P.props[P.props.length - 2] = _pCable([5, 205, 0], [mano[0], mano[1] + 4, 0]);
     P.clave = [mano[0], mano[1], 0];
@@ -1551,9 +1568,12 @@ EJERCICIO_POSES.plancha = {
     P.piernaD = { f: 0, s: 1, pie: 50 };
     P.piernaI = { f: 0, s: 1, pie: 50 };
     var hom = h.hombro(pelvis, P.giro, {}, 1);
+    // El codo, bajo el hombro; el antebrazo, en el suelo hacia delante. Con el
+    // polo hacia arriba (hasta 2026-10-25) el codo salía por delante de la
+    // cabeza y el antebrazo bajaba en vertical: el brazo, al revés.
     var codo = [hom[0] - 1, 4, 14];
-    P.brazoD = { mano: [codo[0] + 24, 4, 7], polo: [-0.2, 1, 0.3] };
-    P.brazoI = { mano: [codo[0] + 24, 4, -7], polo: [-0.2, 1, -0.3] };
+    P.brazoD = { mano: [codo[0] + 24, 4, 7], polo: [-0.3, -1, 0.3] };
+    P.brazoI = { mano: [codo[0] + 24, 4, -7], polo: [-0.3, -1, -0.3] };
     return P;
   }
 };
@@ -1640,8 +1660,9 @@ EJERCICIO_POSES.bird_dog = {
     var brazoMueve = der ? "brazoD" : "brazoI";
     P[der ? "brazoI" : "brazoD"] = { f: 102, s: 2 };
     P[brazoMueve] = { f: 102 + 78 * s, s: 2 };
-    P[der ? "piernaD" : "piernaI"] = { f: 90, s: 2, rf: 0, pie: 40 };
-    P[der ? "piernaI" : "piernaD"] = { f: 90 - 90 * s, s: 2, rf: 0, pie: 40 - 20 * s };
+    // La espinilla en el suelo: el pie, estirado en línea con ella (con 40 la punta se hundía en el suelo).
+    P[der ? "piernaD" : "piernaI"] = { f: 90, s: 2, rf: -8, pie: 90 };
+    P[der ? "piernaI" : "piernaD"] = { f: 90 - 90 * s, s: 2, rf: -8 * (1 - s), pie: 90 - 60 * s };
     P.clave = h.agarre(P.pelvis, P.giro, P.tronco, lado, P[brazoMueve]);
     return P;
   }

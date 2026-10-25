@@ -40,6 +40,8 @@ var FIG = {
 var FIG_ANCHO = { tronco: 19, cuello: 7.5, brazo: 9.5, ante: 8, mano: 6.5, muslo: 14, pierna: 10.5, pie: 6 };
 var FIG_SEPARACION = 2.6;
 var FIG_PERIODO_MS = 3200;
+/** Lo más apaisado que va la grande (ancho / alto). */
+var FIG_APAISADO = 1.6;
 var FIG_RAD = Math.PI / 180;
 
 /**
@@ -259,6 +261,8 @@ function _fEsqueleto(P) {
   var dirCuello = flexCabeza ? _fRotar(T.Y, T.Z, -flexCabeza) : T.Y;
   j.cabeza = _fMezcla([j.cuello, 1], [dirCuello, FIG.cuello + FIG.cab]);
   j.cuelloTope = _fMezcla([j.cuello, 1], [dirCuello, FIG.cuello + 2]);
+  // Hacia dónde mira la cara (2026-10-25): los ojos dicen hacia dónde va la persona.
+  j._cara = { X: flexCabeza ? _fRotar(T.X, T.Z, -flexCabeza) : T.X, Y: dirCuello, Z: T.Z };
   _fBrazo(j, T, P.brazoD || {}, "D", 1);
   _fBrazo(j, T, P.brazoI || {}, "I", -1);
   _fPierna(j, B, P.piernaD || {}, "D", 1);
@@ -363,9 +367,10 @@ function _fProps(c, props) {
     } else if (pr.tipo === "disco") {
       var e = _fDisco(c, pr.c, pr.eje || [0, 0, 1], pr.r || 15);
       it.prof = e.z;
+      // El disco deja ver el cuerpo detrás (2026-10-25): borde, aro y eje firmes, el plato traslúcido.
       it.formas.push({ t: "e", cx: e.cx, cy: e.cy, rx: e.rx, ry: e.ry, g: e.giro, c: "anim__disco" });
       it.formas.push({ t: "e", cx: e.cx, cy: e.cy, rx: e.rx * 0.62, ry: e.ry * 0.62, g: e.giro, c: "anim__disco-aro" });
-      it.formas.push({ t: "e", cx: e.cx, cy: e.cy, rx: e.rx * 0.2, ry: e.ry * 0.2, g: e.giro, c: "anim__disco" });
+      it.formas.push({ t: "e", cx: e.cx, cy: e.cy, rx: e.rx * 0.2, ry: e.ry * 0.2, g: e.giro, c: "anim__disco-eje" });
     } else if (pr.tipo === "mancuerna") {
       var eje = _fUnidad(pr.eje || [0, 0, 1]);
       var medio = (pr.largo || 11) / 2;
@@ -376,7 +381,7 @@ function _fProps(c, props) {
       var eb = _fDisco(c, b, eje, pr.r || 5);
       it.prof = asa.prof + 0.4;
       it.formas.push({ t: "l", x1: asa.pa.x, y1: asa.pa.y, x2: asa.pb.x, y2: asa.pb.y, w: 2.6, c: "anim__metal" });
-      [ea, eb].forEach(function (d) { it.formas.push({ t: "e", cx: d.cx, cy: d.cy, rx: d.rx, ry: Math.max(d.ry, 1.6), g: d.giro, c: "anim__disco" }); });
+      [ea, eb].forEach(function (d) { it.formas.push({ t: "e", cx: d.cx, cy: d.cy, rx: d.rx, ry: Math.max(d.ry, 1.6), g: d.giro, c: "anim__pesa" }); });
     } else if (pr.tipo === "caja") {
       var t = pr.t || [10, 2, 10];
       var M = _fMarco({ pitch: pr.pitch || 0, roll: pr.roll || 0, yaw: pr.yaw || 0 });
@@ -452,7 +457,7 @@ function _fAyuda() {
  * profundidad: segmentos con su línea de separación, tronco, cabeza y las
  * rayas de los músculos.
  */
-function _fFigura(c, j, musculos, conMusculos) {
+function _fFigura(c, j, musculos, conMusculos, conCara) {
   var items = [];
   var zonas = [];
   if (conMusculos && musculos) {
@@ -502,8 +507,45 @@ function _fFigura(c, j, musculos, conMusculos) {
     musculos: rayas("cuello", j.cuello, j.cuelloTope, FIG_ANCHO.cuello, j._delante.tronco, j._fuera.tronco)
   });
   var cab = _fProy(c, j.cabeza);
-  items.push({ id: "cabeza", prof: cab.z + 0.5, formas: [{ t: "cab", cx: cab.x, cy: cab.y, r: FIG.cab }], musculos: [] });
+  var formasCabeza = [{ t: "cab", cx: cab.x, cy: cab.y, r: FIG.cab }];
+  if (conCara && j._cara) formasCabeza = formasCabeza.concat(_fOjos(c, j));
+  items.push({ id: "cabeza", prof: cab.z + 0.5, formas: formasCabeza, musculos: [] });
   return items;
+}
+
+/**
+ * Los ojos (2026-10-25): dos puntos del color del fondo en la cara, solo los
+ * que miran a la cámara. De perfil se ve uno; de frente, los dos.
+ */
+function _fOjos(c, j) {
+  var ojos = [];
+  [1, -1].forEach(function (lado) {
+    var p = _fMezcla([j.cabeza, 1], [j._cara.X, FIG.cab * 0.62], [j._cara.Y, FIG.cab * 0.14], [j._cara.Z, FIG.cab * 0.36 * lado]);
+    if (_fPunto(_fUnidad(_fResta(p, j.cabeza)), c.v) <= 0.05) return;
+    var q = _fProy(c, p);
+    ojos.push({ t: "ojo", cx: q.x, cy: q.y, r: FIG.cab * 0.17 });
+  });
+  return ojos;
+}
+
+/**
+ * La sombra en el suelo (2026-10-25): una elipse bajo lo que ocupa el cuerpo
+ * visto desde arriba. Asienta la figura; va detrás de todo, también del material.
+ */
+function _fSombra(c, j) {
+  var x0 = Infinity;
+  var x1 = -Infinity;
+  Object.keys(j).forEach(function (n) {
+    if (n.charAt(0) === "_" || !Array.isArray(j[n])) return;
+    var q = _fProy(c, [j[n][0], 0, j[n][2]]);
+    if (q.x < x0) x0 = q.x;
+    if (q.x > x1) x1 = q.x;
+  });
+  var centro = _fProy(c, [j.pelvis[0], 0, j.pelvis[2]]);
+  return {
+    id: "sombra", prof: -1e6, fondo: true, prop: true,
+    formas: [{ t: "e", cx: (x0 + x1) / 2, cy: centro.y, rx: (x1 - x0) / 2 + 5, ry: 2.6, g: 0, c: "anim__sombra" }]
+  };
 }
 
 /** El lado que mira a la cámara en este instante ("D" o "I"). */
@@ -559,7 +601,8 @@ function entrenoFiguraEscena(id, s, detalle, lado) {
   var P = _fPostura(spec, s, lado);
   var j = _fEsqueleto(P);
   var completo = detalle !== "mini";
-  var items = _fFigura(c, j, spec.musculos, true).concat(_fProps(c, P.props));
+  var items = _fFigura(c, j, spec.musculos, true, completo).concat(_fProps(c, P.props));
+  if (!spec.sinSuelo) items.push(_fSombra(c, j));
   var cercano = _fLadoCercano(c, j);
   var escena = { items: items, marcas: [], angulo: null, clave: null, cercano: cercano, camara: c };
   if (completo) {
@@ -617,11 +660,20 @@ function _fEncuadre(id, soloCuerpo) {
   if (!spec.sinSuelo) y1 = Math.max(y1, suelo + 4);
   var pad = soloCuerpo ? 4 : 8;
   x0 -= pad; x1 += pad; y0 -= pad; y1 += pad;
-  var lado = Math.max(x1 - x0, y1 - y0, soloCuerpo ? 90 : 120);
   var cx = (x0 + x1) / 2;
   var cy = (y0 + y1) / 2;
-  var vy = spec.sinSuelo ? cy - lado / 2 : Math.min(cy - lado / 2, y1 - lado);
-  return { x: cx - lado / 2, y: vy, w: lado, h: lado, suelo: spec.sinSuelo ? null : suelo, camara: c };
+  // La grande de un gesto tumbado o a lo largo (plancha, flexiones, banco) va
+  // más ancha que alta, hasta FIG_APAISADO (2026-10-25): en un cuadrado la
+  // figura ocupaba el tercio de abajo. La pequeña y las de pie, cuadradas.
+  var ancho = Math.max(x1 - x0, soloCuerpo ? 90 : 120);
+  var alto = Math.max(y1 - y0, soloCuerpo ? 90 : 120);
+  if (soloCuerpo || alto >= ancho) {
+    ancho = alto = Math.max(ancho, alto);
+  } else {
+    alto = Math.max(y1 - y0, ancho / FIG_APAISADO, 72);
+  }
+  var vy = spec.sinSuelo ? cy - alto / 2 : Math.min(cy - alto / 2, y1 - alto);
+  return { x: cx - ancho / 2, y: vy, w: ancho, h: alto, suelo: spec.sinSuelo ? null : suelo, camara: c };
 }
 
 var _fCajas = {};
@@ -686,6 +738,8 @@ function _fFormasSvg(it, conMusculos) {
     } else if (f.t === "cab") {
       r.push(["circle", { cx: f.cx, cy: f.cy, r: f.r + FIG_SEPARACION / 2, "class": "anim__sep-relleno" }]);
       r.push(["circle", { cx: f.cx, cy: f.cy, r: f.r, "class": "anim__cuerpo-relleno" }]);
+    } else if (f.t === "ojo") {
+      if (conMusculos) r.push(["circle", { cx: f.cx, cy: f.cy, r: f.r, "class": "anim__ojo" }]);
     } else if (f.t === "l") {
       r.push(["line", { x1: f.x1, y1: f.y1, x2: f.x2, y2: f.y2, "stroke-width": f.w, "class": f.c }]);
     } else if (f.t === "e") {
@@ -772,7 +826,7 @@ function entrenoFiguraSvg(id, s, detalle, lado) {
   var completo = detalle !== "mini";
   var caja = _fEncuadreGuardado(id, !completo);
   var h = ['<svg xmlns="http://www.w3.org/2000/svg" class="anim anim--' + (completo ? "completo" : "mini") + '" viewBox="' +
-    [caja.x, caja.y, caja.w, caja.h].map(_fNum).join(" ") + '">'];
+    [caja.x, caja.y, caja.w, caja.h].map(_fNum).join(" ") + '" style="aspect-ratio: ' + _fNum(caja.w) + " / " + _fNum(caja.h) + '">'];
   if (completo) _fRejilla(caja).forEach(function (l) { h.push("<line " + _fAtributos({ x1: l.x1, y1: l.y1, x2: l.x2, y2: l.y2, "class": "anim__rejilla" }) + "/>"); });
   if (caja.suelo !== null) h.push("<line " + _fAtributos({ x1: caja.x, y1: caja.suelo, x2: caja.x + caja.w, y2: caja.suelo, "class": "anim__suelo" }) + "/>");
   _fOrden(escena.items).forEach(function (it) {
@@ -841,6 +895,8 @@ function _figPreparar(svg) {
   var caja = _fEncuadreGuardado(id, !completo);
   var inst0 = { camino: [] };
   svg.setAttribute("viewBox", [caja.x, caja.y, caja.w, caja.h].map(_fNum).join(" "));
+  // El alto sale del encuadre: las tumbadas van apaisadas (la hoja de estilos pone 1 / 1).
+  svg.style.aspectRatio = _fNum(caja.w) + " / " + _fNum(caja.h);
   svg.textContent = "";
   var fondo = _figElem(svg, "g", "anim__fondo");
   if (completo) {

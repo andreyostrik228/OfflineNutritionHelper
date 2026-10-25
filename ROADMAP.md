@@ -1,5 +1,47 @@
 # Nutrition Planner — Roadmap
 
+## Lo del 2026-10-25, cuarta tanda (sello `20261025d`, 1279 tests)
+
+El dueño pidió «Сделай гифки у упражнений лучше» y, a mitad, «руки
+вывернуты… исправь везде». Revisadas las 81 animaciones en hojas de tres
+instantes y con cuentas en 3D; probado en Chrome sin interfaz, sin errores de JS.
+
+| Qué | Dónde | Estado |
+|---|---|---|
+| Discos traslúcidos con aro y eje; mancuernas macizas | `.anim__disco*`, `.anim__pesa` (`style.css`), `_fFormasSvg` | **Hecho** |
+| Ojos: hacia dónde mira la persona (solo la grande) | `j._cara` (`_fEsqueleto`), `_fOjos` | **Hecho** |
+| Sombra en el suelo (no en lo que va colgado) | `_fSombra` | **Hecho** |
+| Encuadre apaisado (hasta 1,6) para lo tumbado | `_fEncuadre`, `FIG_APAISADO`; `aspect-ratio` en el `<svg>` | **Hecho** |
+| Puente, hip thrust, curl con toalla: hombros en el suelo o el banco | `_pPuente`, `curl_femoral_toalla` (`exercise-poses.js`) | **Hecho** |
+| Bird dog: la pierna de apoyo no se hunde en el suelo | `bird_dog` | **Hecho** |
+| Brazos al revés (abajo) | `exercise-poses.js` | **Hecho** |
+
+**Brazos.** El codo de un brazo por objetivo (`{mano, polo}`) sale hacia
+`polo`; varios estaban mal:
+
+- **Plancha:** con el polo hacia arriba el codo salía por delante de la cabeza
+  y el antebrazo bajaba en vertical. Ahora el codo va bajo el hombro y el
+  antebrazo en el suelo.
+- **Hip thrust (barra y máquina):** los codos apuntaban al techo; ahora van
+  abajo y fuera, junto al tronco.
+- **Manos en la cintura** (`_pManosCadera`: zancadas, búlgara sin material):
+  el codo iba clavado hacia atrás; ahora sale hacia fuera.
+- **Jalón con agarre estrecho:** arriba, el polo iba casi a lo largo del brazo
+  y el codo se cruzaba delante de la cara. Ahora el polo pasa de delante-fuera
+  a abajo durante el gesto.
+- **Jalones:** la barra quedaba 25 por encima de las manos (no la agarraban).
+  **Press en máquina:** las asas quedaban a 2–5.
+- **Remo en máquina:** al empezar, los codos por encima de las manos.
+- **Elevación lateral en polea:** el codo de la mano del poste quedaba a merced
+  del redondeo.
+
+Tres tests lo vigilan:
+
+- giro del húmero desde «colgando» entre −110° y 145°, y por encima de la
+  cabeza nada de antebrazo por delante de la cara;
+- ningún polo a lo largo del brazo, y toda mano llega a lo que agarra;
+- comprobaciones a mano de la plancha, del hip thrust y de las manos en la cintura.
+
 ## Lo del 2026-10-25, tercera tanda (sello `20261025c`, 1271 tests)
 
 El dueño dejó elegir («новое что-то придумай или из списка возьми»). Dos

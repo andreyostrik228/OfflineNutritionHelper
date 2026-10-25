@@ -4810,8 +4810,15 @@ body.modo-cuestionario .next-meal-sticky { display: none !important; }
 .anim__musculo { stroke: var(--kcal); fill: none; }
 .anim__musculo--ayuda { opacity: 0.5; }
 .anim__metal { stroke: var(--ink); fill: none; }
-.anim__disco { fill: var(--ink); }
-.anim__disco-aro { fill: var(--text-2); }
+/* El disco, traslúcido con el borde firme (2026-10-25): antes, macizo, tapaba la
+   cabeza en la sentadilla y la cadera en el hip thrust. */
+.anim__disco { fill: var(--ink); fill-opacity: 0.26; stroke: var(--ink); stroke-width: 1.8; }
+.anim__disco-aro { fill: none; stroke: var(--ink); stroke-opacity: 0.5; stroke-width: 1.1; }
+.anim__disco-eje { fill: var(--ink); }
+.anim__pesa { fill: var(--ink); }
+/* Los ojos, del color del fondo (como las líneas entre las partes), y la sombra en el suelo. */
+.anim__ojo { fill: var(--anim-fondo); }
+.anim__sombra { fill: var(--ink); opacity: 0.1; }
 .anim__cable { stroke: var(--text-2); fill: none; }
 .anim__cuerda { stroke: var(--carbs-deep); fill: none; }
 .anim__toalla { stroke: var(--carbs); fill: none; }

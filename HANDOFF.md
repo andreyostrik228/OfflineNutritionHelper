@@ -18,6 +18,23 @@ llevan al final un bloque «actualización 2026-10-08»). El diario fechado, con
 medidas y causas, está en la cabecera de `STATE.md` (entradas del 2026-10-07 y
 2026-10-08).
 
+### 0.0 nonies Cuarta tanda del 2026-10-25 (lee esto antes que 0.0 octies)
+
+- **Estado:** sello `20261025d`, **1279 tests en verde**.
+  - Animaciones: discos traslúcidos, ojos, sombra, encuadre apaisado.
+  - Posturas arregladas: puente/hip thrust, bird dog.
+  - Brazos al revés arreglados: plancha, hip thrust, manos en la cintura,
+    jalones, remo en máquina.
+  - Tabla al principio de `ROADMAP.md`.
+- **Reglas nuevas (no las rompas):**
+  - Un brazo `{mano, polo}`: el polo no puede ir a lo largo de hombro→mano (el
+    codo quedaría al azar), y la mano tiene que llegar
+    (`FIG.brazo + FIG.ante + FIG.mano / 2`). Lo exige un test.
+  - El codo no se dobla al revés: lo mide un test con el giro del húmero.
+    Manos en la nuca dan ~140°; el límite es 145°.
+  - El `<svg>` grande lleva `aspect-ratio` del encuadre: el CSS `.anim` es 1/1
+    y sin eso lo apaisado se deforma.
+
 ### 0.0 octies Tercera tanda del 2026-10-25 (lee esto antes que 0.0 septies)
 
 - **Estado:** sello `20261025c`, **1271 tests en verde**. Sesiones saltadas
