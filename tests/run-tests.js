@@ -96,6 +96,7 @@ var suites = [
   "ics-plan.test",
   "reset-confirm.test",
   "hora-selector.test",
+  "compra-vista.test",
   "plan-store.test",
   "weight-log.test",
   "body-measures.test",

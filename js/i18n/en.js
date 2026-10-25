@@ -453,6 +453,8 @@ registerI18nTable("en", {
   "ui.marcar_como_comprado": "{producto}: mark as bought",
   "ui.pestana_menu": "Menu",
   "ui.pestana_compra": "Shopping",
+  "ui.compra_que_lista": "Which shopping list to show",
+  "ui.compra_plan_normal": "Regular plan",
   "ui.pestana_planes": "My plans",
   "ui.pestana_datos": "My details",
   "ui.secciones": "Sections",

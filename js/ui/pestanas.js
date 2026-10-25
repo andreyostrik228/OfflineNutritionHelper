@@ -22,9 +22,13 @@
  *
  * Mejora progresiva: sin este fichero la página se ve entera, como antes.
  *
+ * Desde el 2026-10-25, con las dos listas de la compra (la del plan normal y
+ * la del sin cocinar) arriba de «Compra» van dos botones y se ve una sola.
+ *
  * Expone (globales):
  *   initPestanas()
  *   activarPestana(id)
+ *   compraElegir(vista)   — "normal" | "sincocinar"
  * ─────────────────────────────────────────────────────────────────────────
  */
 
@@ -52,6 +56,10 @@ var _pestanaMain = null;
 var _pestanaBarra = null;
 var _esperandoPlan = false;
 var _esperandoSinCocinar = false;
+
+// Qué compra se ve cuando hay dos. Se recuerda en este dispositivo.
+var COMPRA_VISTA_CLAVE = "nutritionPlanner.compraVista.v1";
+var _compraVista = "normal";
 
 function initPestanas() {
   _pestanaMain = document.querySelector("main");
@@ -83,6 +91,7 @@ function initPestanas() {
   document.body.classList.add("con-pestanas");
 
   _crearResumenDeDatos();
+  _crearSelectorDeCompra();
 
   // Tras generar, a la pestaña del menú: el usuario pulsa "Generar plan"
   // en "Mis datos" y quiere ver el resultado, no el formulario otra vez.
@@ -94,6 +103,8 @@ function initPestanas() {
   _observar("mealsContainer", function (el) {
     if (_esperandoPlan && el.querySelector(".meal-card:not(.meal-card--empty)")) {
       _esperandoPlan = false;
+      // El plan que se acaba de hacer es el que se va a comprar.
+      compraElegir("normal");
       activarPestana("menu");
     }
     _pintarResumenDeDatos();
@@ -101,6 +112,7 @@ function initPestanas() {
   _observar("noCookResults", function (el) {
     if (_esperandoSinCocinar && el.children.length) {
       _esperandoSinCocinar = false;
+      compraElegir("sincocinar");
       activarPestana("menu");
       var panel = document.getElementById("noCookPanel");
       if (panel) setTimeout(function () { panel.scrollIntoView({ block: "start" }); }, 60);
@@ -138,6 +150,84 @@ function _tx(clave) {
   return typeof t === "function" ? t(clave) : clave;
 }
 
+// ── Qué lista de la compra se ve (2026-10-25) ────────────────────────────
+// Pedido del dueño: «когда выбираешь план sin cocinar то в покупках всё
+// равно первым идёт обычный план, сделай так чтобы можно было
+// переключаться». Las dos listas iban una debajo de otra, la normal arriba.
+// Ahora, si están las dos, arriba van «Обычный план» y «Без готовки» y se ve
+// solo la elegida; con una sola no hay botones. Hacer un plan elige su lista.
+// No se usa `hidden` en los paneles: lo pone y lo quita la aplicación.
+
+var COMPRA_VISTAS = [
+  { vista: "normal", panel: "shoppingPanel", clave: "ui.compra_plan_normal", icono: "icon-chef" },
+  { vista: "sincocinar", panel: "noCookShoppingPanel", clave: "ui.sin_cocinar_2", icono: "icon-bolt" }
+];
+
+function _crearSelectorDeCompra() {
+  var normal = document.getElementById("shoppingPanel");
+  var sin = document.getElementById("noCookShoppingPanel");
+  if (!normal || !sin || document.getElementById("compraSelector")) return;
+  try {
+    var guardada = localStorage.getItem(COMPRA_VISTA_CLAVE);
+    if (guardada === "normal" || guardada === "sincocinar") _compraVista = guardada;
+  } catch (e) { /* sin almacenamiento: la normal */ }
+
+  var caja = document.createElement("div");
+  caja.className = "compra-selector";
+  caja.id = "compraSelector";
+  caja.setAttribute("data-pestana", "compra");
+  caja.setAttribute("role", "group");
+  caja.setAttribute("aria-label", _tx("ui.compra_que_lista"));
+  caja.setAttribute("data-i18n-aria-label", "ui.compra_que_lista");
+  caja.hidden = true;
+  COMPRA_VISTAS.forEach(function (v) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "compra-selector__btn";
+    b.setAttribute("data-vista", v.vista);
+    b.setAttribute("aria-controls", v.panel);
+    b.innerHTML = '<svg width="16" height="16" aria-hidden="true"><use href="#' + v.icono + '"/></svg>' +
+      '<span data-i18n="' + v.clave + '">' + escapeHtml(_tx(v.clave)) + "</span>";
+    b.addEventListener("click", function () { compraElegir(v.vista); });
+    caja.appendChild(b);
+  });
+  normal.parentNode.insertBefore(caja, normal);
+
+  // Los paneles se esconden y aparecen solos (sin plan, al generar, al
+  // resetear): los botones salen solo con los dos a la vista.
+  if (typeof MutationObserver === "function") {
+    var obs = new MutationObserver(_pintarSelectorDeCompra);
+    obs.observe(normal, { attributes: true, attributeFilter: ["hidden"] });
+    obs.observe(sin, { attributes: true, attributeFilter: ["hidden"] });
+  }
+  _pintarSelectorDeCompra();
+}
+
+function compraElegir(vista) {
+  if (vista !== "normal" && vista !== "sincocinar") return;
+  _compraVista = vista;
+  try { localStorage.setItem(COMPRA_VISTA_CLAVE, vista); } catch (e) { /* no se recuerda, nada más */ }
+  _pintarSelectorDeCompra();
+}
+
+function _pintarSelectorDeCompra() {
+  var caja = document.getElementById("compraSelector");
+  if (!caja) return;
+  var paneles = COMPRA_VISTAS.map(function (v) { return document.getElementById(v.panel); });
+  var dos = paneles.every(function (p) { return p && !p.hidden; });
+  caja.hidden = !dos;
+  COMPRA_VISTAS.forEach(function (v, i) {
+    var elegida = v.vista === _compraVista;
+    if (paneles[i]) paneles[i].classList.toggle("is-fuera-de-vista", dos && !elegida);
+    var b = caja.querySelector('[data-vista="' + v.vista + '"]');
+    if (b) {
+      b.classList.toggle("is-on", elegida);
+      b.setAttribute("aria-pressed", elegida ? "true" : "false");
+    }
+  });
+  _pintarCuentaDeCompra();
+}
+
 function _observar(id, fn, conAtributos) {
   var el = document.getElementById(id);
   if (!el || typeof MutationObserver !== "function") return;
@@ -146,7 +236,11 @@ function _observar(id, fn, conAtributos) {
   });
 }
 
-/** El número de la pestaña "Compra": lo que falta por coger, de las dos listas (la del sin cocinar, desde el 2026-10-21). */
+/**
+ * El número de la pestaña "Compra": lo que falta por coger, de las dos listas
+ * (la del sin cocinar, desde el 2026-10-21). Con las dos a la vez, solo la que
+ * se ve (2026-10-25): un 47 sobre una lista de 22 no cuadraba.
+ */
 function _pintarCuentaDeCompra() {
   if (!_pestanaBarra) return;
   var cuenta = _pestanaBarra.querySelector(".tabbar__cuenta");
@@ -154,7 +248,7 @@ function _pintarCuentaDeCompra() {
   var faltan = 0;
   [["shoppingPanel", "shoppingListContainer"], ["noCookShoppingPanel", "noCookShoppingList"]].forEach(function (par) {
     var panel = document.getElementById(par[0]);
-    if (panel && !panel.hidden) faltan += document.querySelectorAll("#" + par[1] + " .shopping-item:not(.is-comprado)").length;
+    if (panel && !panel.hidden && !panel.classList.contains("is-fuera-de-vista")) faltan += document.querySelectorAll("#" + par[1] + " .shopping-item:not(.is-comprado)").length;
   });
   cuenta.textContent = faltan > 99 ? "99+" : String(faltan);
   cuenta.hidden = faltan === 0;

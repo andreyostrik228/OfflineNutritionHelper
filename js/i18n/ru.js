@@ -459,6 +459,8 @@ registerI18nTable("ru", {
   "ui.marcar_como_comprado": "{producto}: отметить как купленное",
   "ui.pestana_menu": "Меню",
   "ui.pestana_compra": "Покупки",
+  "ui.compra_que_lista": "Какой список покупок показать",
+  "ui.compra_plan_normal": "Обычный план",
   "ui.pestana_planes": "Мои планы",
   "ui.pestana_datos": "Мои данные",
   "ui.secciones": "Разделы",

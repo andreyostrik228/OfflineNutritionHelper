@@ -1,5 +1,22 @@
 # Nutrition Planner — Roadmap
 
+## Lo del 2026-10-25, sexta tanda (sello `20261025f`, 1289 tests)
+
+El dueño: «когда выбираешь план sin cocinar то в покупках всё равно первым
+идёт обычный план, сделай так чтобы можно было переключаться». Probado en
+Chrome sin interfaz a 390 y 1280 px, en dos aspectos, sin errores de JS.
+
+| Qué | Dónde | Estado |
+|---|---|---|
+| «Обычный план» / «Без готовки» arriba de «Compra», con las dos listas | `_crearSelectorDeCompra`, `compraElegir` (`pestanas.js`) | **Hecho** |
+| Hacer un plan elige su lista; la elección se recuerda | `nutritionPlanner.compraVista.v1` | **Hecho** |
+| El número de la pestaña cuenta solo la lista que se ve | `_pintarCuentaDeCompra` | **Hecho** |
+
+Con una sola lista no hay botones. La otra lista se esconde con la clase
+`is-fuera-de-vista`, no con `hidden`: ese lo pone y lo quita la aplicación
+(sin plan, al generar, al resetear) y los dos se pisarían. Vale también en el
+portátil, donde antes salían las dos una debajo de otra.
+
 ## Lo del 2026-10-25, quinta tanda (sello `20261025e`, 1284 tests)
 
 El dueño: «выбор времени подъёма и сна… одинаковым для iOS и Android… на

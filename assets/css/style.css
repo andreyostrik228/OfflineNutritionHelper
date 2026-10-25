@@ -1867,6 +1867,40 @@ input[type="time"] { font-variant-numeric: tabular-nums; }
 }
 .product-find-btn:hover { box-shadow: 0 0 0 2px var(--ink); }
 
+/* Qué lista se ve (2026-10-25, js/ui/pestanas.js): con la compra del plan
+   normal y la del sin cocinar a la vez, dos botones arriba y una sola lista. */
+.compra-selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+  margin: 0 0 14px;
+  padding: 4px;
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1.5px var(--field-line);
+}
+.compra-selector[hidden] { display: none; }
+.compra-selector__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+}
+.compra-selector__btn svg { flex: none; }
+.compra-selector__btn.is-on { background: var(--primary); color: var(--on-ink); box-shadow: var(--active-accent); }
+.shopping-panel.is-fuera-de-vista { display: none; }
+
 .shopping-panel__actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

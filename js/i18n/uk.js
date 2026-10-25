@@ -394,6 +394,8 @@ registerI18nTable("uk", {
   "ui.marcar_como_comprado": "{producto}: позначити як куплений",
   "ui.pestana_menu": "Меню",
   "ui.pestana_compra": "Покупки",
+  "ui.compra_que_lista": "Який список покупок показати",
+  "ui.compra_plan_normal": "Звичайний план",
   "ui.pestana_planes": "Мої плани",
   "ui.pestana_datos": "Мої дані",
   "ui.secciones": "Розділи",

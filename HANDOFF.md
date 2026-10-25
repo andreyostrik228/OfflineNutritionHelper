@@ -18,6 +18,19 @@ llevan al final un bloque «actualización 2026-10-08»). El diario fechado, con
 medidas y causas, está en la cabecera de `STATE.md` (entradas del 2026-10-07 y
 2026-10-08).
 
+### 0.0 undecies Sexta tanda del 2026-10-25 (lee esto antes que 0.0 decies)
+
+- **Estado:** sello `20261025f`, **1289 tests en verde**. Con la compra del
+  plan normal y la del sin cocinar a la vez, «Compra» lleva arriba dos botones
+  y enseña una sola (`js/ui/pestanas.js`). Tabla al principio de `ROADMAP.md`.
+- **Reglas nuevas (no las rompas):**
+  - No escondas `#shoppingPanel`/`#noCookShoppingPanel` con `hidden` para
+    esto: la vista va con `.is-fuera-de-vista`, y `hidden` sigue siendo «no hay
+    lista».
+  - Un plan nuevo elige su lista (`compraElegir`, desde los observadores de
+    `mealsContainer` y `noCookResults`). Si otro camino crea un plan, que
+    llame también a `compraElegir`.
+
 ### 0.0 decies Quinta tanda del 2026-10-25 (lee esto antes que 0.0 nonies)
 
 - **Estado:** sello `20261025e`, **1284 tests en verde**. Tambor propio para
