@@ -2577,6 +2577,20 @@ input[type="time"] { font-variant-numeric: tabular-nums; }
 }
 .pantry-add__error { font-size: 13px; font-weight: 600; color: var(--danger-deep); }
 .pantry-list { display: grid; gap: 8px; }
+/* Dónde se guarda (2026-10-26, filasPorLugar): una cabecera por grupo —
+   nevera, congelador, armario— y debajo sus productos. */
+.pantry-lugar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 12px 2px 0;
+  padding-bottom: 4px;
+  border-bottom: 1.5px solid var(--line-strong);
+}
+.pantry-lugar:first-child { margin-top: 0; }
+.pantry-lugar__titulo { margin: 0; color: var(--ink); font-size: 0.9rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
+.pantry-lugar__n { color: var(--text-3); font-size: 0.9rem; font-weight: 700; }
 .pantry-item {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;

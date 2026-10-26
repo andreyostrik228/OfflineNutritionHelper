@@ -368,17 +368,51 @@ function renderPantryPanel() {
   if (entries.length === 0) {
     pantryListContainer.innerHTML = "";
   } else {
-    pantryListContainer.innerHTML = safeRenderRows(entries, renderPantryRow, "stock");
+    pantryListContainer.innerHTML = filasPorLugar(entries, renderPantryRow, "stock");
   }
   // «Tu despensa está vacía» solo si lo está de verdad: con productos sin
   // cocinar dentro no lo está.
   if (pantryEmptyEl) pantryEmptyEl.hidden = !(entries.length === 0 && sinCocinar.length === 0);
   if (pantryNoCookSectionEl && pantryNoCookListEl) {
     pantryNoCookSectionEl.hidden = sinCocinar.length === 0;
-    pantryNoCookListEl.innerHTML = safeRenderRows(sinCocinar, renderNoCookStockRow, "stock-sin-cocinar");
+    pantryNoCookListEl.innerHTML = filasPorLugar(sinCocinar, renderNoCookStockRow, "stock-sin-cocinar");
   }
 
   renderPantryHistorySections();
+}
+
+// Dónde se guarda (2026-10-26). Pedido del dueño: «в кладовой показывало что
+// нужно класть в холодильник, а что можно просто в шкаф». La lista va por
+// grupos, cada uno con su cabecera: lo de la nevera primero (es lo que
+// corre prisa), luego el congelador, el armario y lo que no se sabe.
+var LUGARES_ORDEN = ["nevera", "congelador", "despensa", null];
+var LUGARES_CLAVE = { nevera: "ui.guardar_nevera", congelador: "ui.guardar_congelador", despensa: "ui.guardar_despensa" };
+
+/**
+ * Las filas de una lista de la despensa, agrupadas por dónde se guardan
+ * (`entry.guardar`, ver dondeGuardar en expiry.js). Cada grupo empieza por
+ * un <li> con su título y cuántos hay; dentro, el orden de siempre.
+ * @param {object[]} entries
+ * @param {function(object):string} renderRowFn
+ * @param {string} label
+ * @returns {string}
+ */
+function filasPorLugar(entries, renderRowFn, label) {
+  var grupos = {};
+  (entries || []).forEach(function (e) {
+    var lugar = LUGARES_CLAVE[e && e.guardar] ? e.guardar : "";
+    (grupos[lugar] = grupos[lugar] || []).push(e);
+  });
+  return LUGARES_ORDEN.map(function (lugar) {
+    var clave = lugar || "";
+    var filas = grupos[clave];
+    if (!filas || !filas.length) return "";
+    var titulo = lugar ? t(LUGARES_CLAVE[lugar]) : t("ui.guardar_sin_dato");
+    return '<li class="pantry-lugar pantry-lugar--' + escapeHtml(clave || "sin-dato") + '">' +
+        '<h4 class="pantry-lugar__titulo">' + escapeHtml(titulo) + '</h4>' +
+        '<span class="pantry-lugar__n">' + filas.length + '</span>' +
+      '</li>' + safeRenderRows(filas, renderRowFn, label);
+  }).join("");
 }
 
 /**

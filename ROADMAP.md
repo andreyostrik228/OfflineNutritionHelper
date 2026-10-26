@@ -1,5 +1,31 @@
 # Nutrition Planner — Roadmap
 
+## Lo del 2026-10-26, tercera tanda (sello `20261026c`, 1304 tests)
+
+El dueño: «в кладовой показывало что нужно класть в холодильник, а что можно
+просто в шкаф». La lista de la despensa (y la de «sin cocinar») va por
+grupos con cabecera y cuántos hay: «В холодильник», «В морозилку», «В шкаф»
+y, si nada lo dice, «Где хранить — неизвестно».
+
+**De dónde sale el sitio** (`dondeGuardar`, `js/core/expiry.js`), por este
+orden:
+
+1. Lo que fije la entrada (`storage`).
+2. Si está abierta y abierta dura 14 días o menos, la nevera. La cifra sale
+   de la tienda o de `OPENED_SHELF_LIFE`; también cuentan la leche UHT y las
+   hojas de conserva del catálogo.
+3. La ficha de la tienda.
+4. La vida útil del ingrediente (`shelf-life.js`).
+5. Para un producto del catálogo, su categoría de Mercadona (con
+   excepciones por hoja).
+
+La leche y la mermelada light van al armario mientras están cerradas: su
+vida útil en `shelf-life.js` es la del envase abierto.
+
+Cobertura medida: los 83 ingredientes de los platos tienen sitio (lo vigila
+un test). De los 1.455 productos del «sin cocinar», 1.217 lo tienen por la
+tienda; los 238 restantes van por categoría.
+
 ## Lo del 2026-10-26, segunda tanda (sello `20261026b`, 1300 tests)
 
 El dueño: «можно было выбирать сколько дней нужно, но максимум 7». Los días

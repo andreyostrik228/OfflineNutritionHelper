@@ -137,6 +137,109 @@ function getStoreStorage(productId) {
   return (e && typeof e.storage === "string") ? e.storage : null;
 }
 
+// ── Dónde se guarda: nevera, congelador o armario (2026-10-26) ──────────
+// Pedido del dueño: «в кладовой показывало что нужно класть в холодильник, а
+// что можно просто в шкаф». El dato ya estaba, pero solo salía en el `title`
+// de la caducidad. Medido ese día: los 83 ingredientes de los platos lo
+// tienen (12 por la tienda, 71 por shelf-life.js); de los 1.455 productos del
+// «sin cocinar», 1.217 por la tienda y 238 sin ficha, que van por su
+// categoría de Mercadona (abajo).
+
+var LUGARES_DE_GUARDAR = ["nevera", "congelador", "despensa"];
+
+// Por categoría, para un producto del catálogo sin ficha de la tienda. Es el
+// sitio de un envase CERRADO, como el de la tienda (un brick de leche UHT va
+// al armario). Las hojas que se apartan de su categoría, en la tabla de abajo.
+var GUARDAR_POR_CATEGORIA = {
+  "Charcutería y quesos": "nevera",
+  "Huevos, leche y mantequilla": "nevera",
+  "Postres y yogures": "nevera",
+  "Marisco y pescado": "nevera",
+  "Carne": "nevera",
+  "Pizzas y platos preparados": "nevera",
+  "Congelados": "congelador",
+  "Panadería y pastelería": "despensa",
+  "Fruta y verdura": "despensa",
+  "Aperitivos": "despensa",
+  "Conservas, caldos y cremas": "despensa",
+  "Cacao, café e infusiones": "despensa",
+  "Azúcar, caramelos y chocolate": "despensa",
+  "Cereales y galletas": "despensa",
+  "Agua y refrescos": "despensa",
+  "Zumos": "despensa",
+  "Aceite, especias y salsas": "despensa",
+  "Arroz, legumbres y pasta": "despensa"
+};
+var GUARDAR_POR_HOJA = {
+  "Bebidas vegetales": "despensa",
+  "Leche desnatada": "despensa",
+  "Leche entera": "despensa",
+  "Leche semidesnatada": "despensa",
+  "Gazpacho y salmorejo": "nevera",
+  "Lechuga": "nevera",
+  "Ensalada preparada": "nevera",
+  "Pepino y zanahoria": "nevera",
+  "Verduras al vapor": "nevera"
+};
+
+// Cerrados van al armario aunque su vida útil (shelf-life.js) esté contada en
+// nevera: esa cifra es la del envase abierto. La leche de Mercadona es UHT.
+var ARMARIO_HASTA_ABRIR = { "leche semidesnatada": true, "mermelada light": true };
+// Hojas del catálogo que, abiertas, van a la nevera aunque cerradas no.
+var NEVERA_AL_ABRIR_HOJAS = {
+  "Bebidas vegetales": true, "Leche desnatada": true, "Leche entera": true, "Leche semidesnatada": true,
+  "Nata": true, "Tomate": true, "Atún": true, "Sardinas": true, "Otras conservas de pescado": true,
+  "Cremas y puré": true, "Conservas fruta": true
+};
+// Abierto, lo que dura dos semanas o menos va a la nevera (un tarro de crema
+// de cacahuete, 90 días, sigue en el armario).
+var DIAS_ABIERTO_NEVERA = 14;
+
+var _productosPorId = null;
+
+/** Un producto del catálogo por su id (para la categoría), o null. */
+function _productoDelCatalogo(id) {
+  if (!id || typeof getRealProductsForStore !== "function") return null;
+  if (!_productosPorId) {
+    _productosPorId = {};
+    (getRealProductsForStore() || []).forEach(function (p) { if (p && p.id) _productosPorId[p.id] = p; });
+  }
+  return _productosPorId[String(id)] || null;
+}
+
+/**
+ * Dónde se guarda una entrada de la despensa: "nevera", "congelador",
+ * "despensa" (armario) o null si nada lo dice. Por orden: lo que fije la
+ * propia entrada; si está ABIERTA y se estropea pronto, la nevera; luego la
+ * ficha de la tienda, la vida útil del ingrediente (shelf-life.js) y, para
+ * un producto del catálogo, su categoría. No se adivina: sin dato, null.
+ *
+ * @param {string} clave - rol de ingrediente o id de producto
+ * @param {string|null} [almacenado] - el `storage` de la entrada
+ * @param {boolean} [abierto] - la entrada tiene `openedAt`
+ * @returns {string|null}
+ */
+function dondeGuardar(clave, almacenado, abierto) {
+  if (LUGARES_DE_GUARDAR.indexOf(almacenado) !== -1) return almacenado;
+  var producto = _productoDelCatalogo(clave);
+  if (abierto) {
+    var diasAbierto = getStoreDaysAfterOpening(clave);
+    if (typeof diasAbierto !== "number" && typeof getOpenedShelfLife === "function") diasAbierto = getOpenedShelfLife(clave);
+    if ((typeof diasAbierto === "number" && diasAbierto <= DIAS_ABIERTO_NEVERA) ||
+        ARMARIO_HASTA_ABRIR[clave] || (producto && NEVERA_AL_ABRIR_HOJAS[producto.leafCategory])) {
+      return "nevera";
+    }
+  } else if (ARMARIO_HASTA_ABRIR[clave]) {
+    return "despensa";
+  }
+  var tienda = getStoreStorage(clave);
+  if (LUGARES_DE_GUARDAR.indexOf(tienda) !== -1) return tienda;
+  var vida = (typeof getShelfLife === "function") ? getShelfLife(clave) : null;
+  if (vida && LUGARES_DE_GUARDAR.indexOf(vida.storage) !== -1) return vida.storage;
+  if (!producto) return null;
+  return GUARDAR_POR_HOJA[producto.leafCategory] || GUARDAR_POR_CATEGORIA[producto.category] || null;
+}
+
 /** Peso por tramo, usado al puntuar platos. Caducado NO puntúa (ver abajo). */
 var EXPIRY_TIER_WEIGHT = {
   caducado: 0,

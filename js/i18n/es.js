@@ -492,6 +492,10 @@ registerI18nTable("es", {
   "ui.despensa_editar_cantidad": "Editar cantidad de {nombre}: {cantidad}",
   "ui.despensa_quitar": "Quitar {nombre}",
   "ui.despensa_sin_cocinar": "Productos del plan sin cocinar",
+  "ui.guardar_nevera": "A la nevera",
+  "ui.guardar_congelador": "Al congelador",
+  "ui.guardar_despensa": "Al armario",
+  "ui.guardar_sin_dato": "Sin dato de dónde guardarlo",
   "ui.despensa_cantidad_en_gramos": "Cantidad de {nombre} en gramos",
   // Caducidad de una fila (render-pantry.js, renderExpiryBadge). El hueco {lugar} es «en nevera» /
   // «in the fridge» / «в холодильнике»; llega con su coma o su espacio delante.

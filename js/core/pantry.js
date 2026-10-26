@@ -298,6 +298,8 @@ function listPantryEntries(todayISO) {
         acquiredAt: entry.acquiredAt || null,
         openedAt: entry.openedAt || null,
         storage: expiry.storage,
+        // Dónde se guarda (2026-10-26): agrupa la lista de la despensa.
+        guardar: (typeof dondeGuardar === "function") ? dondeGuardar(key, entry.storage, !!entry.openedAt) : null,
         expiryDate: expiry.date,
         expirySource: expiry.source,
         expiryDaysLeft: expiry.daysLeft,
@@ -1594,6 +1596,7 @@ function listNoCookStockEntries(todayISO) {
       unit: entry.unit || null,
       openedAt: entry.openedAt || null,
       storage: expiry.storage,
+      guardar: (typeof dondeGuardar === "function") ? dondeGuardar(id, entry.storage, !!entry.openedAt) : null,
       expiryDate: expiry.date,
       expirySource: expiry.source,
       expiryDaysLeft: expiry.daysLeft,
