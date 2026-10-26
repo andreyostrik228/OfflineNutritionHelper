@@ -83,6 +83,72 @@ function run(t) {
     assert.ok(/\.shopping-panel\.is-fuera-de-vista \{ display: none; \}/.test(css));
   });
 
+  // ── «Menú» (2026-10-26): los mismos botones y la misma elección ──
+
+  /** El menú: el panel del plan normal, el sin cocinar, las ideas, los botones y el aviso. */
+  function montarMenu(hayNormal, haySin) {
+    var m = montar();
+    var els = m.els;
+    els.menuSelector = new Nodo();
+    els.menuVacio = new Nodo();
+    els.menuVacioTexto = new Nodo();
+    els.menuVacioBtn = new Nodo();
+    els.noCookPanel = new Nodo();
+    els.noCookPanel.hidden = !haySin;
+    els.insightsBox = new Nodo();
+    var resultados = new Nodo();
+    var botones = { normal: new Nodo(), sincocinar: new Nodo() };
+    els.menuSelector.querySelectorAll = function () {
+      return [botones.normal, botones.sincocinar].map(function (b, i) { b.setAttribute("data-vista", i ? "sincocinar" : "normal"); return b; });
+    };
+    m.s.document.querySelector = function (sel) {
+      if (sel === ".panel--results") return resultados;
+      if (/meal-card/.test(sel)) return hayNormal ? {} : null;
+      return null;
+    };
+    return { s: m.s, els: els, resultados: resultados, botones: botones };
+  }
+
+  t.test("menú: con el sin cocinar elegido, el plan normal se esconde y el otro se ve", function () {
+    var m = montarMenu(true, true);
+    m.s.compraElegir("sincocinar");
+    assert.strictEqual(m.els.menuSelector.hidden, false);
+    assert.ok(m.resultados.classList.contains("is-solo-selector"), "del plan normal solo los botones");
+    assert.ok(!m.els.noCookPanel.classList.contains("is-fuera-de-vista"));
+    assert.strictEqual(m.els.menuVacio.hidden, true);
+    assert.strictEqual(m.botones.sincocinar.getAttribute("aria-pressed"), "true");
+    m.s.compraElegir("normal");
+    assert.ok(!m.resultados.classList.contains("is-solo-selector"));
+    assert.ok(m.els.noCookPanel.classList.contains("is-fuera-de-vista"));
+  });
+
+  t.test("menú: si el elegido no existe aún, «… ещё нет. Составить?» en su sitio", function () {
+    var m = montarMenu(false, true);
+    m.s._langMemoryState = "ru";
+    m.s.compraElegir("normal");
+    assert.strictEqual(m.els.menuVacio.hidden, false);
+    assert.ok(m.resultados.classList.contains("is-solo-selector"), "la tarjeta vacía de siempre no sale");
+    assert.ok(m.els.noCookPanel.classList.contains("is-fuera-de-vista"), "y el otro plan tampoco");
+    var sinNada = montarMenu(false, false);
+    sinNada.s.compraElegir("normal");
+    assert.strictEqual(sinNada.els.menuSelector.hidden, true, "sin ningún plan, sin botones");
+    assert.strictEqual(sinNada.els.menuVacio.hidden, true);
+  });
+
+  t.test("menú: hacer un plan lo elige, y los textos existen en los cuatro idiomas", function () {
+    var js = leer("js/ui/pestanas.js");
+    assert.ok(/compraElegir\("sincocinar"\);\s*activarPestana\("menu"\)/.test(js));
+    assert.ok(/function compraElegir[\s\S]*?_pintarSelectorDeMenu\(\);/.test(js), "una sola elección para el menú y la compra");
+    var css = leer("assets/css/style.css");
+    assert.ok(/\.panel--results\.is-solo-selector > :not\(\.menu-selector\)/.test(css));
+    ["es", "en", "ru", "uk"].forEach(function (lang) {
+      var txt = leer("js/i18n/" + lang + ".js");
+      ["ui.menu_que_plan", "ui.menu_sin_normal", "ui.menu_sin_sincocinar", "ui.menu_hacer_normal", "ui.menu_hacer_sincocinar"].forEach(function (k) {
+        assert.ok(txt.indexOf('"' + k + '":') !== -1, lang + " " + k);
+      });
+    });
+  });
+
   t.test("los textos de los botones existen en los cuatro idiomas", function () {
     ["es", "en", "ru", "uk"].forEach(function (lang) {
       var txt = leer("js/i18n/" + lang + ".js");

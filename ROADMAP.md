@@ -1,5 +1,26 @@
 # Nutrition Planner — Roadmap
 
+## Lo del 2026-10-26, quinta tanda (sello `20261026e`, 1315 tests)
+
+El dueño: «когда у меня план sin cocinar, приходится листать сначала обычный
+план… сделай разделение как в покупках… если кликает на обычный план, то ему
+говорит „обычного плана ещё нет, сделать такой?“».
+
+| Qué | Dónde | Estado |
+|---|---|---|
+| «Обычный план / Без готовки» arriba de «Menú», con la misma elección que «Compra» | `_crearSelectorDeMenu`, `_pintarSelectorDeMenu` (`pestanas.js`) | **Hecho** |
+| Hacer un plan lo elige (también en «Compra») | `compraElegir` desde los observadores | **Hecho** |
+| El elegido sin plan: «… ещё нет. Составить его?» con su botón | `#menuVacio` | **Hecho** |
+| En el móvil, la marca de arriba se queda en su icono (no cabía con la persona) | `.topbar__brand` (≤ 420 px) | **Hecho** |
+
+Con el sin cocinar elegido, o sin plan normal todavía, del panel del plan
+normal solo quedan el resumen de «Mis datos», los botones y el aviso
+(`.panel--results.is-solo-selector`); el sin cocinar empieza justo debajo de
+los botones (34 px medidos a 390). Las ideas del plan normal (`#insightsBox`)
+también se esconden. Sin ningún plan no hay botones. El botón del aviso hace
+el plan normal (si falta algún dato, lleva a «Mis datos» y lo marca) o pulsa
+«Sin cocinar».
+
 ## Lo del 2026-10-26, cuarta tanda (sello `20261026d`, 1312 tests)
 
 El dueño: «указывать скольким людям делается меню… один аккаунт, но разные

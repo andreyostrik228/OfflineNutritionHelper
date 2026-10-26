@@ -446,7 +446,13 @@ body.con-pestanas { padding-bottom: calc(var(--dock) + 16px + env(safe-area-inse
 .topbar__persona-nombre { display: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
 body.con-personas .topbar__persona:has(.topbar__persona-nombre) { padding-right: 12px; }
 body.con-personas .topbar__persona-nombre { display: inline; }
-@media (max-width: 420px) { body.con-personas .topbar__brand { display: none; } body.con-personas .topbar__persona { margin-right: auto; } }
+/* En el móvil no caben a la vez el menú, la persona, la marca entera y «Войти»:
+   la marca se queda en su icono (y con varias personas se va, y queda el nombre). */
+@media (max-width: 420px) {
+  .topbar__brand > span[data-i18n] { display: none; }
+  body.con-personas .topbar__brand { display: none; }
+  body.con-personas .topbar__persona { margin-right: auto; }
+}
 .persona-avatar {
   flex: none;
   display: inline-grid;
@@ -1986,6 +1992,26 @@ input[type="time"] { font-variant-numeric: tabular-nums; }
 .compra-selector__btn svg { flex: none; }
 .compra-selector__btn.is-on { background: var(--primary); color: var(--on-ink); box-shadow: var(--active-accent); }
 .shopping-panel.is-fuera-de-vista { display: none; }
+
+/* Qué plan se ve en «Menú» (2026-10-26, js/ui/pestanas.js): los mismos dos
+   botones que en «Compra». Con el plan sin cocinar elegido, o sin plan normal
+   todavía, del panel del plan normal solo quedan el resumen de datos, los
+   botones y el aviso de «… ещё нет». */
+.panel--results.is-solo-selector > :not(.menu-selector):not(.menu-vacio):not(.resumen-datos) { display: none !important; }
+.nocook-panel.is-fuera-de-vista,
+.insights.is-fuera-de-vista { display: none !important; }
+.menu-vacio {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  margin: 0 0 16px;
+  padding: 16px;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+.menu-vacio[hidden] { display: none; }
+.menu-vacio__texto { margin: 0; font-size: 17px; font-weight: 700; }
+.menu-vacio__btn { min-height: 52px; padding: 0 20px; }
 
 .shopping-panel__actions {
   display: grid;

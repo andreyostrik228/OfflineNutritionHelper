@@ -92,6 +92,7 @@ function initPestanas() {
 
   _crearResumenDeDatos();
   _crearSelectorDeCompra();
+  _crearSelectorDeMenu();
 
   // Tras generar, a la pestaña del menú: el usuario pulsa "Generar plan"
   // en "Mis datos" y quiere ver el resultado, no el formulario otra vez.
@@ -108,15 +109,19 @@ function initPestanas() {
       activarPestana("menu");
     }
     _pintarResumenDeDatos();
+    _pintarSelectorDeMenu();
   });
   _observar("noCookResults", function (el) {
     if (_esperandoSinCocinar && el.children.length) {
       _esperandoSinCocinar = false;
       compraElegir("sincocinar");
       activarPestana("menu");
-      var panel = document.getElementById("noCookPanel");
+      // Arriba del todo, con los botones del menú a la vista (2026-10-26):
+      // el plan sin cocinar ya es lo primero que se ve.
+      var panel = document.getElementById("menuSelector") || document.getElementById("noCookPanel");
       if (panel) setTimeout(function () { panel.scrollIntoView({ block: "start" }); }, 60);
     }
+    _pintarSelectorDeMenu();
   });
   _observar("shoppingListContainer", _pintarCuentaDeCompra, true);
   _observar("noCookShoppingList", _pintarCuentaDeCompra, true);
@@ -208,6 +213,7 @@ function compraElegir(vista) {
   _compraVista = vista;
   try { localStorage.setItem(COMPRA_VISTA_CLAVE, vista); } catch (e) { /* no se recuerda, nada más */ }
   _pintarSelectorDeCompra();
+  _pintarSelectorDeMenu();
 }
 
 function _pintarSelectorDeCompra() {
@@ -226,6 +232,111 @@ function _pintarSelectorDeCompra() {
     }
   });
   _pintarCuentaDeCompra();
+}
+
+// ── Qué plan se ve en «Menú» (2026-10-26) ─────────────────────────────
+// Pedido del dueño: «когда у меня план sin cocinar, приходится листать
+// сначала обычный план, а потом уже мой… сделай разделение как в покупках».
+// Arriba del menú, los mismos dos botones que en «Compra» y la MISMA elección
+// (_compraVista): se ve un plan o el otro. Hacer un plan lo elige. Si el
+// elegido aún no existe, en su sitio «… ещё нет. Составить?» con su botón.
+// Sin ningún plan, ni botones: el menú vacío de siempre.
+
+function _crearSelectorDeMenu() {
+  var resultados = document.querySelector(".panel--results");
+  var sin = document.getElementById("noCookPanel");
+  if (!resultados || !sin || document.getElementById("menuSelector")) return;
+
+  var caja = document.createElement("div");
+  caja.className = "compra-selector menu-selector";
+  caja.id = "menuSelector";
+  caja.setAttribute("role", "group");
+  caja.setAttribute("aria-label", _tx("ui.menu_que_plan"));
+  caja.setAttribute("data-i18n-aria-label", "ui.menu_que_plan");
+  caja.hidden = true;
+  COMPRA_VISTAS.forEach(function (v) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "compra-selector__btn";
+    b.setAttribute("data-vista", v.vista);
+    b.innerHTML = '<svg width="16" height="16" aria-hidden="true"><use href="#' + v.icono + '"/></svg>' +
+      '<span data-i18n="' + v.clave + '">' + escapeHtml(_tx(v.clave)) + "</span>";
+    b.addEventListener("click", function () {
+      compraElegir(v.vista);
+      // En el portátil se ve todo a la vez: se lleva la vista al plan elegido.
+      if (window.innerWidth > 900 && v.vista === "sincocinar" && !sin.hidden) {
+        sin.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
+    caja.appendChild(b);
+  });
+
+  var vacio = document.createElement("div");
+  vacio.className = "menu-vacio";
+  vacio.id = "menuVacio";
+  vacio.hidden = true;
+  vacio.innerHTML = '<p class="menu-vacio__texto" id="menuVacioTexto"></p>' +
+    '<button type="button" class="btn-primary menu-vacio__btn" id="menuVacioBtn"></button>';
+  vacio.querySelector("button").addEventListener("click", function () {
+    if (_compraVista === "sincocinar") {
+      var boton = document.getElementById("noCookBtn");
+      if (boton) boton.click();
+      return;
+    }
+    var form = document.getElementById("plannerForm");
+    if (!form) return;
+    // Con algún dato mal, a «Mis datos» a verlo: desde el menú no se ve el campo.
+    if (typeof form.checkValidity === "function" && !form.checkValidity()) {
+      activarPestana("datos");
+      if (typeof form.reportValidity === "function") form.reportValidity();
+      return;
+    }
+    if (typeof form.requestSubmit === "function") form.requestSubmit();
+    else form.dispatchEvent(new Event("submit", { cancelable: true }));
+  });
+
+  // Debajo del resumen de «Mis datos», que es de los dos planes.
+  var resumen = document.getElementById("resumenDatos");
+  var antes = (resumen && resumen.parentNode === resultados) ? resumen.nextSibling : resultados.firstChild;
+  resultados.insertBefore(caja, antes);
+  resultados.insertBefore(vacio, caja.nextSibling);
+  if (typeof MutationObserver === "function") {
+    new MutationObserver(_pintarSelectorDeMenu).observe(sin, { attributes: true, attributeFilter: ["hidden"] });
+  }
+  _pintarSelectorDeMenu();
+}
+
+function _pintarSelectorDeMenu() {
+  var caja = document.getElementById("menuSelector");
+  if (!caja) return;
+  var resultados = document.querySelector(".panel--results");
+  var sin = document.getElementById("noCookPanel");
+  var ideas = document.getElementById("insightsBox");
+  var vacio = document.getElementById("menuVacio");
+  var hayNormal = !!document.querySelector("#mealsContainer .meal-card:not(.meal-card--empty)");
+  var haySin = !!sin && !sin.hidden;
+  var alguno = hayNormal || haySin;
+  caja.hidden = !alguno;
+  var vista = alguno ? _compraVista : "normal";
+  var verSin = alguno && vista === "sincocinar";
+  var falta = alguno && (verSin ? !haySin : !hayNormal);
+  // Del panel del plan normal solo quedan el resumen de datos, los botones y
+  // el aviso cuando se ve el otro plan o cuando el normal aún no existe.
+  if (resultados) resultados.classList.toggle("is-solo-selector", verSin || falta);
+  if (sin) sin.classList.toggle("is-fuera-de-vista", alguno && !verSin);
+  if (ideas) ideas.classList.toggle("is-fuera-de-vista", verSin || falta);
+  if (vacio) {
+    vacio.hidden = !falta;
+    if (falta) {
+      document.getElementById("menuVacioTexto").textContent = _tx(verSin ? "ui.menu_sin_sincocinar" : "ui.menu_sin_normal");
+      document.getElementById("menuVacioBtn").textContent = _tx(verSin ? "ui.menu_hacer_sincocinar" : "ui.menu_hacer_normal");
+    }
+  }
+  Array.prototype.forEach.call(caja.querySelectorAll("[data-vista]"), function (b) {
+    var si = b.getAttribute("data-vista") === vista;
+    b.classList.toggle("is-on", si);
+    b.setAttribute("aria-pressed", si ? "true" : "false");
+  });
 }
 
 function _observar(id, fn, conAtributos) {
