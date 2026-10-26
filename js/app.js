@@ -833,6 +833,7 @@ document.addEventListener("DOMContentLoaded", function () {
   // última vez).
   // La pista de debajo de «Pasos al día» (la monta "field-hints", más abajo).
   var repintarPistaPasos = function () {};
+  var repintarPistaKcal = function () {};
 
   function applySettingsToForm(settings) {
     if (!settings) return;
@@ -868,6 +869,10 @@ document.addEventListener("DOMContentLoaded", function () {
     setVal("store", settings.store);
     setVal("wakeTime", settings.wakeTime);
     setVal("sleepTime", settings.sleepTime);
+    // «Mis calorías al día»: vacío si no se guardó, que es «la fórmula».
+    var kcalPropiasEl = document.getElementById("kcalPropias");
+    if (kcalPropiasEl) kcalPropiasEl.value = typeof settings.kcalPropias === "number" ? String(settings.kcalPropias) : "";
+    repintarPistaKcal();
 
     if (settings.budgetMode) {
       var radioId = settings.budgetMode === "small"  ? "budgetModeSmall"
@@ -1023,6 +1028,35 @@ document.addEventListener("DOMContentLoaded", function () {
       pintarPasos();
       // Restaurar los ajustes escribe el valor sin disparar eventos.
       repintarPistaPasos = pintarPasos;
+    }
+
+    // «Mis calorías al día» (2026-10-26) dice debajo lo que da la fórmula con
+    // los datos de ahora, y lo pone de ejemplo dentro del campo vacío. Se
+    // repinta con cualquier cambio del formulario: peso, pasos, objetivo…
+    var kcalEl = document.getElementById("kcalPropias");
+    var kcalHint = document.getElementById("kcalPropiasHint");
+    if (kcalEl && kcalHint && typeof readForm === "function" && typeof calculateProfile === "function") {
+      var pintarKcal = function () {
+        var calculadas = null;
+        try {
+          var datos = readForm();
+          datos.kcalPropias = null;
+          // Solo cuentan los datos del cuerpo: un presupuesto sin elegir no quita la pista.
+          datos.budgetMode = "medium";
+          datos.budgetCustom = NaN;
+          if (!validateInput(datos)) calculadas = calculateProfile(datos).kcalCalculadas;
+        } catch (e) { calculadas = null; }
+        kcalEl.placeholder = calculadas ? String(calculadas) : "";
+        if (!calculadas) { kcalHint.textContent = ""; return; }
+        var lleno = String(kcalEl.value).trim() !== "";
+        kcalHint.textContent = tFormat(lleno ? "ui.kcal_propias_pista_llena" : "ui.kcal_propias_pista_vacia", { n: calculadas });
+      };
+      if (form) {
+        form.addEventListener("input", pintarKcal);
+        form.addEventListener("change", pintarKcal);
+      }
+      pintarKcal();
+      repintarPistaKcal = pintarKcal;
     }
 
     if (typeof ONBOARDING_STEPS === "undefined") return;

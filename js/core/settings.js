@@ -38,7 +38,8 @@ var _settingsMemoryState = null;
 
 // `steps` (2026-10-22): los pasos al día, de donde sale `activity`. Se guardan
 // los dos: un perfil de antes solo trae `activity`, y app.js lo pasa a pasos.
-var SETTINGS_NUMERIC_FIELDS = ["age", "weight", "height", "steps", "activity", "workouts", "budgetCustom", "cookTime", "maxDifficulty", "planDays"];
+// `kcalPropias` (2026-10-26): «Mis calorías al día»; sin él, manda la fórmula.
+var SETTINGS_NUMERIC_FIELDS = ["age", "weight", "height", "steps", "activity", "workouts", "budgetCustom", "cookTime", "maxDifficulty", "planDays", "kcalPropias"];
 // "store" volvió el 2026-09-15 con el selector de tienda, que se había
 // retirado el 2026-08-25. Un ajuste guardado con una tienda que ya no
 // exista no rompe nada: `sanitizeInputs()` (plan-generator.js) solo

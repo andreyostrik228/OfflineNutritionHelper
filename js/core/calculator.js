@@ -15,7 +15,7 @@
  *   readForm()               → objeto con los valores del formulario
  *   validateInput(data)      → string de error o "" si todo es válido
  *   resolveBudget(data)      → número final para data.budget, o null
- *   calculateProfile(data)   → { bmr, tdee, calories, protein, fats, carbs }
+ *   calculateProfile(data)   → { bmr, tdee, calories, protein, fats, carbs, kcalCalculadas, kcalPropias }
  *   actividadPorPasos(pasos) → multiplicador de actividad (1.2 … 1.9)
  *   nivelPorPasos(pasos)     → { activity, labelKey } del tramo
  *   pasosPorActividad(a)     → pasos de un perfil guardado con el nivel de antes
@@ -40,6 +40,12 @@ var PASOS_TRAMOS = [
 // Un perfil guardado antes solo trae el multiplicador: se pasa a unos pasos
 // DENTRO de su tramo, para que sus calorías no cambien al actualizar.
 var PASOS_POR_ACTIVIDAD = { "1.2": 4000, "1.375": 6000, "1.55": 8500, "1.725": 11000, "1.9": 13000 };
+
+// «Mis calorías al día» (2026-10-26), los límites del campo. Por debajo de
+// 1.200 no hay plan sensato; por encima de 6.000 ni el motor llega (medido:
+// a 4.800 kcal, el 91-97% con 20-40 €).
+var KCAL_PROPIAS_MIN = 1200;
+var KCAL_PROPIAS_MAX = 6000;
 
 /** @param {number} pasos @returns {{hasta:number, activity:number, labelKey:string}} */
 function nivelPorPasos(pasos) {
@@ -106,8 +112,18 @@ function readForm() {
     cuisine:  (document.getElementById("cuisine") || {}).value || "mixta",
     // Prioridad de la compra (2026-09-01). Opcional igual que `cuisine`:
     // si el <select> no existiera, "balanced" = comportamiento de antes.
-    priority: (document.getElementById("priority") || {}).value || "balanced"
+    priority: (document.getElementById("priority") || {}).value || "balanced",
+    // Calorías propias (2026-10-26): vacío = las de la fórmula.
+    kcalPropias: leerKcalPropias()
   };
+}
+
+/** El número de «Mis calorías al día», o null si está vacío (o no existe el campo). */
+function leerKcalPropias() {
+  var el = document.getElementById("kcalPropias");
+  if (!el || String(el.value).trim() === "") return null;
+  var n = Number(el.value);
+  return isFinite(n) ? n : NaN;
 }
 
 /**
@@ -122,6 +138,9 @@ function validateInput(data) {
   if (data.workouts < 0 || data.workouts > 14)                return _calcTexto("ui.val_entrenos", "Entrenamientos por semana no válidos.");
   if (typeof data.steps === "number" && !(data.steps >= 0 && data.steps <= 40000)) {
     return _calcTexto("ui.val_pasos", "Pasos al día no válidos.");
+  }
+  if (data.kcalPropias != null && !(data.kcalPropias >= KCAL_PROPIAS_MIN && data.kcalPropias <= KCAL_PROPIAS_MAX)) {
+    return _calcTexto("ui.val_kcal_propias", "Mis calorías al día: entre 1200 y 6000.");
   }
 
   if (!data.budgetMode) {
@@ -237,8 +256,8 @@ function calculateProfile(data) {
                       : data.goal === "maintain" ? 0.95
                       : 0.85;
 
-  const proteinTarget = round1(data.weight * proteinMultiplier);
-  const fatsTarget    = round1(data.weight * fatMultiplier);
+  let proteinTarget = round1(data.weight * proteinMultiplier);
+  let fatsTarget    = round1(data.weight * fatMultiplier);
 
   // 5. Carbos con suelo mínimo
   let carbsTarget = (targetCalories - (proteinTarget * 4 + fatsTarget * 9)) / 4;
@@ -246,6 +265,37 @@ function calculateProfile(data) {
 
   // Recalcular calorías totales con macros redondeados
   targetCalories = proteinTarget * 4 + fatsTarget * 9 + carbsTarget * 4;
+  const kcalCalculadas = targetCalories;
+
+  // 6. Calorías propias (2026-10-26). Pedido del dueño: «мне нужен план на
+  //    4000 калорий, а выдаёт 2500-2800». La fórmula da lo de un cuerpo
+  //    medio; quien sabe que necesita más (o menos) lo escribe en «Mis
+  //    datos» y manda su número. La proteína sigue saliendo del peso (más
+  //    calorías no piden más proteína). Por encima de la fórmula, la grasa
+  //    crece en la misma proporción que las calorías: si no, todo lo de más
+  //    iba a carbohidratos (medido: 4.000 kcal para 70 kg pedían 725 g de
+  //    carbohidratos y 63 g de grasa, un 72% del día). Por debajo, si el número
+  //    no da ni para eso, se baja la grasa hasta 0,6 g/kg y luego la proteína
+  //    hasta 1,6 g/kg antes que pasarse; por debajo, manda el suelo de 80 g de
+  //    carbohidratos.
+  const propias = (typeof data.kcalPropias === "number" && data.kcalPropias > 0) ? data.kcalPropias : null;
+  if (propias) {
+    if (propias > kcalCalculadas && kcalCalculadas > 0) {
+      fatsTarget = round1(fatsTarget * propias / kcalCalculadas);
+    }
+    const suelo = 80 * 4;
+    let libre = propias - proteinTarget * 4 - fatsTarget * 9;
+    if (libre < suelo) {
+      fatsTarget = Math.max(round1(data.weight * 0.6), round1(fatsTarget - (suelo - libre) / 9));
+      libre = propias - proteinTarget * 4 - fatsTarget * 9;
+    }
+    if (libre < suelo) {
+      proteinTarget = Math.max(round1(data.weight * 1.6), round1(proteinTarget - (suelo - libre) / 4));
+      libre = propias - proteinTarget * 4 - fatsTarget * 9;
+    }
+    carbsTarget = Math.max(80, libre / 4);
+    targetCalories = proteinTarget * 4 + fatsTarget * 9 + carbsTarget * 4;
+  }
 
   return {
     bmr:      round0(bmr),
@@ -253,6 +303,9 @@ function calculateProfile(data) {
     calories: round0(targetCalories),
     protein:  round1(proteinTarget),
     fats:     round1(fatsTarget),
-    carbs:    round1(carbsTarget)
+    carbs:    round1(carbsTarget),
+    // Lo que da la fórmula, para enseñarlo junto al número propio.
+    kcalCalculadas: round0(kcalCalculadas),
+    kcalPropias: propias !== null
   };
 }

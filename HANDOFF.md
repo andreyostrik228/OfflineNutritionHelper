@@ -18,6 +18,22 @@ llevan al final un bloque «actualización 2026-10-08»). El diario fechado, con
 medidas y causas, está en la cabecera de `STATE.md` (entradas del 2026-10-07 y
 2026-10-08).
 
+### 0.0 duodecies Lo del 2026-10-26 (lee esto antes que 0.0 undecies)
+
+- **Estado:** sello `20261026a`, **1296 tests en verde**. Se puede fijar un
+  número propio de calorías en «Mis datos» (`#kcalPropias`). «Sin cocinar»
+  llega a días de 4.000+ kcal. Tabla al principio de `ROADMAP.md`.
+- **Reglas nuevas (no las rompas):**
+  - `calculateProfile` devuelve también `kcalCalculadas` (lo de la fórmula)
+    y `kcalPropias` (si manda un número propio). Con número propio, la
+    proteína sale del peso y la grasa crece con las calorías por encima de
+    la fórmula.
+  - Vaciar el campo borra `kcalPropias` de los ajustes: `null` no se guarda
+    y vuelve la fórmula.
+  - En «sin cocinar», las raciones por encima del `maxServings` de la
+    plantilla solo salen con el dinero no apartado (`day.reservaExtra`). Si
+    añades otra toma, llama a `apartarPara` antes de montarla.
+
 ### 0.0 undecies Sexta tanda del 2026-10-25 (lee esto antes que 0.0 decies)
 
 - **Estado:** sello `20261025f`, **1289 tests en verde**. Con la compra del

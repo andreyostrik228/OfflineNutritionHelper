@@ -103,6 +103,21 @@ var NO_COOK_MIN_BUDGET_FOR_SNACKS = 8;
 // productos al día, hay que organizar lo que tenemos".
 var NO_COOK_SOFT_PRODUCT_CAP = 8;
 
+// Raciones por componente con objetivos altos (2026-10-26). Pedido del dueño:
+// «нужен план на 4000 калорий». Los `maxServings` de las plantillas están
+// pensados para un día de unas 2.600 kcal. Medido ese día, con 40 días por
+// caso y 20-40 €: a 4.160 kcal el 90% de los componentes acababa en su tope y
+// el día se quedaba en el 82% (3.400 kcal); a 4.800, en el 71-74%. Por encima
+// de esta referencia el tope crece en proporción: quien necesita 4.000 kcal
+// come raciones más grandes. Por debajo no cambia nada: el tope sigue
+// impidiendo «4 raciones de chorizo» en un día normal.
+var NO_COOK_REF_KCAL = 2600;
+
+/** Cuánto crece el tope de raciones para un objetivo del día (1 hasta NO_COOK_REF_KCAL). */
+function noCookFactorRaciones(targetKcal) {
+  return Math.max(1, (Number(targetKcal) || 0) / NO_COOK_REF_KCAL);
+}
+
 // Papeles que se reutilizan de una toma a otra. Los "fresh" nunca: un
 // plato preparado se acaba, no se reparte por todo el día.
 var REUSABLE_ROLES = ["carrier", "queso", "protein", "veg", "untable", "cereal", "lacteo", "fruta", "salado", "dulce", "sopa"];
@@ -396,7 +411,8 @@ function picksProtein(picks) {
  * quitar calorías, sobra antes el queso extra que la proteína que hace
  * que la comida sea una comida.
  */
-function scaleToTarget(picks, target, targetProtein) {
+function scaleToTarget(picks, target, targetProtein, factorRaciones) {
+  var factor = factorRaciones > 1 ? factorRaciones : 1;
   var guard = 0;
   while (picksKcal(picks) < target * NO_COOK_KCAL_LOW && guard++ < 40) {
     var best = null, bestScore = -Infinity;
@@ -405,7 +421,9 @@ function scaleToTarget(picks, target, targetProtein) {
 
     for (var i = 0; i < picks.length; i++) {
       var pk = picks[i];
-      if (pk.fixed || pk.servings >= (pk.comp.maxServings || 1)) continue;
+      var tope = pk.comp.maxServings || 1;
+      if (factor > 1) tope = Math.max(tope, Math.round(tope * factor));
+      if (pk.fixed || pk.servings >= tope) continue;
       var m = servingMacros(pk.entry, 1);
       if (m.kcal <= 0) continue;
       var after = picksKcal(picks) + m.kcal;
@@ -546,7 +564,7 @@ function buildSlotFromTemplate(tpl, slotDef, targetKcal, pool, day, opts) {
     pk.fixed = true;   // el envase manda: no se reescala por calorías
   }
 
-  scaleToTarget(picks, targetKcal, opts && opts.targetProtein);
+  scaleToTarget(picks, targetKcal, opts && opts.targetProtein, opts && opts.factorRaciones);
 
   day.pendingSpend = 0;   // a partir de aquí manda `day.spent` de verdad
   var items = [];
@@ -569,6 +587,18 @@ function buildSlotFromTemplate(tpl, slotDef, targetKcal, pool, day, opts) {
       var affordablePacks = Math.floor((day.budget - day.spent) / price) + packsBefore;
       var maxServings = Math.max(1, affordablePacks * perPack - alreadyUsed);
       if (p2.servings > maxServings) p2.servings = maxServings;
+      // Las raciones de más que da un objetivo alto (noCookFactorRaciones),
+      // solo con el dinero que no está apartado para las tomas que faltan
+      // (`reservaExtra`: su parte del presupuesto según sus calorías). Si no,
+      // la comida grande deja sin nada al resto del día y el día acaba
+      // pasándose (medido el 2026-10-26: con 12 € y 4.160 kcal, de 16 a 32
+      // días de 40 pasados del presupuesto).
+      var base = p2.comp.maxServings || 1;
+      if (!p2.fixed && p2.servings > base) {
+        var apartado = Math.max(day.reserve || 0, day.reservaExtra || 0);
+        var conReserva = Math.floor((day.budget - day.spent - apartado) / price) + packsBefore;
+        p2.servings = Math.max(base, Math.min(p2.servings, conReserva * perPack - alreadyUsed));
+      }
     }
 
     var buys = registerPurchase(day, p2.entry);
@@ -749,6 +779,15 @@ function generateNoCookPlan(storeId, options) {
   };
   var kcalFor = function (key) { return targetKcal * ratioFor(key); };
   var protFor = function (key) { return targetProtein * ratioFor(key); };
+  var factorRaciones = noCookFactorRaciones(targetKcal);
+  // La parte del presupuesto de las tomas que aún faltan, por sus calorías:
+  // las raciones de más de una toma no pueden gastarla (ver arriba).
+  var porMontar = slotKeys.slice();
+  var apartarPara = function (key) {
+    porMontar = porMontar.filter(function (k) { return k !== key; });
+    day.reservaExtra = day.budget === Infinity ? 0
+      : day.budget * porMontar.reduce(function (a, k) { return a + ratioFor(k); }, 0);
+  };
 
   var built = {};
 
@@ -757,15 +796,19 @@ function generateNoCookPlan(storeId, options) {
   // plantilla "principal" para terminárselo. La cena, al ser la última
   // toma principal del día, nunca reparte: lo que abre, se lo acaba.
   day.reserve = budgetReserveFor(slotKeys.length - 1, pool, day);
+  apartarPara("lunch");
   built.lunch = buildSlot("lunch", kcalFor("lunch"), pool, day, {
     allowSplitFresh: true, targetProtein: protFor("lunch"), allowMakeAhead: allowMakeAhead,
+    factorRaciones: factorRaciones,
   });
   day.reserve = budgetReserveFor(slotKeys.length - 2, pool, day);
+  apartarPara("dinner");
   built.dinner = buildSlot("dinner", kcalFor("dinner"), pool, day, {
     allowSplitFresh: false,
     targetProtein: protFor("dinner"),
     forceTemplateKey: day.freshPending.length ? "principal" : null,
     allowMakeAhead: allowMakeAhead,
+    factorRaciones: factorRaciones,
   });
 
   // Desayuno y snacks se reparten lo que QUEDA del día, no su cuota
@@ -782,11 +825,13 @@ function generateNoCookPlan(storeId, options) {
   var remainingProtein = Math.max(0, targetProtein - usedProtein);
 
   restKeys.forEach(function (key) {
+    apartarPara(key);
     var share = ratioFor(key) / restRatio;
     built[key] = buildSlot(key, remainingKcal * share, pool, day, {
       allowSplitFresh: false,
       targetProtein: remainingProtein * share,
       allowMakeAhead: allowMakeAhead,
+      factorRaciones: factorRaciones,
     });
   });
 
@@ -972,6 +1017,7 @@ function regenerateNoCookSlot(plan, slotKey, storeId, options) {
     // Un re-roll respeta la misma regla que la generación: nada "de la
     // noche antes" salvo día 2+ de un plan de varios días.
     allowMakeAhead: opts.allowMakeAhead === true,
+    factorRaciones: noCookFactorRaciones(targetKcal),
   });
   if (!built.items.length) return { error: "no_alternative_found" };
 

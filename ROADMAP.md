@@ -1,5 +1,50 @@
 # Nutrition Planner — Roadmap
 
+## Lo del 2026-10-26 (sello `20261026a`, 1296 tests)
+
+El dueño: «если мне нужен план на 4000 калорий, мне выдаёт максимум 2500-2800,
+даже если много денег и времени». Medido antes de tocar nada:
+
+- **El motor de platos no era el problema.** Con un objetivo de 4.160 kcal
+  da el 87-101% con cualquier presupuesto, tiempo, gusto, cocina y 1/3/7
+  días.
+- **El objetivo lo ponía la fórmula y no se podía cambiar.** Un chico de
+  70 kg con 6.000 pasos que gana músculo da 2.738 kcal, y el plan llegaba
+  justo a eso.
+- **«Sin cocinar» sí tenía techo.** A 4.160 kcal se quedaba en el 82% y a
+  4.800 en el 71-74%. El 90% de los componentes acababa en su `maxServings`.
+
+| Qué | Dónde | Estado |
+|---|---|---|
+| «Своя норма калорий» en «Mis datos», opcional, 1200-6000 | `#kcalPropias`; `calculateProfile` (`kcalPropias`, `kcalCalculadas`) | **Hecho** |
+| La pista dice lo que da la fórmula con los datos de ahora | `pintarKcal` (`app.js`) | **Hecho** |
+| Se guarda con los ajustes (y en la cuenta) | `SETTINGS_NUMERIC_FIELDS` | **Hecho** |
+| «Sin cocinar»: raciones más grandes en días grandes | `noCookFactorRaciones`, `NO_COOK_REF_KCAL` | **Hecho** |
+
+**Los macros con un número propio.**
+
+- La proteína sigue saliendo del peso.
+- Por encima de la fórmula, la grasa crece en la misma proporción que las
+  calorías. Si no, todo lo de más iba a carbohidratos: 4.000 kcal para 70 kg
+  pedían 725 g, el 72% del día.
+- Por debajo de la fórmula, si el número no da ni para la proteína y la
+  grasa, se baja la grasa hasta 0,6 g/kg y luego la proteína hasta 1,6 g/kg.
+- El suelo de 80 g de carbohidratos se mantiene.
+- Con 4.000 kcal para 70 kg, el plan da de media el 96% (40 planes, mínimo
+  3.427 kcal).
+
+**«Sin cocinar».**
+
+- El tope de raciones de cada componente crece con `objetivo / 2.600` (por
+  debajo de 2.600 kcal no cambia nada).
+- Las raciones de más solo se pagan con el dinero que no está apartado para
+  las tomas que faltan (`day.reservaExtra`, su parte del presupuesto según
+  sus calorías). Sin esto, con 12 € los días pasados del presupuesto se
+  doblaban.
+- Resultado, con 20-40 €: a 4.160 kcal, del 82% al 93-95%; a 4.800, del
+  71-74% al 91-96%.
+- Con 12 € sigue como antes (77%): sin cocinar, ese dinero no da para tanto.
+
 ## Lo del 2026-10-25, sexta tanda (sello `20261025f`, 1289 tests)
 
 El dueño: «когда выбираешь план sin cocinar то в покупках всё равно первым
