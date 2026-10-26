@@ -428,6 +428,90 @@ body.con-pestanas { padding-bottom: calc(var(--dock) + 16px + env(safe-area-inse
 @media (max-width: 359px) {
   .topbar__brand > span:not(.topbar__brand-mark) { display: none; }
 }
+/* Quién come (2026-10-26, js/ui/familia-ui.js): su inicial en un círculo de
+   su color; con más de una persona en casa, también el nombre. */
+.topbar__persona {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 44px;
+  max-width: 140px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--pill);
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 700;
+}
+.topbar__persona-nombre { display: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
+body.con-personas .topbar__persona:has(.topbar__persona-nombre) { padding-right: 12px; }
+body.con-personas .topbar__persona-nombre { display: inline; }
+@media (max-width: 420px) { body.con-personas .topbar__brand { display: none; } body.con-personas .topbar__persona { margin-right: auto; } }
+.persona-avatar {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: #fff;
+  font: 800 16px/1 var(--font-display);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+}
+.persona-avatar--grande { width: 48px; height: 48px; font-size: 22px; }
+.persona-avatar--mas { background: var(--surface); color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--line-strong); text-shadow: none; }
+
+.personas-intro { margin: 0; }
+.personas-lista { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.persona { display: flex; align-items: center; gap: 6px; padding: 6px; border-radius: var(--r-md); background: var(--surface-2); }
+.persona.is-ahora { box-shadow: inset 0 0 0 2px var(--primary); }
+.persona__elegir { flex: 1 1 auto; display: flex; align-items: center; gap: 12px; min-width: 0; min-height: 56px; padding: 4px 6px; border: 0; background: transparent; color: var(--ink); text-align: left; }
+.persona__texto { display: grid; min-width: 0; }
+.persona__nombre { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 17px; font-weight: 800; }
+.persona__nota { color: var(--text-2); font-size: 13px; }
+.persona__input { flex: 1 1 auto; min-width: 0; }
+.persona__accion { flex: none; min-height: 40px; padding: 0 10px; border: 0; border-radius: var(--pill); background: var(--surface); color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--line-strong); font-size: 13px; font-weight: 700; }
+.persona__accion--borrar.is-armado { background: var(--danger); color: #fff; box-shadow: none; }
+.personas-nueva { display: grid; gap: 6px; }
+.personas-nueva label { font-weight: 700; }
+.personas-nueva__fila { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.personas-nueva__fila .btn-primary { min-height: 52px; padding: 0 18px; }
+.personas-error { margin: 0; color: var(--danger-deep); font-weight: 600; }
+
+/* «Para quién es el menú» (en «Mis datos») y el bloque de la familia en el menú. */
+.familia-campo { display: grid; gap: 10px; margin-top: 18px; }
+.familia-quienes, .familia-plan__ver { display: flex; flex-wrap: wrap; gap: 8px; }
+.familia-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 4px 12px 4px 4px;
+  border: 1.5px solid var(--field-line);
+  border-radius: var(--pill);
+  background: var(--surface-2);
+  color: var(--ink);
+  font-weight: 700;
+}
+.familia-chip .persona-avatar { width: 30px; height: 30px; font-size: 15px; }
+.familia-chip.is-on { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); }
+.familia-chip:disabled { opacity: 1; cursor: default; }
+.familia-chip__nota { color: var(--text-3); font-size: 12px; font-weight: 600; }
+.familia-invitados { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.familia-invitados__texto { font-weight: 700; }
+.familia-invitados__pasos { display: inline-flex; align-items: center; gap: 6px; }
+.familia-invitados__n { min-width: 2ch; text-align: center; font: 800 22px/1 var(--font-display); }
+.familia-opciones { display: grid; gap: 8px; }
+.familia-opciones[hidden] { display: none; }
+.familia-elige { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border: 1.5px solid var(--field-line); border-radius: 18px; background: var(--surface-2); }
+.familia-elige__btn { min-height: 46px; padding: 6px 8px; border: 0; border-radius: 14px; background: transparent; color: var(--text-2); font-size: 14px; font-weight: 700; line-height: 1.2; }
+.familia-elige__btn.is-on { background: var(--primary); color: var(--on-ink); box-shadow: var(--active-accent); }
+.familia-plan { display: grid; gap: 6px; margin: 0 0 14px; padding: 12px 14px; border-radius: var(--r-md); background: var(--surface-2); }
+.familia-plan[hidden] { display: none; }
+.familia-plan__titulo { margin: 0; font-weight: 800; }
+.familia-plan__raciones { margin: 0; font-weight: 700; }
+.familia-plan__nota { margin: 0; color: var(--text-2); font-size: 14px; }
+
 .topbar__menu-btn {
   display: grid;
   place-items: center;

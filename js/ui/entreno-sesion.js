@@ -66,7 +66,8 @@
 var ENTRENO_CLAVE_SONIDO = "nutritionPlanner.entrenoSonido.v1";
 var ENTRENO_CLAVE_VIBRACION = "nutritionPlanner.entrenoVibracion.v1";
 /** Si se pregunta cómo se encuentra y la reserva de cada serie (2026-10-25; se quita en «Perfil»). */
-var ENTRENO_CLAVE_PREGUNTAS = "nutritionPlanner.entrenoPreguntas.v1";
+// De la persona activa (js/core/perfiles.js, 2026-10-26): el titular, la de siempre.
+var ENTRENO_CLAVE_PREGUNTAS = (typeof perfilClave === "function") ? perfilClave("nutritionPlanner.entrenoPreguntas.v1") : "nutritionPlanner.entrenoPreguntas.v1";
 var ENTRENO_DESCANSO_PASO_S = 15;
 // La serie cuya reserva se pregunta ahora ("ej-serie"): se abre al marcarla o al tocar su «запас»; null si ninguna.
 var _sesionRirAbierto = null;

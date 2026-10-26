@@ -198,7 +198,18 @@ function filterDislikedProducts(products, dislikes) {
  * alergia, donde no saber debe excluir).
  * @returns {string[]}
  */
+// Menú de varias personas (2026-10-26, js/core/familia.js): mientras se
+// genera el de otra persona, o el común de todos, mandan SUS «no me gusta».
+// Lo fija app.js justo antes de generar y lo quita al acabar.
+var _dislikesDeFamilia = null;
+
+/** @param {string[]|null} lista - null para volver a los de «Mis datos» */
+function fijarDislikesDeFamilia(lista) {
+  _dislikesDeFamilia = Array.isArray(lista) ? lista.slice() : null;
+}
+
 function getDislikes() {
+  if (_dislikesDeFamilia) return _dislikesDeFamilia.slice();
   if (typeof document !== "undefined" && document.getElementById) {
     var el = document.getElementById("dislikes");
     if (el && typeof el.value === "string") {

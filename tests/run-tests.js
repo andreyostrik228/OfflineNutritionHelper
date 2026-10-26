@@ -100,6 +100,7 @@ var suites = [
   "kcal-propias.test",
   "dias-plan.test",
   "donde-guardar.test",
+  "familia.test",
   "plan-store.test",
   "weight-log.test",
   "body-measures.test",

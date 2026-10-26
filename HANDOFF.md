@@ -18,6 +18,24 @@ llevan al final un bloque «actualización 2026-10-08»). El diario fechado, con
 medidas y causas, está en la cabecera de `STATE.md` (entradas del 2026-10-07 y
 2026-10-08).
 
+### 0.0 terdecies Personas de la casa, 2026-10-26 (lee esto antes que 0.0 duodecies)
+
+- **Estado:** sello `20261026d`, **1312 tests en verde**. Personas como en
+  Netflix (`js/core/perfiles.js`), cada una con lo suyo, y el menú de varias
+  personas (`js/core/familia.js`, `js/ui/familia-ui.js`). Tabla al principio
+  de `ROADMAP.md`.
+- **Reglas nuevas (no las rompas):**
+  - Todo lo que sea DE UNA PERSONA guarda bajo `perfilClave(base)`, y su
+    base va en `PERFIL_CLAVES_PROPIAS` (y en `PERFIL_CLAVES_NUBE` si viaja a
+    la cuenta). Lo de la casa, con su clave de siempre.
+  - `perfiles.js` carga antes que cualquier módulo de esa lista (lo exige un
+    test): las claves se calculan al cargar. Cambiar de persona = recargar.
+  - Nada que suba los ajustes puede saltarse `pushSettingsToCloud` /
+    `pushAllToCloud`: con otra persona activa son los que evitan que sus
+    datos caigan en el sitio del titular.
+  - Lo que se compra o se guarda en «Mis planes» sale de `tomasDeLaCasa(d)`,
+    no de `lastGeneratedDays`.
+
 ### 0.0 duodecies Lo del 2026-10-26 (lee esto antes que 0.0 undecies)
 
 - **Estado:** sello `20261026a`, **1296 tests en verde**. Se puede fijar un

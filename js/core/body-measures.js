@@ -40,7 +40,8 @@
  */
 
 var MEDIDAS_PARTES = ["cintura", "pecho", "cadera", "brazo", "muslo"];
-var MEDIDAS_CLAVE = "weekplate-medidas-v1";
+// De la persona activa (js/core/perfiles.js, 2026-10-26): el titular, la de siempre.
+var MEDIDAS_CLAVE = (typeof perfilClave === "function") ? perfilClave("weekplate-medidas-v1") : "weekplate-medidas-v1";
 var MEDIDAS_CAMPO_NUBE = "_medidas";
 var MEDIDAS_MAX_ENTRADAS = 365;
 var MEDIDA_MIN_CM = 10;

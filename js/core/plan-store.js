@@ -22,7 +22,8 @@
  * ─────────────────────────────────────────────────────────────────────────
  */
 
-var PLAN_STORAGE_KEY = "weekplate-plan-v1";
+// De la persona activa (js/core/perfiles.js, 2026-10-26): el titular, la de siempre.
+var PLAN_STORAGE_KEY = (typeof perfilClave === "function") ? perfilClave("weekplate-plan-v1") : "weekplate-plan-v1";
 var PLAN_STORAGE_VERSION = 1;
 
 /** Un plan válido tiene al menos un día, y cada día al menos una toma. */
@@ -43,7 +44,7 @@ function planAlmacen() {
 
 /**
  * @param {object|null} storage - normalmente localStorage
- * @param {object} estado - { dias, store, dayOptions, profile, data, report }
+ * @param {object} estado - { dias, store, dayOptions, profile, data, report, familia }
  * @returns {boolean} true si quedó guardado
  */
 function planGuardar(storage, estado) {
@@ -56,7 +57,9 @@ function planGuardar(storage, estado) {
       dayOptions: estado.dayOptions || null,
       profile: estado.profile || null,
       data: estado.data || null,
-      report: estado.report || null
+      report: estado.report || null,
+      // El menú de varias personas (2026-10-26, js/core/familia.js), si lo hay.
+      familia: estado.familia || null
     }));
     return true;
   } catch (e) {
@@ -84,11 +87,21 @@ function planLeer(storage) {
       dayOptions: p.dayOptions || null,
       profile: p.profile,
       data: p.data,
-      report: p.report || null
+      report: p.report || null,
+      familia: planFamiliaValida(p.familia) ? p.familia : null
     };
   } catch (e) {
     return null;
   }
+}
+
+/** Una familia guardada que se pueda volver a pintar: personas con id y ración, y, si hay planes, válidos. */
+function planFamiliaValida(f) {
+  if (!f || typeof f !== "object" || !Array.isArray(f.personas) || !f.personas.length) return false;
+  var personasBien = f.personas.every(function (p) { return p && typeof p.id === "string" && typeof p.escala === "number"; });
+  if (!personasBien || !(f.suma > 0)) return false;
+  if (f.modo !== "cada") return true;
+  return !!f.planes && f.personas.every(function (p) { return f.planes[p.id] && planDiasValidos(f.planes[p.id].dias); });
 }
 
 /** @param {object|null} storage */
@@ -106,7 +119,8 @@ function planBorrar(storage) {
 // tener a la vez en pantalla y cada uno se rehace por su lado. Cada día es
 // un plan de generateNoCookPlan (js/engine/no-cook-generator.js).
 
-var PLAN_SIN_COCINAR_KEY = "weekplate-plan-sincocinar-v1";
+// De la persona activa (js/core/perfiles.js, 2026-10-26): el titular, la de siempre.
+var PLAN_SIN_COCINAR_KEY = (typeof perfilClave === "function") ? perfilClave("weekplate-plan-sincocinar-v1") : "weekplate-plan-sincocinar-v1";
 var PLAN_SIN_COCINAR_MAX_DIAS = 7;
 
 /** Un día válido: tomas con su clave, y productos con id y nombre. */

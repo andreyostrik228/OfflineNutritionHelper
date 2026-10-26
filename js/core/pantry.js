@@ -672,6 +672,8 @@ function savePlanForToday(meals, storeId, dayOptions, planDateKey) {
     return {
       key: meal.key,
       label: meal.label,
+      // De quién es la toma en un menú de varias personas (2026-10-26).
+      quien: typeof meal.quien === "string" ? meal.quien : null,
       // time: "HH:MM" si el plan se generó con horario (js/core/
       // meal-schedule.js) — null en planes sin horario calculado. Puro
       // dato de contabilidad aquí: nadie en pantry.js lee ni calcula con
@@ -808,6 +810,7 @@ function replacePendingMealsForToday(entryId, newMeals, storeId, dayOptions) {
     return {
       key: meal.key,
       label: meal.label,
+      quien: typeof meal.quien === "string" ? meal.quien : null,
       time: typeof meal.time === "string" ? meal.time : null,
       items: (meal.items || []).map(function (item) {
         return { name: item.name, requiredGrams: item.grams };

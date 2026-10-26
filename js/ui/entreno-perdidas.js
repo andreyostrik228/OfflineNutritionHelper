@@ -26,7 +26,8 @@
  * ─────────────────────────────────────────────────────────────────────────
  */
 
-var ENTRENO_CLAVE_PERDIDAS = "nutritionPlanner.entrenoPerdidas.v1";
+// De la persona activa (js/core/perfiles.js, 2026-10-26): el titular, la de siempre.
+var ENTRENO_CLAVE_PERDIDAS = (typeof perfilClave === "function") ? perfilClave("nutritionPlanner.entrenoPerdidas.v1") : "nutritionPlanner.entrenoPerdidas.v1";
 var _perdidasCableado = false;
 
 function _perdEsc(texto) { return escapeHtml(String(texto)); }

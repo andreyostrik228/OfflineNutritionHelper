@@ -246,6 +246,8 @@ function _hydrateLocalFrom(cloudRow) {
   if (typeof mergeWorkoutsFromCloud === "function") mergeWorkoutsFromCloud(row.settings && row.settings._entrenos);
   // Gana la nube: el stock «sin cocinar» se sustituye, como pantry_state (js/core/pantry.js).
   if (typeof mergeNoCookStockFromCloud === "function") mergeNoCookStockFromCloud(row.settings && row.settings._sinCocinar, "reemplazar");
+  // Las demás personas de la casa (2026-10-26, js/core/perfiles.js): las que faltan.
+  if (typeof perfilesDesdeNube === "function") perfilesDesdeNube(row.settings && row.settings._personas);
 }
 
 /** Tras fijar el marcador: lo que el dispositivo tenía y la nube no, sube. */
@@ -284,6 +286,8 @@ function _wipeLocal() {
   if (typeof medidasBorrarAlmacen === "function") medidasBorrarAlmacen(medidasAlmacen());
   // Y el diario de entrenamiento y el cuestionario, igual.
   if (typeof entrenoNubeBorrarDispositivo === "function") entrenoNubeBorrarDispositivo();
+  // Y las demás personas de la casa, con todo lo suyo (2026-10-26).
+  if (typeof perfilesBorrarTodo === "function") perfilesBorrarTodo();
 }
 
 /**
@@ -305,6 +309,15 @@ function runReconciliation() {
       // nada: lo local se queda como está y se vuelve a intentar en el
       // próximo inicio de sesión o recarga.
       if (!cloudRow) return { status: "cloud_unavailable" };
+
+      // Con otra persona activa (2026-10-26, js/core/perfiles.js) no se
+      // reconcilia: los módulos leen las claves de ESA persona, y comparar o
+      // hidratar con lo del titular mezclaría a las dos. Solo se traen las
+      // personas que falten; lo demás, al volver al titular (recarga).
+      if (typeof perfilActivoId === "function" && typeof PERFIL_TITULAR !== "undefined" && perfilActivoId() !== PERFIL_TITULAR) {
+        if (typeof perfilesDesdeNube === "function") perfilesDesdeNube(cloudRow.settings && cloudRow.settings._personas);
+        return { status: "perfil_no_titular" };
+      }
 
       var syncedUserId = getCloudSyncedUserId();
       var localSnapshot = _readLocalSnapshot();
@@ -432,6 +445,7 @@ function resolveConflictMerge(cloudRow) {
   if (typeof mergeWorkoutsFromCloud === "function") mergeWorkoutsFromCloud(cloud.settings && cloud.settings._entrenos);
   // Se unen los dos: el stock «sin cocinar» se suma, como el de ingredientes.
   if (typeof mergeNoCookStockFromCloud === "function") mergeNoCookStockFromCloud(cloud.settings && cloud.settings._sinCocinar, "sumar");
+  if (typeof perfilesDesdeNube === "function") perfilesDesdeNube(cloud.settings && cloud.settings._personas);
 
   return Promise.resolve((typeof pushAllToCloud === "function") ? pushAllToCloud({ setMigratedAt: true }) : null)
     .then(function () {
@@ -448,6 +462,11 @@ function resolveConflictMerge(cloudRow) {
  * defensa, no el único mecanismo (ver cabecera del archivo).
  */
 function onAuthSignOut() {
+  // Con otra persona activa, los módulos siguen apuntando a SUS claves aunque
+  // ya no exista: se recarga para volver al titular (2026-10-26).
+  var eraOtraPersona = typeof perfilActivoId === "function" && typeof PERFIL_TITULAR !== "undefined"
+    && perfilActivoId() !== PERFIL_TITULAR;
   _wipeLocal();
   clearCloudSyncedUserId();
+  if (eraOtraPersona && typeof location !== "undefined" && typeof location.reload === "function") location.reload();
 }

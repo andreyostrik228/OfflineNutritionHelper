@@ -43,7 +43,8 @@
  */
 
 /** Con el prefijo del proyecto: así entra solo en «Descargar mis datos» (exportarMisDatos, js/app.js). */
-var ENTRENO_LOG_CLAVE = "nutritionPlanner.entrenoDiario.v1";
+// De la persona activa (js/core/perfiles.js, 2026-10-26): el titular, la de siempre.
+var ENTRENO_LOG_CLAVE = (typeof perfilClave === "function") ? perfilClave("nutritionPlanner.entrenoDiario.v1") : "nutritionPlanner.entrenoDiario.v1";
 var ENTRENO_LOG_MAX_SESIONES = 400;
 var ENTRENO_LOG_MAX_EJERCICIOS = 20;
 var ENTRENO_LOG_MAX_SERIES = 12;

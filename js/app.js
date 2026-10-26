@@ -262,6 +262,14 @@ document.addEventListener("DOMContentLoaded", function () {
   // próxima confirmación sustituye (replacePendingNoCookSlotsForToday).
   var pendingReplaceNoCookEntryId = null;
 
+  // Menú de varias personas (2026-10-26, js/core/familia.js): quién come, con
+  // qué ración y, si cada uno tiene el suyo, el plan de cada persona
+  // (`planes[id]`, los mismos arrays que lastGenerated* cuando se ve el suyo).
+  // null si come solo la persona activa. `familiaViendo`: de quién es el menú
+  // en pantalla.
+  var familiaActual = null;
+  var familiaViendo = null;
+
   var budgetModeRadios   = document.querySelectorAll('input[name="budgetMode"]');
   var budgetCustomField  = document.getElementById("budgetCustomField");
   var budgetCustomInput  = document.getElementById("budgetCustom");
@@ -334,6 +342,9 @@ document.addEventListener("DOMContentLoaded", function () {
     lastGeneratedData = null;
     lastGeneratedReport = null;
     pendingReplaceEntryId = null;
+    familiaActual = null;
+    familiaViendo = null;
+    if (typeof pintarFamiliaPlan === "function") pintarFamiliaPlan(null);
     if (planSavedNoticeEl) {
       planSavedNoticeEl.hidden = true;
       planSavedNoticeEl.innerHTML = "";
@@ -365,7 +376,9 @@ document.addEventListener("DOMContentLoaded", function () {
       planDays: (lastGeneratedDays && lastGeneratedDays.length) || 1,
       dayIndex: dayIndex
     });
-    var res = regeneratePlanMeal(dayMeals, mealKey, swapOptions, lastGeneratedStore, pantryState);
+    var res = conDislikesDeLaVista(function () {
+      return regeneratePlanMeal(dayMeals, mealKey, swapOptions, lastGeneratedStore, pantryState);
+    });
 
     if (!res || res.error || !res.meal) {
       btn.disabled = false;
@@ -423,7 +436,9 @@ document.addEventListener("DOMContentLoaded", function () {
       (day.meals || []).forEach(function (meal, idx) {
         if (!lleva(meal)) return;
         var opciones = Object.assign({}, lastGeneratedDayOptions, { planDays: lastGeneratedDays.length, dayIndex: d });
-        var res = regeneratePlanMeal(day.meals, meal.key, opciones, lastGeneratedStore, pantryState);
+        var res = conDislikesDeLaVista(function () {
+          return regeneratePlanMeal(day.meals, meal.key, opciones, lastGeneratedStore, pantryState);
+        });
         if (!res || res.error || !res.meal || lleva(res.meal)) {
           if (diasAtascados.indexOf(d) === -1) diasAtascados.push(d);
           return;
@@ -482,7 +497,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (i === d) return;
         (day.meals || []).forEach(function (m) { if (m && m.dishName) data.avoidDishNames.push(m.dishName); });
       });
-      var dia = generateDietPlan(lastGeneratedProfile, data);
+      var dia = conDislikesDeLaVista(function () { return generateDietPlan(lastGeneratedProfile, data); });
       if (typeof computeMealSchedule === "function" && typeof readScheduleSettings === "function") {
         dia.meals = computeMealSchedule(dia.meals, readScheduleSettings());
       }
@@ -499,14 +514,86 @@ document.addEventListener("DOMContentLoaded", function () {
    */
   function guardarPlanActual() {
     if (typeof planGuardar !== "function" || !lastGeneratedDays) return;
+    // Con cada uno su menú, lo guardado es siempre el de la persona activa
+    // (el primero), se esté viendo el que se esté viendo.
+    var propio = (familiaActual && familiaActual.planes && familiaActual.planes[familiaActual.personas[0].id]) || null;
     planGuardar(planAlmacen(), {
-      dias: lastGeneratedDays,
+      dias: propio ? propio.dias : lastGeneratedDays,
       store: lastGeneratedStore,
-      dayOptions: lastGeneratedDayOptions,
-      profile: lastGeneratedProfile,
-      data: lastGeneratedData,
-      report: lastGeneratedReport
+      dayOptions: propio ? propio.dayOptions : lastGeneratedDayOptions,
+      profile: propio ? propio.profile : lastGeneratedProfile,
+      data: propio ? propio.data : lastGeneratedData,
+      report: propio ? propio.report : lastGeneratedReport,
+      familia: familiaActual
     });
+  }
+
+  // ── Menú de varias personas (2026-10-26) ───────────────────────────────
+
+  /** Los «no me gusta» del menú en pantalla: los de todos en el común, los de esa persona en el suyo. */
+  function dislikesDeLaVista() {
+    if (!familiaActual || typeof familiaDislikes !== "function") return null;
+    if (familiaActual.modo === "comun") {
+      return familiaDislikes(familiaActual.personas.map(function (p) { return p.dislikes; }));
+    }
+    var p = familiaActual.personas.filter(function (x) { return x.id === familiaViendo; })[0];
+    return p ? (p.dislikes || []) : null;
+  }
+
+  /** Corre `fn` (generar, cambiar un plato…) con los «no me gusta» del menú en pantalla. */
+  function conDislikesDeLaVista(fn) {
+    var lista = dislikesDeLaVista();
+    var fijar = lista && typeof fijarDislikesDeFamilia === "function";
+    if (fijar) fijarDislikesDeFamilia(lista);
+    try { return fn(); } finally { if (fijar) fijarDislikesDeFamilia(null); }
+  }
+
+  /**
+   * Las tomas del día `d` para TODA la casa: lo que se compra y lo que se
+   * guarda en «Mis planes». Sin familia, las del plan en pantalla. En el menú
+   * común, las mismas multiplicadas por las raciones de todos; con cada uno el
+   * suyo, las de cada persona, con su nombre (y una clave propia para que
+   * «Mis planes» no confunda el desayuno de una con el de otra).
+   */
+  function tomasDeLaCasa(d) {
+    var delDia = function (dias) { return (dias && dias[d] && dias[d].meals) || []; };
+    if (!familiaActual) return delDia(lastGeneratedDays);
+    if (familiaActual.modo === "comun") return familiaEscalarTomas(delDia(lastGeneratedDays), familiaActual.suma);
+    var todas = [];
+    familiaActual.personas.forEach(function (p, i) {
+      var plan = familiaActual.planes && familiaActual.planes[p.id];
+      if (!plan) return;
+      // Los invitados comen lo de la persona activa (la primera).
+      var factor = i === 0 ? 1 + (familiaActual.invitados || 0) : 1;
+      familiaEscalarTomas(delDia(plan.dias), factor).forEach(function (m) {
+        m.key = (m.key || "toma") + "@" + p.id;
+        m.quien = p.nombre;
+        todas.push(m);
+      });
+    });
+    return todas;
+  }
+
+  /** Pinta el bloque de la familia en el menú y deja ver el de cada persona. */
+  function pintarFamilia() {
+    if (typeof pintarFamiliaPlan !== "function") return;
+    pintarFamiliaPlan(familiaActual, familiaViendo, verMenuDe);
+  }
+
+  /** Con cada uno su menú: pasa a la pantalla el de otra persona. */
+  function verMenuDe(id) {
+    if (!familiaActual || !familiaActual.planes || !familiaActual.planes[id] || id === familiaViendo) return;
+    var plan = familiaActual.planes[id];
+    familiaViendo = id;
+    lastGeneratedDays = plan.dias;
+    lastGeneratedMeals = plan.dias[0].meals;
+    lastGeneratedDayOptions = plan.dayOptions;
+    lastGeneratedProfile = plan.profile;
+    lastGeneratedData = plan.data;
+    lastGeneratedReport = plan.report;
+    rerenderCurrentPlan();
+    renderDayDots(lastGeneratedDays.length);
+    pintarFamilia();
   }
 
   /**
@@ -526,8 +613,16 @@ document.addEventListener("DOMContentLoaded", function () {
     lastGeneratedProfile = guardado.profile;
     lastGeneratedData = guardado.data;
     lastGeneratedReport = guardado.report || guardado.dias[0].report || null;
+    familiaActual = guardado.familia || null;
+    familiaViendo = familiaActual ? familiaActual.personas[0].id : null;
+    if (familiaActual && familiaActual.planes && familiaActual.planes[familiaViendo]) {
+      // Los mismos arrays en los dos sitios, como al generar: «Cambiar» un
+      // plato del menú propio lo cambia también en `planes`.
+      familiaActual.planes[familiaViendo].dias = lastGeneratedDays;
+    }
     rerenderCurrentPlan();
     renderDayDots(lastGeneratedDays.length);
+    pintarFamilia();
   }
 
   /**
@@ -540,8 +635,10 @@ document.addEventListener("DOMContentLoaded", function () {
   function pintarListaDeCompraActual() {
     if (!lastGeneratedMeals || typeof renderShoppingList !== "function") return;
     var dias = lastGeneratedDays;
-    if (dias && dias.length > 1) {
-      var todas = dias.reduce(function (acc, d) { return acc.concat(d.meals || []); }, []);
+    // Con familia, la compra es la de toda la casa (tomasDeLaCasa).
+    if ((dias && dias.length > 1) || familiaActual) {
+      var todas = [];
+      for (var d = 0; d < dias.length; d++) todas = todas.concat(tomasDeLaCasa(d));
       renderShoppingList(todas, lastGeneratedStore, dias.length);
     } else {
       renderShoppingList(lastGeneratedMeals, lastGeneratedStore);
@@ -685,6 +782,48 @@ document.addEventListener("DOMContentLoaded", function () {
    * el gate una segunda vez.
    * @param {object} data - ya validado, con data.budget resuelto
    */
+  /**
+   * Guarda «Mis datos» de la persona activa. Al generar un plan (con `data`
+   * ya validado) y, desde el 2026-10-26, al cambiar de persona: si no, quien
+   * rellenaba los datos de mamá y volvía a los suyos los perdía (solo se
+   * guardaban al generar). Sin `data`, se leen del formulario.
+   * @param {object} [data]
+   */
+  function guardarDatosDelFormulario(data) {
+    if (typeof saveSettings !== "function") return;
+    if (!data) {
+      if (typeof readForm !== "function") return;
+      data = readForm();
+      if (data.budgetMode && typeof resolveBudget === "function") data.budget = resolveBudget(data);
+      data.planDays = planDays;
+    }
+    var scheduleSettings = (typeof readScheduleSettings === "function") ? readScheduleSettings() : {};
+    // Se parte de lo YA guardado, no de un objeto vacio: saveSettings()
+    // reemplaza el objeto entero, asi que cualquier ajuste que no salga
+    // del formulario (hoy hideOneDayCostNote) se borraria en cada
+    // generacion sin que nadie se entere.
+    var toSave = (typeof getSettings === "function") ? getSettings() : {};
+    delete toSave.updatedAt;
+    Object.keys(data).forEach(function (k) { toSave[k] = data[k]; });
+    Object.keys(scheduleSettings).forEach(function (k) { toSave[k] = scheduleSettings[k]; });
+
+    // "No me gusta": texto libre separado por comas -> array. El
+    // saneado real (recorte, deduplicado, topes) lo hace
+    // sanitizeStringList() en settings.js; aquí solo se trocea.
+    var dislikesEl = document.getElementById("dislikes");
+    if (dislikesEl) {
+      toSave.dislikes = String(dislikesEl.value || "")
+        .split(",")
+        .map(function (part) { return part.trim(); })
+        .filter(Boolean);
+    }
+
+    saveSettings(toSave);
+    if (typeof pushSettingsToCloud === "function") pushSettingsToCloud();
+  }
+  // familia-ui.js lo llama antes de cambiar de persona.
+  window.guardarDatosDelFormulario = guardarDatosDelFormulario;
+
   function runGeneration(data) {
     showSpinner();
 
@@ -718,13 +857,53 @@ document.addEventListener("DOMContentLoaded", function () {
         // safeInit: si fallara, el plan se sigue mostrando con normalidad,
         // solo sin horario (mismo principio que el resto de módulos
         // opcionales, ver cabecera del archivo).
-        var days = generateDietPlanDays(profile, data, planDays, function (day, d) {
+        var horario = function (day, d) {
           safeInit(d === 0 ? "meal-schedule" : "meal-schedule-day-" + d, function () {
             if (typeof computeMealSchedule === "function") {
               day.meals = computeMealSchedule(day.meals, readScheduleSettings());
             }
           });
+        };
+
+        // ── Menú de varias personas (2026-10-26, js/core/familia.js) ─────
+        // Se genera sobre una COPIA de `data`: el presupuesto de la ración de
+        // referencia no tiene que acabar guardado en «Mis datos».
+        var familia = null;
+        safeInit("familia-planear", function () {
+          if (typeof familiaPlanear === "function") {
+            familia = familiaPlanear(data, profile, (typeof getDislikes === "function") ? getDislikes() : []);
+          }
         });
+        familiaActual = familia;
+        familiaViendo = familia ? familia.personas[0].id : null;
+        var gen = Object.assign({}, data);
+        var days;
+        if (familia && familia.modo === "cada") {
+          // Cada uno su menú, con sus datos y sus «no me gusta». Con el
+          // presupuesto de la familia, a cada ración le toca su parte según
+          // sus calorías (los invitados cuentan como la persona activa).
+          var kcalTotal = familia.personas.reduce(function (a, p) { return a + p.profile.calories; }, 0)
+            + familia.invitados * profile.calories;
+          familia.planes = {};
+          familia.personas.forEach(function (p) {
+            var suyos = Object.assign({}, p.datos, { planDays: planDays, dayIndex: 0 });
+            suyos.budget = familiaPresupuestoCada(data.budget, familia.presupuesto, p.profile.calories, kcalTotal);
+            if (typeof fijarDislikesDeFamilia === "function") fijarDislikesDeFamilia(p.dislikes || []);
+            var diasP;
+            try { diasP = generateDietPlanDays(p.profile, suyos, planDays, horario); }
+            finally { if (typeof fijarDislikesDeFamilia === "function") fijarDislikesDeFamilia(null); }
+            familia.planes[p.id] = {
+              dias: diasP, profile: p.profile, data: suyos, report: diasP[0].report,
+              dayOptions: { budget: suyos.budget, cookTime: suyos.cookTime, taste: suyos.taste }
+            };
+          });
+          days = familia.planes[familia.personas[0].id].dias;
+          gen = familia.planes[familia.personas[0].id].data;
+        } else {
+          // Un menú para todos: el de la persona activa, comprado `suma` veces.
+          if (familia) gen.budget = familiaPresupuestoComun(data.budget, familia.presupuesto, familia.suma);
+          days = conDislikesDeLaVista(function () { return generateDietPlanDays(profile, gen, planDays, horario); });
+        }
         var result = days[0];
 
         // El resumen y los avisos siguen siendo del DÍA 1: son objetivos
@@ -743,8 +922,12 @@ document.addEventListener("DOMContentLoaded", function () {
             // La compra SÍ es de todos los días juntos: se juntan las tomas
             // de los N días y se agregan por ingrediente, así un paquete que
             // cubre varios días se paga una vez.
-            var allMeals = days.reduce(function (acc, day) { return acc.concat(day.meals); }, []);
-            renderShoppingList(allMeals, result.report && result.report.store, days.length);
+            // Con familia, la de toda la casa (tomasDeLaCasa): por eso se
+            // dejan puestos antes los datos del plan que esa función lee.
+            lastGeneratedDays = days;
+            lastGeneratedMeals = result.meals;
+            lastGeneratedStore = result.report && result.report.store;
+            pintarListaDeCompraActual();
           });
         }
         lastGeneratedDays = days;
@@ -753,10 +936,11 @@ document.addEventListener("DOMContentLoaded", function () {
         // este plan concreto sin tener que regenerarlo.
         lastGeneratedMeals = result.meals;
         lastGeneratedStore = result.report && result.report.store;
-        lastGeneratedDayOptions = { budget: data.budget, cookTime: data.cookTime, taste: data.taste };
+        lastGeneratedDayOptions = { budget: gen.budget, cookTime: gen.cookTime, taste: gen.taste };
         lastGeneratedProfile = profile;
-        lastGeneratedData = data;
+        lastGeneratedData = gen;
         lastGeneratedReport = result.report;
+        pintarFamilia();
 
         // Se guarda en este dispositivo para que sobreviva a una recarga (ver
         // js/core/plan-store.js). Nunca lanza: sin almacenamiento, no pasa nada.
@@ -766,32 +950,7 @@ document.addEventListener("DOMContentLoaded", function () {
         // este navegador; con sesión iniciada: también se empuja a la
         // nube) -- piggyback sobre el camino de éxito ya existente, en
         // vez de un listener por campo (ver js/core/settings.js).
-        safeInit("settings-save", function () {
-          if (typeof saveSettings !== "function") return;
-          var scheduleSettings = (typeof readScheduleSettings === "function") ? readScheduleSettings() : {};
-          // Se parte de lo YA guardado, no de un objeto vacio: saveSettings()
-          // reemplaza el objeto entero, asi que cualquier ajuste que no salga
-          // del formulario (hoy hideOneDayCostNote) se borraria en cada
-          // generacion sin que nadie se entere.
-          var toSave = (typeof getSettings === "function") ? getSettings() : {};
-          delete toSave.updatedAt;
-          Object.keys(data).forEach(function (k) { toSave[k] = data[k]; });
-          Object.keys(scheduleSettings).forEach(function (k) { toSave[k] = scheduleSettings[k]; });
-
-          // "No me gusta": texto libre separado por comas -> array. El
-          // saneado real (recorte, deduplicado, topes) lo hace
-          // sanitizeStringList() en settings.js; aquí solo se trocea.
-          var dislikesEl = document.getElementById("dislikes");
-          if (dislikesEl) {
-            toSave.dislikes = String(dislikesEl.value || "")
-              .split(",")
-              .map(function (part) { return part.trim(); })
-              .filter(Boolean);
-          }
-
-          saveSettings(toSave);
-          if (typeof pushSettingsToCloud === "function") pushSettingsToCloud();
-        });
+        safeInit("settings-save", function () { guardarDatosDelFormulario(data); });
 
         if (planSavedNoticeEl) {
           planSavedNoticeEl.hidden = true;
@@ -1586,6 +1745,11 @@ document.addEventListener("DOMContentLoaded", function () {
   safeInit("form-controls", function () {
     if (typeof initFormControls === "function") initFormControls();
   });
+  // Las personas de la casa y el menú de varias (2026-10-26, js/ui/familia-ui.js).
+  safeInit("personas", function () {
+    if (typeof initPersonas === "function") initPersonas();
+    if (typeof initFamiliaCampo === "function") initFamiliaCampo();
+  });
   safeInit("pestanas", function () {
     if (typeof initPestanas === "function") initPestanas();
   });
@@ -1632,11 +1796,12 @@ document.addEventListener("DOMContentLoaded", function () {
       try {
         var result, mode, savedDays = 1;
         if (pendingReplaceEntryId && typeof replacePendingMealsForToday === "function") {
-          result = replacePendingMealsForToday(pendingReplaceEntryId, lastGeneratedMeals, lastGeneratedStore, lastGeneratedDayOptions);
+          // Con familia se guarda lo de toda la casa (tomasDeLaCasa).
+          result = replacePendingMealsForToday(pendingReplaceEntryId, tomasDeLaCasa(0), lastGeneratedStore, lastGeneratedDayOptions);
           pendingReplaceEntryId = null;
           mode = "active-replaced";
         } else if (typeof savePlanForToday === "function") {
-          result = savePlanForToday(lastGeneratedMeals, lastGeneratedStore, lastGeneratedDayOptions);
+          result = savePlanForToday(tomasDeLaCasa(0), lastGeneratedStore, lastGeneratedDayOptions);
           mode = result.replaced ? "draft-updated" : "created";
 
           // ── Plan de VARIOS DÍAS (2026-09-03) ──────────────────────────
@@ -1656,8 +1821,8 @@ document.addEventListener("DOMContentLoaded", function () {
           if (lastGeneratedDays && lastGeneratedDays.length > 1) {
             savedDays = lastGeneratedDays.length;
             for (var d = 1; d < lastGeneratedDays.length; d++) {
-              var dayMeals = lastGeneratedDays[d] && lastGeneratedDays[d].meals;
-              if (!dayMeals) continue;
+              var dayMeals = tomasDeLaCasa(d);
+              if (!dayMeals.length) continue;
               var fecha = new Date();
               fecha.setDate(fecha.getDate() + d);
               savePlanForToday(dayMeals, lastGeneratedStore, lastGeneratedDayOptions,

@@ -30,6 +30,7 @@
 /* ── neutralizar lo propio del diseño base ── */
 .form-section-label::before{transform:none}
 .topbar__brand-mark{transform:none}
+.familia-chip__nota{font-size:13px}
 .meta .k{font-size:13px}
 .summary-card .sub{font-size:13px}
 .schedule-timeline__next-tag{font-size:13px}

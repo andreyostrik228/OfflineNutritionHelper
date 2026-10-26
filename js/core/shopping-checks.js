@@ -32,8 +32,10 @@
  * ─────────────────────────────────────────────────────────────────────────
  */
 
-var SHOPPING_CHECKS_KEY = "nutritionPlanner.shoppingChecks.v1";
-var SHOPPING_CHECKS_NOCOOK_KEY = "nutritionPlanner.shoppingChecksNoCook.v1";
+// De la persona activa (js/core/perfiles.js, 2026-10-26): el titular, la de siempre.
+var SHOPPING_CHECKS_KEY = (typeof perfilClave === "function") ? perfilClave("nutritionPlanner.shoppingChecks.v1") : "nutritionPlanner.shoppingChecks.v1";
+// De la persona activa (js/core/perfiles.js, 2026-10-26): el titular, la de siempre.
+var SHOPPING_CHECKS_NOCOOK_KEY = (typeof perfilClave === "function") ? perfilClave("nutritionPlanner.shoppingChecksNoCook.v1") : "nutritionPlanner.shoppingChecksNoCook.v1";
 
 // Mismo patrón que settings.js: solo se usa si no hay localStorage (tests,
 // ventana privada que lo bloquea). Una por lista.

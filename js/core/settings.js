@@ -30,7 +30,8 @@
  * ─────────────────────────────────────────────────────────────────────────
  */
 
-var SETTINGS_STORAGE_KEY = "nutritionPlanner.settings.v1";
+// De la persona activa (js/core/perfiles.js, 2026-10-26): el titular, la de siempre.
+var SETTINGS_STORAGE_KEY = (typeof perfilClave === "function") ? perfilClave("nutritionPlanner.settings.v1") : "nutritionPlanner.settings.v1";
 
 // Usado únicamente cuando localStorage no existe en absoluto (tests, algún
 // entorno sin navegador) -- mismo patrón que _pantryMemoryState en pantry.js.

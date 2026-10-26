@@ -35,7 +35,8 @@
  * ─────────────────────────────────────────────────────────────────────────
  */
 
-var WEIGHT_STORAGE_KEY = "weekplate-pesos-v1";
+// De la persona activa (js/core/perfiles.js, 2026-10-26): el titular, la de siempre.
+var WEIGHT_STORAGE_KEY = (typeof perfilClave === "function") ? perfilClave("weekplate-pesos-v1") : "weekplate-pesos-v1";
 var WEIGHT_CLOUD_FIELD = "_pesos";
 var WEIGHT_MAX_ENTRIES = 365;
 var WEIGHT_MIN_KG = 30;

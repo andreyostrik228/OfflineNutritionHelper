@@ -257,9 +257,31 @@ function _ajustesParaNube() {
   return settingsWithWeightLog(conMedidas, pesosLeer(pesosAlmacen()));
 }
 
+/** ¿Es el titular la persona activa? Sin js/core/perfiles.js, siempre. */
+function _esTitularActivo() {
+  return typeof perfilActivoId !== "function" || typeof PERFIL_TITULAR === "undefined" || perfilActivoId() === PERFIL_TITULAR;
+}
+
+/** Los ajustes del titular con las demás personas dentro (`_personas`, js/core/perfiles.js). */
+function _conPersonas(ajustes) {
+  if (typeof perfilesParaNube !== "function") return ajustes;
+  var copia = {};
+  Object.keys(ajustes || {}).forEach(function (k) { copia[k] = ajustes[k]; });
+  copia._personas = perfilesParaNube();
+  return copia;
+}
+
 function pushSettingsToCloud() {
   if (typeof getSettings !== "function") return Promise.resolve({ error: null, skipped: true });
-  return _updateUserData({ settings: _ajustesParaNube() });
+  if (_esTitularActivo()) return _updateUserData({ settings: _conPersonas(_ajustesParaNube()) });
+  // Con otra persona activa (2026-10-26), los módulos leen las claves de ESA
+  // persona: subir _ajustesParaNube() pondría sus datos en el sitio del
+  // titular. Se lee lo que hay en la cuenta, se cambia solo `_personas` y se
+  // vuelve a subir. Sin poder leer, no se sube nada.
+  return pullCloudUserData().then(function (fila) {
+    if (!fila) return { error: null, skipped: true };
+    return _updateUserData({ settings: _conPersonas(fila.settings || {}) });
+  });
 }
 
 /**
@@ -279,9 +301,10 @@ function pushAllToCloud(options) {
   }
   var columns = {
     pantry_state: getPantryState(),
-    pantry_history: getPantryHistory(),
-    settings: _ajustesParaNube()
+    pantry_history: getPantryHistory()
   };
+  // Los ajustes, solo con el titular activo (ver pushSettingsToCloud).
+  if (_esTitularActivo()) columns.settings = _conPersonas(_ajustesParaNube());
   if (opts.setMigratedAt) columns.migrated_at = new Date().toISOString();
   return _updateUserData(columns);
 }

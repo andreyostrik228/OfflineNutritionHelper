@@ -1,5 +1,62 @@
 # Nutrition Planner — Roadmap
 
+## Lo del 2026-10-26, cuarta tanda (sello `20261026d`, 1312 tests)
+
+El dueño: «указывать скольким людям делается меню… один аккаунт, но разные
+люди, как на Netflix… меню и ребёнку, и бабушке, и отцу, и маме». Y luego:
+menú común y cada uno el suyo («и так и так»); presupuesto por persona y para
+toda la familia (las dos); cada persona con sus datos, sus entrenamientos y
+su peso.
+
+| Qué | Dónde | Estado |
+|---|---|---|
+| Personas de la casa: añadir, elegir (recarga), renombrar, borrar; hasta 8 | `js/core/perfiles.js`, `js/ui/familia-ui.js`, `#personasDialogo`, `#personaBtn` | **Hecho** |
+| Cada persona con sus datos, plan, peso, medidas y entrenamientos | `perfilClave()` en cada módulo (`PERFIL_CLAVES_PROPIAS`) | **Hecho** |
+| «Для кого меню»: personas, invitados sin perfil, modo y presupuesto | `#familiaCampo`, `js/core/familia.js` (`nutritionPlanner.familia.v1`) | **Hecho** |
+| Un menú para todos: cada uno su ración (sus kcal / las de quien prepara) | `familiaPlanear`, `familiaEscalarTomas` | **Hecho** |
+| Cada uno el suyo: un plan por persona, con sus «no me gusta» | `runGeneration` (`familia.planes`), `fijarDislikesDeFamilia` | **Hecho** |
+| Compra y «Mis planes» de toda la casa | `tomasDeLaCasa` (`app.js`) | **Hecho** |
+| En la cuenta: las demás personas dentro de `settings._personas` | `perfilesParaNube` / `perfilesDesdeNube`, `cloud-sync.js`, `migration.js` | **Hecho** |
+
+**Cómo se separan los datos.**
+
+- Cada módulo guarda lo de una persona bajo su clave de siempre (el titular)
+  o bajo `clave@id` (los demás); las claves salen al cargar la página.
+- Cambiar de persona guarda «Mis datos» (`guardarDatosDelFormulario`) y
+  recarga, como Netflix.
+- La despensa, el historial de compras, el aspecto y el idioma son de la casa.
+
+**La cuenta.**
+
+- El titular viaja como siempre. Las demás personas van en
+  `settings._personas` (lista y datos en texto JSON; el plan y las marcas de
+  la compra se quedan en el dispositivo).
+- Con otra persona activa:
+  - subir ajustes lee primero la cuenta y solo cambia `_personas` (si no, sus
+    datos acabarían en el sitio del titular);
+  - la reconciliación no compara ni hidrata, solo trae las personas que falten.
+- Al traer personas se rellena lo que falta y nunca se pisa lo que hay. Dos
+  dispositivos que cambian a la vez la misma persona (no el titular) no se
+  juntan, y borrar una persona en un dispositivo no la borra de otro que
+  todavía la tenga.
+
+**Menú de varias personas.**
+
+- Quien prepara el menú (la persona activa) va siempre. Quien no tiene datos
+  en «Mis datos» se queda fuera y se ve «Данных пока нет».
+- Común: el plan de la persona activa, comprado `suma` veces (la suma de las
+  raciones, con 0,3 como mínimo cada una); con el presupuesto de la familia,
+  su ración cabe en presupuesto / suma. Los «no me gusta» de todos se suman.
+- Cada uno el suyo: un plan por persona; con el presupuesto de la familia, a
+  cada una le toca su parte según sus calorías.
+- Los invitados comen como la persona activa.
+- «Sin cocinar» sigue siendo de una persona.
+
+Probado en Chrome sin interfaz con dos personas y un invitado (Mamá 0,6):
+2.576 g de un día × 2,6 = 6.697 g en «Mis planes»; ver el menú de Mamá
+cambia el objetivo de 3.149 a 1.830 kcal. El diario y el peso de cada persona
+no se ven entre sí.
+
 ## Lo del 2026-10-26, tercera tanda (sello `20261026c`, 1304 tests)
 
 El dueño: «в кладовой показывало что нужно класть в холодильник, а что можно

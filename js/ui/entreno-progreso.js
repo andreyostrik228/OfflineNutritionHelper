@@ -53,7 +53,8 @@ var ENTRENO_PUNTOS_GRAFICA = 16;
 var ENTRENO_DIAS_MUSCULOS = 28;
 var ENTRENO_RECORDS_N = 8;
 var ENTRENO_VISTAS = ["fuerza", "volumen", "regularidad", "cuerpo"];
-var ENTRENO_PROGRESO_CLAVE = "nutritionPlanner.entrenoProgreso.v1";
+// De la persona activa (js/core/perfiles.js, 2026-10-26): el titular, la de siempre.
+var ENTRENO_PROGRESO_CLAVE = (typeof perfilClave === "function") ? perfilClave("nutritionPlanner.entrenoProgreso.v1") : "nutritionPlanner.entrenoProgreso.v1";
 var _progresoCableado = false;
 // La sesión que se pidió ver (un punto de una gráfica, un récord): sale en el historial aunque caiga fuera del periodo.
 var _progresoForzada = "";

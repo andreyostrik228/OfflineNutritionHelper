@@ -165,9 +165,11 @@ var CLAVES_DE_TOMA = (typeof MEAL_LABEL_KEYS !== "undefined") ? MEAL_LABEL_KEYS 
  */
 function tituloDeToma(meal) {
   if (!meal) return "";
-  var claveToma = CLAVES_DE_TOMA[meal.key];
+  // Menú de varias personas (2026-10-26): la toma de cada una lleva «@id» en
+  // la clave y su nombre en `quien` («Desayuno — Avena · Mamá»).
+  var claveToma = CLAVES_DE_TOMA[String(meal.key || "").split("@")[0]];
   if (!claveToma || !meal.dishName || typeof t !== "function") return meal.label || "";
-  return t(claveToma) + " — " + nombrePlato(meal.dishName);
+  return t(claveToma) + " — " + nombrePlato(meal.dishName) + (meal.quien ? " · " + meal.quien : "");
 }
 
 var mealsContainer, summaryEls;

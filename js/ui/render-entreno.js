@@ -36,7 +36,8 @@
  * ─────────────────────────────────────────────────────────────────────────
  */
 
-var ENTRENO_CLAVE_PREFS = "weekplate-entreno-v1";
+// De la persona activa (js/core/perfiles.js, 2026-10-26): el titular, la de siempre.
+var ENTRENO_CLAVE_PREFS = (typeof perfilClave === "function") ? perfilClave("weekplate-entreno-v1") : "weekplate-entreno-v1";
 var ENTRENO_NIVELES = ["principiante", "intermedio", "avanzado"];
 var ENTRENO_EQUIPOS = ["gimnasio", "mancuernas", "sin_material", "personalizado"];
 var ENTRENO_SEMANA_MAX = 52;
