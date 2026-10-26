@@ -192,7 +192,8 @@ document.addEventListener("DOMContentLoaded", function () {
   var lastGeneratedDayOptions = null;
   // profile/data/report del plan actual -- necesarios para re-pintar
   // resumen/insights/avisos tras "Cambiar" una toma (swap-plan-meal).
-  // Cuántos días pide el usuario (1/3/7). Declarado AQUÍ, con el resto del
+  // Cuántos días pide el usuario (de 1 a 7; hasta el 2026-10-26, solo 1, 3 o
+  // 7). Declarado AQUÍ, con el resto del
   // estado, y no junto a su listener: `var` se eleva pero su VALOR no, así
   // que dejarlo abajo lo hacía `undefined` en runGeneration y el bucle de
   // días no se ejecutaba nunca -- siempre salía un solo día.
@@ -202,6 +203,9 @@ document.addEventListener("DOMContentLoaded", function () {
   // un 15%. Un paquete se paga una vez y rinde en varios dias; con 1 dia se
   // paga entero y se aprovecha una vez.
   var planDays = 3;
+  // El tope: una semana. El presupuesto por día está medido hasta 7
+  // (budgetForPlanDays) y la compra de más días ya no cabe en la nevera.
+  var PLAN_DIAS_MAX = 7;
 
   /**
    * Deja elegidos N dias: la variable, los botones y el aviso de "1 dia".
@@ -210,10 +214,10 @@ document.addEventListener("DOMContentLoaded", function () {
    * largo de este proyecto salio justo de un estado con varios duenos, ver
    * HANDOFF 7.3).
    *
-   * @param {number} dias - 1, 3 o 7; cualquier otra cosa cae en 3.
+   * @param {number} dias - un entero de 1 a 7; cualquier otra cosa cae en 3.
    */
   function seleccionarDiasDePlan(dias) {
-    planDays = (dias === 1 || dias === 3 || dias === 7) ? dias : 3;
+    planDays = (dias === Math.floor(dias) && dias >= 1 && dias <= PLAN_DIAS_MAX) ? dias : 3;
     var group = document.getElementById("planDays");
     if (group) {
       Array.prototype.forEach.call(group.querySelectorAll(".plan-days__btn"), function (b) {
@@ -1890,7 +1894,8 @@ document.addEventListener("DOMContentLoaded", function () {
       if (typeof runNoCookGenerator !== "function") return;
       if (noCookPanel) noCookPanel.hidden = false;
       // Sin storeId: el generador cae en DEFAULT_STORE_ID (Mercadona). Los
-      // días, los mismos 1/3/7 que el plan normal (2026-10-21).
+      // días, los mismos que el plan normal (2026-10-21; de 1 a 7 desde el
+      // 2026-10-26).
       runNoCookGenerator(undefined, readNoCookTargets(), planDays);
       pintarDiasSinCocinar();
       if (noCookPanel && typeof noCookPanel.scrollIntoView === "function") {

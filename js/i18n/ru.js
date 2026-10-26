@@ -212,6 +212,10 @@ registerI18nTable("ru", {
   // español son los nombres de producto de Mercadona.
   "ui.los_nombres_de_platos_y_productos_siguen_en_e": "Названия продуктов переводятся, но рядом всегда остаётся надпись с этикетки супермаркета: именно её вы будете искать в магазине.",
   "ui.1_dia": "1 день",
+  "ui.2_dias": "2 дня",
+  "ui.4_dias": "4 дня",
+  "ui.5_dias": "5 дней",
+  "ui.6_dias": "6 дней",
   "ui.22_y_un_34_mas_caro_por_dia": "22–34% дороже",
   "ui.3_dias": "3 дня",
   "ui.7_dias": "7 дней",

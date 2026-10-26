@@ -98,6 +98,7 @@ var suites = [
   "hora-selector.test",
   "compra-vista.test",
   "kcal-propias.test",
+  "dias-plan.test",
   "plan-store.test",
   "weight-log.test",
   "body-measures.test",

@@ -296,6 +296,7 @@ function _pintarResumenDeDatos() {
     partes.push(importe ? importe.textContent.trim() : presupuesto.textContent.trim());
   }
   var dias = document.querySelector("#planDays .is-active, #planDays [aria-pressed=\"true\"]");
-  if (dias) partes.push(dias.textContent.trim());
+  // El botón enseña solo la cifra (2026-10-26): el texto entero va en aria-label.
+  if (dias) partes.push((dias.getAttribute("aria-label") || dias.textContent).trim());
   texto.textContent = partes.join(" · ");
 }

@@ -647,7 +647,7 @@ function generateDietPlan(profile, data) {
  * @param {object} profile
  * @param {object} data           - mismo objeto que generateDietPlan(), con
  *                                  planDays ya puesto por el llamante
- * @param {number} planDays       - 1, 3 o 7
+ * @param {number} planDays       - de 1 a 7
  * @param {function(object, number)} [alTerminarDia] - se llama con
  *   (día, índice) justo después de generar cada día, antes de mirar sus platos.
  *   js/app.js lo usa para ponerle el horario.

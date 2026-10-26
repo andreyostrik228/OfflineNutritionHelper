@@ -1,5 +1,16 @@
 # Nutrition Planner — Roadmap
 
+## Lo del 2026-10-26, segunda tanda (sello `20261026b`, 1300 tests)
+
+El dueño: «можно было выбирать сколько дней нужно, но максимум 7». Los días
+de plan pasan de 1/3/7 a cualquiera de 1 a 7: siete botones con la cifra
+(`#planDays`), el texto entero en `aria-label` (es también lo que lee el
+resumen de «Menú»). El motor ya aceptaba cualquier número: el presupuesto por
+día se interpola en `budgetForPlanDays`, y «sin cocinar» admitía de 1 a 7.
+Probado en Chrome sin interfaz: 5 días dan 5 en el plan y en «sin cocinar», y
+se guardan. A 320 px en el aspecto «avena» (pestañas con más hueco) cada botón
+mide 29 px de ancho.
+
 ## Lo del 2026-10-26 (sello `20261026a`, 1296 tests)
 
 El dueño: «если мне нужен план на 4000 калорий, мне выдаёт максимум 2500-2800,

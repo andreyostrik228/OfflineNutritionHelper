@@ -989,9 +989,10 @@ input[type="time"] { font-variant-numeric: tabular-nums; }
 
 /* ── Días de plan ───────────────────────────────────────────────────── */
 .plan-days-field { margin-top: 26px; }
+/* De 1 a 7 días (2026-10-26): siete botones con la cifra, en una fila. */
 .plan-days {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 4px;
   padding: 4px;
   border: 1.5px solid var(--field-line);
@@ -999,8 +1000,9 @@ input[type="time"] { font-variant-numeric: tabular-nums; }
   background: var(--surface-2);
 }
 .plan-days__btn {
+  min-width: 0;
   min-height: 50px;
-  padding: 0 8px;
+  padding: 0 2px;
   border: 0;
   border-radius: 14px;
   background: transparent;
