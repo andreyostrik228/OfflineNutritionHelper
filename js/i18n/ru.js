@@ -334,7 +334,7 @@ registerI18nTable("ru", {
   "ui.mas_internacional": "Больше мировой",
   "ui.maxima_proteina": "Максимум белка",
   "ui.mercadona": "Mercadona",
-  "ui.minimo_6_caracteres": "Минимум 6 символов.",
+  "ui.minimo_8_caracteres": "Минимум 8 символов.",
   "ui.mixta_sin_preferencia": "Смешанная — без предпочтений",
   "ui.mixto": "По-разному",
   "ui.moderado": "Умеренный",

@@ -1,5 +1,25 @@
 # Nutrition Planner — Roadmap
 
+## Seguridad, 2026-10-27 (sello `20261027c`, 1327 tests)
+
+El dueño: «скоро уже будет искать покупателей… найди дыры если есть, закрой
+их и вообще сделай сайт очень безопасным».
+
+| Qué | Dónde | Estado |
+|---|---|---|
+| Los scripts de fuera (GSAP, SDK de Firebase) con `integrity` (SRI) y `crossorigin`: un CDN comprometido no puede meter código | `index.html` | **Hecho** |
+| CSP sin `unsafe-inline` en scripts: los dos en línea por su sha256 | `_headers`, `tests/auth.test.js` | **Hecho** |
+| El worker no sirve la copia opaca vieja del SDK a una petición CORS (si no, con SRI no cargaban las cuentas) | `sw.js` (`onh-fuentes-v2`) | **Hecho** |
+| `Cross-Origin-Opener-Policy: same-origin-allow-popups` y `Permissions-Policy` más cerrada | `_headers` | **Hecho** |
+| Contraseña de 8 caracteres para las cuentas nuevas | `render-auth.js` (`AUTH_MIN_PASSWORD`) | **Hecho** |
+| Apagar o redirigir la copia de GitHub Pages (se sirve sin `_headers`) | ajustes del repo | **Decide el dueño** |
+| Firebase: protección contra enumeración de correos, política de contraseñas, dominios autorizados; Google Cloud: restringir la clave de API | consolas | **Decide el dueño** |
+
+Comprobado con Chrome sin interfaz y un servidor que aplica `_headers`: la
+aplicación carga con la CSP nueva (SDK y GSAP pasan el SRI) sin ninguna
+violación, y con una trampa HTML en cada cadena de los datos del usuario
+ninguna vista crea un elemento (419 apariciones, todas como texto).
+
 ## Lo del 2026-10-27, segunda tanda (sello `20261027b`, 1325 tests)
 
 Lo mismo que la primera tanda, en el plan normal (con platos). El dueño: «Да».

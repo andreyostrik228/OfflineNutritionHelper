@@ -326,7 +326,7 @@ registerI18nTable("uk", {
   "ui.mas_internacional": "Більш міжнародна",
   "ui.maxima_proteina": "Максимум білка",
   "ui.mercadona": "Mercadona",
-  "ui.minimo_6_caracteres": "Мінімум 6 символів.",
+  "ui.minimo_8_caracteres": "Мінімум 8 символів.",
   "ui.mixta_sin_preferencia": "Змішана — без переваг",
   "ui.mixto": "Змішаний",
   "ui.moderado": "Помірний",

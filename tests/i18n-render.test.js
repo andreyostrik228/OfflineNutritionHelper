@@ -174,10 +174,11 @@ function run(t) {
 
   t.test("el diálogo de acceso: contraseña corta, «Borrando…» y errores del servidor salen en el idioma de la pantalla", function () {
     var s = loadBrowserGlobals(archivos(["js/core/auth.js", "js/ui/render-auth.js"]));
+    // 8 desde el 2026-10-27 para las cuentas nuevas (AUTH_MIN_PASSWORD).
     var corta = {
-      es: "La contraseña necesita al menos 6 caracteres.",
-      en: "The password needs at least 6 characters.",
-      ru: "В пароле должно быть не меньше 6 символов."
+      es: "La contraseña necesita al menos 8 caracteres.",
+      en: "The password needs at least 8 characters.",
+      ru: "В пароле должно быть не меньше 8 символов."
     };
     // Un idioma detrás de otro: el borrado contesta en un microtask y la
     // lengua de la pantalla tiene que seguir siendo la de ese idioma.

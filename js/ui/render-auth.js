@@ -426,11 +426,14 @@ function closeAuthDialog() {
   }
 }
 
-/** Mínimo que exige Firebase (auth/weak-password). Se comprueba AQUÍ además
- *  de en el servidor: el formulario es `novalidate`, así que el `minlength`
- *  del HTML no lo aplica nadie, y una contraseña corta viajaba hasta el
- *  servidor para volver como un error. */
-var AUTH_MIN_PASSWORD = 6;
+/** Mínimo para una cuenta NUEVA. Firebase solo exige 6 (auth/weak-password);
+ *  desde el 2026-10-27 se piden 8, lo mínimo razonable hoy para algo que
+ *  guarda datos de salud. Solo al crear la cuenta: quien ya tiene una con 6
+ *  o 7 sigue entrando. Se comprueba AQUÍ además de en el servidor: el
+ *  formulario es `novalidate`, así que el `minlength` del HTML no lo aplica
+ *  nadie (lo leen los gestores de contraseñas al proponer una). */
+var AUTH_MIN_PASSWORD = 8;
+var AUTH_MIN_PASSWORD_FIREBASE = 6;
 
 /**
  * Tres estados, un solo formulario.
@@ -493,6 +496,8 @@ function setAuthMode(mode) {
   if (authPasswordInput) {
     authPasswordInput.setAttribute("autocomplete",
       isRegister ? "new-password" : "current-password");
+    // El gestor de contraseñas genera una de este largo como mínimo.
+    authPasswordInput.setAttribute("minlength", String(isRegister ? AUTH_MIN_PASSWORD : AUTH_MIN_PASSWORD_FIREBASE));
   }
 }
 

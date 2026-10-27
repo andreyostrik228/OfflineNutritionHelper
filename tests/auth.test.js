@@ -652,6 +652,42 @@ function run(t) {
       "Pon SELLO_CABECERAS = \"" + sello + "\" en sw.js");
   });
 
+  // ── Seguridad de la página (2026-10-27) ───────────────────────────────
+  t.test("script-src sin 'unsafe-inline': cada script en línea de index.html va por su sha256", function () {
+    var fs = require("fs");
+    var crypto = require("crypto");
+    var cabeceras = fs.readFileSync(projPath("_headers"), "utf8");
+    var csp = (cabeceras.split(/\r?\n/).filter(function (l) { return /Content-Security-Policy:/.test(l); })[0] || "");
+    var scriptSrc = (/script-src ([^;]+)/.exec(csp) || [])[1] || "";
+    assert.strictEqual(scriptSrc.indexOf("'unsafe-inline'"), -1, "un <script> o un onclick= inyectado se ejecutaría");
+    assert.strictEqual(scriptSrc.indexOf("'unsafe-eval'"), -1);
+    // El navegador calcula el hash sobre el texto ya normalizado (CRLF -> LF).
+    var html = fs.readFileSync(projPath("index.html"), "utf8").replace(/\r\n/g, "\n");
+    var re = /<script>([\s\S]*?)<\/script>/g, m, n = 0;
+    while ((m = re.exec(html))) {
+      n++;
+      var hash = "'sha256-" + crypto.createHash("sha256").update(m[1]).digest("base64") + "'";
+      assert.ok(scriptSrc.indexOf(hash) !== -1,
+        "un script en línea de index.html cambió y la CSP no lo sabe: añade " + hash + " a script-src en _headers (y cambia SELLO_CABECERAS)");
+    }
+    assert.ok(n >= 2, "tendría que haber al menos los dos scripts en línea de siempre");
+    assert.strictEqual(/\son[a-z]+="/i.test(html.replace(/<!--[\s\S]*?-->/g, "")), false, "sin manejadores onclick= en el HTML");
+  });
+
+  t.test("los scripts de fuera llevan integrity (SRI) y crossorigin, y el worker no sirve una opaca a una petición CORS", function () {
+    var fs = require("fs");
+    var html = fs.readFileSync(projPath("index.html"), "utf8");
+    var externos = html.match(/<script[^>]*\ssrc="https?:\/\/[^"]+"[^>]*>/g) || [];
+    assert.ok(externos.length >= 3, "GSAP y el SDK de Firebase");
+    externos.forEach(function (tag) {
+      assert.ok(/\sintegrity="sha(256|384|512)-[A-Za-z0-9+\/=]+"/.test(tag), "sin integrity: " + tag);
+      assert.ok(/\scrossorigin="anonymous"/.test(tag), "sin crossorigin: " + tag);
+    });
+    var sw = fs.readFileSync(projPath("sw.js"), "utf8");
+    assert.ok(/hit\.type === "opaque" && req\.mode === "cors"/.test(sw), "el worker devolvería la copia opaca vieja del SDK");
+    assert.ok(!/CACHE_FUENTES = "onh-fuentes-v1"/.test(sw), "la cache v1 guarda el SDK como respuesta opaca");
+  });
+
   t.test("el registro del service worker recarga una vez si un worker nuevo toma el control y faltan firebase/gsap", function () {
     var html = require("fs").readFileSync(projPath("index.html"), "utf8");
     assert.ok(html.indexOf('addEventListener("controllerchange"') !== -1, "falta el aviso de controllerchange");

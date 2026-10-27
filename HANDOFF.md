@@ -18,6 +18,36 @@ llevan al final un bloque «actualización 2026-10-08»). El diario fechado, con
 medidas y causas, está en la cabecera de `STATE.md` (entradas del 2026-10-07 y
 2026-10-08).
 
+### 0.0 quindecies Seguridad, 2026-10-27 (lee esto antes que 0.0 quaterdecies)
+
+- **Estado:** sello `20261027c`, **1327 tests en verde**. Revisión de
+  seguridad antes de buscar clientes. Tabla al principio de `ROADMAP.md`.
+- **Reglas nuevas (no las rompas):**
+  - `script-src` NO lleva `unsafe-inline`: los dos scripts en línea de
+    `index.html` van por su sha256 en `_headers`. Si tocas una letra de uno,
+    pon su hash nuevo y cambia `SELLO_CABECERAS` en `sw.js`;
+    `tests/auth.test.js` calcula los dos y dice qué poner. Nada de
+    `onclick=` en el HTML: con esta CSP no se ejecuta.
+  - Los scripts de fuera llevan `integrity` (sha384) y `crossorigin`. Si
+    cambias la versión de GSAP o de Firebase, recalcula el hash del fichero
+    exacto (y el test lo exige).
+  - La cache del worker para el SDK es `onh-fuentes-v2`, y el worker nunca
+    sirve una respuesta opaca a una petición CORS: con la v1 (opacas) un
+    script con `integrity` no cargaba.
+  - Cuentas nuevas: contraseña de 8 como mínimo (`AUTH_MIN_PASSWORD`); entrar
+    con una de 6 o 7 sigue funcionando.
+- **Comprobado y bien:** reglas de Firestore (solo el dueño, cuatro campos de
+  texto, lo demás cerrado); escapado en todas las vistas (trampa HTML en
+  cada cadena de los datos vía la copia: 419 veces en pantalla como texto,
+  0 elementos); la copia se valida al cargar; el token solo va en la
+  cabecera `Authorization`; ningún secreto en el repo.
+- **Fuera del código, para el dueño:** la copia de GitHub Pages
+  (`andreyostrik228.github.io/OfflineNutritionHelper/`) se sirve SIN
+  `_headers` (sin CSP ni `frame-ancestors`): apagarla o redirigirla. En
+  Firebase: protección contra la enumeración de correos, política de
+  contraseñas de 8 y dominios autorizados solo los de producción. En Google
+  Cloud: restringir la clave de API por referente y por API.
+
 ### 0.0 quaterdecies Lo que sobra entre días, «sin cocinar» y plan normal, 2026-10-27 (lee esto antes que 0.0 terdecies)
 
 - **Estado:** sello `20261027a`, **1321 tests en verde**. En el plan «sin

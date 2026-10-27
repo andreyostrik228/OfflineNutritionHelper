@@ -323,7 +323,7 @@ registerI18nTable("es", {
   "ui.mas_internacional": "Más internacional",
   "ui.maxima_proteina": "Máxima proteína",
   "ui.mercadona": "Mercadona",
-  "ui.minimo_6_caracteres": "Mínimo 6 caracteres.",
+  "ui.minimo_8_caracteres": "Mínimo 8 caracteres.",
   "ui.mixta_sin_preferencia": "Mixta — sin preferencia",
   "ui.mixto": "Mixto",
   "ui.moderado": "Moderado",

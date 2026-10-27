@@ -54,10 +54,15 @@
  * `_headers`. tests/auth.test.js comprueba que coincide: si se toca la CSP y
  * se olvida esto, el test falla.
  */
-var SELLO_CABECERAS = "csp-5572558b16";
+var SELLO_CABECERAS = "csp-04b376466d";
 
 var PREFIJO = "onh-";
-var CACHE_FUENTES = "onh-fuentes-v1";
+// v2 (2026-10-27): el SDK de Firebase lleva `integrity` y `crossorigin` en
+// index.html, así que se pide en modo CORS. Lo guardado en la v1 eran
+// respuestas opacas (sin CORS) y el navegador rechaza una opaca para una
+// petición CORS: con la v1 las cuentas dejaban de cargar. La v1 la borra
+// `activate` como cualquier otra cache "onh-" que no es la vigente.
+var CACHE_FUENTES = "onh-fuentes-v2";
 
 /**
  * Hosts de cuentas y datos de usuario: NUNCA pasan por la cache.
@@ -301,9 +306,11 @@ self.addEventListener("fetch", function (e) {
       (url.origin === self.location.origin && url.pathname.indexOf("/assets/fonts/") !== -1)) {
     e.respondWith(
       caches.match(req).then(function (hit) {
-        if (hit) return hit;
+        // Una opaca no vale para una petición CORS (la de un script con
+        // `integrity`): el navegador la rechaza y el script no carga.
+        if (hit && !(hit.type === "opaque" && req.mode === "cors")) return hit;
         return fetch(req).then(function (r) {
-          if (r && (r.ok || r.type === "opaque")) {
+          if (r && (r.ok || (r.type === "opaque" && req.mode !== "cors"))) {
             var copia = r.clone();
             caches.open(CACHE_FUENTES).then(function (c) { c.put(req, copia); });
           }
