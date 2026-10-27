@@ -667,6 +667,170 @@ function run(t) {
       assert.strictEqual(res, null, "no debería ser elegible sin cocinar: " + name);
     });
   });
+
+  // ── 7. Lo que sobra de un día sirve a los demás (2026-10-27) ──────────
+  // Queja del dueño con 3 días a 4.000 kcal: «4000 из 4000, потом 2600 из
+  // 4000…» y en la despensa productos usados una sola vez el día 1. Ver la
+  // cabecera de no-cook-generator.js («Lo que sobra de un día…»).
+
+  function motorSandbox() {
+    return loadBrowserGlobals([
+      projPath("js/core/utils.js"),
+      projPath("js/data/serving-sizes.js"),
+      projPath("js/data/no-cook-templates.js"),
+      projPath("js/engine/no-cook-generator.js")
+    ]);
+  }
+
+  /** Un día de mentira con lo que lee noCookCuentas: [id, raciones, por envase, precio, política]. */
+  function diaCon(filas) {
+    return { slots: [{ key: "lunch", items: filas.map(function (f) {
+      return { id: f[0], servings: f[1], servingsPerPackage: f[2], price: f[3], policy: f[4] || "keeps", role: "protein" };
+    }) }] };
+  }
+
+  /** Comparación entre «reinos» de vm: por JSON (ver tests/run-tests.js). */
+  function igual(a, b, msg) { assert.strictEqual(JSON.stringify(a), JSON.stringify(b), msg); }
+
+  t.test("noCookCuentas(): lo que sobra de un envase se come otro día gratis; cada día solo paga lo nuevo", function () {
+    var s = motorSandbox();
+    // A: pack de 6 a 3 €; 2 el día 1 y 3 el día 2, que no paga nada.
+    // B: pack de 2 a 1 €; 1 el día 1 y 3 el día 3: usa el que sobra y compra otro.
+    var c = s.noCookCuentas([
+      diaCon([["A", 2, 6, 3], ["B", 1, 2, 1]]),
+      diaCon([["A", 3, 6, 3]]),
+      diaCon([["B", 3, 2, 1]])
+    ]);
+    igual(c.dias.map(function (d) { return d.ticket; }), [4, 0, 1]);
+    igual(c.dias.map(function (d) { return d.comprados; }), [2, 0, 1]);
+    igual(c.dias[1].heredado, { A: { servings: 4, desde: 0 }, B: { servings: 1, desde: 0 } });
+    igual(c.envases, { A: 1, B: 2 });
+    igual(c.siguiente, { A: { servings: 1, desde: 0 } });
+    igual(c.lotes.map(function (l) { return [l.id, l.desde, l.hasta, l.sobra]; }), [["A", 0, 2, 1]],
+      "solo queda la ración de A, comible del día 1 al 3");
+  });
+
+  t.test("noCookCuentas(): un envase abierto vale los días que dice la tienda; lo «fresh» no pasa de día", function () {
+    var s = motorSandbox();
+    // C aguanta 1 día abierto (como resolveExpiry: abierto el día A, vale hasta el A+1).
+    s.getStoreDaysAfterOpening = function (id) { return id === "C" ? 1 : null; };
+    var c = s.noCookCuentas([diaCon([["C", 1, 4, 2]]), diaCon([["C", 1, 4, 2]]), diaCon([["C", 1, 4, 2]])]);
+    igual(c.dias.map(function (d) { return d.ticket; }), [2, 0, 2], "el día 3 ya no puede usar el del día 1");
+    igual(c.envases, { C: 2 });
+    igual(c.lotes.map(function (l) { return [l.id, l.desde, l.hasta, l.sobra]; }), [["C", 0, 1, 2], ["C", 2, 2, 3]]);
+
+    var f = s.noCookCuentas([diaCon([["F", 1, 2, 5, "fresh"]]), diaCon([])]);
+    igual(f.dias[1].heredado, {}, "media pizza no se guarda para mañana");
+    igual(f.lotes.map(function (l) { return [l.id, l.desde, l.hasta]; }), [["F", 0, 0]]);
+  });
+
+  t.test("varios días: el día 2+ aprovecha lo que sobra de antes y la compra cuadra con los tickets", function () {
+    var s = fullSandbox();
+    var bajos = 0, dias = 0, conHerencia = 0, deSobras = 0;
+    for (var semilla = 1; semilla <= 8; semilla++) {
+      require("./lib/seed-random").seedRandomInContext(s, semilla);
+      var plan = s.generateNoCookPlanDays("mercadona", { calories: 4000, protein: 160, budget: 15 }, 3);
+      var c = s.noCookCuentas(plan);
+      var reutiliza = false;
+      plan.forEach(function (p, d) {
+        var kcal = p.slots.reduce(function (a, sl) { return a + sl.total.kcal; }, 0);
+        dias++;
+        if (kcal < 4000 * 0.85) bajos++;
+        assert.strictEqual(p.shoppingCost, c.dias[d].ticket, "el ticket del día sale de noCookCuentas");
+        p.slots.forEach(function (sl) {
+          sl.items.forEach(function (it) {
+            deSobras += it.deSobras || 0;
+            if (d && c.dias[d].heredado[it.id]) reutiliza = true;
+            assert.strictEqual(it.quantity, it.servings, "la despensa lee `quantity`");
+          });
+        });
+      });
+      if (reutiliza) conHerencia++;
+    }
+    // Medido el 2026-10-27 con estas semillas: 8 de 8 planes reutilizan y 2
+    // de 24 días quedan por debajo del 85% (antes del cambio, con 15 €, el
+    // 40% de los días).
+    assert.strictEqual(conHerencia, 8, "algún día 2 o 3 tendría que comer lo que sobró antes");
+    assert.ok(bajos <= 4, bajos + " de " + dias + " días por debajo del 85%");
+    assert.ok(deSobras > 0, "algún día corto se rellena con lo que sobra");
+  });
+
+  /** Una entrada de pool de mentira, con lo que usa buildNoCookItem. */
+  function entrada(id, rol, kcal100) {
+    return {
+      product: { id: id, name: "Producto " + id, kcal: kcal100, protein: 8, carbs: 40, fat: 5, price: 2, size: 300, sizeUnit: "g" },
+      serving: { servingG: 30, servingsPerPackage: 10, role: rol, policy: "keeps", packageG: 300 },
+      unit: "porción", level: 0
+    };
+  }
+
+  t.test("_rellenarConSobras(): un día corto se rellena con lo que sobra, sin pagar nada más", function () {
+    var s = motorSandbox();
+    var pan = entrada("P", "carrier", 250);
+    var crema = entrada("U", "untable", 300);
+    function dia(filas) {
+      var d = { slots: [{ key: "breakfast", items: filas }, { key: "snack", items: [] }] };
+      d.slots.forEach(function (sl) { sl.total = s._totalDeToma(sl); });
+      return d;
+    }
+    // Día 1: pan con crema. Día 2: pan solo. Los dos muy por debajo de 2.100 kcal.
+    var d1 = dia([s.buildNoCookItem(pan, 2, true), s.buildNoCookItem(crema, 1, true)]);
+    var d2 = dia([s.buildNoCookItem(pan, 1, false)]);
+    var antes = s.noCookCuentas([d1, d2]).dias.map(function (d) { return d.ticket; });
+
+    var puestas = s._rellenarConSobras([d1, d2], [pan, crema], { calories: 2100, protein: 0 });
+    var tope = s.NO_COOK_EXTRA_RACIONES;   // a 2.100 kcal el factor de raciones es 1
+    assert.strictEqual(d1.slots[0].items[0].servings, 2 + tope, "más raciones en SU fila, hasta el tope");
+    assert.strictEqual(d1.slots[0].items[0].deSobras, tope);
+    assert.strictEqual(d1.slots[0].items[0].quantity, 2 + tope, "la despensa lee `quantity`");
+    assert.strictEqual(d1.slots[0].items[1].deSobras, tope, "donde ya se unta, se unta más");
+    assert.strictEqual(d2.slots[0].items.length, 1, "la crema no se come sola: el día 2 no unta nada");
+    assert.strictEqual(d2.slots[1].items.length, 0);
+    assert.strictEqual(d2.slots[0].items[0].deSobras, tope);
+    assert.strictEqual(puestas, 3 * tope);
+    igual(s.noCookCuentas([d1, d2]).dias.map(function (d) { return d.ticket; }), antes, "lo que se pone ya estaba pagado");
+    assert.ok(Math.abs(s._totalDelDia(d1).kcal - (s._totalDeToma(d1.slots[0]).kcal + s._totalDeToma(d1.slots[1]).kcal)) < 1e-9,
+      "los totales del día se rehacen");
+
+    // Un día que ya está en su objetivo no se toca, aunque sobre.
+    var lleno = dia([s.buildNoCookItem(pan, 8, true)]);
+    assert.strictEqual(s._rellenarConSobras([lleno], [pan], { calories: 640 }), 0);
+  });
+
+  t.test("_rellenarConSobras(): un día corto puede comer del envase que el menú abre otro día, sin mover tickets, si aguanta abierto", function () {
+    var s = motorSandbox();
+    var galletas = entrada("G", "dulce", 400);   // 120 kcal la ración, 10 por envase, 2 €
+    function dia(filas) {
+      var d = { budget: 10, slots: [{ key: "breakfast", items: filas }, { key: "snack", items: [] }] };
+      d.slots.forEach(function (sl) { sl.total = s._totalDeToma(sl); });
+      return d;
+    }
+    function tickets(planes) { return s.noCookCuentas(planes).dias.map(function (d) { return d.ticket; }); }
+    // El menú abre las galletas el día 2 y deja 9 raciones sin comer. La compra
+    // es una sola: el día 1, corto, puede empezarlas.
+    var planes = [dia([]), dia([s.buildNoCookItem(galletas, 1, true)])];
+    igual(tickets(planes), [0, 2]);
+    s._rellenarConSobras(planes, [galletas], { calories: 2100 });
+    var puestas = planes[0].slots[1].items;
+    assert.strictEqual(puestas.length, 1, "en el snack del día 1");
+    assert.strictEqual(puestas[0].deSobras, s.NO_COOK_EXTRA_RACIONES);
+    igual(tickets(planes), [0, 2], "lo paga el envase que el menú ya compraba el día 2");
+    igual(s.noCookCuentas(planes).envases, { G: 1 }, "y la compra es la misma");
+    var lote = s.noCookCuentas(planes).lotes[0];
+    igual([lote.desde, lote.sobra], [0, 9 - 2 * s.NO_COOK_EXTRA_RACIONES], "se abre el día 1 y queda lo que queda");
+
+    // Si «Cambiar» quita las galletas del día 2, lo comido el día 1 lo compra el día 1.
+    planes[1].slots[0].items = [];
+    igual(tickets(planes), [2, 0]);
+
+    // Y si abiertas aguantan un día y el menú las come el día 3, el día 1 no las toma.
+    s.getStoreDaysAfterOpening = function () { return 1; };
+    var tres = [dia([]), dia([]), dia([s.buildNoCookItem(galletas, 1, true)])];
+    s._rellenarConSobras(tres, [galletas], { calories: 2100 });
+    assert.strictEqual(tres[0].slots[1].items.length, 0, "abiertas el día 1 no llegarían buenas al día 3");
+    assert.strictEqual(tres[1].slots[1].items.length, 1, "el día 2 sí");
+    igual(tickets(tres), [0, 0, 2]);
+  });
 }
 
 module.exports = { run: run };

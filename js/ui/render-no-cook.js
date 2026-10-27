@@ -25,6 +25,7 @@
  *   restaurarPlanSinCocinar()             – pinta el plan guardado; devuelve cuántos días (0 si no hay)
  *   clearNoCookPlan()                     – lo quita de la pantalla y de este dispositivo
  *   noCookCompraItems(dias)               – la compra de todos los días juntos, sin DOM
+ *   recomputeNoCookDias(dias)             – totales y ticket de cada día tras editar tomas (2026-10-27)
  *   renderNoCookShoppingList(dias)        – la pinta en su panel de «Compra» (o lo esconde)
  *   noCookAvisoGuardado()                 – el aviso de «plan guardado» de esa lista
  *   quitarProductoSinCocinar(id, nombre)  – «No me gusta»: lo quita y re-tira sus tomas (2026-10-22)
@@ -148,13 +149,14 @@ function quitarProductoSinCocinar(id, nombre) {
       var base = lastNoCookOptions || {};
       for (var k in base) opciones[k] = base[k];
       opciones.allowMakeAhead = lastNoCookDays.length > 1 && d > 0;
+      opciones.heredado = _heredadoDelDia(lastNoCookDays, d);
       var res = regenerateNoCookSlot(plan, slot.key, lastNoCookStore, opciones);
       if (!res || res.error || !res.slot) { sinCambio++; return; }
       plan.slots[idx] = res.slot;
       cambiadas++;
     });
-    recomputeNoCookPlanTotals(plan);
   });
+  recomputeNoCookDias(lastNoCookDays);
   paintNoCookDays(lastNoCookDays);
   _guardarPlanSinCocinar();
   var texto = sinCambio
@@ -190,6 +192,11 @@ var _compraItems = [];
  *   purchase: { packagesToBuy } }, de más caro a más barato
  */
 function noCookCompraItems(dias) {
+  // Los envases de cada producto salen de la cuenta día a día del motor
+  // (noCookCuentas, 2026-10-27): lo que sobra de un día se come otro, y lo
+  // abierto que ya no aguanta obliga a otro envase. Es la misma cuenta que el
+  // ticket de cada día, así que la compra y la suma de los días coinciden.
+  var cuentas = (typeof noCookCuentas === "function") ? noCookCuentas(dias) : null;
   var porId = {};
   var orden = [];
   (dias || []).forEach(function (plan) {
@@ -212,7 +219,7 @@ function noCookCompraItems(dias) {
   });
   return orden.map(function (id) {
     var x = porId[id];
-    x.packs = Math.max(1, Math.ceil(x.servings / x.perPack));
+    x.packs = (cuentas && cuentas.envases[id]) || Math.max(1, Math.ceil(x.servings / x.perPack));
     x.cost = x.price === null ? 0 : x.price * x.packs;
     // La forma que espera claveDeArticulo (js/core/shopping-checks.js).
     x.purchase = { packagesToBuy: x.packs };
@@ -392,7 +399,7 @@ function restaurarPlanSinCocinar() {
   if (!noCookResults || typeof planSinCocinarLeer !== "function" || typeof planAlmacen !== "function") return 0;
   var guardado = planSinCocinarLeer(planAlmacen());
   if (!guardado) return 0;
-  guardado.dias.forEach(recomputeNoCookPlanTotals);
+  recomputeNoCookDias(guardado.dias);
   lastNoCookStore = guardado.store;
   lastNoCookOptions = guardado.options;
   if (noCookCount && typeof guardado.dias[0].poolSize === "number") noCookCount.textContent = guardado.dias[0].poolSize;
@@ -429,14 +436,17 @@ function paintNoCookDays(dias) {
   // innerHTML deja `scrollLeft` en 0: sin guardarlo, cambiar una toma del día
   // 3 te devolvía al día 1 (lo mismo que pasaba en el plan normal).
   var desplazado = noCookResults.scrollLeft;
+  // Lo que sobra de la compra y ningún día come (2026-10-27): cada día dice
+  // lo que de eso se puede comer ese día (_noCookSobrasHtml).
+  var lotes = (typeof noCookCuentas === "function") ? noCookCuentas(dias).lotes : [];
   noCookResults.classList.toggle("days-carousel__track--multi", multi);
   noCookResults.innerHTML = multi
     ? dias.map(function (plan, i) {
         var cabeza = typeof renderDaySlideHead === "function" ? renderDaySlideHead(i, dias.length) : "";
         return '<section class="day-slide" data-day="' + i + '">' + cabeza +
-          '<div class="nocook-dia">' + _noCookDiaHtml(plan, i) + "</div></section>";
+          '<div class="nocook-dia">' + _noCookDiaHtml(plan, i, lotes) + "</div></section>";
       }).join("")
-    : _noCookDiaHtml(dias[0], 0);
+    : _noCookDiaHtml(dias[0], 0, lotes);
   if (multi) noCookResults.scrollLeft = desplazado;
   lastNoCookDays = dias;
   lastNoCookPlan = dias[0];
@@ -450,7 +460,7 @@ function paintNoCookDays(dias) {
  * El aviso de alérgenos se arma aquí (y no en runNoCookGenerator) porque
  * también hay que re-pintarlo al cambiar una sola toma.
  */
-function _noCookDiaHtml(plan, dayIndex) {
+function _noCookDiaHtml(plan, dayIndex, lotes) {
   var allergenNote = (typeof renderAllergenLine === "function")
     ? '<p class="nocook-disclaimer">' + t("html.nocook_aviso_alergenos") + "</p>"
     : "";
@@ -474,8 +484,69 @@ function _noCookDiaHtml(plan, dayIndex) {
       }) + "</p>"
     : "";
 
-  return renderNoCookSummary(plan) + allergenNote + aproxNote +
+  return renderNoCookSummary(plan) + _noCookSobrasHtml(lotes, dayIndex) + allergenNote + aproxNote +
     plan.slots.map(function (slot) { return renderNoCookSlot(slot, dayIndex); }).join("");
+}
+
+/**
+ * «Si no te llenas…» (2026-10-27, pedido del dueño): lo que sobra de la
+ * compra, ningún día del menú va a comer y se puede comer ESTE día (los
+ * `lotes` de noCookCuentas, con la misma regla que el motor:
+ * noCookLoteSirve). Es lo que queda después de rellenar los días cortos
+ * (no-cook-generator.js, _rellenarConSobras), así que sale sobre todo cuando
+ * las calorías ya cuadran. Lo que se unta, solo si también sobra algo donde
+ * untarlo: un tarro de margarina no se come solo.
+ * @param {object[]} lotes
+ * @param {number} dia
+ * @returns {string} HTML, o "" si no sobra nada que comer
+ */
+function _noCookSobrasHtml(lotes, dia) {
+  var hoy = (lotes || []).filter(function (l) {
+    if (!l || !l.item) return false;
+    return (typeof noCookLoteSirve === "function")
+      ? noCookLoteSirve(l, dia)
+      : (l.desde <= dia && dia <= l.hasta && l.sobra >= 1);
+  });
+  var hayBase = hoy.some(function (l) { return l.item.role === "carrier"; });
+  hoy = hoy.filter(function (l) { return l.item.role !== "untable" || hayBase; });
+  if (!hoy.length) return "";
+  // Una pista, no un inventario: lo que más llena primero, y del resto solo
+  // cuántos son (todo está en la despensa).
+  function kcalQueSobra(l) { return l.sobra * (l.item.kcal || 0) / (l.item.servings || 1); }
+  hoy.sort(function (a, b) { return kcalQueSobra(b) - kcalQueSobra(a); });
+  var resto = hoy.length - SOBRAS_EN_LA_PISTA;
+  // El nombre es el de la estantería (como en las tomas): va en su propio
+  // <span>, que es lo que sabe saltarse la comprobación de idioma.
+  var lista = hoy.slice(0, SOBRAS_EN_LA_PISTA).map(function (l) {
+    return '<span class="nocook-sobras__producto">' + escapeHtml(_nombreProductoLeido(l.item.name)) + "</span> — " +
+      escapeHtml(_cantidadQueSobra(l));
+  }).join("; ") + (0 < resto ? " " + escapeHtml(tFormat("ui.nocook_sobras_y_mas", { n: resto })) : "");
+  return '<p class="nocook-disclaimer nocook-sobras">' +
+    tFormat("html.nocook_si_no_te_llenas", { lista: lista }) + "</p>";
+}
+
+// Cuántos productos nombra «si no te llenas» (_noCookSobrasHtml).
+var SOBRAS_EN_LA_PISTA = 4;
+
+// Unidades que nombran el ENVASE. Cuando un envase trae varias raciones, la
+// ración no es una lata («Piña en su jugo»: una lata de 681 g son 5 raciones
+// de 120 g), así que lo que sobra se dice en gramos: «4 latas» serían 480 g.
+var UNIDADES_DE_ENVASE = ["lata", "tarrina", "bolsa"];
+
+/** Lo que sobra de un lote, en la unidad de consumo o, si esa unidad engaña, en gramos. */
+function _cantidadQueSobra(l) {
+  var it = l.item;
+  if (UNIDADES_DE_ENVASE.indexOf(it.unit) !== -1 && 1 < (it.servingsPerPackage || 1) && it.servingG) {
+    return fmtUnit(Math.round(l.sobra * it.servingG), "g");
+  }
+  var n = Math.floor(l.sobra + 1e-9);
+  return n + " " + noCookUnitLabel(it.unit, n);
+}
+
+/** Lo que sobra de los días de antes del `d`, para que «Cambiar» lo aproveche gratis. */
+function _heredadoDelDia(dias, d) {
+  if (typeof noCookCuentas !== "function" || !(d > 0)) return null;
+  return noCookCuentas(dias.slice(0, d)).siguiente;
 }
 
 /**
@@ -498,6 +569,7 @@ function handleSwapNoCookSlot(event) {
   var base = lastNoCookOptions || {};
   for (var k in base) opciones[k] = base[k];
   opciones.allowMakeAhead = lastNoCookDays.length > 1 && dayIndex > 0;
+  opciones.heredado = _heredadoDelDia(lastNoCookDays, dayIndex);
   var res = regenerateNoCookSlot(plan, slotKey, lastNoCookStore, opciones);
   if (!res || res.error || !res.slot) {
     btn.disabled = false;
@@ -514,10 +586,22 @@ function handleSwapNoCookSlot(event) {
   plan.slots[idx] = res.slot;
 
   // Totales y coste del día cambian con la toma: se recalculan enteros en
-  // vez de parchear la tarjeta, que es como se cuelan las cifras viejas.
-  recomputeNoCookPlanTotals(plan);
+  // vez de parchear la tarjeta, que es como se cuelan las cifras viejas. Y
+  // los de los días siguientes también: lo que sobra de este día es suyo.
+  recomputeNoCookDias(lastNoCookDays);
   paintNoCookDays(lastNoCookDays);
   _guardarPlanSinCocinar();
+}
+
+/**
+ * Totales de todos los días y el ticket de cada uno con la cuenta día a día
+ * del motor (noCookAplicarCuentas, 2026-10-27): lo heredado de otro día ya
+ * está pagado. Muta los planes.
+ * @param {object[]} dias
+ */
+function recomputeNoCookDias(dias) {
+  (dias || []).forEach(recomputeNoCookPlanTotals);
+  if (typeof noCookAplicarCuentas === "function") noCookAplicarCuentas(dias || []);
 }
 
 /** Recalcula totales, coste y avisos del día tras editar una toma. */
@@ -776,9 +860,15 @@ function renderNoCookItem(item) {
   var wholeBadge = item.wholePackage && item.policy === "fresh"
     ? '<span class="nocook-item__whole">' + escapeHtml(t("ui.nocook_envase_entero")) + "</span>" : "";
 
+  // Raciones puestas para rellenar un día corto con lo que sobra de otro
+  // (2026-10-27, no-cook-generator.js): se dice para que no parezca un error.
+  var sobrasBadge = item.deSobras
+    ? '<span class="nocook-item__whole nocook-item__sobras">' +
+      escapeHtml(tFormat("ui.nocook_de_sobras", { n: item.deSobras })) + "</span>" : "";
+
   return (
     '<div class="nocook-item">' +
-      levelBadge + wholeBadge +
+      levelBadge + wholeBadge + sobrasBadge +
       '<div class="nocook-item__name">' + escapeHtml(_nombreProductoDoble(item.name)) + findBtn + "</div>" +
       (item.brand ? '<div class="nocook-item__brand">' + escapeHtml(item.brand) + "</div>" : "") +
       '<div class="nocook-item__qty">' + qtyText + "</div>" +

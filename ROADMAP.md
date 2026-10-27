@@ -1,5 +1,36 @@
 # Nutrition Planner — Roadmap
 
+## Lo del 2026-10-27 (sello `20261027a`, 1321 tests)
+
+El dueño, con un plan «sin cocinar» de 3 días a 4.000 kcal: «один раз 4000
+калорий из 4 потом 2600 из 4 потом 4 из 4, и у меня в кладовке остаются
+продукты которые использовались один раз в первый день а во второй и третий
+нет… пробелы заполнялись другими продуктами из других дней… если по калориям
+всё хорошо и продукты уже некуда впихнуть то нужна мини подсказка "если не
+наелись можете скушать это это"».
+
+| Qué | Dónde | Estado |
+|---|---|---|
+| Cada día recibe lo que sobra (pagado y sin comer) de los anteriores y lo reutiliza gratis antes de comprar | `generateNoCookPlanDays` → `options.heredado`, `pickForRole`, `buildSlotFromTemplate` (`no-cook-generator.js`) | **Hecho** |
+| Una sola cuenta día a día: ticket de cada día, envases de la compra y lo que sobra (`lotes`) | `noCookCuentas`, `noCookAplicarCuentas`; la usan `noCookCompraItems` y `recomputeNoCookDias` (`render-no-cook.js`) | **Hecho** |
+| Un envase abierto solo vale los días que dice la tienda (`daysAfterOpening`); lo «fresh» no pasa de día | `_noCookDiasAbierto`, `noCookLoteSirve` | **Hecho** |
+| Los días cortos de kcal se rellenan con lo que sobra y nadie come, sin mover ningún ticket, con su marca «+N из остатков» | `_rellenarConSobras`, `item.deSobras`, `ui.nocook_de_sobras` | **Hecho** |
+| «Если не наелись…»: lo que sobra y se puede comer ese día (4 como mucho, lo que más llena primero; lo que se unta, solo con algo donde untarlo) | `_noCookSobrasHtml`, `html.nocook_si_no_te_llenas`, `ui.nocook_sobras_y_mas` | **Hecho** |
+| «Cambiar» y «No me gusta» aprovechan lo heredado y recalculan todos los días | `_heredadoDelDia`, `regenerateNoCookSlot(…, {heredado})` | **Hecho** |
+| Lo mismo en el plan normal (con platos) | `plan-generator.js` | **Sin empezar** |
+
+Medido con `noCookCuentas` (40 planes de 3 días a 4.000 kcal y 15 €/día por
+caso, antes → después): días por debajo del 85% de las kcal 48/120 → 0/120;
+kcal media 86% → 96%; lo que sobra al acabar 6.191 kcal (13,18 €) → 3.699 kcal
+(6,61 €); envases abiertos un solo día con sobra 15,1 → 3,0; compra de los 3
+días 41,75 € → 36,80 €; días por encima del presupuesto 7 → 2. A 7 días (20
+planes): días cortos 58/140 → 0/140, sobra 29,38 € → 7,83 €, compra 97,04 € →
+78,39 €. El relleno no cambia el ticket de ningún día (0 de 360 medidos).
+
+El plan normal tiene el mismo problema (medido el mismo día: 11–20 envases
+abiertos un solo día por plan de 3 días a 4.000 kcal), pero su motor es otro
+(`plan-generator.js`, días independientes con `pantryState`): queda pendiente.
+
 ## Lo del 2026-10-26, quinta tanda (sello `20261026e`, 1315 tests)
 
 El dueño: «когда у меня план sin cocinar, приходится листать сначала обычный

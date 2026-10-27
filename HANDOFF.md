@@ -18,6 +18,33 @@ llevan al final un bloque «actualización 2026-10-08»). El diario fechado, con
 medidas y causas, está en la cabecera de `STATE.md` (entradas del 2026-10-07 y
 2026-10-08).
 
+### 0.0 quaterdecies Lo que sobra en «sin cocinar», 2026-10-27 (lee esto antes que 0.0 terdecies)
+
+- **Estado:** sello `20261027a`, **1321 tests en verde**. En el plan «sin
+  cocinar» de varios días, cada día aprovecha lo que sobra de los envases de
+  los anteriores, los días cortos de calorías se rellenan con lo que sobra y
+  nadie come («+N из остатков»), y cada día dice qué de lo que sobra se puede
+  comer si no te llenas. Tabla y medidas al principio de `ROADMAP.md`.
+- **Reglas nuevas (no las rompas):**
+  - El ticket de cada día, los envases de la compra y lo que sobra salen SOLO
+    de `noCookCuentas(dias)` (`no-cook-generator.js`); `noCookCompraItems`
+    también. Cambiar un día cambia los tickets de los siguientes: tras editar
+    tomas, `recomputeNoCookDias(dias)`, no `recomputeNoCookPlanTotals` suelto.
+  - Lo puesto de más (`item.deSobras`) no compra nada: lo paga el envase que
+    el menú ya compraba (si se come antes de que el menú lo abra, se le
+    «debe»). Solo `_rellenarConSobras` lo pone, y solo de un `lote`.
+  - «Cambiar» y «No me gusta» del día d pasan `heredado` (lo de los días
+    anteriores, `_heredadoDelDia`) a `regenerateNoCookSlot`.
+  - `productCount` de un día = productos que se COMPRAN ese día; lo heredado
+    ya está en casa.
+  - Un envase abierto solo vale los días de `daysAfterOpening` de la tienda
+    (como `resolveExpiry`); sin el dato, todo el plan. Lo «fresh», ni un día más.
+  - Un nombre de producto dentro de un texto va en su `<span>` con clase de
+    `PRODUCTO_CLASES` (`scripts/i18n/detector.js`), o el test de idioma lo da
+    por español sin traducir: el de la pista es `.nocook-sobras__producto`.
+- **Sin hacer:** lo mismo en el plan normal (con platos), que también deja
+  envases abiertos un solo día (medido: 11–20 por plan de 3 días a 4.000 kcal).
+
 ### 0.0 terdecies Personas de la casa, 2026-10-26 (lee esto antes que 0.0 duodecies)
 
 - **Estado:** sello `20261026d`, **1312 tests en verde**. Personas como en

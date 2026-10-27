@@ -632,27 +632,33 @@ function run(t) {
     assert.ok(cont.innerHTML.indexOf('data-day="0"') !== -1);
   });
 
-  t.test("«sin cocinar»: la compra de 3 días junta cada producto una vez y no cuesta más que los 3 tickets (2026-10-21)", function () {
+  t.test("«sin cocinar»: la compra de 3 días junta cada producto una vez y cuesta lo mismo que los 3 tickets (2026-10-21, 2026-10-27)", function () {
     var s = sandboxCompleto();
     s.saveLang("ru");
     seedRandomInContext(s, 41);
     var dias = s.generateNoCookPlanDays("mercadona", { calories: 2100, protein: 120, budget: 14 }, 3);
-    // Con un día, la MISMA cifra que el ticket que calculó el generador.
+    // El día 1 no hereda nada: su ticket es el de sus productos solos. Los
+    // demás pagan solo lo que no sobraba de antes (noCookCuentas).
+    var uno = s.noCookCompraItems([dias[0]]).reduce(function (a, x) { return a + x.cost; }, 0);
+    assert.strictEqual(Math.round(uno * 100) / 100, dias[0].shoppingCost, "día 1");
+    var cuentas = s.noCookCuentas(dias);
     dias.forEach(function (plan, i) {
-      var uno = s.noCookCompraItems([plan]).reduce(function (a, x) { return a + x.cost; }, 0);
-      assert.strictEqual(Math.round(uno * 100) / 100, plan.shoppingCost, "día " + (i + 1));
+      assert.strictEqual(plan.shoppingCost, cuentas.dias[i].ticket, "día " + (i + 1));
     });
     var items = s.noCookCompraItems(dias);
     var vistos = {};
     items.forEach(function (x) {
       assert.ok(!vistos[x.id], "producto repetido: " + x.name);
       vistos[x.id] = true;
-      assert.strictEqual(x.packs, Math.max(1, Math.ceil(x.servings / x.perPack)));
+      // Al menos los envases que piden sus raciones; más solo si uno abierto
+      // ya no aguanta hasta el día que se vuelve a usar.
+      assert.ok(x.packs >= Math.max(1, Math.ceil(x.servings / x.perPack)), x.name);
+      assert.strictEqual(x.packs, cuentas.envases[x.id], x.name);
       assert.strictEqual(x.purchase.packagesToBuy, x.packs);
     });
     var junto = items.reduce(function (a, x) { return a + x.cost; }, 0);
     var separado = dias.reduce(function (a, p) { return a + p.shoppingCost; }, 0);
-    assert.ok(junto <= separado + 0.001, "juntos " + junto + " frente a " + separado + " por separado");
+    assert.ok(Math.abs(junto - separado) < 0.02, "juntos " + junto + " frente a " + separado + " por días");
 
     var panel = contenedor(), lista = contenedor(), resumen = contenedor(), ojo = contenedor();
     s.initNoCookRefs({ noCookResults: contenedor(), noCookShoppingPanel: panel, noCookShoppingList: lista,
@@ -668,6 +674,66 @@ function run(t) {
     });
     s.renderNoCookShoppingList([]);
     assert.strictEqual(panel.hidden, true, "sin plan, sin panel");
+  });
+
+  t.test("«sin cocinar»: «si no te llenas» dice lo que sobra y se puede comer ESE día, y lo puesto de más lleva su marca (2026-10-27)", function () {
+    var s = sandboxCompleto();
+    function lote(id, nombre, rol, desde, hasta, sobra) {
+      return { id: id, desde: desde, hasta: hasta, sobra: sobra, item: { id: id, name: nombre, role: rol, unit: "porción" } };
+    }
+    var yogur = lote("1", "Yogur natural Hacendado", "lacteo", 0, 2, 3);
+    var pate = lote("2", "Paté de cerdo Hacendado", "untable", 0, 2, 4);
+    var galletas = lote("3", "Galletas María Hacendado", "dulce", 2, 2, 5);
+    var migas = lote("4", "Picos camperos Hacendado", "carrier", 0, 2, 0.5);
+    var pan = lote("5", "Pan de molde Hacendado", "carrier", 1, 2, 6);
+    // Primer envase del plan, que el menú abre el día 3: la compra es una
+    // sola, así que también se puede comer antes... si abierto aguanta.
+    var pina = lote("6", "Piña en su jugo Hacendado rodajas", "fruta", 2, 2, 4);
+    pina.primero = true; pina.n = null; pina.ultimo = 2;
+    pina.item.unit = "lata"; pina.item.servingsPerPackage = 5; pina.item.servingG = 120;
+    var natillas = lote("7", "Natillas de vainilla Hacendado", "lacteo", 2, 2, 2);
+    natillas.primero = true; natillas.n = 1; natillas.ultimo = 2;
+    ["ru", "en", "es"].forEach(function (lang) {
+      s.saveLang(lang);
+      var html = s._noCookSobrasHtml([yogur, pate, galletas, migas, pina, natillas], 0);
+      var texto = visible(html);
+      assert.ok(html.indexOf("nocook-sobras__producto") !== -1, lang + ": " + html);
+      assert.ok(texto.indexOf("— 3 ") !== -1, lang + ": las raciones que quedan: " + texto);
+      assert.strictEqual(html.indexOf("Paté"), -1, lang + ": la crema sola no se propone");
+      assert.strictEqual(html.indexOf("Galletas"), -1, lang + ": lo de otro envase posterior no se ofrece el día 1");
+      assert.strictEqual(html.indexOf("Picos"), -1, lang + ": media ración no es nada que comer");
+      assert.ok(texto.indexOf("— 480 ") !== -1, lang + ": una lata de 5 raciones se dice en gramos, no «4 latas»: " + texto);
+      assert.strictEqual(html.indexOf("Natillas"), -1, lang + ": abiertas el día 1 no llegarían buenas al día 3");
+      assert.ok(s._noCookSobrasHtml([natillas], 1).indexOf("Natillas") !== -1, lang + ": el día 2 sí");
+      if (lang !== "es") {
+        assert.deepStrictEqual(detector.analizarTexto(texto, lang), [], lang + ": " + texto);
+        assert.strictEqual(/\d (porci[oó]n|porciones)\b/.test(texto), false, lang + ": unidad en español: " + texto);
+      }
+      // Con algo donde untarla, la crema sí.
+      assert.ok(s._noCookSobrasHtml([pate, pan], 1).indexOf("Paté") !== -1, lang);
+      assert.strictEqual(s._noCookSobrasHtml([], 0), "");
+      assert.strictEqual(s._noCookSobrasHtml([galletas], 1), "");
+    });
+    s.saveLang("ru");
+    assert.ok(s._noCookSobrasHtml([yogur], 0).indexOf("Если не наелись") !== -1);
+    // Una pista, no un inventario: cuatro, lo que más llena primero, y «и ещё N».
+    var muchos = [1, 2, 3, 4, 5, 6].map(function (i) {
+      var l = lote("m" + i, "Producto " + i, "lacteo", 0, 2, 2);
+      l.item.kcal = 100 * i; l.item.servings = 1;
+      return l;
+    });
+    var corta = s._noCookSobrasHtml(muchos, 0);
+    assert.ok(visible(corta).indexOf("и ещё 2.") !== -1, visible(corta));
+    assert.ok(corta.indexOf("Producto 6") < corta.indexOf("Producto 3"), "lo que más llena, primero");
+    assert.strictEqual(corta.indexOf("Producto 2"), -1);
+    assert.strictEqual(corta.indexOf("Producto 1"), -1);
+    var fila = { id: "1", name: "Yogur natural Hacendado", servings: 3, unit: "porción", level: 0, deSobras: 2, kcal: 300, protein: 9, carbs: 12, fat: 3 };
+    assert.ok(s.renderNoCookItem(fila).indexOf("+2 из остатков") !== -1, "la marca de lo puesto de más");
+    delete fila.deSobras;
+    assert.strictEqual(s.renderNoCookItem(fila).indexOf("nocook-item__sobras"), -1, "sin nada de más, sin marca");
+    s.saveLang("es");
+    fila.deSobras = 1;
+    assert.ok(s.renderNoCookItem(fila).indexOf("+1 de lo que sobra") !== -1);
   });
 
   t.test("«No me gusta» en un producto sin cocinar: sale de los 3 días, queda en la lista y lo demás no cambia (2026-10-22)", function () {

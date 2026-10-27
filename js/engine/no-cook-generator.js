@@ -43,6 +43,9 @@
  *                                            shoppingCost, consumedCost, productCount }
  *   generateNoCookPlanDays(storeId, options, dias) → un plan como el de arriba por día
  *   regenerateNoCookSlot(plan, slotKey, storeId, options) → { slot } | { error }
+ *   noCookCuentas(dias) → { dias:[{ticket, comprados, heredado}], siguiente, lotes, envases }
+ *   noCookLoteSirve(lote, dia) → si lo que sobra de ese envase se puede comer ese día
+ *   noCookAplicarCuentas(dias) → los mismos días, con el ticket de cada uno
  *
  * Se mantiene en UN archivo a propósito, aunque pase de 500 líneas: partirlo
  * en "generador del día" + "montador de una toma" se probó y salía peor --
@@ -121,6 +124,417 @@ function noCookFactorRaciones(targetKcal) {
 // Papeles que se reutilizan de una toma a otra. Los "fresh" nunca: un
 // plato preparado se acaba, no se reparte por todo el día.
 var REUSABLE_ROLES = ["carrier", "queso", "protein", "veg", "untable", "cereal", "lacteo", "fruta", "salado", "dulce", "sopa"];
+
+// ── Lo que sobra de un día sirve a los demás (2026-10-27) ───────────────
+// Queja del dueño con un plan de 3 días a 4.000 kcal: «4000 из 4000, потом
+// 2600 из 4000, потом 4000 из 4000», y en la despensa productos que salieron
+// una vez el día 1 y ya no. Cada día se montaba como si la casa estuviera
+// vacía: lo que sobraba de un envase abierto el día 1 no existía para el día
+// 2, que volvía a comprar con su presupuesto y se quedaba corto.
+//
+// Medido antes del cambio (40 planes de 3 días a 4.000 kcal, 15 €/día): 55 de
+// 120 días por debajo del 85% de las kcal, ~5.600 kcal (12,58 €) sin comer al
+// acabar el plan y ~15 envases abiertos un solo día.
+//
+// Ahora, tres cosas:
+//   1. El día N recibe lo que queda de los envases ya pagados
+//      (`options.heredado`, lo calcula noCookCuentas) y lo reutiliza GRATIS
+//      antes de abrir nada nuevo (pickForRole), igual que ya reutilizaba lo
+//      comprado ese mismo día.
+//   2. Si aun así un día se queda corto de calorías, se rellena con lo que
+//      sobra y nadie más va a comer (_rellenarConSobras). Cada fila añadida
+//      lleva `deSobras` (las raciones puestas) para que se vea de dónde sale.
+//   3. Lo que sigue sobrando lo enseña la pantalla («si no te llenas…»,
+//      js/ui/render-no-cook.js) a partir de los mismos `lotes`.
+//
+// Un envase abierto solo sirve los días que la TIENDA dice que aguanta
+// abierto (`daysAfterOpening`, js/data/product-storage.js, vía expiry.js):
+// el mismo dato y la misma regla que la caducidad de la despensa
+// (resolveExpiry: abierto el día A con N días, vale hasta el A+N). Sin el
+// dato, todo el plan. Lo «fresh» nunca pasa al día siguiente.
+
+// Raciones de un mismo producto que se pueden AÑADIR a un día al rellenarlo
+// con lo que sobra (con objetivos altos crece con noCookFactorRaciones). Es
+// el mismo freno que `maxServings` en las plantillas: sin él, un día corto
+// podía acabar con cinco raciones de chorizo porque era lo que quedaba.
+var NO_COOK_EXTRA_RACIONES = 2;
+
+// Lo que se pone de lo que sobra va a un snack; sin snacks, lo de desayunar
+// al desayuno y lo demás a la toma principal más ligera.
+var ROLES_DE_DESAYUNO = ["lacteo", "cereal", "fruta", "dulce", "untable"];
+
+// Lo que se unta (paté, hummus, mermelada, margarina) no se come solo: solo
+// se pone de más donde ese día ya se unta, nunca como fila suelta.
+var ROLES_SOLO_CON_ALGO = ["untable"];
+
+/** ¿Sale ya este producto en alguna toma del día? */
+function _saleEnElDia(plan, id) {
+  return ((plan && plan.slots) || []).some(function (s) {
+    return (s.items || []).some(function (it) { return it.id === id; });
+  });
+}
+
+/**
+ * Días que aguanta abierto un producto según la tienda, o null si no lo dice
+ * (o si expiry.js no está cargado).
+ * @param {string|number} id
+ * @returns {number|null}
+ */
+function _noCookDiasAbierto(id) {
+  if (typeof getStoreDaysAfterOpening !== "function") return null;
+  var n = getStoreDaysAfterOpening(String(id));
+  return (typeof n === "number" && isFinite(n) && n >= 0) ? n : null;
+}
+
+/**
+ * Envases que hay que PAGAR para servir `usadas` raciones de un producto del
+ * que ya hay `gratis` raciones pagadas otro día. Sin nada heredado es la
+ * cuenta de siempre: al menos un envase.
+ * @param {number} usadas
+ * @param {number} gratis
+ * @param {number} porEnvase
+ * @returns {number}
+ */
+function _envasesPagados(usadas, gratis, porEnvase) {
+  if (gratis > 0) return gratis < usadas ? Math.ceil((usadas - gratis) / porEnvase) : 0;
+  return Math.max(1, Math.ceil(usadas / porEnvase));
+}
+
+/**
+ * La cuenta de un plan sin cocinar de VARIOS días, día a día, como pasa en
+ * casa: lo que sobra de un envase pagado se come otro día gratis mientras
+ * aguante abierto, y cuando se acaba (o caduca) se compra otro. Es la ÚNICA
+ * cuenta del ticket de cada día y de los envases de la compra: la usan el
+ * generador, «Cambiar», la lista de la compra y lo que se pinta, para que no
+ * haya dos cifras que puedan discrepar. Sin DOM.
+ *
+ * Con un solo día da lo de siempre: cada producto, sus envases enteros.
+ *
+ * Lo puesto de más con lo que sobra (`deSobras`, _rellenarConSobras) no
+ * compra nada: sale de lo que ya hay abierto o, si el menú abre ese envase
+ * otro día después, se le debe a ese envase, que lo paga ESE día y da para
+ * ello. Así rellenar un día corto no mueve el ticket de ningún día.
+ *
+ * @param {object[]} dias - planes de generateNoCookPlan, en orden
+ * @returns {{
+ *   dias: {ticket:number, comprados:number, heredado:Object}[],
+ *   siguiente: Object,
+ *   lotes: {id:string, desde:number, hasta:number, sobra:number, item:object}[],
+ *   envases: Object
+ * }}
+ *   `heredado`: id -> {servings, desde}, lo que hay pagado al EMPEZAR ese
+ *   día; `siguiente`, lo mismo para el día de después del último.
+ *   `lotes`: cada envase abierto que acaba con raciones sin comer, con los
+ *   días del plan en que todavía se pueden comer (desde..hasta), el último
+ *   día que se come de él (`ultimo`), los días que aguanta abierto (`n`, o
+ *   null) y si es el primero de ese producto en el plan (`primero`). Si un
+ *   lote sirve para comer un día lo dice noCookLoteSirve.
+ *   `envases`: id -> envases que se compran en todo el plan.
+ */
+function noCookCuentas(dias) {
+  var lista = Array.isArray(dias) ? dias : [];
+  var ultimo = lista.length - 1;
+  var abiertos = {};
+  var vistos = {};
+  var lotes = [];
+  var envases = {};
+  var cuentas = [];
+
+  function cerrar(id, hasta) {
+    var a = abiertos[id];
+    delete abiertos[id];
+    if (a && a.sobra > 1e-9) {
+      lotes.push({ id: id, desde: a.desde, hasta: hasta, sobra: a.sobra, item: a.item,
+        ultimo: a.ultimo, n: a.n, primero: a.primero });
+    }
+  }
+  function caducar(d) {
+    Object.keys(abiertos).forEach(function (id) {
+      if (abiertos[id].vence < d) cerrar(id, abiertos[id].vence);
+    });
+  }
+  function foto() {
+    var f = {};
+    Object.keys(abiertos).forEach(function (id) {
+      if (abiertos[id].sobra > 1e-9) f[id] = { servings: abiertos[id].sobra, desde: abiertos[id].desde };
+    });
+    return f;
+  }
+
+  function abrir(id, item, desde, sobra, ultimoUso) {
+    var n = _noCookDiasAbierto(id);
+    abiertos[id] = {
+      desde: desde, sobra: sobra, vence: n === null ? Infinity : desde + n, n: n,
+      ultimo: ultimoUso, primero: !vistos[id], fresh: item.policy === "fresh", item: item
+    };
+  }
+
+  // Raciones puestas de más ANTES de que el menú compre su envase: id ->
+  // {servings, dia (el primero), ultimo, item}. Las paga el envase del menú.
+  var deuda = {};
+
+  lista.forEach(function (plan, d) {
+    caducar(d);
+    var heredado = foto();
+    var uso = {};
+    var orden = [];
+    ((plan && plan.slots) || []).forEach(function (slot) {
+      ((slot && slot.items) || []).forEach(function (it) {
+        if (!it || it.id == null) return;
+        if (!uso[it.id]) { uso[it.id] = { item: it, servings: 0, extras: 0 }; orden.push(it.id); }
+        var s = (typeof it.servings === "number") ? it.servings : (it.quantity || 1);
+        uso[it.id].servings += s;
+        uso[it.id].extras += Math.min(s, it.deSobras || 0);
+      });
+    });
+
+    var ticket = 0;
+    var comprados = 0;
+    orden.forEach(function (id) {
+      var u = uso[id];
+      var porEnvase = u.item.servingsPerPackage || 1;
+      var a = abiertos[id];
+      var gratis = a ? a.sobra : 0;
+
+      var deLoAbierto = Math.min(u.extras, gratis);
+      gratis -= deLoAbierto;
+      if (a && deLoAbierto > 0) { a.sobra = gratis; a.ultimo = d; }
+      if (deLoAbierto < u.extras) {
+        if (!deuda[id]) deuda[id] = { servings: 0, dia: d, item: u.item };
+        deuda[id].servings += u.extras - deLoAbierto;
+        deuda[id].ultimo = d;
+      }
+
+      var menu = u.servings - u.extras;
+      if (!(menu > 0)) return;
+      var debe = deuda[id] ? deuda[id].servings : 0;
+      var hoy = _envasesPagados(menu + debe, gratis, porEnvase);
+      if (hoy > 0) {
+        comprados++;
+        envases[id] = (envases[id] || 0) + hoy;
+        if (typeof u.item.price === "number") ticket += u.item.price * hoy;
+        // Lo que quedaba del envase anterior se come primero: el que se abre
+        // hoy es el que se queda con lo que sobre. Si ya se comió de él antes
+        // (lo puesto de más), se abrió aquel día.
+        abrir(id, u.item, deuda[id] ? deuda[id].dia : d, gratis + hoy * porEnvase - menu - debe, d);
+      } else {
+        abiertos[id].sobra = gratis - menu - debe;
+        abiertos[id].ultimo = d;
+      }
+      delete deuda[id];
+      vistos[id] = true;
+    });
+    // Lo «fresh» se acaba el mismo día (ver la cabecera): no pasa a mañana.
+    Object.keys(abiertos).forEach(function (id) { if (abiertos[id].fresh) cerrar(id, d); });
+
+    cuentas.push({ ticket: Math.round(ticket * 100) / 100, comprados: comprados, heredado: heredado });
+  });
+
+  // Lo debido a un envase que el menú ya no abre (p. ej. tras «Cambiar» esa
+  // toma) se compra el día en que se empezó a comer.
+  Object.keys(deuda).forEach(function (id) {
+    var dd = deuda[id];
+    var porEnvase = dd.item.servingsPerPackage || 1;
+    var packs = Math.max(1, Math.ceil(dd.servings / porEnvase));
+    envases[id] = (envases[id] || 0) + packs;
+    var c = cuentas[dd.dia];
+    c.comprados++;
+    if (typeof dd.item.price === "number") c.ticket = Math.round((c.ticket + dd.item.price * packs) * 100) / 100;
+    if (abiertos[id]) abiertos[id].sobra += packs * porEnvase - dd.servings;
+    else abrir(id, dd.item, dd.dia, packs * porEnvase - dd.servings, dd.ultimo);
+  });
+
+  caducar(lista.length);
+  var siguiente = foto();
+  Object.keys(abiertos).forEach(function (id) { cerrar(id, Math.min(abiertos[id].vence, ultimo)); });
+
+  return { dias: cuentas, siguiente: siguiente, lotes: lotes, envases: envases };
+}
+
+/**
+ * ¿Se puede comer el día `d` algo de lo que sobra de este envase (un `lote`
+ * de noCookCuentas)? Sí mientras está abierto y bueno (desde..hasta). Y
+ * también ANTES de que el menú lo abra, si es el primer envase de ese
+ * producto en el plan (la compra es una sola, al principio) y abrirlo ese
+ * día no deja malo lo que el menú come de él después (`ultimo`).
+ * @param {object} lote
+ * @param {number} d - día del plan, desde 0
+ * @returns {boolean}
+ */
+function noCookLoteSirve(lote, d) {
+  if (!lote || !(lote.sobra >= 1)) return false;
+  if (lote.desde <= d && d <= lote.hasta) return true;
+  return !!lote.primero && d < lote.desde && (lote.n === null || lote.n === undefined || lote.ultimo - d <= lote.n);
+}
+
+/**
+ * Pone en cada día el ticket de noCookCuentas: lo que se compra ESE día (lo
+ * heredado de otro día ya está pagado), cuántos productos y si se pasa del
+ * presupuesto. Muta los planes.
+ * @param {object[]} dias
+ * @returns {object[]} los mismos días
+ */
+function noCookAplicarCuentas(dias) {
+  var cuentas = noCookCuentas(dias).dias;
+  (dias || []).forEach(function (plan, d) {
+    if (!plan || !cuentas[d]) return;
+    var ticket = cuentas[d].ticket;
+    plan.shoppingCost = ticket;
+    plan.productCount = cuentas[d].comprados;
+    plan.budgetOverrun = (plan.budget && ticket > plan.budget)
+      ? Math.round((ticket - plan.budget) * 100) / 100 : 0;
+  });
+  return dias;
+}
+
+/**
+ * Lo heredado (`{id: {servings}}`, de noCookCuentas) con su entrada del pool,
+ * listo para reutilizar. Fuera lo que no está en el pool (un «no me gusta»
+ * puesto después), lo «fresh» y lo que no llega a una ración.
+ * @returns {Object} id -> {entry, servings}
+ */
+function _heredadoDelPool(pool, heredado) {
+  var out = {};
+  if (!heredado || typeof heredado !== "object") return out;
+  var porId = {};
+  for (var i = 0; i < pool.length; i++) porId[pool[i].product.id] = pool[i];
+  Object.keys(heredado).forEach(function (id) {
+    var h = heredado[id];
+    var entry = porId[id];
+    if (!entry || !h || !(h.servings >= 1) || entry.serving.policy === "fresh") return;
+    out[id] = { entry: entry, servings: h.servings };
+  });
+  return out;
+}
+
+/** Macros de una toma a partir de sus filas. */
+function _totalDeToma(slot) {
+  var t = emptyMacros();
+  ((slot && slot.items) || []).forEach(function (it) {
+    t.kcal += it.kcal || 0; t.protein += it.protein || 0; t.carbs += it.carbs || 0; t.fat += it.fat || 0;
+  });
+  return t;
+}
+
+/** Macros del día a partir de sus tomas. */
+function _totalDelDia(plan) {
+  var t = emptyMacros();
+  ((plan && plan.slots) || []).forEach(function (s) { addMacros(t, s.total || _totalDeToma(s)); });
+  return t;
+}
+
+/** La toma a la que va un producto que sobra y no sale ese día (ver ROLES_DE_DESAYUNO). */
+function _tomaParaSobra(slots, rol) {
+  function masLigera(lista) {
+    return lista.reduce(function (a, s) {
+      return (!a || _totalDeToma(s).kcal < _totalDeToma(a).kcal) ? s : a;
+    }, null);
+  }
+  function deClave(claves) { return slots.filter(function (s) { return claves.indexOf(s.key) !== -1; }); }
+  var snacks = deClave(["snack", "snack2"]);
+  if (snacks.length) return masLigera(snacks);
+  var desayuno = deClave(["breakfast"]);
+  if (desayuno.length && ROLES_DE_DESAYUNO.indexOf(rol) !== -1) return desayuno[0];
+  var principales = deClave(["lunch", "dinner"]);
+  return masLigera(principales.length ? principales : slots);
+}
+
+/**
+ * Una ración más de un producto que sobra, en el día: en su misma fila si ya
+ * sale ese día, y si no, en una fila nueva (_tomaParaSobra).
+ */
+function _ponerRacionDeSobra(plan, entry) {
+  var id = entry.product.id;
+  var slots = plan.slots || [];
+  for (var i = 0; i < slots.length; i++) {
+    var items = slots[i].items || [];
+    for (var j = 0; j < items.length; j++) {
+      if (items[j].id !== id) continue;
+      var it = items[j];
+      var conMas = buildNoCookItem(entry, (it.servings || 0) + 1, it.buysPackage);
+      Object.keys(conMas).forEach(function (k) { it[k] = conMas[k]; });
+      it.deSobras = (it.deSobras || 0) + 1;
+      slots[i].total = _totalDeToma(slots[i]);
+      return;
+    }
+  }
+  var destino = _tomaParaSobra(slots, entry.serving.role);
+  if (!destino) return;
+  var nuevo = buildNoCookItem(entry, 1, false);
+  nuevo.deSobras = 1;
+  destino.items = (destino.items || []).concat([nuevo]);
+  destino.total = _totalDeToma(destino);
+}
+
+/**
+ * Rellena con lo que sobra los días que se quedan cortos de calorías (por
+ * debajo de NO_COOK_KCAL_LOW del objetivo), sin pasar de NO_COOK_KCAL_HIGH.
+ *
+ * Solo coge raciones que NINGÚN día va a comer (`lotes` de noCookCuentas),
+ * en días en que se pueden comer (noCookLoteSirve): también antes de que el
+ * menú abra ese envase (el día 1 no hereda nada y suele ser el más corto),
+ * si abierto aguanta hasta lo que el menú come de él. No cambia el ticket de
+ * ningún día: lo puesto de más lo paga el envase que el menú ya compraba
+ * (ver noCookCuentas).
+ *
+ * Elige como scaleToTarget: lo que deja el día más cerca del objetivo y, si
+ * va corto de proteína, lo más proteico.
+ *
+ * @param {object[]} planes
+ * @param {object[]} pool
+ * @param {{calories?:number, protein?:number}} opts
+ * @returns {number} raciones añadidas
+ */
+function _rellenarConSobras(planes, pool, opts) {
+  var objetivo = (typeof opts.calories === "number" && opts.calories > 0) ? opts.calories : NO_COOK_DEFAULT_CALORIES;
+  var proteina = (typeof opts.protein === "number" && opts.protein > 0) ? opts.protein : 0;
+  var tope = Math.max(1, Math.round(NO_COOK_EXTRA_RACIONES * noCookFactorRaciones(objetivo)));
+  var porId = {};
+  for (var i = 0; i < pool.length; i++) porId[pool[i].product.id] = pool[i];
+  var lotes = noCookCuentas(planes).lotes;
+  var anadidas = 0;
+
+  planes.forEach(function (plan, d) {
+    var total = _totalDelDia(plan);
+    var puestas = {};
+    var guard = 0;
+    while (total.kcal < objetivo * NO_COOK_KCAL_LOW && guard++ < 60) {
+      var corto = proteina > 0 && total.protein < proteina;
+      var mejor = null;
+      var mejorNota = -Infinity;
+      lotes.forEach(function (lote) {
+        if (!noCookLoteSirve(lote, d)) return;
+        var entry = porId[lote.id];
+        if (!entry || entry.serving.policy === "fresh") return;
+        if ((puestas[lote.id] || 0) >= tope) return;
+        if (ROLES_SOLO_CON_ALGO.indexOf(entry.serving.role) !== -1 && !_saleEnElDia(plan, entry.product.id)) return;
+        var m = servingMacros(entry, 1);
+        if (!(m.kcal > 0) || objetivo * NO_COOK_KCAL_HIGH < total.kcal + m.kcal) return;
+        var nota = -Math.abs(total.kcal + m.kcal - objetivo);
+        if (corto) nota += (m.protein / Math.max(1, m.kcal)) * objetivo;
+        if (mejorNota < nota) { mejorNota = nota; mejor = { lote: lote, entry: entry, m: m }; }
+      });
+      if (!mejor) break;
+      _ponerRacionDeSobra(plan, mejor.entry);
+      if (d < mejor.lote.desde) {
+        // Se abre hoy: desde hoy vale, y caduca antes si la tienda lo dice.
+        mejor.lote.desde = d;
+        if (mejor.lote.n !== null && mejor.lote.n !== undefined) mejor.lote.hasta = Math.min(mejor.lote.hasta, d + mejor.lote.n);
+      }
+      mejor.lote.sobra -= 1;
+      puestas[mejor.lote.id] = (puestas[mejor.lote.id] || 0) + 1;
+      addMacros(total, mejor.m);
+      if (typeof costForGrams === "function") {
+        plan.consumedCost = Math.round(((plan.consumedCost || 0)
+          + costForGrams(mejor.entry.product, mejor.entry.serving.servingG)) * 100) / 100;
+      }
+      anadidas++;
+    }
+    if (Object.keys(puestas).length) plan.total = _totalDelDia(plan);
+  });
+
+  return anadidas;
+}
 
 var _noCookEligiblePoolByStore = {};
 
@@ -249,11 +663,21 @@ function pickForRole(role, pool, day, allowFresh, allowOverrun, priorityOverride
     var reusable = day.order
       .map(function (id) { return day.bought[id]; })
       .filter(function (b) {
+        // Lo heredado de otro día, mientras quede de lo ya pagado.
+        var cabe = b && b.gratis ? b.gratis : (b ? (b.entry.serving.servingsPerPackage || 1) : 0);
         return b && b.entry.serving.role === role
           && b.entry.serving.policy !== "fresh"
-          && b.servingsUsed < (b.entry.serving.servingsPerPackage || 1)
+          && b.servingsUsed < cabe
           && !(day.avoidIds && day.avoidIds[b.entry.product.id]);
       });
+    // Y lo que sobró de los días anteriores y hoy aún no ha salido: también
+    // gratis (ver «Lo que sobra de un día sirve a los demás»).
+    Object.keys(day.heredado || {}).forEach(function (id) {
+      var h = day.heredado[id];
+      if (day.bought[id] || h.entry.serving.role !== role) return;
+      if (day.avoidIds && day.avoidIds[id]) return;
+      reusable.push({ entry: h.entry });
+    });
     if (reusable.length) {
       return { entry: reusable[Math.floor(Math.random() * reusable.length)].entry, reused: true };
     }
@@ -581,11 +1005,15 @@ function buildSlotFromTemplate(tpl, slotDef, targetKcal, pool, day, opts) {
     // se pasaban con 14 € de tope. Se recorta a las raciones que el dinero
     // que queda permite, nunca por debajo de una.
     var existing = day.bought[p2.entry.product.id];
+    // Lo heredado de otro día (ver «Lo que sobra de un día sirve a los
+    // demás»): esas raciones ya están pagadas.
+    var heredado = (!existing && day.heredado && day.heredado[p2.entry.product.id]) || null;
+    var gratis = existing ? (existing.gratis || 0) : (heredado ? heredado.servings : 0);
     var alreadyUsed = existing ? existing.servingsUsed : 0;
-    var packsBefore = existing ? Math.max(1, Math.ceil(alreadyUsed / perPack)) : 0;
+    var packsBefore = existing ? _envasesPagados(alreadyUsed, gratis, perPack) : 0;
     if (typeof price === "number" && price > 0 && day.budget !== Infinity && !allowOverrun) {
       var affordablePacks = Math.floor((day.budget - day.spent) / price) + packsBefore;
-      var maxServings = Math.max(1, affordablePacks * perPack - alreadyUsed);
+      var maxServings = Math.max(1, gratis + affordablePacks * perPack - alreadyUsed);
       if (p2.servings > maxServings) p2.servings = maxServings;
       // Las raciones de más que da un objetivo alto (noCookFactorRaciones),
       // solo con el dinero que no está apartado para las tomas que faltan
@@ -597,15 +1025,24 @@ function buildSlotFromTemplate(tpl, slotDef, targetKcal, pool, day, opts) {
       if (!p2.fixed && p2.servings > base) {
         var apartado = Math.max(day.reserve || 0, day.reservaExtra || 0);
         var conReserva = Math.floor((day.budget - day.spent - apartado) / price) + packsBefore;
-        p2.servings = Math.max(base, Math.min(p2.servings, conReserva * perPack - alreadyUsed));
+        p2.servings = Math.max(base, Math.min(p2.servings, gratis + conReserva * perPack - alreadyUsed));
       }
     }
 
-    var buys = registerPurchase(day, p2.entry);
+    var buys;
+    if (heredado) {
+      // Entra en el día sin pagar nada: ya lo pagó el día que lo abrió.
+      day.bought[p2.entry.product.id] = { entry: p2.entry, servingsUsed: 0, gratis: heredado.servings };
+      day.order.push(p2.entry.product.id);
+      day.usedNames[p2.entry.product.name] = true;
+      buys = false;
+    } else {
+      buys = registerPurchase(day, p2.entry);
+    }
     var bought = day.bought[p2.entry.product.id];
-    packsBefore = Math.max(1, packsBefore || 1);
+    packsBefore = _envasesPagados(bought.servingsUsed, bought.gratis || 0, perPack);
     bought.servingsUsed += p2.servings;
-    var packsAfter = Math.max(1, Math.ceil(bought.servingsUsed / perPack));
+    var packsAfter = _envasesPagados(bought.servingsUsed, bought.gratis || 0, perPack);
     // Gastar más raciones de las que trae un envase significa comprar OTRO
     // envase, y eso se paga. Sin esto el presupuesto se contaba una sola
     // vez por producto y el día real acababa costando más de lo pedido
@@ -726,8 +1163,7 @@ function buildSlot(slotKey, targetKcal, pool, day, opts) {
  * @param {{calories?:number, protein?:number, budget?:number}} [options]
  * @returns {{slots, poolSize, total, target, shoppingCost, productCount}}
  */
-function generateNoCookPlan(storeId, options) {
-  var opts = options || {};
+function _poolSinCocinar(storeId) {
   var pool = getNoCookEligiblePool(storeId);
 
   // "No me gusta" se aplica AQUÍ y no dentro de getNoCookEligiblePool() a
@@ -737,6 +1173,12 @@ function generateNoCookPlan(storeId, options) {
   if (typeof filterDislikedProducts === "function" && typeof getDislikes === "function") {
     pool = filterDislikedProducts(pool, getDislikes());
   }
+  return pool;
+}
+
+function generateNoCookPlan(storeId, options) {
+  var opts = options || {};
+  var pool = _poolSinCocinar(storeId);
 
   var targetKcal = (typeof opts.calories === "number" && opts.calories > 0)
     ? opts.calories : NO_COOK_DEFAULT_CALORIES;
@@ -751,6 +1193,9 @@ function generateNoCookPlan(storeId, options) {
       : (opts.priority === "protein" ? "protein" : "balanced"),
     budget: (typeof opts.budget === "number" && opts.budget > 0) ? opts.budget : Infinity,
     freshPending: [],
+    // Lo que sobra de los días anteriores del plan, ya pagado (lo pone
+    // generateNoCookPlanDays con noCookCuentas).
+    heredado: _heredadoDelPool(pool, opts.heredado),
   };
 
   var targetProtein = (typeof opts.protein === "number" && opts.protein > 0) ? opts.protein : 0;
@@ -856,12 +1301,15 @@ function generateNoCookPlan(storeId, options) {
   }
 
   // Coste real de la compra: un producto del que se usan más raciones de
-  // las que trae un envase necesita MÁS DE UN envase, y eso se paga.
+  // las que trae un envase necesita MÁS DE UN envase, y eso se paga. Lo
+  // heredado de otro día solo paga lo que pase de lo que ya había.
   var shoppingCost = 0;
+  var comprados = 0;
   day.order.forEach(function (id) {
     var b = day.bought[id];
     var perPack = b.entry.serving.servingsPerPackage || 1;
-    var packs = Math.max(1, Math.ceil(b.servingsUsed / perPack));
+    var packs = _envasesPagados(b.servingsUsed, b.gratis || 0, perPack);
+    if (packs > 0) comprados++;
     if (typeof b.entry.product.price === "number") shoppingCost += b.entry.product.price * packs;
   });
 
@@ -885,7 +1333,9 @@ function generateNoCookPlan(storeId, options) {
     target: { kcal: targetKcal, protein: opts.protein || null },
     shoppingCost: Math.round(shoppingCost * 100) / 100,
     consumedCost: Math.round(day.consumed * 100) / 100,
-    productCount: day.order.length,
+    // Productos que se COMPRAN hoy (lo heredado ya está en casa). Sin nada
+    // heredado son todos los del día, como siempre.
+    productCount: comprados,
     budget: day.budget === Infinity ? null : day.budget,
     // Se pasó del presupuesto: solo puede ocurrir cuando ni el envase más
     // barato de un papel OBLIGATORIO cabía. Se dice, no se esconde.
@@ -908,6 +1358,11 @@ function generateNoCookPlan(storeId, options) {
  * 12 €): 0 días idénticos de 2.100 pares y un 1,2% de tomas que repiten
  * exactamente los mismos productos que otro día.
  *
+ * Desde el 2026-10-27 los días SÍ se pasan lo que sobra (ver «Lo que sobra
+ * de un día sirve a los demás», arriba): cada día recibe lo pagado y sin
+ * comer de los anteriores, al final se rellenan con lo que sobra los días
+ * que se quedan cortos, y el ticket de cada día sale de noCookCuentas.
+ *
  * @param {string} [storeId]
  * @param {object} [options] - las de generateNoCookPlan
  * @param {number} dias - 1..7 (lo que no sea un número válido cuenta como 1)
@@ -923,9 +1378,11 @@ function generateNoCookPlanDays(storeId, options, dias) {
     var opts = {};
     for (var k in base) opts[k] = base[k];
     opts.allowMakeAhead = n > 1 && d > 0;
+    if (d > 0) opts.heredado = noCookCuentas(planes).siguiente;
     planes.push(generateNoCookPlan(storeId, opts));
   }
-  return planes;
+  _rellenarConSobras(planes, _poolSinCocinar(storeId), base);
+  return noCookAplicarCuentas(planes);
 }
 
 /**
@@ -958,10 +1415,7 @@ function regenerateNoCookSlot(plan, slotKey, storeId, options) {
   if (idx === -1) return { error: "slot_not_found" };
 
   var opts = options || {};
-  var pool = getNoCookEligiblePool(storeId);
-  if (typeof filterDislikedProducts === "function" && typeof getDislikes === "function") {
-    pool = filterDislikedProducts(pool, getDislikes());
-  }
+  var pool = _poolSinCocinar(storeId);
   var byId = {};
   for (var j = 0; j < pool.length; j++) byId[pool[j].product.id] = pool[j];
 
@@ -974,6 +1428,9 @@ function regenerateNoCookSlot(plan, slotKey, storeId, options) {
     budget: (typeof opts.budget === "number" && opts.budget > 0) ? opts.budget : Infinity,
     freshPending: [], reserve: 0, pendingSpend: 0,
     avoidIds: {},
+    // Lo que sobra de los días anteriores (2026-10-27): quien llama pasa el
+    // `heredado` de ESTE día (noCookCuentas(dias).dias[d].heredado).
+    heredado: _heredadoDelPool(pool, opts.heredado),
   };
 
   // Todo lo que había en ESTA toma se aparta: pulsar "Cambiar" tiene que
@@ -989,7 +1446,8 @@ function regenerateNoCookSlot(plan, slotKey, storeId, options) {
       var entry = byId[it.id];
       if (!entry) return;
       if (!day.bought[it.id]) {
-        day.bought[it.id] = { entry: entry, servingsUsed: 0 };
+        var h = day.heredado[it.id];
+        day.bought[it.id] = { entry: entry, servingsUsed: 0, gratis: h ? h.servings : 0 };
         day.order.push(it.id);
         day.usedNames[it.name] = true;
       }
@@ -999,7 +1457,7 @@ function regenerateNoCookSlot(plan, slotKey, storeId, options) {
   day.order.forEach(function (id) {
     var b = day.bought[id];
     var perPack = b.entry.serving.servingsPerPackage || 1;
-    var packs = Math.max(1, Math.ceil(b.servingsUsed / perPack));
+    var packs = _envasesPagados(b.servingsUsed, b.gratis || 0, perPack);
     if (typeof b.entry.product.price === "number") day.spent += b.entry.product.price * packs;
   });
 

@@ -162,7 +162,7 @@ function analizarTexto(texto, lang) {
  * @returns {string}
  */
 var PRODUCTO_CLASES = ["food-purchase__product", "nocook-item__name", "nocook-item__brand",
-  "verified-card__name", "verified-card__brand", "product-find-btn"];
+  "verified-card__name", "verified-card__brand", "product-find-btn", "nocook-sobras__producto"];
 
 function textoDeHtml(html) {
   var h = String(html);
