@@ -520,9 +520,9 @@ function _noCookSobrasHtml(lotes, dia) {
   var lista = hoy.slice(0, SOBRAS_EN_LA_PISTA).map(function (l) {
     return '<span class="nocook-sobras__producto">' + escapeHtml(_nombreProductoLeido(l.item.name)) + "</span> — " +
       escapeHtml(_cantidadQueSobra(l));
-  }).join("; ") + (0 < resto ? " " + escapeHtml(tFormat("ui.nocook_sobras_y_mas", { n: resto })) : "");
+  }).join("; ") + (0 < resto ? " " + escapeHtml(tFormat("ui.sobras_y_mas", { n: resto })) : "");
   return '<p class="nocook-disclaimer nocook-sobras">' +
-    tFormat("html.nocook_si_no_te_llenas", { lista: lista }) + "</p>";
+    tFormat("html.si_no_te_llenas", { lista: lista }) + "</p>";
 }
 
 // Cuántos productos nombra «si no te llenas» (_noCookSobrasHtml).

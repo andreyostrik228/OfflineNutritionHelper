@@ -18,7 +18,7 @@ llevan al final un bloque «actualización 2026-10-08»). El diario fechado, con
 medidas y causas, está en la cabecera de `STATE.md` (entradas del 2026-10-07 y
 2026-10-08).
 
-### 0.0 quaterdecies Lo que sobra en «sin cocinar», 2026-10-27 (lee esto antes que 0.0 terdecies)
+### 0.0 quaterdecies Lo que sobra entre días, «sin cocinar» y plan normal, 2026-10-27 (lee esto antes que 0.0 terdecies)
 
 - **Estado:** sello `20261027a`, **1321 tests en verde**. En el plan «sin
   cocinar» de varios días, cada día aprovecha lo que sobra de los envases de
@@ -42,8 +42,23 @@ medidas y causas, está en la cabecera de `STATE.md` (entradas del 2026-10-07 y
   - Un nombre de producto dentro de un texto va en su `<span>` con clase de
     `PRODUCTO_CLASES` (`scripts/i18n/detector.js`), o el test de idioma lo da
     por español sin traducir: el de la pista es `.nocook-sobras__producto`.
-- **Sin hacer:** lo mismo en el plan normal (con platos), que también deja
-  envases abiertos un solo día (medido: 11–20 por plan de 3 días a 4.000 kcal).
+- **Segunda tanda, el plan normal (con platos), sello `20261027b`, 1325
+  tests.** Reglas nuevas:
+  - Desde el día 2, `generateDietPlanDays` pasa `data.despensaDelPlan` (la
+    despensa al empezar ese día, `despensaDelPlan(...).siguiente`) y
+    `generateDietPlanTiered` la usa en vez de `getPantryState()`. Se borra
+    de `data` al acabar, como `avoidDishNames`.
+  - `rellenarConLoPagado` solo corre con `planDays` mayor que 1: un plan de
+    un día sale como siempre y los golden-master no se mueven. Sube de
+    ración entera, nunca compra y no deja una fila por encima del 25% del día.
+  - Todo lo que re-elige un plato o rehace un día del plan en pantalla usa
+    `despensaDelDiaEnPantalla(d)` (`app.js`), no `getPantryState()` a secas.
+  - En familia, `data.racionesCompra` dice cuántas veces se compra el plan
+    (menú común: `suma`; cada uno el suyo: la primera persona 1 + invitados).
+  - La pista de cada día sale de `despensaDelPlanEnPantalla()` con
+    `tomasDeLaCasa`, y solo propone lo de `PLAN_SOBRAS_DE_PICAR`
+    (`render.js`). Las claves `html.si_no_te_llenas` y `ui.sobras_y_mas`
+    son de los dos planes.
 
 ### 0.0 terdecies Personas de la casa, 2026-10-26 (lee esto antes que 0.0 duodecies)
 

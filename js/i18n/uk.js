@@ -644,8 +644,8 @@ registerI18nTable("uk", {
   "ui.nocook_envase": "Упаковка: {tamano}",
   "ui.nocook_envase_entero": "Уся упаковка",
   "ui.nocook_de_sobras": "+{n} із залишків",
-  "ui.nocook_sobras_y_mas": "і ще {n}",
-  "html.nocook_si_no_te_llenas": "Якщо хочеться ще, можеш з'їсти те, що залишиться від покупки й у меню вже не знадобиться: {lista}.",
+  "ui.sobras_y_mas": "і ще {n}",
+  "html.si_no_te_llenas": "Якщо хочеться ще, можеш з'їсти те, що залишиться від покупки й у меню вже не знадобиться: {lista}.",
   // Acceso y cuentas (js/core/auth.js: authErrorMessage; js/ui/render-auth.js).
   "ui.continuar_con_google": "Продовжити з Google",
   "ui.borrando": "Видаляємо…",

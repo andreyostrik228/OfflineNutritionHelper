@@ -657,10 +657,19 @@ function generateDietPlanDays(profile, data, planDays, alTerminarDia) {
   var days = [];
   var vistos = [];
   var tenia = data.avoidDishNames;
+  var teniaDespensa = data.despensaDelPlan;
+  // La despensa real se lee UNA vez: todos los días parten de la misma, y
+  // cada uno recibe la que habrá al empezarlo (despensaDelPlan, más abajo).
+  var despensaReal = (typeof getPantryState === "function") ? getPantryState() : null;
+  var store = (typeof data.store === "string" && typeof PRICE_CATALOGS !== "undefined" && PRICE_CATALOGS[data.store])
+    ? data.store : DEFAULT_STORE_ID;
   try {
     for (var d = 0; d < planDays; d++) {
       data.dayIndex = d;
       data.avoidDishNames = vistos.slice();
+      if (d > 0) {
+        data.despensaDelPlan = despensaDelPlan(days, store, despensaReal, { raciones: data.racionesCompra }).siguiente;
+      }
       var day = generateDietPlan(profile, data);
       if (typeof alTerminarDia === "function") alTerminarDia(day, d);
       (day.meals || []).forEach(function (m) {
@@ -671,10 +680,141 @@ function generateDietPlanDays(profile, data, planDays, alTerminarDia) {
   } finally {
     // La lista de platos vistos NO tiene que quedarse en `data`: app.js
     // guarda ese objeto entero en los ajustes del usuario y lo reusa para
-    // cambiar una sola comida.
+    // cambiar una sola comida. La despensa del día, tampoco.
     if (tenia === undefined) delete data.avoidDishNames; else data.avoidDishNames = tenia;
+    if (teniaDespensa === undefined) delete data.despensaDelPlan; else data.despensaDelPlan = teniaDespensa;
   }
   return days;
+}
+
+// ── Lo que sobra de un día sirve a los demás (2026-10-27) ───────────────
+// Lo mismo que en «sin cocinar» (no-cook-generator.js, noCookCuentas). Cada
+// día se generaba con la despensa de HOY, como si lo que sobra de los
+// envases abiertos los días anteriores no existiera, y la misma despensa se
+// contaba entera en todos los días. Medido a 4.000 kcal y 3 días: 11-20
+// envases abiertos un solo día y 13-23 mil kcal sin comer al acabar.
+//
+// Ahora el día N se genera con la despensa que habrá al empezarlo: la real
+// de hoy, menos lo que se comen los días anteriores, más lo que sobra de
+// los envases que compran. Lo que sobra cuesta 0 en el coste marginal, así
+// que el selector lo prefiere solo, y en un día corto rellena
+// (rellenarConLoPagado). El día 1 sale como siempre.
+
+/**
+ * La despensa del plan día a día, como en casa: lo que hay en la real se
+ * come primero; lo que falta se compra en envases enteros (la compra es una
+ * sola, al principio: `acquiredAt` = el primer día) y el envase se abre el
+ * día que se usa. Lo que ya no está bueno ese día (resolveExpiry) no cuenta.
+ *
+ * @param {{meals:object[]}[]} dias - los días ya hechos, en orden
+ * @param {string} storeId
+ * @param {object|null} pantryState - la despensa real (getPantryState)
+ * @param {{raciones?:number, inicio?:string}} [opts] - `raciones`: cuántas
+ *   veces se compra el plan (menú común de una familia); `inicio`: el día 1
+ * @returns {{siguiente:object, lotes:object[], inicio:string}}
+ *   `siguiente`: la despensa al empezar el día de después del último, con
+ *   la forma de getPantryState y por ración (lo que espera el motor).
+ *   `lotes`: lo comprado que sobra al acabar, por ingrediente: {key, name,
+ *   grams, desde (día en que se compró ese envase), ultimo (último día que
+ *   se come), entry}. Si se puede comer un día lo dice loteDelPlanSirve.
+ */
+function despensaDelPlan(dias, storeId, pantryState, opts) {
+  var o = opts || {};
+  var store = storeId || DEFAULT_STORE_ID;
+  var raciones = (typeof o.raciones === "number" && o.raciones > 0) ? o.raciones : 1;
+  var inicio = (typeof o.inicio === "string" && o.inicio) ? o.inicio : new Date().toISOString().slice(0, 10);
+  var lista = Array.isArray(dias) ? dias : [];
+  var stock = {};
+  Object.keys(pantryState || {}).forEach(function (k) {
+    var e = pantryState[k];
+    if (e && e.grams > 0) stock[k] = Object.assign({}, e);
+  });
+
+  function diaISO(d) { return (typeof addDays === "function") ? addDays(inicio, d) : inicio; }
+
+  lista.forEach(function (dia, d) {
+    var iso = diaISO(d);
+    aggregateMealItems((dia && dia.meals) || []).forEach(function (linea) {
+      var k = normalizeIngredientKey(linea.name);
+      var g = linea.requiredGrams * raciones;
+      if (!(g > 0)) return;
+      var e = stock[k];
+      var hay = (e && _sigueBueno(e, k, iso)) ? e.grams : 0;
+      var falta = g - hay;
+      if (falta > 1e-9) {
+        var compra = resolvePurchaseCost(linea.name, falta, store);
+        var entra = compra.hasFixedPackage ? compra.packagesToBuy * compra.packageSizeG : falta;
+        stock[k] = {
+          grams: hay + entra - g, displayName: linea.name, updatedAt: null,
+          acquiredAt: inicio, openedAt: iso, expiresAt: null, storage: (e && e.storage) || null,
+          delPlan: true, desde: d, ultimo: d
+        };
+      } else {
+        e.grams = hay - g;
+        if (!e.openedAt) e.openedAt = iso;
+        e.ultimo = d;
+      }
+      if (!(stock[k].grams > 0.5)) delete stock[k];
+    });
+  });
+
+  var siguienteISO = diaISO(lista.length);
+  var siguiente = {};
+  var lotes = [];
+  Object.keys(stock).forEach(function (k) {
+    var e = stock[k];
+    if (_sigueBueno(e, k, siguienteISO)) {
+      siguiente[k] = {
+        grams: e.grams / raciones, displayName: e.displayName, updatedAt: e.updatedAt || null,
+        acquiredAt: e.acquiredAt || null, openedAt: e.openedAt || null,
+        expiresAt: e.expiresAt || null, storage: e.storage || null
+      };
+    }
+    if (e.delPlan && e.grams >= 1) {
+      lotes.push({ key: k, name: e.displayName, grams: e.grams, desde: e.desde, ultimo: e.ultimo, entry: e });
+    }
+  });
+  return { siguiente: siguiente, lotes: lotes, inicio: inicio };
+}
+
+/** ¿Sigue buena esta entrada de despensa ese día? Sin expiry.js, siempre. */
+function _sigueBueno(entry, key, iso) {
+  if (!entry || !(entry.grams > 0)) return false;
+  return typeof resolveExpiry !== "function" || resolveExpiry(entry, key, iso).tier !== "caducado";
+}
+
+/**
+ * ¿Se puede comer el día `d` lo que sobra de este lote (despensaDelPlan)?
+ * Sí si ya está comprado y abierto, y bueno ese día. Y también antes de que
+ * el menú lo abra (la compra es una sola, al principio), si abrirlo ese día
+ * no deja malo lo que el menú come de él después.
+ * @param {object} lote
+ * @param {number} d - día del plan, desde 0
+ * @param {string} inicio - el día 1 (`inicio` de despensaDelPlan)
+ * @returns {boolean}
+ */
+function loteDelPlanSirve(lote, d, inicio) {
+  if (!lote || !(lote.grams >= 1) || !lote.entry) return false;
+  var iso = (typeof addDays === "function") ? addDays(inicio, d) : inicio;
+  if (lote.desde <= d) return _sigueBueno(lote.entry, lote.key, iso);
+  var abierto = Object.assign({}, lote.entry, { openedAt: iso });
+  var ultimoISO = (typeof addDays === "function") ? addDays(inicio, lote.ultimo) : iso;
+  return _sigueBueno(abierto, lote.key, iso) && _sigueBueno(abierto, lote.key, ultimoISO);
+}
+
+/**
+ * La despensa al empezar el día `d` de un plan ya hecho: la real, y desde el
+ * día 2 lo que dejan los anteriores. Para «Cambiar» un plato y rehacer un día.
+ * @param {{meals:object[]}[]} dias
+ * @param {number} d
+ * @param {string} storeId
+ * @param {{raciones?:number}} [opts]
+ * @returns {object|null}
+ */
+function despensaParaElDia(dias, d, storeId, opts) {
+  var real = (typeof getPantryState === "function") ? getPantryState() : null;
+  if (!(d > 0) || !Array.isArray(dias)) return real;
+  return despensaDelPlan(dias.slice(0, d), storeId, real, opts).siguiente;
 }
 
 // ── Búsqueda en niveles de relajación (tiempo/sabor/tope-25%, NO presupuesto) ─
@@ -704,6 +844,11 @@ function generateDietPlanTiered(profile, data) {
   // está cargado -- computeDayPurchaseCost() ya sabe degradar con
   // seguridad a "sin despensa" en ese caso.
   var pantryState = (typeof getPantryState === "function") ? getPantryState() : null;
+  // En un plan de varios días, el día 2+ trae la despensa que habrá al
+  // empezarlo, con lo que sobra de los anteriores (despensaDelPlan).
+  if (data && data.despensaDelPlan && typeof data.despensaDelPlan === "object") {
+    pantryState = data.despensaDelPlan;
+  }
 
   // Proyecta la despensa al día que se planifica (2026-08-25). Dos cosas
   // a la vez, y la primera es un arreglo, no una función nueva:
@@ -944,6 +1089,22 @@ function attemptPlanAtTier(profile, data, tier, pantryState) {
     var compraTrasRaciones = computeDayPurchaseCost(meals, store, pantryState);
     total.purchaseCost = compraTrasRaciones.purchaseCost;
     total.cost = compraTrasRaciones.usageCost;
+  }
+
+  // ── Lo ya pagado rellena un día corto (2026-10-27) ─────────────────────
+  // Solo en planes de varios días (generateDietPlanDays): ahí lo que sobra
+  // de un envase lo come otro día o se queda en la despensa sin plan. Un
+  // plan de un día sale exactamente como antes, y los golden-master con él.
+  // Va DESPUÉS de las raciones: sube de ración entera en ración entera, así
+  // que no hay que volver a redondear nada.
+  if (data.planDays > 1) {
+    var relleno = rellenarConLoPagado(meals, profile.calories, store, pantryState);
+    if (relleno.changed) {
+      total = sumMeals(meals);
+      var compraTrasRelleno = computeDayPurchaseCost(meals, store, pantryState);
+      total.purchaseCost = compraTrasRelleno.purchaseCost;
+      total.cost = compraTrasRelleno.usageCost;
+    }
   }
 
   var violations = verifyPlanFeasibility(meals, total, profile, data);
@@ -1592,6 +1753,100 @@ function compensateCappedCalories(meals, targetKcal, caps) {
   });
 
   return round1(recovered);
+}
+
+/**
+ * Por debajo de este déficit de kcal (fracción del objetivo) un día no se
+ * rellena: es ruido de redondeo, no un hueco.
+ */
+var RELLENO_MINIMO = 0.03;
+
+/**
+ * Un día corto de calorías se rellena con lo que YA está pagado (2026-10-27):
+ * lo que queda en la despensa del día (en un plan de varios días, con lo que
+ * sobra de los anteriores, despensaDelPlan) y lo que sobra de los envases
+ * que este mismo día compra. Nunca compra nada: el coste de compra del día
+ * no cambia.
+ *
+ * Solo sube ingredientes que el día YA lleva, de ración de casa en ración
+ * (un yogur, medio plátano, un vaso de arroz), hasta su tope de cordura
+ * (getCuratedPortionCaps). Elige como compensateCappedCalories, pero por
+ * pasos: el que deja el día más cerca del objetivo sin pasarse de él más de
+ * lo que le faltaba.
+ *
+ * @param {object[]} meals
+ * @param {number} targetKcal
+ * @param {string} storeId
+ * @param {object|null} pantryState
+ * @returns {{changed:boolean, kcal:number}}
+ */
+function rellenarConLoPagado(meals, targetKcal, storeId, pantryState) {
+  var res = { changed: false, kcal: 0 };
+  if (!(targetKcal > 0) || !meals || !meals.length) return res;
+  if (typeof computeDayPurchaseCost !== "function" || typeof resolveServingUnit !== "function") return res;
+  var falta = targetKcal - sumMeals(meals).kcal;
+  if (falta < targetKcal * RELLENO_MINIMO) return res;
+
+  // Gramos ya pagados que el día no usa, por ingrediente.
+  var libres = {};
+  computeDayPurchaseCost(meals, storeId, pantryState).lines.forEach(function (l) {
+    var enCasa = (pantryState && typeof getStock === "function") ? getStock(l.name, pantryState) : 0;
+    var deCasa = Math.max(0, enCasa - (l.coveredFromPantry || 0));
+    var deEnvase = (l.hasFixedPackage && l.packagesToBuy > 0)
+      ? Math.max(0, l.packagesToBuy * l.packageSizeG - l.stillNeeded) : 0;
+    libres[l.name] = deCasa + deEnvase;
+  });
+  var caps = getCuratedPortionCaps();
+  var totales = sumIngredientGrams(meals);
+  var kcalDia = targetKcal - falta;
+
+  for (var vuelta = 0; vuelta < 40; vuelta++) {
+    var mejor = null;
+    meals.forEach(function (meal) {
+      (meal.items || []).forEach(function (item) {
+        if (!(item.grams > 0) || !(item.kcal > 0)) return;
+        var unidad = resolveServingUnit(item.name, storeId, item.papel);
+        if (!unidad || !(unidad.g > 0)) return;
+        // Media ración donde se sirve por mitades; si no, una entera. Así la
+        // fila sigue siendo una cantidad que se puede servir.
+        var cuenta = servingCountFor(item.grams, unidad) + (unidad.split === "media" ? 0.5 : 1);
+        var destino = Math.round(cuenta * unidad.g);
+        var paso = destino - item.grams;
+        if (!(paso > 0) || (libres[item.name] || 0) < paso) return;
+        var tope = caps[item.name];
+        if (tope && tope < (totales[item.name] || 0) + paso) return;
+        var kcalPaso = item.kcal * paso / item.grams;
+        if (!(kcalPaso < 2 * falta)) return;
+        // Ninguna fila por encima del 25% del día (findCapViolations): sin
+        // esto el relleno engordaba el arroz hasta sacar el aviso cap25.
+        if ((kcalDia + kcalPaso) * 0.25 < item.kcal + kcalPaso) return;
+        var nota = -Math.abs(falta - kcalPaso);
+        if (!mejor || mejor.nota < nota) mejor = { item: item, destino: destino, paso: paso, kcal: kcalPaso, nota: nota };
+      });
+    });
+    if (!mejor) break;
+
+    var it = mejor.item;
+    var factor = mejor.destino / it.grams;
+    it.grams   = mejor.destino;
+    it.kcal    = round1(it.kcal    * factor);
+    it.protein = round1(it.protein * factor);
+    it.carbs   = round1(it.carbs   * factor);
+    it.fat     = round1(it.fat     * factor);
+    it.cost    = round2(it.cost    * factor);
+    libres[it.name] -= mejor.paso;
+    totales[it.name] = (totales[it.name] || 0) + mejor.paso;
+    falta -= mejor.kcal;
+    kcalDia += mejor.kcal;
+    res.kcal += mejor.kcal;
+    res.changed = true;
+    if (falta < targetKcal * 0.005) break;
+  }
+
+  if (res.changed) {
+    meals.forEach(function (m) { m.total = getMealTotals(m); m.spent = round2(spentMeal(m)); });
+  }
+  return res;
 }
 
 /**

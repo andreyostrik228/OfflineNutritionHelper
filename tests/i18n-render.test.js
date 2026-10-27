@@ -736,6 +736,34 @@ function run(t) {
     assert.ok(s.renderNoCookItem(fila).indexOf("+1 de lo que sobra") !== -1);
   });
 
+  t.test("plan con platos: «Если не наелись…» propone solo lo que sobra de la compra y se come tal cual (2026-10-27)", function () {
+    var s = sandboxCompleto();
+    function lote(nombre, gramos, desde) {
+      return { key: s.normalizeIngredientKey(nombre), name: nombre, grams: gramos, desde: desde, ultimo: desde,
+        entry: { grams: gramos, displayName: nombre, acquiredAt: "2026-10-27", openedAt: "2026-10-27" } };
+    }
+    var despensa = { inicio: "2026-10-27", lotes: [
+      lote("Yogur griego ligero", 500, 0), lote("Arroz blanco cocido", 2000, 0), lote("Mermelada light", 300, 0)
+    ] };
+    ["ru", "en", "es"].forEach(function (lang) {
+      s.saveLang(lang);
+      var html = s._sobrasDelDiaHtml(despensa, 0);
+      var texto = visible(html);
+      assert.ok(html.indexOf("plan-sobras") !== -1, lang + ": " + html);
+      assert.ok(texto.indexOf(s.nombreComida("Yogur griego ligero")) !== -1, lang + ": " + texto);
+      assert.strictEqual(texto.indexOf(s.nombreComida("Arroz blanco cocido")), -1, lang + ": el arroz no se come tal cual");
+      assert.strictEqual(texto.indexOf(s.nombreComida("Mermelada light")), -1, lang + ": sin pan, la mermelada no");
+      if (lang !== "es") assert.deepStrictEqual(detector.analizarTexto(texto, lang), [], lang + ": " + texto);
+    });
+    s.saveLang("ru");
+    var conPan = { inicio: "2026-10-27", lotes: despensa.lotes.concat([lote("Pan integral", 210, 0)]) };
+    assert.ok(visible(s._sobrasDelDiaHtml(conPan, 0)).indexOf(s.nombreComida("Mermelada light")) !== -1, "con pan, sí");
+    assert.ok(visible(s._sobrasDelDiaHtml(despensa, 0)).indexOf("Если не наелись") !== -1);
+    assert.strictEqual(s._sobrasDelDiaHtml(null, 0), "");
+    assert.strictEqual(s._sobrasDelDiaHtml({ inicio: "2026-10-27", lotes: [] }, 0), "");
+    s.saveLang("es");
+  });
+
   t.test("«No me gusta» en un producto sin cocinar: sale de los 3 días, queda en la lista y lo demás no cambia (2026-10-22)", function () {
     var s = sandboxCompleto();
     var vm = require("vm");

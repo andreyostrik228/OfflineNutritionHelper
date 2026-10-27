@@ -703,8 +703,8 @@ registerI18nTable("en", {
   "ui.nocook_envase": "Pack: {tamano}",
   "ui.nocook_envase_entero": "Whole pack",
   "ui.nocook_de_sobras": "+{n} from leftovers",
-  "ui.nocook_sobras_y_mas": "and {n} more",
-  "html.nocook_si_no_te_llenas": "Still hungry? You can eat what is left over from the shopping and the menu will not need: {lista}.",
+  "ui.sobras_y_mas": "and {n} more",
+  "html.si_no_te_llenas": "Still hungry? You can eat what is left over from the shopping and the menu will not need: {lista}.",
   // Las plantillas de «sin cocinar»: nocook.<clave>_nombre y nocook.<clave>_montaje. Solo están en en y ru: su
   // español vive en js/data/no-cook-templates.js, junto a lo que explica cada plantilla (como los pasos del
   // recorrido). Las claves se derivan de NO_COOK_TEMPLATES y un test exige que no falte ninguna.

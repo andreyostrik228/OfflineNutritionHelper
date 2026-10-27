@@ -1,5 +1,30 @@
 # Nutrition Planner — Roadmap
 
+## Lo del 2026-10-27, segunda tanda (sello `20261027b`, 1325 tests)
+
+Lo mismo que la primera tanda, en el plan normal (con platos). El dueño: «Да».
+
+| Qué | Dónde | Estado |
+|---|---|---|
+| El día 2+ se genera con la despensa que habrá al empezarlo: la real, menos lo que comen los anteriores, más lo que sobra de sus envases | `despensaDelPlan`, `generateDietPlanDays` → `data.despensaDelPlan`, `generateDietPlanTiered` (`plan-generator.js`) | **Hecho** |
+| Un día corto (planes de varios días) sube de ración entera con lo ya pagado, sin comprar nada y sin pasar del 25% del día por fila | `rellenarConLoPagado`, en `attemptPlanAtTier` tras las raciones | **Hecho** |
+| «Cambiar», «No me gusta» y rehacer un día ven lo que sobra de los días anteriores | `despensaParaElDia`, `despensaDelDiaEnPantalla` (`app.js`) | **Hecho** |
+| Menú común de familia: lo que sobra es de la casa (se compra `suma` veces) | `data.racionesCompra` (`runGeneration`) | **Hecho** |
+| «Если не наелись…» en cada día: lo que sobra de la compra y se come tal cual (lo que se unta, solo con pan) | `_sobrasDelDiaHtml` (`render.js`), `despensaDelPlanEnPantalla` (`app.js`), `loteDelPlanSirve` | **Hecho** |
+| Las claves de la pista, comunes a los dos planes | `html.si_no_te_llenas`, `ui.sobras_y_mas` | **Hecho** |
+
+Un plan de UN día sale exactamente como antes (los golden-master no se
+mueven). Medido (40 planes de 3 días a 4.000 kcal por caso, misma semilla,
+con despensa y caducidad cargadas; antes → después): kcal media a 10 €/día
+84% → 95% y días por debajo del 85% 57/120 → 13/120; a 15 €, 94% → 98% y
+1/120 → 0/120; a 20 €, 95% → 98% y 4/120 → 1/120. Envases abiertos un solo
+día con sobra: 10,4 → 7,0 (10 €), 13,4 → 11,2 (15 €), 16,6 → 13,0 (20 €); los
+perecederos, 8,1 → 5,7 a 20 €. Días con avisos (60 planes de 3 días por
+tramo, hombre ganando músculo, con despensa cargada): a 8 € de
+60/60/60 por día a 60/17/4; a 12 €, de 5/8/12 a 3/0/1; a 16 y 20 €, igual o
+menos. Lo que más sobra son envases grandes de larga vida (arroz, pasta,
+aceite, miel, frutos secos): no caben en 3 días y se quedan en la despensa.
+
 ## Lo del 2026-10-27 (sello `20261027a`, 1321 tests)
 
 El dueño, con un plan «sin cocinar» de 3 días a 4.000 kcal: «один раз 4000
@@ -15,9 +40,9 @@ El dueño, con un plan «sin cocinar» de 3 días a 4.000 kcal: «один ра�
 | Una sola cuenta día a día: ticket de cada día, envases de la compra y lo que sobra (`lotes`) | `noCookCuentas`, `noCookAplicarCuentas`; la usan `noCookCompraItems` y `recomputeNoCookDias` (`render-no-cook.js`) | **Hecho** |
 | Un envase abierto solo vale los días que dice la tienda (`daysAfterOpening`); lo «fresh» no pasa de día | `_noCookDiasAbierto`, `noCookLoteSirve` | **Hecho** |
 | Los días cortos de kcal se rellenan con lo que sobra y nadie come, sin mover ningún ticket, con su marca «+N из остатков» | `_rellenarConSobras`, `item.deSobras`, `ui.nocook_de_sobras` | **Hecho** |
-| «Если не наелись…»: lo que sobra y se puede comer ese día (4 como mucho, lo que más llena primero; lo que se unta, solo con algo donde untarlo) | `_noCookSobrasHtml`, `html.nocook_si_no_te_llenas`, `ui.nocook_sobras_y_mas` | **Hecho** |
+| «Если не наелись…»: lo que sobra y se puede comer ese día (4 como mucho, lo que más llena primero; lo que se unta, solo con algo donde untarlo) | `_noCookSobrasHtml`, `html.si_no_te_llenas`, `ui.sobras_y_mas` | **Hecho** |
 | «Cambiar» y «No me gusta» aprovechan lo heredado y recalculan todos los días | `_heredadoDelDia`, `regenerateNoCookSlot(…, {heredado})` | **Hecho** |
-| Lo mismo en el plan normal (con platos) | `plan-generator.js` | **Sin empezar** |
+| Lo mismo en el plan normal (con platos) | `plan-generator.js` | **Hecho** (segunda tanda, arriba) |
 
 Medido con `noCookCuentas` (40 planes de 3 días a 4.000 kcal y 15 €/día por
 caso, antes → después): días por debajo del 85% de las kcal 48/120 → 0/120;
@@ -27,9 +52,8 @@ días 41,75 € → 36,80 €; días por encima del presupuesto 7 → 2. A 7 dí
 planes): días cortos 58/140 → 0/140, sobra 29,38 € → 7,83 €, compra 97,04 € →
 78,39 €. El relleno no cambia el ticket de ningún día (0 de 360 medidos).
 
-El plan normal tiene el mismo problema (medido el mismo día: 11–20 envases
-abiertos un solo día por plan de 3 días a 4.000 kcal), pero su motor es otro
-(`plan-generator.js`, días independientes con `pantryState`): queda pendiente.
+El plan normal tenía el mismo problema (medido el mismo día: 11–20 envases
+abiertos un solo día por plan de 3 días a 4.000 kcal): ver la segunda tanda.
 
 ## Lo del 2026-10-26, quinta tanda (sello `20261026e`, 1315 tests)
 

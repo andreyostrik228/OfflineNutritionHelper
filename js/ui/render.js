@@ -224,8 +224,8 @@ function renderSummary(profile, total) {
  *
  * @param {object[]} meals  – array de objetos meal (salida de generateDietPlan)
  */
-function renderMeals(meals) {
-  renderDayPlans([{ meals: meals }]);
+function renderMeals(meals, despensa) {
+  renderDayPlans([{ meals: meals }], despensa);
 }
 
 /**
@@ -238,8 +238,10 @@ function renderMeals(meals) {
  * botón "Cambiar" sepa a qué día pertenece la toma que re-tira.
  *
  * @param {{meals:object[]}[]} days
+ * @param {object} [despensa] - despensaDelPlan del plan en pantalla, para la
+ *   pista «Если не наелись…» de cada día (2026-10-27); sin ella, no sale
  */
-function renderDayPlans(days) {
+function renderDayPlans(days, despensa) {
   if (!mealsContainer) return;
   var list = Array.isArray(days) ? days : [];
   var multi = list.length > 1;
@@ -253,9 +255,63 @@ function renderDayPlans(days) {
 
     var head = multi ? renderDaySlideHead(index, list.length) : "";
 
-    return '<section class="day-slide" data-day="' + index + '">' + head +
+    return '<section class="day-slide" data-day="' + index + '">' + head + _sobrasDelDiaHtml(despensa, index) +
       '<div class="meals-grid">' + cards + "</div></section>";
   }).join("");
+}
+
+// ── «Если не наелись…» en el plan con platos (2026-10-27) ───────────────
+// Lo que sobra de la compra y se come TAL CUAL: es lo único que tiene
+// sentido proponer si te quedas con hambre. El arroz, la pasta, la carne o
+// el aceite que sobran se quedan en la despensa para otro plan. Lo que se
+// unta, solo si también sobra algo donde untarlo.
+var PLAN_SOBRAS_DE_PICAR = ["Yogur griego ligero", "Skyr natural", "Queso fresco batido 0%", "Requesón",
+  "Leche semidesnatada", "Plátano", "Manzana", "Naranja", "Kiwi", "Fresas", "Piña", "Almendras", "Nueces",
+  "Cacahuetes", "Pan integral", "Pan blanco", "Pan de molde integral", "Pan de centeno", "Tortitas de arroz",
+  "Tortillas de trigo", "Granola", "Copos de maíz", "Queso light", "Mozzarella light", "Jamón cocido extra",
+  "Jamón serrano", "Pavo loncheado", "Atún al natural", "Sardinas en lata", "Caballa en lata", "Gamba cocida",
+  "Langostino cocido", "Tomate", "Pepino", "Zanahoria", "Aguacate", "Maíz dulce", "Hummus",
+  "Mantequilla de cacahuete", "Mermelada light", "Miel"];
+var PLAN_SOBRAS_PARA_UNTAR = ["Hummus", "Mantequilla de cacahuete", "Mermelada light", "Miel"];
+var PLAN_SOBRAS_BASES = ["Pan integral", "Pan blanco", "Pan de molde integral", "Pan de centeno",
+  "Tortitas de arroz", "Tortillas de trigo"];
+// Una pista, no un inventario: los que más llenan, y del resto cuántos son.
+var PLAN_SOBRAS_EN_LA_PISTA = 4;
+
+/**
+ * La pista de un día: lo que sobra de la compra (los `lotes` de
+ * despensaDelPlan), se come tal cual y se puede comer ese día
+ * (loteDelPlanSirve). "" si no hay nada.
+ * @param {object} [despensa]
+ * @param {number} d
+ * @returns {string}
+ */
+function _sobrasDelDiaHtml(despensa, d) {
+  if (!despensa || !despensa.lotes || !despensa.lotes.length) return "";
+  if (typeof loteDelPlanSirve !== "function" || typeof normalizeIngredientKey !== "function") return "";
+  var picar = PLAN_SOBRAS_DE_PICAR.map(normalizeIngredientKey);
+  var untar = PLAN_SOBRAS_PARA_UNTAR.map(normalizeIngredientKey);
+  var bases = PLAN_SOBRAS_BASES.map(normalizeIngredientKey);
+  var hoy = despensa.lotes.filter(function (l) {
+    return picar.indexOf(l.key) !== -1 && loteDelPlanSirve(l, d, despensa.inicio);
+  });
+  var hayBase = hoy.some(function (l) { return bases.indexOf(l.key) !== -1; });
+  hoy = hoy.filter(function (l) { return untar.indexOf(l.key) === -1 || hayBase; });
+  if (!hoy.length) return "";
+
+  function kcalQueSobra(l) {
+    var n = (typeof resolveIngredientNutrition === "function") ? resolveIngredientNutrition(l.name) : null;
+    return l.grams * ((n && n.resolved && n.kcal) || 0) / 100;
+  }
+  hoy.sort(function (a, b) { return kcalQueSobra(b) - kcalQueSobra(a); });
+  var resto = hoy.length - PLAN_SOBRAS_EN_LA_PISTA;
+  var lista = hoy.slice(0, PLAN_SOBRAS_EN_LA_PISTA).map(function (l) {
+    // Piezas o envases enteros si es lo que hay ("3 yogures", "1 brick"); si
+    // no, gramos (cantidadDeDespensa, render-pantry.js).
+    var cuanto = (typeof cantidadDeDespensa === "function") ? cantidadDeDespensa(l.grams, l.name) : null;
+    return escapeHtml(nombreComida(l.name)) + " — " + escapeHtml(cuanto || fmtUnit(round0(l.grams), "g"));
+  }).join("; ") + (0 < resto ? " " + escapeHtml(tFormat("ui.sobras_y_mas", { n: resto })) : "");
+  return '<p class="nocook-disclaimer plan-sobras">' + tFormat("html.si_no_te_llenas", { lista: lista }) + "</p>";
 }
 
 /**

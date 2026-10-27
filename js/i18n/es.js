@@ -641,8 +641,8 @@ registerI18nTable("es", {
   "ui.nocook_envase": "Envase: {tamano}",
   "ui.nocook_envase_entero": "Envase entero",
   "ui.nocook_de_sobras": "+{n} de lo que sobra",
-  "ui.nocook_sobras_y_mas": "y {n} más",
-  "html.nocook_si_no_te_llenas": "Si te quedas con hambre, puedes comerte lo que sobra de la compra y el menú ya no usa: {lista}.",
+  "ui.sobras_y_mas": "y {n} más",
+  "html.si_no_te_llenas": "Si te quedas con hambre, puedes comerte lo que sobra de la compra y el menú ya no usa: {lista}.",
   // Acceso y cuentas (js/core/auth.js: authErrorMessage; js/ui/render-auth.js).
   "ui.continuar_con_google": "Continuar con Google",
   "ui.borrando": "Borrando…",

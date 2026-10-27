@@ -368,7 +368,8 @@ document.addEventListener("DOMContentLoaded", function () {
     if (typeof regeneratePlanMeal !== "function") return;
 
     btn.disabled = true;
-    var pantryState = (typeof getPantryState === "function") ? getPantryState() : null;
+    // Con lo que sobra de los días anteriores, como al generar (2026-10-27).
+    var pantryState = despensaDelDiaEnPantalla(dayIndex);
     // Se pasa qué día es para que un re-roll respete la misma regla que la
     // generación: nada "de dejar hecho la noche antes" en el día 1 ni en un
     // plan de 1 día (ver isMakeAheadDish / pickDish).
@@ -422,7 +423,6 @@ document.addEventListener("DOMContentLoaded", function () {
     var antes = JSON.parse(JSON.stringify(lastGeneratedDays));
     var informeAntes = lastGeneratedReport;
     var anadido = (typeof agregarNoMeGusta === "function") ? agregarNoMeGusta(termino) : false;
-    var pantryState = (typeof getPantryState === "function") ? getPantryState() : null;
     var cambiadas = 0;
     var diasAtascados = [];
 
@@ -433,6 +433,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     lastGeneratedDays.forEach(function (day, d) {
+      var pantryState = despensaDelDiaEnPantalla(d);
       (day.meals || []).forEach(function (meal, idx) {
         if (!lleva(meal)) return;
         var opciones = Object.assign({}, lastGeneratedDayOptions, { planDays: lastGeneratedDays.length, dayIndex: d });
@@ -492,6 +493,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!lastGeneratedProfile || !lastGeneratedData || typeof generateDietPlan !== "function") return null;
     try {
       var data = Object.assign({}, lastGeneratedData, { dayIndex: d, planDays: lastGeneratedDays.length });
+      if (d > 0) data.despensaDelPlan = despensaDelDiaEnPantalla(d);
       data.avoidDishNames = [];
       lastGeneratedDays.forEach(function (day, i) {
         if (i === d) return;
@@ -506,6 +508,32 @@ document.addEventListener("DOMContentLoaded", function () {
       console.error("[no-me-gusta] no se pudo rehacer el día " + (d + 1) + ":", err);
       return null;
     }
+  }
+
+  /**
+   * La despensa al empezar el día `d` del plan en pantalla: la real y, desde
+   * el día 2, lo que sobra de los anteriores (despensaParaElDia,
+   * plan-generator.js, 2026-10-27). Para «Cambiar», «No me gusta» y rehacer
+   * un día, que así ven lo mismo que vio el día al generarse.
+   */
+  function despensaDelDiaEnPantalla(d) {
+    if (typeof despensaParaElDia !== "function") {
+      return (typeof getPantryState === "function") ? getPantryState() : null;
+    }
+    return despensaParaElDia(lastGeneratedDays, d, lastGeneratedStore,
+      { raciones: lastGeneratedData && lastGeneratedData.racionesCompra });
+  }
+
+  /**
+   * Lo que sobra de la compra del plan en pantalla, para «Если не наелись…»
+   * en cada día (renderDayPlans). Con las tomas de toda la casa
+   * (tomasDeLaCasa), que es lo que se compra.
+   */
+  function despensaDelPlanEnPantalla() {
+    if (!lastGeneratedDays || typeof despensaDelPlan !== "function") return null;
+    var real = (typeof getPantryState === "function") ? getPantryState() : null;
+    var dias = lastGeneratedDays.map(function (dia, d) { return { meals: tomasDeLaCasa(d) }; });
+    return despensaDelPlan(dias, lastGeneratedStore, real, {});
   }
 
   /**
@@ -671,10 +699,10 @@ document.addEventListener("DOMContentLoaded", function () {
       // cambiar un plato del día 4 te dejaba mirando el día 1 -- y el punto
       // activo y las flechas, que viven del scroll, se descuadraban con él.
       var desplazado = mealsContainer ? mealsContainer.scrollLeft : 0;
-      renderDayPlans(dias);
+      renderDayPlans(dias, despensaDelPlanEnPantalla());
       if (mealsContainer) mealsContainer.scrollLeft = desplazado;
     } else {
-      renderMeals(lastGeneratedMeals);
+      renderMeals(lastGeneratedMeals, despensaDelPlanEnPantalla());
     }
     if (lastGeneratedProfile) renderSummary(lastGeneratedProfile, total);
     safeInit("schedule-timeline-render", function () {
@@ -885,8 +913,11 @@ document.addEventListener("DOMContentLoaded", function () {
           var kcalTotal = familia.personas.reduce(function (a, p) { return a + p.profile.calories; }, 0)
             + familia.invitados * profile.calories;
           familia.planes = {};
-          familia.personas.forEach(function (p) {
+          familia.personas.forEach(function (p, i) {
             var suyos = Object.assign({}, p.datos, { planDays: planDays, dayIndex: 0 });
+            // Lo de la primera se compra también para los invitados: lo que
+            // sobra de sus envases se cuenta para todos (despensaDelPlan).
+            suyos.racionesCompra = i === 0 ? 1 + (familia.invitados || 0) : 1;
             suyos.budget = familiaPresupuestoCada(data.budget, familia.presupuesto, p.profile.calories, kcalTotal);
             if (typeof fijarDislikesDeFamilia === "function") fijarDislikesDeFamilia(p.dislikes || []);
             var diasP;
@@ -901,7 +932,11 @@ document.addEventListener("DOMContentLoaded", function () {
           gen = familia.planes[familia.personas[0].id].data;
         } else {
           // Un menú para todos: el de la persona activa, comprado `suma` veces.
-          if (familia) gen.budget = familiaPresupuestoComun(data.budget, familia.presupuesto, familia.suma);
+          if (familia) {
+            gen.budget = familiaPresupuestoComun(data.budget, familia.presupuesto, familia.suma);
+            // Se compra `suma` veces: lo que sobra de un envase es de la casa.
+            gen.racionesCompra = familia.suma;
+          }
           days = conDislikesDeLaVista(function () { return generateDietPlanDays(profile, gen, planDays, horario); });
         }
         var result = days[0];
@@ -910,7 +945,11 @@ document.addEventListener("DOMContentLoaded", function () {
         // diarios (kcal, proteína), no semanales. Multiplicarlos por 7 sería
         // otra cifra que no significa nada.
         renderSummary(profile, result.total);
-        renderDayPlans(days);
+        // Lo que sobra de la compra se calcula con el plan ya puesto
+        // (despensaDelPlanEnPantalla lee lastGeneratedDays y la tienda).
+        lastGeneratedDays = days;
+        lastGeneratedStore = result.report && result.report.store;
+        renderDayPlans(days, despensaDelPlanEnPantalla());
         renderDayDots(days.length);
         safeInit("schedule-timeline-render", function () {
           if (typeof renderScheduleTimeline === "function") renderScheduleTimeline(result.meals, days);

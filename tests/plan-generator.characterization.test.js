@@ -836,6 +836,94 @@ function run(t) {
     assert.strictEqual(result.report.tierUsed, 0);
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.report.violations)), []);
   });
+
+  // ── Lo que sobra de un día sirve a los demás (2026-10-27) ──────────────
+  // Con la despensa y la caducidad cargadas, como en la web: sin pantry.js
+  // el coste de compra no mira ninguna despensa y no habría nada que probar.
+  function sandboxConDespensa() {
+    return loadBrowserGlobals(ENGINE_FILES.concat([
+      projPath("js/data/shelf-life.js"), projPath("js/data/product-storage.js"),
+      projPath("js/core/expiry.js"), projPath("js/core/pantry.js")
+    ]));
+  }
+  function igual(a, b, msg) { assert.strictEqual(JSON.stringify(a), JSON.stringify(b), msg); }
+  function dia(filas) { return { meals: [{ key: "lunch", items: filas.map(function (f) { return { name: f[0], grams: f[1] }; }) }] }; }
+
+  t.test("despensaDelPlan(): lo que sobra de un envase pasa al día siguiente, y lo de casa se come primero", function () {
+    var s = sandboxConDespensa();
+    var avena = s.normalizeIngredientKey("Avena");
+    var caja = s.resolvePackageInfo("Avena", "mercadona").packageSizeG;
+    var uno = s.despensaDelPlan([dia([["Avena", 200]])], "mercadona", {}, {});
+    assert.strictEqual(uno.siguiente[avena].grams, caja - 200, "el día 2 empieza con lo que sobra de la caja");
+    var dos = s.despensaDelPlan([dia([["Avena", 200]]), dia([["Avena", 100]])], "mercadona", {}, {});
+    igual(dos.lotes.map(function (l) { return [l.key, l.grams, l.desde, l.ultimo]; }), [[avena, caja - 300, 0, 1]]);
+    // Menú común de 2: se compra el doble y el motor ve lo de UNA ración.
+    var doble = s.despensaDelPlan([dia([["Avena", 200]])], "mercadona", {}, { raciones: 2 });
+    assert.strictEqual(doble.siguiente[avena].grams, (caja - 400) / 2);
+    // Lo que ya hay en casa cubre primero y no es «sobra de la compra».
+    var casa = {};
+    casa[avena] = { grams: 300, displayName: "Avena" };
+    var conCasa = s.despensaDelPlan([dia([["Avena", 200]])], "mercadona", casa, {});
+    assert.strictEqual(conCasa.siguiente[avena].grams, 100);
+    igual(conCasa.lotes, []);
+  });
+
+  t.test("varios días: desde el día 2 el motor ve lo que sobra de los anteriores, y no lo deja en `data`", function () {
+    var s = sandboxConDespensa();
+    var built = buildProfileAndData(s, PROFILES[2]);
+    var aprovecha = 0;
+    for (var seed = 1; seed <= 6; seed++) {
+      seedRandomInContext(s, seed);
+      built.data.planDays = 3;
+      var dias = s.generateDietPlanDays(built.profile, built.data, 3);
+      assert.strictEqual("despensaDelPlan" in built.data, false, "la despensa del día no se queda en data");
+      dias.slice(1).forEach(function (d) {
+        var solo = s.computeDayPurchaseCost(d.meals, "mercadona", {}).purchaseCost;
+        if (d.total.purchaseCost < solo - 0.01) aprovecha++;
+      });
+    }
+    assert.ok(aprovecha > 0, "algún día 2 o 3 tendría que pagar menos gracias a lo que sobró antes");
+  });
+
+  t.test("rellenarConLoPagado(): un día corto sube de ración entera con lo ya pagado, sin comprar nada", function () {
+    var s = sandboxConDespensa();
+    function fila(nombre, gramos) {
+      var n = s.resolveIngredientNutrition(nombre);
+      var f = gramos / 100;
+      return { name: nombre, grams: gramos, kcal: n.kcal * f, protein: n.protein * f, carbs: n.carbs * f, fat: n.fat * f, cost: 0.5 };
+    }
+    var meals = [
+      { key: "lunch", items: [fila("Arroz blanco cocido", 360), fila("Pechuga de pollo", 200)] },
+      { key: "snack", items: [fila("Yogur griego ligero", 125)] },
+      { key: "dinner", items: [fila("Pasta cocida", 360)] }
+    ];
+    meals.forEach(function (m) { m.total = s.getMealTotals(m); });
+    var kcalAntes = {};
+    meals.forEach(function (m) { m.items.forEach(function (it) { kcalAntes[it.name] = it.kcal; }); });
+    var antes = s.sumMeals(meals).kcal;
+    var compraAntes = s.computeDayPurchaseCost(meals, "mercadona", {}).purchaseCost;
+    var objetivo = antes * 1.2;
+    var res = s.rellenarConLoPagado(meals, objetivo, "mercadona", {});
+    assert.ok(res.changed, "había hueco y lo pagado da para llenarlo");
+    var despues = s.sumMeals(meals).kcal;
+    assert.ok(antes < despues && despues <= objetivo * 1.03, antes + " -> " + despues + " (objetivo " + objetivo + ")");
+    assert.strictEqual(s.computeDayPurchaseCost(meals, "mercadona", {}).purchaseCost, compraAntes, "no compra nada");
+    meals.forEach(function (m) {
+      m.items.forEach(function (it) {
+        var u = s.resolveServingUnit(it.name, "mercadona");
+        if (u && u.g > 0) {
+          var cuenta = it.grams / u.g;
+          assert.ok(Math.abs(cuenta * 2 - Math.round(cuenta * 2)) < 0.02 || Math.abs(cuenta * 3 - Math.round(cuenta * 3)) < 0.02,
+            it.name + ": " + it.grams + " g no es una ración de casa");
+        }
+        // Lo que el relleno sube no puede pasar del 25% del día (cap25); lo
+        // que ya pasaba antes no es cosa suya.
+        if (kcalAntes[it.name] + 0.5 < it.kcal) assert.ok(it.kcal <= despues * 0.25 + 0.5, it.name + " pasa del 25% del día");
+      });
+    });
+    // Sin hueco no se toca.
+    assert.strictEqual(s.rellenarConLoPagado(meals, despues, "mercadona", {}).changed, false);
+  });
 }
 
 module.exports = { run: run };
