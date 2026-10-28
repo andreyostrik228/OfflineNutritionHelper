@@ -58,7 +58,7 @@ var TOUR_ESTRENO = "2026-10-06T00:00:00.000Z";
 // define. Da variedad sin inventar colores.
 var TOUR_ACENTOS = {
   plan: "kcal", dias: "protein", cambiar: "carbs", compra: "fat", mercadona: "kcal",
-  hoy: "volt", generar: "protein", atajos: "carbs", menu: "fat"
+  hoy: "volt", generar: "protein", casa: "fat", atajos: "carbs", entrenos: "kcal", menu: "volt"
 };
 
 /**

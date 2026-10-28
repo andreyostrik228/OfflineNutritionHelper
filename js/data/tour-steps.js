@@ -19,10 +19,17 @@
  *
  * ── Qué entra ───────────────────────────────────────────────────────────
  * Cada botón que se usa a menudo sale en alguna escena: el plan y sus macros,
- * los planes de varios días, «Cambiar» y «Cómo se hace», las casillas de la
+ * los planes de 1 a 7 días (y lo que sobra de un día, que aprovechan los
+ * siguientes), «Cambiar», «Cómo se hace» y «No me gusta», las casillas de la
  * compra, la cámara de Mercadona, «Confirmar plan de hoy», los datos y
- * «Generar plan», «Sin cocinar» y la despensa, y el menú del idioma y el
- * aspecto. Siguen fuera «Compartir» e «Imprimir» (pedido del dueño).
+ * «Generar plan», «Para quién es el menú», «Sin cocinar» y la despensa,
+ * «Entrenamientos» y el menú del idioma y el aspecto. Siguen fuera
+ * «Compartir» e «Imprimir» (pedido del dueño).
+ *
+ * 2026-10-28: puesto al día con lo que se añadió después del 2026-10-08
+ * (días de 1 a 7, sobras entre días, «No me gusta», la familia, el plan sin
+ * cocinar entero, la despensa por sitios y entrenamientos). Once escenas: el
+ * tope de los tests es doce, y un recorrido que no se termina no enseña nada.
  *
  * ── El texto ────────────────────────────────────────────────────────────
  * Cada escena dice qué es y PARA QUÉ SIRVE, en segunda persona, corto y sin
@@ -49,15 +56,15 @@ var TOUR_STEPS = [
   },
   {
     id: "dias",
-    title: "Planes de 1, 3 o 7 días",
-    body: "Desliza hacia los lados para ver cada día. Cuantos más días, más " +
-          "barata sale la compra por día."
+    title: "Planes de 1 a 7 días",
+    body: "Desliza para ver cada día. Con más días, cada uno sale más barato: " +
+          "lo que sobra de un envase lo aprovechan los días siguientes."
   },
   {
     id: "cambiar",
     title: "Cámbialo o aprende a cocinarlo",
-    body: "«Cambiar» sustituye solo esa comida y el resto del día se queda igual. " +
-          "«Cómo se hace» abre los pasos, con cantidades y tiempos."
+    body: "«Cambiar» sustituye solo esa comida. «Cómo se hace» abre los pasos. " +
+          "«No me gusta» quita ese producto de tus planes."
   },
   {
     id: "compra",
@@ -84,10 +91,22 @@ var TOUR_STEPS = [
           "«Generar plan» y sale un menú nuevo."
   },
   {
+    id: "casa",
+    title: "Un menú para toda la casa",
+    body: "En «Para quién es el menú» añades a tu familia o a invitados: un menú " +
+          "para todos o cada uno el suyo, y una sola compra para la casa."
+  },
+  {
     id: "atajos",
     title: "Dos atajos que ahorran",
-    body: "«Sin cocinar» arma un día sin fuego. «Despensa» apunta lo que ya tienes " +
-          "en casa: no lo compras otra vez y el plan sale más barato."
+    body: "«Sin cocinar» arma un plan entero sin fuego. «Despensa» apunta lo que ya " +
+          "tienes en la nevera, el congelador o el armario: no lo compras otra vez."
+  },
+  {
+    id: "entrenos",
+    title: "También para entrenar",
+    body: "Arriba, «Entrenamientos» abre tu plan de ejercicio: lo que toca hoy, las " +
+          "series que anotas y tu progreso. Tiene su propia explicación."
   },
   {
     id: "menu",
@@ -106,6 +125,9 @@ var TOUR_MOCK = {
   plato1_meta: "650 kcal · 1,20 €",
   plato2: "Tortitas con crema de cacahuete",
   plato2_meta: "710 kcal · 1,45 €",
+  crema: "Crema de cacahuete",
+  hambre: "Si te quedas con hambre",
+  persona: "Ana",
   paso1: "Pon la avena con la leche",
   paso2: "Calienta dos minutos",
   paso3: "Añade el plátano en rodajas",

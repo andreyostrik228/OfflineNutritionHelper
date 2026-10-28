@@ -50,7 +50,17 @@
 .onboarding__brand-mark{transform:none}
 .onboarding__summary li::before{transform:none}
 @media (max-height: 600px){.tour__counter{font-size:13px}}
+.tg-nogusta{font-size:13px}
+.tg-etiqueta{font-size:13px}
+.tg-semana__d{font-size:13px}
 .tabbar__btn{font-size:13px}
+.tut-ej__nom small{font-size:13px}
+.tut-ej__antes{font-size:13px}
+.tut-serie--cab{font-size:13px}
+.tut-cal__sem{font-size:13px}
+.tut-cal__d{font-size:13px}
+.tut-cal__leyenda{font-size:13px}
+.tg-compacto .tut-cal__d{font-size:13px}
 /* ── núcleo común: una escala de tamaños, una escalera de alturas ── */
 
 /* ═══════════════ KIT — one size system for every style ═══════════════

@@ -3319,6 +3319,12 @@ html.tour-abierto body { overflow: hidden; }
    puede pasar a dos y se centra en vez de salirse del botón. */
 .tg-grande { width: 100%; max-width: 300px; min-height: 62px; margin: 0 auto; padding: 8px 18px; font-size: 18px; line-height: 1.12; letter-spacing: 0.04em; white-space: normal; text-align: center; }
 .tg-ok { width: 16px; height: 16px; flex: none; }
+/* Cuando el acento y el relleno de marca casi coinciden (Grafito, Noche: lo mide
+   _tgVoltPlano), las cifras en volt sobre ese relleno no se ven: van en su texto. */
+.tg-volt-plano .tg-num,
+.tg-volt-plano .tg-total__n,
+.tg-volt-plano .tut-descanso strong { color: var(--on-ink); }
+.tg-volt-plano .tut-descanso__barra i { background: var(--on-ink); }
 /* El dedo y su onda: solo existen cuando algo los mueve. */
 .tg-dedo,
 .tg-ola { position: absolute; left: 0; top: 0; z-index: 5; border-radius: 50%; pointer-events: none; opacity: 0; }
@@ -3362,6 +3368,24 @@ html.tour-abierto body { overflow: hidden; }
 .tg-compacto .tg-llama { width: 36px; height: 36px; }
 .tg-compacto .tg-hoja { padding: 8px; gap: 8px; }
 .tg-compacto .tg-hoy { gap: 14px; }
+.tg-compacto .tg-envase,
+.tg-compacto .tg-hambre { padding: 6px 10px; }
+.tg-compacto .tg-ingr { padding: 3px 4px 3px 8px; }
+.tg-compacto .tg-casa,
+.tg-compacto .tg-entrenos { gap: 6px; }
+.tg-compacto .tg-quien { padding: 8px; gap: 7px; }
+.tg-compacto .tg-persona { padding: 5px 10px; font-size: 14px; }
+.tg-compacto .tg-hoyent { padding: 8px 10px; }
+.tg-compacto .tg-hoyent__t { font-size: 20px; }
+.tg-compacto .tg-semana__d { width: 28px; height: 28px; }
+/* Lo prescindible fuera cuando ni compacta cabe (320×568 con letra ancha, «pegatinas»):
+   los puntos del carrusel (ya lo dice «Día 2 de 3»), la tercera comida del día, el
+   rótulo de los días y aire en las barritas de «Generar plan». */
+.tg-compacto .tg-dias .tg-puntos,
+.tg-compacto .tg-dia__l:nth-child(4),
+.tg-compacto .tg-segfila small { display: none; }
+.tg-compacto .tg-minis { gap: 4px; }
+.tg-compacto .tg-mini { height: 8px; }
 
 /* 1. El plan */
 .tg-plan { display: flex; flex-direction: column; gap: 8px; }
@@ -3406,9 +3430,25 @@ html.tour-abierto body { overflow: hidden; }
 .tg-puntos { display: flex; gap: 6px; }
 .tg-puntos i { width: 8px; height: 8px; border-radius: 99px; background: var(--field-line); opacity: 0.4; transition: width 0.3s, opacity 0.3s, background-color 0.3s; }
 .tg-puntos .is-on { width: 22px; background: var(--primary); opacity: 1; }
+/* El envase que se reparte entre los días y la pista de «si te quedas con hambre». */
+.tg-envase { align-self: stretch; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 6px 10px; padding: 10px 12px; }
+.tg-envase__n { font-weight: 700; font-size: 14px; }
+.tg-envase__g { font: 800 16px/1 var(--font-display); }
+.tg-envase__pista { grid-column: 1 / -1; height: 10px; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line); }
+.tg-envase__pista i { background: var(--tg-acento, var(--primary)); }
+.tg-hambre { align-self: stretch; display: grid; gap: 2px; padding: 9px 12px; box-shadow: 0 0 0 1.5px var(--line), inset 4px 0 0 var(--tg-acento, var(--volt)), var(--shadow-1); }
+.tg-hambre small { font-size: 13px; color: var(--text-2); }
+.tg-hambre strong { font: 800 15px/1.2 var(--font-display); }
+.tg-hambre.is-fuera { visibility: hidden; }
 
 /* 3. Cambiar una comida y la receta */
 .tg-plato { display: grid; gap: 10px; padding: 14px; transform-style: preserve-3d; }
+/* Un ingrediente con su «No me gusta»: al pulsarlo, el producto se tacha. */
+.tg-ingr { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 6px 6px 10px; border-radius: 10px; background: var(--surface-2); }
+.tg-ingr__n { min-width: 0; font-weight: 700; font-size: 14px; }
+.tg-nogusta { flex: none; padding: 4px 10px; border-radius: var(--pill); box-shadow: 0 0 0 1.5px var(--line-strong); font-size: 12px; font-weight: 700; color: var(--text-2); white-space: nowrap; transition: background-color 0.3s, color 0.3s; }
+.tg-ingr.is-fuera .tg-ingr__n { text-decoration: line-through; opacity: 0.5; }
+.tg-ingr.is-fuera .tg-nogusta { background: var(--danger); color: #fff; box-shadow: none; }
 .tg-plato__cab { display: flex; align-items: center; justify-content: space-between; }
 .tg-plato__m { font: 800 15px var(--font-display); color: var(--text-2); }
 .tg-plato__t { font: 900 24px/1.05 var(--font-display); text-transform: uppercase; }
@@ -3495,14 +3535,29 @@ html.tour-abierto body { overflow: hidden; }
 .tg-ficha-d { display: grid; gap: 2px; padding: 8px 10px; }
 .tg-ficha-d small { font-size: 13px; font-weight: 700; color: var(--text-3); }
 .tg-ficha-d strong { font: 800 16px/1.1 var(--font-display); }
-.tg-segfila { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.tg-segfila { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 8px; }
 .tg-segfila small { font-size: 13px; font-weight: 700; color: var(--text-2); }
+/* Los siete días de «Mis datos», a todo el ancho: en 320 px no caben al lado del rótulo. */
+.tg-seg--siete { display: flex; width: 100%; }
+.tg-seg--siete span { flex: 1 1 0; min-width: 0; padding: 6px 0; font-size: 16px; }
 .tg-minis { display: grid; gap: 6px; }
 .tg-mini { display: block; height: 12px; border-radius: 99px; background: var(--tg-acento, var(--primary)); opacity: 0.75; }
 .tg-mini:nth-child(2) { width: 82%; }
 .tg-mini:nth-child(3) { width: 64%; }
 
-/* 8. Sin cocinar y despensa */
+/* 8. Para quién es el menú */
+.tg-casa { display: flex; flex-direction: column; gap: 10px; }
+.tg-etiqueta { font: 800 12px/1.2 var(--font-display); letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); }
+.tg-quien { display: grid; gap: 10px; padding: 12px; }
+.tg-personas { display: flex; flex-wrap: wrap; gap: 6px; }
+.tg-persona { padding: 7px 14px; border-radius: var(--pill); box-shadow: 0 0 0 1.5px var(--line-strong); font: 800 15px/1.1 var(--font-display); }
+.tg-persona.is-on { background: var(--primary); color: var(--on-ink); box-shadow: none; }
+.tg-persona--mas { box-shadow: none; outline: 1.5px dashed var(--line-strong); outline-offset: -1.5px; color: var(--text-2); }
+.tg-seg--modo { display: flex; width: 100%; }
+.tg-seg--modo span { flex: 1 1 0; min-width: 0; padding: 7px 6px; font-size: 13px; line-height: 1.15; white-space: normal; }
+.tg-seg--modo.is-apagado span { opacity: 0.45; }
+
+/* 9. Sin cocinar y despensa */
 .tg-atajos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-items: stretch; }
 .tg-atajo { display: grid; justify-items: center; align-content: start; gap: 10px; padding: 12px 10px; text-align: center; }
 .tg-atajo .tg-btn { min-width: 0; max-width: 100%; min-height: 40px; padding: 5px 8px; font-size: 13px; line-height: 1.05; letter-spacing: 0.03em; white-space: normal; text-align: center; }
@@ -3524,7 +3579,29 @@ html.tour-abierto body { overflow: hidden; }
 .tg-atajo:not(.is-hecho) .tg-chips,
 .tg-atajo:not(.is-hecho) .tg-precio { visibility: hidden; }
 
-/* 9. El menú: idioma y aspecto */
+/* 10. Entrenamientos: el botón de arriba cambia de parte */
+.tg-entrenos { display: flex; flex-direction: column; gap: 10px; }
+.tg-modo { align-self: center; min-height: 40px; font-size: 15px; letter-spacing: 0.04em; }
+.tg-modo .tg-ico { width: 16px; height: 16px; }
+/* Las dos pantallas en la misma celda: el alto es el de la mayor y no salta al cambiar. */
+.tg-pantallas { display: grid; }
+.tg-pantalla { grid-area: 1 / 1; display: flex; flex-direction: column; gap: 8px; }
+.tg-pantalla.is-fuera { visibility: hidden; }
+.tg-hoyent { display: grid; gap: 3px; padding: 12px 14px; }
+.tg-hoyent__t { font: 900 24px/1.05 var(--font-display); text-transform: uppercase; }
+.tg-hoyent__d { font-size: 14px; color: var(--text-2); }
+.tg-semana { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; justify-items: center; }
+.tg-semana__d { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--surface); box-shadow: 0 0 0 1.5px var(--line); font: 800 12px/1 var(--font-display); color: var(--text-3); }
+.tg-semana__d.is-toca { box-shadow: 0 0 0 2px var(--primary); color: var(--ink); }
+.tg-semana__d.is-hoy { background: var(--volt); color: var(--on-volt); }
+/* Cinco secciones no caben con su nombre en una maqueta de móvil («Тренировка»,
+   «Прогрес»...): el nombre solo en la encendida, y las demás con su icono. */
+.tg-tabs--cinco { position: static; display: flex; justify-content: space-around; align-items: center; padding: 6px 4px; }
+.tg-tabs--cinco .tg-tab { flex: 0 1 auto; min-width: 0; padding: 6px 10px; font-size: 13px; }
+.tg-tabs--cinco .tg-tab small { white-space: nowrap; }
+.tg-tabs--cinco .tg-tab:not(.is-on) small { display: none; }
+
+/* 11. El menú: idioma y aspecto */
 .tg-menu { position: relative; display: flex; flex-direction: column; gap: 8px; height: 100%; }
 .tg-barra-sup { display: flex; align-items: center; gap: 12px; padding: 8px 12px; }
 .tg-burger { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--surface-2); box-shadow: 0 0 0 1.5px var(--line-strong); }
@@ -5614,20 +5691,132 @@ body.modo-cuestionario .next-meal-sticky { display: none !important; }
 .entreno__hist-botones { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 0; }
 .entreno__hist-pie { display: grid; justify-items: start; gap: 8px; margin-top: 12px; }
 
-/* Tutorial del panel de entrenamientos */
+/* Tutorial del panel de entrenamientos (2026-10-28: con maquetas animadas).
+   La escena es la misma hoja de .tg-* del recorrido general (sección 15): el dedo,
+   las tarjetas y la barra de cinco secciones; aquí, solo lo propio de entrenar. */
 .tut-dialogo { max-width: 460px; width: calc(100% - 24px); }
-.tut-dialogo__cuerpo { display: grid; gap: 16px; padding: 0 20px 22px; }
-.tut__ilustracion { display: grid; place-items: center; height: 120px; border-radius: var(--r-lg); background: var(--volt-wash); color: var(--ink); }
-.tut__ilustracion svg { width: 56px; height: 56px; }
+.tut-dialogo[open] { overflow-y: auto; }
+.tut-dialogo__cuerpo { display: grid; gap: 14px; padding: 0 20px 22px; touch-action: pan-y; }
+.tut__ilustracion {
+  position: relative;
+  height: clamp(200px, 38vh, 300px);
+  border-radius: var(--r-lg);
+  background: var(--tg-wash, var(--volt-wash));
+  color: var(--ink);
+  overflow: hidden;
+}
 .tut__contador { margin: 0; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); }
 .tut__titulo { margin: 0; font: 800 1.6rem/1.05 var(--font-display); color: var(--ink); }
 .tut__texto { margin: 0; color: var(--text-2); font-size: 0.98rem; }
-.tut__puntos { display: flex; justify-content: center; gap: 6px; }
-.tut__punto { width: 8px; height: 8px; border-radius: 50%; background: var(--line-strong); }
-.tut__punto.is-on { width: 22px; border-radius: var(--pill); background: var(--ink); }
+/* Los puntos llevan a su paso: botones de 24 px con el punto dibujado dentro. */
+.tut__puntos { display: flex; justify-content: center; gap: 2px; }
+.tut__punto { display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; background: none; cursor: pointer; }
+.tut__punto::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--line-strong); transition: width 0.25s, background-color 0.25s; }
+.tut__punto.is-on { width: 34px; }
+.tut__punto.is-on::before { width: 24px; border-radius: var(--pill); background: var(--ink); }
 .tut__botones { display: flex; justify-content: space-between; gap: 8px; }
 .tut__botones .entreno__empezar,
 .tut__botones .btn-secondary { min-height: 46px; }
+
+/* Las maquetas del tutorial */
+.tut-empezar { justify-self: start; min-height: 38px; margin-top: 6px; font-size: 14px; letter-spacing: 0.04em; white-space: normal; text-align: center; }
+.tut-fig { flex: none; display: block; width: 48px; height: 48px; }
+.tut-fig .anim { width: 100%; height: 100%; aspect-ratio: auto; }
+.tut-series,
+.tut-cambiar,
+.tut-plan,
+.tut-prog,
+.tut-perfil { display: flex; flex-direction: column; gap: 8px; }
+.tut-ej { display: grid; gap: 8px; padding: 10px 12px; transform-style: preserve-3d; }
+.tut-ej__cab { display: flex; align-items: center; gap: 10px; }
+.tut-ej__nom { flex: 1; display: grid; gap: 2px; min-width: 0; }
+.tut-ej__nom strong { font: 800 16px/1.15 var(--font-display); }
+.tut-ej__nom small { font-size: 12px; color: var(--text-2); }
+.tut-ej__antes { margin: 0; font-size: 12px; color: var(--text-2); }
+.tut-puntos3 { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--surface-2); box-shadow: 0 0 0 1.5px var(--line-strong); font: 900 18px/1 var(--font-display); transition: background-color 0.25s, color 0.25s; }
+.tut-puntos3.is-on { background: var(--volt); color: var(--on-volt); }
+.tut-tabla { display: grid; gap: 4px; }
+/* La primera columna, a lo que mida «Подход» / «Serie»: con 30 px fijos se partía en tres. */
+.tut-serie { display: grid; grid-template-columns: minmax(34px, auto) minmax(0, 1fr) minmax(0, 1fr) 30px; align-items: center; gap: 6px; padding: 2px 4px; border-radius: 10px; transition: background-color 0.25s; }
+.tut-serie--cab { padding-block: 0; font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); }
+.tut-serie--cab span + span { text-align: center; }
+.tut-serie__n { font: 800 14px var(--font-display); text-align: center; }
+.tut-serie__v { padding: 4px 0; border-radius: 8px; background: var(--surface-2); text-align: center; font: 800 15px var(--font-display); }
+.tut-serie__ok { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 9px; box-shadow: 0 0 0 1.5px var(--field-line); color: transparent; transition: background-color 0.25s, color 0.25s; }
+.tut-serie.is-hecha { background: var(--volt-wash); }
+.tut-serie.is-hecha .tut-serie__ok { background: var(--primary); color: var(--on-ink); box-shadow: none; }
+.tut-descanso { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 10px; padding: 8px 14px; border-radius: var(--r-md); background: var(--primary); color: var(--on-ink); font-weight: 700; }
+.tut-descanso strong { font: 900 22px/1 var(--font-display); color: var(--volt); }
+.tut-descanso__barra { grid-column: 1 / -1; height: 5px; border-radius: 99px; background: rgba(255, 255, 255, 0.2); overflow: hidden; }
+.tut-descanso__barra i { display: block; height: 100%; background: var(--volt); }
+.tut-descanso.is-fuera { visibility: hidden; }
+.tut-menu { display: grid; gap: 2px; margin-left: 18%; padding: 6px; }
+.tut-menu.is-fuera { visibility: hidden; }
+.tut-menu__op { padding: 8px 10px; border-radius: 10px; font-size: 14px; font-weight: 700; line-height: 1.2; transition: background-color 0.25s, color 0.25s; }
+.tut-menu__op.is-on { background: var(--volt); color: var(--on-volt); }
+.tut-cal { display: grid; gap: 6px; padding: 10px 12px; }
+.tut-cal__rejilla { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; justify-items: center; }
+.tut-cal__sem { font-size: 11px; font-weight: 800; color: var(--text-3); }
+.tut-cal__d { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font: 700 12px/1 var(--font-display); color: var(--text-2); transition: background-color 0.25s, color 0.25s; }
+.tut-cal__d.is-toca { box-shadow: inset 0 0 0 1.5px var(--primary); color: var(--ink); }
+.tut-cal__d.is-hecha { background: var(--volt); color: var(--on-volt); }
+.tut-cal__d.is-hoy { outline: 2px solid var(--ink); outline-offset: 1px; color: var(--ink); }
+/* El elegido en el color del texto: en Grafito el relleno de marca es el mismo lima de lo hecho. */
+.tut-cal__d.is-elegida { background: var(--ink); color: var(--surface); box-shadow: none; }
+.tut-cal__leyenda { display: flex; justify-content: center; gap: 14px; font-size: 12px; color: var(--text-2); }
+.tut-cal__ley { display: inline-flex; align-items: center; gap: 5px; }
+.tut-cal__ley::before { content: ""; width: 10px; height: 10px; border-radius: 50%; }
+.tut-cal__ley--hecha::before { background: var(--volt); }
+.tut-cal__ley--toca::before { box-shadow: inset 0 0 0 1.5px var(--primary); }
+.tut-cal__info { padding: 9px 12px; font-size: 14px; font-weight: 700; }
+.tut-graf { display: grid; gap: 8px; padding: 10px 12px; }
+.tut-graf__cab { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.tut-graf__cab strong { min-width: 0; font: 800 15px/1.15 var(--font-display); }
+.tut-record.is-fuera { visibility: hidden; }
+.tut-periodos { align-self: start; }
+.tut-periodos span { min-width: 0; padding: 5px 12px; font-size: 14px; }
+.tut-graf__svg { display: block; width: 100%; height: 70px; overflow: visible; }
+/* pathLength="1" en la línea: con un trazo de 1 la dibuja entera, y GSAP la «traza» de 1 a 0. */
+.tut-graf__linea { fill: none; stroke: var(--tg-acento, var(--primary)); stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 0; }
+.tut-fichas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.tut-resp,
+.tut-ajustes { display: grid; gap: 8px; padding: 10px 12px; }
+.tut-resp__chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.tut-ajuste { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; }
+.tut-ajuste__t { font-size: 13px; font-weight: 700; line-height: 1.25; }
+.tut-interruptor { position: relative; width: 42px; height: 24px; border-radius: 99px; background: var(--field-line); transition: background-color 0.25s; }
+.tut-interruptor i { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--surface); box-shadow: var(--shadow-1); transition: transform 0.25s; }
+.tut-ajuste.is-on .tut-interruptor { background: var(--primary); }
+.tut-ajuste.is-on .tut-interruptor i { transform: translateX(18px); }
+.tg-compacto .tut-series,
+.tg-compacto .tut-cambiar,
+.tg-compacto .tut-plan,
+.tg-compacto .tut-prog,
+.tg-compacto .tut-perfil { gap: 5px; }
+.tg-compacto .tut-ej,
+.tg-compacto .tut-cal,
+.tg-compacto .tut-graf,
+.tg-compacto .tut-resp,
+.tg-compacto .tut-ajustes { gap: 5px; padding: 7px 10px; }
+.tg-compacto .tut-fig { width: 38px; height: 38px; }
+.tg-compacto .tut-cal__d { width: 22px; height: 22px; font-size: 11px; }
+.tg-compacto .tut-serie__v { padding: 3px 0; }
+.tg-compacto .tut-serie__ok { width: 24px; height: 24px; }
+.tg-compacto .tut-graf__svg { height: 52px; }
+.tg-compacto .tut-menu__op { padding: 6px 8px; font-size: 13px; }
+/* En una maqueta compacta, dos series bastan: con tres no cabía ni encogida. */
+.tg-compacto .tut-serie:nth-child(4) { display: none; }
+/* Pantallas bajas (iPhone SE, 320×568): la hoja entera, con sus botones, sin desplazar. */
+@media (max-height: 640px) {
+  .tut-dialogo .auth-dialog__head h2 { font-size: 1.3rem; }
+  .tut-dialogo__cuerpo { gap: 8px; padding-bottom: 14px; }
+  /* 196 px es lo mínimo en que caben, encogidas al 72 %, las maquetas más altas (series y perfil). */
+  .tut__ilustracion { height: clamp(196px, 34vh, 220px); }
+  .tut__titulo { font-size: 1.3rem; }
+  .tut__texto { font-size: 0.9rem; line-height: 1.35; }
+  .tut__botones .entreno__empezar,
+  .tut__botones .btn-secondary { min-height: 42px; }
+}
 @media (prefers-reduced-motion: reduce) {
   .entreno__hoy .entreno__empezar { animation: none; }
   .entreno__musculo-barra i { transition: none; }

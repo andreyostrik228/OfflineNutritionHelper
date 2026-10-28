@@ -117,7 +117,7 @@ function run(t) {
     });
   });
 
-  t.test("el tutorial: cinco pasos en cuatro idiomas, con su ilustración, puntos y botones; sin huecos", function () {
+  t.test("el tutorial: seis pasos en cuatro idiomas, con su escena, puntos y botones; sin huecos", function () {
     ["ru", "es", "en", "uk"].forEach(function (lang) {
       var s = sandbox(lang);
       for (var paso = 0; paso < s.ENTRENO_TUT_PASOS; paso++) {
@@ -127,15 +127,19 @@ function run(t) {
         assert.strictEqual((html.match(/class="tut__punto(?: |")/g) || []).length, s.ENTRENO_TUT_PASOS, "un punto por paso");
         assert.strictEqual(html.indexOf('data-tut="atras"') !== -1, paso > 0, "«Atrás» desde el segundo");
         assert.strictEqual(html.indexOf('data-tut="fin"') !== -1, paso === s.ENTRENO_TUT_PASOS - 1, "«Entendido» solo al final");
+        assert.ok(html.indexOf('data-tut-escena="' + s.ENTRENO_TUT_IDS[paso] + '"') !== -1, "la escena de su paso");
+        assert.strictEqual((html.match(/data-tut-ir="/g) || []).length, s.ENTRENO_TUT_PASOS, "cada punto lleva a su paso");
       }
-      assert.strictEqual(s.entrenoTutorialHtml(99).indexOf('data-tut-paso="4"') !== -1, true, "un paso fuera de rango cae en el último");
+      assert.strictEqual(s.ENTRENO_TUT_PASOS, 6, "seis pasos: Inicio, series, cambiar, Plan, Progreso y Perfil");
+      assert.strictEqual(s.entrenoTutorialHtml(99).indexOf('data-tut-paso="' + (s.ENTRENO_TUT_PASOS - 1) + '"') !== -1, true,
+        "un paso fuera de rango cae en el último");
     });
   });
 
   t.test("cada texto del tutorial existe en los cuatro idiomas", function () {
     var s = sandbox();
     var claves = ["ent.tut_abrir", "ent.tut_paso", "ent.tut_atras", "ent.tut_siguiente", "ent.tut_fin"];
-    for (var n = 1; n <= 5; n++) claves.push("ent.tut" + n + "_t", "ent.tut" + n + "_x");
+    for (var n = 1; n <= s.ENTRENO_TUT_PASOS; n++) claves.push("ent.tut" + n + "_t", "ent.tut" + n + "_x");
     ["es", "en", "ru", "uk"].forEach(function (lang) {
       claves.forEach(function (k) {
         assert.notStrictEqual(s.tOr(k, "FALTA", lang), "FALTA", lang + ": falta " + k);

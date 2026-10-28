@@ -1,5 +1,19 @@
 # Nutrition Planner — Roadmap
 
+## Recorrido y tutorial de entrenamientos, 2026-10-28 (sello `20261028a`, 1329 tests)
+
+El dueño: «обнови все туториалы и сделай их лучше».
+
+| Qué | Dónde | Estado |
+|---|---|---|
+| Recorrido general al día: 11 escenas (días de 1 a 7 con lo que sobra de un envase, «No me gusta», «Para quién es el menú», «Entrenamientos», «Sin cocinar» entero y la despensa por sitios, cuatro idiomas en el menú) | `js/data/tour-steps.js`, `js/ui/tour-scenes.js`, `js/i18n/*.js` | **Hecho** |
+| Tutorial de entrenamientos con maquetas animadas: seis pasos (Inicio, series, menú ⋯, Plan con calendario, Progreso, Perfil), puntos que llevan a su paso, flechas y deslizar | `js/ui/entreno-tutorial.js` | **Hecho** |
+| Las maquetas usan las palabras reales de la interfaz y sus unidades (ккал, кг, г), comprobadas en los cuatro idiomas | `tests/onboarding.test.js` | **Hecho** |
+| Las cifras de las maquetas no se veían en «Grafito» (volt = primary): ya se ven | `_tgVoltPlano`, `.tg-volt-plano` | **Hecho** (fallo viejo) |
+| En 320×568 tres escenas se salían (y con «pegatinas», también un texto): ahora caben todas | `_tgEncajar`, `.tg-compacto` | **Hecho** (fallo viejo) |
+| Ofrecer el recorrido nuevo, una vez, a quien ya vio el viejo (`TOUR_ESTRENO`) | `js/ui/tour.js` | Decisión del dueño |
+| Graphify regenerado: 2615 nodos, 5138 aristas, 215 comunidades; combinado con PythonProject, 2720/5352 | `graphify-out/` (fuera del repo) | **Hecho** |
+
 ## Seguridad, 2026-10-27 (sello `20261027c`, 1327 tests)
 
 El dueño: «скоро уже будет искать покупателей… найди дыры если есть, закрой

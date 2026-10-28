@@ -21,8 +21,8 @@
  * Depende de: gsap (opcional), js/data/tour-steps.js (TOUR_MOCK), t().
  *
  * Expone (globales):
- *   TOUR_SCENES                       → { id: función de escena }
- *   tourEscenaMontar(id, el, animar)  → { parar() }
+ *   TOUR_SCENES                                 → { id: función de escena }
+ *   tourEscenaMontar(id, el, animar, escenas?)  → { parar() }
  * ─────────────────────────────────────────────────────────────────────────
  */
 
@@ -145,6 +145,42 @@ function _tgCrearContexto(stage, vivo) {
       if (d) gsap.fromTo(f, { y: d }, { y: 0, duration: 0.5, ease: "power3.out" });
     });
   };
+
+  /**
+   * La barra de las cinco secciones de entrenamientos, con la `activa`
+   * encendida. La usan la escena «entrenos» y el tutorial de entrenamientos.
+   * @returns {{el: Element, tabs: Element[]}}
+   */
+  c.barraEntreno = function (activa) {
+    var barra = _tgE("div", "tg-tabs tg-tabs--cinco");
+    var tabs = [["ent.pestana_inicio", "Inicio", "icon-home"], ["ent.pestana_plan", "Plan", "icon-calendar"],
+      ["ent.pestana_sesion", "Entrenar", "icon-dumbbell"], ["ent.pestana_progreso", "Progreso", "icon-chart"],
+      ["ent.pestana_perfil", "Perfil", "icon-user"]].map(function (p, i) {
+      var tab = _tgE("span", "tg-tab" + (i === activa ? " is-on" : ""));
+      tab.appendChild(_tgIco(p[2], "tg-ico"));
+      tab.appendChild(_tgE("small", null, _tgUi(p[0], p[1])));
+      barra.appendChild(tab);
+      return tab;
+    });
+    return { el: barra, tabs: tabs };
+  };
+
+  /**
+   * La semana de entrenamientos: lunes, martes, jueves y viernes toca; `hoy`
+   * es el índice del día de hoy (0 = lunes).
+   * @returns {{el: Element, dias: Element[]}}
+   */
+  c.semanaEntreno = function (hoy) {
+    var semana = _tgE("div", "tg-semana");
+    var cortos = ["Lu", "Ma", "Mi", "Ju", "Vi", "Sá", "Do"];
+    var dias = cortos.map(function (corto, i) {
+      var clase = "tg-semana__d" + ([0, 1, 3, 4].indexOf(i) !== -1 ? " is-toca" : "") + (i === hoy ? " is-hoy" : "");
+      var d = _tgE("span", clase, _tgUi("ent.dia_corto_" + (i + 1), corto));
+      semana.appendChild(d);
+      return d;
+    });
+    return { el: semana, dias: dias };
+  };
   return c;
 }
 
@@ -156,7 +192,7 @@ TOUR_SCENES.plan = function (c) {
   var kcal = c.e("div", "tg-kcal");
   var num = c.e("span", "tg-num", "3114");
   kcal.appendChild(num);
-  kcal.appendChild(c.e("small", null, "kcal"));
+  kcal.appendChild(c.e("small", null, c.ui("unit.kcal", "kcal")));
   resumen.appendChild(kcal);
 
   var barras = c.e("div", "tg-barras");
@@ -180,7 +216,7 @@ TOUR_SCENES.plan = function (c) {
     var f = c.e("div", "tg-card tg-comida");
     f.appendChild(c.e("span", "tg-hora", m[0]));
     f.appendChild(c.e("span", "tg-nom", c.t(m[1])));
-    f.appendChild(c.e("span", "tg-k", m[2] + " kcal"));
+    f.appendChild(c.e("span", "tg-k", m[2] + " " + c.ui("unit.kcal", "kcal")));
     raiz.appendChild(f);
     return f;
   });
@@ -197,13 +233,10 @@ TOUR_SCENES.plan = function (c) {
   };
 };
 
-// ── 2. Varios días ───────────────────────────────────────────────────────
+// ── 2. Varios días y lo que sobra de uno para el siguiente ──────────────
 
 TOUR_SCENES.dias = function (c) {
   var raiz = c.e("div", "tg-dias");
-  var seg = c.e("div", "tg-seg");
-  ["1", "3", "7"].forEach(function (n, i) { seg.appendChild(c.e("span", i === 1 ? "is-on" : null, n)); });
-  seg.appendChild(c.e("em", null, c.ui("ui.dias", "días")));
 
   var ventana = c.e("div", "tg-ventana");
   var fila = c.e("div", "tg-dias-fila");
@@ -227,11 +260,33 @@ TOUR_SCENES.dias = function (c) {
     puntos.appendChild(p);
     return p;
   });
-  raiz.appendChild(seg);
+
+  // Un envase que no se acaba en un día: lo que queda pasa al siguiente.
+  // Bajo cada día, lo que QUEDA del bote al acabarlo.
+  var G = " " + c.ui("unit.g", "g");
+  var envase = c.e("div", "tg-card tg-envase");
+  envase.appendChild(c.e("span", "tg-envase__n", c.t("crema")));
+  var gramos = c.e("strong", "tg-envase__g", "350" + G);
+  envase.appendChild(gramos);
+  var pista = c.e("span", "tg-pista tg-envase__pista");
+  var nivel = c.e("i");
+  nivel.style.width = "70%";
+  pista.appendChild(nivel);
+  envase.appendChild(pista);
+
+  // Y lo que el menú ya no usa sale como pista al final, como en el plan real.
+  var hambre = c.e("div", "tg-card tg-hambre is-fuera");
+  hambre.appendChild(c.e("small", null, c.t("hambre") + "…"));
+  hambre.appendChild(c.e("strong", null, c.t("crema") + " · 150" + G));
+
   raiz.appendChild(ventana);
   raiz.appendChild(puntos);
+  raiz.appendChild(envase);
+  raiz.appendChild(hambre);
 
+  var QUEDA = [["350" + G, "70%"], ["150" + G, "30%"], ["150" + G, "30%"]];
   function marcar(n) { pts.forEach(function (p, i) { p.classList.toggle("is-on", i === n); }); }
+  function quedan(n) { gramos.textContent = QUEDA[n][0]; }
   function paso() { return tarjetas[1].offsetLeft - tarjetas[0].offsetLeft; }
   function arrastrar(n) {
     var dx = -paso();
@@ -239,33 +294,53 @@ TOUR_SCENES.dias = function (c) {
     gsap.to(fila, { x: "+=" + dx, duration: 0.8, ease: "power3.inOut" });
     gsap.to(c.dedo, { x: "+=" + (dx * 0.8), duration: 0.8, ease: "power3.inOut" });
     gsap.to(c.dedo, { scale: 1, duration: 0.2, delay: 0.85 });
+    gsap.to(nivel, { width: QUEDA[n][1], duration: 0.7, delay: 0.3, ease: "power2.inOut" });
     marcar(n);
+    quedan(n);
   }
+  function sobra() { hambre.classList.remove("is-fuera"); }
 
   return {
     el: raiz,
     play: function (tl) {
-      tl.from(seg, { y: -22, opacity: 0, duration: 0.45, ease: "power3.out" })
-        .from(tarjetas, { y: 36, opacity: 0, duration: 0.5, stagger: 0.12, ease: "back.out(1.4)" }, "-=0.15")
+      tl.from(tarjetas, { y: 36, opacity: 0, duration: 0.5, stagger: 0.12, ease: "back.out(1.4)" })
+        .from(envase, { y: 26, opacity: 0, duration: 0.45, ease: "power3.out" }, "-=0.25")
+        .from(nivel, { width: "100%", duration: 0.8, ease: "power2.inOut" }, "-=0.1")
         .add(function () { c.ir(tarjetas[0], 0.7); }, "+=0.2")
         .add(function () { arrastrar(1); }, "+=1.0")
         .add(function () { arrastrar(2); }, "+=1.5")
-        .add(function () { c.irse(); }, "+=1.2");
+        .add(function () {
+          c.irse();
+          sobra();
+          gsap.from(hambre, { y: 18, scale: 0.9, opacity: 0, duration: 0.55, ease: "back.out(1.8)" });
+        }, "+=1.1");
     },
-    fin: function () { marcar(2); fila.style.transform = "translateX(" + (-2 * paso()) + "px)"; }
+    fin: function () {
+      marcar(2);
+      quedan(2);
+      nivel.style.width = QUEDA[2][1];
+      fila.style.transform = "translateX(" + (-2 * paso()) + "px)";
+      sobra();
+    }
   };
 };
 
-// ── 3. Cambiar una comida y la receta ────────────────────────────────────
+// ── 3. Cambiar una comida, la receta y «No me gusta» ────────────────────
 
 TOUR_SCENES.cambiar = function (c) {
   var raiz = c.e("div", "tg-cambiar");
   var tarjeta = c.e("div", "tg-card tg-plato");
   var cabecera = c.e("div", "tg-plato__cab");
   cabecera.appendChild(c.e("span", "tg-hora", "07:30"));
-  var meta = c.e("span", "tg-plato__m", c.t("plato1_meta"));
+  var meta = c.e("span", "tg-plato__m", c.t("plato2_meta"));
   cabecera.appendChild(meta);
-  var titulo = c.e("strong", "tg-plato__t", c.t("plato1"));
+  var titulo = c.e("strong", "tg-plato__t", c.t("plato2"));
+  // Un ingrediente con su «No me gusta», como bajo cada ingrediente del plan.
+  var ingrediente = c.e("div", "tg-ingr");
+  var ingNombre = c.e("span", "tg-ingr__n", c.t("crema"));
+  var bNoGusta = c.e("span", "tg-nogusta", "× " + c.ui("ui.no_me_gusta", "No me gusta"));
+  ingrediente.appendChild(ingNombre);
+  ingrediente.appendChild(bNoGusta);
   var botones = c.e("div", "tg-botones");
   var bCambiar = c.e("span", "tg-btn tg-btn--s");
   bCambiar.appendChild(c.e("b", null, "↻"));
@@ -279,12 +354,20 @@ TOUR_SCENES.cambiar = function (c) {
   ["paso1", "paso2", "paso3"].forEach(function (k) { pasos.appendChild(c.e("li", null, c.t(k))); });
   tarjeta.appendChild(cabecera);
   tarjeta.appendChild(titulo);
+  tarjeta.appendChild(ingrediente);
   tarjeta.appendChild(botones);
   tarjeta.appendChild(pasos);
   raiz.appendChild(tarjeta);
 
-  function cambiar() { titulo.textContent = c.t("plato2"); meta.textContent = c.t("plato2_meta"); }
+  // Primero «Cambiar» (sale el bol de avena), luego sus pasos y, al final,
+  // «No me gusta» sobre los plátanos: el producto se tacha.
+  function cambiar() {
+    titulo.textContent = c.t("plato1");
+    meta.textContent = c.t("plato1_meta");
+    ingNombre.textContent = c.t("platanos");
+  }
   function abrir() { pasos.classList.add("is-abierto"); bReceta.classList.add("is-on"); }
+  function noGusta() { ingrediente.classList.add("is-fuera"); }
 
   return {
     el: raiz,
@@ -302,9 +385,15 @@ TOUR_SCENES.cambiar = function (c) {
           gsap.fromTo(pasos, { height: 0 }, { height: "auto", duration: 0.45, ease: "power2.out" });
           gsap.from(pasos.children, { x: -16, opacity: 0, duration: 0.4, stagger: 0.13, delay: 0.25, ease: "power2.out" });
         }, "+=0.95")
-        .add(function () { c.irse(); }, "+=1.6");
+        .add(function () { c.ir(bNoGusta, 0.8); }, "+=1.3")
+        .add(function () {
+          c.pulsar();
+          noGusta();
+          gsap.fromTo(bNoGusta, { scale: 0.9 }, { scale: 1, duration: 0.45, ease: "back.out(2.4)" });
+        }, "+=0.95")
+        .add(function () { c.irse(); }, "+=1.3");
     },
-    fin: function () { cambiar(); abrir(); }
+    fin: function () { cambiar(); abrir(); noGusta(); }
   };
 };
 
@@ -466,7 +555,7 @@ TOUR_SCENES.hoy = function (c) {
 TOUR_SCENES.generar = function (c) {
   var raiz = c.e("div", "tg-generar");
   var fichas = c.e("div", "tg-fichas");
-  [["peso", "78 kg"], ["objetivo", c.t("gana")], ["presupuesto", "16 € " + c.t("por_dia")]].forEach(function (d) {
+  [["peso", "78 " + c.ui("unit.kg", "kg")], ["objetivo", c.t("gana")], ["presupuesto", "16 € " + c.t("por_dia")]].forEach(function (d) {
     var f = c.e("div", "tg-card tg-ficha-d");
     f.appendChild(c.e("small", null, c.t(d[0])));
     f.appendChild(c.e("strong", null, d[1]));
@@ -474,11 +563,12 @@ TOUR_SCENES.generar = function (c) {
   });
   raiz.appendChild(fichas);
 
+  // De 1 a 7 días, como en «Mis datos» (antes eran solo 1, 3 o 7).
   var segFila = c.e("div", "tg-segfila");
   segFila.appendChild(c.e("small", null, c.t("dias_plan")));
-  var seg = c.e("div", "tg-seg tg-seg--ancho");
-  var opciones = ["1", "3", "7"].map(function (n, i) {
-    var s = c.e("span", i === 1 ? "is-on" : null, n);
+  var seg = c.e("div", "tg-seg tg-seg--siete");
+  var opciones = ["1", "2", "3", "4", "5", "6", "7"].map(function (n, i) {
+    var s = c.e("span", i === 2 ? "is-on" : null, n);
     seg.appendChild(s);
     return s;
   });
@@ -494,14 +584,14 @@ TOUR_SCENES.generar = function (c) {
   var barras = [0, 1, 2].map(function () { var b = c.e("span", "tg-mini"); minis.appendChild(b); return b; });
   raiz.appendChild(minis);
 
-  function sieteDias() { opciones.forEach(function (o, i) { o.classList.toggle("is-on", i === 2); }); }
+  function sieteDias() { opciones.forEach(function (o, i) { o.classList.toggle("is-on", i === 6); }); }
 
   return {
     el: raiz,
     play: function (tl) {
       tl.from(fichas.children, { y: 30, opacity: 0, duration: 0.45, stagger: 0.1, ease: "back.out(1.4)" })
         .from([segFila, generar, minis], { y: 24, opacity: 0, duration: 0.45, stagger: 0.1, ease: "power3.out" }, "-=0.2")
-        .add(function () { c.ir(opciones[2], 0.8); }, "+=0.2")
+        .add(function () { c.ir(opciones[6], 0.8); }, "+=0.2")
         .add(function () { c.pulsar(); sieteDias(); }, "+=0.95")
         .add(function () { c.ir(generar, 0.7); }, "+=0.7")
         .add(function () {
@@ -515,7 +605,69 @@ TOUR_SCENES.generar = function (c) {
   };
 };
 
-// ── 8. Sin cocinar y despensa ────────────────────────────────────────────
+// ── 8. Para quién es el menú: la familia y los invitados ────────────────
+
+TOUR_SCENES.casa = function (c) {
+  var raiz = c.e("div", "tg-casa");
+  var tarjeta = c.e("div", "tg-card tg-quien");
+  tarjeta.appendChild(c.e("small", "tg-etiqueta", c.ui("ui.familia_para_quien", "Para quién es el menú")));
+  var personas = c.e("div", "tg-personas");
+  personas.appendChild(c.e("span", "tg-persona is-on", c.ui("ui.perfil_yo", "Yo")));
+  var otra = c.e("span", "tg-persona is-on", c.t("persona"));
+  var anadir = c.e("span", "tg-persona tg-persona--mas", "+ " + c.ui("ui.anadir", "Añadir"));
+  personas.appendChild(anadir);
+  tarjeta.appendChild(personas);
+  // Cómo es el menú: solo tiene sentido con dos o más; hasta entonces, apagado.
+  var modo = c.e("div", "tg-seg tg-seg--modo is-apagado");
+  var comun = c.e("span", null, c.ui("ui.familia_modo_comun", "Un menú para todos"));
+  var cada = c.e("span", null, c.ui("ui.familia_modo_cada", "Cada uno el suyo"));
+  modo.appendChild(comun);
+  modo.appendChild(cada);
+  tarjeta.appendChild(modo);
+  raiz.appendChild(tarjeta);
+
+  var total = c.e("div", "tg-card tg-total");
+  total.appendChild(c.e("span", "tg-total__l", c.t("total")));
+  var precio = c.e("strong", "tg-total__n", "41,45 €");
+  total.appendChild(precio);
+  var pie = c.e("em", "tg-total__f");
+  total.appendChild(pie);
+  raiz.appendChild(total);
+
+  function anadirla() {
+    if (!otra.parentNode) personas.insertBefore(otra, anadir);
+    modo.classList.remove("is-apagado");
+  }
+  function juntos() {
+    comun.classList.add("is-on");
+    precio.textContent = "68,90 €";
+    pie.textContent = c.ui("ui.familia_plan_comun", "Un menú para {n} personas").replace("{n}", "2");
+  }
+
+  return {
+    el: raiz,
+    play: function (tl) {
+      tl.from(tarjeta, { y: 36, opacity: 0, duration: 0.55, ease: "back.out(1.5)" })
+        .from(total, { y: 30, opacity: 0, duration: 0.45, ease: "power3.out" }, "-=0.25")
+        .add(function () { c.ir(anadir, 0.8); }, "+=0.2")
+        .add(function () {
+          c.pulsar();
+          anadirla();
+          gsap.from(otra, { scale: 0, duration: 0.45, ease: "back.out(2.6)" });
+        }, "+=0.95")
+        .add(function () { c.ir(comun, 0.8); }, "+=0.8")
+        .add(function () {
+          c.pulsar();
+          juntos();
+          gsap.fromTo(precio, { scale: 0.8 }, { scale: 1, duration: 0.5, ease: "back.out(2.2)" });
+        }, "+=0.95")
+        .add(function () { c.irse(); }, "+=1.5");
+    },
+    fin: function () { anadirla(); juntos(); }
+  };
+};
+
+// ── 9. Sin cocinar y despensa ────────────────────────────────────────────
 
 TOUR_SCENES.atajos = function (c) {
   var raiz = c.e("div", "tg-atajos");
@@ -575,7 +727,67 @@ TOUR_SCENES.atajos = function (c) {
   };
 };
 
-// ── 9. El menú: idioma y aspecto ─────────────────────────────────────────
+// ── 10. Entrenamientos: el botón de arriba cambia de parte ───────────────
+
+TOUR_SCENES.entrenos = function (c) {
+  var raiz = c.e("div", "tg-entrenos");
+  var modo = c.e("span", "tg-btn tg-btn--s tg-modo");
+  modo.appendChild(c.ico("icon-bolt", "tg-ico"));
+  var modoTexto = c.e("span", null, c.ui("ent.boton_entreno", "Entrenamientos"));
+  modo.appendChild(modoTexto);
+  raiz.appendChild(modo);
+
+  // Las dos pantallas ocupan el mismo sitio: la del menú se va y entra la otra.
+  var pantallas = c.e("div", "tg-pantallas");
+  var comidas = c.e("div", "tg-pantalla");
+  [["07:30", "desayuno", "650"], ["13:30", "comida", "820"]].forEach(function (m) {
+    var f = c.e("div", "tg-card tg-comida");
+    f.appendChild(c.e("span", "tg-hora", m[0]));
+    f.appendChild(c.e("span", "tg-nom", c.t(m[1])));
+    f.appendChild(c.e("span", "tg-k", m[2] + " " + c.ui("unit.kcal", "kcal")));
+    comidas.appendChild(f);
+  });
+
+  var entreno = c.e("div", "tg-pantalla is-fuera");
+  var hoy = c.e("div", "tg-card tg-hoyent");
+  hoy.appendChild(c.e("small", "tg-etiqueta", c.ui("ent.hoy_ojo", "Hoy según el plan")));
+  hoy.appendChild(c.e("strong", "tg-hoyent__t", c.ui("ent.sesion_superior_A", "Superior A")));
+  hoy.appendChild(c.e("span", "tg-hoyent__d",
+    c.ui("ent.hoy_datos", "{min} min · {n} ejercicios").replace("{min}", "45").replace("{n}", "5")));
+  entreno.appendChild(hoy);
+  var semana = c.semanaEntreno(0);
+  entreno.appendChild(semana.el);
+  entreno.appendChild(c.barraEntreno(0).el);
+  pantallas.appendChild(comidas);
+  pantallas.appendChild(entreno);
+  raiz.appendChild(pantallas);
+
+  function aEntrenar() {
+    modoTexto.textContent = c.ui("ent.boton_menu", "Menú");
+    modo.classList.add("is-on");
+    comidas.classList.add("is-fuera");
+    entreno.classList.remove("is-fuera");
+  }
+
+  return {
+    el: raiz,
+    play: function (tl) {
+      tl.from(modo, { y: -24, opacity: 0, duration: 0.45, ease: "back.out(1.6)" })
+        .from(comidas.children, { y: 30, opacity: 0, duration: 0.45, stagger: 0.12, ease: "power3.out" }, "-=0.15")
+        .add(function () { c.ir(modo, 0.8); }, "+=0.3")
+        .add(function () {
+          c.pulsar();
+          aEntrenar();
+          gsap.from(entreno.children, { y: 34, opacity: 0, duration: 0.5, stagger: 0.12, ease: "back.out(1.4)" });
+          gsap.from(semana.dias, { scale: 0.4, opacity: 0, duration: 0.35, stagger: 0.05, delay: 0.3, ease: "back.out(2)" });
+        }, "+=0.95")
+        .add(function () { c.irse(); }, "+=1.8");
+    },
+    fin: function () { aEntrenar(); }
+  };
+};
+
+// ── 11. El menú: idioma y aspecto ────────────────────────────────────────
 
 TOUR_SCENES.menu = function (c) {
   var raiz = c.e("div", "tg-menu");
@@ -590,7 +802,7 @@ TOUR_SCENES.menu = function (c) {
   var fIdioma = c.e("div", "tg-hoja__f");
   fIdioma.appendChild(c.e("small", null, c.ui("ui.idioma", "Idioma")));
   var idiomas = c.e("div", "tg-seg");
-  var chipsI = ["ES", "EN", "RU"].map(function (n, i) { var s = c.e("span", i === 0 ? "is-on" : null, n); idiomas.appendChild(s); return s; });
+  var chipsI = ["ES", "EN", "RU", "UK"].map(function (n, i) { var s = c.e("span", i === 0 ? "is-on" : null, n); idiomas.appendChild(s); return s; });
   fIdioma.appendChild(idiomas);
   var fAsp = c.e("div", "tg-hoja__f");
   fAsp.appendChild(c.e("small", null, c.ui("ui.aspecto", "Aspecto")));
@@ -634,6 +846,55 @@ TOUR_SCENES.menu = function (c) {
 
 // ── El motor de una escena ───────────────────────────────────────────────
 
+/** La luminancia relativa de un color "rgb(r, g, b)" o "rgba(...)" (WCAG). */
+function _tgLuz(color) {
+  var m = String(color).match(/[\d.]+/g);
+  if (!m || m.length < 3) return null;
+  var canal = function (v) { v = Number(v) / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+  return 0.2126 * canal(m[0]) + 0.7152 * canal(m[1]) + 0.0722 * canal(m[2]);
+}
+
+/**
+ * ¿El acento (--volt) casi no se distingue del relleno de marca (--primary)?
+ * Las cifras grandes de las maquetas (las kcal, el total de la compra, el
+ * descanso) van en volt sobre ese relleno. En «Grafito», el aspecto por
+ * defecto desde el 2026-10-22, los dos son el MISMO lima, y en «Noche» casi:
+ * las cifras no se veían (comprobado el 2026-10-28, también en producción).
+ * Entonces pasan al color del texto de ese relleno (.tg-volt-plano, en el CSS).
+ */
+function _tgVoltPlano(stage) {
+  if (typeof window === "undefined" || typeof window.getComputedStyle !== "function" || !stage.appendChild) return false;
+  var sonda = document.createElement("span");
+  sonda.style.cssText = "position:absolute;visibility:hidden;color:var(--volt);background-color:var(--primary)";
+  stage.appendChild(sonda);
+  var cs = window.getComputedStyle(sonda);
+  var a = _tgLuz(cs.color);
+  var b = _tgLuz(cs.backgroundColor);
+  stage.removeChild(sonda);
+  if (a === null || b === null) return false;
+  return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05) < 1.6;
+}
+
+/**
+ * Si la maqueta, ya compactada, sigue sin caber en su escena, la encoge
+ * entera (nunca por debajo de 0,72: más pequeña no se lee). Medido el
+ * 2026-10-28 en 320×568 con el ruso: tres escenas se salían ANTES de añadir
+ * nada (la de cambiar, la compra y los datos). El dedo no se entera: va a
+ * donde se VE cada botón (getBoundingClientRect ya cuenta la escala).
+ */
+function _tgEncajar(maqueta, stage) {
+  if (typeof window === "undefined" || typeof window.getComputedStyle !== "function" || !maqueta.style) return;
+  var cs = window.getComputedStyle(stage);
+  var alto = stage.clientHeight - (parseFloat(cs.paddingTop) || 0) - (parseFloat(cs.paddingBottom) || 0);
+  var ancho = stage.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
+  var r = maqueta.getBoundingClientRect();
+  if (!(alto > 0) || !(r.height > 0)) return;
+  var k = Math.min(1, alto / r.height, (ancho > 0 && r.width > 0) ? ancho / r.width : 1);
+  if (k >= 0.99) return;
+  maqueta.style.transformOrigin = "50% 50%";
+  maqueta.style.transform = "scale(" + Math.max(0.72, k).toFixed(3) + ")";
+}
+
 /**
  * Monta la escena `id` dentro de `el` y, si `animar`, la reproduce en bucle
  * (con una pausa entre pasadas). Sin animación la deja en su estado final.
@@ -641,12 +902,17 @@ TOUR_SCENES.menu = function (c) {
  * Cada pasada vuelve a construir la maqueta desde cero: es lo más simple y
  * lo que evita arrastrar estados a medias de una pasada a la siguiente.
  *
+ * `escenas` es de dónde salen: TOUR_SCENES si no se dice. El tutorial de
+ * entrenamientos (js/ui/entreno-tutorial.js) pasa las suyas y reutiliza todo
+ * lo demás: el dedo, el bucle y la maqueta compacta.
+ *
  * @returns {{parar: function()}}
  */
-function tourEscenaMontar(id, el, animar) {
-  var fabrica = TOUR_SCENES[id];
+function tourEscenaMontar(id, el, animar, escenas) {
+  var fabrica = (escenas || TOUR_SCENES)[id];
   var inerte = { parar: function () {} };
   if (typeof fabrica !== "function") return inerte;
+  if (el.classList) el.classList.toggle("tg-volt-plano", _tgVoltPlano(el));
 
   var vivo = true;
   var tl = null;
@@ -662,9 +928,11 @@ function tourEscenaMontar(id, el, animar) {
     el.appendChild(esc.el);
     // En una pantalla baja (un móvil pequeño, o con la barra del navegador
     // delante) la maqueta no cabe: se compacta (menos aire y letra más
-    // pequeña, ver .tg-compacto) en vez de recortarla.
+    // pequeña, ver .tg-compacto) en vez de recortarla. Si ni así cabe, se
+    // encoge entera (_tgEncajar).
     el.classList.remove("tg-compacto");
     if (esc.el.getBoundingClientRect().height > el.clientHeight - 24) el.classList.add("tg-compacto");
+    _tgEncajar(esc.el, el);
     return esc;
   }
 

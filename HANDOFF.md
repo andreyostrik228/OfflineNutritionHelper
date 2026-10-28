@@ -18,6 +18,51 @@ llevan al final un bloque «actualización 2026-10-08»). El diario fechado, con
 medidas y causas, está en la cabecera de `STATE.md` (entradas del 2026-10-07 y
 2026-10-08).
 
+### 0.0 sexdecies Recorrido y tutorial de entrenamientos al día, 2026-10-28 (lee esto antes que 0.0 quindecies)
+
+- **Estado:** sello `20261028a`, **1329 tests en verde**. El dueño: «обнови все
+  туториалы и сделай их лучше».
+- **Recorrido general (10.2): 11 escenas** en vez de 9. Puesto al día con lo
+  añadido desde el 2026-10-08: días de 1 a 7 (la escena `dias` enseña además
+  cómo un envase pasa de un día a otro y la pista «Si te quedas con hambre…»),
+  «No me gusta» en `cambiar`, el selector de 1 a 7 en `generar`, una escena
+  nueva `casa` («Para quién es el menú»), otra `entrenos` (el botón
+  «Entrenamientos» de arriba), «Sin cocinar» como plan entero y la despensa por
+  sitios en `atajos`, y el ucraniano en el menú del idioma. Las maquetas dicen
+  la palabra REAL de la interfaz (`ui.*`, `ent.*`, `unit.*`: ya no «kcal»/«kg»
+  en ruso), y un test comprueba que cada una existe en los cuatro idiomas.
+- **Tutorial de entrenamientos (`js/ui/entreno-tutorial.js`): seis pasos con
+  maqueta animada** (Inicio, anotar series, el menú ⋯, Plan con el calendario,
+  Progreso, Perfil) en vez de cinco dibujos fijos. Usa el motor del recorrido:
+  `tourEscenaMontar(id, el, animar, ENTRENO_TUT_ESCENAS)` (el cuarto argumento
+  es nuevo; sin él, `TOUR_SCENES`). Los ejercicios salen del catálogo en el
+  idioma de la pantalla, con su figura animada. Puntos que llevan a su paso,
+  flechas del teclado y deslizar. La clave de «visto» no cambia (`v1`): quien
+  ya lo vio no lo recibe otra vez solo; está en «Perfil → Cómo se usa».
+- **Dos fallos viejos arreglados (estaban en producción):** en «Grafito», el
+  aspecto por defecto, `--volt` y `--primary` son el mismo lima, y las cifras de
+  las maquetas (las kcal de la escena 1, el total de la compra) no se veían:
+  `_tgVoltPlano` lo mide y pone `.tg-volt-plano`. Y en 320×568 tres escenas ya
+  se salían de su sitio (con «pegatinas», tres y un texto): ahora la maqueta se
+  compacta y, si ni así cabe, `_tgEncajar` la encoge entera (nunca bajo 0,72).
+- **Medido** con `scripts/qa/tour.mjs` (`MEDIR=1`): ru/es/uk/en en 320×568,
+  360×640 y 390×844, con «grafito», «revista» y «pegatinas»: todas las escenas
+  caben y sin errores de JavaScript. El tutorial de entrenamientos, con el mismo
+  arnés (`cdp.mjs`): seis pasos en 320×568, 360×640 y 390×844; en 320×568 la
+  hoja se desplaza un poco (los botones quedan abajo).
+- **No hecho, a propósito:** `TOUR_ESTRENO` sigue en 2026-10-06, así que a
+  quien ya vio el recorrido no se le vuelve a ofrecer el nuevo. Subirlo a la
+  fecha de la subida haría que se ofrezca una vez a todos: decisión del dueño.
+- **Graphify** regenerado el 2026-10-28 con este código (estaba parado desde el
+  2026-09-18, 82 commits atrás): **2615 nodos, 5138 aristas, 215 comunidades**
+  (antes 1090/1898/114), y el combinado de `PythonProject`
+  (`graphify-out/merged-graph.json`): 2720 nodos, 5352 aristas. Se hace con
+  `graphify update . --no-cluster` y `graphify cluster-only .` en esta carpeta,
+  y luego `graphify merge-graphs` desde `PythonProject` (manual:
+  `PythonProject/docs/graphify.md`). Sin LLM: las comunidades se nombran por su
+  nodo central. Los nodos de los `.md` son los de la última extracción con LLM
+  (septiembre): para el «por qué», este fichero y `ROADMAP.md`.
+
 ### 0.0 quindecies Seguridad, 2026-10-27 (lee esto antes que 0.0 quaterdecies)
 
 - **Estado:** sello `20261027c`, **1327 tests en verde**. Revisión de
@@ -1850,17 +1895,23 @@ parcheando la geometría. El dueño: «кинь все силы… не обяз
 
 **Cómo es ahora.**
 
-- `js/data/tour-steps.js` — datos puros: `TOUR_STEPS` (9 escenas: `plan`, `dias`, `cambiar`,
-  `compra`, `mercadona`, `hoy`, `generar`, `atajos`, `menu`; el `id` es UNA palabra y da la
-  clave de traducción y la de `TOUR_SCENES`) y `TOUR_MOCK` (33 palabras españolas que salen
-  DENTRO de las maquetas).
+- `js/data/tour-steps.js` — datos puros: `TOUR_STEPS` (11 escenas desde el 2026-10-28:
+  `plan`, `dias`, `cambiar`, `compra`, `mercadona`, `hoy`, `generar`, `casa`, `atajos`,
+  `entrenos`, `menu`; el `id` es UNA palabra y da la clave de traducción y la de
+  `TOUR_SCENES`) y `TOUR_MOCK` (36 palabras españolas que salen DENTRO de las maquetas).
+  El tope de los tests es 12 escenas.
 - `js/ui/tour-scenes.js` — una función por escena en `TOUR_SCENES`. Cada una recibe un
   contexto `c` (`_tgCrearContexto`: constructores `c.e`, `c.ico`, `c.t`, `c.ui`, y el dedo
   `c.ir`, `c.pulsar`, `c.irse`, `c.reordenar`) y devuelve `{ el, play(tl), fin() }`:
   la maqueta, lo que se añade a la línea de tiempo GSAP, y el estado FINAL de golpe (lo
-  que se ve sin GSAP o con «menos movimiento»). `tourEscenaMontar(id, el, animar)`
-  devuelve `{ parar() }`. La escena se reconstruye en cada pasada del bucle (con
-  fundido) y, si la maqueta no cabe en la altura que hay, se le pone `.tg-compacto`.
+  que se ve sin GSAP o con «menos movimiento»). `tourEscenaMontar(id, el, animar,
+  escenas?)` devuelve `{ parar() }`; `escenas` es de dónde salen (por defecto
+  `TOUR_SCENES`; el tutorial de entrenamientos pasa `ENTRENO_TUT_ESCENAS`). La escena
+  se reconstruye en cada pasada del bucle (con fundido) y, si la maqueta no cabe en la
+  altura que hay, se le pone `.tg-compacto`; si ni así cabe, `_tgEncajar` la encoge
+  entera (no por debajo de 0,72). `_tgVoltPlano` pone `.tg-volt-plano` cuando `--volt`
+  y `--primary` casi coinciden (Grafito, Noche): las cifras en volt pasan a `--on-ink`.
+  El contexto trae también `c.barraEntreno(activa)` y `c.semanaEntreno(hoy)`.
   Las maquetas usan **las variables CSS de la aplicación** y la palabra REAL de la
   interfaz (`ui.*`) cuando existe, así que se ven bien en los diez aspectos y el botón
   de la maqueta dice lo mismo que el de verdad.
@@ -1900,9 +1951,11 @@ parcheando la geometría. El dueño: «кинь все силы… не обяз
 1. `TOUR_STEPS` (titular y texto, 50 a 200 caracteres el cuerpo, el titular de 8 a 45) y, si
    la maqueta dice palabras nuevas, `TOUR_MOCK`.
 2. La función en `TOUR_SCENES` (`tour-scenes.js`), con su `fin()`.
-3. Es, en y ru: `tour.<id>_titulo`, `tour.<id>_cuerpo`, `tour.m_<clave>` en
-   `js/i18n/en.js` y `ru.js`. Las claves se derivan de los datos y las vigila
-   `tests/i18n.test.js`.
+3. En, ru y uk (el español está en `tour-steps.js`): `tour.<id>_titulo`,
+   `tour.<id>_cuerpo`, `tour.m_<clave>` en `js/i18n/en.js`, `ru.js` y `uk.js`. Las
+   claves se derivan de los datos y las vigila `tests/i18n.test.js`. Si la maqueta usa
+   una palabra de la interfaz (`c.ui("ui.…")`, `ent.…`, `unit.…`), un test de
+   `tests/onboarding.test.js` comprueba que existe en los cuatro idiomas.
 4. Mide con `scripts/qa/tour.mjs` (sección 12), en 320×568, 360×640 y 390×844, en `ru` (el
    idioma de textos largos), y en `revista` y `pegatinas` (letra muy ancha).
 5. Sube el sello `?v=` (sección 4).

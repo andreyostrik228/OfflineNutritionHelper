@@ -625,7 +625,8 @@ function run(t) {
     var pedidas = [];
     var ctx = vm.createContext({ window: win, document: doc, console: console, Date: Date });
     ctx.t = function (clave) { pedidas.push(clave); return clave; };
-    [].concat(opciones.sinDatos ? [] : ["js/data/tour-steps.js"], ["js/ui/tour-scenes.js", "js/ui/tour-fx.js", "js/ui/tour.js"]).forEach(function (f) {
+    [].concat(opciones.sinDatos ? [] : ["js/data/tour-steps.js"], ["js/ui/tour-scenes.js", "js/ui/tour-fx.js", "js/ui/tour.js"],
+      opciones.conEntreno ? ["js/ui/entreno-tutorial.js"] : []).forEach(function (f) {
       vm.runInContext(fs.readFileSync(projPath(f), "utf8"), ctx, { filename: f });
     });
     var llamadas = { start: 0, completo: 0, opts: null };
@@ -684,6 +685,73 @@ function run(t) {
     });
   });
 
+  /** El primer nodo de `nodo` (o él mismo) que lleva todas las clases de `clases`. */
+  function buscarEn(nodo, clases) {
+    var lista = clases.split(" ");
+    var pila = [nodo];
+    while (pila.length) {
+      var n = pila.shift();
+      if (n.classList && lista.every(function (c) { return n.classList.contains(c); })) return n;
+      pila = pila.concat(n.children || []);
+    }
+    return null;
+  }
+
+  function todosEn(nodo, clase) {
+    var res = [];
+    var pila = [nodo];
+    while (pila.length) {
+      var n = pila.shift();
+      if (n.classList && n.classList.contains(clase)) res.push(n);
+      pila = pila.concat(n.children || []);
+    }
+    return res;
+  }
+
+  t.test("las maquetas dicen las palabras REALES de la interfaz, y todas existen en los cuatro idiomas", function () {
+    // Las escenas nuevas (2026-10-28: la familia, entrenamientos y el tutorial de
+    // entrenamientos) toman sus palabras de las claves ui.* y ent.* de verdad. Una
+    // clave mal escrita caería al español sin avisar: aquí se ve.
+    var e = entornoTour({ conEntreno: true });
+    e.ctx.TOUR_STEPS.forEach(function (paso) { e.ctx.tourEscenaMontar(paso.id, new FakeNodo("div"), false).parar(); });
+    e.ctx.ENTRENO_TUT_IDS.forEach(function (id) {
+      e.ctx.tourEscenaMontar(id, new FakeNodo("div"), false, e.ctx.ENTRENO_TUT_ESCENAS).parar();
+    });
+    var reales = e.pedidas.filter(function (k, i, todas) { return k.indexOf("tour.") !== 0 && todas.indexOf(k) === i; });
+    assert.ok(reales.length >= 40, "solo " + reales.length + " palabras reales: ¿se montaron las escenas?");
+    var i18n = loadBrowserGlobals(["js/core/i18n.js", "js/i18n/es.js", "js/i18n/en.js", "js/i18n/ru.js", "js/i18n/uk.js"].map(projPath));
+    ["es", "en", "ru", "uk"].forEach(function (lang) {
+      reales.forEach(function (k) {
+        assert.notStrictEqual(i18n.tOr(k, "FALTA", lang), "FALTA", lang + ": falta " + k);
+      });
+    });
+  });
+
+  t.test("el tutorial de entrenamientos: una maqueta por paso, montada sin GSAP en su estado final", function () {
+    var e = entornoTour({ conEntreno: true });
+    var ids = e.ctx.ENTRENO_TUT_IDS;
+    assert.strictEqual(ids.length, e.ctx.ENTRENO_TUT_PASOS, "un paso por maqueta");
+    assert.deepStrictEqual(plain(ids.slice().sort()), plain(Object.keys(e.ctx.ENTRENO_TUT_ESCENAS).sort()),
+      "ENTRENO_TUT_IDS y ENTRENO_TUT_ESCENAS no coinciden");
+    var montadas = {};
+    ids.forEach(function (id) {
+      var escena = new FakeNodo("div");
+      var ctl = e.ctx.tourEscenaMontar(id, escena, false, e.ctx.ENTRENO_TUT_ESCENAS);
+      assert.ok(escena.children.length >= 1, id + ": la maqueta no pintó nada");
+      ctl.parar();
+      montadas[id] = escena;
+    });
+    // Sin GSAP se ve el final de cada historia: la acción ya hecha.
+    assert.ok(todosEn(montadas.inicio, "tg-tab")[2].classList.contains("is-on"), "inicio: «Entrenar» encendida");
+    assert.ok(buscarEn(montadas.series, "tut-serie is-hecha"), "series: la primera, marcada");
+    assert.ok(!buscarEn(montadas.series, "tut-descanso is-fuera") && buscarEn(montadas.series, "tut-descanso"), "series: el descanso, a la vista");
+    assert.ok(!buscarEn(montadas.cambiar, "tut-menu is-fuera"), "cambiar: el menú ⋯ abierto");
+    assert.ok(todosEn(montadas.cambiar, "tut-menu__op")[0].classList.contains("is-on"), "cambiar: «Cambiar por otro» elegido");
+    assert.strictEqual(todosEn(montadas.plan, "is-elegida").length, 1, "plan: un día elegido");
+    assert.ok(!buscarEn(montadas.progreso, "tut-record is-fuera"), "progreso: el récord, a la vista");
+    assert.ok(todosEn(montadas.perfil, "tut-ajuste")[2].classList.contains("is-on"), "perfil: la tercera opción, encendida");
+  });
+
   t.test("sin GSAP la maqueta de la compra queda con lo marcado ya tachado (estado final)", function () {
     var e = entornoTour();
     var escena = new FakeNodo("div");
@@ -721,8 +789,11 @@ function run(t) {
   t.test("el recorrido nombra cada botón de uso frecuente", function () {
     var s = freshSandbox();
     var texto = s.TOUR_STEPS.map(function (p) { return p.title + " " + p.body; }).join(" ").toLowerCase();
-    ["«cambiar»", "«cómo se hace»", "cámara", "«confirmar plan de hoy»", "«generar plan»", "«sin cocinar»",
-     "«despensa»", "1, 3 o 7", "idioma", "aspecto", "mis planes", "macros"].forEach(function (palabra) {
+    // 2026-10-28: los días van de 1 a 7 (antes 1, 3 o 7), y entran «No me gusta»,
+    // la familia y entrenamientos.
+    ["«cambiar»", "«cómo se hace»", "«no me gusta»", "cámara", "«confirmar plan de hoy»", "«generar plan»",
+     "«para quién es el menú»", "«sin cocinar»", "«despensa»", "«entrenamientos»", "1 a 7", "idioma", "aspecto",
+     "mis planes", "macros"].forEach(function (palabra) {
       assert.ok(texto.indexOf(palabra) !== -1, "el recorrido ya no nombra: " + palabra);
     });
   });
