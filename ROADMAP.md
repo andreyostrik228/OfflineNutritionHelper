@@ -13,6 +13,7 @@ El dueño: «обнови все туториалы и сделай их луч�
 | En 320×568 tres escenas se salían (y con «pegatinas», también un texto): ahora caben todas | `_tgEncajar`, `.tg-compacto` | **Hecho** (fallo viejo) |
 | Ofrecer el recorrido nuevo, una vez, a quien ya vio el viejo (`TOUR_ESTRENO`) | `js/ui/tour.js` | Decisión del dueño |
 | Graphify regenerado: 2615 nodos, 5138 aristas, 215 comunidades; combinado con PythonProject, 2720/5352 | `graphify-out/` (fuera del repo) | **Hecho** |
+| Las páginas de la raíz (robots, sitemap, llms y las tres comparativas del 2026-10-17) nunca se habían subido: entran en la subida, con «de 1 a 7 días» | `HANDOFF.md` §4, páginas de la raíz | **Hecho** |
 
 ## Seguridad, 2026-10-27 (sello `20261027c`, 1327 tests)
 

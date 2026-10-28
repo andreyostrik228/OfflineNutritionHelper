@@ -50,6 +50,10 @@ medidas y causas, está en la cabecera de `STATE.md` (entradas del 2026-10-07 y
   caben y sin errores de JavaScript. El tutorial de entrenamientos, con el mismo
   arnés (`cdp.mjs`): seis pasos en 320×568, 360×640 y 390×844; en 320×568 la
   hoja se desplaza un poco (los botones quedan abajo).
+- **Las páginas de la raíz suben ya (sección 4):** `robots.txt`, `sitemap.xml`,
+  `llms.txt` y las tres comparativas no estaban en la lista de la subida y
+  nunca habían llegado a producción (404, también los enlaces del pie). Antes de
+  subirlas se corrigió «1, 3 o 7 días» por «de 1 a 7» y la fecha de modificación.
 - **No hecho, a propósito:** `TOUR_ESTRENO` sigue en 2026-10-06, así que a
   quien ya vio el recorrido no se le vuelve a ofrecer el nuevo. Subirlo a la
   fecha de la subida haría que se ofrezca una vez a todos: decisión del dueño.
@@ -647,6 +651,7 @@ NO despliega. Hay que ejecutarlo a mano.
 DIR=<scratchpad>/deploy
 rm -rf "$DIR" && mkdir -p "$DIR"
 cp index.html icon.svg sw.js manifest.webmanifest _headers 404.html "$DIR/" && cp -r assets js "$DIR/"
+cp robots.txt sitemap.xml llms.txt alternativas-a-myfitnesspal.html weekplate-vs-myfitnesspal.html weekplate-vs-yazio.html "$DIR/"
 
 # 2. comprobar que lo montado es lo del repo (ha habido copias viejas)
 diff -r --brief js "$DIR/js"
@@ -659,6 +664,13 @@ npx wrangler pages deploy "$DIR" --project-name=offline-nutrition-helper --commi
 demás cabeceras de seguridad, y el segundo evita que una ruta inexistente
 devuelva HTTP 200 con la aplicación entera. Si no se copian, el sitio sigue
 funcionando y pierde las dos cosas en silencio.
+
+**Las páginas de la raíz tampoco (2026-10-28).** `robots.txt`, `sitemap.xml`,
+`llms.txt` y las tres comparativas (el SEO del 2026-10-17) no estaban en esta
+lista y NUNCA se habían subido: el pie de la aplicación enlazaba a tres páginas
+que daban 404 y el `sitemap.xml` (también 404) las anunciaba. Se sirven sin
+`.html` (`/weekplate-vs-yazio`; la versión con `.html` redirige con un 308). **Si
+añades una página o un fichero en la raíz, añádelo a la línea de `cp`.**
 
 **Trampas que ya me comí:**
 
@@ -698,6 +710,7 @@ El de arriba sigue valiendo en lo esencial; estos son los matices que se pagaron
    ```bash
    DIR="$TEMP/deploy-wp" && rm -rf "$DIR" && mkdir -p "$DIR"
    cp -r index.html icon.svg sw.js manifest.webmanifest _headers 404.html assets js "$DIR/"
+   cp robots.txt sitemap.xml llms.txt alternativas-a-myfitnesspal.html weekplate-vs-myfitnesspal.html weekplate-vs-yazio.html "$DIR/"
    diff -r js "$DIR/js" && diff -r assets "$DIR/assets" && diff index.html "$DIR/index.html" && echo STAGE_OK
    ```
 5. **Subir**, con la versión de wrangler **fijada** (la última daba `EBUSY` en Windows)
