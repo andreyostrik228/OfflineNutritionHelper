@@ -196,12 +196,12 @@ h2{font:var(--fw-display) var(--fs-h2)/var(--lh-display) var(--font-display);let
 .food-cost{font-size:var(--fs-sm)}
 .food-name{font-size:var(--fs-md)}
 .food-meta{font-size:var(--fs-sm)}
-/* meal-card head: swap button never wraps */
+/* meal-card head: swap button never wraps; the fourth column is the fold arrow (2026-10-28) */
 .meal-card{container-type:inline-size}
-.meal-head{grid-template-columns:auto auto 1fr}
+.meal-head{grid-template-columns:auto auto 1fr auto}
 .meal-kcal{justify-self:end}
 .meal-swap-btn{white-space:nowrap}
-@container (max-width:310px){.meal-head{grid-template-columns:auto 1fr;grid-template-areas:"time kcal" "title title" "swap swap"}}
+@container (max-width:310px){.meal-head{grid-template-columns:auto 1fr auto;grid-template-areas:"time kcal kcal" "title title toggle" "swap swap swap"}}
 @container (max-width:290px){.food-row{grid-template-areas:"name kcal" "meta meta" "costs costs" "pack pack" "buy buy"}.food-cost--package{grid-area:pack;justify-self:start}}
 /* tablet: five budget chips in one row made the amounts wrap ("Сбалансированный" broke mid-word) */
 @media(min-width:600px) and (max-width:900px){.budget-modes{grid-template-columns:repeat(2,minmax(0,1fr))}.budget-chip--custom{grid-column:1/-1;flex-direction:row;align-items:center}}

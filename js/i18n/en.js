@@ -218,6 +218,8 @@ registerI18nTable("en", {
   "ui.ajustes": "Settings",
   "ui.alimentos_que_no_te_gustan": "Foods you do not like",
   "ui.no_me_gusta": "Don't like",
+  "ui.toma_abrir": "Expand: {toma}",
+  "ui.toma_plegar": "Collapse: {toma}",
   "ui.no_me_gusta_aria": "{nombre}: remove from the plan and don't suggest it again",
   "ui.quitado_n": "Removed «{nombre}»: meals changed: {n}.",
   "ui.quitado_sin_alternativa": "Removed «{nombre}», but {n} meals have no alternative and stay as they were.",

@@ -18,6 +18,40 @@ llevan al final un bloque «actualización 2026-10-08»). El diario fechado, con
 medidas y causas, está en la cabecera de `STATE.md` (entradas del 2026-10-07 y
 2026-10-08).
 
+### 0.0 septdecies Tomas plegadas, 2026-10-28 (lee esto antes que 0.0 sexdecies)
+
+- **Estado:** sello `20261028b`, **1336 tests en verde**. El dueño: «все приёмы
+  пищи, что сейчас не нужны, намного меньше… открыть стрелочкой вниз сбоку
+  справа, а тот, который сейчас по расписанию, открыт полностью».
+- **Qué hace:** en «Menú», la toma que toca ahora sale entera y las demás quedan en
+  una fila (hora, nombre en dos líneas como mucho, kcal y una flecha a la
+  derecha). La flecha abre y pliega; tocar la fila de una plegada también la abre.
+  Igual en el plan con platos y en el sin cocinar. Al imprimir sale todo abierto.
+- **Cuál es «la que toca»** (`tomaQueToca`, `tomasQueSalenAbiertas` en
+  `js/ui/render.js`, bloque «Tomas plegadas»): la primera del día 1 cuya hora no
+  ha pasado o pasó hace menos de 45 min (`TOMA_MINUTOS_DE_GRACIA`: se está
+  comiendo). Si ya pasaron todas, la primera del día 2 (con un solo día, la
+  primera de hoy). Los demás días, plegados enteros. Sin horario (un plan viejo),
+  todo abierto como antes. No es lo mismo que «Далее» (`findNextMealIndex`, sin
+  gracia): la tira dice la siguiente; la tarjeta abierta, la de ahora.
+- **Lo que abre el usuario se recuerda** (`_tomasElegidas`) mientras el plan en
+  pantalla sea el mismo: «Cambiar» y «No me gusta» cambian tomas dentro del mismo
+  array y repintan todo; generar otro plan crea arrays nuevos y se empieza de cero
+  (`tomasEmpezarPlan` compara la referencia de las tomas del día 1). El chip del
+  horario y «Далее» abren la toma plegada antes de ir a ella (`scrollToMealCard`).
+- **Marcado:** `.meal-card.is-plegada` / `.nocook-slot.is-plegada` y el botón
+  `.meal-toggle` (`aria-expanded`, `aria-controls` al cuerpo, nombre
+  `ui.toma_abrir` / `ui.toma_plegar` en los cuatro idiomas). El cuerpo plegado
+  sigue en el HTML (lo esconde el CSS). La toma sin cocinar tiene ahora
+  `.nocook-slot__body`.
+- **Rejilla de la cabecera:** cuarta columna `toggle`. Abierta, la flecha va a la
+  derecha del NOMBRE (en la fila de la hora, «Cambiar» y kcal no cabe en 375 px).
+  Si tocas `.meal-head`, tócala también en `scripts/temas/nucleo.py` (los aspectos
+  la reescriben) y vuelve a generar los temas.
+- **Medido** en el navegador (375×812, 320×568 y 1024) y con Chrome limpio sin
+  interfaz: 15 tarjetas de un plan de 3 días, una abierta (~900 px) y catorce de
+  77 px; la flecha siempre dentro de la tarjeta; sin errores de JavaScript.
+
 ### 0.0 sexdecies Recorrido y tutorial de entrenamientos al día, 2026-10-28 (lee esto antes que 0.0 quindecies)
 
 - **Estado:** sello `20261028a`, **1329 tests en verde**. El dueño: «обнови все

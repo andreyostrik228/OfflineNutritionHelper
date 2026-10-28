@@ -213,6 +213,8 @@ registerI18nTable("es", {
   "ui.ajustes": "Ajustes",
   "ui.alimentos_que_no_te_gustan": "Alimentos que no te gustan",
   "ui.no_me_gusta": "No me gusta",
+  "ui.toma_abrir": "Ver entera: {toma}",
+  "ui.toma_plegar": "Plegar: {toma}",
   "ui.no_me_gusta_aria": "{nombre}: quitar del plan y no volver a ponerlo",
   "ui.quitado_n": "Quitado «{nombre}»: comidas cambiadas: {n}.",
   "ui.quitado_sin_alternativa": "Quitado «{nombre}», pero para {n} comidas no hay otra opción y siguen igual.",

@@ -216,6 +216,8 @@ registerI18nTable("uk", {
   "ui.ajustes": "Налаштування",
   "ui.alimentos_que_no_te_gustan": "Продукти, які тобі не подобаються",
   "ui.no_me_gusta": "Не подобається",
+  "ui.toma_abrir": "Розгорнути: {toma}",
+  "ui.toma_plegar": "Згорнути: {toma}",
   "ui.no_me_gusta_aria": "{nombre}: прибрати з плану й більше не пропонувати",
   "ui.quitado_n": "Прибрали «{nombre}»: замінено прийомів їжі: {n}.",
   "ui.quitado_sin_alternativa": "Прибрали «{nombre}», але для {n} прийомів їжі немає заміни — вони лишилися як були.",

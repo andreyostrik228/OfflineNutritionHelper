@@ -1501,10 +1501,12 @@ input[type="time"] { font-variant-numeric: tabular-nums; }
   box-shadow: var(--shadow-1);
   scroll-margin-top: 72px;
 }
+/* La flecha de plegar va a la derecha del nombre: en la primera fila (hora,
+   «Cambiar», kcal) no cabe en un móvil de 375 px. */
 .meal-head {
   display: grid;
-  grid-template-columns: auto 1fr auto;
-  grid-template-areas: "time swap kcal" "title title title";
+  grid-template-columns: auto auto 1fr auto;
+  grid-template-areas: "time swap kcal kcal" "title title title toggle";
   align-items: center;
   gap: 12px 8px;
   padding: 16px 16px 14px;
@@ -1553,6 +1555,66 @@ input[type="time"] { font-variant-numeric: tabular-nums; }
 
 .meal-body { padding: 0 16px; }
 .meal-items { border-top: 1px solid var(--line); }
+
+/* ── Tomas plegadas (2026-10-28) ─────────────────────────────────────────
+   La que toca ahora sale entera; las demás, solo una fila (hora, nombre y kcal)
+   con la flecha a la derecha, que la abre (js/ui/render.js, «Tomas plegadas»).
+   Vale igual para la toma sin cocinar (.nocook-slot). */
+.meal-toggle {
+  grid-area: toggle;
+  justify-self: end;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1.5px solid var(--line-strong);
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--ink);
+  cursor: pointer;
+}
+.meal-toggle svg { stroke: currentColor; fill: none; transform: rotate(180deg); transition: transform 0.25s ease; }
+.meal-toggle[aria-expanded="false"] svg { transform: none; }
+.meal-toggle:hover { border-color: var(--primary); }
+.meal-card.is-plegada .meal-body,
+.nocook-slot.is-plegada .nocook-slot__body { display: none; }
+.meal-card.is-plegada .meal-head,
+.nocook-slot.is-plegada .nocook-slot__head { cursor: pointer; }
+.meal-card.is-plegada .meal-swap-btn,
+.nocook-slot.is-plegada .meal-swap-btn { display: none; }
+/* La fila de una toma plegada: hora, nombre (hasta dos líneas) con sus kcal
+   debajo, y flecha. Con las kcal al lado el nombre se quedaba en «Перекус 1 —…». */
+.meal-card.is-plegada .meal-head {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "time title toggle" "time kcal toggle";
+  gap: 2px 10px;
+  padding: 10px 12px;
+}
+.meal-card.is-plegada .meal-kcal { justify-self: start; }
+.meal-card.is-plegada .meal-time-badge,
+.nocook-slot.is-plegada .meal-time-badge { height: 28px; padding: 0 9px; font-size: 17px; }
+.meal-card.is-plegada .meal-head h3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 15px;
+  line-height: 1.25;
+}
+.meal-card.is-plegada .meal-kcal,
+.nocook-slot.is-plegada .nocook-slot__kcal { font-size: 16px; }
+.meal-card.is-plegada .meal-toggle,
+.nocook-slot.is-plegada .meal-toggle { width: 36px; height: 36px; }
+@media (prefers-reduced-motion: reduce) {
+  .meal-toggle svg { transition: none; }
+}
+/* Al imprimir, todo abierto y sin flechas. */
+@media print {
+  .meal-card.is-plegada .meal-body,
+  .nocook-slot.is-plegada .nocook-slot__body { display: block; }
+  .meal-toggle { display: none; }
+}
 
 .food-row {
   display: grid;
@@ -2233,11 +2295,21 @@ input[type="time"] { font-variant-numeric: tabular-nums; }
 .nocook-slot { min-width: 0; padding: 16px; border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--shadow-1); }
 .nocook-slot__head {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  grid-template-areas: "time title kcal" "kind kind swap";
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-areas: "time title kcal kcal" "kind kind swap toggle";
   align-items: center;
   gap: 10px;
 }
+/* Plegada: hora y flecha a los lados; en medio el nombre y, debajo, las kcal y
+   qué es («Bocadillo»). */
+.nocook-slot.is-plegada { padding: 10px 12px; }
+.nocook-slot.is-plegada .nocook-slot__head {
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  grid-template-areas: "time title title toggle" "time kcal kind toggle";
+  gap: 4px 10px;
+}
+.nocook-slot.is-plegada .nocook-slot__head h3 { overflow: hidden; font-size: 20px; text-overflow: ellipsis; white-space: nowrap; }
+.nocook-slot.is-plegada .nocook-slot__kind { overflow: hidden; max-width: 100%; text-overflow: ellipsis; white-space: nowrap; }
 .nocook-slot__head .meal-time-badge { grid-area: time; }
 .nocook-slot__head h3 { grid-area: title; font: 900 30px/1 var(--font-display); letter-spacing: 0.01em; text-transform: uppercase; }
 .nocook-slot__kcal { grid-area: kcal; font: 900 30px/1 var(--font-display); color: var(--kcal-deep); font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -2257,7 +2329,7 @@ input[type="time"] { font-variant-numeric: tabular-nums; }
    «ЗАВТРАК» se partía en «ЗАВТРА / К». */
 .nocook-slot { container-type: inline-size; }
 @container (max-width: 310px) {
-  .nocook-slot__head { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "time kcal" "title title" "kind swap"; }
+  .nocook-slot__head { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "time kcal kcal" "title title toggle" "kind swap swap"; }
   .nocook-slot__head .nocook-slot__kcal { justify-self: end; }
   .nocook-slot__head .meal-time-badge { justify-self: start; }
 }
@@ -3819,13 +3891,13 @@ html.tour-abierto body { overflow: hidden; }
 /* Cabecera de la toma: "Sustituir" no se parte en dos líneas; si la tarjeta es
    muy estrecha, pasa a su propia fila. */
 .meal-card { container-type: inline-size; }
-.meal-head { grid-template-columns: auto auto 1fr; }
+.meal-head { grid-template-columns: auto auto 1fr auto; }
 .meal-kcal { justify-self: end; }
 .meal-swap-btn { white-space: nowrap; }
 @container (max-width: 310px) {
   .meal-head {
-    grid-template-columns: auto 1fr;
-    grid-template-areas: "time kcal" "title title" "swap swap";
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas: "time kcal kcal" "title title toggle" "swap swap swap";
   }
 }
 

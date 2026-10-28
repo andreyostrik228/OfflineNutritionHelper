@@ -92,6 +92,8 @@ function initNoCookRefs(refs) {
   // el listener vive en el contenedor y no en cada botón.
   if (noCookResults) noCookResults.addEventListener("click", handleSwapNoCookSlot);
   if (noCookResults) noCookResults.addEventListener("click", _alTocarQuitarProducto);
+  // Las tomas plegadas, como en el plan con platos (render.js, 2026-10-28).
+  if (noCookResults && typeof alTocarToma === "function") noCookResults.addEventListener("click", alTocarToma);
   if (_compra.lista) _compra.lista.addEventListener("click", _alTocarFilaDeCompra);
   if (_compra.lista) _compra.lista.addEventListener("click", _alTocarQuitarProducto);
 }
@@ -439,14 +441,19 @@ function paintNoCookDays(dias) {
   // Lo que sobra de la compra y ningún día come (2026-10-27): cada día dice
   // lo que de eso se puede comer ese día (_noCookSobrasHtml).
   var lotes = (typeof noCookCuentas === "function") ? noCookCuentas(dias).lotes : [];
+  // La toma que toca ahora, abierta; las demás, plegadas (render.js, 2026-10-28).
+  var ahora = new Date();
+  var abiertas = (typeof tomasQueSalenAbiertas === "function")
+    ? tomasQueSalenAbiertas(dias, ahora.getHours() * 60 + ahora.getMinutes(), "slots") : null;
+  if (typeof tomasEmpezarPlan === "function") tomasEmpezarPlan("sincocinar", dias[0].slots);
   noCookResults.classList.toggle("days-carousel__track--multi", multi);
   noCookResults.innerHTML = multi
     ? dias.map(function (plan, i) {
         var cabeza = typeof renderDaySlideHead === "function" ? renderDaySlideHead(i, dias.length) : "";
         return '<section class="day-slide" data-day="' + i + '">' + cabeza +
-          '<div class="nocook-dia">' + _noCookDiaHtml(plan, i, lotes) + "</div></section>";
+          '<div class="nocook-dia">' + _noCookDiaHtml(plan, i, lotes, abiertas) + "</div></section>";
       }).join("")
-    : _noCookDiaHtml(dias[0], 0, lotes);
+    : _noCookDiaHtml(dias[0], 0, lotes, abiertas);
   if (multi) noCookResults.scrollLeft = desplazado;
   lastNoCookDays = dias;
   lastNoCookPlan = dias[0];
@@ -460,7 +467,7 @@ function paintNoCookDays(dias) {
  * El aviso de alérgenos se arma aquí (y no en runNoCookGenerator) porque
  * también hay que re-pintarlo al cambiar una sola toma.
  */
-function _noCookDiaHtml(plan, dayIndex, lotes) {
+function _noCookDiaHtml(plan, dayIndex, lotes, abiertas) {
   var allergenNote = (typeof renderAllergenLine === "function")
     ? '<p class="nocook-disclaimer">' + t("html.nocook_aviso_alergenos") + "</p>"
     : "";
@@ -485,7 +492,12 @@ function _noCookDiaHtml(plan, dayIndex, lotes) {
     : "";
 
   return renderNoCookSummary(plan) + _noCookSobrasHtml(lotes, dayIndex) + allergenNote + aproxNote +
-    plan.slots.map(function (slot) { return renderNoCookSlot(slot, dayIndex); }).join("");
+    plan.slots.map(function (slot, s) {
+      var porDefecto = !abiertas || abiertas[dayIndex] === s;
+      var abierta = (typeof tomaAbierta === "function")
+        ? tomaAbierta(claveDeToma("sincocinar", dayIndex, slot.key), porDefecto) : true;
+      return renderNoCookSlot(slot, dayIndex, abierta);
+    }).join("");
 }
 
 /**
@@ -716,9 +728,12 @@ function renderNoCookSummary(plan) {
 /**
  * Genera el HTML de una toma completa (Desayuno/Comida/Snack/Cena).
  * @param {{key:string, label:string, items:object[]}} slot
+ * @param {number} [dayIndex]
+ * @param {boolean} [abierta] - false la pinta plegada (cabecera y flecha); sin
+ *   decir nada, abierta, como siempre
  * @returns {string}
  */
-function renderNoCookSlot(slot, dayIndex) {
+function renderNoCookSlot(slot, dayIndex, abierta) {
   var timeBadge = typeof renderMealTimeBadge === "function" ? renderMealTimeBadge(slot) : "";
 
   // Nombre de la plantilla ("Wrap", "Plato preparado"): dice de un vistazo
@@ -752,15 +767,25 @@ function renderNoCookSlot(slot, dayIndex) {
     ? '<p class="nocook-slot__assembly">' +
       escapeHtml(tOr("nocook." + slot.templateKey + "_montaje", slot.assembly)) + "</p>" : "";
 
+  // Plegada, solo la cabecera; la flecha (render.js) abre el resto.
+  var abiertaYa = abierta !== false;
+  var titulo = tMeal(slot.key, slot.label);
+  var cuerpo = "toma-s-" + (Number(dayIndex) || 0) + "-" + (slot.key || "");
+  var flecha = (typeof renderBotonToma === "function") ? renderBotonToma(abiertaYa, titulo, cuerpo) : "";
+  var clave = (typeof claveDeToma === "function") ? claveDeToma("sincocinar", dayIndex, slot.key) : "";
+
   return (
-    '<div class="nocook-slot">' +
-      '<div class="nocook-slot__head">' + timeBadge + "<h3>" + escapeHtml(tMeal(slot.key, slot.label)) + "</h3>" +
-        kind + kcal + swapBtn +
+    '<div class="nocook-slot' + (abiertaYa ? "" : " is-plegada") + '"' +
+      (clave ? ' data-toma-clave="' + escapeHtml(clave) + '"' : "") + ">" +
+      '<div class="nocook-slot__head">' + timeBadge + "<h3>" + escapeHtml(titulo) + "</h3>" +
+        kind + kcal + swapBtn + flecha +
       "</div>" +
-      makeAheadNote +
-      assembly +
-      '<div class="nocook-items">' +
-        slot.items.map(renderNoCookItem).join("") +
+      '<div class="nocook-slot__body" id="' + escapeHtml(cuerpo) + '">' +
+        makeAheadNote +
+        assembly +
+        '<div class="nocook-items">' +
+          slot.items.map(renderNoCookItem).join("") +
+        "</div>" +
       "</div>" +
     "</div>"
   );

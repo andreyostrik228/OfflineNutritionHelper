@@ -224,6 +224,8 @@ registerI18nTable("ru", {
   "ui.ajustes": "Настройки",
   "ui.alimentos_que_no_te_gustan": "Продукты, которые вы не любите",
   "ui.no_me_gusta": "Не нравится",
+  "ui.toma_abrir": "Развернуть: {toma}",
+  "ui.toma_plegar": "Свернуть: {toma}",
   "ui.no_me_gusta_aria": "{nombre}: убрать из плана и больше не предлагать",
   "ui.quitado_n": "Убрали «{nombre}»: заменено приёмов пищи: {n}.",
   "ui.quitado_sin_alternativa": "Убрали «{nombre}», но для {n} приёмов пищи нет замены — они остались прежними.",

@@ -112,6 +112,8 @@ function scrollToMealCard(key) {
   var cards = mealsContainer.querySelectorAll(".meal-card[data-meal-key]");
   for (var i = 0; i < cards.length; i++) {
     if (cards[i].getAttribute("data-meal-key") === key) {
+      // Plegada (2026-10-28, render.js): quien toca su chip la quiere ver entera.
+      if (cards[i].classList.contains("is-plegada") && typeof tomaAlternar === "function") tomaAlternar(cards[i], true);
       cards[i].scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }

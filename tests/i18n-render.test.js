@@ -1074,6 +1074,143 @@ function run(t) {
       assert.strictEqual(els.fats.innerHTML, '70<span class="u">' + u.g + '</span>', lang);
     });
   });
+
+  // ── Tomas plegadas (2026-10-28) ────────────────────────────────────────
+  // El dueño: la toma que toca ahora, entera; las demás, pequeñas, con una
+  // flecha a la derecha que las abre (js/ui/render.js, «Tomas plegadas»).
+
+  /** Pone hora a las tomas: 07:30, 11:00, 14:30, 18:00 y 21:30. */
+  function conHorario(tomas) {
+    var horas = [450, 660, 870, 1080, 1290];
+    tomas.forEach(function (m, i) {
+      m.timeMinutes = horas[i % horas.length];
+      m.time = ("0" + Math.floor(m.timeMinutes / 60)).slice(-2) + ":" + ("0" + (m.timeMinutes % 60)).slice(-2);
+    });
+    return tomas;
+  }
+
+  /** Ejecuta `fn` con el reloj del sandbox parado a las hh:mm (render.js mira `new Date()`). */
+  function aLas(s, hh, mm, fn) {
+    var tenia = Object.prototype.hasOwnProperty.call(s, "Date");
+    var antes = s.Date;
+    s.Date = function () { return new Date(2026, 9, 28, hh, mm); };
+    try { return fn(); } finally { if (tenia) s.Date = antes; else delete s.Date; }
+  }
+
+  function tarjetasPintadas(html) { return html.match(/<div class="meal-card[^"]*"/g) || []; }
+
+  t.test("tomas plegadas: la que toca es la primera que no ha pasado, con 45 min de gracia", function () {
+    var s = sandboxCompleto();
+    var tomas = conHorario([{}, {}, {}, {}, {}]);
+    assert.strictEqual(s.tomaQueToca(tomas, 6 * 60), 0, "antes del desayuno, el desayuno");
+    assert.strictEqual(s.tomaQueToca(tomas, 7 * 60 + 50), 0, "comiéndolo, todavía el desayuno");
+    assert.strictEqual(s.tomaQueToca(tomas, 8 * 60 + 20), 1, "pasada la gracia, el tentempié de las 11:00");
+    assert.strictEqual(s.tomaQueToca(tomas, 22 * 60 + 10), 4, "la cena, hasta 45 min después");
+    assert.strictEqual(s.tomaQueToca(tomas, 22 * 60 + 30), -1, "pasadas todas, ninguna");
+    assert.strictEqual(s.tomaQueToca([{}, {}], 600), -1, "sin hora, ninguna");
+    assert.strictEqual(s.tomaQueToca([{ timeMinutes: 870 }, { timeMinutes: 450 }], 400), 1, "por la hora, no por el orden");
+  });
+
+  t.test("tomas plegadas: hoy la que toca; pasadas todas, la primera de mañana; sin horario, todas abiertas", function () {
+    var s = sandboxCompleto();
+    function dia() { return { meals: conHorario([{}, {}, {}, {}, {}]) }; }
+    assert.deepStrictEqual(Array.from(s.tomasQueSalenAbiertas([dia()], 8 * 60 + 20, "meals")), [1]);
+    assert.deepStrictEqual(Array.from(s.tomasQueSalenAbiertas([dia(), dia(), dia()], 8 * 60 + 20, "meals")), [1, -1, -1],
+      "los días que vienen, plegados enteros");
+    assert.deepStrictEqual(Array.from(s.tomasQueSalenAbiertas([dia(), dia(), dia()], 23 * 60, "meals")), [-1, 0, -1],
+      "de noche, el desayuno de mañana");
+    assert.deepStrictEqual(Array.from(s.tomasQueSalenAbiertas([dia()], 23 * 60, "meals")), [0],
+      "con un solo día, su desayuno: es el siguiente");
+    assert.strictEqual(s.tomasQueSalenAbiertas([{ meals: [{}, {}] }], 600, "meals"), null, "sin horario no se pliega nada");
+    assert.deepStrictEqual(Array.from(s.tomasQueSalenAbiertas([{ slots: conHorario([{}, {}, {}, {}]) }], 15 * 60 + 20, "slots")), [3],
+      "y con las tomas del sin cocinar");
+  });
+
+  t.test("tomas plegadas: el plan pintado deja abierta solo la que toca, cada una con su flecha y su cuerpo dentro", function () {
+    var s = sandboxCompleto();
+    var tomas = conHorario(planReal(s).result.meals);
+    assert.ok(tomas.length >= 3, "un plan con varias tomas");
+    s.saveLang("ru");
+    var cont = contenedor();
+    s.initRenderRefs({ mealsContainer: cont, summaryEls: {} });
+    aLas(s, 8, 20, function () { s.renderDayPlans([{ meals: tomas }]); });
+    var html = cont.innerHTML;
+    var tarjetas = tarjetasPintadas(html);
+    assert.strictEqual(tarjetas.length, tomas.length);
+    assert.strictEqual(tarjetas.filter(function (c) { return c.indexOf("is-plegada") !== -1; }).length, tomas.length - 1,
+      "todas plegadas menos una");
+    assert.strictEqual(tarjetas[1].indexOf("is-plegada"), -1, "a las 08:20 toca la de las 11:00");
+    var flechas = html.match(/<button type="button" class="meal-toggle"[^>]*>/g) || [];
+    assert.strictEqual(flechas.length, tomas.length, "una flecha por toma");
+    assert.strictEqual(flechas.filter(function (b) { return b.indexOf('aria-expanded="true"') !== -1; }).length, 1);
+    flechas.forEach(function (b) {
+      var id = b.match(/aria-controls="([^"]+)"/)[1];
+      assert.ok(html.indexOf('<div class="meal-body" id="' + id + '">') !== -1, "la flecha apunta a su cuerpo: " + id);
+      assert.ok(/aria-label="(Развернуть|Свернуть): [^"]+"/.test(b), "nombre accesible en ruso: " + b);
+    });
+    // Plegada no es borrada: los ingredientes siguen en la tarjeta (los oculta el CSS).
+    assert.strictEqual((html.match(/<div class="meal-items">/g) || []).length, tomas.length);
+    s.saveLang("es");
+  });
+
+  t.test("tomas plegadas: lo que abre el usuario se recuerda al repintar el mismo plan; un plan nuevo empieza de cero", function () {
+    var s = sandboxCompleto();
+    var dias = [{ meals: conHorario(planReal(s).result.meals) }];
+    var cont = contenedor();
+    s.initRenderRefs({ mealsContainer: cont, summaryEls: {} });
+    function desayunoPlegado() { return tarjetasPintadas(cont.innerHTML)[0].indexOf("is-plegada") !== -1; }
+    aLas(s, 8, 20, function () { s.renderDayPlans(dias); });
+    assert.strictEqual(desayunoPlegado(), true, "el desayuno ya pasó: plegado");
+    // El usuario lo abre con la flecha (alTocarToma → tomaAlternar).
+    var clave = s.claveDeToma("normal", 0, dias[0].meals[0].key);
+    s.tomaAlternar({ classList: { toggle: function () {} }, querySelector: function () { return null; },
+      getAttribute: function (k) { return k === "data-toma-clave" ? clave : null; } }, true);
+    // «Cambiar» repinta el MISMO plan: el desayuno no se le vuelve a plegar.
+    aLas(s, 8, 20, function () { s.renderDayPlans(dias); });
+    assert.strictEqual(desayunoPlegado(), false, "repintado, sigue abierto");
+    // Un plan nuevo (otros arrays): otra vez solo la que toca.
+    aLas(s, 8, 20, function () { s.renderDayPlans([{ meals: dias[0].meals.slice() }]); });
+    assert.strictEqual(desayunoPlegado(), true, "en un plan nuevo, plegado otra vez");
+  });
+
+  t.test("tomas plegadas: el sin cocinar igual, y sin decir nada la toma sale abierta como siempre", function () {
+    var s = sandboxCompleto();
+    s.saveLang("uk");
+    var toma = { key: "desayuno", label: "Desayuno", items: [], time: "07:30", timeMinutes: 450, total: { kcal: 500 } };
+    var plegada = s.renderNoCookSlot(toma, 1, false);
+    assert.strictEqual(plegada.indexOf('<div class="nocook-slot is-plegada"'), 0, plegada.slice(0, 80));
+    assert.ok(plegada.indexOf('aria-expanded="false"') !== -1 && plegada.indexOf('aria-controls="toma-s-1-desayuno"') !== -1);
+    assert.ok(plegada.indexOf('<div class="nocook-slot__body" id="toma-s-1-desayuno">') !== -1, "el cuerpo, con su id");
+    assert.ok(/aria-label="Розгорнути: [^"]+"/.test(plegada), "nombre accesible en ucraniano");
+    var abierta = s.renderNoCookSlot(toma, 1);
+    assert.ok(abierta.indexOf('<div class="nocook-slot"') === 0 && abierta.indexOf('aria-expanded="true"') !== -1);
+    s.saveLang("es");
+  });
+
+  t.test("tomas plegadas: tocar su chip del horario (o «Далее») abre la toma plegada antes de ir a ella", function () {
+    var s = sandboxCompleto();
+    var clases = { "is-plegada": true };
+    var tarjeta = {
+      classList: { contains: function (c) { return !!clases[c]; }, toggle: function (c, on) { clases[c] = on; } },
+      querySelector: function () { return null; },
+      getAttribute: function (k) { return k === "data-meal-key" ? "comida" : null; },
+      scrollIntoView: function () { tarjeta.vista = true; }
+    };
+    var cont = contenedor();
+    cont.querySelectorAll = function () { return [tarjeta]; };
+    s.initRenderRefs({ mealsContainer: cont, summaryEls: {} });
+    s.scrollToMealCard("comida");
+    assert.strictEqual(clases["is-plegada"], false, "abierta");
+    assert.strictEqual(tarjeta.vista, true, "y a la vista");
+  });
+
+  t.test("tomas plegadas: el CSS esconde el cuerpo de la plegada, y al imprimir sale todo", function () {
+    var css = fs.readFileSync(projPath("assets/css/style.css"), "utf8");
+    assert.ok(/\.meal-card\.is-plegada \.meal-body,\s*\.nocook-slot\.is-plegada \.nocook-slot__body \{ display: none; \}/.test(css));
+    assert.ok(css.indexOf(".meal-toggle {") !== -1, "la flecha tiene su estilo");
+    assert.ok(/@media print \{\s*\.meal-card\.is-plegada \.meal-body,\s*\.nocook-slot\.is-plegada \.nocook-slot__body \{ display: block; \}/.test(css),
+      "al imprimir, todo abierto");
+  });
 }
 
 module.exports = { run: run };

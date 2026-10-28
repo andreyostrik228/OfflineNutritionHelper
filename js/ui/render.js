@@ -72,6 +72,10 @@
  *   renderSummary(profile, total) – actualiza las 4 tarjetas de macros
  *   renderMeals(meals)            – un solo día (envuelve a renderDayPlans)
  *   renderDayPlans(days)          – N días como carrusel deslizable
+ *   tomaQueToca, tomasQueSalenAbiertas, tomasEmpezarPlan, claveDeToma,
+ *   tomaAbierta, renderBotonToma, tomaAlternar, alTocarToma
+ *                                 – las tomas plegadas (2026-10-28): la que
+ *                                   toca ahora, abierta; las demás, con su flecha
  * ─────────────────────────────────────────────────────────────────────────
  */
 
@@ -186,6 +190,148 @@ var mealsContainer, summaryEls;
 function initRenderRefs(refs) {
   mealsContainer = refs.mealsContainer;
   summaryEls     = refs.summaryEls;
+  if (mealsContainer) mealsContainer.addEventListener("click", alTocarToma);
+}
+
+// ── Tomas plegadas (2026-10-28) ───────────────────────────────────────────
+// El dueño: «все приёмы пищи, что сейчас не нужны, намного меньше… а тот,
+// который сейчас по расписанию, открыт полностью». La toma que toca AHORA
+// (por la hora de su horario) sale entera; las demás, solo con su cabecera
+// (hora, nombre y kcal), y la flecha de la derecha las abre. Vale para el plan
+// con platos y para el sin cocinar (render-no-cook.js).
+//
+// Lo que el usuario abre o pliega se recuerda mientras el plan en pantalla sea
+// el mismo: «Cambiar» repinta todas las tarjetas y no debe volver a plegarle la
+// que acababa de abrir. Un plan nuevo empieza otra vez desde la que toca.
+
+/** Una toma sigue siendo «la de ahora» hasta 45 min después de su hora: se está comiendo. */
+var TOMA_MINUTOS_DE_GRACIA = 45;
+var _tomasElegidas = {};   // "normal|0|desayuno" → true (abierta) | false (plegada)
+var _tomasDelPlan = {};    // "normal" | "sincocinar" → las tomas del día 1 que se pintaron
+
+/**
+ * El índice de la toma que toca ahora: la primera cuya hora aún no ha pasado
+ * (o pasó hace menos de TOMA_MINUTOS_DE_GRACIA). -1 si ya pasaron todas o si
+ * ninguna tiene hora.
+ * @param {{timeMinutes?:number}[]} tomas
+ * @param {number} ahora - minutos desde medianoche
+ * @returns {number}
+ */
+function tomaQueToca(tomas, ahora) {
+  var elegida = -1;
+  var hora = Infinity;
+  (tomas || []).forEach(function (t, i) {
+    var m = t && t.timeMinutes;
+    if (typeof m !== "number" || m + TOMA_MINUTOS_DE_GRACIA < ahora || m >= hora) return;
+    elegida = i;
+    hora = m;
+  });
+  return elegida;
+}
+
+/** La toma más temprana del día (la primera si ninguna tiene hora). */
+function _primeraToma(tomas) {
+  var elegida = 0;
+  var hora = Infinity;
+  (tomas || []).forEach(function (t, i) {
+    if (t && typeof t.timeMinutes === "number" && t.timeMinutes < hora) { elegida = i; hora = t.timeMinutes; }
+  });
+  return elegida;
+}
+
+/**
+ * Qué toma sale abierta en cada día: en el día 1 (hoy), la que toca ahora; si
+ * hoy ya pasaron todas, la primera del día 2 (con un solo día, la primera de
+ * hoy, que es la siguiente). Los demás días, plegados enteros: son de mañana.
+ * Sin horario (un plan viejo, o falló su cálculo), todas abiertas, como antes.
+ * @param {object[]} dias - días del plan, con sus tomas en `campo`
+ * @param {number} ahora - minutos desde medianoche
+ * @param {string} campo - "meals" (con platos) o "slots" (sin cocinar)
+ * @returns {number[]|null} el índice abierto de cada día (-1 = ninguno), o null = todas
+ */
+function tomasQueSalenAbiertas(dias, ahora, campo) {
+  var lista = Array.isArray(dias) ? dias : [];
+  var hoy = (lista[0] && lista[0][campo]) || [];
+  if (!hoy.some(function (t) { return t && typeof t.timeMinutes === "number"; })) return null;
+  var abiertas = lista.map(function () { return -1; });
+  var i = tomaQueToca(hoy, ahora);
+  if (i !== -1) {
+    abiertas[0] = i;
+  } else {
+    var dia = lista.length > 1 ? 1 : 0;
+    abiertas[dia] = _primeraToma(lista[dia][campo]);
+  }
+  return abiertas;
+}
+
+/**
+ * Empieza la cuenta de un plan: si las tomas del día 1 no son las que se
+ * pintaron la última vez (otro plan), se olvida lo que el usuario abrió.
+ * «Cambiar» y «No me gusta» cambian tomas DENTRO del mismo array, así que lo
+ * abierto se conserva; generar otro plan crea arrays nuevos.
+ * @param {string} plan - "normal" | "sincocinar"
+ * @param {object[]} tomasDelDia1
+ */
+function tomasEmpezarPlan(plan, tomasDelDia1) {
+  if (_tomasDelPlan[plan] === tomasDelDia1) return;
+  _tomasDelPlan[plan] = tomasDelDia1;
+  Object.keys(_tomasElegidas).forEach(function (k) {
+    if (k.indexOf(plan + "|") === 0) delete _tomasElegidas[k];
+  });
+}
+
+/** La clave con que se recuerda una toma: plan, día y clave de la toma. */
+function claveDeToma(plan, dia, clave) {
+  return plan + "|" + (Number(dia) || 0) + "|" + (clave || "");
+}
+
+/** ¿Sale abierta? Lo que eligió el usuario, y si no eligió nada, `porDefecto`. */
+function tomaAbierta(claveToma, porDefecto) {
+  return Object.prototype.hasOwnProperty.call(_tomasElegidas, claveToma) ? _tomasElegidas[claveToma] : !!porDefecto;
+}
+
+/**
+ * La flecha de la derecha de una toma. `titulo` va en su nombre accesible
+ * («Развернуть: Завтрак — Тосты…»), y el cuerpo que abre lleva el id `cuerpo`.
+ * @returns {string} HTML
+ */
+function renderBotonToma(abierta, titulo, cuerpo) {
+  return '<button type="button" class="meal-toggle" data-action="toggle-meal"' +
+    ' aria-expanded="' + (abierta ? "true" : "false") + '" aria-controls="' + escapeHtml(cuerpo) + '"' +
+    ' data-toma="' + escapeHtml(titulo) + '"' +
+    ' aria-label="' + escapeHtml(tFormat(abierta ? "ui.toma_plegar" : "ui.toma_abrir", { toma: titulo })) + '">' +
+    '<svg width="18" height="18" aria-hidden="true" focusable="false"><use href="#icon-chevron"></use></svg></button>';
+}
+
+/** Abre (true) o pliega (false) la tarjeta de una toma y lo recuerda. */
+function tomaAlternar(tarjeta, abrir) {
+  if (!tarjeta) return;
+  tarjeta.classList.toggle("is-plegada", !abrir);
+  var boton = tarjeta.querySelector('button[data-action="toggle-meal"]');
+  if (boton) {
+    boton.setAttribute("aria-expanded", abrir ? "true" : "false");
+    boton.setAttribute("aria-label", tFormat(abrir ? "ui.toma_plegar" : "ui.toma_abrir", { toma: boton.getAttribute("data-toma") || "" }));
+  }
+  var clave = tarjeta.getAttribute("data-toma-clave");
+  if (clave) _tomasElegidas[clave] = !!abrir;
+}
+
+/**
+ * Un toque en la flecha abre o pliega; en la cabecera de una toma plegada (fuera
+ * de sus botones), la abre: es lo que se espera de una fila así. Lo usan el plan
+ * con platos y el sin cocinar.
+ */
+function alTocarToma(ev) {
+  var boton = ev.target.closest('button[data-action="toggle-meal"]');
+  var tarjeta = null;
+  if (boton) {
+    tarjeta = boton.closest(".meal-card, .nocook-slot");
+  } else {
+    var cabeza = ev.target.closest(".meal-card.is-plegada > .meal-head, .nocook-slot.is-plegada > .nocook-slot__head");
+    if (!cabeza || ev.target.closest("button, a, input, select, summary")) return;
+    tarjeta = cabeza.parentNode;
+  }
+  if (tarjeta) tomaAlternar(tarjeta, tarjeta.classList.contains("is-plegada"));
 }
 
 // ── Resumen de macros ─────────────────────────────────────────────────────
@@ -248,9 +394,15 @@ function renderDayPlans(days, despensa) {
 
   mealsContainer.classList.toggle("days-carousel__track--multi", multi);
 
+  // La que toca ahora, abierta; las demás, plegadas (ver «Tomas plegadas»).
+  var ahora = new Date();
+  var abiertas = tomasQueSalenAbiertas(list, ahora.getHours() * 60 + ahora.getMinutes(), "meals");
+  tomasEmpezarPlan("normal", list.length ? list[0].meals : null);
+
   mealsContainer.innerHTML = list.map(function (day, index) {
-    var cards = (day.meals || []).map(function (meal) {
-      return renderMealCard(meal, getMealTotals(meal), index);
+    var cards = (day.meals || []).map(function (meal, m) {
+      var abierta = tomaAbierta(claveDeToma("normal", index, meal.key), !abiertas || abiertas[index] === m);
+      return renderMealCard(meal, getMealTotals(meal), index, abierta);
     }).join("");
 
     var head = multi ? renderDaySlideHead(index, list.length) : "";
@@ -431,19 +583,30 @@ function renderNutritionTrustBadge(product) {
     + escapeHtml(t("ui.sin_verificar_tilde")) + '</span>';
 }
 
-function renderMealCard(meal, total, dayIndex) {
+/**
+ * @param {object} meal
+ * @param {object} total
+ * @param {number} [dayIndex]
+ * @param {boolean} [abierta] - false la pinta plegada (solo la cabecera); sin
+ *   decir nada, abierta, como siempre
+ */
+function renderMealCard(meal, total, dayIndex, abierta) {
   // data-meal-key habilita el salto desde la franja de horario (ver
   // js/ui/render-schedule.js, scrollToMealCard) hasta esta tarjeta.
   var timeBadge = typeof renderMealTimeBadge === "function" ? renderMealTimeBadge(meal) : "";
   var cookNote  = typeof renderMealCookNote  === "function" ? renderMealCookNote(meal)  : "";
   var storeId = meal.store || (typeof DEFAULT_STORE_ID !== "undefined" ? DEFAULT_STORE_ID : "mercadona");
+  var abiertaYa = abierta !== false;
+  var titulo = tituloDeToma(meal);
+  var cuerpo = "toma-n-" + (dayIndex || 0) + "-" + (meal.key || "");
 
   return (
-    '<div class="meal-card" data-meal-key="' + escapeHtml(meal.key || "") + '">' +
+    '<div class="meal-card' + (abiertaYa ? "" : " is-plegada") + '" data-meal-key="' + escapeHtml(meal.key || "") + '"' +
+      ' data-toma-clave="' + escapeHtml(claveDeToma("normal", dayIndex, meal.key)) + '">' +
       '<div class="meal-head">' +
         '<div class="meal-head__title">' +
           timeBadge +
-          '<h3>' + escapeHtml(tituloDeToma(meal)) + '</h3>' +
+          '<h3>' + escapeHtml(titulo) + '</h3>' +
         '</div>' +
         '<div class="meal-head__right">' +
           '<button type="button" class="meal-swap-btn" data-action="swap-plan-meal"' +
@@ -452,9 +615,10 @@ function renderMealCard(meal, total, dayIndex) {
             ' title="' + escapeHtml(t("ui.cambiar_solo_esta_toma_por_otra")) + '">&#8635; ' +
             escapeHtml(t("ui.cambiar")) + '</button>' +
           '<div class="meal-kcal">' + fmtUnitHtml(round0(total.kcal), "kcal") + '</div>' +
+          renderBotonToma(abiertaYa, titulo, cuerpo) +
         '</div>' +
       '</div>' +
-      '<div class="meal-body">' +
+      '<div class="meal-body" id="' + escapeHtml(cuerpo) + '">' +
         cookNote +
         '<div class="meal-items">' +
           meal.items.map(function (item) { return renderFoodRow(item, storeId); }).join("") +

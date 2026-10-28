@@ -1,5 +1,19 @@
 # Nutrition Planner — Roadmap
 
+## Tomas plegadas, 2026-10-28 (sello `20261028b`, 1336 tests)
+
+El dueño: «все приёмы пищи, что сейчас не нужны, намного меньше… открыть
+стрелочкой вниз сбоку справа, а тот, который сейчас по расписанию, открыт
+полностью».
+
+| Qué | Dónde | Estado |
+|---|---|---|
+| La toma que toca ahora (por su hora, con 45 min de gracia) sale entera; las demás, en una fila con hora, nombre, kcal y una flecha a la derecha | `js/ui/render.js` («Tomas plegadas»), `js/ui/render-no-cook.js` | **Hecho** |
+| Lo que abre el usuario no se le vuelve a plegar al «Cambiar» una toma; un plan nuevo empieza de cero | `js/ui/render.js` (`tomasEmpezarPlan`) | **Hecho** |
+| El chip del horario y «Далее» abren la toma plegada antes de ir a ella | `js/ui/render-schedule.js` | **Hecho** |
+| Estilos (también en los diez aspectos) e impresión con todo abierto | `assets/css/style.css`, `scripts/temas/nucleo.py` | **Hecho** |
+| Tests: la toma que toca, los días, el marcado, la memoria, el sin cocinar, el chip y el CSS | `tests/i18n-render.test.js` | **Hecho** |
+
 ## Recorrido y tutorial de entrenamientos, 2026-10-28 (sello `20261028a`, 1329 tests)
 
 El dueño: «обнови все туториалы и сделай их лучше».
