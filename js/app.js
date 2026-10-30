@@ -855,6 +855,21 @@ document.addEventListener("DOMContentLoaded", function () {
   // familia-ui.js lo llama antes de cambiar de persona.
   window.guardarDatosDelFormulario = guardarDatosDelFormulario;
 
+  /**
+   * Lo que «Cambiar» necesita del `data` que generó el plan: presupuesto, sabor
+   * y tiempo para cocinar, también el de cada toma (2026-10-31; lo lee
+   * tiempoDeLaToma, plan-generator.js). Va a «Mis planes» al confirmar.
+   * @param {object} datos
+   * @returns {object}
+   */
+  function opcionesDelDia(datos) {
+    return {
+      budget: datos.budget, cookTime: datos.cookTime, taste: datos.taste,
+      cookTimeCadaToma: datos.cookTimeCadaToma === true,
+      cookTimePorToma: datos.cookTimePorToma || null
+    };
+  }
+
   function runGeneration(data) {
     showSpinner();
 
@@ -928,7 +943,7 @@ document.addEventListener("DOMContentLoaded", function () {
             finally { if (typeof fijarDislikesDeFamilia === "function") fijarDislikesDeFamilia(null); }
             familia.planes[p.id] = {
               dias: diasP, profile: p.profile, data: suyos, report: diasP[0].report,
-              dayOptions: { budget: suyos.budget, cookTime: suyos.cookTime, taste: suyos.taste }
+              dayOptions: opcionesDelDia(suyos)
             };
           });
           days = familia.planes[familia.personas[0].id].dias;
@@ -978,7 +993,7 @@ document.addEventListener("DOMContentLoaded", function () {
         // este plan concreto sin tener que regenerarlo.
         lastGeneratedMeals = result.meals;
         lastGeneratedStore = result.report && result.report.store;
-        lastGeneratedDayOptions = { budget: gen.budget, cookTime: gen.cookTime, taste: gen.taste };
+        lastGeneratedDayOptions = opcionesDelDia(gen);
         lastGeneratedProfile = profile;
         lastGeneratedData = gen;
         lastGeneratedReport = result.report;
@@ -1053,6 +1068,21 @@ document.addEventListener("DOMContentLoaded", function () {
     if (nota) nota.hidden = !apagada;
   }
 
+  /**
+   * «Distinto tiempo para desayuno, comida y cena» (2026-10-31): con la marca,
+   * las filas de cada toma; sin ella, las baldosas del tiempo de todo el día
+   * (con la marca solo valdrían para los snacks).
+   */
+  function pintarTiempoPorToma() {
+    var marca = document.getElementById("cookTimeCadaToma");
+    var filas = document.getElementById("cookTimeTomas");
+    if (!marca || !filas) return;
+    filas.hidden = !marca.checked;
+    var general = document.getElementById("cookTime");
+    if (general && general._baldosas) general._baldosas.hidden = marca.checked;
+    else if (general) general.hidden = marca.checked;
+  }
+
   function applySettingsToForm(settings) {
     if (!settings) return;
     pintarUsoDespensa();
@@ -1082,6 +1112,19 @@ document.addEventListener("DOMContentLoaded", function () {
     setVal("workouts", settings.workouts);
     setVal("goal", settings.goal);
     setVal("cookTime", settings.cookTime);
+    // «Distinto tiempo para desayuno, comida y cena» (2026-10-31): la marca y
+    // los minutos de cada toma. Sin minutos guardados, cada toma empieza con
+    // el tiempo de todo el día (y al marcar se copia el que haya entonces).
+    var cadaToma = document.getElementById("cookTimeCadaToma");
+    if (cadaToma) cadaToma.checked = settings.cookTimeCadaToma === true;
+    var filasToma = document.getElementById("cookTimeTomas");
+    var porToma = settings.cookTimePorToma || null;
+    if (filasToma) filasToma.dataset.propias = porToma ? "1" : "";
+    Array.prototype.forEach.call(document.querySelectorAll("select[data-cocina-toma]"), function (campo) {
+      var suyo = porToma ? porToma[campo.getAttribute("data-cocina-toma")] : undefined;
+      setVal(campo.id, typeof suyo === "number" ? suyo : settings.cookTime);
+    });
+    pintarTiempoPorToma();
     setVal("taste", settings.taste);
     setVal("cuisine", settings.cuisine);
     setVal("priority", settings.priority);
@@ -1820,6 +1863,37 @@ document.addEventListener("DOMContentLoaded", function () {
   // página siguen funcionando como antes (ver sus cabeceras).
   safeInit("form-controls", function () {
     if (typeof initFormControls === "function") initFormControls();
+  });
+
+  // ── Tiempo para cocinar de cada toma (2026-10-31) ─────────────────────
+  // «Если у кого-то на завтрак есть всего 10 минут, но потом он свободен…».
+  // Va DESPUÉS de las baldosas: pintarTiempoPorToma esconde las del día. Al
+  // marcar por primera vez, cada toma empieza con el tiempo de todo el día; lo
+  // que se toque en una fila ya es suyo (`data-propias`) y no se pisa. Se
+  // guarda al generar el plan, como el resto de «Mis datos».
+  safeInit("cocina-tomas", function () {
+    var marca = document.getElementById("cookTimeCadaToma");
+    var filas = document.getElementById("cookTimeTomas");
+    if (!marca || !filas) return;
+    marca.addEventListener("change", function () {
+      var general = document.getElementById("cookTime");
+      if (marca.checked && filas.dataset.propias !== "1" && general) {
+        Array.prototype.forEach.call(filas.querySelectorAll("select[data-cocina-toma]"), function (campo) {
+          campo.value = general.value;
+        });
+      }
+      pintarTiempoPorToma();
+    });
+    filas.addEventListener("change", function (e) {
+      if (e.target && e.target.matches && e.target.matches("select[data-cocina-toma]")) filas.dataset.propias = "1";
+    });
+    if (form) {
+      form.addEventListener("reset", function () {
+        filas.dataset.propias = "";
+        setTimeout(pintarTiempoPorToma, 0);
+      });
+    }
+    pintarTiempoPorToma();
   });
   // Las personas de la casa y el menú de varias (2026-10-26, js/ui/familia-ui.js).
   safeInit("personas", function () {

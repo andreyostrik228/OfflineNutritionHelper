@@ -186,6 +186,38 @@ function run(t) {
       "'si' no es un booleano: mejor ausente que interpretado");
   });
 
+  // ── Tiempo para cocinar de cada toma (2026-10-31) ───────────────────
+  // «Distinto tiempo para desayuno, comida y cena»: la marca es un booleano
+  // más; los minutos, un objeto { toma: minutos } que se sanea aparte.
+
+  t.test("cookTimeCadaToma y cookTimePorToma sobreviven a guardar y recargar", function () {
+    var s = freshSettingsSandbox();
+    s.localStorage = createFakeLocalStorage();
+    s.saveSettings({ cookTime: 35, cookTimeCadaToma: true, cookTimePorToma: { breakfast: 10, lunch: 20, dinner: 60 } });
+    var leido = s.getSettings();
+    assert.strictEqual(leido.cookTimeCadaToma, true);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(leido.cookTimePorToma)), { breakfast: 10, lunch: 20, dinner: 60 });
+    assert.strictEqual(leido.cookTime, 35, "el tiempo de todo el día sigue a su lado");
+  });
+
+  t.test("cookTimePorToma: solo tomas conocidas con un número; lo demás se descarta, sin tumbar el resto", function () {
+    var s = freshSettingsSandbox();
+    var limpio = s.sanitizeSettings({
+      age: 30,
+      cookTimePorToma: { breakfast: 10, lunch: "20", dinner: NaN, brunch: 15, snack: 5, __proto__x: 1 }
+    });
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(limpio.cookTimePorToma)), { breakfast: 10, snack: 5 });
+    assert.strictEqual(limpio.age, 30);
+  });
+
+  t.test("cookTimePorToma con forma rara (lista, texto, null o sin ninguna toma válida) no se guarda", function () {
+    var s = freshSettingsSandbox();
+    [[10, 20], "10", null, {}, { lunch: "35" }].forEach(function (raro) {
+      assert.ok(!("cookTimePorToma" in s.sanitizeSettings({ cookTimePorToma: raro })), JSON.stringify(raro));
+    });
+    assert.ok(!("cookTimeCadaToma" in s.sanitizeSettings({ cookTimeCadaToma: "sí" })), "un texto no es la marca");
+  });
+
 }
 
 module.exports = { run: run };

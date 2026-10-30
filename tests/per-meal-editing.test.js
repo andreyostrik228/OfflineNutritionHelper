@@ -7,12 +7,18 @@
  * las otras 4) + replaceSingleMealForEntry() (js/core/pantry.js, aplica
  * ese resultado sobre la entry guardada).
  *
+ * Y el tiempo para cocinar de CADA toma (2026-10-31, «Distinto tiempo para
+ * desayuno, comida y cena»): tiempoDeLaToma(), el generador, «Cambiar» en el
+ * plan y en «Mis planes», el aviso de poco tiempo y el formulario.
+ *
  * Carga el código de PRODUCCIÓN real (vm, sin copiar) -- mismo patrón que
  * tests/ingredient-nutrition.test.js.
  * ─────────────────────────────────────────────────────────────────────────
  */
 
 var assert = require("assert");
+var fs = require("fs");
+var vm = require("vm");
 var path = require("path");
 var loadBrowserGlobals = require("./lib/load-browser-globals").loadBrowserGlobals;
 var seedRandomInContext = require("./lib/seed-random").seedRandomInContext;
@@ -285,6 +291,196 @@ function run(t) {
     // sin budget: no revienta, resuelve una toma igualmente
     var regen = s.regeneratePlanMeal(result.meals, "breakfast", {}, "mercadona", null);
     assert.ok(regen.meal || regen.error === "no_alternative_found");
+  });
+
+  // ── Tiempo para cocinar de cada toma (2026-10-31) ────────────────────────
+  // «Если у кого-то на завтрак есть всего 10 минут, но потом он свободен…»:
+  // con «Distinto tiempo para desayuno, comida y cena», cada toma se elige con
+  // SUS minutos (tiempoDeLaToma). Sin la marca, todo sigue con `cookTime`.
+
+  var CADA_TOMA = { cookTime: 60, cookTimeCadaToma: true, cookTimePorToma: { breakfast: 10, lunch: 20, dinner: 60 } };
+
+  function perfilDePrueba(s) {
+    return s.calculateProfile({ weight: 82, height: 178, age: 27, sex: "male", activity: 1.55, workouts: 4, goal: "recomp" });
+  }
+
+  /** Lo que puede tardar una toma con `minutos`, en el nivel de relajación con que salió. */
+  function limiteConRelajacion(s, minutos, tier) {
+    return minutos + s.RELAXATION_TIERS[tier].prepAdd;
+  }
+
+  t.test("tiempoDeLaToma(): con la marca, los minutos de la toma; sin ella o sin los suyos, los del día", function () {
+    var s = freshEngineSandbox();
+    assert.strictEqual(s.tiempoDeLaToma(CADA_TOMA, "breakfast"), 10);
+    assert.strictEqual(s.tiempoDeLaToma(CADA_TOMA, "lunch"), 20);
+    assert.strictEqual(s.tiempoDeLaToma(CADA_TOMA, "snack"), 60, "los snacks no tienen fila: los del día");
+    var sinMarca = Object.assign({}, CADA_TOMA, { cookTimeCadaToma: false });
+    assert.strictEqual(s.tiempoDeLaToma(sinMarca, "breakfast"), 60, "sin la marca, los minutos guardados no cuentan");
+    var raros = { cookTime: 35, cookTimeCadaToma: true, cookTimePorToma: { breakfast: 0, lunch: "10" } };
+    assert.strictEqual(s.tiempoDeLaToma(raros, "breakfast"), 35, "0 no es un tiempo");
+    assert.strictEqual(s.tiempoDeLaToma(raros, "lunch"), 35, "un texto no es un tiempo");
+    assert.strictEqual(s.tiempoDeLaToma(null, "lunch"), null);
+    assert.strictEqual(s.tiempoDeLaToma({}, "lunch"), null);
+  });
+
+  t.test("generateDietPlan(): cada toma cabe en SUS minutos (desayuno 10, comida 20) y la cena puede ser larga", function () {
+    var s = freshEngineSandbox();
+    var profile = perfilDePrueba(s);
+    var cenasLargas = 0;
+    for (var i = 0; i < 30; i++) {
+      var r = s.generateDietPlan(profile, Object.assign({ budget: 20, taste: "mixed", store: "mercadona" }, CADA_TOMA));
+      var tier = r.report.tierUsed;
+      r.meals.forEach(function (m) {
+        var limite = s.tiempoDeLaToma(CADA_TOMA, m.key);
+        assert.ok(m.prep <= limiteConRelajacion(s, limite, tier),
+          m.key + " tarda " + m.prep + " min y tenía " + limite + " (nivel " + tier + ")");
+        if (m.key === "dinner" && m.prep > 20) cenasLargas++;
+      });
+    }
+    assert.ok(cenasLargas > 0, "con 60 min para la cena tiene que salir alguna de más de 20: la comida no la limita");
+  });
+
+  t.test("verifyPlanFeasibility(): el aviso de tiempo mide cada toma con SUS minutos", function () {
+    var s = freshEngineSandbox();
+    var profile = { calories: 2000, protein: 120, carbs: 220, fats: 65 };
+    var total = { kcal: 2000, protein: 120, carbs: 220, fat: 65, cost: 5, purchaseCost: 5 };
+    var meals = [
+      { key: "breakfast", prep: 15, items: [] },
+      { key: "lunch", prep: 20, items: [] },
+      { key: "dinner", prep: 40, items: [] }
+    ];
+    function avisosDeTiempo(data) {
+      return JSON.parse(JSON.stringify(s.verifyPlanFeasibility(meals, total, profile, data)
+        .filter(function (v) { return v.type === "time"; })));
+    }
+    assert.deepStrictEqual(avisosDeTiempo(Object.assign({ budget: 20 }, CADA_TOMA)),
+      [{ type: "time", meal: "breakfast", exceededBy: 5 }]);
+    assert.deepStrictEqual(avisosDeTiempo({ budget: 20, cookTime: 20 }).map(function (v) { return v.meal; }),
+      ["dinner"], "sin la marca, todas con los 20 del día");
+  });
+
+  t.test("regeneratePlanMeal(): «Cambiar» re-elige con los minutos de ESA toma (comida en 10 min)", function () {
+    var s = freshEngineSandbox();
+    var result = s.generateDietPlan(perfilDePrueba(s), { budget: 20, cookTime: 60, taste: "mixed", store: "mercadona" });
+    var conMarca = { cookTime: 60, taste: "mixed", cookTimeCadaToma: true, cookTimePorToma: { lunch: 10 } };
+    var sinMarca = Object.assign({}, conMarca, { cookTimeCadaToma: false });
+    var largas = 0;
+    for (var i = 0; i < 8; i++) {
+      var regen = s.regeneratePlanMeal(result.meals, "lunch", conMarca, "mercadona", null);
+      assert.ok(regen.meal, "hay comidas de 10 minutos: " + regen.error);
+      assert.strictEqual(regen.tier, 0, "sin presupuesto que apriete, sin relajar el tiempo");
+      assert.ok(regen.meal.prep <= 10, regen.meal.dishName + " tarda " + regen.meal.prep);
+      var otra = s.regeneratePlanMeal(result.meals, "lunch", sinMarca, "mercadona", null);
+      if (otra.meal && otra.meal.prep > 10) largas++;
+    }
+    assert.ok(largas > 0, "sin la marca vuelven los 60 min del día");
+  });
+
+  t.test("savePlanForToday(): con la marca guarda una copia de los minutos de cada toma, y «Cambiar» en «Mis planes» los usa", function () {
+    var s = freshEngineSandbox();
+    var result = s.generateDietPlan(perfilDePrueba(s), { budget: 100, cookTime: 60, taste: "mixed", store: "mercadona" });
+    var opciones = { budget: 100, cookTime: 60, taste: "mixed", cookTimeCadaToma: true, cookTimePorToma: { lunch: 10 } };
+    var entry = s.savePlanForToday(result.meals, "mercadona", opciones).entry;
+    assert.strictEqual(entry.cookTimeCadaToma, true);
+    assert.strictEqual(entry.cookTimePorToma.lunch, 10);
+    opciones.cookTimePorToma.lunch = 60;
+    assert.strictEqual(entry.cookTimePorToma.lunch, 10, "una copia: cambiar las opciones después no toca lo guardado");
+
+    var regen = s.regenerateSingleMeal(entry, "lunch", null);
+    assert.ok(regen.meal, regen.error);
+    assert.strictEqual(regen.tier, 0);
+    assert.ok(regen.meal.prep <= 10, regen.meal.dishName + " tarda " + regen.meal.prep);
+  });
+
+  t.test("savePlanForToday()/replacePendingMealsForToday(): sin la marca no se guardan minutos por toma, y se quitan los de antes", function () {
+    var s = freshEngineSandbox();
+    var result = s.generateDietPlan(perfilDePrueba(s), { budget: 20, cookTime: 60, taste: "mixed", store: "mercadona" });
+    var base = { budget: 20, cookTime: 60, taste: "mixed" };
+    var primero = s.savePlanForToday(result.meals, "mercadona", Object.assign({ cookTimeCadaToma: true, cookTimePorToma: { lunch: 10 } }, base));
+    assert.strictEqual(primero.entry.cookTimeCadaToma, true);
+
+    var reescrito = s.savePlanForToday(result.meals, "mercadona", Object.assign({ cookTimeCadaToma: false, cookTimePorToma: null }, base));
+    assert.strictEqual(reescrito.replaced, true, "mismo día y sin comprar: se reescribe el borrador");
+    assert.ok(!("cookTimeCadaToma" in reescrito.entry) && !("cookTimePorToma" in reescrito.entry));
+
+    var cambiado = s.replacePendingMealsForToday(reescrito.entry.id, result.meals, "mercadona",
+      Object.assign({ cookTimeCadaToma: true, cookTimePorToma: { dinner: 35 } }, base));
+    assert.strictEqual(cambiado.entry.cookTimePorToma.dinner, 35, "«Cambiar el plan completo» también los guarda");
+  });
+
+  t.test("«Poco tiempo de cocina» solo sale si ninguna toma principal pasa de 10 min", function () {
+    var s = freshEngineSandbox();
+    [projPath("js/core/i18n.js"), projPath("js/i18n/es.js"), projPath("js/ui/render-insights.js")].forEach(function (f) {
+      vm.runInContext(fs.readFileSync(f, "utf8"), s, { filename: f });
+    });
+    var caja = { innerHTML: "", textContent: "", classList: { add: function () {}, remove: function () {} } };
+    s.initInsightRefs({ warningBox: caja, insightsList: null });
+    var aviso = s.t("ui.poco_tiempo_de_cocina_platos_simples");
+    function avisa(data) {
+      caja.innerHTML = "";
+      s.renderWarnings({ calories: 2000 }, { meals: [], report: null }, Object.assign({ budget: 20 }, data));
+      return caja.innerHTML.indexOf(aviso) !== -1;
+    }
+    assert.strictEqual(avisa({ cookTime: 10 }), true, "10 min para todo: sí");
+    assert.strictEqual(avisa({ cookTime: 35 }), false);
+    assert.strictEqual(avisa({ cookTime: 60, cookTimeCadaToma: true, cookTimePorToma: { breakfast: 10, lunch: 35, dinner: 60 } }), false,
+      "un desayuno corto no hace más simple la cena");
+    assert.strictEqual(avisa({ cookTime: 60, cookTimeCadaToma: true, cookTimePorToma: { breakfast: 10, lunch: 10, dinner: 10 } }), true);
+  });
+
+  t.test("readForm(): la marca siempre; los minutos de cada toma solo con ella (sin ella la clave ni está y no pisa lo guardado)", function () {
+    var s = loadBrowserGlobals([projPath("js/core/calculator.js")]);
+    function documento(marcada) {
+      var porId = {
+        age: { value: "30" }, sex: { value: "male" }, weight: { value: "80" }, height: { value: "178" },
+        steps: { value: "8500" }, workouts: { value: "3" }, goal: { value: "maintain" },
+        cookTime: { value: "35" }, taste: { value: "mixed" }, cookTimeCadaToma: { checked: marcada }
+      };
+      var filas = [["breakfast", "10"], ["lunch", "20"], ["dinner", "60"]].map(function (f) {
+        return { value: f[1], getAttribute: function () { return f[0]; } };
+      });
+      return {
+        getElementById: function (id) { return porId[id] || null; },
+        querySelector: function () { return null; },
+        querySelectorAll: function (sel) { return sel === "select[data-cocina-toma]" ? filas : []; }
+      };
+    }
+    s.document = documento(false);
+    var sin = s.readForm();
+    assert.strictEqual(sin.cookTimeCadaToma, false);
+    assert.ok(!("cookTimePorToma" in sin));
+    s.document = documento(true);
+    var con = s.readForm();
+    assert.strictEqual(con.cookTimeCadaToma, true);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(con.cookTimePorToma)), { breakfast: 10, lunch: 20, dinner: 60 });
+    assert.strictEqual(con.cookTime, 35, "el del día sigue igual");
+  });
+
+  t.test("el formulario: la marca y tres filas (desayuno, comida, cena) con los tiempos de #cookTime, en baldosas, cableadas después de ellas", function () {
+    var html = fs.readFileSync(projPath("index.html"), "utf8");
+    assert.ok(html.indexOf('<input type="checkbox" id="cookTimeCadaToma">') !== -1);
+    assert.ok(html.indexOf('<div class="cocina-tomas__filas" id="cookTimeTomas" hidden>') !== -1, "las filas empiezan escondidas");
+    function tiempos(id) {
+      var m = html.match(new RegExp('<select id="' + id + '"[^>]*>([\\s\\S]*?)</select>'));
+      assert.ok(m, id);
+      return (m[1].match(/value="\d+"/g) || []).join(",");
+    }
+    var delDia = tiempos("cookTime");
+    ["cookTimeBreakfast", "cookTimeLunch", "cookTimeDinner"].forEach(function (id) {
+      assert.strictEqual(tiempos(id), delDia, id + " ofrece los mismos tiempos que el del día");
+    });
+    var tomas = (html.match(/data-cocina-toma="\w+"/g) || []).map(function (x) { return x.split('"')[1]; });
+    assert.deepStrictEqual(tomas, ["breakfast", "lunch", "dinner"]);
+
+    var controles = fs.readFileSync(projPath("js/ui/form-controls.js"), "utf8");
+    ["cookTimeBreakfast", "cookTimeLunch", "cookTimeDinner"].forEach(function (id) {
+      assert.ok(controles.indexOf('"' + id + '"') !== -1, id + " en FORM_BALDOSAS");
+    });
+    var app = fs.readFileSync(projPath("js/app.js"), "utf8");
+    assert.ok(app.indexOf('safeInit("cocina-tomas"') > app.indexOf('safeInit("form-controls"'),
+      "la marca se cablea después de las baldosas, que esconde");
+    assert.ok(app.indexOf("opcionesDelDia(gen)") !== -1 && app.indexOf("opcionesDelDia(suyos)") !== -1,
+      "«Cambiar» recibe los minutos de cada toma");
   });
 }
 

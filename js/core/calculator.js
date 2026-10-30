@@ -77,7 +77,7 @@ function pasosPorActividad(activity) {
  * budgetMode es null si el usuario no ha elegido ninguna — validateInput()
  * lo rechaza explícitamente, nunca se asume un valor por defecto aquí.
  *
- * @returns {{age, sex, weight, height, steps, activity, workouts, goal, budgetMode, budgetCustom, cookTime, taste}}
+ * @returns {{age, sex, weight, height, steps, activity, workouts, goal, budgetMode, budgetCustom, cookTime, cookTimeCadaToma, cookTimePorToma, taste}}
  */
 function readForm() {
   var budgetModeInput = document.querySelector('input[name="budgetMode"]:checked');
@@ -87,7 +87,7 @@ function readForm() {
   // guardados.
   var pasos = Number((document.getElementById("steps") || {}).value);
 
-  return {
+  var datos = {
     age:      Number(document.getElementById("age").value),
     sex:      document.getElementById("sex").value,
     weight:   Number(document.getElementById("weight").value),
@@ -99,6 +99,9 @@ function readForm() {
     budgetMode:   budgetModeInput ? budgetModeInput.value : null,
     budgetCustom: budgetCustomEl ? Number(budgetCustomEl.value) : NaN,
     cookTime: Number(document.getElementById("cookTime").value),
+    // Tiempo de cada toma (2026-10-31): la marca. Los minutos de cada
+    // toma (`cookTimePorToma`) se añaden abajo, solo con ella puesta.
+    cookTimeCadaToma: !!(document.getElementById("cookTimeCadaToma") || {}).checked,
     // Tienda (vuelve el 2026-09-15). Opcional igual que `cuisine`: si el
     // <select> no existiera, `sanitizeInputs()` (plan-generator.js) cae en
     // DEFAULT_STORE_ID y el motor se comporta como antes. Las opciones las
@@ -116,6 +119,27 @@ function readForm() {
     // Calorías propias (2026-10-26): vacío = las de la fórmula.
     kcalPropias: leerKcalPropias()
   };
+  // Sin la marca, la clave ni se pone: guardarDatosDelFormulario (app.js)
+  // parte de lo ya guardado, así que los minutos de antes se quedan en «Mis
+  // datos» para cuando se vuelva a marcar. Con ella, los usa el motor
+  // (tiempoDeLaToma, plan-generator.js).
+  if (datos.cookTimeCadaToma) datos.cookTimePorToma = leerTiempoPorToma();
+  return datos;
+}
+
+/**
+ * Los minutos de cada toma, { breakfast: 10, ... },
+ * de los <select data-cocina-toma>. null si el formulario no los tiene.
+ */
+function leerTiempoPorToma() {
+  var campos = document.querySelectorAll("select[data-cocina-toma]");
+  if (!campos.length) return null;
+  var porToma = {};
+  Array.prototype.forEach.call(campos, function (campo) {
+    var n = Number(campo.value);
+    if (isFinite(n) && n > 0) porToma[campo.getAttribute("data-cocina-toma")] = n;
+  });
+  return porToma;
 }
 
 /** El número de «Mis calorías al día», o null si está vacío (o no existe el campo). */

@@ -30,8 +30,9 @@
  */
 
 // `activity` salió de las baldosas el 2026-10-22: ahora son los pasos al día,
-// un número, que va con − y + de 500 en 500.
-var FORM_BALDOSAS = ["sex", "goal", "cookTime", "taste", "cuisine", "priority"];
+// un número, que va con − y + de 500 en 500. Los tres `cookTime…` de las tomas
+// (2026-10-31) son las filas de «Distinto tiempo para desayuno, comida y cena».
+var FORM_BALDOSAS = ["sex", "goal", "cookTime", "cookTimeBreakfast", "cookTimeLunch", "cookTimeDinner", "taste", "cuisine", "priority"];
 var FORM_PASOS = { age: 1, weight: 1, height: 1, workouts: 1, steps: 500 };
 var FORM_HORAS = ["wakeTime", "sleepTime"];
 

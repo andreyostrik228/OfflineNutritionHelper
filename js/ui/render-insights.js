@@ -133,7 +133,7 @@ function renderInsights(profile, result, data) {
  *
  * @param {object} profile  – { calories }
  * @param {object} result   – { meals[], total, report }
- * @param {object} data     – { budget, cookTime }
+ * @param {object} data     – { budget, cookTime, cookTimeCadaToma?, cookTimePorToma? }
  */
 function renderWarnings(profile, result, data) {
   var messages = [];
@@ -166,7 +166,14 @@ function renderWarnings(profile, result, data) {
     messages.push(t("ui.comprando_para_3_o_7_dias_mas_barato"));
   }
 
-  if (data.cookTime <= 10) {
+  // Solo si NINGUNA toma principal tiene más de 10 min: con «Distinto tiempo
+  // para desayuno, comida y cena» (2026-10-31) un desayuno corto no hace más
+  // simple la cena.
+  var maxCocina = ["breakfast", "lunch", "dinner"].reduce(function (max, clave) {
+    var min = (typeof tiempoDeLaToma === "function") ? tiempoDeLaToma(data, clave) : data.cookTime;
+    return Math.max(max, min || 0);
+  }, 0);
+  if (maxCocina > 0 && maxCocina <= 10) {
     messages.push(t("ui.poco_tiempo_de_cocina_platos_simples"));
   }
 

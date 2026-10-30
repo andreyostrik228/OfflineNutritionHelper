@@ -18,6 +18,43 @@ llevan al final un bloque «actualización 2026-10-08»). El diario fechado, con
 medidas y causas, está en la cabecera de `STATE.md` (entradas del 2026-10-07 y
 2026-10-08).
 
+### 0.0 novodecies Tiempo de cocina de cada toma, 2026-10-31 (lee esto antes que 0.0 octodecies)
+
+- **Estado:** sello `20261031a`, **1352 tests en verde**. Lo pidió el dueño el
+  2026-10-30 para más adelante («если у кого-то на завтрак всего 10 минут, но потом
+  он свободен, он мог бы это сказать и уделить больше времени готовке») y el
+  2026-10-31: «Давай теперь время готовки».
+- **Qué hace:** en «Mis datos», bajo «Tiempo para cocinar», la marca «Distinto
+  tiempo para desayuno, comida y cena». Con ella sale una fila de 10/20/35/60 min
+  por toma y se esconden las baldosas del día. Los snacks no tienen fila: los 61 se
+  hacen en 10 min o menos. Medido: en 10 min caben 59 de 69 desayunos, pero solo 17
+  de 184 comidas y 12 de 160 cenas, así que lo que de verdad cambia son la comida y
+  la cena.
+- **Dónde se guarda:** `settings.cookTimeCadaToma` (booleano) y
+  `settings.cookTimePorToma` (`{breakfast, lunch, dinner}`). Van con la cuenta, son
+  de cada persona y se guardan al generar, como el resto de «Mis datos». Quitada la
+  marca, `readForm` no pone la clave de los minutos y `guardarDatosDelFormulario`
+  parte de lo guardado: así vuelven al marcarla. La primera vez, cada toma empieza
+  con el tiempo de todo el día.
+- **Una sola regla:** `tiempoDeLaToma(opciones, mealKey)` (`plan-generator.js`).
+  Con la marca, los minutos de esa toma; sin ella, `cookTime`. La leen igual el
+  `data` del generador (`_datosDeLaToma` antes de `pickDish`, más
+  `verifyPlanFeasibility` y `scorePlan`), el `dayOptions` de `app.js`
+  (`opcionesDelDia`, para «Cambiar» y «No me gusta» del plan) y la entrada de «Mis
+  planes» (`_ponerTiempoPorToma` en `pantry.js` al confirmar, y
+  `regenerateSingleMeal`). Los niveles de relajación suman sus +15/+30 a los
+  minutos de cada toma. El aviso «Poco tiempo de cocina» solo sale si ninguna de
+  las tres pasa de 10.
+- **Es un tope, no un deseo:** con 60 min para la cena el motor PUEDE elegir un
+  plato largo, no lo busca. Medido en 30 planes (desayuno 10 / comida 20 / cena
+  60): 0 tomas fuera de su tiempo y 4 cenas de más de 20 min. En el navegador,
+  «Cambiar» dio cenas de 25 y 30 min, comidas de 20 como mucho y desayunos de 10
+  como mucho.
+- **Estilos:** en 320 px «20 мин» no cabía a 14 px. Por debajo de 360 px va a 13 px
+  con 2 px de margen y cabe en una línea en nueve aspectos. En «relieve», con su
+  piloto dentro, se parte en dos líneas, igual en todas las baldosas.
+- **Para después** (ROADMAP): cocinar una vez para dos tomas cuando sobra tiempo.
+
 ### 0.0 octodecies Menú sin despensa, 2026-10-30 (lee esto antes que 0.0 septdecies)
 
 - **Estado:** sello `20261030a`, **1340 tests en verde**. El dueño: «сделай так,

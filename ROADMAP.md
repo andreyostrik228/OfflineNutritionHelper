@@ -1,12 +1,13 @@
 # Nutrition Planner — Roadmap
 
-## Ideas del dueño para más adelante (2026-10-30) — NO empezadas
+## Ideas del dueño para más adelante (2026-10-30)
 
 El dueño, el 2026-10-30: «сейчас я дам тебе задачу, чтобы потом не забыть, не
-нужно делать её сейчас, просто подумай». Antes de empezar cualquiera de las dos,
-preguntarle por cuál y enseñarle este planteamiento.
+нужно делать её сейчас, просто подумай». Antes de empezar la que queda,
+preguntarle y enseñarle este planteamiento. La 2 la pidió el 2026-10-31 y está
+hecha (sección siguiente).
 
-### 1. Diario de lo comido, con su análisis y qué comer si falta algo
+### 1. Diario de lo comido, con su análisis y qué comer si falta algo — NO empezada
 
 Lo pedido: «говорить, какие продукты ты скушал, чтобы сайт это записывал,
 анализировал и говорил, сколько калорий ты скушал, БЖУ, и, если есть недостача,
@@ -33,25 +34,31 @@ Lo pedido: «говорить, какие продукты ты скушал, ч
   y un plato (como «Cambiar»: `regeneratePlanMeal` con las macros que faltan y el
   tiempo que haya). Sin consejo médico (el aviso de siempre).
 
-### 2. Tiempo de cocina de cada toma
+### 2. Tiempo de cocina de cada toma — HECHA el 2026-10-31
 
 Lo pedido: «указывать, сколько времени у тебя есть на готовку каждого приёма пищи:
 если у кого-то на завтрак всего 10 минут, но потом он свободен, он мог бы это
-сказать и уделить больше времени готовке».
+сказать и уделить больше времени готовке». Lo hecho, en la sección siguiente.
 
-- **Hoy** hay un solo «Tiempo para cocinar» (`cookTime`: 10, 20, 35 o 60) para todas
-  las tomas.
-- **Propuesta:** en «Mis datos», «Distinto en cada toma» abre una fila por toma
-  (desayuno 10 min, comida 35, cena 60…), con los mismos cuatro niveles; sin
-  tocarlo, todas como el general. Se guarda como `cookTimePorToma: {clave: min}`
-  en los ajustes.
-- **Motor:** `generateDietPlan` y la selección de platos pasan a leer el tiempo de
-  cada toma (`data.cookTimePorToma[clave]`, y si no, `data.cookTime`), también en
-  los niveles de relajación y en «Cambiar». Con un desayuno corto, preferir lo
-  rápido o lo «de la noche antes» (`makeAhead`).
 - **Para después:** cocinar una vez para dos tomas cuando sobra tiempo (doble
   ración en la comida y la otra mitad en la cena), aprovechando lo que ya hace el
   plan con lo que sobra entre días.
+- **No hizo falta** preferir lo «de la noche antes» (`makeAhead`) con un desayuno
+  corto: 59 de los 69 desayunos ya se hacen en 10 min o menos.
+
+## Tiempo de cocina de cada toma, 2026-10-31 (sello `20261031a`, 1352 tests)
+
+El dueño: «Давай теперь время готовки». Medido antes de empezar: en 10 min caben
+59 de 69 desayunos, 17 de 184 comidas, 12 de 160 cenas y los 61 snacks; por eso
+hay fila para desayuno, comida y cena, y no para los snacks.
+
+| Qué | Dónde | Estado |
+|---|---|---|
+| «Distinto tiempo para desayuno, comida y cena» bajo «Tiempo para cocinar»: una fila de 10/20/35/60 min por toma; las baldosas del día se esconden | `index.html`, `js/app.js` (`pintarTiempoPorToma`, `safeInit("cocina-tomas")`), `js/ui/form-controls.js`, `assets/css/style.css` | **Hecho** |
+| Se guarda en `settings.cookTimeCadaToma` y `settings.cookTimePorToma`; quitada la marca, los minutos se quedan para cuando se vuelva a marcar | `js/core/settings.js`, `js/core/calculator.js` (`readForm`, `leerTiempoPorToma`) | **Hecho** |
+| El motor elige cada toma con sus minutos (`tiempoDeLaToma`), también en los niveles de relajación, el aviso de tiempo, «Cambiar» del plan y de «Mis planes» | `js/engine/plan-generator.js`, `js/core/pantry.js` (`_ponerTiempoPorToma`), `js/app.js` (`opcionesDelDia`) | **Hecho** |
+| «Poco tiempo de cocina» solo si ninguna de las tres pasa de 10 min | `js/ui/render-insights.js` | **Hecho** |
+| Tests: la regla, el generador (30 planes), el aviso, «Cambiar», lo guardado, el formulario y los ajustes | `tests/per-meal-editing.test.js`, `tests/settings.test.js` | **Hecho** |
 
 ## Menú sin despensa, 2026-10-30 (sello `20261030a`, 1340 tests)
 

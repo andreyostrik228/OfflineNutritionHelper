@@ -669,7 +669,8 @@ function findTodayEntry() {
  * @param {object[]} meals - result.meals de generateDietPlan(), tal cual
  * @param {string} [storeId]
  * @param {object} [dayOptions] - { budget, cookTime, taste } del `data`
- *   original de generateDietPlan() (2026-08-20g, per-meal editing) --
+ *   original de generateDietPlan() (2026-08-20g, per-meal editing), y
+ *   desde el 2026-10-31 { cookTimeCadaToma, cookTimePorToma } --
  *   OPCIONAL a propósito, para no romper ningún llamador existente
  *   (tests incluidos): sin esto, la entrada se guarda exactamente igual
  *   que siempre, solo que "cambiar este plato" (regenerateSingleMeal(),
@@ -751,6 +752,7 @@ function savePlanForToday(meals, storeId, dayOptions, planDateKey) {
     if (budget !== null)   draft.budget = budget;
     if (cookTime !== null) draft.cookTime = cookTime;
     if (taste !== null)    draft.taste = taste;
+    if (dayOptions) _ponerTiempoPorToma(draft, dayOptions);
     var historySavedReplace = savePantryHistory(history);
     return { entry: draft, historySaved: historySavedReplace, replaced: true };
   }
@@ -769,9 +771,30 @@ function savePlanForToday(meals, storeId, dayOptions, planDateKey) {
     taste: taste,
     purchase: { done: false, runs: [] }
   };
+  _ponerTiempoPorToma(entry, dayOptions);
 
   var historySaved = appendPantryHistory(entry);
   return { entry: entry, historySaved: historySaved, replaced: false };
+}
+
+/**
+ * El tiempo de cada toma (2026-10-31) en una entrada. Con la marca puesta se
+ * guardan la marca y los minutos de cada toma, que «Cambiar» en «Mis planes»
+ * necesita para re-elegir con el tiempo de ESA toma (tiempoDeLaToma,
+ * plan-generator.js). Sin ella no se guarda nada y vale el `cookTime` de la
+ * entrada.
+ * @param {object} entry - se modifica
+ * @param {object} [dayOptions]
+ */
+function _ponerTiempoPorToma(entry, dayOptions) {
+  var porToma = (dayOptions && dayOptions.cookTimeCadaToma === true) ? dayOptions.cookTimePorToma : null;
+  if (porToma && typeof porToma === "object") {
+    entry.cookTimeCadaToma = true;
+    entry.cookTimePorToma = Object.assign({}, porToma);
+  } else {
+    delete entry.cookTimeCadaToma;
+    delete entry.cookTimePorToma;
+  }
 }
 
 /**
@@ -855,6 +878,7 @@ function replacePendingMealsForToday(entryId, newMeals, storeId, dayOptions) {
   if (dayOptions && typeof dayOptions.budget === "number")   entry.budget = dayOptions.budget;
   if (dayOptions && typeof dayOptions.cookTime === "number") entry.cookTime = dayOptions.cookTime;
   if (dayOptions && typeof dayOptions.taste === "string")    entry.taste = dayOptions.taste;
+  if (dayOptions) _ponerTiempoPorToma(entry, dayOptions);
   if (replacedMealKeys.length > 0) {
     entry.purchase.done = false;
   }

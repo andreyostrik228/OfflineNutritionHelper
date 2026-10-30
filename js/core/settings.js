@@ -53,7 +53,14 @@ var SETTINGS_STRING_FIELDS  = ["sex", "goal", "budgetMode", "taste", "wakeTime",
 // a diferencia de las cadenas vacias y las listas vacias, que se descartan.
 // `planSinDespensa` (2026-10-30): el menú y la compra hacen como si la despensa
 // estuviera vacía, sin borrar lo apuntado (despensaParaElMenu, pantry.js).
-var SETTINGS_BOOLEAN_FIELDS = ["hideOneDayCostNote", "planSinDespensa"];
+// `cookTimeCadaToma` (2026-10-31): «Distinto tiempo para desayuno, comida y
+// cena»; los minutos van en `cookTimePorToma` (ver sanitizeCookTimePorToma).
+var SETTINGS_BOOLEAN_FIELDS = ["hideOneDayCostNote", "planSinDespensa", "cookTimeCadaToma"];
+
+// Las tomas que pueden tener sus propios minutos para cocinar: las del día
+// (MEAL_DEFS, plan-generator.js). Hoy el formulario solo pide desayuno, comida
+// y cena; los snacks se hacen todos en 10 min o menos.
+var SETTINGS_TOMAS_CON_TIEMPO = ["breakfast", "lunch", "dinner", "snack", "snack2"];
 
 /**
  * Listas de exclusión del usuario. Son ARRAYS de texto, no cadenas, así
@@ -126,6 +133,24 @@ function sanitizeStringList(raw) {
   return out;
 }
 
+/**
+ * Sanea los minutos de cada toma, { breakfast: 10, dinner: 60 }: solo claves
+ * de toma conocidas con un número. Como el resto del fichero, solo el TIPO; que
+ * sea un tiempo utilizable lo decide tiempoDeLaToma() (plan-generator.js).
+ * @param {*} raw
+ * @returns {object|null} null si no queda ninguna toma
+ */
+function sanitizeCookTimePorToma(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  var out = {};
+  var hay = false;
+  SETTINGS_TOMAS_CON_TIEMPO.forEach(function (key) {
+    var v = raw[key];
+    if (typeof v === "number" && isFinite(v)) { out[key] = v; hay = true; }
+  });
+  return hay ? out : null;
+}
+
 function sanitizeSettings(raw) {
   if (!raw || typeof raw !== "object") return {};
   var clean = {};
@@ -145,6 +170,8 @@ function sanitizeSettings(raw) {
     var list = sanitizeStringList(raw[key]);
     if (list.length) clean[key] = list;
   });
+  var porToma = sanitizeCookTimePorToma(raw.cookTimePorToma);
+  if (porToma) clean.cookTimePorToma = porToma;
   if (typeof raw.updatedAt === "string") clean.updatedAt = raw.updatedAt;
 
   return clean;

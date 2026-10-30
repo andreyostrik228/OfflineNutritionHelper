@@ -189,6 +189,8 @@
  *     { error } — per-meal editing (2026-08-20g), ver esa sección más
  *     abajo. Re-elige UN plato para una toma de un plan de PLATO ya
  *     confirmado, sin regenerar las otras 4.
+ *   tiempoDeLaToma(opciones, mealKey) → minutos para cocinar esa toma
+ *     (tiempo de cada toma, 2026-10-31), o null.
  * ─────────────────────────────────────────────────────────────────────────
  */
 
@@ -579,6 +581,41 @@ function sanitizeInputs(profile, data) {
   var safeData = Object.assign({}, data, safeOverrides);
 
   return { profile: safeProfile, data: safeData };
+}
+
+/**
+ * Minutos que hay para cocinar UNA toma (2026-10-31). El dueño, el 2026-10-30:
+ * «если у кого-то на завтрак есть всего 10 минут, но потом он свободен, то он
+ * мог это сказать и уделить больше времени готовке».
+ *
+ * Con la marca «Distinto tiempo para desayuno, comida y cena»
+ * (`cookTimeCadaToma`), los de esa toma en `cookTimePorToma`; sin la marca, o si
+ * la toma no tiene los suyos (los snacks: los 61 se hacen en 10 min o menos), el
+ * `cookTime` de todo el día. Sin la marca los minutos no cuentan aunque vengan:
+ * en «Mis datos» se quedan guardados para cuando se vuelva a marcar. Lo leen
+ * igual el `data` del generador, el `dayOptions` de app.js y una entrada de «Mis
+ * planes»: los tres llevan esos mismos tres campos.
+ *
+ * @param {object} opciones - { cookTime, cookTimeCadaToma?, cookTimePorToma? }
+ * @param {string} mealKey  - "breakfast"|"lunch"|"dinner"|"snack"|"snack2"
+ * @returns {number|null} null si no hay ningún tiempo utilizable
+ */
+function tiempoDeLaToma(opciones, mealKey) {
+  if (!opciones) return null;
+  var porToma = opciones.cookTimeCadaToma === true ? opciones.cookTimePorToma : null;
+  var suyo = (porToma && typeof porToma === "object") ? porToma[mealKey] : undefined;
+  if (isFiniteNum(suyo) && suyo > 0) return suyo;
+  return (isFiniteNum(opciones.cookTime) && opciones.cookTime > 0) ? opciones.cookTime : null;
+}
+
+/**
+ * `data` con los minutos de ESTA toma en `cookTime`, que es lo único que mira
+ * pickDish() del tiempo. El mismo objeto si coinciden con los del día.
+ */
+function _datosDeLaToma(data, mealKey) {
+  var min = tiempoDeLaToma(data, mealKey);
+  if (min === null || min === data.cookTime) return data;
+  return Object.assign({}, data, { cookTime: min });
 }
 
 // ── Punto de entrada público ──────────────────────────────────────────────
@@ -1009,7 +1046,7 @@ function attemptPlanAtTier(profile, data, tier, pantryState) {
 
     var targetSpend = round2(data.targetBudget * def.ratio);
 
-    var pick = pickDish(def.category, data, usedState, tier, mealCap, target, store, targetSpend, committedGrams, pantryState);
+    var pick = pickDish(def.category, _datosDeLaToma(data, def.key), usedState, tier, mealCap, target, store, targetSpend, committedGrams, pantryState);
 
     var dish, scaleFactor;
     if (pick.dish) {
@@ -2057,8 +2094,9 @@ function verifyPlanFeasibility(meals, total, profile, data) {
   }
 
   meals.forEach(function (meal) {
-    if (meal.prep > data.cookTime) {
-      violations.push({ type: "time", meal: meal.key, exceededBy: meal.prep - data.cookTime });
+    var limite = tiempoDeLaToma(data, meal.key);
+    if (meal.prep > limite) {
+      violations.push({ type: "time", meal: meal.key, exceededBy: meal.prep - limite });
     }
   });
 
@@ -2095,7 +2133,7 @@ function scorePlan(attempt, profile, data) {
 
   var budgetOverrun = Math.max(0, (total.purchaseCost - data.budget) / Math.max(data.budget, 0.01));
   var timePenalty = attempt.meals.reduce(function (sum, m) {
-    return sum + Math.max(0, m.prep - data.cookTime);
+    return sum + Math.max(0, m.prep - tiempoDeLaToma(data, m.key));
   }, 0) / 100;
   var kcalDev    = Math.abs(total.kcal    - profile.calories) / Math.max(profile.calories, 1);
   var proteinDev = Math.abs(total.protein - profile.protein)  / Math.max(profile.protein, 1);
@@ -2546,7 +2584,9 @@ function regenerateSingleMeal(entry, mealKey, pantryState) {
 
   var target = { kcal: oldMeal.total.kcal, protein: oldMeal.total.protein, carbs: oldMeal.total.carbs, fat: oldMeal.total.fat };
   var data = {
-    cookTime: typeof entry.cookTime === "number" ? entry.cookTime : 999,
+    // Los minutos de ESTA toma si la entrada se guardó con la marca del tiempo
+    // de cada toma (2026-10-31); si no, los del día.
+    cookTime: tiempoDeLaToma(entry, mealKey) || 999,
     taste:    typeof entry.taste === "string" ? entry.taste : "mixed",
     store:    store
   };
@@ -2573,7 +2613,7 @@ function regenerateSingleMeal(entry, mealKey, pantryState) {
  *
  * @param {object[]} meals - result.meals de generateDietPlan() (items con `grams`)
  * @param {string} mealKey - "breakfast"|"lunch"|"dinner"|"snack"|"snack2"
- * @param {{budget:number, cookTime?:number, taste?:string}} dayOptions - lastGeneratedDayOptions (app.js)
+ * @param {{budget:number, cookTime?:number, cookTimeCadaToma?:boolean, cookTimePorToma?:object, taste?:string}} dayOptions - lastGeneratedDayOptions (app.js)
  * @param {string} [storeId]
  * @param {object|null} [pantryState] - snapshot de getPantryState(), o null
  * @returns {{ meal:object, tier:number }|{ error:string }}
@@ -2611,7 +2651,8 @@ function regeneratePlanMeal(meals, mealKey, dayOptions, storeId, pantryState) {
 
   var target = { kcal: oldMeal.total.kcal, protein: oldMeal.total.protein, carbs: oldMeal.total.carbs, fat: oldMeal.total.fat };
   var data = {
-    cookTime: (dayOptions && typeof dayOptions.cookTime === "number") ? dayOptions.cookTime : 999,
+    // Con la marca del tiempo de cada toma, los de esta (tiempoDeLaToma).
+    cookTime: tiempoDeLaToma(dayOptions, mealKey) || 999,
     taste:    (dayOptions && typeof dayOptions.taste === "string") ? dayOptions.taste : "mixed",
     store:    store,
     // Para que pickDish() aplique la regla de "makeAhead" también al
