@@ -18,6 +18,33 @@ llevan al final un bloque «actualización 2026-10-08»). El diario fechado, con
 medidas y causas, está en la cabecera de `STATE.md` (entradas del 2026-10-07 y
 2026-10-08).
 
+### 0.0 octodecies Menú sin despensa, 2026-10-30 (lee esto antes que 0.0 septdecies)
+
+- **Estado:** sello `20261030a`, **1340 tests en verde**. El dueño: «сделай так,
+  чтобы можно было делать меню без кладовки… я сейчас в другом городе, и мне
+  неудобно сначала удалить, а потом снова добавлять продукты».
+- **Qué hace:** en «Mis datos», bajo «Despensa (N)», la marca «Tener en cuenta lo
+  que hay en la despensa» (sale solo si hay algo apuntado). Quitada, el menú y la
+  compra se hacen como si la despensa estuviera vacía, y lo apuntado se queda tal
+  cual. Se guarda en `settings.planSinDespensa` (viaja con la cuenta; es de cada
+  persona de la casa) y vale para el próximo «Generar plan».
+- **Una sola puerta:** todo lo que PLANIFICA lee la despensa con
+  `despensaParaElMenu()` (`js/core/pantry.js`): el generador (`_despensaDelMenu`,
+  en `generateDietPlanDays`, `despensaParaElDia` y `generateDietPlanTiered`), la
+  lista de la compra (`computeDayPurchaseCost` sin despensa explícita), la pista
+  «Если не наелись…» y «Cambiar» en «Mis planes». Lo que MUESTRA o sincroniza la
+  despensa sigue con `getPantryState()`. El sin cocinar no usaba la despensa de
+  casa. Un test (`tests/pantry.test.js`) vigila que el generador no vuelva a leer
+  `getPantryState()` por su cuenta.
+- **Confirmar el plan** no gasta nada de la despensa (eso pasa al marcar en «Mis
+  planes»), así que no hubo que tocarlo.
+- **Medido en el navegador:** con 10 productos en la despensa, un plan de un día
+  marcó 5 como «ya en tu despensa»; quitada la marca, 0, y la despensa siguió con
+  sus 2000 g. La marca sobrevive a recargar.
+- **Pendiente, pedido el mismo día para más adelante:** el diario de lo comido y
+  el tiempo de cocina de cada toma. Están pensados en `ROADMAP.md`, «Ideas del
+  dueño para más adelante».
+
 ### 0.0 septdecies Tomas plegadas, 2026-10-28 (lee esto antes que 0.0 sexdecies)
 
 - **Estado:** sello `20261028b`, **1336 tests en verde**. El dueño: «все приёмы

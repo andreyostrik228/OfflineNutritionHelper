@@ -1,5 +1,69 @@
 # Nutrition Planner — Roadmap
 
+## Ideas del dueño para más adelante (2026-10-30) — NO empezadas
+
+El dueño, el 2026-10-30: «сейчас я дам тебе задачу, чтобы потом не забыть, не
+нужно делать её сейчас, просто подумай». Antes de empezar cualquiera de las dos,
+preguntarle por cuál y enseñarle este planteamiento.
+
+### 1. Diario de lo comido, con su análisis y qué comer si falta algo
+
+Lo pedido: «говорить, какие продукты ты скушал, чтобы сайт это записывал,
+анализировал и говорил, сколько калорий ты скушал, БЖУ, и, если есть недостача,
+предлагал, что можно купить, приготовить и скушать».
+
+- **Apuntar.** Tres caminos, de más a menos frecuente: (a) un toque «Lo he comido»
+  en una toma del plan o de «Mis planes» (ya existe marcar lo cocinado: que cuente
+  como comido); (b) buscar un producto o un plato (el catálogo ya tiene nombres en
+  cuatro idiomas y la nutrición en `ingredient-nutrition.js` / `real-products.js`)
+  con su cantidad en gramos, piezas o raciones; (c) escribirlo («200 г риса, 2
+  яйца») y que un analizador local lo convierta en (b). La voz (Web Speech API)
+  solo como extra: necesita red y en iOS va regular, y la aplicación funciona sin
+  conexión.
+- **Guardar.** Un registro por día como el del peso o el de entrenamientos:
+  `{hora, clave del producto o plato, gramos, kcal, P, C, G, origen: plan | a mano}`.
+  Con cuenta, dentro de `settings` (las reglas de Firestore solo dejan cuatro
+  campos), con tope de días en la nube: un documento no puede pasar de 1 MB.
+- **Analizar.** Lo comido frente a la meta del perfil (`calculateProfile`): kcal y
+  macros con sus barras, por toma y por día, y la semana. Si se pasa, decirlo sin
+  regañar.
+- **Si falta algo.** Con lo que queda (meta − comido) y la hora, proponer 2-3
+  salidas: con lo que hay en casa (la despensa, si está en cuenta), algo sin
+  cocinar que se compra en Mercadona (el generador sin cocinar para una sola toma)
+  y un plato (como «Cambiar»: `regeneratePlanMeal` con las macros que faltan y el
+  tiempo que haya). Sin consejo médico (el aviso de siempre).
+
+### 2. Tiempo de cocina de cada toma
+
+Lo pedido: «указывать, сколько времени у тебя есть на готовку каждого приёма пищи:
+если у кого-то на завтрак всего 10 минут, но потом он свободен, он мог бы это
+сказать и уделить больше времени готовке».
+
+- **Hoy** hay un solo «Tiempo para cocinar» (`cookTime`: 10, 20, 35 o 60) para todas
+  las tomas.
+- **Propuesta:** en «Mis datos», «Distinto en cada toma» abre una fila por toma
+  (desayuno 10 min, comida 35, cena 60…), con los mismos cuatro niveles; sin
+  tocarlo, todas como el general. Se guarda como `cookTimePorToma: {clave: min}`
+  en los ajustes.
+- **Motor:** `generateDietPlan` y la selección de platos pasan a leer el tiempo de
+  cada toma (`data.cookTimePorToma[clave]`, y si no, `data.cookTime`), también en
+  los niveles de relajación y en «Cambiar». Con un desayuno corto, preferir lo
+  rápido o lo «de la noche antes» (`makeAhead`).
+- **Para después:** cocinar una vez para dos tomas cuando sobra tiempo (doble
+  ración en la comida y la otra mitad en la cena), aprovechando lo que ya hace el
+  plan con lo que sobra entre días.
+
+## Menú sin despensa, 2026-10-30 (sello `20261030a`, 1340 tests)
+
+El dueño: «сделай так, чтобы можно было делать меню без кладовки… я сейчас в
+другом городе».
+
+| Qué | Dónde | Estado |
+|---|---|---|
+| «Tener en cuenta lo que hay en la despensa» en «Mis datos»; quitada, menú y compra como si estuviera vacía, sin borrar nada | `index.html`, `js/app.js`, `js/core/pantry.js` (`despensaParaElMenu`) | **Hecho** |
+| Todo lo que planifica lee la despensa por esa puerta (generador, compra, «Если не наелись…», «Cambiar» en «Mis planes») | `js/engine/plan-generator.js`, `js/core/budget.js`, `js/ui/render-pantry.js` | **Hecho** |
+| Tests: la puerta, la compra sin despensa, el ajuste y que el generador no lea la despensa por su cuenta | `tests/pantry.test.js` | **Hecho** |
+
 ## Tomas plegadas, 2026-10-28 (sello `20261028b`, 1336 tests)
 
 El dueño: «все приёмы пищи, что сейчас не нужны, намного меньше… открыть

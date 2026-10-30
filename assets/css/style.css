@@ -1139,6 +1139,25 @@ input[type="time"] { font-variant-numeric: tabular-nums; }
   letter-spacing: 0.05em;
 }
 .despensa-btn__count { font-variant-numeric: tabular-nums; }
+/* «Tener en cuenta lo que hay en la despensa» (2026-10-30): quitada, el menú y la
+   compra hacen como si estuviera vacía; la nota lo dice mientras esté quitada. */
+.despensa-uso { display: grid; gap: 6px; margin: 4px 0 8px; }
+.despensa-uso[hidden] { display: none; }
+.despensa-uso__fila {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 6px 12px;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+  cursor: pointer;
+}
+.despensa-uso__fila input { flex: none; width: 20px; height: 20px; margin: 0; accent-color: var(--primary); }
+.despensa-uso__nota { margin: 0; padding: 0 4px; font-size: 13px; line-height: 1.4; color: var(--text-2); }
 
 .spinner-wrap {
   display: none;

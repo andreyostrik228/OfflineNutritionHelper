@@ -1455,6 +1455,69 @@ function run(t) {
     assert.strictEqual(despues.acquiredAt, "2026-09-01",
       "deshacer no puede llevarse por delante la fecha de compra");
   });
+
+  // ── Menú sin despensa (2026-10-30) ───────────────────────────────────
+  // El dueño: «я сейчас в другом городе… неудобно сначала удалить, а потом
+  // снова добавлять». Quitada «Tener en cuenta lo que hay en la despensa»,
+  // el menú y la compra hacen como si estuviera vacía, y lo apuntado se queda.
+
+  function conAjustes(s) {
+    var fs = require("fs");
+    var vm = require("vm");
+    var f = projPath("js/core/settings.js");
+    vm.runInContext(fs.readFileSync(f, "utf8"), s, { filename: f });
+    return s;
+  }
+
+  t.test("menú sin despensa: despensaParaElMenu() da la de verdad o, quitada la marca, una vacía; lo apuntado no se toca", function () {
+    var s = conAjustes(freshPantryShoppingListSandbox());
+    s.setStock("Avena", 500);
+    assert.strictEqual(s.despensaApagada(), false, "por defecto se tiene en cuenta");
+    assert.strictEqual(Object.keys(s.despensaParaElMenu()).length, 1);
+    s.saveSettings({ planSinDespensa: true });
+    assert.strictEqual(s.despensaApagada(), true);
+    assert.strictEqual(Object.keys(s.despensaParaElMenu()).length, 0, "para el menú, vacía");
+    assert.strictEqual(s.getStock("Avena"), 500, "la despensa sigue con lo suyo");
+    s.saveSettings({ planSinDespensa: false });
+    assert.strictEqual(Object.keys(s.despensaParaElMenu()).length, 1, "y vuelve al marcarla");
+  });
+
+  t.test("menú sin despensa: la compra vuelve a pedir lo que hay en casa (computeDayPurchaseCost, la lista de la compra)", function () {
+    var s = conAjustes(freshPantryShoppingListSandbox());
+    injectSyntheticIngredient(s, { key: "test arroz sin despensa", pricePer100Units: 0.2, packageSize: 1000 });
+    var meals = fakeMeals({ lunch: [{ name: "test arroz sin despensa", grams: 100 }] });
+    s.setStock("test arroz sin despensa", 1000);
+    var conDespensa = s.computeDayPurchaseCost(meals, "mercadona");
+    s.saveSettings({ planSinDespensa: true });
+    var sinDespensa = s.computeDayPurchaseCost(meals, "mercadona");
+    assert.strictEqual(conDespensa.purchaseCost, 0, "en casa hay arroz: no se compra");
+    assert.ok(sinDespensa.purchaseCost > 0, "fuera de casa, se compra: " + sinDespensa.purchaseCost);
+    // Quien pasa la despensa a mano decide por su cuenta: eso no cambia.
+    assert.strictEqual(s.computeDayPurchaseCost(meals, "mercadona", s.getPantryState()).purchaseCost, 0);
+  });
+
+  t.test("menú sin despensa: la marca se guarda como booleano en los ajustes y sobrevive al saneado", function () {
+    var s = conAjustes(freshPantrySandbox());
+    assert.strictEqual(s.sanitizeSettings({ planSinDespensa: true }).planSinDespensa, true);
+    assert.strictEqual(s.sanitizeSettings({ planSinDespensa: false }).planSinDespensa, false);
+    assert.strictEqual(s.sanitizeSettings({ planSinDespensa: "sí" }).planSinDespensa, undefined, "un texto no es un sí");
+  });
+
+  t.test("menú sin despensa: todo lo que planifica pasa por despensaParaElMenu, y la marca está en «Mis datos»", function () {
+    var fs = require("fs");
+    var leer = function (f) { return fs.readFileSync(projPath(f), "utf8"); };
+    var gen = leer("js/engine/plan-generator.js");
+    // Las líneas de código (no los comentarios) que leen la despensa: solo una, la de _despensaDelMenu.
+    var lecturas = gen.split("\n").filter(function (l) { return /getPantryState\(\)/.test(l) && !/^\s*(\*|\/\/)/.test(l); });
+    assert.strictEqual(lecturas.length, 1, "el generador lee la despensa solo en _despensaDelMenu: " + lecturas.join(" | "));
+    assert.ok(gen.indexOf("function _despensaDelMenu()") !== -1);
+    assert.ok(leer("js/core/budget.js").indexOf("despensaParaElMenu()") !== -1, "la lista de la compra");
+    assert.ok(leer("js/ui/render-pantry.js").indexOf("despensaParaElMenu()") !== -1, "«Cambiar» en «Mis planes»");
+    var app = leer("js/app.js");
+    assert.ok(app.indexOf("despensaParaElMenu()") !== -1 && app.indexOf("planSinDespensa") !== -1);
+    var html = leer("index.html");
+    assert.ok(html.indexOf('id="despensaUsoCheck"') !== -1 && html.indexOf('data-i18n="ui.despensa_uso"') !== -1);
+  });
 }
 
 module.exports = { run: run };

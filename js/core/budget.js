@@ -158,7 +158,8 @@ function computeDayPurchaseCost(meals, storeId, pantryState) {
 
   var resolvedPantryState = pantryState;
   if (resolvedPantryState === undefined && typeof getPantryState === "function") {
-    resolvedPantryState = getPantryState();
+    // La del menú: vacía si el usuario lo pidió sin despensa (2026-10-30).
+    resolvedPantryState = (typeof despensaParaElMenu === "function") ? despensaParaElMenu() : getPantryState();
 
     // Cuando la despensa se resuelve AQUÍ (el llamador no la pasó), se
     // proyecta a hoy antes de usarla: lo ya caducado no debe descontar del

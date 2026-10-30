@@ -139,6 +139,8 @@ var pantryListContainer, pantryEmptyEl, pantryAddForm, pantryAddNameInput, pantr
     pantryCountEl, planSavedNoticeEl;
 // El apartado de lo comprado para un plan sin cocinar (2026-10-21).
 var pantryNoCookSectionEl, pantryNoCookListEl;
+// «Tener en cuenta lo que hay en la despensa», en «Mis datos» (2026-10-30).
+var despensaUsoEl;
 var pantryOnChange; // callback de app.js — sincroniza la lista de la compra visible
 var pantryIngredientByKey = {}; // clave normalizada -> nombre canónico, para resolver lo tecleado en el alta
 
@@ -190,6 +192,7 @@ function initPantryRefs(refs) {
   planSavedNoticeEl            = refs.planSavedNoticeEl;
   pantryNoCookSectionEl        = refs.pantryNoCookSection || null;
   pantryNoCookListEl           = refs.pantryNoCookList || null;
+  despensaUsoEl                = refs.despensaUso || null;
   pantryOnChange               = typeof refs.onPantryChange === "function" ? refs.onPantryChange : function () {};
 
   planReplaceDialogEl    = refs.planReplaceDialogEl;
@@ -364,6 +367,9 @@ function renderPantryPanel() {
   // se guardaba y no salía en ninguna parte.
   var sinCocinar = (typeof listNoCookStockEntries === "function") ? listNoCookStockEntries() : [];
   if (pantryCountEl) pantryCountEl.textContent = entries.length + sinCocinar.length;
+  // «Tener en cuenta lo que hay en la despensa» (2026-10-30): con la despensa
+  // vacía no hay nada que tener en cuenta, así que ni se enseña.
+  if (despensaUsoEl) despensaUsoEl.hidden = entries.length === 0;
 
   if (entries.length === 0) {
     pantryListContainer.innerHTML = "";
@@ -1454,7 +1460,9 @@ function handleEntryClick(event) {
         : null;
       if (!regenEntry) return;
 
-      var pantryStateForRegen = (typeof getPantryState === "function") ? getPantryState() : null;
+      // Como al generar: sin despensa si el usuario lo pidió (2026-10-30).
+      var pantryStateForRegen = (typeof despensaParaElMenu === "function") ? despensaParaElMenu()
+        : ((typeof getPantryState === "function") ? getPantryState() : null);
       var regen = (typeof regenerateSingleMeal === "function")
         ? regenerateSingleMeal(regenEntry, regenMealKey, pantryStateForRegen)
         : { error: "not_available" };

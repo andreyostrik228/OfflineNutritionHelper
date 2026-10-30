@@ -224,6 +224,8 @@ registerI18nTable("ru", {
   "ui.ajustes": "Настройки",
   "ui.alimentos_que_no_te_gustan": "Продукты, которые вы не любите",
   "ui.no_me_gusta": "Не нравится",
+  "ui.despensa_uso": "Учитывать то, что есть в кладовой",
+  "ui.despensa_uso_nota": "Меню и покупки составятся так, будто кладовая пуста. Записанные продукты останутся на месте.",
   "ui.toma_abrir": "Развернуть: {toma}",
   "ui.toma_plegar": "Свернуть: {toma}",
   "ui.no_me_gusta_aria": "{nombre}: убрать из плана и больше не предлагать",

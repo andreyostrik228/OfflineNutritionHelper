@@ -216,6 +216,8 @@ registerI18nTable("uk", {
   "ui.ajustes": "Налаштування",
   "ui.alimentos_que_no_te_gustan": "Продукти, які тобі не подобаються",
   "ui.no_me_gusta": "Не подобається",
+  "ui.despensa_uso": "Враховувати те, що є в коморі",
+  "ui.despensa_uso_nota": "Меню й покупки складуться так, ніби комора порожня. Записані продукти залишаться на місці.",
   "ui.toma_abrir": "Розгорнути: {toma}",
   "ui.toma_plegar": "Згорнути: {toma}",
   "ui.no_me_gusta_aria": "{nombre}: прибрати з плану й більше не пропонувати",

@@ -660,7 +660,8 @@ function generateDietPlanDays(profile, data, planDays, alTerminarDia) {
   var teniaDespensa = data.despensaDelPlan;
   // La despensa real se lee UNA vez: todos los días parten de la misma, y
   // cada uno recibe la que habrá al empezarlo (despensaDelPlan, más abajo).
-  var despensaReal = (typeof getPantryState === "function") ? getPantryState() : null;
+  // Si el usuario la apagó («sin despensa», 2026-10-30), vacía.
+  var despensaReal = _despensaDelMenu();
   var store = (typeof data.store === "string" && typeof PRICE_CATALOGS !== "undefined" && PRICE_CATALOGS[data.store])
     ? data.store : DEFAULT_STORE_ID;
   try {
@@ -803,6 +804,16 @@ function loteDelPlanSirve(lote, d, inicio) {
 }
 
 /**
+ * La despensa con que se planifica: la de pantry.js (vacía si el usuario pidió
+ * el menú sin despensa, despensaParaElMenu), o null sin pantry.js.
+ * @returns {object|null}
+ */
+function _despensaDelMenu() {
+  if (typeof despensaParaElMenu === "function") return despensaParaElMenu();
+  return (typeof getPantryState === "function") ? getPantryState() : null;
+}
+
+/**
  * La despensa al empezar el día `d` de un plan ya hecho: la real, y desde el
  * día 2 lo que dejan los anteriores. Para «Cambiar» un plato y rehacer un día.
  * @param {{meals:object[]}[]} dias
@@ -812,7 +823,7 @@ function loteDelPlanSirve(lote, d, inicio) {
  * @returns {object|null}
  */
 function despensaParaElDia(dias, d, storeId, opts) {
-  var real = (typeof getPantryState === "function") ? getPantryState() : null;
+  var real = _despensaDelMenu();
   if (!(d > 0) || !Array.isArray(dias)) return real;
   return despensaDelPlan(dias.slice(0, d), storeId, real, opts).siguiente;
 }
@@ -843,7 +854,7 @@ function generateDietPlanTiered(profile, data) {
   // comparan contra el MISMO estado de despensa. null si pantry.js no
   // está cargado -- computeDayPurchaseCost() ya sabe degradar con
   // seguridad a "sin despensa" en ese caso.
-  var pantryState = (typeof getPantryState === "function") ? getPantryState() : null;
+  var pantryState = _despensaDelMenu();
   // En un plan de varios días, el día 2+ trae la despensa que habrá al
   // empezarlo, con lo que sobra de los anteriores (despensaDelPlan).
   if (data && data.despensaDelPlan && typeof data.despensaDelPlan === "object") {

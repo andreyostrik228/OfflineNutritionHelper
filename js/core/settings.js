@@ -51,7 +51,9 @@ var SETTINGS_STRING_FIELDS  = ["sex", "goal", "budgetMode", "taste", "wakeTime",
 // Ajustes de SI/NO. Hasta 2026-09-08 no habia ninguno, asi que sanear un
 // booleano es nuevo: un  es un valor legitimo y hay que guardarlo,
 // a diferencia de las cadenas vacias y las listas vacias, que se descartan.
-var SETTINGS_BOOLEAN_FIELDS = ["hideOneDayCostNote"];
+// `planSinDespensa` (2026-10-30): el menú y la compra hacen como si la despensa
+// estuviera vacía, sin borrar lo apuntado (despensaParaElMenu, pantry.js).
+var SETTINGS_BOOLEAN_FIELDS = ["hideOneDayCostNote", "planSinDespensa"];
 
 /**
  * Listas de exclusión del usuario. Son ARRAYS de texto, no cadenas, así

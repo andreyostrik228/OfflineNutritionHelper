@@ -518,6 +518,7 @@ document.addEventListener("DOMContentLoaded", function () {
    */
   function despensaDelDiaEnPantalla(d) {
     if (typeof despensaParaElDia !== "function") {
+      if (typeof despensaParaElMenu === "function") return despensaParaElMenu();
       return (typeof getPantryState === "function") ? getPantryState() : null;
     }
     return despensaParaElDia(lastGeneratedDays, d, lastGeneratedStore,
@@ -531,7 +532,9 @@ document.addEventListener("DOMContentLoaded", function () {
    */
   function despensaDelPlanEnPantalla() {
     if (!lastGeneratedDays || typeof despensaDelPlan !== "function") return null;
-    var real = (typeof getPantryState === "function") ? getPantryState() : null;
+    // La del menú: vacía si se pidió sin despensa (2026-10-30).
+    var real = (typeof despensaParaElMenu === "function") ? despensaParaElMenu()
+      : ((typeof getPantryState === "function") ? getPantryState() : null);
     var dias = lastGeneratedDays.map(function (dia, d) { return { meals: tomasDeLaCasa(d) }; });
     return despensaDelPlan(dias, lastGeneratedStore, real, {});
   }
@@ -1037,8 +1040,22 @@ document.addEventListener("DOMContentLoaded", function () {
   var repintarPistaPasos = function () {};
   var repintarPistaKcal = function () {};
 
+  /**
+   * La marca «Tener en cuenta lo que hay en la despensa» y su nota, según lo
+   * guardado (settings.planSinDespensa). Mostrarla o no (solo si hay algo en
+   * la despensa) lo decide renderPantryPanel.
+   */
+  function pintarUsoDespensa() {
+    var marca = document.getElementById("despensaUsoCheck");
+    var nota = document.getElementById("despensaUsoNota");
+    var apagada = (typeof despensaApagada === "function") && despensaApagada();
+    if (marca) marca.checked = !apagada;
+    if (nota) nota.hidden = !apagada;
+  }
+
   function applySettingsToForm(settings) {
     if (!settings) return;
+    pintarUsoDespensa();
 
     function setVal(id, value) {
       if (value === undefined || value === null || value === "") return;
@@ -1493,6 +1510,26 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     actualizarAvisoUnDia();
+  });
+
+  // ── Menú sin despensa (2026-10-30) ───────────────────────────────────
+  // «Я сейчас в другом городе… неудобно сначала удалить, а потом снова
+  // добавлять». Quitada la marca, se guarda settings.planSinDespensa y lo que
+  // planifica lee una despensa vacía (despensaParaElMenu, pantry.js); lo
+  // apuntado se queda como está. Vale para el próximo «Generar plan».
+  safeInit("despensa-uso", function () {
+    var marca = document.getElementById("despensaUsoCheck");
+    if (!marca) return;
+    marca.addEventListener("change", function () {
+      if (typeof saveSettings === "function" && typeof getSettings === "function") {
+        var s = getSettings();
+        s.planSinDespensa = !marca.checked;
+        saveSettings(s);
+        if (typeof pushSettingsToCloud === "function") pushSettingsToCloud();
+      }
+      pintarUsoDespensa();
+    });
+    pintarUsoDespensa();
   });
 
   // Puntos + botón por día. El deslizamiento en sí lo hace el navegador
@@ -1992,6 +2029,7 @@ document.addEventListener("DOMContentLoaded", function () {
         dateStripEl: dateStripEl,
         plansEmptyNoteEl: plansEmptyNoteEl,
         pantryCountEl: pantryCountEl,
+        despensaUso: document.getElementById("despensaUso"),
         planSavedNoticeEl: planSavedNoticeEl,
         onPantryChange: syncAfterPantryChange,
         planReplaceDialogEl: planReplaceDialogEl,

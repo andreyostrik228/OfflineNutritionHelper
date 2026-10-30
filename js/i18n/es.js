@@ -213,6 +213,8 @@ registerI18nTable("es", {
   "ui.ajustes": "Ajustes",
   "ui.alimentos_que_no_te_gustan": "Alimentos que no te gustan",
   "ui.no_me_gusta": "No me gusta",
+  "ui.despensa_uso": "Tener en cuenta lo que hay en la despensa",
+  "ui.despensa_uso_nota": "El menú y la compra se hacen como si la despensa estuviera vacía. Lo apuntado no se borra.",
   "ui.toma_abrir": "Ver entera: {toma}",
   "ui.toma_plegar": "Plegar: {toma}",
   "ui.no_me_gusta_aria": "{nombre}: quitar del plan y no volver a ponerlo",

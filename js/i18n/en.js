@@ -218,6 +218,8 @@ registerI18nTable("en", {
   "ui.ajustes": "Settings",
   "ui.alimentos_que_no_te_gustan": "Foods you do not like",
   "ui.no_me_gusta": "Don't like",
+  "ui.despensa_uso": "Take what is in the pantry into account",
+  "ui.despensa_uso_nota": "The menu and the shopping are made as if the pantry were empty. What you have noted down is not deleted.",
   "ui.toma_abrir": "Expand: {toma}",
   "ui.toma_plegar": "Collapse: {toma}",
   "ui.no_me_gusta_aria": "{nombre}: remove from the plan and don't suggest it again",

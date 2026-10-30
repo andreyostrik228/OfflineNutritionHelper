@@ -253,6 +253,30 @@ function getPantryState() {
 }
 
 /**
+ * ¿Pidió el usuario hacer el menú SIN la despensa? (2026-10-30, «Учитывать то,
+ * что есть в кладовой» en «Mis datos»; settings.planSinDespensa). El dueño:
+ * «я сейчас в другом городе… неудобно сначала удалить, а потом снова
+ * добавлять продукты».
+ * @returns {boolean}
+ */
+function despensaApagada() {
+  var s = (typeof getSettings === "function") ? getSettings() : null;
+  return !!(s && s.planSinDespensa === true);
+}
+
+/**
+ * La despensa con la que se hacen el MENÚ y la COMPRA: la de verdad o, si el
+ * usuario la apagó, una vacía. Lo apuntado no se toca: la pantalla de la
+ * despensa, la nube y «Mis planes» siguen leyendo getPantryState(). Todo lo
+ * que planifica (plan-generator.js, budget.js, app.js, render-pantry.js) pasa
+ * por aquí.
+ * @returns {object}
+ */
+function despensaParaElMenu() {
+  return despensaApagada() ? {} : getPantryState();
+}
+
+/**
  * Guarda el estado de la despensa. Nunca lanza (cuota superada, modo
  * privado que bloquea localStorage...) — devuelve false para que quien
  * llama pueda avisar, en vez de romper el flujo.
