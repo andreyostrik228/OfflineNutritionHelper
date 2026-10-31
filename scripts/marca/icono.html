@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- El icono a toda la ventana, para que exportar.mjs lo pinte al tamaño que
+     toque. Con ?mascara=1, al 84 % sobre el mismo amarillo: el «maskable» de
+     Android recorta hasta un círculo del 80 %, y así no se come las orejas. -->
+<style>
+  html, body { margin: 0; width: 100vw; height: 100vh; overflow: hidden; background: #ffd23f; }
+  img { display: block; width: 100vw; height: 100vh; }
+  .mascara img { transform: scale(0.84); }
+</style>
+</head>
+<body>
+<img src="gato.svg" alt="">
+<script>
+  if (new URLSearchParams(location.search).get("mascara")) document.body.className = "mascara";
+</script>
+</body>
+</html>

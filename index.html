@@ -20,10 +20,13 @@
   <!-- Iconos en PNG y no en SVG: iOS NO acepta SVG en apple-touch-icon,
        asi que hasta ahora la pantalla de inicio de un iPhone se quedaba
        sin icono y ponia una captura de la pagina. El de 32 es para la
-       pestana; el de 192, para cuando el navegador quiere uno grande. -->
-  <link rel="icon" type="image/png" sizes="32x32" href="assets/img/icon-32.png">
-  <link rel="icon" type="image/png" sizes="192x192" href="assets/img/icon-192.png">
-  <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
+       pestana; el de 192, para cuando el navegador quiere uno grande.
+       Desde el 2026-10-31 son el gato cocinero y se llaman gato-*.png: con el
+       nombre de antes, quien ya habia entrado se quedaba con el icono viejo
+       en la cache (los iconos no llevan sello). -->
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/img/gato-32.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/img/gato-192.png">
+  <link rel="apple-touch-icon" href="assets/img/gato-180.png">
   <link rel="manifest" href="manifest.webmanifest">
   <!-- Un solo color, sin `media`: la aplicacion es CLARA siempre. El color
        es el del lienzo (--canvas de style.css), para que la barra del
@@ -45,14 +48,14 @@
   <!-- URL ABSOLUTA: un scraper no resuelve rutas relativas, y sin esto la
        tarjeta sale sin imagen. Ancho y alto declarados para que el enlace
        reserve el hueco antes de descargarla. -->
-  <meta property="og:image" content="https://offline-nutrition-helper.pages.dev/assets/img/og-weekplate.jpg">
-  <meta property="og:image:width" content="1732">
-  <meta property="og:image:height" content="908">
-  <meta property="og:image:type" content="image/jpeg">
-  <meta property="og:image:alt" content="Ingredientes reales sobre una encimera junto a una lista de la compra, con el nombre Weekplate">
-  <meta name="twitter:image" content="https://offline-nutrition-helper.pages.dev/assets/img/og-weekplate.jpg">
+  <meta property="og:image" content="https://offline-nutrition-helper.pages.dev/assets/img/og-gato.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:alt" content="Un gato cocinero con gorro dice: «Tú cocinas. Yo hago las cuentas.» Weekplate, menús con precios reales">
+  <meta name="twitter:image" content="https://offline-nutrition-helper.pages.dev/assets/img/og-gato.png">
   <!-- summary_large_image y no summary: con `summary` la tarjeta es un
-       cuadrado pequeño y recortaría por los lados una imagen de 1.732x908. -->
+       cuadrado pequeño y recortaría por los lados una imagen de 1.200x630. -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Weekplate — planificador de menús con precios reales">
   <meta name="twitter:description" content="Menús de una semana con lo que cuestan de verdad. Funciona sin conexión.">

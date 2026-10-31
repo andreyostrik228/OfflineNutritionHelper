@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- El gato cocinero, icono de Weekplate (2026-10-31). Fondo hasta el borde:
+       iOS, Android y el navegador ponen su propia máscara. Los PNG de
+       assets/img salen de aquí con scripts/marca/exportar.mjs. -->
+  <rect width="512" height="512" fill="#ffd23f"/>
+  <!-- orejas y cabeza -->
+  <g stroke="#2b2b2b" stroke-width="9" stroke-linejoin="round">
+    <path d="M140 250 L162 132 L232 196 Z" fill="#f4f4f4"/>
+    <path d="M372 250 L350 132 L280 196 Z" fill="#f4f4f4"/>
+    <ellipse cx="256" cy="300" rx="154" ry="128" fill="#f4f4f4"/>
+  </g>
+  <path d="M166 162 L176 212 L208 196 Z" fill="#ffb3c1"/>
+  <path d="M346 162 L336 212 L304 196 Z" fill="#ffb3c1"/>
+  <!-- gorro -->
+  <g stroke="#2b2b2b" stroke-width="9" stroke-linejoin="round" fill="#ffffff">
+    <path d="M196 196 C168 196 160 150 190 140 C186 104 232 92 250 116 C264 88 314 96 312 132 C346 136 344 190 316 196 Z"/>
+    <rect x="200" y="186" width="112" height="34" rx="10"/>
+  </g>
+  <!-- cara -->
+  <circle cx="204" cy="300" r="17" fill="#2b2b2b"/>
+  <circle cx="308" cy="300" r="17" fill="#2b2b2b"/>
+  <circle cx="210" cy="294" r="6" fill="#fff"/>
+  <circle cx="314" cy="294" r="6" fill="#fff"/>
+  <path d="M246 326 H266 L256 338 Z" fill="#ff8fa3"/>
+  <path d="M234 346 Q245 360 256 346 Q267 360 278 346" fill="none" stroke="#2b2b2b" stroke-width="6" stroke-linecap="round"/>
+  <ellipse cx="176" cy="334" rx="18" ry="10" fill="#ffb3c1"/>
+  <ellipse cx="336" cy="334" rx="18" ry="10" fill="#ffb3c1"/>
+  <path d="M150 318 L100 306 M150 336 L98 342 M362 318 L412 306 M362 336 L414 342" stroke="#2b2b2b" stroke-width="5" stroke-linecap="round"/>
+</svg>
