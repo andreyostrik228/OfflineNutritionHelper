@@ -105,17 +105,21 @@ function initNoCookRefs(refs) {
 // llevan, en todos los días; lo demás no cambia. «Deshacer» lo devuelve todo.
 
 /** El nombre del producto en el idioma de ahora (sin render.js, la etiqueta). */
-function _nombreProductoLeido(nombre) {
-  return typeof nombreProducto === "function" ? nombreProducto(nombre) : nombre;
+// Con `marca`, y «Sin tienda» en Ajustes (2026-10-31), sin la marca del
+// producto ni las de la casa de Mercadona (sinMarcaSiSinTienda, render.js).
+function _nombreProductoLeido(nombre, marca) {
+  var leido = typeof nombreProducto === "function" ? nombreProducto(nombre) : nombre;
+  return typeof sinMarcaSiSinTienda === "function" ? sinMarcaSiSinTienda(leido, marca) : leido;
 }
-function _nombreProductoDoble(nombre) {
-  return typeof nombreProductoDoble === "function" ? nombreProductoDoble(nombre) : nombre;
+function _nombreProductoDoble(nombre, marca) {
+  var doble = typeof nombreProductoDoble === "function" ? nombreProductoDoble(nombre) : nombre;
+  return typeof sinMarcaSiSinTienda === "function" ? sinMarcaSiSinTienda(doble, marca) : doble;
 }
 
 function _botonQuitarProducto(item) {
   return '<button type="button" class="no-me-gusta-btn" data-action="quitar-producto"' +
     ' data-id="' + escapeHtml(String(item.id)) + '" data-nombre="' + escapeHtml(item.name) + '"' +
-    ' aria-label="' + escapeHtml(tFormat("ui.no_me_gusta_aria", { nombre: _nombreProductoLeido(item.name) })) + '">' +
+    ' aria-label="' + escapeHtml(tFormat("ui.no_me_gusta_aria", { nombre: _nombreProductoLeido(item.name, item.brand) })) + '">' +
     escapeHtml(t("ui.no_me_gusta")) + "</button>";
 }
 
@@ -139,7 +143,9 @@ function _alTocarQuitarProducto(ev) {
 function quitarProductoSinCocinar(id, nombre) {
   if (!lastNoCookDays || !nombre || typeof regenerateNoCookSlot !== "function") return;
   var antes = JSON.parse(JSON.stringify(lastNoCookDays));
-  var termino = _nombreProductoLeido(nombre);
+  // El nombre ENTERO, también sin tienda: traducirTerminosDislike lo devuelve
+  // a la etiqueta con la tabla, y sin la marca ya no la encontraría.
+  var termino = typeof nombreProducto === "function" ? nombreProducto(nombre) : nombre;
   var anadido = (typeof agregarNoMeGusta === "function") ? agregarNoMeGusta(termino) : false;
   var cambiadas = 0;
   var sinCambio = 0;
@@ -239,7 +245,7 @@ function _noCookCompraFilaHtml(x, marcado) {
   var hayMarcas = _hayMarcasSinCocinar();
   var casilla = hayMarcas
     ? '<button type="button" class="shopping-item__check" role="checkbox" aria-checked="' + (marcado ? "true" : "false") + '"' +
-        ' aria-label="' + escapeHtml(t("ui.marcar_como_comprado").replace("{producto}", _nombreProductoLeido(x.name))) + '"></button>'
+        ' aria-label="' + escapeHtml(t("ui.marcar_como_comprado").replace("{producto}", _nombreProductoLeido(x.name, x.brand))) + '"></button>'
     : '<span class="shopping-item__check" aria-hidden="true"></span>';
   var raciones = round2(x.servings);
   var usado = t("ui.usado") + ": " + raciones + " " + noCookUnitLabel(x.unit, raciones) +
@@ -251,8 +257,8 @@ function _noCookCompraFilaHtml(x, marcado) {
       (hayMarcas ? ' data-clave="' + escapeHtml(claveDeArticulo(x)) + '"' : "") + ">" +
     casilla +
     '<div class="shopping-item__main">' +
-      '<div class="shopping-item__name">' + escapeHtml(_nombreProductoDoble(x.name)) + findBtn + "</div>" +
-      (x.brand ? '<div class="shopping-item__meta">' + escapeHtml(x.brand) + "</div>" : "") +
+      '<div class="shopping-item__name">' + escapeHtml(_nombreProductoDoble(x.name, x.brand)) + findBtn + "</div>" +
+      (x.brand ? '<div class="shopping-item__meta shopping-item__marca">' + escapeHtml(x.brand) + "</div>" : "") +
       '<div class="shopping-item__meta">' + escapeHtml(usado) + "</div>" +
       '<div class="shopping-item__buy">' + escapeHtml(t("ui.comprar")) + ": " + x.packs + " &times; " +
         escapeHtml(t("ui.envase")) + envase + "</div>" +
@@ -315,12 +321,14 @@ function renderNoCookShoppingList(dias) {
   var consumo = dias.reduce(function (s, plan) { return s + (plan.consumedCost || 0); }, 0);
   if (_compra.cuenta) _compra.cuenta.textContent = _compraItems.length;
   if (_compra.resumen) {
+    // «≈€» con «Sin tienda» (euroHtml, render.js): los precios son orientativos.
+    var eur = (typeof euroHtml === "function") ? euroHtml() : "&euro;";
     _compra.resumen.innerHTML =
       '<div class="shopping-summary__stat"><span>' + escapeHtml(t("ui.productos_etiqueta")) + "</span><strong>" + _compraItems.length + "</strong></div>" +
       '<div class="shopping-summary__stat"><span>' + escapeHtml(t("ui.coste_de_compra")) +
-        (1 < n ? " (" + n + " " + escapeHtml(t("ui.dias")) + ")" : "") + "</span><strong>&euro;" + round2(total) + "</strong></div>" +
-      (1 < n ? '<div class="shopping-summary__stat"><span>' + escapeHtml(t("ui.por_dia_etiqueta")) + "</span><strong>&euro;" + round2(total / n) + "</strong></div>" : "") +
-      '<div class="shopping-summary__stat shopping-summary__stat--muted"><span>' + escapeHtml(t("ui.coste_de_uso")) + "</span><strong>&euro;" + round2(consumo) + "</strong></div>";
+        (1 < n ? " (" + n + " " + escapeHtml(t("ui.dias")) + ")" : "") + "</span><strong>" + eur + round2(total) + "</strong></div>" +
+      (1 < n ? '<div class="shopping-summary__stat"><span>' + escapeHtml(t("ui.por_dia_etiqueta")) + "</span><strong>" + eur + round2(total / n) + "</strong></div>" : "") +
+      '<div class="shopping-summary__stat shopping-summary__stat--muted"><span>' + escapeHtml(t("ui.coste_de_uso")) + "</span><strong>" + eur + round2(consumo) + "</strong></div>";
   }
   if (_compra.ojo) {
     // Con varios días el texto lleva la cifra: sin `data-i18n`, o el barrido
@@ -468,8 +476,12 @@ function paintNoCookDays(dias) {
  * también hay que re-pintarlo al cambiar una sola toma.
  */
 function _noCookDiaHtml(plan, dayIndex, lotes, abiertas) {
+  // «Sin tienda» (2026-10-31): los alérgenos son de la etiqueta de Mercadona y
+  // otra marca puede llevar otros, así que no se enseñan (el CSS esconde
+  // .nocook-item__allergens) y el aviso pasa a ser «mira la etiqueta».
   var allergenNote = (typeof renderAllergenLine === "function")
-    ? '<p class="nocook-disclaimer">' + t("html.nocook_aviso_alergenos") + "</p>"
+    ? '<p class="nocook-disclaimer solo-con-tienda">' + t("html.nocook_aviso_alergenos") + "</p>" +
+      '<p class="nocook-disclaimer solo-sin-tienda">' + t("html.nocook_aviso_alergenos_sin_tienda") + "</p>"
     : "";
 
   // Qué significa la marca "~ sin verificar" de las tarjetas.
@@ -530,7 +542,7 @@ function _noCookSobrasHtml(lotes, dia) {
   // El nombre es el de la estantería (como en las tomas): va en su propio
   // <span>, que es lo que sabe saltarse la comprobación de idioma.
   var lista = hoy.slice(0, SOBRAS_EN_LA_PISTA).map(function (l) {
-    return '<span class="nocook-sobras__producto">' + escapeHtml(_nombreProductoLeido(l.item.name)) + "</span> — " +
+    return '<span class="nocook-sobras__producto">' + escapeHtml(_nombreProductoLeido(l.item.name, l.item.brand)) + "</span> — " +
       escapeHtml(_cantidadQueSobra(l));
   }).join("; ") + (0 < resto ? " " + escapeHtml(tFormat("ui.sobras_y_mas", { n: resto })) : "");
   return '<p class="nocook-disclaimer nocook-sobras">' +
@@ -894,7 +906,7 @@ function renderNoCookItem(item) {
   return (
     '<div class="nocook-item">' +
       levelBadge + wholeBadge + sobrasBadge +
-      '<div class="nocook-item__name">' + escapeHtml(_nombreProductoDoble(item.name)) + findBtn + "</div>" +
+      '<div class="nocook-item__name">' + escapeHtml(_nombreProductoDoble(item.name, item.brand)) + findBtn + "</div>" +
       (item.brand ? '<div class="nocook-item__brand">' + escapeHtml(item.brand) + "</div>" : "") +
       '<div class="nocook-item__qty">' + qtyText + "</div>" +
       macrosLine +

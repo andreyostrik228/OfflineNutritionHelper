@@ -270,6 +270,30 @@ function _menuPintarTema() {
   }
 }
 
+/**
+ * Tienda (2026-10-31): el botón de lo guardado y la pista que le toca. La
+ * pista cambia de CLAVE, no solo de texto: así el barrido del cambio de idioma
+ * (applyI18nToDom) la vuelve a traducir bien.
+ */
+function _menuPintarTienda() {
+  var grupo = document.getElementById("ajustesTienda");
+  if (!grupo) return;
+  var actual = (typeof modoSinTienda === "function" && modoSinTienda()) ? "ninguna" : "mercadona";
+  var botones = grupo.querySelectorAll("[data-tienda]");
+  for (var i = 0; i < botones.length; i++) {
+    var esteEs = botones[i].getAttribute("data-tienda") === actual;
+    botones[i].setAttribute("aria-checked", esteEs ? "true" : "false");
+    if (esteEs) botones[i].classList.add("is-active");
+    else botones[i].classList.remove("is-active");
+  }
+  var pista = document.getElementById("ajustesTiendaHint");
+  if (pista && typeof t === "function") {
+    var clave = actual === "ninguna" ? "html.tienda_ninguna_pista" : "html.tienda_mercadona_pista";
+    pista.setAttribute("data-i18n-html", clave);
+    pista.innerHTML = t(clave);
+  }
+}
+
 // ── Aspecto (diseño completo) ───────────────────────────────────────────
 
 /** El id que se está cargando y el <link> que espera a su hoja. */
@@ -428,6 +452,7 @@ function openAjustesDialog() {
   var d = document.getElementById("ajustesDialog");
   if (!d) return;
   _menuPintarTema();
+  _menuPintarTienda();
   _menuPintarIdioma();
   _menuPintarAspectos();
   if (typeof d.showModal === "function") d.showModal();
@@ -475,6 +500,21 @@ function initAjustesMenu() {
       applyThemeToDom(modo);
       _menuPintarTema();
     });
+  }
+
+  // Tienda: se guarda y se repinta YA lo que hay en pantalla (el plan, las dos
+  // compras y la despensa), sin esperar a otro «Generar plan»: no cambia el
+  // menú, solo cómo se enseña. Lo repinta js/app.js (repintarPorTienda).
+  var tienda = document.getElementById("ajustesTienda");
+  if (tienda) {
+    tienda.addEventListener("click", function (ev) {
+      var b = ev.target && ev.target.closest ? ev.target.closest("[data-tienda]") : null;
+      if (!b || typeof guardarModoTienda !== "function") return;
+      guardarModoTienda(b.getAttribute("data-tienda"));
+      _menuPintarTienda();
+      if (typeof window.repintarPorTienda === "function") window.repintarPorTienda();
+    });
+    _menuPintarTienda();
   }
 
   // Aspecto: las tarjetas se pintan YA (para que el primer clic tenga a

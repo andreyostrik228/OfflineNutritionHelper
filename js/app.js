@@ -718,6 +718,36 @@ document.addEventListener("DOMContentLoaded", function () {
     safeInit("shopping-list-render", pintarListaDeCompraActual);
   }
 
+  /**
+   * «Sin tienda» (2026-10-31, Ajustes): la marca en <html> con la que el CSS
+   * esconde lo que es de UNA tienda (el botón de su ficha, la marca, sus
+   * alérgenos, su catálogo) y enseña la nota de precios aproximados.
+   */
+  function pintarModoTienda() {
+    document.documentElement.classList.toggle("sin-tienda", typeof modoSinTienda === "function" && modoSinTienda());
+  }
+
+  /**
+   * Al cambiar la tienda en Ajustes, lo que ya está en pantalla se vuelve a
+   * pintar: el plan con platos y su compra (el producto exacto, el «≈€»), el
+   * plan sin cocinar y la suya, y la despensa. El menú no cambia: es la misma
+   * comida, contada de otra manera.
+   */
+  function repintarPorTienda() {
+    pintarModoTienda();
+    safeInit("tienda-plan", rerenderCurrentPlan);
+    safeInit("tienda-sin-cocinar", function () {
+      if (typeof lastNoCookDays !== "undefined" && lastNoCookDays && lastNoCookDays.length && typeof paintNoCookDays === "function") {
+        paintNoCookDays(lastNoCookDays);
+      }
+    });
+    safeInit("tienda-despensa", function () {
+      if (typeof renderPantryPanel === "function") renderPantryPanel();
+    });
+  }
+  // js/ui/render-menu.js lo llama al elegir la tienda en Ajustes.
+  window.repintarPorTienda = repintarPorTienda;
+
   // ── Generar el plan (flujo principal) ────────────────────────────────
 
   /**
@@ -2275,6 +2305,7 @@ document.addEventListener("DOMContentLoaded", function () {
   safeInit("i18n-aplicar", function () {
     if (typeof applyI18nToDom === "function") applyI18nToDom();
   });
+  safeInit("tienda-modo", pintarModoTienda);
 
   // Ofrecer la versión propia cuando el navegador traduce a un idioma que
   // ya hablamos. Va aparte de i18n-aplicar: si esto fallara, la aplicación

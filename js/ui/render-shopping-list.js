@@ -314,19 +314,21 @@ function renderShoppingList(meals, storeId, days) {
   if (shoppingCountEl) shoppingCountEl.textContent = items.length;
 
   if (shoppingSummaryEl) {
+    // «≈€» con «Sin tienda» (euroHtml, render.js): los precios son orientativos.
+    var eur = (typeof euroHtml === "function") ? euroHtml() : "&euro;";
     // Con varios días se añade el coste POR DÍA, que es la cifra que hace
     // ver el ahorro: los paquetes se pagan una vez y se reparten.
     var perDay = n > 1
-      ? '<div class="shopping-summary__stat"><span>' + escapeHtml(t("ui.por_dia_etiqueta")) + '</span><strong>&euro;' +
+      ? '<div class="shopping-summary__stat"><span>' + escapeHtml(t("ui.por_dia_etiqueta")) + '</span><strong>' + eur +
         round2(totalPurchaseCost / n) + '</strong></div>'
       : "";
     shoppingSummaryEl.innerHTML =
       '<div class="shopping-summary__stat"><span>' + escapeHtml(t("ui.productos_etiqueta")) + '</span><strong>' + items.length + '</strong></div>' +
       '<div class="shopping-summary__stat"><span>' + escapeHtml(t("ui.coste_de_compra")) +
         (n > 1 ? " (" + n + " " + escapeHtml(t("ui.dias")) + ")" : "") +
-        '</span><strong>&euro;' + round2(totalPurchaseCost) + '</strong></div>' +
+        '</span><strong>' + eur + round2(totalPurchaseCost) + '</strong></div>' +
       perDay +
-      '<div class="shopping-summary__stat shopping-summary__stat--muted"><span>' + escapeHtml(t("ui.coste_de_uso")) + '</span><strong>&euro;' + round2(totalUsageCost) + '</strong></div>';
+      '<div class="shopping-summary__stat shopping-summary__stat--muted"><span>' + escapeHtml(t("ui.coste_de_uso")) + '</span><strong>' + eur + round2(totalUsageCost) + '</strong></div>';
   }
 
   if (shoppingEyebrowEl) {

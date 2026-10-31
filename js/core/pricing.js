@@ -63,6 +63,8 @@
  *   proteinPerEuro(dish, storeId)             → g de proteína por €, a escala nativa
  *   resolvePackageInfo(name, storeId)         → tamaño/precio del envase comprable
  *   resolvePurchaseCost(name, requiredGrams, storeId) → coste de USO vs. de COMPRA
+ *   modoSinTienda() / guardarModoTienda(modo) → «Sin tienda» en Ajustes
+ *     (2026-10-31): solo cambia lo que se enseña, no cómo se tasa
  *
  * ── usageCost vs. purchaseCost (fijado aquí para que no se confundan) ──────
  *   usageCost   = pricePer100g × gramos REALMENTE usados. Es lo que ya
@@ -246,6 +248,42 @@ function listAvailableStores() {
 function getRealProductsForStore(storeId) {
   if (typeof REAL_PRODUCTS_CATALOGS === "undefined") return [];
   return REAL_PRODUCTS_CATALOGS[storeId] || REAL_PRODUCTS_CATALOGS[DEFAULT_STORE_ID] || [];
+}
+
+// ── «Sin tienda» (2026-10-31) ─────────────────────────────────────────────
+// El dueño: «другие магазины не получается добавить, тогда сделай режим без
+// магазина, где все обычные продукты». Es solo de PANTALLA: el motor sigue
+// tasando con DEFAULT_STORE_ID, cuyos precios hacen de precio orientativo, y
+// lo que cambia es lo que se enseña (sin marcas, sin el producto exacto, sin
+// el botón de su ficha, sin sus alérgenos y con los precios como aproximados).
+// Es del dispositivo, como el idioma: el mismo para todas las personas de la
+// casa, que comparten despensa y compra.
+var TIENDA_MODO_KEY = "nutritionPlanner.tienda.v1";
+
+/** true si se eligió «Sin tienda» en Ajustes. Nunca lanza. */
+function modoSinTienda() {
+  try {
+    return typeof localStorage !== "undefined" && localStorage.getItem(TIENDA_MODO_KEY) === "ninguna";
+  } catch (err) {
+    return false;
+  }
+}
+
+/**
+ * Guarda el modo: "ninguna" (sin tienda) o cualquier otra cosa, que es
+ * Mercadona (se borra la clave: lo de siempre no ocupa sitio).
+ * @param {string} modo
+ * @returns {boolean} si se pudo guardar
+ */
+function guardarModoTienda(modo) {
+  try {
+    if (typeof localStorage === "undefined") return false;
+    if (modo === "ninguna") localStorage.setItem(TIENDA_MODO_KEY, "ninguna");
+    else localStorage.removeItem(TIENDA_MODO_KEY);
+    return true;
+  } catch (err) {
+    return false;
+  }
 }
 
 /**

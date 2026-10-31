@@ -1907,6 +1907,18 @@ input[type="time"] { font-variant-numeric: tabular-nums; }
   gap: 8px;
   margin-top: 16px;
 }
+
+/* «Sin tienda» (2026-10-31, Ajustes): <html class="sin-tienda"> lo pone
+   js/app.js (pintarModoTienda). Sin tienda no se enseña nada que sea de UNA
+   tienda (el botón de su ficha, la marca, sus alérgenos, su catálogo) y sale
+   la nota de precios aproximados; con tienda, al revés. */
+html:not(.sin-tienda) .solo-sin-tienda,
+html.sin-tienda .solo-con-tienda,
+html.sin-tienda .product-find-btn,
+html.sin-tienda .nocook-item__brand,
+html.sin-tienda .nocook-item__allergens,
+html.sin-tienda .shopping-item__marca { display: none !important; }
+.tienda-nota { margin: 10px 0 0; font-size: 13px; line-height: 1.4; color: var(--text-2); }
 .shopping-summary__stat {
   display: flex;
   flex: 1 1 0;
@@ -2711,6 +2723,8 @@ input[type="time"] { font-variant-numeric: tabular-nums; }
   font-weight: 700;
 }
 .ajustes-choice__btn[aria-checked="true"] { background: var(--primary); color: var(--on-ink); box-shadow: var(--active-accent); }
+/* La tienda (2026-10-31) tiene dos opciones, no tres como el tema. */
+#ajustesTienda { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .ajustes-actions { display: grid; gap: 8px; }
 .ajustes-action {
   min-height: 52px;

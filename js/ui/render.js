@@ -146,6 +146,32 @@ function nombreProductoDoble(n) {
   return _nombreDoble(n, nombreProducto(n));
 }
 
+// Las marcas propias de Mercadona. Van DENTRO del nombre del producto
+// («Bebida de avena Hacendado 0% azúcar»), y en 208 productos sin campo
+// `brand` (medido el 2026-10-31 sobre los 2.994 del catálogo).
+var MARCAS_DE_LA_CASA = ["Hacendado", "Deliplus", "Bosque Verde", "Compy"];
+
+/**
+ * «Sin tienda» (2026-10-31, Ajustes): el nombre de un producto sin su marca
+ * ni las de la casa de Mercadona; con tienda, tal cual. Se quita la marca de
+ * ESE producto (su `brand`) y no cualquier marca del catálogo: «Asturiana» es
+ * una marca de leche y también una fabada. Sirve para el nombre traducido y
+ * para el doble («перевод / etiqueta»).
+ * @param {string} texto
+ * @param {string} [marca]
+ * @returns {string}
+ */
+function sinMarcaSiSinTienda(texto, marca) {
+  if (typeof texto !== "string" || !(typeof modoSinTienda === "function" && modoSinTienda())) return texto;
+  var limpio = texto;
+  MARCAS_DE_LA_CASA.concat(marca ? [marca] : []).forEach(function (m) {
+    var escapada = String(m).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    limpio = limpio.replace(new RegExp("(^|\\s)" + escapada + "(?=\\s|$|[,.;:)/])", "gi"), "$1");
+  });
+  limpio = limpio.replace(/\s{2,}/g, " ").replace(/\s+([,.;:)])/g, "$1").trim();
+  return limpio || texto;
+}
+
 function _nombreDoble(n, traducido) {
   if (typeof n !== "string" || !n) return n;
   if (typeof traducido !== "string" || !traducido) return n;
@@ -508,6 +534,15 @@ function mercadonaProductUrl(product) {
 }
 
 /**
+ * El euro de los totales de la compra: «≈€» con «Sin tienda» (2026-10-31),
+ * donde los precios son orientativos, y «€» si no. Es HTML.
+ * @returns {string}
+ */
+function euroHtml() {
+  return (typeof modoSinTienda === "function" && modoSinTienda()) ? "&asymp;&euro;" : "&euro;";
+}
+
+/**
  * Botón pequeño y APARTE (no un enlace en el nombre) que abre esa ficha en
  * una pestaña nueva. Es un `<a>` normal: no necesita JS ni handler, y la
  * app sigue siendo offline -- solo navega cuando lo pulsas tú.
@@ -515,6 +550,8 @@ function mercadonaProductUrl(product) {
  * @returns {string}
  */
 function renderProductFindBtn(product) {
+  // Con «Sin tienda» lo esconde el CSS (html.sin-tienda), y así cambiar el
+  // modo en Ajustes no obliga a repintar para quitarlo.
   if (!product) return "";
   var name = (product.name || t("ui.producto"));
   return '<a class="product-find-btn" target="_blank" rel="noopener noreferrer"' +
@@ -1120,7 +1157,9 @@ function etiquetaDeEnvase(label, n) {
  * @returns {string}
  */
 function formatPurchaseLine(info, realMatch, purchase) {
-  if (realMatch) {
+  // «Sin tienda» (2026-10-31): nada de «este producto exacto de Mercadona»;
+  // la línea de siempre, con el envase genérico.
+  if (realMatch && !(typeof modoSinTienda === "function" && modoSinTienda())) {
     return formatRealMatchPurchaseLine(realMatch, purchase);
   }
 

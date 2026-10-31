@@ -1211,6 +1211,72 @@ function run(t) {
     assert.ok(/@media print \{\s*\.meal-card\.is-plegada \.meal-body,\s*\.nocook-slot\.is-plegada \.nocook-slot__body \{ display: block; \}/.test(css),
       "al imprimir, todo abierto");
   });
+
+  // ── «Sin tienda» (2026-10-31) ───────────────────────────────────────────
+  // «Другие магазины не получается добавить, тогда сделай режим без магазина,
+  // где все обычные продукты». Solo de pantalla: el motor tasa igual.
+
+  t.test("sin tienda: el modo se guarda en el dispositivo y vuelve a Mercadona al quitarlo", function () {
+    var s = sandboxCompleto();
+    assert.strictEqual(s.modoSinTienda(), false, "sin localStorage, Mercadona");
+    s.localStorage = almacenFalso();
+    assert.strictEqual(s.modoSinTienda(), false, "por defecto, Mercadona");
+    assert.strictEqual(s.guardarModoTienda("ninguna"), true);
+    assert.strictEqual(s.modoSinTienda(), true);
+    s.guardarModoTienda("mercadona");
+    assert.strictEqual(s.modoSinTienda(), false);
+    assert.strictEqual(s.localStorage.getItem("nutritionPlanner.tienda.v1"), null, "lo de siempre no ocupa sitio");
+  });
+
+  t.test("sin tienda: la línea de compra no nombra el producto exacto, y los totales llevan «≈»", function () {
+    var s = sandboxCompleto();
+    s.localStorage = almacenFalso();
+    var match = s.realMatchesFor("mercadona").matches["pechuga de pollo"];
+    assert.ok(match && match.productName, "hay producto exacto para la pechuga (si no, la prueba no prueba nada)");
+    var info = s.packagingCatalogFor("mercadona").packages["pechuga de pollo"] || null;
+    var compra = s.resolvePurchaseCost("Pechuga de pollo", 300, "mercadona");
+    assert.ok(s.formatPurchaseLine(info, match, compra).indexOf(match.productName) !== -1, "con Mercadona, su producto");
+    assert.strictEqual(s.euroHtml(), "&euro;");
+
+    s.guardarModoTienda("ninguna");
+    var linea = s.formatPurchaseLine(info, match, compra);
+    assert.strictEqual(linea.indexOf(match.productName), -1, "sin tienda, sin el producto exacto: " + linea);
+    assert.strictEqual(linea.indexOf("Hacendado"), -1);
+    assert.strictEqual(s.euroHtml(), "&asymp;&euro;");
+  });
+
+  t.test("sin tienda: el titular de «no cabe en el presupuesto» no nombra la tienda", function () {
+    var s = sandboxCompleto();
+    s.localStorage = almacenFalso();
+    var informe = {
+      status: "minimal", headlineKey: "ui.plan_titular_presupuesto_imposible",
+      headlineParams: { margen: { key: "ui.plan_margen_un_dia", params: { tope: 8 } }, tienda: "Mercadona", comprar: 9.5, falta: 1.5, uso: 7 },
+      headline: "Con 8 € no ha sido posible montar un plan que quepa en Mercadona", violations: [], relaxations: []
+    };
+    assert.ok(s.describePlanReport(informe).headline.indexOf("Mercadona") !== -1, "con tienda, la nombra");
+    s.guardarModoTienda("ninguna");
+    var titular = s.describePlanReport(informe).headline;
+    assert.strictEqual(titular.indexOf("Mercadona"), -1, titular);
+    assert.ok(titular.indexOf("9,5") !== -1 || titular.indexOf("9.5") !== -1, "las cifras siguen: " + titular);
+  });
+
+  t.test("sin tienda: Ajustes tiene la elección, y el CSS esconde la ficha, la marca, los alérgenos y el catálogo", function () {
+    var html = fs.readFileSync(projPath("index.html"), "utf8");
+    assert.ok(/<div class="ajustes-choice" role="radiogroup" aria-labelledby="ajustesTiendaTitle" id="ajustesTienda">/.test(html));
+    assert.ok(html.indexOf('data-tienda="mercadona"') !== -1 && html.indexOf('data-tienda="ninguna"') !== -1);
+    assert.ok(html.indexOf('<details class="disclosure solo-con-tienda" id="verifiedPanel">') !== -1, "el catálogo de Mercadona, solo con tienda");
+    assert.strictEqual((html.match(/class="tienda-nota solo-sin-tienda" data-i18n="ui.precios_aproximados_sin_tienda"/g) || []).length, 2,
+      "la nota de precios aproximados en las dos compras");
+    var css = fs.readFileSync(projPath("assets/css/style.css"), "utf8");
+    [".solo-con-tienda", ".product-find-btn", ".nocook-item__brand", ".nocook-item__allergens", ".shopping-item__marca"].forEach(function (c) {
+      assert.ok(css.indexOf("html.sin-tienda " + c) !== -1, c + " se esconde sin tienda");
+    });
+    assert.ok(css.indexOf("html:not(.sin-tienda) .solo-sin-tienda") !== -1);
+    var app = fs.readFileSync(projPath("js/app.js"), "utf8");
+    assert.ok(app.indexOf("window.repintarPorTienda = repintarPorTienda") !== -1 && app.indexOf('safeInit("tienda-modo", pintarModoTienda)') !== -1);
+    var sinCocinar = fs.readFileSync(projPath("js/ui/render-no-cook.js"), "utf8");
+    assert.ok(sinCocinar.indexOf("html.nocook_aviso_alergenos_sin_tienda") !== -1, "sin tienda, «mira la etiqueta» en vez de los alérgenos de Mercadona");
+  });
 }
 
 module.exports = { run: run };

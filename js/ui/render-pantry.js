@@ -432,6 +432,11 @@ function renderNoCookStockRow(entry) {
   // "перевод / etiqueta", como en el plan sin cocinar (render.js).
   var doble = (typeof nombreProductoDoble === "function") ? nombreProductoDoble(entry.name) : entry.name;
   var leido = (typeof nombreProducto === "function") ? nombreProducto(entry.name) : entry.name;
+  // «Sin tienda» (2026-10-31): sin la marca (sinMarcaSiSinTienda, render.js).
+  if (typeof sinMarcaSiSinTienda === "function") {
+    doble = sinMarcaSiSinTienda(doble, entry.brand);
+    leido = sinMarcaSiSinTienda(leido, entry.brand);
+  }
   return (
     '<li class="pantry-item pantry-item--sin-cocinar" data-nocook-id="' + escapeHtml(entry.id) + '">' +
       '<span class="pantry-item__name">' + escapeHtml(doble) + '</span>' +
@@ -517,7 +522,9 @@ function renderExpiryBadge(entry, soloLectura) {
   } else if (fromStore) {
     // expiryTotalDays son los días que PUBLICA la tienda; expiryDaysLeft son
     // los que quedan. La frase promete lo primero, así que usa lo primero.
-    title = tFormat("ui.caducidad_de_tienda", {
+    // «Sin tienda» (2026-10-31): la misma cifra, sin decir de qué tienda es.
+    var sinTienda = typeof modoSinTienda === "function" && modoSinTienda();
+    title = tFormat(sinTienda ? "ui.caducidad_generica" : "ui.caducidad_de_tienda", {
       dias: entry.expiryTotalDays,
       conservar: lugar ? " (" + t("ui.caducidad_conservar") + " " + lugar + ")" : ""
     });

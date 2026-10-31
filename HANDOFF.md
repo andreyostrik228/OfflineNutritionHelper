@@ -18,6 +18,69 @@ llevan al final un bloque «actualización 2026-10-08»). El diario fechado, con
 medidas y causas, está en la cabecera de `STATE.md` (entradas del 2026-10-07 y
 2026-10-08).
 
+### 0.0 unvicies «Sin tienda», 2026-10-31 (lee esto antes que 0.0 vicies)
+
+- **Estado:** sello `20261031b`, **1356 tests en verde**. El dueño: «другие
+  магазины не получается добавить, тогда сделай режим без магазина, где все
+  обычные продукты».
+- **Qué hace:** en Ajustes, «Tienda» tiene dos botones, Mercadona y «Sin tienda».
+  Sin tienda no sale nada que sea de UNA tienda: ni el botón de la cámara que
+  abre la ficha en Mercadona, ni la marca (tampoco la que va dentro del nombre:
+  «Bebida de avena Hacendado 0% azúcar» pasa a «Bebida de avena 0% azúcar»), ni
+  el producto exacto en la línea de compra («Lenteja cocida Hacendado»), ni el
+  catálogo de Mercadona. Los alérgenos del plan sin cocinar son de la etiqueta de
+  Mercadona y otra marca puede llevar otros, así que no se enseñan: sale «mira la
+  etiqueta». Los totales de las dos compras llevan «≈€» y una nota de precios
+  aproximados.
+- **Es solo de pantalla:** el motor tasa igual, con `DEFAULT_STORE_ID`; sus
+  precios hacen de precio orientativo. El menú no cambia al cambiar de modo:
+  `repintarPorTienda` (`js/app.js`) vuelve a pintar el plan, las compras, el sin
+  cocinar y la despensa.
+- **Dónde vive:** `modoSinTienda()` y `guardarModoTienda()` en
+  `js/core/pricing.js`, clave `nutritionPlanner.tienda.v1` en localStorage. Es del
+  dispositivo, como el idioma, y no viaja con la cuenta: la casa comparte
+  despensa y compra, y un modo por persona cambiaría al cambiar de persona.
+- **Cómo se esconde:** lo que solo hay que quitar va por CSS con
+  `<html class="sin-tienda">` (`.product-find-btn`, `.nocook-item__brand`,
+  `.nocook-item__allergens`, `.shopping-item__marca`, `.solo-con-tienda`,
+  `.solo-sin-tienda`), y así cambia al instante. Lo que cambia de texto lo
+  deciden las funciones al pintar: `formatPurchaseLine`, `euroHtml` y
+  `sinMarcaSiSinTienda` (`js/ui/render.js`), la caducidad (`render-pantry.js`) y
+  el titular de «no cabe» (`describePlanReport`).
+- **La marca dentro del nombre:** se quita la de ESE producto (su `brand`) y las
+  de la casa de Mercadona (Hacendado, Deliplus, Bosque Verde, Compy), no
+  cualquier marca del catálogo: «Asturiana» es una leche y también una fabada.
+  «No me gusta» sigue guardando el nombre entero, o el filtro ya no lo
+  encontraría.
+- **Sin tocar:** la escena del recorrido que enseña la ficha en Mercadona.
+
+### 0.0 vicies El gato cocinero: icono e imagen de compartir, 2026-10-31 (lee esto antes que 0.0 novodecies)
+
+- **Qué es:** el icono del sitio (pestaña, pantalla de inicio, PWA) y la imagen
+  que sale al compartir el enlace ya no son la cesta ni la ilustración de
+  ingredientes. Ahora es un gato blanco con gorro de cocinero sobre amarillo
+  (`#ffd23f`), y la imagen de compartir es el gato diciendo «Tú cocinas. Yo hago
+  las cuentas.». El dueño lo eligió entre dos rondas de variantes: la primera
+  (todo con la W, la semana y el plato) no le gustó, «слишком сильно цепляешься
+  за имя и неделю».
+- **Ficheros:** `assets/img/gato-32.png`, `gato-180.png` (apple-touch),
+  `gato-192.png`, `gato-512.png`, `gato-maskable-192.png`,
+  `gato-maskable-512.png` y `og-gato.png` (1200×630, PNG). Los apuntan
+  `index.html` (también `og:image:width/height/type/alt`), el manifiesto,
+  `404.html` y las tres páginas de comparación.
+- **Nombre nuevo a propósito:** los iconos no llevan sello `?v=`, así que con el
+  nombre de antes quien ya había entrado se quedaba con la cesta. Se borraron
+  los `icon-*.png`, `apple-touch-icon.png`, `og-weekplate.jpg` y `icon.svg` (que
+  no usaba nadie y ya no se copia al desplegar: el `cp` de la sección 4 está
+  cambiado). Si se vuelve a cambiar el icono, otra vez con otro nombre.
+- **Las fuentes:** `scripts/marca/gato.svg` (el dibujo), `icono.html`,
+  `og-gato.html` (la imagen de compartir; para cambiar la frase basta su texto) y
+  `exportar.mjs`, que vuelve a pintar todos los PNG en `assets/img` con la web
+  servida en local: `node scripts/marca/exportar.mjs`. Comprobado: sale idéntico,
+  píxel a píxel, a lo que vio el dueño.
+- **Sin tocar:** las marcas de dentro de la aplicación (el rayo de la barra de
+  arriba y el gorro de la bienvenida en el cuadrado lima).
+
 ### 0.0 novodecies Tiempo de cocina de cada toma, 2026-10-31 (lee esto antes que 0.0 octodecies)
 
 - **Estado:** sello `20261031a`, **1352 tests en verde**. Lo pidió el dueño el
@@ -748,7 +811,7 @@ NO despliega. Hay que ejecutarlo a mano.
 # 1. montar SOLO lo que sirve el sitio (sin tests, sin docs, sin db)
 DIR=<scratchpad>/deploy
 rm -rf "$DIR" && mkdir -p "$DIR"
-cp index.html icon.svg sw.js manifest.webmanifest _headers 404.html "$DIR/" && cp -r assets js "$DIR/"
+cp index.html sw.js manifest.webmanifest _headers 404.html "$DIR/" && cp -r assets js "$DIR/"
 cp robots.txt sitemap.xml llms.txt alternativas-a-myfitnesspal.html weekplate-vs-myfitnesspal.html weekplate-vs-yazio.html "$DIR/"
 
 # 2. comprobar que lo montado es lo del repo (ha habido copias viejas)
@@ -807,7 +870,7 @@ El de arriba sigue valiendo en lo esencial; estos son los matices que se pagaron
 4. **Montar la carpeta de despliegue y comprobar que es la del repo**:
    ```bash
    DIR="$TEMP/deploy-wp" && rm -rf "$DIR" && mkdir -p "$DIR"
-   cp -r index.html icon.svg sw.js manifest.webmanifest _headers 404.html assets js "$DIR/"
+   cp -r index.html sw.js manifest.webmanifest _headers 404.html assets js "$DIR/"
    cp robots.txt sitemap.xml llms.txt alternativas-a-myfitnesspal.html weekplate-vs-myfitnesspal.html weekplate-vs-yazio.html "$DIR/"
    diff -r js "$DIR/js" && diff -r assets "$DIR/assets" && diff index.html "$DIR/index.html" && echo STAGE_OK
    ```

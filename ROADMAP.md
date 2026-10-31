@@ -46,6 +46,34 @@ Lo pedido: «указывать, сколько времени у тебя ес�
 - **No hizo falta** preferir lo «de la noche antes» (`makeAhead`) con un desayuno
   corto: 59 de los 69 desayunos ya se hacen en 10 min o menos.
 
+## «Sin tienda»: productos normales sin Mercadona, 2026-10-31 (sello `20261031b`, 1356 tests)
+
+El dueño: «другие магазины не получается добавить, тогда сделай режим без
+магазина, где все обычные продукты».
+
+| Qué | Dónde | Estado |
+|---|---|---|
+| En Ajustes, «Tienda»: Mercadona o «Sin tienda». Es del dispositivo (como el idioma) y vale para toda la casa | `index.html`, `js/ui/render-menu.js`, `js/core/pricing.js` (`modoSinTienda`, `guardarModoTienda`) | **Hecho** |
+| Solo de pantalla: el motor tasa igual (los precios de Mercadona hacen de precio orientativo) | — | **Hecho** |
+| Sin tienda: fuera el botón de la ficha en Mercadona, la marca (también la que va dentro del nombre, «Hacendado»), el producto exacto de la línea de compra y el catálogo de Mercadona | `assets/css/style.css` (`html.sin-tienda`), `js/ui/render.js` (`sinMarcaSiSinTienda`, `formatPurchaseLine`), `js/ui/render-no-cook.js`, `js/ui/render-pantry.js` | **Hecho** |
+| Sin tienda: los alérgenos de la etiqueta de Mercadona no se enseñan; en su lugar, «mira la etiqueta» | `js/ui/render-no-cook.js` | **Hecho** |
+| Sin tienda: los totales de la compra con «≈€» y la nota «productos normales y precios aproximados»; la caducidad y el titular de «no cabe» sin nombrar la tienda | `js/ui/render-shopping-list.js`, `js/ui/render-no-cook.js`, `js/ui/render-pantry.js`, `js/engine/plan-generator.js` | **Hecho** |
+| Al cambiar la tienda se repinta lo que hay en pantalla, sin generar otro plan | `js/app.js` (`repintarPorTienda`) | **Hecho** |
+| Pendiente si se pide: que el recorrido no enseñe la escena de la ficha en Mercadona en modo sin tienda | `js/ui/tour-scenes.js` | Sin pedir |
+
+## El gato cocinero: icono e imagen de compartir, 2026-10-31
+
+El dueño: «сделай новое превью и аватарку для сайта, сделай много вариантов»;
+de la segunda ronda, «9 очень крутой, поставь его».
+
+| Qué | Dónde | Estado |
+|---|---|---|
+| Icono nuevo en todos los tamaños, con nombre nuevo para que no se quede el viejo en la caché | `assets/img/gato-*.png`, `index.html`, `manifest.webmanifest`, `404.html`, páginas de comparación | **Hecho** |
+| Imagen de compartir el enlace: el gato, «Tú cocinas. Yo hago las cuentas.» | `assets/img/og-gato.png`, `index.html` y páginas de comparación | **Hecho** |
+| Las fuentes, para cambiar el dibujo o la frase y volver a pintar | `scripts/marca/` | **Hecho** |
+| Fuera la cesta, la ilustración de antes y `icon.svg` | `assets/img/`, raíz | **Hecho** |
+| El gato también dentro de la aplicación (rayo de la barra, gorro de la bienvenida) | `index.html`, `assets/css/style.css` | Sin pedir |
+
 ## Tiempo de cocina de cada toma, 2026-10-31 (sello `20261031a`, 1352 tests)
 
 El dueño: «Давай теперь время готовки». Medido antes de empezar: en 10 min caben
@@ -1082,6 +1110,10 @@ Detalle y cifras en `STATE.md` → "UPDATE 2026-09-13"; el *cómo* en
    queda cacheado en los clientes que ya lo tienen. Y `icon.svg` (1.785
    bytes en la raíz) no aparece ni en `index.html`, ni en el manifiesto, ni
    en `sw.js` — pero sí se copia en cada despliegue.
+   **Resuelto el 2026-10-31** al poner el gato cocinero: los iconos nuevos
+   llevan otro nombre (`gato-*.png`), así que nadie se queda con el viejo, e
+   `icon.svg` ya no existe (ni en el despliegue). Si se vuelve a cambiar el
+   icono, otra vez con nombre nuevo.
 
 4. **P3 — el paso 1 del recorrido parte filas** cuando enmarca el
    contenedor entero de comidas (1.899 px). El usuario no lo ha señalado y

@@ -2392,10 +2392,17 @@ function describePlanReport(report) {
     return r.noteKey ? _planTexto(r.noteKey, r.noteParams, r.note) : r.note;
   }).filter(function (n) { return !!n; });
 
+  // «Sin tienda» (2026-10-31, Ajustes): el titular que nombra la tienda («que
+  // quepa en Mercadona») tiene su versión que no la nombra.
+  var claveTitular = report.headlineKey;
+  if (claveTitular === "ui.plan_titular_presupuesto_imposible" && typeof modoSinTienda === "function" && modoSinTienda()) {
+    claveTitular = "ui.plan_titular_presupuesto_imposible_sin_tienda";
+  }
+
   return {
     status: report.status,
-    headline: report.headlineKey
-      ? _planTexto(report.headlineKey, report.headlineParams, report.headline || "")
+    headline: claveTitular
+      ? _planTexto(claveTitular, report.headlineParams, report.headline || "")
       : (report.headline || ""),
     avisos: avisos,
     ajustes: ajustes

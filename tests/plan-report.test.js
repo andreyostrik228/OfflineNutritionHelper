@@ -249,6 +249,26 @@ function run(t) {
     var AVISOS = ["sin_platos", "simplificado", "tiempo", "tope25", "calorias", "proteina", "desconocido"];
     AVISOS.forEach(function (a) { apunta("ui.plan_aviso_" + a); });
     ["desayuno", "comida", "cena", "snack"].forEach(function (c) { apunta("ui.plan_categoria_" + c); });
+    // «Sin tienda» (2026-10-31, Ajustes): el titular que nombra la tienda
+    // («que quepa en Mercadona») tiene su versión sin nombrarla, y es la que
+    // sale con ese modo puesto.
+    var guardado = {};
+    con.localStorage = {
+      getItem: function (k) { return Object.prototype.hasOwnProperty.call(guardado, k) ? guardado[k] : null; },
+      setItem: function (k, v) { guardado[k] = String(v); },
+      removeItem: function (k) { delete guardado[k]; }
+    };
+    con.saveLang("es");
+    con.guardarModoTienda("ninguna");
+    var imposibles = informesDeTodasLasFormas(sandbox()).filter(function (r) { return r.headlineKey === "ui.plan_titular_presupuesto_imposible"; });
+    assert.ok(imposibles.length > 0, "hay algún titular de «no cabe» que probar");
+    imposibles.forEach(function (r) {
+      var titular = con.describePlanReport(r).headline;
+      assert.strictEqual(titular, con.tFormat("ui.plan_titular_presupuesto_imposible_sin_tienda", r.headlineParams));
+      assert.strictEqual(titular.indexOf("Mercadona"), -1, titular);
+      apunta("ui.plan_titular_presupuesto_imposible_sin_tienda");
+    });
+    con.guardarModoTienda("mercadona");
     var definidas = Object.keys(con.I18N_TABLES.es).filter(function (k) {
       return /^ui\.plan_(titular|margen|ajuste|aviso|categoria)_/.test(k);
     });
