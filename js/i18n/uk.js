@@ -584,6 +584,7 @@ registerI18nTable("uk", {
   "ui.hoy": "Сьогодні",
   "ui.planes_completado": "Виконано",
   "ui.planes_n_ingredientes": "інгредієнтів: {n}",
+  "ui.planes_compra_de_n_dias": "покупки на {n} дн.",
   "ui.planes_n_productos": "продуктів: {n}",
   "ui.planes_n_productos_sin_cocinar": "продуктів: {n} — без готування",
   "ui.planes_ya_en_tu_despensa_nota": "{cantidad} вже в коморі",
@@ -620,7 +621,7 @@ registerI18nTable("uk", {
   "ui.planes_aviso_actualizado_titulo": "План оновлено",
   "html.planes_aviso_actualizado": "<p>Це досі той самий план на сьогодні в розділі <strong>{planes}</strong> — ще нічого не куплено й не приготовано, і в комору нічого не додано.</p>",
   "ui.planes_aviso_varios_dias_titulo": "План на {n} дн. підтверджено",
-  "html.planes_aviso_varios_dias": "<p>Збережено план на кожен із <strong>{n} дн.</strong>, починаючи сьогодні. Перемикай дні кнопками дат у розділі <strong>{planes}</strong>. Коли купуватимеш, натисни <strong>{boton}</strong> у відповідний день.</p>",
+  "html.planes_aviso_varios_dias": "<p>Збережено план на кожен із <strong>{n} дн.</strong>, починаючи сьогодні. Перемикай дні кнопками дат у розділі <strong>{planes}</strong>. Коли купиш усе за списком, натисни <strong>{boton}</strong> у сьогоднішньому дні: до комори потрапить усе на {n} дн.</p>",
   "ui.planes_aviso_confirmado_titulo": "План підтверджено",
   "html.planes_aviso_confirmado": "<p>Коли купуватимеш, натисни <strong>{boton}</strong> знизу, в розділі <strong>{planes}</strong> — тоді наступного разу сайт не запитуватиме це знову.</p>",
   // Alérgenos de la etiqueta (js/core/allergens.js). Las etiquetas españolas de EU_ALLERGEN_LABELS y estas

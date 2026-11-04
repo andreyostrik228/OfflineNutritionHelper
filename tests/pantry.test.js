@@ -844,6 +844,70 @@ function run(t) {
     assert.strictEqual(s.getStock("Salmón"), 180);
   });
 
+  // ── Plan de varios días: una compra para todos (2026-11-04) ─────────────
+  // El dueño: «новые продукты из нового плана не добавляются». Medido en
+  // producción: plan de 3 días, 27 productos en la lista, «Ya compré todo
+  // esto» en hoy metía 12 en la despensa.
+
+  t.test("markPurchaseDone: en un plan de varios días (mismo grupo) compra también los días siguientes y los deja comprados", function () {
+    var s = freshPantrySandbox();
+    injectSyntheticIngredient(s, { key: "test tofu v1", pricePer100Units: 0.75, packageSize: 200 });
+    var d1 = s.savePlanForToday(fakeMeals({ lunch: [{ name: "test tofu v1", grams: 150 }] }), "mercadona", null, "2026-11-04", "g1");
+    var d2 = s.savePlanForToday(fakeMeals({ lunch: [{ name: "test tofu v1", grams: 150 }, { name: "Salmón", grams: 120 }] }), "mercadona", null, "2026-11-05", "g1");
+    var d3 = s.savePlanForToday(fakeMeals({ dinner: [{ name: "Avena", grams: 60 }] }), "mercadona", null, "2026-11-06", "g1");
+
+    var r = s.markPurchaseDone(d1.entry.id, [], "mercadona");
+    // 300 g de tofu entre los dos días -> 2 envases de 200, como la lista;
+    // comprando día a día, el día 2 veía los 200 del día 1 y no compraba.
+    assert.strictEqual(s.getStock("test tofu v1"), 400);
+    assert.strictEqual(s.getStock("Salmón"), 120, "lo que solo pide el día 2 también entra");
+    assert.ok(s.getStock("Avena") !== 0, "y lo del día 3");
+    assert.strictEqual(r.run.lines.length, 3);
+    var porId = {};
+    s.getPantryHistory().forEach(function (e) { porId[e.id] = e; });
+    [d1, d2, d3].forEach(function (d) { assert.strictEqual(porId[d.entry.id].purchase.done, true); });
+    assert.strictEqual(porId[d1.entry.id].purchase.runs.length, 1, "el gasto va en la entrada que se compró");
+    assert.strictEqual(porId[d2.entry.id].purchase.runs.length, 0);
+  });
+
+  t.test("markPurchaseDone: el grupo solo suma los días SIGUIENTES sin comprar; sin grupo, solo lo suyo", function () {
+    var s = freshPantrySandbox();
+    ["test pez b", "test pez c", "test pez d"].forEach(function (k) { injectSyntheticIngredient(s, { key: k, pricePer100Units: 1 }); });
+    var d1 = s.savePlanForToday(fakeMeals({ lunch: [{ name: "Salmón", grams: 100 }] }), "mercadona", null, "2026-11-04", "g2");
+    var d2 = s.savePlanForToday(fakeMeals({ lunch: [{ name: "test pez b", grams: 100 }] }), "mercadona", null, "2026-11-05", "g2");
+    var d3 = s.savePlanForToday(fakeMeals({ lunch: [{ name: "test pez c", grams: 100 }] }), "mercadona", null, "2026-11-06", "g2");
+    var suelto = s.savePlanForToday(fakeMeals({ lunch: [{ name: "test pez d", grams: 100 }] }), "mercadona", null, "2026-11-07");
+
+    s.markPurchaseDone(d2.entry.id, [], "mercadona");
+    assert.strictEqual(s.getStock("test pez b"), 100);
+    assert.strictEqual(s.getStock("test pez c"), 100);
+    assert.strictEqual(s.getStock("Salmón"), 0, "el día anterior no entra");
+    assert.strictEqual(s.getStock("test pez d"), 0, "otro plan tampoco");
+    var e1 = s.getPantryHistory().find(function (e) { return e.id === d1.entry.id; });
+    assert.strictEqual(e1.purchase.done, false);
+    assert.strictEqual(s.entradasDeLaCompra(e1).length, 1, "con los siguientes ya comprados, el día 1 compra solo lo suyo");
+
+    s.markPurchaseDone(suelto.entry.id, [], "mercadona");
+    assert.strictEqual(s.getStock("test pez d"), 100);
+    var e3 = s.getPantryHistory().find(function (e) { return e.id === d3.entry.id; });
+    assert.strictEqual(e3.purchase.runs.length, 0);
+  });
+
+  t.test("savePlanForToday / replacePendingMealsForToday: ponen el grupo y lo quitan si el plan nuevo es de un día", function () {
+    var s = freshPantrySandbox();
+    var d1 = s.savePlanForToday(fakeMeals({ lunch: [{ name: "Salmón", grams: 100 }] }), "mercadona", null, undefined, "g3");
+    assert.strictEqual(d1.entry.planGrupo, "g3");
+    var otra = s.savePlanForToday(fakeMeals({ lunch: [{ name: "Merluza", grams: 100 }] }), "mercadona");
+    assert.strictEqual(otra.entry.id, d1.entry.id, "UPSERT del borrador");
+    assert.strictEqual(Object.prototype.hasOwnProperty.call(otra.entry, "planGrupo"), false);
+
+    s.markPurchaseDone(d1.entry.id, [], "mercadona");
+    var r = s.replacePendingMealsForToday(d1.entry.id, fakeMeals({ lunch: [{ name: "Bacalao", grams: 100 }] }), "mercadona", null, "g4");
+    assert.strictEqual(r.entry.planGrupo, "g4");
+    assert.strictEqual(s.findTodayEntry().id, d1.entry.id);
+    assert.strictEqual(s.findTodayEntry("2026-01-01"), null, "findTodayEntry con fecha mira ESA fecha");
+  });
+
   // ── markMealCooked (Etapa 3) ──────────────────────────────────────────
 
   t.test("markMealCooked: stock suficiente resta exactamente requiredGrams", function () {
@@ -1165,6 +1229,18 @@ function run(t) {
     assert.strictEqual(s.getNoCookProductStock("p1"), 1);
     assert.strictEqual(run2.run.totals.purchaseCost, 0);
     assert.strictEqual(s.getPantryHistory()[0].purchase.runs.length, 2);
+  });
+
+  t.test("markNoCookPurchaseDone(): en un plan de varios días (mismo grupo) compra los días siguientes juntos (2026-11-04)", function () {
+    var s = freshPantrySandbox();
+    var d1 = s.saveNoCookPlanForToday(fakeNoCookSlots({ breakfast: [fakeProduct("p1", "Yogur", 1, 0.5)] }), "mercadona", "2026-11-04", "n1");
+    var d2 = s.saveNoCookPlanForToday(fakeNoCookSlots({ breakfast: [fakeProduct("p1", "Yogur", 1, 0.5)], lunch: [fakeProduct("p2", "Ensalada lista", 1, 3.5)] }), "mercadona", "2026-11-05", "n1");
+
+    s.markNoCookPurchaseDone(d1.entry.id);
+    assert.strictEqual(s.getNoCookProductStock("p1"), 2, "el yogur de los dos días");
+    assert.strictEqual(s.getNoCookProductStock("p2"), 1, "lo que solo pide el día 2");
+    var e2 = s.getPantryHistory().find(function (e) { return e.id === d2.entry.id; });
+    assert.strictEqual(e2.purchase.done, true);
   });
 
   // ── Envases enteros (2026-10-22) ─────────────────────────────────────────

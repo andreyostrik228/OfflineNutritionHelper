@@ -977,18 +977,27 @@ function renderActiveEntryCard(entry) {
   if (entry.type === "nocook") return renderNoCookActiveCard(entry);
 
   var dateLabel = formatEntryDateTime(entry.createdAt);
-  var aggregated = aggregatePlanMealItems(entry.meals);
+  // Sin comprar, la tarjeta de un plan de varios días compra también los días
+  // siguientes (2026-11-04, entradasDeLaCompra): su lista y su cifra son las
+  // de todos, y lo dice.
+  var entradas = entradasDeLaCompra(entry);
+  var tomas = [];
+  entradas.forEach(function (e) { tomas = tomas.concat(e.meals || []); });
+  var aggregated = aggregatePlanMealItems(tomas);
   var coveredGrams = sumPantryCoverageGrams(aggregated);
   var pantryNote = coveredGrams > 0
     ? ' <span class="pantry-active-card__pantry-note">&middot; ' +
       escapeHtml(tFormat("ui.planes_ya_en_tu_despensa_nota", { cantidad: fmtUnit(round0(coveredGrams), "g") })) + '</span>'
+    : '';
+  var diasNote = (1 < entradas.length)
+    ? ' &middot; ' + escapeHtml(tFormat("ui.planes_compra_de_n_dias", { n: entradas.length }))
     : '';
 
   return (
     '<div class="pantry-active-card" data-id="' + escapeHtml(entry.id) + '">' +
       '<div class="pantry-active-card__head">' +
         '<span class="pantry-active-card__date">' + dateLabel + '</span>' +
-        '<span class="pantry-active-card__summary">' + escapeHtml(tFormat("ui.planes_n_ingredientes", { n: aggregated.length })) + (entry.store ? ' &mdash; ' + escapeHtml(entry.store) : '') + pantryNote + '</span>' +
+        '<span class="pantry-active-card__summary">' + escapeHtml(tFormat("ui.planes_n_ingredientes", { n: aggregated.length })) + diasNote + (entry.store ? ' &mdash; ' + escapeHtml(entry.store) : '') + pantryNote + '</span>' +
         renderDeletePlanBtn(entry) +
       '</div>' +
       renderPurchaseSection(entry, aggregated) +
@@ -1129,6 +1138,11 @@ function renderMealChips(entry) {
 function renderNoCookActiveCard(entry) {
   var dateLabel = formatEntryDateTime(entry.createdAt);
   var itemCount = (entry.slots || []).reduce(function (sum, s) { return sum + (s.items || []).length; }, 0);
+  // «Ya compré todo» compra también los días siguientes del plan (2026-11-04).
+  var dias = entradasDeLaCompra(entry).length;
+  var diasNote = (1 < dias)
+    ? ' &middot; ' + escapeHtml(tFormat("ui.planes_compra_de_n_dias", { n: dias }))
+    : '';
 
   var purchaseBlock = entry.purchase.done
     ? '<div class="pantry-active-card__purchase pantry-active-card__purchase--done">' +
@@ -1142,7 +1156,7 @@ function renderNoCookActiveCard(entry) {
     '<div class="pantry-active-card" data-id="' + escapeHtml(entry.id) + '">' +
       '<div class="pantry-active-card__head">' +
         '<span class="pantry-active-card__date">' + dateLabel + '</span>' +
-        '<span class="pantry-active-card__summary">' + escapeHtml(tFormat("ui.planes_n_productos_sin_cocinar", { n: itemCount })) + '</span>' +
+        '<span class="pantry-active-card__summary">' + escapeHtml(tFormat("ui.planes_n_productos_sin_cocinar", { n: itemCount })) + diasNote + '</span>' +
         renderDeletePlanBtn(entry) +
       '</div>' +
       purchaseBlock +

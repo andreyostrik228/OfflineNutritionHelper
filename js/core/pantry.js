@@ -113,10 +113,13 @@
  *     fecha de "Mis planes", 2026-08-23)
  *   hasRealPantryAction(entry) → boolean (comprado o algo cocinado)
  *   isEntryFullyCooked(entry) → boolean (TODAS las comidas cocinadas)
- *   findTodayEntry() → entry|null (la más reciente cuyo día es hoy, cualquier estado)
- *   savePlanForToday(meals, storeId) → { entry, historySaved, replaced }
- *   replacePendingMealsForToday(entryId, meals, storeId) →
+ *   findTodayEntry(dateKey?) → entry|null (la más reciente cuyo día es hoy, o esa fecha, cualquier estado)
+ *   savePlanForToday(meals, storeId, dayOptions?, planDateKey?, grupo?) → { entry, historySaved, replaced }
+ *   replacePendingMealsForToday(entryId, meals, storeId, dayOptions?, grupo?) →
  *     { entry, historySaved, replacedMealKeys, keptMealKeys } | null
+ *   entradasDeLaCompra(entry, history?) → las entradas que compra «Ya compré
+ *     todo esto» en esa tarjeta: la suya y los días siguientes de su plan
+ *     (mismo `planGrupo`) sin comprar (2026-11-04)
  *   aggregatePlanMealItems(meals) → [{name, requiredGrams}]
  *   markPurchaseDone(entryId, excludedNames?, storeId?) → { saved, historySaved, run } | null
  *   markMealCooked(entryId, mealKey, cooked) → { saved, historySaved, entry, meal } | null
@@ -135,9 +138,9 @@
  *     adjustNoCookProductStock(productId, deltaQuantity, displayName?)
  *   hasRealNoCookAction(entry) → boolean
  *   isNoCookEntryFullyConsumed(entry) → boolean
- *   saveNoCookPlanForToday(slots, storeId, planDateKey?) → { entry, historySaved, replaced }
- *   findBlockingNoCookEntryToday() → el plan sin cocinar de hoy que frena uno nuevo, o null
- *   replacePendingNoCookSlotsForToday(entryId, slots, storeId) → { entry, historySaved, replacedSlotKeys, keptSlotKeys } | null
+ *   saveNoCookPlanForToday(slots, storeId, planDateKey?, grupo?) → { entry, historySaved, replaced }
+ *   findBlockingNoCookEntryToday(dateKey?) → el plan sin cocinar de hoy (o de esa fecha) que frena uno nuevo, o null
+ *   replacePendingNoCookSlotsForToday(entryId, slots, storeId, grupo?) → { entry, historySaved, replacedSlotKeys, keptSlotKeys } | null
  *   markNoCookPurchaseDone(entryId) → { saved, historySaved, run } | null
  *   markNoCookSlotConsumed(entryId, slotKey, consumed) → { saved, historySaved, entry, slot } | null
  *   NOCOOK_CLOUD_FIELD, listNoCookStockEntries(todayISO?) → filas del apartado «sin cocinar» de la despensa
@@ -624,10 +627,13 @@ function isEntryFullyCooked(entry) {
  * más reciente primero, así que en el caso raro de que existan varias
  * entradas de hoy (datos de antes de este cambio, o varias creadas a
  * propósito) esto siempre elige la más reciente.
+ * @param {string} [dateKey] - "YYYY-MM-DD" de otro día (2026-11-04: al
+ *   cambiar entero un plan de varios días, app.js busca también el plan
+ *   activo de cada día siguiente). Sin él, hoy.
  * @returns {object|null}
  */
-function findTodayEntry() {
-  var todayKey = formatLocalDateKey(new Date());
+function findTodayEntry(dateKey) {
+  var todayKey = (typeof dateKey === "string" && dateKey) ? dateKey : formatLocalDateKey(new Date());
   var history = getPantryHistory();
   // e.type !== "nocook" (2026-08-20g, bug real encontrado durante el
   // trabajo de per-meal editing): esta función alimenta el gate de
@@ -684,9 +690,12 @@ function findTodayEntry() {
  *   funcion no cambia: el UPSERT sobre el borrador y la deteccion de
  *   duplicados miran ESTA fecha, asi que confirmar dos veces el mismo plan
  *   de 7 dias sigue sin duplicar nada.
+ * @param {string} [grupo] - el mismo para todos los días de un plan de varios
+ *   días (2026-11-04, ver entradasDeLaCompra). Sin él, la entrada no es de
+ *   ningún plan de varios días.
  * @returns {{ entry:object, historySaved:boolean, replaced:boolean }}
  */
-function savePlanForToday(meals, storeId, dayOptions, planDateKey) {
+function savePlanForToday(meals, storeId, dayOptions, planDateKey, grupo) {
   var now = new Date();
   var nowISO = now.toISOString();
   var todayKey = (typeof planDateKey === "string" && planDateKey)
@@ -753,6 +762,7 @@ function savePlanForToday(meals, storeId, dayOptions, planDateKey) {
     if (cookTime !== null) draft.cookTime = cookTime;
     if (taste !== null)    draft.taste = taste;
     if (dayOptions) _ponerTiempoPorToma(draft, dayOptions);
+    _ponerGrupo(draft, grupo);
     var historySavedReplace = savePantryHistory(history);
     return { entry: draft, historySaved: historySavedReplace, replaced: true };
   }
@@ -772,9 +782,48 @@ function savePlanForToday(meals, storeId, dayOptions, planDateKey) {
     purchase: { done: false, runs: [] }
   };
   _ponerTiempoPorToma(entry, dayOptions);
+  _ponerGrupo(entry, grupo);
 
   var historySaved = appendPantryHistory(entry);
   return { entry: entry, historySaved: historySaved, replaced: false };
+}
+
+/**
+ * Los días de un plan de varios días llevan el mismo `planGrupo` (2026-11-04).
+ * Una entrada que pasa a ser de un plan de un día (o de otro plan) lo pierde.
+ * @param {object} entry - se modifica
+ * @param {string} [grupo]
+ */
+function _ponerGrupo(entry, grupo) {
+  if (typeof grupo === "string" && grupo) entry.planGrupo = grupo;
+  else delete entry.planGrupo;
+}
+
+/**
+ * Lo que compra «Ya compré todo esto» en una tarjeta (2026-11-04). El dueño:
+ * «новые продукты из нового плана не добавляются». La lista de la compra de un
+ * plan de varios días es UNA, la de todos los días juntos, pero cada día se
+ * guarda en su entrada y el botón solo sumaba el día de la tarjeta: de un plan
+ * de 3 días con 27 productos en la lista entraban 12 en la despensa, y comprar
+ * después el día 2 veía en la despensa lo del día 1 y se quedaba corto.
+ *
+ * Ahora la tarjeta compra también los días SIGUIENTES de su plan (mismo
+ * `planGrupo` y mismo tipo) que siguen sin comprar, todos juntos, como la
+ * lista. Una entrada ya comprada («Registrar otra compra») o sin grupo (un
+ * plan de un día, o guardado antes de esto) compra solo lo suyo.
+ * @param {object} entry
+ * @param {object[]} [history] - el historial en el que se va a escribir; sin
+ *   él, se lee (para pintar)
+ * @returns {object[]} la entrada primero y luego los días siguientes, por fecha
+ */
+function entradasDeLaCompra(entry, history) {
+  if (!entry || !entry.planGrupo || (entry.purchase && entry.purchase.done)) return [entry];
+  var desde = getEntryPlanDate(entry);
+  var otras = (history || getPantryHistory()).filter(function (e) {
+    return e.id !== entry.id && e.planGrupo === entry.planGrupo && e.type === entry.type &&
+      !(e.purchase && e.purchase.done) && !(getEntryPlanDate(e) < desde);
+  }).sort(function (a, b) { return getEntryPlanDate(a) < getEntryPlanDate(b) ? -1 : 1; });
+  return [entry].concat(otras);
 }
 
 /**
@@ -831,12 +880,14 @@ function _ponerTiempoPorToma(entry, dayOptions) {
  * @param {string} [storeId]
  * @param {object} [dayOptions] - { budget, cookTime, taste } (2026-08-20g,
  *   per-meal editing) -- mismo criterio opcional que savePlanForToday().
+ * @param {string} [grupo] - el del plan nuevo, si es de varios días
+ *   (2026-11-04); sin él la entrada deja de ser de un plan de varios días.
  * @returns {{
  *   entry:object, historySaved:boolean,
  *   replacedMealKeys:string[], keptMealKeys:string[]
  * }|null} - null si entryId no existe
  */
-function replacePendingMealsForToday(entryId, newMeals, storeId, dayOptions) {
+function replacePendingMealsForToday(entryId, newMeals, storeId, dayOptions, grupo) {
   var history = getPantryHistory();
   var entry = history.find(function (e) { return e.id === entryId; });
   if (!entry) return null;
@@ -879,6 +930,7 @@ function replacePendingMealsForToday(entryId, newMeals, storeId, dayOptions) {
   if (dayOptions && typeof dayOptions.cookTime === "number") entry.cookTime = dayOptions.cookTime;
   if (dayOptions && typeof dayOptions.taste === "string")    entry.taste = dayOptions.taste;
   if (dayOptions) _ponerTiempoPorToma(entry, dayOptions);
+  _ponerGrupo(entry, grupo);
   if (replacedMealKeys.length > 0) {
     entry.purchase.done = false;
   }
@@ -924,7 +976,9 @@ function aggregatePlanMealItems(meals) {
  * (eso es responsabilidad exclusiva de markMealCooked). Se puede llamar
  * más de una vez para el mismo plan (varios viajes a comprar): relee el
  * stock actual cada vez, así que una segunda llamada solo compra lo que
- * de verdad sigue faltando.
+ * de verdad sigue faltando. En un plan de varios días compra también los
+ * días siguientes sin comprar, juntos, y los deja comprados
+ * (entradasDeLaCompra, 2026-11-04).
  *
  * @param {string} entryId
  * @param {string[]} [excludedNames] - nombres desmarcados (se normalizan
@@ -939,7 +993,12 @@ function markPurchaseDone(entryId, excludedNames, storeId) {
 
   var store = storeId || entry.store;
   var excludedKeys = (excludedNames || []).map(normalizeIngredientKey);
-  var aggregated = aggregatePlanMealItems(entry.meals)
+  // Con un plan de varios días, los días siguientes sin comprar van en la
+  // misma compra (2026-11-04, entradasDeLaCompra).
+  var entradas = entradasDeLaCompra(entry, history);
+  var tomas = [];
+  entradas.forEach(function (e) { tomas = tomas.concat(e.meals || []); });
+  var aggregated = aggregatePlanMealItems(tomas)
     .filter(function (item) { return excludedKeys.indexOf(normalizeIngredientKey(item.name)) === -1; });
 
   var pantryState = getPantryState();
@@ -995,6 +1054,9 @@ function markPurchaseDone(entryId, excludedNames, storeId) {
   };
   entry.purchase.runs.push(run);
   entry.purchase.done = true;
+  // Los días siguientes quedan comprados con esta compra (sin run propio: el
+  // gasto ya está en el de esta entrada).
+  entradas.slice(1).forEach(function (e) { e.purchase.done = true; });
   var historySaved = savePantryHistory(history);
 
   return { saved: saved, historySaved: historySaved, run: run };
@@ -1341,9 +1403,11 @@ function _noCookSlotsParaGuardar(slots) {
  * @param {string} [planDateKey] - "YYYY-MM-DD" del día del plan (2026-10-21,
  *   planes sin cocinar de varios días): mismo parámetro que savePlanForToday.
  *   Sin él, hoy. El borrador que se actualiza es el de ESA fecha.
+ * @param {string} [grupo] - el mismo para todos los días del plan (2026-11-04,
+ *   como en savePlanForToday).
  * @returns {{ entry:object, historySaved:boolean, replaced:boolean }}
  */
-function saveNoCookPlanForToday(slots, storeId, planDateKey) {
+function saveNoCookPlanForToday(slots, storeId, planDateKey, grupo) {
   var now = new Date();
   var nowISO = now.toISOString();
   var todayKey = (typeof planDateKey === "string" && planDateKey)
@@ -1361,6 +1425,7 @@ function saveNoCookPlanForToday(slots, storeId, planDateKey) {
     draft.createdAt = nowISO;
     draft.slots = newSlots;
     draft.store = storeId || draft.store || null;
+    _ponerGrupo(draft, grupo);
     var historySavedReplace = savePantryHistory(history);
     return { entry: draft, historySaved: historySavedReplace, replaced: true };
   }
@@ -1374,6 +1439,7 @@ function saveNoCookPlanForToday(slots, storeId, planDateKey) {
     slots: newSlots,
     purchase: { done: false, runs: [] }
   };
+  _ponerGrupo(entry, grupo);
   var historySaved = appendPantryHistory(entry);
   return { entry: entry, historySaved: historySaved, replaced: false };
 }
@@ -1384,10 +1450,12 @@ function saveNoCookPlanForToday(slots, storeId, planDateKey) {
  * normal (getBlockingActiveEntry, js/app.js): tiene algo real encima (se
  * compró o se comió alguna toma) y todavía le queda algo. Un borrador puro lo
  * resuelve el UPSERT de siempre, y uno terminado no tiene nada que pisar.
+ * @param {string} [dateKey] - "YYYY-MM-DD" de otro día (2026-11-04, al cambiar
+ *   entero un plan de varios días). Sin él, hoy.
  * @returns {object|null}
  */
-function findBlockingNoCookEntryToday() {
-  var todayKey = formatLocalDateKey(new Date());
+function findBlockingNoCookEntryToday(dateKey) {
+  var todayKey = (typeof dateKey === "string" && dateKey) ? dateKey : formatLocalDateKey(new Date());
   return getPantryHistory().filter(function (e) {
     return e.type === "nocook" && getEntryPlanDate(e) === todayKey &&
       hasRealNoCookAction(e) && !isNoCookEntryFullyConsumed(e);
@@ -1403,9 +1471,10 @@ function findBlockingNoCookEntryToday() {
  * @param {string} entryId
  * @param {object[]} newSlots - plan.slots de generateNoCookPlan
  * @param {string} [storeId]
+ * @param {string} [grupo] - el del plan nuevo, si es de varios días (2026-11-04)
  * @returns {{entry:object, historySaved:boolean, replacedSlotKeys:string[], keptSlotKeys:string[]}|null}
  */
-function replacePendingNoCookSlotsForToday(entryId, newSlots, storeId) {
+function replacePendingNoCookSlotsForToday(entryId, newSlots, storeId, grupo) {
   var history = getPantryHistory();
   var entry = history.find(function (e) { return e.id === entryId && e.type === "nocook"; });
   if (!entry) return null;
@@ -1426,6 +1495,7 @@ function replacePendingNoCookSlotsForToday(entryId, newSlots, storeId) {
   });
   entry.createdAt = new Date().toISOString();
   entry.store = storeId || entry.store;
+  _ponerGrupo(entry, grupo);
   if (replacedSlotKeys.length > 0) entry.purchase.done = false;
 
   var historySaved = savePantryHistory(history);
@@ -1464,14 +1534,14 @@ function _noCookNecesidadPorProducto(entry) {
  * días el día 2 veía en la despensa el envase comprado para el día 1 y no
  * compraba nada, aunque la lista de la compra contara dos envases.
  * @param {object[]} history
- * @param {object} entry - el plan que se está comprando (no cuenta)
+ * @param {object[]} entradas - los planes que se están comprando (no cuentan)
  * @returns {Object<string, number>} id de producto -> raciones
  */
-function _noCookReservadoPorOtros(history, entry) {
+function _noCookReservadoPorOtros(history, entradas) {
   var hoy = formatLocalDateKey(new Date());
   var reservado = {};
   history.forEach(function (e) {
-    if (e === entry || e.type !== "nocook" || !e.purchase || !e.purchase.done) return;
+    if (entradas.indexOf(e) !== -1 || e.type !== "nocook" || !e.purchase || !e.purchase.done) return;
     if (getEntryPlanDate(e) < hoy) return;
     (e.slots || []).forEach(function (slot) {
       if (slot.consumed) return;
@@ -1493,7 +1563,9 @@ function _noCookReservadoPorOtros(history, entry) {
  *
  * Se puede llamar más de una vez (varios viajes): relee el stock cada vez y
  * la segunda solo compra lo que siga faltando. Un plan guardado antes de
- * conocer los envases (sin servingsPerPackage) compra lo justo.
+ * conocer los envases (sin servingsPerPackage) compra lo justo. En un plan
+ * de varios días compra también los días siguientes sin comprar, juntos,
+ * como la lista (entradasDeLaCompra, 2026-11-04).
  * @param {string} entryId
  * @returns {{ saved:boolean, historySaved:boolean, run:object }|null}
  */
@@ -1504,11 +1576,14 @@ function markNoCookPurchaseDone(entryId) {
 
   var stock = getNoCookStock();
   var nowISO = new Date().toISOString();
-  var reservado = _noCookReservadoPorOtros(history, entry);
+  var entradas = entradasDeLaCompra(entry, history);
+  var reservado = _noCookReservadoPorOtros(history, entradas);
+  var tomas = [];
+  entradas.forEach(function (e) { tomas = tomas.concat(e.slots || []); });
   var lines = [];
   var totalCost = 0;
 
-  _noCookNecesidadPorProducto(entry).forEach(function (p) {
+  _noCookNecesidadPorProducto({ slots: tomas }).forEach(function (p) {
     var current = getNoCookProductStock(p.id, stock);
     var libre = Math.max(0, current - (reservado[p.id] || 0));
     var falta = Math.max(0, p.quantity - libre);
@@ -1537,6 +1612,7 @@ function markNoCookPurchaseDone(entryId) {
   var run = { at: nowISO, lines: lines, totals: { purchaseCost: round2(totalCost), itemCount: lines.length } };
   entry.purchase.runs.push(run);
   entry.purchase.done = true;
+  entradas.slice(1).forEach(function (e) { e.purchase.done = true; });
   var historySaved = savePantryHistory(history);
 
   return { saved: saved, historySaved: historySaved, run: run };

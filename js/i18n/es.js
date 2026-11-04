@@ -581,6 +581,7 @@ registerI18nTable("es", {
   "ui.hoy": "Hoy",
   "ui.planes_completado": "Completado",
   "ui.planes_n_ingredientes": "{n} ingredientes",
+  "ui.planes_compra_de_n_dias": "compra de {n} días",
   "ui.planes_n_productos": "{n} productos",
   "ui.planes_n_productos_sin_cocinar": "{n} productos — sin cocinar",
   "ui.planes_ya_en_tu_despensa_nota": "{cantidad} ya en tu despensa",
@@ -617,7 +618,7 @@ registerI18nTable("es", {
   "ui.planes_aviso_actualizado_titulo": "Plan actualizado",
   "html.planes_aviso_actualizado": "<p>Sigue siendo el mismo plan de hoy en <strong>{planes}</strong> — no se ha comprado ni cocinado nada todavía, ni se ha añadido nada a tu despensa.</p>",
   "ui.planes_aviso_varios_dias_titulo": "Plan de {n} días confirmado",
-  "html.planes_aviso_varios_dias": "<p>Se ha guardado un plan para cada uno de los <strong>{n} días</strong>, empezando hoy. Cambia de día con los botones de fecha de <strong>{planes}</strong>. Cuando compres, toca <strong>{boton}</strong> en el día que corresponda.</p>",
+  "html.planes_aviso_varios_dias": "<p>Se ha guardado un plan para cada uno de los <strong>{n} días</strong>, empezando hoy. Cambia de día con los botones de fecha de <strong>{planes}</strong>. Cuando compres la lista, toca <strong>{boton}</strong> en el día de hoy: entra en la despensa lo de los {n} días.</p>",
   "ui.planes_aviso_confirmado_titulo": "Plan confirmado",
   "html.planes_aviso_confirmado": "<p>Cuando compres, toca <strong>{boton}</strong> ahí abajo, en <strong>{planes}</strong> — así no te lo volverá a pedir la próxima vez.</p>",
   // Alérgenos de la etiqueta (js/core/allergens.js). Las etiquetas españolas de EU_ALLERGEN_LABELS y estas

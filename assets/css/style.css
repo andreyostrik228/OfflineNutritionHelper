@@ -2828,9 +2828,12 @@ html.sin-tienda .shopping-item__marca { display: none !important; }
 .pantry-lugar:first-child { margin-top: 0; }
 .pantry-lugar__titulo { margin: 0; color: var(--ink); font-size: 0.9rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
 .pantry-lugar__n { color: var(--text-3); font-size: 0.9rem; font-weight: 700; }
+/* El plazo va en una columna de su ancho y la cantidad se parte en dos
+   líneas si no cabe (2026-11-04): con «1 упаковка по 1 кг (≈2,8 кг в готовом
+   виде)» la columna del plazo se quedaba en 0 y el botón lo tapaba. */
 .pantry-item {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   grid-template-areas: "name name remove" "expiry amount amount";
   align-items: center;
   gap: 8px 10px;
@@ -2857,6 +2860,7 @@ html.sin-tienda .shopping-item__marca { display: none !important; }
 .pantry-item__amount {
   grid-area: amount;
   justify-self: end;
+  max-width: 100%;
   min-height: 40px;
   padding: 0 16px;
   border: 1.5px solid var(--primary);
@@ -2898,6 +2902,7 @@ html.sin-tienda .shopping-item__marca { display: none !important; }
   color: var(--ok);
   font-size: 12.5px;
   font-weight: 700;
+  white-space: nowrap;
 }
 .pantry-item__expiry--pronto { background: var(--warn-wash); color: var(--warn); }
 .pantry-item__expiry--urgente { background: var(--kcal-wash); color: var(--kcal-deep); border-color: var(--kcal-deep); }

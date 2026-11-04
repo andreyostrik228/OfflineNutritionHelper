@@ -18,6 +18,44 @@ llevan al final un bloque «actualización 2026-10-08»). El diario fechado, con
 medidas y causas, está en la cabecera de `STATE.md` (entradas del 2026-10-07 y
 2026-10-08).
 
+### 0.0 duovicies La despensa recibe el plan entero, 2026-11-04 (lee esto antes que 0.0 unvicies)
+
+- **Estado:** sello `20261104a`, **1360 tests en verde**. El dueño: «кладовая как
+  будто бы сломалась… ни время пока испортится не показывает, ни новые продукты
+  из нового плана не добавляются».
+- **Lo que pasaba (medido en producción, `20261031b`):** un plan de 3 días pide
+  27 productos en la lista, pero cada día se guarda en su entrada de «Mis planes»
+  y «Ya compré todo esto» solo sumaba el día de su tarjeta: entraban 12. Además,
+  «Cambiar el plan entero» (el diálogo «На сегодня план уже есть») solo cambiaba
+  HOY: los días 2 a N del plan nuevo no se guardaban y quedaban los del viejo. Y
+  en la fila de la despensa, con una cantidad larga («1 упаковка по 1 кг (≈2,8 кг
+  в готовом виде)»), la columna del plazo se quedaba en 0 y el botón lo tapaba.
+- **Ahora:** los días de un plan de varios días llevan el mismo `planGrupo`
+  (`savePlanForToday` / `saveNoCookPlanForToday` y sus `replacePending…`, último
+  parámetro). `entradasDeLaCompra(entry, history?)` (`pantry.js`) dice qué compra
+  una tarjeta: la suya y los días SIGUIENTES de su grupo sin comprar.
+  `markPurchaseDone` y `markNoCookPurchaseDone` compran todo eso junto, como la
+  lista (300 g de tofu en dos días son 2 envases de 200, no 1), y dejan los días
+  comprados; el gasto va en el `run` de la tarjeta pulsada. Una entrada ya
+  comprada o sin grupo (plan de un día o guardado antes) compra solo lo suyo.
+- **La tarjeta lo dice:** «ингредиентов: 24 · покупки на 3 дн.»
+  (`ui.planes_compra_de_n_dias`), y el aviso de un plan de varios días ya no
+  manda a comprar «в нужный день».
+- **Cambiar el plan entero** guarda ahora todos los días: el día siguiente con un
+  plan activo (comprado y sin terminar) se cambia como hoy, conservando lo
+  cocinado (`getBlockingActiveEntry(fechaKey)`, `findTodayEntry(fechaKey)`,
+  `findBlockingNoCookEntryToday(fechaKey)`); si no, el UPSERT de siempre.
+- **CSS:** `.pantry-item` pasa a `auto minmax(0, 1fr) auto`: el plazo tiene su
+  ancho y la cantidad se parte en dos líneas.
+- **Medido en Chrome sin interfaz** (local, 360 y 320 px): plan de 3 días, 24 de
+  24 productos en la despensa y los tres días comprados (antes 12 de 27); ninguna
+  fila con el plazo tapado (antes 1 de 12); cambiar el plan entero deja 3 días del
+  plan nuevo, sin duplicados, y la compra mete los 9 productos nuevos. El
+  recorrido general de `comparar.mjs`: 29 en la lista, 29 en la despensa, 0
+  errores de JavaScript y de CSP.
+- **Sin comprobar:** el plan sin cocinar de varios días en el navegador (solo con
+  tests), y nada en el móvil del dueño.
+
 ### 0.0 unvicies «Sin tienda», 2026-10-31 (lee esto antes que 0.0 vicies)
 
 - **Estado:** sello `20261031b`, **1356 tests en verde**. El dueño: «другие

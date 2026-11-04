@@ -776,12 +776,15 @@ document.addEventListener("DOMContentLoaded", function () {
    * un plan ya completado del todo no tiene nada pendiente que un plan
    * nuevo pueda pisar. Nunca lanza -- un fallo aquí no puede impedir que
    * "Generar plan" siga funcionando (mismo principio que safeInit).
+   * @param {string} [fechaKey] - "YYYY-MM-DD" de otro día (2026-11-04: al
+   *   cambiar entero un plan de varios días, el plan activo de cada día
+   *   siguiente). Sin él, hoy.
    * @returns {object|null}
    */
-  function getBlockingActiveEntry() {
+  function getBlockingActiveEntry(fechaKey) {
     try {
       if (typeof findTodayEntry !== "function") return null;
-      var entry = findTodayEntry();
+      var entry = findTodayEntry(fechaKey);
       if (!entry) return null;
       if (typeof hasRealPantryAction === "function" && !hasRealPantryAction(entry)) return null;
       if (typeof isEntryFullyCooked === "function" && isEntryFullyCooked(entry)) return null;
@@ -1975,42 +1978,57 @@ document.addEventListener("DOMContentLoaded", function () {
       usePlanTodayBtn.disabled = true; // guarda simple contra doble clic (la llamada es síncrona)
       try {
         var result, mode, savedDays = 1;
+        // Los días de un plan de varios días van juntos (2026-11-04): «Ya
+        // compré todo esto» compra el plan entero, como su lista de la compra
+        // (entradasDeLaCompra, pantry.js).
+        var variosDias = !!(lastGeneratedDays && 1 < lastGeneratedDays.length);
+        var grupo = variosDias ? generateHistoryId() : undefined;
         if (pendingReplaceEntryId && typeof replacePendingMealsForToday === "function") {
           // Con familia se guarda lo de toda la casa (tomasDeLaCasa).
-          result = replacePendingMealsForToday(pendingReplaceEntryId, tomasDeLaCasa(0), lastGeneratedStore, lastGeneratedDayOptions);
+          result = replacePendingMealsForToday(pendingReplaceEntryId, tomasDeLaCasa(0), lastGeneratedStore, lastGeneratedDayOptions, grupo);
           pendingReplaceEntryId = null;
           mode = "active-replaced";
         } else if (typeof savePlanForToday === "function") {
-          result = savePlanForToday(tomasDeLaCasa(0), lastGeneratedStore, lastGeneratedDayOptions);
+          result = savePlanForToday(tomasDeLaCasa(0), lastGeneratedStore, lastGeneratedDayOptions, undefined, grupo);
           mode = result.replaced ? "draft-updated" : "created";
+        }
+        if (!result) return;
 
-          // ── Plan de VARIOS DÍAS (2026-09-03) ──────────────────────────
-          // Antes se guardaba solo `lastGeneratedMeals`, que son las tomas
-          // del DÍA 1: el usuario generaba una semana, pulsaba confirmar y
-          // en "Mis planes" aparecía un único día. Los demás días ya
-          // estaban generados y en pantalla (`lastGeneratedDays`, es lo que
-          // pinta el carrusel) -- simplemente nadie los guardaba.
-          //
-          // Cada día va bajo SU fecha, empezando hoy, porque "Mis planes"
-          // se organiza por fecha: guardarlos todos bajo hoy los apilaría
-          // en el mismo día y no serviría de nada.
-          //
-          // Se salta el día 0: ya lo guardó la llamada de arriba, con su
-          // UPSERT sobre el borrador de hoy. Repetirlo aquí crearía una
-          // segunda entrada de hoy.
-          if (lastGeneratedDays && lastGeneratedDays.length > 1) {
-            savedDays = lastGeneratedDays.length;
-            for (var d = 1; d < lastGeneratedDays.length; d++) {
-              var dayMeals = tomasDeLaCasa(d);
-              if (!dayMeals.length) continue;
-              var fecha = new Date();
-              fecha.setDate(fecha.getDate() + d);
-              savePlanForToday(dayMeals, lastGeneratedStore, lastGeneratedDayOptions,
-                               formatLocalDateKey(fecha));
+        // ── Plan de VARIOS DÍAS (2026-09-03) ──────────────────────────
+        // Antes se guardaba solo `lastGeneratedMeals`, que son las tomas
+        // del DÍA 1: el usuario generaba una semana, pulsaba confirmar y
+        // en "Mis planes" aparecía un único día. Los demás días ya
+        // estaban generados y en pantalla (`lastGeneratedDays`, es lo que
+        // pinta el carrusel) -- simplemente nadie los guardaba.
+        //
+        // Cada día va bajo SU fecha, empezando hoy, porque "Mis planes"
+        // se organiza por fecha: guardarlos todos bajo hoy los apilaría
+        // en el mismo día y no serviría de nada.
+        //
+        // Se salta el día 0: ya lo guardó la llamada de arriba, con su
+        // UPSERT sobre el borrador de hoy. Repetirlo aquí crearía una
+        // segunda entrada de hoy.
+        //
+        // Al cambiar el plan entero (2026-11-04) también: antes solo se
+        // cambiaba hoy y los demás días del plan nuevo no se guardaban. El
+        // día siguiente con un plan activo (comprado y sin terminar) se cambia
+        // como hoy, conservando lo cocinado; si no, el UPSERT de siempre.
+        if (variosDias) {
+          savedDays = lastGeneratedDays.length;
+          for (var d = 1; d < lastGeneratedDays.length; d++) {
+            var dayMeals = tomasDeLaCasa(d);
+            if (!dayMeals.length) continue;
+            var fecha = new Date();
+            fecha.setDate(fecha.getDate() + d);
+            var fechaKey = formatLocalDateKey(fecha);
+            var activa = (mode === "active-replaced") ? getBlockingActiveEntry(fechaKey) : null;
+            if (activa) {
+              replacePendingMealsForToday(activa.id, dayMeals, lastGeneratedStore, lastGeneratedDayOptions, grupo);
+            } else {
+              savePlanForToday(dayMeals, lastGeneratedStore, lastGeneratedDayOptions, fechaKey, grupo);
             }
           }
         }
-        if (!result) return;
 
         // savePlanForToday()/replacePendingMealsForToday() siempre guardan
         // bajo la fecha de HOY -- si el usuario estaba mirando otro día en
@@ -2066,23 +2084,34 @@ document.addEventListener("DOMContentLoaded", function () {
       try {
         var storeForEntry = (typeof lastNoCookStore !== "undefined") ? lastNoCookStore : undefined;
         var result, mode;
+        var dias = (typeof lastNoCookDays !== "undefined" && lastNoCookDays) ? lastNoCookDays : [];
+        // Los días del plan van juntos, como en el plan normal (2026-11-04).
+        var grupo = (1 < dias.length) ? generateHistoryId() : undefined;
         if (pendingReplaceNoCookEntryId && typeof replacePendingNoCookSlotsForToday === "function") {
           // «Cambiar el plan completo»: sobre ESA entry, conservando lo ya comido.
-          result = replacePendingNoCookSlotsForToday(pendingReplaceNoCookEntryId, lastNoCookSlots, storeForEntry);
+          result = replacePendingNoCookSlotsForToday(pendingReplaceNoCookEntryId, lastNoCookSlots, storeForEntry, grupo);
           pendingReplaceNoCookEntryId = null;
           mode = "active-replaced";
         } else {
-          result = saveNoCookPlanForToday(lastNoCookSlots, storeForEntry);
+          result = saveNoCookPlanForToday(lastNoCookSlots, storeForEntry, undefined, grupo);
           mode = result && result.replaced ? "draft-updated" : "created";
         }
         if (!result) return;
-        var dias = (typeof lastNoCookDays !== "undefined" && lastNoCookDays) ? lastNoCookDays : [];
         // El día 0 ya lo guardó la llamada de arriba (con su UPSERT sobre el
-        // borrador de hoy): repetirlo crearía una segunda entrada de hoy.
+        // borrador de hoy): repetirlo crearía una segunda entrada de hoy. Al
+        // cambiar el plan entero, el día con un plan activo se cambia como hoy
+        // (2026-11-04); si no, se le sumaba una segunda tarjeta.
         for (var d = 1; d < dias.length; d++) {
           var fecha = new Date();
           fecha.setDate(fecha.getDate() + d);
-          saveNoCookPlanForToday(dias[d].slots, storeForEntry, formatLocalDateKey(fecha));
+          var fechaKey = formatLocalDateKey(fecha);
+          var activa = (mode === "active-replaced" && typeof findBlockingNoCookEntryToday === "function")
+            ? findBlockingNoCookEntryToday(fechaKey) : null;
+          if (activa) {
+            replacePendingNoCookSlotsForToday(activa.id, dias[d].slots, storeForEntry, grupo);
+          } else {
+            saveNoCookPlanForToday(dias[d].slots, storeForEntry, fechaKey, grupo);
+          }
         }
 
         safeInit("select-today-in-plans", function () {

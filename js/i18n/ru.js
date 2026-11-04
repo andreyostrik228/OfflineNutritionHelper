@@ -657,6 +657,7 @@ registerI18nTable("ru", {
   "ui.hoy": "Сегодня",
   "ui.planes_completado": "Завершено",
   "ui.planes_n_ingredientes": "ингредиентов: {n}",
+  "ui.planes_compra_de_n_dias": "покупки на {n} дн.",
   "ui.planes_n_productos": "продуктов: {n}",
   "ui.planes_n_productos_sin_cocinar": "продуктов: {n} — без готовки",
   "ui.planes_ya_en_tu_despensa_nota": "{cantidad} уже есть в кладовой",
@@ -693,7 +694,7 @@ registerI18nTable("ru", {
   "ui.planes_aviso_actualizado_titulo": "План обновлён",
   "html.planes_aviso_actualizado": "<p>Это всё тот же план на сегодня в разделе <strong>{planes}</strong> — пока ничего не куплено и не приготовлено, и в кладовую ничего не добавлено.</p>",
   "ui.planes_aviso_varios_dias_titulo": "План на {n} дн. подтверждён",
-  "html.planes_aviso_varios_dias": "<p>Сохранён план на каждый из <strong>{n} дн.</strong>, начиная с сегодняшнего. Переключайте дни кнопками с датами в разделе <strong>{planes}</strong>. Когда сделаете покупки, нажмите <strong>{boton}</strong> в нужный день.</p>",
+  "html.planes_aviso_varios_dias": "<p>Сохранён план на каждый из <strong>{n} дн.</strong>, начиная с сегодняшнего. Переключайте дни кнопками с датами в разделе <strong>{planes}</strong>. Когда купите всё по списку, нажмите <strong>{boton}</strong> в сегодняшнем дне: в кладовую попадёт всё на {n} дн.</p>",
   "ui.planes_aviso_confirmado_titulo": "План подтверждён",
   "html.planes_aviso_confirmado": "<p>Когда сделаете покупки, нажмите <strong>{boton}</strong> ниже, в разделе <strong>{planes}</strong> — тогда в следующий раз это не придётся покупать заново.</p>",
   // Alérgenos de la etiqueta (js/core/allergens.js). Las etiquetas españolas de EU_ALLERGEN_LABELS y estas

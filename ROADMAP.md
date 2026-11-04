@@ -46,6 +46,19 @@ Lo pedido: «указывать, сколько времени у тебя ес�
 - **No hizo falta** preferir lo «de la noche antes» (`makeAhead`) con un desayuno
   corto: 59 de los 69 desayunos ya se hacen en 10 min o menos.
 
+## La despensa recibe el plan entero, 2026-11-04 (sello `20261104a`, 1360 tests)
+
+El dueño: «кладовая как будто бы сломалась… ни время пока испортится не
+показывает, ни новые продукты из нового плана не добавляются».
+
+| Qué | Dónde | Estado |
+|---|---|---|
+| «Ya compré todo esto» en un plan de varios días compra todos los días que quedan sin comprar, juntos, como la lista (antes solo el de la tarjeta: 12 de 27 productos) | `js/core/pantry.js` (`entradasDeLaCompra`, `markPurchaseDone`, `markNoCookPurchaseDone`, `planGrupo`), `js/app.js` | **Hecho** |
+| La tarjeta dice «покупки на N дн.» y el aviso ya no manda a comprar día a día | `js/ui/render-pantry.js`, `js/i18n/*.js` | **Hecho** |
+| «Cambiar el plan entero» guarda todos los días del plan nuevo (antes solo hoy; los demás se quedaban con el viejo) | `js/app.js` (`handleUsePlanToday`, `handleUseNoCookPlanToday`) | **Hecho** |
+| En la despensa, el plazo ya no queda debajo de una cantidad larga | `assets/css/style.css` (`.pantry-item`) | **Hecho** |
+| Probar el plan sin cocinar de varios días en el navegador y todo en el móvil del dueño | — | Pendiente |
+
 ## «Sin tienda»: productos normales sin Mercadona, 2026-10-31 (sello `20261031b`, 1356 tests)
 
 El dueño: «другие магазины не получается добавить, тогда сделай режим без

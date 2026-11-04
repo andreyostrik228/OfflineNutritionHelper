@@ -650,6 +650,7 @@ registerI18nTable("en", {
   "ui.hoy": "Today",
   "ui.planes_completado": "Completed",
   "ui.planes_n_ingredientes": "{n} ingredients",
+  "ui.planes_compra_de_n_dias": "shopping for {n} days",
   "ui.planes_n_productos": "{n} products",
   "ui.planes_n_productos_sin_cocinar": "{n} products — no cooking",
   "ui.planes_ya_en_tu_despensa_nota": "{cantidad} already in your pantry",
@@ -686,7 +687,7 @@ registerI18nTable("en", {
   "ui.planes_aviso_actualizado_titulo": "Plan updated",
   "html.planes_aviso_actualizado": "<p>It is still the same plan for today in <strong>{planes}</strong> — nothing has been bought or cooked yet, and nothing has been added to your pantry.</p>",
   "ui.planes_aviso_varios_dias_titulo": "{n}-day plan confirmed",
-  "html.planes_aviso_varios_dias": "<p>A plan has been saved for each of the <strong>{n} days</strong>, starting today. Switch days with the date buttons in <strong>{planes}</strong>. When you shop, tap <strong>{boton}</strong> on the matching day.</p>",
+  "html.planes_aviso_varios_dias": "<p>A plan has been saved for each of the <strong>{n} days</strong>, starting today. Switch days with the date buttons in <strong>{planes}</strong>. Once you've bought the list, tap <strong>{boton}</strong> on today: the pantry gets what all {n} days need.</p>",
   "ui.planes_aviso_confirmado_titulo": "Plan confirmed",
   "html.planes_aviso_confirmado": "<p>When you shop, tap <strong>{boton}</strong> down there, in <strong>{planes}</strong> — that way it will not ask you for it again next time.</p>",
   // Alérgenos de la etiqueta (js/core/allergens.js). Las etiquetas españolas de EU_ALLERGEN_LABELS y estas

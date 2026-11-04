@@ -858,7 +858,9 @@ function run(t) {
     var fin = html.indexOf("</section>", panel);
     assert.ok(panel !== -1 && panel < boton && boton < fin, "el botón va dentro de #noCookShoppingPanel");
     var app = fs.readFileSync(projPath("js/app.js"), "utf8");
-    assert.ok(app.indexOf("saveNoCookPlanForToday(dias[d].slots, storeForEntry, formatLocalDateKey(fecha))") !== -1);
+    // Desde el 2026-11-04 con el grupo del plan (una compra para todos los días).
+    assert.ok(app.indexOf("var fechaKey = formatLocalDateKey(fecha);") !== -1);
+    assert.ok(app.indexOf("saveNoCookPlanForToday(dias[d].slots, storeForEntry, fechaKey, grupo)") !== -1);
     var pestanas = fs.readFileSync(projPath("js/ui/pestanas.js"), "utf8");
     assert.ok(pestanas.indexOf('["#noCookShoppingPanel", "compra"]') !== -1, "en la pestaña «Compra»");
   });
