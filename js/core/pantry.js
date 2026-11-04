@@ -123,9 +123,14 @@
  *   aggregatePlanMealItems(meals) → [{name, requiredGrams}]
  *   markPurchaseDone(entryId, excludedNames?, storeId?) → { saved, historySaved, run } | null
  *   markMealCooked(entryId, mealKey, cooked) → { saved, historySaved, entry, meal } | null
- *   replaceSingleMealForEntry(entryId, mealKey, newMeal) → { saved, historySaved, entry, meal } | null
+ *   replaceSingleMealForEntry(entryId, mealKey, newMeal, sinCompra?) → { saved, historySaved, entry, meal } | null
  *     (2026-08-20g, per-meal editing — aplica el resultado de
  *     regenerateSingleMeal(), plan-generator.js)
+ *   despensaLibre(excluirEntryId) → la despensa sin lo reservado por otros
+ *     planes comprados (2026-11-04, «Cambiar» con lo que hay en casa)
+ *   reconciliarDespensaConPlanes() → { repuestos, planesAgrupados }: lo
+ *     comprado y sin comer de hoy en adelante, en la despensa (2026-11-04)
+ *   marcarAjusteManual(name) — el usuario tocó ese producto a mano
  *   getPantryHistory() / appendPantryHistory(entry)
  *
  * ── "Sin cocinar" (2026-08-20f, known issue #9) ──────────────────────────
@@ -187,13 +192,105 @@ function sanitizePantryState(raw) {
         acquiredAt: typeof entry.acquiredAt === "string" ? entry.acquiredAt : null,
         openedAt: typeof entry.openedAt === "string" ? entry.openedAt : null,
         expiresAt: typeof entry.expiresAt === "string" ? entry.expiresAt : null,
-        storage: typeof entry.storage === "string" ? entry.storage : null
+        storage: typeof entry.storage === "string" ? entry.storage : null,
+        // Las tandas de compra (2026-11-04, ver _lotesDe).
+        lotes: _lotesSaneados(entry.lotes)
       };
     }
     // Cualquier otra forma (null, string, número suelto, grams<=0/no-numérico)
     // se descarta en silencio — más seguro que intentar adivinar.
   });
   return clean;
+}
+
+// ── Tandas de compra (2026-11-04) ─────────────────────────────────────────
+// El dueño: «сделай чтобы сайт смотрел когда какой продукт был куплен и…
+// показывал новые сроки годности». Una entrada tenía UNA fecha de compra (la
+// primera, que no se movía nunca) y una de apertura que no se borraba: con
+// plátanos comprados el lunes y otros el jueves, la despensa daba los del
+// jueves por tan viejos como los del lunes, y por abiertos. Ahora cada compra
+// es una tanda `{g, at, abierto}` (`g` son gramos o raciones, según la
+// entrada) y se gasta primero la más vieja. `acquiredAt` y `openedAt` de la
+// entrada son siempre los de su tanda más vieja: resolveExpiry no cambia, y al
+// acabarse una tanda el plazo pasa solo al de la siguiente.
+
+/**
+ * Las tandas guardadas, saneadas; null si no hay ninguna válida.
+ * @param {*} raw
+ * @returns {{g:number, at:string|null, abierto:string|null}[]|null}
+ */
+function _lotesSaneados(raw) {
+  if (!Array.isArray(raw)) return null;
+  var lotes = raw.filter(function (l) {
+    return l && typeof l === "object" && typeof l.g === "number" && isFinite(l.g) && !(l.g <= 0);
+  }).map(function (l) {
+    return {
+      g: l.g,
+      at: typeof l.at === "string" ? l.at : null,
+      abierto: typeof l.abierto === "string" ? l.abierto : null
+    };
+  });
+  return lotes.length ? lotes : null;
+}
+
+/** Gramos o raciones de una entrada (la despensa usa `grams`; el sin cocinar, `quantity`). */
+function _cantidadDe(entry) {
+  if (!entry) return 0;
+  if (typeof entry.grams === "number") return entry.grams;
+  if (typeof entry.quantity === "number") return entry.quantity;
+  return 0;
+}
+
+/**
+ * Las tandas de una entrada, en copia, de la más vieja a la más nueva. Una
+ * entrada de antes de las tandas es UNA tanda con sus fechas de siempre. La
+ * entrada manda sobre su tanda más vieja (sus fechas son las que se ven y las
+ * que se pueden fijar desde fuera), y si su cantidad no cuadra con la suma de
+ * las tandas (una suma de la nube, un redondeo), se cuadra.
+ * @param {object|undefined} entry
+ * @param {number} eps - lo que se da por igual (medio gramo; casi nada en raciones)
+ * @returns {{g:number, at:string|null, abierto:string|null}[]}
+ */
+function _lotesDe(entry, eps) {
+  if (!entry) return [];
+  var cantidad = _cantidadDe(entry);
+  var lotes = (_lotesSaneados(entry.lotes) || []).map(function (l) {
+    return { g: l.g, at: l.at, abierto: l.abierto };
+  });
+  if (!lotes.length) {
+    if (eps < cantidad) {
+      lotes.push({ g: cantidad, at: entry.acquiredAt || entry.updatedAt || null, abierto: entry.openedAt || null });
+    }
+    return lotes;
+  }
+  if (typeof entry.acquiredAt === "string" && entry.acquiredAt) lotes[0].at = entry.acquiredAt;
+  if (typeof entry.openedAt === "string" && entry.openedAt) lotes[0].abierto = entry.openedAt;
+  var dif = cantidad - _sumaLotes(lotes);
+  if (eps < dif) lotes.push({ g: dif, at: entry.updatedAt || null, abierto: null });
+  else if (dif < -eps) lotes = _gastarLotes(lotes, -dif, null, eps);
+  else lotes[lotes.length - 1].g += dif;
+  return lotes;
+}
+
+function _sumaLotes(lotes) {
+  return lotes.reduce(function (s, l) { return s + l.g; }, 0);
+}
+
+/**
+ * Gasta `cantidad` empezando por la tanda más vieja. Una tanda de la que se
+ * gasta algo queda abierta en `abrirISO` (si se pasa y no lo estaba ya).
+ * @returns {object[]} las tandas que quedan
+ */
+function _gastarLotes(lotes, cantidad, abrirISO, eps) {
+  var resto = cantidad;
+  lotes.forEach(function (l) {
+    if (!(eps < resto)) return;
+    var toma = Math.min(l.g, resto);
+    l.g -= toma;
+    resto -= toma;
+    if (abrirISO && !l.abierto && eps < toma) l.abierto = abrirISO;
+  });
+  return lotes.filter(function (l) { return eps < l.g; });
 }
 
 /**
@@ -216,19 +313,37 @@ function sanitizePantryState(raw) {
  * original, así que `openedAt` no se borra nunca. Es la opción prudente:
  * como mucho avisa de más, jamás da por fresco algo que ya no lo está.
  *
+ * Desde el 2026-11-04 esas dos fechas son las de la tanda más vieja
+ * (ver «Tandas de compra» arriba): lo que sube es una tanda nueva de
+ * `nowISO`, lo que baja se gasta de la más vieja, y cuando una tanda se
+ * acaba las fechas pasan a la siguiente. «Abierto para siempre» sigue
+ * valiendo, pero para ESA tanda, no para el producto.
+ *
  * @param {object|undefined} prev - entrada anterior, si existía
  * @param {object} next - entrada nueva ya construida
- * @param {string} nowISO
+ * @param {string} nowISO - también la fecha de la tanda nueva, si sube
  * @param {boolean} [abrir] - marcar el envase como abierto ahora
+ * @param {boolean} [devolver] - lo que sube vuelve a la tanda más vieja (deshacer
+ *   un cocinado o una toma comida), en vez de ser una compra nueva
  * @returns {object} `next` con los campos de caducidad puestos
  */
-function preserveExpiryFields(prev, next, nowISO, abrir) {
-  next.acquiredAt = (prev && typeof prev.acquiredAt === "string" && prev.acquiredAt)
-    ? prev.acquiredAt
-    : nowISO;
-  next.openedAt = (prev && typeof prev.openedAt === "string" && prev.openedAt)
-    ? prev.openedAt
-    : (abrir ? nowISO : null);
+function preserveExpiryFields(prev, next, nowISO, abrir, devolver) {
+  var eps = (typeof next.grams === "number") ? 0.5 : 1e-6;
+  var lotes = _lotesDe(prev, eps);
+  var delta = _cantidadDe(next) - _sumaLotes(lotes);
+  if (eps < delta) {
+    if (devolver && lotes.length) lotes[0].g += delta;
+    else lotes.push({ g: delta, at: nowISO, abierto: null });
+  } else if (delta < -eps) {
+    lotes = _gastarLotes(lotes, -delta, abrir ? nowISO : null, eps);
+  } else if (lotes.length) {
+    lotes[lotes.length - 1].g += delta;
+  }
+  next.lotes = lotes.length ? lotes : null;
+  next.acquiredAt = (lotes.length && lotes[0].at)
+    ? lotes[0].at
+    : ((prev && typeof prev.acquiredAt === "string" && prev.acquiredAt) ? prev.acquiredAt : nowISO);
+  next.openedAt = lotes.length ? (lotes[0].abierto || null) : null;
   next.expiresAt = (prev && typeof prev.expiresAt === "string") ? prev.expiresAt : null;
   next.storage = (prev && typeof prev.storage === "string") ? prev.storage : null;
   return next;
@@ -1056,10 +1171,188 @@ function markPurchaseDone(entryId, excludedNames, storeId) {
   entry.purchase.done = true;
   // Los días siguientes quedan comprados con esta compra (sin run propio: el
   // gasto ya está en el de esta entrada).
-  entradas.slice(1).forEach(function (e) { e.purchase.done = true; });
+  entradas.slice(1).forEach(function (e) { e.purchase.done = true; e.purchase.compradoCon = entry.id; });
   var historySaved = savePantryHistory(history);
 
   return { saved: saved, historySaved: historySaved, run: run };
+}
+
+// ── Lo comprado y sin comer, en la despensa (2026-11-04) ─────────────────
+// El dueño: «у меня сейчас есть план, я ещё ничего не скушал, но у меня нет
+// этих продуктов в кладовой… когда покупаешь план, то у тебя абсолютно все
+// продукты в кладовке, потом когда подтверждаешь приём пищи, то это
+// количество уходит». Eso es el ciclo de siempre (comprar suma, cocinar
+// resta), pero lo de la despensa podía quedarse por detrás de los planes: un
+// plan de varios días comprado antes de que la compra fuera de todo el plan
+// metía solo el día 1, y lo que se pierde o se pisa (otro dispositivo, la
+// nube) no volvía. Al abrir la página, reconciliarDespensaConPlanes() mira los
+// planes comprados de hoy en adelante y pone en la despensa lo que piden sus
+// tomas sin cocinar y falta, con la fecha de su compra. Lo que el usuario cambió
+// a mano DESPUÉS de esa compra (marcarAjusteManual) no se toca: lo sabe él.
+
+var PANTRY_AJUSTES_KEY = "nutritionPlanner.despensaAjustes.v1";
+
+function _leerAjustesManuales() {
+  try {
+    if (typeof localStorage === "undefined") return {};
+    var raw = JSON.parse(localStorage.getItem(PANTRY_AJUSTES_KEY) || "{}");
+    return (raw && typeof raw === "object") ? raw : {};
+  } catch (err) {
+    return {};
+  }
+}
+
+/**
+ * Apunta que el usuario cambió o quitó A MANO un producto de la despensa: la
+ * reconciliación no lo vuelve a poner por una compra anterior a eso.
+ * @param {string} name
+ */
+function marcarAjusteManual(name) {
+  try {
+    if (typeof localStorage === "undefined") return;
+    var ajustes = _leerAjustesManuales();
+    ajustes[normalizeIngredientKey(name)] = new Date().toISOString();
+    localStorage.setItem(PANTRY_AJUSTES_KEY, JSON.stringify(ajustes));
+  } catch (err) { /* sin localStorage: no se apunta, y no pasa nada más */ }
+}
+
+/** Cuándo se compró lo de una entrada: su última compra, o la del día que la compró con ella. */
+function _fechaDeCompra(entry, history) {
+  var runs = (entry.purchase && entry.purchase.runs) || [];
+  if (runs.length && runs[runs.length - 1].at) return runs[runs.length - 1].at;
+  var con = entry.purchase && entry.purchase.compradoCon;
+  var otra = con ? history.filter(function (e) { return e.id === con; })[0] : null;
+  if (otra && otra !== entry) return _fechaDeCompra(otra, []);
+  return entry.createdAt || new Date().toISOString();
+}
+
+/**
+ * Los planes de varios días guardados antes del 2026-11-04 no llevan
+ * `planGrupo`, y su «Ya compré todo esto» metía solo el día de la tarjeta. Se
+ * reconocen porque sus días se guardaron con la misma pulsación (createdAt a
+ * menos de 10 s) en fechas seguidas. Se les pone grupo y, si el día más
+ * temprano está comprado, los siguientes sin comprar pasan a comprados con él
+ * (la lista de la compra era la de todos los días).
+ * @param {object[]} history - se modifica
+ * @returns {boolean} si cambió algo
+ */
+function _agruparPlanesViejos(history) {
+  var sueltos = history.filter(function (e) {
+    return !e.planGrupo && typeof e.createdAt === "string" && !isNaN(new Date(e.createdAt).getTime());
+  }).sort(function (a, b) { return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(); });
+  var cambio = false;
+  var i = 0;
+  while (i < sueltos.length) {
+    var grupo = [sueltos[i]];
+    var j = i + 1;
+    while (j < sueltos.length && sueltos[j].type === sueltos[i].type &&
+           new Date(sueltos[j].createdAt).getTime() - new Date(grupo[grupo.length - 1].createdAt).getTime() < 10000) {
+      grupo.push(sueltos[j]);
+      j++;
+    }
+    i = j;
+    if (grupo.length < 2) continue;
+    grupo.sort(function (a, b) { return getEntryPlanDate(a) < getEntryPlanDate(b) ? -1 : 1; });
+    var fechas = grupo.map(getEntryPlanDate);
+    var distintas = fechas.filter(function (f, k) { return fechas.indexOf(f) === k; }).length === fechas.length;
+    if (!distintas) continue;
+    var id = "v" + grupo[0].id;
+    var comprador = null;
+    grupo.forEach(function (e) {
+      e.planGrupo = id;
+      if (e.purchase && e.purchase.done) {
+        if (!comprador) comprador = e;
+      } else if (comprador && e.purchase) {
+        e.purchase.done = true;
+        e.purchase.compradoCon = comprador.id;
+      }
+    });
+    cambio = true;
+  }
+  return cambio;
+}
+
+/**
+ * Pone en la despensa lo que falta de los planes comprados de hoy en adelante
+ * (tomas sin cocinar o sin comer), con la fecha de su compra. Ver la cabecera
+ * del bloque. Nunca lanza.
+ * @returns {{ repuestos:number, planesAgrupados:boolean }}
+ */
+function reconciliarDespensaConPlanes() {
+  var out = { repuestos: 0, planesAgrupados: false };
+  try {
+    var hoy = formatLocalDateKey(new Date());
+    var history = getPantryHistory();
+    if (_agruparPlanesViejos(history)) {
+      savePantryHistory(history);
+      out.planesAgrupados = true;
+    }
+    var ajustes = _leerAjustesManuales();
+    var nowISO = new Date().toISOString();
+
+    // Lo que piden, por clave: cuánto y la compra más vieja que lo trajo.
+    var platos = {};
+    var sinCocinar = {};
+    history.forEach(function (e) {
+      if (!e.purchase || !e.purchase.done || getEntryPlanDate(e) < hoy) return;
+      var compra = _fechaDeCompra(e, history);
+      if (e.type === "nocook") {
+        (e.slots || []).forEach(function (slot) {
+          if (slot.consumed) return;
+          (slot.items || []).forEach(function (it) {
+            var p = sinCocinar[it.id] = sinCocinar[it.id] || { name: it.name, unit: it.unit || null, cantidad: 0, at: compra };
+            p.cantidad += it.quantity || 0;
+            if (compra < p.at) p.at = compra;
+          });
+        });
+        return;
+      }
+      (e.meals || []).forEach(function (m) {
+        if (m.cooked) return;
+        (m.items || []).forEach(function (it) {
+          var key = normalizeIngredientKey(it.name);
+          var p = platos[key] = platos[key] || { name: it.name, cantidad: 0, at: compra };
+          p.cantidad += it.requiredGrams || 0;
+          if (compra < p.at) p.at = compra;
+        });
+      });
+    });
+
+    var state = getPantryState();
+    Object.keys(platos).forEach(function (key) {
+      var p = platos[key];
+      var hay = state[key] ? state[key].grams : 0;
+      if (!(hay + 0.5 < p.cantidad)) return;
+      if (ajustes[key] && !(ajustes[key] < p.at)) return;
+      state[key] = preserveExpiryFields(
+        state[key],
+        { grams: round0(p.cantidad), displayName: state[key] ? state[key].displayName : p.name, updatedAt: nowISO },
+        p.at
+      );
+      out.repuestos++;
+    });
+    if (out.repuestos) savePantryState(state);
+
+    var stock = getNoCookStock();
+    var repuestosSc = 0;
+    Object.keys(sinCocinar).forEach(function (id) {
+      var p = sinCocinar[id];
+      var hay = getNoCookProductStock(id, stock);
+      if (!(hay + 1e-6 < p.cantidad)) return;
+      if (ajustes[id] && !(ajustes[id] < p.at)) return;
+      stock[id] = preserveExpiryFields(
+        stock[id],
+        { quantity: p.cantidad, displayName: (stock[id] && stock[id].displayName) || p.name, unit: (stock[id] && stock[id].unit) || p.unit, updatedAt: nowISO },
+        p.at
+      );
+      repuestosSc++;
+    });
+    if (repuestosSc) saveNoCookStock(stock);
+    out.repuestos += repuestosSc;
+  } catch (err) {
+    console.error("[pantry:reconciliar] no se pudo cuadrar la despensa con los planes:", err);
+  }
+  return out;
 }
 
 // ── Etapa 3: marcar una comida como cocinada (única función que RESTA) ───
@@ -1122,7 +1415,9 @@ function markMealCooked(entryId, mealKey, cooked) {
       pantryState[key] = preserveExpiryFields(
         pantryState[key],
         { grams: round0(current + c.grams), displayName: c.name, updatedAt: nowISO },
-        nowISO
+        nowISO,
+        false,
+        true // vuelve a su tanda, no es una compra nueva
       );
     });
     meal.cooked = false;
@@ -1150,12 +1445,17 @@ function markMealCooked(entryId, mealKey, cooked) {
  * replacePendingMealsForToday: los ingredientes cambiaron, "✓ Ya
  * compraste esto" dejaría de ser cierto sin este reseteo).
  *
+ * Salvo con `sinCompra` (2026-11-04): el plato nuevo sale entero de lo que
+ * ya hay en casa (regenerateSingleMeal con soloDespensa), no hay nada que
+ * comprar y la compra se queda como estaba.
+ *
  * @param {string} entryId
  * @param {string} mealKey
  * @param {object} newMeal - el `meal` devuelto por regenerateSingleMeal()
+ * @param {boolean} [sinCompra]
  * @returns {{ saved:boolean, historySaved:boolean, entry:object, meal:object }|null}
  */
-function replaceSingleMealForEntry(entryId, mealKey, newMeal) {
+function replaceSingleMealForEntry(entryId, mealKey, newMeal, sinCompra) {
   var history = getPantryHistory();
   var entry = history.find(function (e) { return e.id === entryId && e.type !== "nocook"; });
   if (!entry) return null;
@@ -1181,10 +1481,37 @@ function replaceSingleMealForEntry(entryId, mealKey, newMeal) {
   };
 
   entry.meals[index] = replacedMeal;
-  entry.purchase.done = false;
+  if (!sinCompra) entry.purchase.done = false;
 
   var historySaved = savePantryHistory(history);
   return { saved: true, historySaved: historySaved, entry: entry, meal: replacedMeal };
+}
+
+/**
+ * La despensa con la que «Cambiar» en «Mis planes» busca primero un plato que
+ * no pida comprar nada (2026-11-04): la de siempre menos lo que necesitan las
+ * tomas sin cocinar de los OTROS planes comprados de hoy en adelante, que ya
+ * tienen dueño. Las otras tomas del mismo plan las aparta regenerateSingleMeal.
+ * @param {string} excluirEntryId - el plan en el que se cambia la toma
+ * @returns {object}
+ */
+function despensaLibre(excluirEntryId) {
+  var state = despensaParaElMenu();
+  var hoy = formatLocalDateKey(new Date());
+  getPantryHistory().forEach(function (e) {
+    if (e.id === excluirEntryId || e.type === "nocook" || !e.purchase || !e.purchase.done) return;
+    if (getEntryPlanDate(e) < hoy) return;
+    (e.meals || []).forEach(function (m) {
+      if (m.cooked) return;
+      (m.items || []).forEach(function (it) {
+        var key = normalizeIngredientKey(it.name);
+        if (!state[key]) return;
+        state[key].grams -= it.requiredGrams || 0;
+        if (!(0 < state[key].grams)) delete state[key];
+      });
+    });
+  });
+  return state;
 }
 
 // ── Despensa "sin cocinar" — productos reales, no ingredientes ───────────
@@ -1241,7 +1568,8 @@ function sanitizeNoCookStock(raw) {
         acquiredAt: typeof entry.acquiredAt === "string" ? entry.acquiredAt : null,
         openedAt: typeof entry.openedAt === "string" ? entry.openedAt : null,
         expiresAt: typeof entry.expiresAt === "string" ? entry.expiresAt : null,
-        storage: typeof entry.storage === "string" ? entry.storage : null
+        storage: typeof entry.storage === "string" ? entry.storage : null,
+        lotes: _lotesSaneados(entry.lotes)
       };
     }
   });
@@ -1612,7 +1940,7 @@ function markNoCookPurchaseDone(entryId) {
   var run = { at: nowISO, lines: lines, totals: { purchaseCost: round2(totalCost), itemCount: lines.length } };
   entry.purchase.runs.push(run);
   entry.purchase.done = true;
-  entradas.slice(1).forEach(function (e) { e.purchase.done = true; });
+  entradas.slice(1).forEach(function (e) { e.purchase.done = true; e.purchase.compradoCon = entry.id; });
   var historySaved = savePantryHistory(history);
 
   return { saved: saved, historySaved: historySaved, run: run };
@@ -1669,7 +1997,9 @@ function markNoCookSlotConsumed(entryId, slotKey, consumed) {
       stock[c.id] = preserveExpiryFields(
         stock[c.id],
         { quantity: current + c.quantity, displayName: c.name, unit: (stock[c.id] && stock[c.id].unit) || null, updatedAt: nowISO },
-        nowISO
+        nowISO,
+        false,
+        true // vuelve a su tanda (2026-11-04)
       );
     });
     slot.consumed = false;

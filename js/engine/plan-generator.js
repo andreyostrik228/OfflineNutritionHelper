@@ -2553,7 +2553,7 @@ function scaleItemUp(item, addGrams) {
  * @param {object|null} pantryState - snapshot de getPantryState(), o null
  * @returns {{ meal:object, tier:number }|{ error:string }}
  */
-function regenerateSingleMeal(entry, mealKey, pantryState) {
+function regenerateSingleMeal(entry, mealKey, pantryState, opciones) {
   var def = MEAL_DEFS.find(function (d) { return d.key === mealKey; });
   if (!def) return { error: "unknown_meal_key" };
 
@@ -2586,7 +2586,10 @@ function regenerateSingleMeal(entry, mealKey, pantryState) {
   otherMealsForCost.forEach(function (m) { addItemsToPurchaseState(committedGrams, m.items); });
 
   var otherCost = computeDayPurchaseCost(otherMealsForCost, store, pantryState).purchaseCost;
-  var mealCap = Math.max(0, round2(entry.budget - otherCost));
+  var soloDespensa = !!(opciones && opciones.soloDespensa);
+  // Solo con lo que hay en casa (2026-11-04): tope de compra 0 (ver
+  // _elegirSinComprar).
+  var mealCap = soloDespensa ? 0 : Math.max(0, round2(entry.budget - otherCost));
   var targetSpend = round2(entry.budget * def.ratio);
 
   var target = { kcal: oldMeal.total.kcal, protein: oldMeal.total.protein, carbs: oldMeal.total.carbs, fat: oldMeal.total.fat };
@@ -2598,6 +2601,10 @@ function regenerateSingleMeal(entry, mealKey, pantryState) {
     store:    store
   };
 
+  if (soloDespensa) {
+    return _elegirSinComprar(def, data, usedState, target, store, targetSpend, committedGrams, pantryState, oldMeal.dishName);
+  }
+
   for (var tier = 0; tier <= MAX_RELAXATION_TIER; tier++) {
     var pick = pickDish(def.category, data, usedState, tier, mealCap, target, store, targetSpend, committedGrams, pantryState);
     if (pick.dish) {
@@ -2607,6 +2614,28 @@ function regenerateSingleMeal(entry, mealKey, pantryState) {
   }
 
   return { error: "no_alternative_found" };
+}
+
+/**
+ * «Cambiar» con lo que hay en casa (2026-11-04). El dueño: «на перекус было два
+ * банана, я нажал заменить и мне сразу предложило что-то новое из магазина…
+ * чтобы заменялось на что-то из кладовой, а если нельзя, то уже спрашивало».
+ * Es pickDish con un tope de compra de 0 €: solo caben platos cuyo coste de
+ * compra marginal es 0, es decir, que salen enteros de la despensa (y de lo que
+ * sobra de los envases que ya compran las demás tomas). Ni un plato encogido
+ * para que quepa (las macros se irían) ni el mismo plato que había.
+ * @returns {{ meal:object, tier:number, deLaDespensa:true }|{ error:"sin_despensa" }}
+ */
+function _elegirSinComprar(def, data, usedState, target, store, targetSpend, committedGrams, pantryState, platoViejo) {
+  if (!pantryState || !Object.keys(pantryState).length) return { error: "sin_despensa" };
+  for (var tier = 0; tier <= MAX_RELAXATION_TIER; tier++) {
+    var pick = pickDish(def.category, data, usedState, tier, 0, target, store, targetSpend, committedGrams, pantryState);
+    if (pick.dish && !pick.simplified && pick.dish.name !== platoViejo) {
+      var meal = buildMealFromDish(pick.dish, def.key, def.label, target, store, pick.scaleFactor);
+      return { meal: meal, tier: tier, deLaDespensa: true };
+    }
+  }
+  return { error: "sin_despensa" };
 }
 
 /**
@@ -2669,6 +2698,11 @@ function regeneratePlanMeal(meals, mealKey, dayOptions, storeId, pantryState) {
     planDays: (dayOptions && typeof dayOptions.planDays === "number") ? dayOptions.planDays : 1,
     dayIndex: (dayOptions && typeof dayOptions.dayIndex === "number") ? dayOptions.dayIndex : 0
   };
+
+  // Primero con lo que hay en casa, si lo pide quien llama (2026-11-04).
+  if (dayOptions && dayOptions.soloDespensa) {
+    return _elegirSinComprar(def, data, usedState, target, store, targetSpend, committedGrams, pantryState, oldMeal.dishName);
+  }
 
   for (var tier = 0; tier <= MAX_RELAXATION_TIER; tier++) {
     var pick = pickDish(def.category, data, usedState, tier, mealCap, target, store, targetSpend, committedGrams, pantryState);

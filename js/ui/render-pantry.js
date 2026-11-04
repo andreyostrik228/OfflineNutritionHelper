@@ -700,6 +700,8 @@ function handlePantryListClick(event) {
     var removeBtn = event.target.closest('button[data-action="remove"]');
     if (removeBtn) {
       var row = removeBtn.closest(".pantry-item");
+      // Quitado a mano: la reconciliación con los planes no lo vuelve a poner.
+      if (typeof marcarAjusteManual === "function") marcarAjusteManual(row.getAttribute("data-name"));
       clearStock(row.getAttribute("data-name"));
       renderPantryPanel();
       pantryOnChange();
@@ -743,6 +745,8 @@ function beginEditPantryRow(btn) {
     if (settled) return;
     settled = true;
     var grams = parseFloat(input.value);
+    // Si no cambió nada, no cuenta como ajuste a mano (reconciliarDespensaConPlanes).
+    if (round0(isFinite(grams) ? grams : 0) !== currentGrams && typeof marcarAjusteManual === "function") marcarAjusteManual(name);
     setStock(name, isFinite(grams) ? grams : 0);
     renderPantryPanel();
     pantryOnChange();
@@ -1273,6 +1277,41 @@ function showPlanReplaceDialog(entry) {
   }
 }
 
+// ── «Cambiar» sin nada en casa (2026-11-04) ─────────────────────────────
+
+var _cambioCompraAlAceptar = null;
+
+/**
+ * Pregunta antes de traer un plato que pide comprar algo: «Cambiar» ya buscó
+ * con lo que hay en casa y no salió. Lo usan «Cambiar» del menú (app.js) y el
+ * de «Mis planes». Sin el diálogo en la página, se sigue sin preguntar.
+ * @param {string} toma - el nombre de la toma, ya traducido
+ * @param {function} alAceptar
+ */
+function preguntarCambioConCompra(toma, alAceptar) {
+  var dialogo = document.getElementById("cambioCompraDialog");
+  if (!dialogo || typeof dialogo.showModal !== "function") { alAceptar(); return; }
+  var texto = document.getElementById("cambioCompraTexto");
+  if (texto) texto.textContent = tFormat("ui.cambio_sin_despensa_cuerpo", { toma: toma });
+  _cambioCompraAlAceptar = alAceptar;
+  if (!dialogo.getAttribute("data-cableado")) {
+    dialogo.setAttribute("data-cableado", "1");
+    var si = document.getElementById("cambioCompraSiBtn");
+    var no = document.getElementById("cambioCompraNoBtn");
+    if (si) si.addEventListener("click", function () {
+      var fn = _cambioCompraAlAceptar;
+      _cambioCompraAlAceptar = null;
+      dialogo.close();
+      if (typeof fn === "function") fn();
+    });
+    if (no) no.addEventListener("click", function () {
+      _cambioCompraAlAceptar = null;
+      dialogo.close();
+    });
+  }
+  dialogo.showModal();
+}
+
 function hidePlanReplaceDialog() {
   if (!planReplaceDialogEl) return;
   if (typeof planReplaceDialogEl.close === "function" && planReplaceDialogEl.open) {
@@ -1484,19 +1523,41 @@ function handleEntryClick(event) {
       // Como al generar: sin despensa si el usuario lo pidió (2026-10-30).
       var pantryStateForRegen = (typeof despensaParaElMenu === "function") ? despensaParaElMenu()
         : ((typeof getPantryState === "function") ? getPantryState() : null);
-      var regen = (typeof regenerateSingleMeal === "function")
-        ? regenerateSingleMeal(regenEntry, regenMealKey, pantryStateForRegen)
-        : { error: "not_available" };
+      var cambiarConCompra = function () {
+        var regen = (typeof regenerateSingleMeal === "function")
+          ? regenerateSingleMeal(regenEntry, regenMealKey, pantryStateForRegen)
+          : { error: "not_available" };
+        if (!regen || regen.error) {
+          regenBtn.textContent = t("ui.planes_sin_alternativa");
+          regenBtn.disabled = true;
+          return;
+        }
+        replaceSingleMealForEntry(regenEntryId, regenMealKey, regen.meal);
+        renderPantryPanel();
+        pantryOnChange();
+      };
 
-      if (!regen || regen.error) {
-        regenBtn.textContent = t("ui.planes_sin_alternativa");
-        regenBtn.disabled = true;
+      // Primero con lo que hay en casa (2026-11-04): sin comprar nada, y la
+      // compra del plan sigue hecha. Si no sale, se pregunta antes de traer
+      // un plato que pide comprar.
+      // Con la despensa vacía (o apagada) no hay nada que mirar ni que preguntar.
+      var libre = (typeof despensaLibre === "function") ? despensaLibre(regenEntryId) : {};
+      var conDespensa = Object.keys(libre).length > 0 && typeof regenerateSingleMeal === "function";
+      var deCasa = conDespensa
+        ? regenerateSingleMeal(regenEntry, regenMealKey, libre, { soloDespensa: true })
+        : null;
+      if (deCasa && deCasa.meal) {
+        replaceSingleMealForEntry(regenEntryId, regenMealKey, deCasa.meal, true);
+        renderPantryPanel();
+        pantryOnChange();
         return;
       }
-
-      replaceSingleMealForEntry(regenEntryId, regenMealKey, regen.meal);
-      renderPantryPanel();
-      pantryOnChange();
+      if (conDespensa) {
+        var tomaVieja = (regenEntry.meals || []).filter(function (m) { return m.key === regenMealKey; })[0];
+        preguntarCambioConCompra(tMeal(regenMealKey, tomaVieja && tomaVieja.label), cambiarConCompra);
+        return;
+      }
+      cambiarConCompra();
       return;
     }
 

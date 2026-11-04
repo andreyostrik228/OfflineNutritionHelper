@@ -46,6 +46,17 @@ Lo pedido: «указывать, сколько времени у тебя ес�
 - **No hizo falta** preferir lo «de la noche antes» (`makeAhead`) con un desayuno
   corto: 59 de los 69 desayunos ya se hacen en 10 min o menos.
 
+## «Cambiar» con lo de casa, despensa cuadrada y tandas de compra, 2026-11-04 (sello `20261104c`, 1369 tests)
+
+| Qué | Dónde | Estado |
+|---|---|---|
+| «Cambiar» (Menú y «Mis planes») busca primero un plato que salga de la despensa; si no, pregunta antes de traer uno que pide comprar | `js/engine/plan-generator.js` (`_elegirSinComprar`), `js/core/pantry.js` (`despensaLibre`), `js/app.js`, `js/ui/render-pantry.js` (`preguntarCambioConCompra`), `index.html` (`#cambioCompraDialog`) | **Hecho** |
+| Al abrir la página, lo comprado y sin comer de los planes de hoy en adelante está en la despensa (sin pisar lo cambiado a mano) | `js/core/pantry.js` (`reconciliarDespensaConPlanes`, `marcarAjusteManual`) | **Hecho** |
+| Los planes de varios días de antes del grupo, con el día 1 comprado, completan su compra | `js/core/pantry.js` (`_agruparPlanesViejos`) | **Hecho** |
+| Tandas de compra: el plazo es el de lo más viejo que queda y pasa al siguiente al acabarse | `js/core/pantry.js` (`lotes`, `preserveExpiryFields`) | **Hecho** |
+| «Cambiar» en el plan sin cocinar con lo de casa | — | Pendiente |
+| Con sesión, una recarga pisa lo local que no llegó a la nube (sin cola de subida) | `js/core/migration.js` (`already_synced`), `js/core/cloud-sync.js` | Pendiente |
+
 ## La despensa recibe el plan entero, 2026-11-04 (sello `20261104a`, 1360 tests)
 
 El dueño: «кладовая как будто бы сломалась… ни время пока испортится не

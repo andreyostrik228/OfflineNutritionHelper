@@ -1512,6 +1512,126 @@ function run(t) {
     assert.strictEqual(s.getPantryState()[clave].openedAt, "2026-01-01");
   });
 
+  // ── Tandas de compra (2026-11-04) ──────────────────────────────────
+  // El dueño: «сделай чтобы сайт смотрел когда какой продукт был куплен».
+
+  t.test("tandas: una compra nueva no rejuvenece lo viejo, y al acabarse la vieja el plazo pasa a la nueva (y ya no está abierta)", function () {
+    var s = freshPantrySandbox();
+    s.localStorage = createFakeLocalStorage();
+    var clave = s.normalizeIngredientKey("Plátano");
+    s.setStock("Plátano", 240);
+    var st = s.getPantryState();
+    st[clave].acquiredAt = "2026-10-01T10:00:00.000Z";
+    s.savePantryState(st);
+
+    s.setStock("Plátano", 480); // otra compra: 240 g más, de hoy
+    var e = s.getPantryState()[clave];
+    assert.strictEqual(e.lotes.length, 2, "dos tandas");
+    assert.strictEqual(e.acquiredAt, "2026-10-01T10:00:00.000Z", "manda la más vieja");
+
+    var saved = s.savePlanForToday(fakeMeals({ snack: [{ name: "Plátano", grams: 240 }] }), "mercadona");
+    s.markMealCooked(saved.entry.id, "snack", true);
+    e = s.getPantryState()[clave];
+    assert.strictEqual(e.grams, 240);
+    assert.strictEqual(e.lotes.length, 1, "la vieja se gastó entera");
+    assert.notStrictEqual(e.acquiredAt, "2026-10-01T10:00:00.000Z", "el plazo es ya el de la compra de hoy");
+    assert.strictEqual(e.openedAt, null, "la tanda nueva nadie la ha abierto");
+  });
+
+  t.test("tandas: deshacer un cocinado devuelve a la tanda más vieja, no es una compra nueva", function () {
+    var s = freshPantrySandbox();
+    s.localStorage = createFakeLocalStorage();
+    var clave = s.normalizeIngredientKey("Avena");
+    s.setStock("Avena", 500);
+    var st = s.getPantryState();
+    st[clave].acquiredAt = "2026-10-01T10:00:00.000Z";
+    s.savePantryState(st);
+    var saved = s.savePlanForToday(fakeMeals({ breakfast: [{ name: "Avena", grams: 80 }] }), "mercadona");
+    s.markMealCooked(saved.entry.id, "breakfast", true);
+    s.markMealCooked(saved.entry.id, "breakfast", false);
+    var e = s.getPantryState()[clave];
+    assert.strictEqual(e.grams, 500);
+    assert.strictEqual(e.lotes.length, 1);
+    assert.strictEqual(e.acquiredAt, "2026-10-01T10:00:00.000Z");
+  });
+
+  // ── Lo comprado y sin comer, en la despensa (2026-11-04) ───────────────
+
+  function fechaDentroDe(s, dias) {
+    var d = new Date();
+    d.setDate(d.getDate() + dias);
+    return s.formatLocalDateKey(d);
+  }
+
+  t.test("reconciliarDespensaConPlanes: lo comprado y sin cocinar de hoy en adelante vuelve a la despensa, con la fecha de su compra", function () {
+    var s = freshPantrySandbox();
+    s.localStorage = createFakeLocalStorage();
+    var hoy = s.savePlanForToday(fakeMeals({
+      breakfast: [{ name: "Avena", grams: 80 }],
+      snack: [{ name: "Plátano", grams: 240 }]
+    }), "mercadona");
+    var ayer = s.savePlanForToday(fakeMeals({ lunch: [{ name: "Salmón", grams: 150 }] }), "mercadona", null, fechaDentroDe(s, -1));
+    var r = s.markPurchaseDone(hoy.entry.id, [], "mercadona");
+    s.markPurchaseDone(ayer.entry.id, [], "mercadona");
+    s.markMealCooked(hoy.entry.id, "breakfast", true);
+    s.savePantryState({}); // se pierde (otro dispositivo, la nube…)
+
+    var out = s.reconciliarDespensaConPlanes();
+    assert.strictEqual(out.repuestos, 1, "solo el plátano: la avena ya se cocinó y el salmón es de ayer");
+    var e = s.getPantryState()[s.normalizeIngredientKey("Plátano")];
+    assert.strictEqual(e.grams, 240);
+    assert.strictEqual(e.acquiredAt, r.run.at, "la fecha es la de la compra, no la de hoy al abrir");
+    assert.strictEqual(s.getStock("Avena"), 0);
+    assert.strictEqual(s.getStock("Salmón"), 0);
+    assert.strictEqual(s.reconciliarDespensaConPlanes().repuestos, 0, "dos veces no suma dos veces");
+  });
+
+  t.test("reconciliarDespensaConPlanes: lo que el usuario quitó a mano después de comprar no vuelve; un plan sin comprar no pone nada", function () {
+    var s = freshPantrySandbox();
+    s.localStorage = createFakeLocalStorage();
+    var comprado = s.savePlanForToday(fakeMeals({ snack: [{ name: "Plátano", grams: 240 }] }), "mercadona");
+    s.markPurchaseDone(comprado.entry.id, [], "mercadona");
+    // Con su grupo: si no, al guardarse en el mismo segundo pasaría por un
+    // plan de varios días de antes del grupo (ver el test siguiente).
+    s.savePlanForToday(fakeMeals({ lunch: [{ name: "Salmón", grams: 150 }] }), "mercadona", null, fechaDentroDe(s, 1), "g-otro");
+    s.marcarAjusteManual("Plátano");
+    s.clearStock("Plátano");
+
+    assert.strictEqual(s.reconciliarDespensaConPlanes().repuestos, 0);
+    assert.strictEqual(s.getStock("Plátano"), 0);
+    assert.strictEqual(s.getStock("Salmón"), 0, "sin «Ya compré todo esto» no hay nada en casa");
+  });
+
+  t.test("reconciliarDespensaConPlanes: un plan de varios días de antes del grupo (día 1 comprado) completa la compra de los demás días", function () {
+    var s = freshPantrySandbox();
+    s.localStorage = createFakeLocalStorage();
+    var d1 = s.savePlanForToday(fakeMeals({ lunch: [{ name: "Salmón", grams: 150 }] }), "mercadona");
+    var d2 = s.savePlanForToday(fakeMeals({ lunch: [{ name: "Merluza", grams: 150 }] }), "mercadona", null, fechaDentroDe(s, 1));
+    var d3 = s.savePlanForToday(fakeMeals({ lunch: [{ name: "Bacalao", grams: 150 }] }), "mercadona", null, fechaDentroDe(s, 2));
+    s.markPurchaseDone(d1.entry.id, [], "mercadona");
+    assert.strictEqual(s.getStock("Merluza"), 0, "como antes del 2026-11-04: solo el día 1");
+
+    var out = s.reconciliarDespensaConPlanes();
+    assert.strictEqual(out.planesAgrupados, true);
+    var porId = {};
+    s.getPantryHistory().forEach(function (e) { porId[e.id] = e; });
+    assert.strictEqual(porId[d2.entry.id].purchase.done, true);
+    assert.strictEqual(porId[d3.entry.id].purchase.done, true);
+    assert.strictEqual(porId[d2.entry.id].planGrupo, porId[d1.entry.id].planGrupo);
+    assert.ok(s.getStock("Merluza") !== 0 && s.getStock("Bacalao") !== 0, "lo de los días 2 y 3, en la despensa");
+  });
+
+  t.test("despensaLibre: quita lo que necesitan las tomas sin cocinar de OTROS planes comprados", function () {
+    var s = freshPantrySandbox();
+    s.localStorage = createFakeLocalStorage();
+    s.setStock("Plátano", 480);
+    var otro = s.savePlanForToday(fakeMeals({ snack: [{ name: "Plátano", grams: 240 }] }), "mercadona", null, fechaDentroDe(s, 1));
+    s.markPurchaseDone(otro.entry.id, [], "mercadona");
+    var este = s.savePlanForToday(fakeMeals({ snack: [{ name: "Plátano", grams: 240 }] }), "mercadona");
+    var libre = s.despensaLibre(este.entry.id);
+    assert.strictEqual(libre[s.normalizeIngredientKey("Plátano")].grams, 240, "480 en casa, 240 son de mañana");
+  });
+
   t.test("deshacer una toma 'sin cocinar' ya no borra los campos de caducidad", function () {
     var s = freshPantrySandbox();
     s.localStorage = createFakeLocalStorage();

@@ -18,6 +18,56 @@ llevan al final un bloque «actualización 2026-10-08»). El diario fechado, con
 medidas y causas, está en la cabecera de `STATE.md` (entradas del 2026-10-07 y
 2026-10-08).
 
+### 0.0 tervicies «Cambiar» con lo de casa, despensa cuadrada y tandas de compra, 2026-11-04 (lee esto antes que 0.0 duovicies)
+
+- **Estado:** sello `20261104c`, **1369 tests en verde**. El dueño: «на перекус
+  было два банана, я нажал заменить и мне сразу предложило что-то новое из
+  магазина… чтобы заменялось на что-то из кладовой, а если нельзя, то уже
+  спрашивало», «у меня сейчас есть план, я ещё ничего не скушал, но у меня нет
+  этих продуктов в кладовой» y «чтобы сайт смотрел, когда какой продукт был
+  куплен… показывал новые сроки годности».
+- **«Cambiar» primero con lo de casa:** `regeneratePlanMeal` (con
+  `dayOptions.soloDespensa`) y `regenerateSingleMeal(entry, key, despensa,
+  { soloDespensa: true })` llaman a `_elegirSinComprar` (`plan-generator.js`):
+  `pickDish` con tope de compra 0 €, sin plato encogido y sin repetir el que había.
+  En «Mis planes» la despensa es `despensaLibre(entryId)` (`pantry.js`: lo de casa
+  menos lo que piden las tomas sin cocinar de OTROS planes comprados), y el cambio
+  no deshace la compra (`replaceSingleMealForEntry(…, sinCompra)`). Si no sale, el
+  diálogo `#cambioCompraDialog` (`preguntarCambioConCompra`, `render-pantry.js`)
+  pregunta antes de traer un plato que pide comprar. Con la despensa vacía o
+  apagada no se pregunta: va directo como siempre.
+- **La despensa se cuadra con los planes:** `reconciliarDespensaConPlanes()`
+  (`pantry.js`), al abrir la página (`pantry-init`) y después de la nube
+  (`handleAuthDataReconciled`). Mira los planes COMPRADOS de hoy en adelante y pone
+  lo que piden sus tomas sin cocinar (o sin comer) y falta, con la fecha de su
+  compra. Lo que el usuario cambió o quitó a mano después de esa compra
+  (`marcarAjusteManual`, clave `nutritionPlanner.despensaAjustes.v1`) no se
+  toca. Un plan sin «Ya compré todo esto» no pone nada.
+- **Planes de varios días de antes del grupo:** `_agruparPlanesViejos` los
+  reconoce (días guardados en la misma pulsación, `createdAt` a menos de 10 s,
+  fechas distintas), les pone `planGrupo` y, si el día más temprano está comprado,
+  da por comprados los siguientes (`purchase.compradoCon`). Así lo comprado antes
+  del 0.0 duovicies, que solo metía el día 1, entra entero.
+- **Tandas de compra:** cada entrada de la despensa (y del sin cocinar) lleva
+  `lotes: [{g, at, abierto}]`. Lo que sube es una tanda nueva, lo que se cocina
+  se gasta de la más vieja, y deshacer devuelve a la más vieja
+  (`preserveExpiryFields(…, devolver)`). `acquiredAt`/`openedAt` son los de la
+  tanda más vieja, así que `resolveExpiry` no cambia; al acabarse una tanda, el
+  plazo pasa solo a la siguiente (y deja de estar «abierto»). Las entradas de
+  antes son una tanda con sus fechas de siempre.
+- **Medido en Chrome sin interfaz** (local, 390 px, ru): plan comprado y «Cambiar»
+  el snack en «Mis planes» → otro plato con lo de casa, sin diálogo y la compra
+  sigue hecha; lo mismo en «Menú»; con la despensa vacía sale la pregunta,
+  «Отмена» no cambia nada y «Да, с покупкой» sí; despensa borrada y recarga → los
+  11 productos vuelven con la fecha de la compra y 11 de 11 filas con plazo. Plan
+  de 3 días: 24 de 24 en la despensa. `comparar.mjs`: 0 errores de JavaScript y de
+  CSP.
+- **Sin comprobar:** el móvil del dueño, y si allí la despensa se vaciaba por la
+  nube: con sesión, cada recarga sustituye lo local por la copia de la nube
+  (`runReconciliation`, rama `already_synced`) y no hay cola si una subida falla.
+  La reconciliación repone lo de los planes comprados, pero lo apuntado a mano que
+  no llegó a subirse se pierde. Arreglarlo es aparte.
+
 ### 0.0 duovicies La despensa recibe el plan entero, 2026-11-04 (lee esto antes que 0.0 unvicies)
 
 - **Estado:** sello `20261104a`, **1360 tests en verde**. El dueño: «кладовая как

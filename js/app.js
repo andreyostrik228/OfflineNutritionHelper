@@ -373,35 +373,54 @@ document.addEventListener("DOMContentLoaded", function () {
     // Se pasa qué día es para que un re-roll respete la misma regla que la
     // generación: nada "de dejar hecho la noche antes" en el día 1 ni en un
     // plan de 1 día (ver isMakeAheadDish / pickDish).
-    var swapOptions = Object.assign({}, lastGeneratedDayOptions, {
-      planDays: (lastGeneratedDays && lastGeneratedDays.length) || 1,
-      dayIndex: dayIndex
-    });
-    var res = conDislikesDeLaVista(function () {
-      return regeneratePlanMeal(dayMeals, mealKey, swapOptions, lastGeneratedStore, pantryState);
-    });
+    function elegir(soloDespensa) {
+      var swapOptions = Object.assign({}, lastGeneratedDayOptions, {
+        planDays: (lastGeneratedDays && lastGeneratedDays.length) || 1,
+        dayIndex: dayIndex,
+        soloDespensa: soloDespensa
+      });
+      return conDislikesDeLaVista(function () {
+        return regeneratePlanMeal(dayMeals, mealKey, swapOptions, lastGeneratedStore, pantryState);
+      });
+    }
 
-    if (!res || res.error || !res.meal) {
+    function aplicar(res) {
+      if (!res || res.error || !res.meal) {
+        btn.disabled = false;
+        btn.textContent = t("ui.sin_mas_opciones");
+        setTimeout(function () { btn.innerHTML = "&#8635; " + escapeHtml(t("ui.cambiar")); }, 1600);
+        return;
+      }
+
+      var idx = -1;
+      for (var i = 0; i < dayMeals.length; i++) {
+        if (dayMeals[i].key === mealKey) { idx = i; break; }
+      }
+      if (idx === -1) { btn.disabled = false; return; }
+
+      // Conserva el horario de la toma: un cambio de plato no mueve la hora.
+      var old = dayMeals[idx];
+      if (typeof old.time === "string") res.meal.time = old.time;
+      if (typeof old.timeMinutes === "number") res.meal.timeMinutes = old.timeMinutes;
+      dayMeals[idx] = res.meal;
+
+      rerenderCurrentPlan();
+      guardarPlanActual();
+    }
+
+    // Primero con lo que hay en casa (2026-11-04): un plato que no pide
+    // comprar nada. Si no sale, se pregunta antes de traer uno que sí.
+    var conDespensa = !!(pantryState && Object.keys(pantryState).length) &&
+      typeof preguntarCambioConCompra === "function";
+    var deCasa = conDespensa ? elegir(true) : null;
+    if (deCasa && deCasa.meal) { aplicar(deCasa); return; }
+    if (conDespensa) {
       btn.disabled = false;
-      btn.textContent = t("ui.sin_mas_opciones");
-      setTimeout(function () { btn.innerHTML = "&#8635; " + escapeHtml(t("ui.cambiar")); }, 1600);
+      var toma = dayMeals.filter(function (m) { return m.key === mealKey; })[0];
+      preguntarCambioConCompra(tMeal(mealKey, toma && toma.label), function () { aplicar(elegir(false)); });
       return;
     }
-
-    var idx = -1;
-    for (var i = 0; i < dayMeals.length; i++) {
-      if (dayMeals[i].key === mealKey) { idx = i; break; }
-    }
-    if (idx === -1) { btn.disabled = false; return; }
-
-    // Conserva el horario de la toma: un cambio de plato no mueve la hora.
-    var old = dayMeals[idx];
-    if (typeof old.time === "string") res.meal.time = old.time;
-    if (typeof old.timeMinutes === "number") res.meal.timeMinutes = old.timeMinutes;
-    dayMeals[idx] = res.meal;
-
-    rerenderCurrentPlan();
-    guardarPlanActual();
+    aplicar(elegir(false));
   }
 
   // ── «No me gusta» (2026-10-22) ────────────────────────────────────────
@@ -1443,6 +1462,13 @@ document.addEventListener("DOMContentLoaded", function () {
         if (typeof _menuPintarAspectos === "function") _menuPintarAspectos();
       });
     });
+    // La nube puede haber traído otra despensa u otros planes: se vuelve a
+    // cuadrar lo comprado y sin comer (2026-11-04) antes de pintar y subir.
+    safeInit("despensa-reconciliar-tras-sync", function () {
+      var r = (typeof reconciliarDespensaConPlanes === "function") ? reconciliarDespensaConPlanes() : null;
+      // El stock sin cocinar viaja con los ajustes, no con pantry_state.
+      if (r && r.repuestos && typeof pushNoCookStockToCloud === "function") pushNoCookStockToCloud();
+    });
     syncAfterPantryChange();
   }
 
@@ -2176,6 +2202,8 @@ document.addEventListener("DOMContentLoaded", function () {
         pantryNoCookSection: document.getElementById("pantryNoCookSection"),
         pantryNoCookList: document.getElementById("pantryNoCookList")
       });
+      // Lo comprado y sin comer de los planes, en la despensa (2026-11-04).
+      if (typeof reconciliarDespensaConPlanes === "function") reconciliarDespensaConPlanes();
       if (typeof renderPantryPanel === "function") renderPantryPanel();
     }
     if (despensaBtn) despensaBtn.addEventListener("click", function () {

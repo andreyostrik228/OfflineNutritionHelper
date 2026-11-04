@@ -74,6 +74,53 @@ function generateAndSave(s, overrides) {
 
 function run(t) {
 
+  // ── «Cambiar» con lo que hay en casa (2026-11-04) ────────────────────────
+  // El dueño: «на перекус было два банана, я нажал заменить и мне сразу
+  // предложило что-то новое из магазина».
+
+  /** Una despensa con 3 kg de cada ingrediente de los snacks que no son `fuera`. */
+  function despensaDeSnacks(s, fuera) {
+    s.DISH_DB.filter(function (d) { return d.category === "snack" && d.name !== fuera; }).slice(0, 6)
+      .forEach(function (d) { d.items.forEach(function (it) { s.setStock(it.name, 3000); }); });
+    return s.getPantryState();
+  }
+
+  t.test("regenerateSingleMeal() soloDespensa: con la despensa vacía dice sin_despensa, no trae nada de la tienda", function () {
+    var s = freshEngineSandbox();
+    var ctx = generateAndSave(s);
+    var r = s.regenerateSingleMeal(ctx.saved.entry, "snack", {}, { soloDespensa: true });
+    assert.strictEqual(r.error, "sin_despensa");
+  });
+
+  t.test("regenerateSingleMeal() soloDespensa: con la despensa llena, otro plato que no pide comprar nada", function () {
+    var s = freshEngineSandbox();
+    var ctx = generateAndSave(s);
+    var viejo = ctx.saved.entry.meals.filter(function (m) { return m.key === "snack"; })[0];
+    var despensa = despensaDeSnacks(s, viejo.dishName);
+    var r = s.regenerateSingleMeal(ctx.saved.entry, "snack", despensa, { soloDespensa: true });
+    assert.strictEqual(r.deLaDespensa, true);
+    assert.notStrictEqual(r.meal.dishName, viejo.dishName);
+    var otras = ctx.saved.entry.meals.filter(function (m) { return m.key !== "snack"; });
+    var comprometido = {};
+    otras.forEach(function (m) {
+      s.addItemsToPurchaseState(comprometido, m.items.map(function (it) { return { name: it.name, grams: it.requiredGrams }; }));
+    });
+    assert.strictEqual(s.estimateItemsMarginalPurchaseCost(r.meal.items, comprometido, "mercadona", despensa), 0,
+      "nada que comprar");
+  });
+
+  t.test("regeneratePlanMeal() soloDespensa: igual en el plan sin confirmar", function () {
+    var s = freshEngineSandbox();
+    var profile = s.calculateProfile({ weight: 82, height: 178, age: 27, sex: "male", activity: 1.55, workouts: 4, goal: "recomp" });
+    var plan = s.generateDietPlan(profile, { budget: 20, cookTime: 30, taste: "mixed", store: "mercadona" });
+    var opciones = { budget: 20, cookTime: 30, taste: "mixed", soloDespensa: true };
+    assert.strictEqual(s.regeneratePlanMeal(plan.meals, "snack", opciones, "mercadona", {}).error, "sin_despensa");
+    var viejo = plan.meals.filter(function (m) { return m.key === "snack"; })[0];
+    var r = s.regeneratePlanMeal(plan.meals, "snack", opciones, "mercadona", despensaDeSnacks(s, viejo.dishName));
+    assert.strictEqual(r.deLaDespensa, true);
+    assert.notStrictEqual(r.meal.dishName, viejo.dishName);
+  });
+
   // ── regenerateSingleMeal(): casos válidos ────────────────────────────────
 
   t.test("regenerateSingleMeal(): devuelve un meal completo (items/total/dishName) para la toma pedida", function () {
