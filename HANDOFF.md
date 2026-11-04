@@ -850,7 +850,7 @@ NO despliega. Hay que ejecutarlo a mano.
 DIR=<scratchpad>/deploy
 rm -rf "$DIR" && mkdir -p "$DIR"
 cp index.html sw.js manifest.webmanifest _headers 404.html "$DIR/" && cp -r assets js "$DIR/"
-cp robots.txt sitemap.xml llms.txt alternativas-a-myfitnesspal.html weekplate-vs-myfitnesspal.html weekplate-vs-yazio.html "$DIR/"
+cp robots.txt sitemap.xml llms.txt "$DIR/"
 
 # 2. comprobar que lo montado es lo del repo (ha habido copias viejas)
 diff -r --brief js "$DIR/js"
@@ -870,6 +870,12 @@ lista y NUNCA se habían subido: el pie de la aplicación enlazaba a tres págin
 que daban 404 y el `sitemap.xml` (también 404) las anunciaba. Se sirven sin
 `.html` (`/weekplate-vs-yazio`; la versión con `.html` redirige con un 308). **Si
 añades una página o un fichero en la raíz, añádelo a la línea de `cp`.**
+
+**Las tres comparativas ya no existen (2026-11-04).** El dueño: «это вообще не
+надо». Se borraron los tres `.html`, el bloque «Comparativas» del pie de
+`index.html`, sus cuatro claves `ui.*` en los cuatro idiomas, sus estilos de
+`paginas.css` (queda el del aviso sin JavaScript) y sus líneas de `sitemap.xml` y
+`llms.txt`. `robots.txt`, `sitemap.xml` y `llms.txt` se quedan.
 
 **Trampas que ya me comí:**
 
@@ -909,7 +915,7 @@ El de arriba sigue valiendo en lo esencial; estos son los matices que se pagaron
    ```bash
    DIR="$TEMP/deploy-wp" && rm -rf "$DIR" && mkdir -p "$DIR"
    cp -r index.html sw.js manifest.webmanifest _headers 404.html assets js "$DIR/"
-   cp robots.txt sitemap.xml llms.txt alternativas-a-myfitnesspal.html weekplate-vs-myfitnesspal.html weekplate-vs-yazio.html "$DIR/"
+   cp robots.txt sitemap.xml llms.txt "$DIR/"
    diff -r js "$DIR/js" && diff -r assets "$DIR/assets" && diff index.html "$DIR/index.html" && echo STAGE_OK
    ```
 5. **Subir**, con la versión de wrangler **fijada** (la última daba `EBUSY` en Windows)

@@ -7,9 +7,6 @@ Los cálculos se hacen en el propio navegador. Sin cuenta, los datos no salen de
 ## Páginas principales
 
 - [Inicio](https://offline-nutrition-helper.pages.dev/): la aplicación: plan de menús, lista de la compra con precios y recetas paso a paso.
-- [Weekplate frente a MyFitnessPal](https://offline-nutrition-helper.pages.dev/weekplate-vs-myfitnesspal): comparación entre un planificador de menús y un contador de calorías.
-- [Weekplate frente a Yazio](https://offline-nutrition-helper.pages.dev/weekplate-vs-yazio): comparación con otro contador de calorías, con recetas y planes.
-- [Alternativas a MyFitnessPal](https://offline-nutrition-helper.pages.dev/alternativas-a-myfitnesspal): qué app usar según lo que busques: contar, planear o comprar.
 
 ## Datos clave
 
