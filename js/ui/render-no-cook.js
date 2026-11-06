@@ -726,6 +726,16 @@ function renderNoCookSummary(plan) {
     }) + "</p>";
   }
 
+  // Corto de kcal (2026-11-04): desde que las tomas no se estiran con dos
+  // latas de guisantes, un presupuesto ajustado puede no llegar. Se dice, con
+  // la cifra, en vez de rellenar con comida sin sentido.
+  if (target.kcal && plan.budget && total.kcal < target.kcal * 0.85) {
+    warn += '<p class="nocook-summary__warn">' + escapeHtml(tFormat("ui.nocook_kcal_corta", {
+      obtenida: fmtUnit(round0(total.kcal), "kcal"),
+      objetivo: fmtUnit(round0(target.kcal), "kcal")
+    })) + "</p>";
+  }
+
   if (target.protein && total.protein < target.protein * 0.85) {
     warn += '<p class="nocook-summary__warn">' + escapeHtml(tFormat("ui.nocook_proteina_corta", {
       obtenida: fmtUnit(round0(total.protein), "g"),
@@ -889,6 +899,12 @@ function renderNoCookItem(item) {
   var qtyText = servings + " " + escapeHtml(noCookUnitLabel(item.unit, servings));
   if (typeof item.grams === "number") {
     qtyText += ' <span class="nocook-item__grams">&middot; ' + escapeHtml(fmtUnit(item.grams, "g")) + "</span>";
+  }
+  // Cuando el envase trae varias raciones, la ración NO es una lata (ni una
+  // tarrina ni una bolsa): «2 latas de guisantes» eran 160 g de una lata de
+  // 320 (2026-11-04). Se dicen los gramos, como en _cantidadQueSobra.
+  if (UNIDADES_DE_ENVASE.indexOf(item.unit) !== -1 && 1 < (item.servingsPerPackage || 1) && typeof item.grams === "number") {
+    qtyText = escapeHtml(fmtUnit(item.grams, "g"));
   }
 
   // "Envase entero": para la pizza y compañía, avisa de que esa toma se

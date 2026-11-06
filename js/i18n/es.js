@@ -657,6 +657,7 @@ registerI18nTable("es", {
   "ui.nocook_consejo_barato": "Con este catálogo no se puede bajar más sin dejar una toma coja.",
   "ui.nocook_consejo_subir": "Prueba a subir el presupuesto, o pon la prioridad en «lo más barato posible».",
   "ui.nocook_proteina_corta": "Este plan se queda en {obtenida} de proteína, por debajo de tus {objetivo}. Sin cocinar es un techo real: los productos listos para comer rinden poca proteína por caloría{barato}. Para llegar más arriba hace falta cocinar.",
+  "ui.nocook_kcal_corta": "Este día se queda en {obtenida} de {objetivo}: con este presupuesto no caben más productos que tengan sentido juntos. Con algo más de presupuesto el menú llega.",
   "ui.nocook_proteina_corta_barato": ", y con la prioridad en «lo más barato» baja todavía más",
   "ui.nocook_envase": "Envase: {tamano}",
   "ui.nocook_envase_entero": "Envase entero",

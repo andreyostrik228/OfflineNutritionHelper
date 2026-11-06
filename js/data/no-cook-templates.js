@@ -45,6 +45,10 @@
 var NO_COOK_TEMPLATES = [
 
   // ── Tomas principales: comida y cena ─────────────────────────────────
+  // Desde el 2026-11-04 cada hueco dice qué TIPOS admite (`tipos`, ver
+  // noCookTipo en serving-sizes.js): «ensalada» exige algo de ensalada, la
+  // tostada de la comida no se unta de mermelada y el wrap lleva tortilla.
+  // `postre`: una pieza de fruta al final, si cabe en el día.
 
   {
     key: "principal",
@@ -52,8 +56,10 @@ var NO_COOK_TEMPLATES = [
     slots: ["lunch", "dinner"],
     weight: 3,
     components: [
-      { role: "principal", required: true, maxServings: 2 },
-      { role: "veg", required: false, maxServings: 2 },
+      { role: "principal", required: true, maxServings: 2, tipos: ["plato"] },
+      { role: "veg", required: false, maxServings: 2, tipos: ["hoja", "crudo", "cocida", "ensalada_lista", "conserva_caliente"] },
+      // Pan para el guiso o la tortilla; con una pizza que ya llega, lo quita scaleToTarget.
+      { role: "carrier", required: false, maxServings: 2, tipos: ["pan"] },
     ],
     assembly: "Calienta el plato en el microondas siguiendo su envase y sirve la verdura al lado, tal cual.",
   },
@@ -64,10 +70,11 @@ var NO_COOK_TEMPLATES = [
     slots: ["lunch", "dinner"],
     weight: 3,
     components: [
-      { role: "carrier", required: true, maxServings: 3 },
-      { role: "protein", required: true, maxServings: 3 },
-      { role: "queso", required: false, maxServings: 2 },
-      { role: "veg", required: false, maxServings: 2 },
+      { role: "carrier", required: true, maxServings: 3, tipos: ["tortilla"] },
+      { role: "protein", required: true, maxServings: 3, tipos: ["fiambre", "fiambre_graso", "curado", "pescado", "ahumado", "huevo", "surimi", "marisco_cocido"] },
+      { role: "queso", required: false, maxServings: 2, tipos: ["queso", "queso_fresco", "queso_rallado"] },
+      { role: "veg", required: false, maxServings: 2, tipos: ["hoja", "crudo", "conserva"] },
+      { role: "fruta", required: false, maxServings: 1, postre: true, tipos: ["fruta", "fruta_conserva"] },
     ],
     assembly: "Extiende la tortilla, reparte el queso, pon encima el fiambre y la verdura, y enrolla.",
   },
@@ -78,10 +85,11 @@ var NO_COOK_TEMPLATES = [
     slots: ["lunch", "dinner"],
     weight: 3,
     components: [
-      { role: "carrier", required: true, maxServings: 3 },
-      { role: "protein", required: true, maxServings: 3 },
-      { role: "queso", required: false, maxServings: 2 },
-      { role: "veg", required: false, maxServings: 2 },
+      { role: "carrier", required: true, maxServings: 3, tipos: ["pan", "pan_bollo"] },
+      { role: "protein", required: true, maxServings: 3, tipos: ["fiambre", "fiambre_graso", "curado", "embutido", "salchicha", "pescado", "ahumado", "anchoa", "huevo"] },
+      { role: "queso", required: false, maxServings: 2, tipos: ["queso", "queso_fresco", "queso_fuerte"] },
+      { role: "veg", required: false, maxServings: 2, tipos: ["hoja", "crudo", "conserva", "cocida"] },
+      { role: "fruta", required: false, maxServings: 1, postre: true, tipos: ["fruta", "fruta_conserva"] },
     ],
     assembly: "Abre el pan, pon el fiambre y el queso dentro, añade la verdura y ciérralo.",
   },
@@ -92,12 +100,49 @@ var NO_COOK_TEMPLATES = [
     slots: ["lunch", "dinner"],
     weight: 2,
     components: [
-      { role: "veg", required: true, maxServings: 2 },
-      { role: "protein", required: true, maxServings: 3 },
-      { role: "queso", required: false, maxServings: 2 },
-      { role: "carrier", required: false, maxServings: 1 },
+      // La base es de ensalada de verdad: ni guisantes de lata ni macedonia.
+      { role: "veg", required: true, maxServings: 2, tipos: ["hoja", "ensalada_lista", "crudo"] },
+      // Nada de chorizo ni salchichas en una ensalada.
+      { role: "protein", required: true, maxServings: 3, tipos: ["pescado", "huevo", "fiambre", "ahumado", "surimi", "marisco_cocido", "anchoa"] },
+      { role: "queso", required: false, maxServings: 2, tipos: ["queso", "queso_fresco", "queso_rallado", "queso_fuerte"] },
+      // Con pan: una ensalada sola no es una comida.
+      { role: "carrier", required: true, maxServings: 3, tipos: ["pan", "tostado", "picos"] },
+      { role: "fruta", required: false, maxServings: 1, postre: true, tipos: ["fruta", "fruta_conserva"] },
     ],
-    assembly: "Vuelca la bolsa de ensalada en un bol, añade la proteína y el queso por encima, y mezcla.",
+    assembly: "Vuelca la bolsa de ensalada en un bol, añade la proteína y el queso por encima, mezcla y acompáñala con el pan.",
+  },
+
+  {
+    // 2026-11-04: un bote de garbanzos o de lentejas cocidas es la base de
+    // una ensalada fría, no un «plato preparado» que se come solo.
+    key: "ensalada_legumbre",
+    label: "Ensalada de legumbres",
+    slots: ["lunch", "dinner"],
+    weight: 2,
+    components: [
+      { role: "legumbre", required: true, maxServings: 2 },
+      { role: "protein", required: false, maxServings: 2, tipos: ["pescado", "huevo", "ahumado", "anchoa"] },
+      { role: "veg", required: false, maxServings: 2, tipos: ["crudo", "conserva", "hoja"] },
+      { role: "carrier", required: false, maxServings: 2, tipos: ["pan", "tostado", "picos"] },
+      { role: "fruta", required: false, maxServings: 1, postre: true, tipos: ["fruta", "fruta_conserva"] },
+    ],
+    assembly: "Escurre y enjuaga la legumbre, échala en un bol con el pescado o el huevo y la verdura, y mezcla.",
+  },
+
+  {
+    // 2026-11-04: el arroz cocido de microondas y la patata cocida de bote,
+    // con proteína y verdura por encima.
+    key: "bol",
+    label: "Bol de arroz o patata",
+    slots: ["lunch", "dinner"],
+    weight: 2,
+    components: [
+      { role: "base", required: true, maxServings: 3 },
+      { role: "protein", required: true, maxServings: 3, tipos: ["pescado", "huevo", "fiambre", "marisco_cocido", "surimi", "ahumado"] },
+      { role: "veg", required: false, maxServings: 2, tipos: ["conserva", "conserva_caliente", "crudo", "cocida"] },
+      { role: "fruta", required: false, maxServings: 1, postre: true, tipos: ["fruta", "fruta_conserva"] },
+    ],
+    assembly: "Calienta el arroz en el microondas (o escurre las patatas cocidas), ponlo en un bol y añade encima la proteína y la verdura.",
   },
 
   {
@@ -107,12 +152,13 @@ var NO_COOK_TEMPLATES = [
     weight: 1,
     components: [
       { role: "sopa", required: true, maxServings: 2 },
-      { role: "carrier", required: true, maxServings: 3 },
+      { role: "carrier", required: true, maxServings: 3, tipos: ["pan", "tostado", "picos"] },
       // La proteína es OBLIGATORIA: "crema y pan" es la misma clase de
       // no-comida que "ensalada y tortillas". Una crema con pan y fiambre
       // sí es una cena.
-      { role: "protein", required: true, maxServings: 2 },
-      { role: "queso", required: false, maxServings: 2 },
+      { role: "protein", required: true, maxServings: 2, tipos: ["fiambre", "fiambre_graso", "curado", "embutido", "huevo", "pescado", "ahumado"] },
+      { role: "queso", required: false, maxServings: 2, tipos: ["queso", "queso_fresco", "queso_fuerte"] },
+      { role: "fruta", required: false, maxServings: 1, postre: true, tipos: ["fruta", "fruta_conserva"] },
     ],
     assembly: "Calienta la crema en el microondas (fría si es gazpacho) y acompáñala con el pan, el fiambre y el queso.",
   },
@@ -123,10 +169,13 @@ var NO_COOK_TEMPLATES = [
     slots: ["lunch", "dinner"],
     weight: 1,
     components: [
-      { role: "carrier", required: true, maxServings: 3 },
-      { role: "untable", required: true, maxServings: 2 },
-      { role: "protein", required: true, maxServings: 3 },
-      { role: "veg", required: false, maxServings: 2 },
+      { role: "carrier", required: true, maxServings: 3, tipos: ["pan", "tostado"] },
+      // Lo dulce (mermelada, crema de cacao) es del desayuno, no de unas
+      // tostadas con atún o chorizo.
+      { role: "untable", required: true, maxServings: 2, tipos: ["tomate", "grasa", "queso_untable", "pate", "hummus"] },
+      { role: "protein", required: true, maxServings: 3, tipos: ["fiambre", "fiambre_graso", "curado", "embutido", "pescado", "ahumado", "anchoa", "huevo"] },
+      { role: "veg", required: false, maxServings: 2, tipos: ["crudo", "hoja", "conserva", "cocida"] },
+      { role: "fruta", required: false, maxServings: 1, postre: true, tipos: ["fruta", "fruta_conserva"] },
     ],
     assembly: "Unta el pan, reparte la proteína por encima y añade la verdura sin más.",
   },
@@ -152,8 +201,8 @@ var NO_COOK_TEMPLATES = [
     slots: ["breakfast"],
     weight: 3,
     components: [
-      { role: "carrier", required: true, maxServings: 3 },
-      { role: "untable", required: true, maxServings: 2 },
+      { role: "carrier", required: true, maxServings: 3, tipos: ["pan", "tostado"] },
+      { role: "untable", required: true, maxServings: 2, tipos: ["dulce", "grasa", "tomate", "queso_untable"] },
       { role: "lacteo", required: false, maxServings: 1 },
       { role: "fruta", required: false, maxServings: 2 },
     ],
@@ -166,9 +215,10 @@ var NO_COOK_TEMPLATES = [
     slots: ["breakfast"],
     weight: 2,
     components: [
-      { role: "carrier", required: true, maxServings: 3 },
-      { role: "protein", required: true, maxServings: 2 },
-      { role: "queso", required: false, maxServings: 2 },
+      { role: "carrier", required: true, maxServings: 3, tipos: ["pan", "tostado"] },
+      // Ni sardinas ni salchichas para desayunar.
+      { role: "protein", required: true, maxServings: 2, tipos: ["fiambre", "curado", "huevo", "ahumado"] },
+      { role: "queso", required: false, maxServings: 2, tipos: ["queso", "queso_fresco"] },
       { role: "fruta", required: false, maxServings: 2 },
     ],
     assembly: "Pon el fiambre y el queso sobre el pan y come la fruta aparte.",
@@ -182,7 +232,8 @@ var NO_COOK_TEMPLATES = [
     components: [
       { role: "lacteo", required: true, maxServings: 3 },
       { role: "fruta", required: true, maxServings: 2 },
-      { role: "cereal", required: false, maxServings: 1 },
+      // Con cereales: un yogur con fruta no es un desayuno (2026-11-04).
+      { role: "cereal", required: true, maxServings: 2 },
     ],
     assembly: "Abre el yogur, añade la fruta y espolvorea los cereales por encima.",
   },
@@ -214,7 +265,7 @@ var NO_COOK_TEMPLATES = [
     weight: 3,
     components: [
       { role: "fruta", required: true, maxServings: 2 },
-      { role: "salado", required: false, maxServings: 2 },
+      { role: "salado", required: true, maxServings: 2, tipos: ["frutos_secos"] },
     ],
     assembly: "Come la fruta con un puñado de frutos secos.",
   },
@@ -227,6 +278,7 @@ var NO_COOK_TEMPLATES = [
     components: [
       { role: "lacteo", required: true, maxServings: 3 },
       { role: "fruta", required: false, maxServings: 2 },
+      { role: "cereal", required: false, maxServings: 1 },
     ],
     assembly: "Abre el lácteo y tómatelo, con la fruta si la lleva.",
   },
@@ -237,8 +289,8 @@ var NO_COOK_TEMPLATES = [
     slots: ["snack", "snack2"],
     weight: 2,
     components: [
-      { role: "queso", required: true, maxServings: 2 },
-      { role: "carrier", required: true, maxServings: 2 },
+      { role: "queso", required: true, maxServings: 2, tipos: ["queso", "queso_fresco", "queso_fuerte"] },
+      { role: "carrier", required: true, maxServings: 2, tipos: ["pan", "tostado", "picos"] },
     ],
     assembly: "Pon el queso sobre el pan o los picos.",
   },

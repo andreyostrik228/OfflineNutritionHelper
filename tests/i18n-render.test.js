@@ -638,10 +638,13 @@ function run(t) {
     s.saveLang("ru");
     seedRandomInContext(s, 41);
     var dias = s.generateNoCookPlanDays("mercadona", { calories: 2100, protein: 120, budget: 14 }, 3);
-    // El día 1 no hereda nada: su ticket es el de sus productos solos. Los
-    // demás pagan solo lo que no sobraba de antes (noCookCuentas).
+    // El día 1 no hereda nada: su ticket es el de sus productos solos, salvo
+    // lo que come de más (deSobras) de un envase que el menú compra otro día,
+    // que lo paga ese día («deuda» en noCookCuentas). Los demás pagan solo lo
+    // que no sobraba de antes.
     var uno = s.noCookCompraItems([dias[0]]).reduce(function (a, x) { return a + x.cost; }, 0);
-    assert.strictEqual(Math.round(uno * 100) / 100, dias[0].shoppingCost, "día 1");
+    assert.strictEqual(Math.round(uno * 100) / 100, s.noCookCuentas([dias[0]]).dias[0].ticket, "día 1 solo");
+    assert.ok(!(uno + 0.005 < dias[0].shoppingCost), "en el plan, el día 1 no paga más que solo");
     var cuentas = s.noCookCuentas(dias);
     dias.forEach(function (plan, i) {
       assert.strictEqual(plan.shoppingCost, cuentas.dias[i].ticket, "día " + (i + 1));

@@ -46,6 +46,18 @@ Lo pedido: «указывать, сколько времени у тебя ес�
 - **No hizo falta** preferir lo «de la noche antes» (`makeAhead`) con un desayuno
   corto: 59 de los 69 desayunos ya se hacen en 10 min o menos.
 
+## Calidad de los planes, 2026-11-06 (sello `20261106a`, 1372 tests)
+
+El dueño: «давай сделаем огромный упор на качество? Чтобы каждый план был
+идеальный и логичный».
+
+| Qué | Dónde | Estado |
+|---|---|---|
+| «Sin cocinar»: cada producto con su tipo; las plantillas solo admiten lo que pega (ensalada con base de ensalada, nada dulce con salado, wrap con tortilla, nada que haya que cocinar) | `js/data/serving-sizes.js` (`noCookTipo`), `js/data/no-cook-templates.js`, `js/engine/no-cook-generator.js` | **Hecho**: de 43,6% a 0% de tomas sin sentido |
+| «Sin cocinar»: raciones con tope por tipo (no dos latas de guisantes) y la cena distinta de la comida | `js/engine/no-cook-generator.js` (`_racionesQueCaben`, `evitarPlantilla`) | **Hecho** |
+| «Sin cocinar»: «160 g» en vez de «2 латы»; aviso si el día queda corto de kcal | `js/ui/render-no-cook.js` | **Hecho** |
+| Plan con platos: cantidades de un ingrediente fuera de lo que se come en una toma (600 g de lentejas, 5 huevos, 750 g de patata): 23,7% de 1.080 tomas | `js/engine/plan-generator.js`, `js/engine/dish-selector.js` | Pendiente |
+
 ## «Cambiar» con lo de casa, despensa cuadrada y tandas de compra, 2026-11-04 (sello `20261104c`, 1369 tests)
 
 | Qué | Dónde | Estado |

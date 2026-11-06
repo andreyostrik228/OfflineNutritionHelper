@@ -831,6 +831,93 @@ function run(t) {
     assert.strictEqual(tres[1].slots[1].items.length, 1, "el día 2 sí");
     igual(tickets(tres), [0, 0, 2]);
   });
+
+  // ── Calidad de las tomas (2026-11-04) ───────────────────────────────────
+  // El dueño: «на обед у меня было две банки горошка и пол пачки колбасы…
+  // давай сделаем огромный упор на качество». Medido antes: el 43,6% de 1.800
+  // tomas tenía algo sin sentido (una «ensalada» de guisantes de lata, Nocilla
+  // con chorizo, huevos crudos, raciones de más). Ver noCookTipo.
+
+  function tipoDe(s, nombre) {
+    var pr = findProduct(s, nombre);
+    assert.ok(pr, "no está en el catálogo: " + nombre);
+    var rol = s.noCookRolAjustado(pr, s.resolveServing(pr).role);
+    return { rol: rol, tipo: s.noCookTipo(pr, rol) };
+  }
+
+  t.test("noCookTipo: lo que hay que cocinar o no es comida queda fuera; cada producto, en su sitio", function () {
+    var s = fullSandbox();
+    assert.strictEqual(tipoDe(s, "Huevos grandes L").tipo, null, "huevos crudos");
+    assert.strictEqual(tipoDe(s, "Huevos cocidos").tipo, "huevo");
+    assert.strictEqual(tipoDe(s, "Bacón Hacendado cintas").tipo, null, "bacón crudo");
+    assert.strictEqual(tipoDe(s, "Tomate triturado Hacendado").tipo, null, "tomate para guisar");
+    assert.strictEqual(tipoDe(s, "Crema de leche para café Campina").tipo, null);
+    assert.strictEqual(tipoDe(s, "Placas para lasaña precocidas El Pavo").tipo, null);
+    assert.strictEqual(tipoDe(s, "Guisantes extra Hacendado").tipo, "conserva_caliente");
+    assert.strictEqual(tipoDe(s, "Lechuga Iceberg").tipo, "hoja");
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(tipoDe(s, "Garbanzo cocido Hacendado"))), { rol: "legumbre", tipo: "legumbre" });
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(tipoDe(s, "Arroz cocido basmati Sabroz"))), { rol: "base", tipo: "base" });
+    assert.strictEqual(tipoDe(s, "Mermelada de albaricoque Hacendado").tipo, "dulce");
+    assert.strictEqual(tipoDe(s, "Paté de cerdo sabor suave Hacendado").tipo, "pate");
+    assert.strictEqual(tipoDe(s, "Chorizo Pamplona extra Hacendado lonchas").tipo, "embutido");
+    assert.strictEqual(tipoDe(s, "Pechuga de pavo Hacendado finas lonchas").tipo, "fiambre");
+    assert.strictEqual(tipoDe(s, TORTILLAS).tipo, "tortilla");
+  });
+
+  t.test("las tomas tienen sentido: 600 tomas sin productos fuera de sitio ni raciones de más", function () {
+    var s = fullSandbox();
+    var seed = require("./lib/seed-random").seedRandomInContext;
+    var porId = {};
+    s.REAL_PRODUCTS.forEach(function (pr) { porId[pr.id] = pr; });
+    var mal = [];
+    var tomas = 0;
+    [2100, 3100, 4000].forEach(function (cal) {
+      [10, 20].forEach(function (bud) {
+        for (var sd = 1; sd <= 10; sd++) {
+          seed(s, sd * 101 + cal + bud);
+          var plan = s.generateNoCookPlan("mercadona", { calories: cal, protein: Math.round(cal * 0.06), budget: bud, priority: sd % 2 ? "balanced" : "cheap" });
+          var factor = s.noCookFactorRaciones(cal);
+          plan.slots.forEach(function (slot) {
+            tomas++;
+            var t = slot.items.map(function (it) {
+              var pr = porId[it.id];
+              var rol = s.noCookRolAjustado(pr, s.resolveServing(pr).role);
+              return { it: it, rol: rol, tipo: s.noCookTipo(pr, rol) };
+            });
+            function quejarse(por) { mal.push(cal + "/" + bud + " " + slot.key + " [" + slot.templateKey + "] " + por); }
+            t.forEach(function (x) {
+              if (x.tipo === null) quejarse("fuera del modo: " + x.it.name);
+              var cap = s.NO_COOK_MAX_G_POR_TIPO[x.tipo];
+              if (cap && s.TIPOS_QUE_CRECEN.indexOf(x.tipo) !== -1) cap *= factor;
+              var unaRacion = x.it.servingG || 0;
+              if (cap && x.rol !== "principal" && x.it.grams > Math.max(cap, unaRacion) + 1) quejarse(x.it.grams + " g de " + x.it.name);
+            });
+            var salado = t.some(function (x) { return x.rol === "protein" || x.rol === "queso"; });
+            if (salado && t.some(function (x) { return x.tipo === "dulce"; })) quejarse("dulce con salado");
+            if (slot.templateKey === "ensalada_completa" && !t.some(function (x) { return ["hoja", "ensalada_lista", "crudo"].indexOf(x.tipo) !== -1; })) quejarse("ensalada sin ensalada");
+            if (slot.templateKey === "wrap" && !t.some(function (x) { return x.tipo === "tortilla"; })) quejarse("wrap sin tortilla");
+            if ((slot.key === "lunch" || slot.key === "dinner") && !t.some(function (x) { return ["carrier", "principal", "base", "legumbre"].indexOf(x.rol) !== -1; })) quejarse("sin hidratos");
+          });
+          var lu = plan.slots.filter(function (x) { return x.key === "lunch"; })[0];
+          var di = plan.slots.filter(function (x) { return x.key === "dinner"; })[0];
+          if (lu.templateKey === di.templateKey && lu.templateKey !== "principal") mal.push(cal + "/" + bud + " comida y cena con la misma plantilla: " + lu.templateKey);
+        }
+      });
+    });
+    assert.ok(tomas > 250, "tomas: " + tomas);
+    assert.deepStrictEqual(mal.slice(0, 5), [], mal.length + " con problemas");
+  });
+
+  t.test("una ración que no es la lata entera se dice en gramos, no «2 latas» (2026-11-04)", function () {
+    var s = loadBrowserGlobals([
+      projPath("js/core/utils.js"), projPath("js/core/i18n.js"), projPath("js/i18n/es.js"), projPath("js/ui/render.js"),
+      projPath("js/ui/render-no-cook.js")
+    ]);
+    var html = s.renderNoCookItem({ id: "g", name: "Guisantes extra Hacendado", unit: "lata", servings: 2, quantity: 2,
+      servingG: 80, grams: 160, servingsPerPackage: 4, kcal: 94, protein: 6, carbs: 12, fat: 1 });
+    assert.ok(html.indexOf("160") !== -1, html);
+    assert.strictEqual(/2 lata/.test(html), false, "no dice «2 latas»: " + html);
+  });
 }
 
 module.exports = { run: run };

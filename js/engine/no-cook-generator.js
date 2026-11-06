@@ -167,6 +167,20 @@ var ROLES_DE_DESAYUNO = ["lacteo", "cereal", "fruta", "dulce", "untable"];
 // se pone de más donde ese día ya se unta, nunca como fila suelta.
 var ROLES_SOLO_CON_ALGO = ["untable"];
 
+// Lo que sí se come suelto, en una fila nueva de un snack (2026-11-04): el
+// resto solo se pone de más donde ese día ya sale.
+var ROLES_SUELTOS = ["fruta", "lacteo", "salado", "dulce"];
+
+/** La primera fila del día con ese producto, o null. */
+function _filaDelDia(plan, id) {
+  var slots = (plan && plan.slots) || [];
+  for (var i = 0; i < slots.length; i++) {
+    var items = slots[i].items || [];
+    for (var j = 0; j < items.length; j++) if (items[j].id === id) return items[j];
+  }
+  return null;
+}
+
 /** ¿Sale ya este producto en alguna toma del día? */
 function _saleEnElDia(plan, id) {
   return ((plan && plan.slots) || []).some(function (s) {
@@ -508,6 +522,12 @@ function _rellenarConSobras(planes, pool, opts) {
         if (!entry || entry.serving.policy === "fresh") return;
         if ((puestas[lote.id] || 0) >= tope) return;
         if (ROLES_SOLO_CON_ALGO.indexOf(entry.serving.role) !== -1 && !_saleEnElDia(plan, entry.product.id)) return;
+        // Solo lo que se come suelto entra en una fila nueva (una lata de
+        // guisantes en la merienda, no), y una fila no pasa del tope de su
+        // tipo (2026-11-04, _racionesQueCaben).
+        var fila = _filaDelDia(plan, entry.product.id);
+        if (!fila && ROLES_SUELTOS.indexOf(entry.serving.role) === -1) return;
+        if (fila && _racionesQueCaben(entry, noCookFactorRaciones(objetivo)) < (fila.servings || 0) + 1) return;
         var m = servingMacros(entry, 1);
         if (!(m.kcal > 0) || objetivo * NO_COOK_KCAL_HIGH < total.kcal + m.kcal) return;
         var nota = -Math.abs(total.kcal + m.kcal - objetivo);
@@ -582,7 +602,19 @@ function getNoCookEligiblePool(storeId) {
     // Y descarta el registro que se contradice a sí mismo ("Pomelo",
     // 15 kcal con P10/C20/F10). Ver hasConsistentMacros en serving-sizes.js.
     if (typeof hasConsistentMacros === "function" && !hasConsistentMacros(p)) continue;
-    pool.push({ product: p, level: classification.level, unit: unit, serving: serving });
+    // El TIPO (2026-11-04, noCookTipo en serving-sizes.js): afina el papel
+    // (un bote de garbanzos pasa a ser la base de una ensalada) y deja fuera
+    // lo que hay que cocinar (huevos crudos, bacón, empanados, tomate para
+    // guisar) o no es comida para una toma (crema de leche para el café).
+    var tipo = null;
+    if (typeof noCookRolAjustado === "function" && typeof noCookTipo === "function") {
+      serving.role = noCookRolAjustado(p, serving.role);
+      if (serving.role) {
+        tipo = noCookTipo(p, serving.role);
+        if (!tipo) continue;
+      }
+    }
+    pool.push({ product: p, level: classification.level, unit: unit, serving: serving, tipo: tipo });
   }
 
   _noCookEligiblePoolByStore[resolvedStoreId] = pool;
@@ -653,9 +685,17 @@ function buildNoCookItem(entry, servings, buysPackage) {
  *   2. si no, uno nuevo que quepa en el presupuesto restante;
  *   3. si nada cabe en el presupuesto: null para un papel opcional, y el
  *      envase más barato solo si el papel es `required` (allowOverrun).
+ *
+ * `tipos` (2026-11-04): los tipos que admite el hueco (ver noCookTipo en
+ * serving-sizes.js); sin ellos, cualquiera del papel. `yaEnLaToma`: ids que
+ * esta misma toma ya lleva, para no poner el mismo producto en dos huecos.
  * @returns {{entry:object, reused:boolean}|null}
  */
-function pickForRole(role, pool, day, allowFresh, allowOverrun, priorityOverride) {
+function pickForRole(role, pool, day, allowFresh, allowOverrun, priorityOverride, tipos, yaEnLaToma) {
+  function tipoVale(e) {
+    if (yaEnLaToma && yaEnLaToma[e.product.id]) return false;
+    return !tipos || !tipos.length || tipos.indexOf(e.tipo) !== -1;
+  }
   if (REUSABLE_ROLES.indexOf(role) !== -1) {
     // Sólo se reutiliza mientras quede envase: un paquete de tortillas de
     // 5 raciones da para 5 usos hoy, no para diez. Sin este tope el
@@ -668,13 +708,14 @@ function pickForRole(role, pool, day, allowFresh, allowOverrun, priorityOverride
         return b && b.entry.serving.role === role
           && b.entry.serving.policy !== "fresh"
           && b.servingsUsed < cabe
+          && tipoVale(b.entry)
           && !(day.avoidIds && day.avoidIds[b.entry.product.id]);
       });
     // Y lo que sobró de los días anteriores y hoy aún no ha salido: también
     // gratis (ver «Lo que sobra de un día sirve a los demás»).
     Object.keys(day.heredado || {}).forEach(function (id) {
       var h = day.heredado[id];
-      if (day.bought[id] || h.entry.serving.role !== role) return;
+      if (day.bought[id] || h.entry.serving.role !== role || !tipoVale(h.entry)) return;
       if (day.avoidIds && day.avoidIds[id]) return;
       reusable.push({ entry: h.entry });
     });
@@ -688,6 +729,7 @@ function pickForRole(role, pool, day, allowFresh, allowOverrun, priorityOverride
   for (var i = 0; i < pool.length; i++) {
     var e = pool[i];
     if (!e.serving || e.serving.role !== role) continue;
+    if (!tipoVale(e)) continue;
     if (day.bought[e.product.id]) continue;
     if (day.usedNames[e.product.name]) continue;
     if (!allowFresh && e.serving.policy === "fresh") continue;
@@ -835,6 +877,29 @@ function picksProtein(picks) {
  * quitar calorías, sobra antes el queso extra que la proteína que hace
  * que la comida sea una comida.
  */
+// Lo que crece con un día de muchas kcal (noCookFactorRaciones): quien come
+// 4.000 kcal come más pan, más arroz, más yogur, más fruta y más pescado o
+// pavo. No más guisantes de lata, más chorizo ni más mermelada: eso no lo
+// pide nadie por mucha hambre que tenga (2026-11-04).
+var TIPOS_QUE_CRECEN = ["pan", "tortilla", "tostado", "base", "legumbre", "fruta", "lacteo", "cereal",
+  "hoja", "crudo", "cocida", "ensalada_lista", "fiambre", "pescado", "huevo", "queso_fresco",
+  "marisco_cocido", "surimi", "sopa", "frutos_secos"];
+
+/**
+ * Raciones de un producto que caben en UNA toma según su tipo
+ * (NO_COOK_MAX_G_POR_TIPO, serving-sizes.js), o Infinity si no hay tope.
+ * Nunca menos de una: si una ración ya pasa del tope, la ración manda.
+ * @param {object} entry
+ * @param {number} [factor] - noCookFactorRaciones del día (solo para TIPOS_QUE_CRECEN)
+ */
+function _racionesQueCaben(entry, factor) {
+  if (typeof NO_COOK_MAX_G_POR_TIPO === "undefined" || !entry || !entry.serving) return Infinity;
+  var cap = NO_COOK_MAX_G_POR_TIPO[entry.tipo];
+  if (!cap || entry.serving.role === "principal" || !(entry.serving.servingG > 0)) return Infinity;
+  if (1 < factor && TIPOS_QUE_CRECEN.indexOf(entry.tipo) !== -1) cap *= factor;
+  return Math.max(1, Math.floor(cap / entry.serving.servingG + 1e-9));
+}
+
 function scaleToTarget(picks, target, targetProtein, factorRaciones) {
   var factor = factorRaciones > 1 ? factorRaciones : 1;
   var guard = 0;
@@ -847,6 +912,9 @@ function scaleToTarget(picks, target, targetProtein, factorRaciones) {
       var pk = picks[i];
       var tope = pk.comp.maxServings || 1;
       if (factor > 1) tope = Math.max(tope, Math.round(tope * factor));
+      // Ni con muchas kcal que poner: dos latas de guisantes no se comen
+      // (2026-11-04). Lo que falte lo pone otro componente u otra toma.
+      tope = Math.min(tope, _racionesQueCaben(pk.entry, factor));
       if (pk.fixed || pk.servings >= tope) continue;
       var m = servingMacros(pk.entry, 1);
       if (m.kcal <= 0) continue;
@@ -939,9 +1007,11 @@ function buildSlotFromTemplate(tpl, slotDef, targetKcal, pool, day, opts) {
     }
 
     // Sólo comida y cena pueden abrir un plato preparado.
+    var enLaToma = {};
+    picks.forEach(function (pk0) { enLaToma[pk0.entry.product.id] = true; });
     var picked = pickForRole(comp.role, pool, day, isMain,
       !!comp.required && !!(opts && opts.allowOverrun),
-      opts && opts.priorityOverride);
+      opts && opts.priorityOverride, comp.tipos, enLaToma);
     if (!picked) {
       if (comp.required) { day.pendingSpend = 0; return null; }   // plantilla imposible
       continue;
@@ -1122,6 +1192,12 @@ function buildSlot(slotKey, targetKcal, pool, day, opts) {
     var forced = templates.filter(function (t) { return t.key === opts.forceTemplateKey; });
     if (forced.length) templates = forced;
   }
+  // La cena no repite la plantilla de la comida (2026-11-04): con lo ya
+  // comprado a mano, salía el mismo wrap dos veces el mismo día.
+  if (opts && opts.evitarPlantilla && !(opts.forceTemplateKey)) {
+    var otras = templates.filter(function (t) { return t.key !== opts.evitarPlantilla; });
+    if (otras.length) templates = otras;
+  }
 
   // TRES pasadas, de más a menos exigente. El presupuesto es un techo duro,
   // así que antes de saltárselo se renuncia a TODO lo demás:
@@ -1252,6 +1328,7 @@ function generateNoCookPlan(storeId, options) {
     allowSplitFresh: false,
     targetProtein: protFor("dinner"),
     forceTemplateKey: day.freshPending.length ? "principal" : null,
+    evitarPlantilla: built.lunch.templateKey,
     allowMakeAhead: allowMakeAhead,
     factorRaciones: factorRaciones,
   });

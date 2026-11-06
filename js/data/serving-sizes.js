@@ -52,6 +52,10 @@ var SERVING_ROLES = [
   "cereal",    // muesli, cereales, galletas de desayuno
   "dulce",     // chocolate, bollería (solo snacks)
   "salado",    // frutos secos, patatas, encurtidos (solo snacks)
+  // Desde el 2026-11-04 (noCookRolAjustado): un bote de legumbre cocida o un
+  // vaso de arroz cocido no son un plato preparado, son la BASE de uno.
+  "legumbre",  // garbanzos, alubias, lentejas cocidas: base de una ensalada
+  "base",      // arroz cocido, patata cocida: base de un bol
 ];
 
 var DEFAULT_SERVING = { g: 100, policy: "keeps", role: null };
@@ -437,6 +441,180 @@ function macrosForGrams(product, grams) {
   };
 }
 
+// ── El TIPO de cada producto (2026-11-04) ────────────────────────────────
+// El dueño: «на обед у меня было две банки горошка и пол пачки колбасы…
+// давай сделаем огромный упор на качество». El papel (`role`) dice para qué
+// hueco de una plantilla vale un producto, pero es demasiado grueso: en «veg»
+// caían la lechuga y la lata de guisantes, en «protein» el pavo y los huevos
+// CRUDOS, en «untable» la mermelada y el paté, y en «principal» las placas de
+// lasaña sin cocer o la crema de leche para el café. Cada plantilla montaba lo
+// primero que le tocaba del papel, y así salía una «ensalada» de guisantes de
+// lata con salchichas, o tostadas de Nocilla con atún.
+//
+// El TIPO afina el papel. Lo deciden la hoja del catálogo y, dentro de una
+// hoja mezclada, el nombre. Las plantillas (no-cook-templates.js) dicen qué
+// tipos admite cada hueco, y el generador no pone una ración más de lo que un
+// tipo admite en una toma (NO_COOK_MAX_G_POR_TIPO). Un producto cuyo tipo es
+// null no entra en el modo sin cocinar: hay que cocinarlo (huevos crudos,
+// bacón, empanados, tomate para guisar) o no es comida para una toma.
+
+/** Quita acentos y pasa a minúsculas, para comparar nombres. */
+function _sinAcentos(texto) {
+  return String(texto || "").toLowerCase()
+    .replace(/[áàä]/g, "a").replace(/[éèë]/g, "e").replace(/[íìï]/g, "i")
+    .replace(/[óòö]/g, "o").replace(/[úùü]/g, "u").replace(/ñ/g, "n");
+}
+
+/**
+ * El tipo de un producto del modo sin cocinar, o null si no entra.
+ * @param {object} product - entrada de REAL_PRODUCTS
+ * @param {string|null} role - el papel que le dio resolveServing
+ * @returns {string|null}
+ */
+function noCookTipo(product, role) {
+  if (!product || !role) return null;
+  var hoja = product.leafCategory || product.category || "";
+  var n = _sinAcentos(product.name);
+
+  switch (role) {
+    case "protein":
+      if (hoja === "Huevos") return /cocid/.test(n) ? "huevo" : null;          // crudos: hay que cocerlos
+      if (hoja === "Bacón") return null;                                         // bacón y panceta: crudos
+      if (hoja === "Jamón cocido") return "fiambre";
+      if (hoja === "Pavo y otros") {
+        return /salchichon|longaniza|cabeza de cerdo|chorizo/.test(n) ? "embutido" : "fiambre";
+      }
+      if (hoja === "Jamón serrano" || hoja === "Lomo y otros") {
+        // Las piezas enteras (un jamón de 150 €) no son la compra de un día.
+        return (typeof product.price === "number" && 25 < product.price) ? null : "curado";
+      }
+      if (hoja === "Chorizo" || hoja === "Salchichón") return "embutido";
+      if (hoja === "Mortadela" || hoja === "Chopped") return "fiambre_graso";
+      if (hoja === "Salchichas") return "salchicha";
+      if (hoja === "Atún" || hoja === "Bonito" || hoja === "Caballa y melva" || hoja === "Sardinas") return "pescado";
+      if (hoja === "Otras conservas de pescado") return /salmon/.test(n) ? "pescado" : "marisco";
+      if (hoja === "Berberechos y almejas" || hoja === "Mejillones" || hoja === "Mejillones y otros") return "marisco";
+      if (hoja === "Ahumados") return "ahumado";
+      if (hoja === "Salazones") return /anchoa|boqueron/.test(n) ? "anchoa" : null;  // sucedáneo de caviar, huevas…
+      if (hoja === "Surimi y otros") return "surimi";
+      if (hoja === "Marisco" || hoja === "Sepia, pulpo y calamar") return "marisco_cocido";
+      return "fiambre";
+
+    case "veg":
+      if (hoja === "Lechuga") return "hoja";
+      if (hoja === "Ensalada preparada") {
+        if (/de la casa/.test(n)) return "hoja";
+        return /wrap/.test(n) ? null : "ensalada_lista";
+      }
+      if (hoja === "Pepino y zanahoria") return "crudo";
+      if (hoja === "Tomate") {
+        if (/tamizad|triturad|troceado|entero pelado|concentrad/.test(n)) return null;  // tomate para guisar
+        if (/untar|rallad/.test(n)) return null;                                  // va como untable
+        if (/pisto|fritada/.test(n)) return "cocida";
+        if (/seco/.test(n)) return "conserva";
+        return "crudo";
+      }
+      if (hoja === "Verduras al vapor") return /patata|batata/.test(n) ? null : "cocida";
+      if (hoja === "Conservas verdura") {
+        if (/patata/.test(n)) return null;   // es la base de un bol, no verdura (ver role "base")
+        if (/asad/.test(n)) return "cocida";
+        // Guisantes, judías verdes, acelgas, champiñón, macedonia: se calientan
+        // y van de guarnición de un plato o de un bol, no dentro de un wrap.
+        if (/guisante|judia|acelga|champinon|macedonia/.test(n)) return "conserva_caliente";
+        return "conserva";
+      }
+      return "conserva";
+
+    case "untable":
+      if (hoja === "Mermelada" || hoja === "Miel" || hoja === "Cremas de untar") return "dulce";
+      if (hoja === "Leche condensada y otros") return null;
+      if (hoja === "Mantequilla" || hoja === "Margarina") return "grasa";
+      if (hoja === "Queso untable") return "queso_untable";
+      if (hoja === "Paté" || hoja === "Sobrasada") return "pate";
+      if (hoja === "Hummus y otros") return /hummus|tsatsiki|pastel/.test(n) ? "hummus" : null;  // tofu, tabulé
+      if (hoja === "Tomate") return "tomate";
+      return "pate";
+
+    case "queso":
+      if (hoja === "Queso fresco") return "queso_fresco";
+      if (hoja === "Queso rallado") return "queso_rallado";
+      if (hoja === "Queso especialidades") return "queso_fuerte";   // azul, cabra, brie: no en un wrap ni en el desayuno
+      return "queso";
+
+    case "fruta":
+      // De postre, fruta fresca o en su jugo; los dátiles y las pasas, de picoteo.
+      if (hoja === "Fruta desecada") return "fruta_desecada";
+      if (hoja === "Conservas fruta") return "fruta_conserva";
+      return "fruta";
+
+    case "salado":
+      // La fruta va con frutos secos, no con patatas fritas ni aceitunas.
+      return hoja === "Frutos secos" ? "frutos_secos" : "aperitivo";
+
+    case "carrier":
+      // Un wrap se hace con tortilla, no con picos ni rosquilletas.
+      // El pan de hamburguesa o de perrito, para un bocadillo, no para tostadas.
+      if (hoja === "Pan de hamburguesa y wrap") return /tortilla|wrap|fajita|burrito/.test(n) ? "tortilla" : "pan_bollo";
+      if (hoja === "Pan tostado" || hoja === "Crakers y tartaletas") return "tostado";
+      if (hoja === "Picos" || hoja === "Rosquilletas") return "picos";
+      return "pan";
+
+    case "principal":
+      if (hoja === "Alubias" || hoja === "Garbanzos" || hoja === "Lentejas y otros") return null;  // legumbre sola: role "legumbre"
+      if (hoja === "Arroz" && /arroz cocido/.test(n)) return null;          // arroz solo: role "base"
+      if (/placas|crema de leche|soluble|burger|empanad|rebozad|ultracongelad|oreja/.test(n)) return null;
+      if (hoja === "Pollo" || hoja === "Empanados y rebozados congelados") return null;   // al horno o a la sartén
+      if (hoja === "Cerdo") return null;                                   // fiambre adobado: va como proteína
+      return "plato";
+
+    default:
+      // El chocolate y la bollería de los snacks no son la mermelada del pan.
+      return role === "dulce" ? "dulce_snack" : role;
+  }
+}
+
+/**
+ * Papel que el tipo le cambia a un producto: la legumbre cocida y el arroz
+ * cocido solos dejan de ser «plato preparado» (un bote de garbanzos no es una
+ * comida) y pasan a ser la base de una ensalada o de un bol; el tomate para
+ * untar, un untable; el fiambre adobado, una proteína.
+ * @param {object} product
+ * @param {string|null} role
+ * @returns {string|null}
+ */
+function noCookRolAjustado(product, role) {
+  if (!product) return role;
+  var hoja = product.leafCategory || product.category || "";
+  var n = _sinAcentos(product.name);
+  if (role === "principal" && (hoja === "Alubias" || hoja === "Garbanzos" || hoja === "Lentejas y otros")) return "legumbre";
+  if (role === "principal" && hoja === "Arroz" && /arroz cocido/.test(n)) return "base";
+  if (role === "principal" && hoja === "Cerdo") return "protein";
+  if (role === "veg" && hoja === "Conservas verdura" && /patata/.test(n)) return "base";
+  // El queso fresco batido se come a cucharadas, como un yogur.
+  if (role === "queso" && /batido/.test(n)) return "lacteo";
+  if (role === "veg" && hoja === "Verduras al vapor" && /patata|batata/.test(n)) return "base";
+  if (role === "veg" && hoja === "Tomate" && /untar|rallad/.test(n)) return "untable";
+  if (role === "untable" && hoja === "Hummus y otros" && /tofu/.test(n)) return null;
+  return role;
+}
+
+/**
+ * Lo más que se come de un tipo en UNA toma, en gramos. Es lo que impide que
+ * escalar hacia las calorías acabe en «dos latas de guisantes»: una persona
+ * no se come eso por mucho que le falten kcal, así que lo que falte lo pone
+ * otro componente (el pan, el plato, la legumbre) u otra toma.
+ */
+var NO_COOK_MAX_G_POR_TIPO = {
+  hoja: 150, crudo: 250, conserva: 160, conserva_caliente: 160, cocida: 300, ensalada_lista: 320,
+  fiambre: 150, fiambre_graso: 100, curado: 90, embutido: 60, salchicha: 160, pescado: 160,
+  marisco: 120, ahumado: 100, anchoa: 30, huevo: 180, surimi: 150, marisco_cocido: 200,
+  dulce: 40, grasa: 20, queso_untable: 60, pate: 60, hummus: 100, tomate: 80,
+  queso: 80, queso_fresco: 200, queso_rallado: 40, queso_fuerte: 60,
+  pan: 180, pan_bollo: 210, tortilla: 210, tostado: 90, picos: 50,
+  legumbre: 400, base: 300,
+  fruta: 340, fruta_conserva: 240, fruta_desecada: 60, lacteo: 500, cereal: 100, frutos_secos: 40, aperitivo: 60, dulce_snack: 80, sopa: 500
+};
+
 /**
  * Precio de la parte del envase que se consume. El envase se COMPRA
  * entero (eso es lo que se paga y lo que va a la lista de la compra); esto
@@ -465,5 +643,8 @@ if (typeof module !== "undefined" && module.exports) {
     packageGrams: packageGrams,
     macrosForGrams: macrosForGrams,
     costForGrams: costForGrams,
+    noCookTipo: noCookTipo,
+    noCookRolAjustado: noCookRolAjustado,
+    NO_COOK_MAX_G_POR_TIPO: NO_COOK_MAX_G_POR_TIPO,
   };
 }

@@ -18,6 +18,48 @@ llevan al final un bloque «actualización 2026-10-08»). El diario fechado, con
 medidas y causas, está en la cabecera de `STATE.md` (entradas del 2026-10-07 y
 2026-10-08).
 
+### 0.0 quatervicies Calidad del «sin cocinar»: tipos de producto, 2026-11-06 (lee esto antes que 0.0 tervicies)
+
+- **Estado:** sello `20261106a`, **1372 tests en verde**. El dueño: «на обед у меня
+  было две банки горошка и пол пачки колбасы… давай сделаем огромный упор на
+  качество… раньше я заставлял делать планы за 8 евро, сейчас понимаю, что это
+  очень сложно».
+- **Por qué salía eso:** cada plantilla rellenaba sus huecos con CUALQUIER
+  producto del papel (`role`), y el papel era grueso: en «veg» la lechuga y la lata
+  de guisantes, en «protein» el pavo y los huevos crudos, en «untable» la mermelada
+  y el paté, en «principal» las placas de lasaña sin cocer. Para llegar a las kcal
+  se subían raciones de lo que tocara. Medido sobre 1.800 tomas (4 objetivos de
+  kcal × 5 presupuestos × 3 prioridades): el **43,6%** tenía algo sin sentido (una
+  «ensalada» de guisantes con salchichas, tostadas de Nocilla con chorizo, huevos
+  crudos, raciones de más), y en el **31%** de los días comida y cena eran iguales.
+- **Ahora:** `noCookTipo(product, role)` y `noCookRolAjustado` (`serving-sizes.js`)
+  dan a cada producto un tipo por hoja y, en las hojas mezcladas, por nombre (hoja,
+  crudo, conserva, conserva_caliente, fiambre, embutido, pescado, dulce, pate, pan,
+  tortilla…). `null` = fuera del modo (huevos crudos, bacón, empanados,
+  ultracongelados, tomate para guisar, crema para el café). El bote de legumbre
+  pasa a papel `legumbre` y el arroz o la patata cocidos a `base`. Las plantillas
+  (`no-cook-templates.js`) dicen qué `tipos` admite cada hueco; dos nuevas,
+  `ensalada_legumbre` y `bol`; la ensalada lleva pan, y las principales, fruta de
+  postre. `pickForRole` filtra por tipo y no repite un producto en la misma toma;
+  `scaleToTarget` no pasa de `NO_COOK_MAX_G_POR_TIPO` (lo que crece con muchas kcal:
+  `TIPOS_QUE_CRECEN`, pan, arroz, yogur, fruta, pescado, pavo); la cena no repite la
+  plantilla de la comida; lo de sobras no mete una lata suelta en un snack.
+- **Pantalla:** una ración que no es el envase entero se dice en gramos («160 g», no
+  «2 латы»), y si el día se queda por debajo del 85% de las kcal sale un aviso
+  (`ui.nocook_kcal_corta`).
+- **Medido después** (720 días, mismas semillas): **0%** de tomas con algún problema,
+  comida y cena iguales en 28 días de 720 (la pizza que se reparte a propósito; antes
+  221). El precio de la calidad: kcal del día, mediana 0,93 del objetivo (antes 0,95);
+  días por debajo del 85%, 178 de 720 (antes 129), sobre todo con 8-12 € y en modo
+  barato; ticket mediano 13,84 € (antes 11,99). En Chrome sin interfaz: 15 tomas, 0
+  errores de JavaScript y de CSP.
+- **Herramientas:** `calidad-sincocinar.cjs` y `tomas-cortas.cjs` están en el
+  scratchpad de esta sesión, no en el repo (las reglas del auditor son las de los
+  tests nuevos de `tests/no-cook-meals.test.js`).
+- **Pendiente:** el plan con platos tiene el mismo tipo de problema (medido: 23,7%
+  de 1.080 tomas con una cantidad de un ingrediente fuera de lo que se come, como 600
+  g de lentejas en una comida). Ver ROADMAP.
+
 ### 0.0 tervicies «Cambiar» con lo de casa, despensa cuadrada y tandas de compra, 2026-11-04 (lee esto antes que 0.0 duovicies)
 
 - **Estado:** sello `20261104c`, **1369 tests en verde**. El dueño: «на перекус
