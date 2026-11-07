@@ -158,7 +158,7 @@ function quitarProductoSinCocinar(id, nombre) {
       for (var k in base) opciones[k] = base[k];
       opciones.allowMakeAhead = lastNoCookDays.length > 1 && d > 0;
       opciones.heredado = _heredadoDelDia(lastNoCookDays, d);
-      var res = regenerateNoCookSlot(plan, slot.key, lastNoCookStore, opciones);
+      var res = _cambiarToma(d, slot.key, opciones);
       if (!res || res.error || !res.slot) { sinCambio++; return; }
       plan.slots[idx] = res.slot;
       cambiadas++;
@@ -576,6 +576,14 @@ function _heredadoDelDia(dias, d) {
   return noCookCuentas(dias.slice(0, d)).siguiente;
 }
 
+/** Una toma nueva para el día `d` de lastNoCookDays, sin ponerla: { slot } | { error }. */
+function _cambiarToma(d, slotKey, opciones) {
+  if (typeof noCookCambiarToma === "function") {
+    return noCookCambiarToma(lastNoCookDays, d, slotKey, lastNoCookStore, opciones);
+  }
+  return regenerateNoCookSlot(lastNoCookDays[d], slotKey, lastNoCookStore, opciones);
+}
+
 /**
  * "Cambiar" una sola toma del plan sin cocinar. Es también la salida del
  * usuario cuando un producto no está en SU Mercadona: no hay dato de
@@ -597,10 +605,9 @@ function handleSwapNoCookSlot(event) {
   for (var k in base) opciones[k] = base[k];
   opciones.allowMakeAhead = lastNoCookDays.length > 1 && dayIndex > 0;
   opciones.heredado = _heredadoDelDia(lastNoCookDays, dayIndex);
-  // Con varios días, lo que este día puede comprar es lo que deja la compra de
-  // los otros (2026-11-06, presupuesto del plan entero), no su presupuesto.
-  if (typeof noCookTechoParaCambiar === "function") opciones.techo = noCookTechoParaCambiar(lastNoCookDays, dayIndex);
-  var res = regenerateNoCookSlot(plan, slotKey, lastNoCookStore, opciones);
+  // Con varios días, la toma nueva cabe en el presupuesto del plan entero
+  // contando lo que cambia en los otros días (noCookCambiarToma, 2026-11-07).
+  var res = _cambiarToma(dayIndex, slotKey, opciones);
   if (!res || res.error || !res.slot) {
     btn.disabled = false;
     btn.textContent = t("ui.sin_mas_opciones");

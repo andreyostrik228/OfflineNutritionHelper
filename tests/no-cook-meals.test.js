@@ -1008,6 +1008,99 @@ function run(t) {
     assert.strictEqual(s._techoDelDia(Infinity, 20), Infinity);
   });
 
+  t.test("noCookTechoParaCambiar con la toma: lo que esa toma dejaba para otro día ya no está libre (2026-11-07)", function () {
+    var s = motorSandbox();
+    function fila(id, raciones, porEnvase, precio) {
+      return { id: id, servings: raciones, servingsPerPackage: porEnvase, price: precio, policy: "keeps", role: "protein" };
+    }
+    // A: envase de 2 raciones a 3 €; la comida del día 1 come una y la cena del
+    // día 2, la otra. B: 1 € el desayuno del día 1.
+    var dias = [
+      { budget: 5, slots: [{ key: "breakfast", items: [fila("B", 1, 1, 1)] }, { key: "lunch", items: [fila("A", 1, 2, 3)] }] },
+      { budget: 5, slots: [{ key: "dinner", items: [fila("A", 1, 2, 3)] }] }
+    ];
+    s.noCookAplicarCuentas(dias);
+    igual(dias.map(function (d) { return d.shoppingCost; }), [4, 0]);
+    // Con el día 2 tal como está, el día 1 podría gastar los 10.
+    assert.strictEqual(s.noCookTechoParaCambiar(dias, 0), 10);
+    // Pero sin la comida del día 1 el envase de A lo compra el día 2: quedan 7.
+    assert.strictEqual(s.noCookTechoParaCambiar(dias, 0, "lunch"), 7);
+    // Sin el desayuno, el día 2 no cambia.
+    assert.strictEqual(s.noCookTechoParaCambiar(dias, 0, "breakfast"), 10);
+    assert.strictEqual(dias[0].slots[1].items.length, 1, "los días de verdad no se tocan");
+    assert.strictEqual(s.noCookTechoParaCambiar([dias[0]], 0, "lunch"), undefined, "con un día manda su presupuesto");
+  });
+
+  t.test("noCookCambiarToma: «Cambiar» una toma casi nunca saca del presupuesto a un plan que cabía; antes, a muchos (2026-11-07)", function () {
+    var s = fullSandbox();
+    var seed = require("./lib/seed-random").seedRandomInContext;
+    function compraCon(dias, d, clave, toma) {
+      var copia = dias.map(function (p, i) {
+        return i !== d ? p : { budget: p.budget, slots: p.slots.map(function (x) { return x.key === clave ? toma : x; }) };
+      });
+      return s.noCookCuentas(copia).dias.reduce(function (a, c) { return a + c.ticket; }, 0);
+    }
+    var cambios = 0, antes = 0, ahora = 0;
+    [8, 12].forEach(function (presupuesto) {
+      for (var q = 1; q <= 3; q++) {
+        seed(s, 400 + q + presupuesto);
+        var opciones = { calories: 2300, protein: 130, budget: presupuesto, priority: "balanced" };
+        var dias = s.generateNoCookPlanDays("mercadona", opciones, 3);
+        var total = s.noCookCompraDelPlan(dias);
+        if (total.compra > total.presupuesto + 0.005) continue;
+        dias.forEach(function (plan, d) {
+          plan.slots.forEach(function (toma) {
+            // Lo que pasa la pantalla (handleSwapNoCookSlot).
+            var o = {};
+            for (var k in opciones) o[k] = opciones[k];
+            o.allowMakeAhead = d > 0;
+            o.heredado = d > 0 ? s.noCookCuentas(dias.slice(0, d)).siguiente : null;
+            // Antes: el techo con los otros días tal como estaban.
+            var viejo = {};
+            for (var k2 in o) viejo[k2] = o[k2];
+            viejo.techo = s.noCookTechoParaCambiar(dias, d);
+            seed(s, 900 + d * 10 + toma.key.length);
+            var a = s.regenerateNoCookSlot(plan, toma.key, "mercadona", viejo);
+            seed(s, 900 + d * 10 + toma.key.length);
+            var b = s.noCookCambiarToma(dias, d, toma.key, "mercadona", o);
+            assert.ok(b && b.slot && b.slot.items.length, "día " + (d + 1) + " " + toma.key + ": sin toma nueva");
+            var habia = {};
+            toma.items.forEach(function (it) { habia[it.id] = true; });
+            assert.ok(!b.slot.items.some(function (it) { return habia[it.id]; }), "repite un producto de la toma de antes");
+            cambios++;
+            if (a.slot && compraCon(dias, d, toma.key, a.slot) > total.presupuesto + 0.005) antes++;
+            if (compraCon(dias, d, toma.key, b.slot) > total.presupuesto + 0.005) ahora++;
+          });
+        });
+      }
+    });
+    // Medido: 75 «Cambiar» en 5 planes que cabían; dejaban el plan por encima
+    // de 3 x presupuesto 37 antes y 6 ahora.
+    assert.ok(cambios >= 40, "pocos «Cambiar» probados: " + cambios);
+    assert.ok(ahora * 2 <= antes, "planes que dejan de caber: " + ahora + " ahora, " + antes + " antes, de " + cambios);
+    assert.ok(ahora <= cambios * 0.1, "planes que dejan de caber: " + ahora + " de " + cambios);
+  });
+
+  t.test("regenerateNoCookSlot: `evitar` deja fuera esos productos de la toma nueva", function () {
+    var s = fullSandbox();
+    var seed = require("./lib/seed-random").seedRandomInContext;
+    seed(s, 21);
+    var opciones = { calories: 2300, protein: 130, budget: 14, priority: "balanced" };
+    var plan = s.generateNoCookPlan("mercadona", opciones);
+    seed(s, 22);
+    var libre = s.regenerateNoCookSlot(plan, "dinner", "mercadona", opciones);
+    assert.ok(libre.slot && libre.slot.items.length, "sin toma nueva");
+    var evitar = {};
+    libre.slot.items.forEach(function (it) { evitar[it.id] = true; });
+    var o = {};
+    for (var k in opciones) o[k] = opciones[k];
+    o.evitar = evitar;
+    seed(s, 22);
+    var sin = s.regenerateNoCookSlot(plan, "dinner", "mercadona", o);
+    assert.ok(sin.slot && sin.slot.items.length, "sin toma nueva sin esos productos");
+    sin.slot.items.forEach(function (it) { assert.ok(!evitar[it.id], "sale " + it.name); });
+  });
+
   t.test("_notaDelPlan(): resta lo que falta de proteína y de kcal, lo que sale en 3+ tomas y la misma proteína en comida y cena", function () {
     var s = motorSandbox();
     function fila(id, prot) { return { id: id, protein: prot, kcal: 100 }; }

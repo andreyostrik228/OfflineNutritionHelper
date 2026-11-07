@@ -935,9 +935,15 @@ function run(t) {
     assert.strictEqual(cont.innerHTML.split("Весь план на 3 дн.").length - 1, 3, "en cada día");
     assert.strictEqual(cont.innerHTML.indexOf('nocook-summary__target">из 14<'), -1, "ningún día dice «из 14»");
 
-    // «Cambiar» en el día 1 puede comprar lo que dejan los otros dos días, no 14 €.
+    // «Cambiar» en el día 1 puede comprar lo que dejan los otros dos días, no 14 €,
+    // y los otros días SIN esa toma: lo que la comida les dejaba, ahora lo compran
+    // ellos (2026-11-07).
     var dias = s.lastNoCookDays;
-    var esperado = 42 - dias[1].shoppingCost - dias[2].shoppingCost;
+    var sinComida = dias.map(function (p, i) {
+      return i ? p : { slots: p.slots.filter(function (sl) { return sl.key !== "lunch"; }) };
+    });
+    var cuentas = s.noCookCuentas(sinComida).dias;
+    var esperado = 42 - cuentas[1].ticket - cuentas[2].ticket;
     var pedido = null;
     s.regenerateNoCookSlot = function (plan, clave, tienda, opciones) { pedido = opciones; return { error: "solo mirar" }; };
     s.setTimeout = function () {};

@@ -18,6 +18,36 @@ llevan al final un bloque «actualización 2026-10-08»). El diario fechado, con
 medidas y causas, está en la cabecera de `STATE.md` (entradas del 2026-10-07 y
 2026-10-08).
 
+### 0.0 tricies «Sin cocinar»: «Cambiar» sin sacar el plan del presupuesto, 2026-11-07 (lee esto antes que 0.0 novovicies)
+
+- **Estado:** sello `20261107d`, **1390 tests en verde** (3 nuevos). El dueño: «Да,
+  разберись» (por qué tras «Заменить» el plan de 48 € compraba 48,21 €).
+- **La causa:** el techo de «Cambiar» (noCookTechoParaCambiar) daba por libre todo lo
+  que costaba la toma de antes, pero lo que esa toma dejaba para otros días (el resto
+  de un envase) lo tenían que comprar ellos; y la toma nueva comía de lo que sobraba de
+  días de antes, que otro día necesitaba. Medido con un «Cambiar» en cada toma de 90
+  planes de 3 días que cabían: 349 de 1.290 los sacaban del presupuesto (mediana 1,04 €,
+  máx. 7,27), en 283 porque subían los otros días.
+- **Qué cambia:** `noCookCambiarToma` (lo usan «Заменить» y «Не нравится», con
+  `_cambiarToma` en render-no-cook.js). El techo sale de los otros días SIN esa toma
+  (`noCookTechoParaCambiar(dias, d, slotKey)`); cada toma nueva se prueba con la cuenta
+  del plan entero y, si lo saca del presupuesto, se hace otra vez sin lo que les quitaba
+  a otros días (`evitar`, nuevo en regenerateNoCookSlot) o con el techo rebajado en lo
+  que se pasó, hasta `NO_COOK_INTENTOS_CAMBIAR` (4) veces. Si no cabe ninguna, la que
+  menos compra.
+- **Medido**, planes que dejan de caber tras un «Cambiar»: 3 días 349 → 91 de 1.290
+  (máx. 7,27 → 1,79 €), 5 días 267 → 57 de 1.075, 7 días 349 → 52 de 1.470. Con 16-20 €,
+  95 → 3 de 810 y la toma nueva igual de grande (kcal 0,98 de la vieja); con 8-10 €,
+  310 → 109 de 720, pero la toma nueva es más pequeña (kcal 0,91 → 0,84 de la vieja): ya
+  no gasta el dinero de los otros días. «Не нравится» del producto que más sale: de 27 a
+  4 planes de 129 (3 días) y de 33 a 2 de 128 (7 días).
+- **Comprobado** en Chrome sin interfaz, en local: 15 «Заменить» seguidos con 12 € y
+  con 16 €, ninguno saca el plan de 36 o 48 €; el clic de verdad con la toma abierta; 0
+  errores de JavaScript.
+- **Lo que queda:** cada «Cambiar» deja el plan más barato y con menos comida, antes y
+  ahora: con todas las tomas cambiadas una tras otra y 16 €, la compra baja de 0,93 a
+  0,78 del presupuesto y la proteína de 0,83 a 0,70 del objetivo (ROADMAP).
+
 ### 0.0 novovicies Plan con platos: el día 1 con más dinero, sin repetir platos, 2026-11-07 (lee esto antes que 0.0 octovicies)
 
 - **Estado:** sello `20261107c`, **1387 tests en verde** (3 nuevos). El dueño: «Да,
@@ -45,6 +75,10 @@ medidas y causas, está en la cabecera de `STATE.md` (entradas del 2026-10-07 y
   _platosRepetidosEntreDias, _esMejorPlanDeDias); la nota y el aviso de «Заметки к плану».
 - **Lo que queda:** con 5 días se pasan 2 de 27 (con lo desplegado, 0); «Cambiar» en
   «Mis planes» sigue con el presupuesto del día guardado.
+- **Desplegado y empujado:** commit `0b5e2be`, Cloudflare `0b7c2b67`, 236 de 236 ficheros.
+  En producción, plan con platos de 3 días: la nota, «Заменить» y 0 errores. En «sin
+  cocinar», «Заменить» en el día 1 (con la toma abierta) dejó una vez el plan en 48,21 € de
+  48: arreglado después, ver 0.0 tricies.
 
 ### 0.0 octovicies Plan con platos: un presupuesto para todo el plan, 2026-11-07 (lee esto antes que 0.0 septvicies)
 

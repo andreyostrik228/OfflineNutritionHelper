@@ -47,7 +47,9 @@
  *   noCookLoteSirve(lote, dia) → si lo que sobra de ese envase se puede comer ese día
  *   noCookAplicarCuentas(dias) → los mismos días, con el ticket de cada uno
  *   noCookCompraDelPlan(dias) → { dias, compra, presupuesto } de un plan de varios días, o null
- *   noCookTechoParaCambiar(dias, d) → lo que puede comprar el día d al «Cambiar» una toma
+ *   noCookTechoParaCambiar(dias, d, slotKey) → lo que puede comprar el día d al «Cambiar» una toma
+ *   noCookCambiarToma(dias, d, slotKey, storeId, options) → { slot } | { error }, sin que el
+ *                                            plan entero deje de caber en N x presupuesto
  *
  * Se mantiene en UN archivo a propósito, aunque pase de 500 líneas: partirlo
  * en "generador del día" + "montador de una toma" se probó y salía peor --
@@ -630,17 +632,133 @@ function noCookTechoDelDia(presupuesto, n, d, cuentas, reserva) {
 
 /**
  * El techo del día `d` al «Cambiar» una de sus tomas en un plan de varios
- * días: lo que deja la compra de los OTROS días tal como están. undefined con
- * un solo día o sin presupuesto (entonces manda el del día).
+ * días: lo que deja la compra de los OTROS días. undefined con un solo día o
+ * sin presupuesto (entonces manda el del día).
+ *
+ * Con `slotKey` (2026-11-07), la compra de los otros días tal como queda SIN
+ * esa toma: lo que la toma de antes dejaba para otro día (el resto del
+ * codillo, que se comía el día 2) lo tiene que comprar ahora ese día, y ese
+ * dinero ya no está libre para la toma nueva. Sin `slotKey`, la de los otros
+ * días tal como están.
  * @param {object[]} dias - con su `shoppingCost` ya puesto
  * @param {number} d
+ * @param {string} [slotKey]
  * @returns {number|undefined}
  */
-function noCookTechoParaCambiar(dias, d) {
+function noCookTechoParaCambiar(dias, d, slotKey) {
   var lista = dias || [];
   var delPlan = noCookCompraDelPlan(lista);
   if (!delPlan || !lista[d]) return undefined;
-  return delPlan.presupuesto - (delPlan.compra - (lista[d].shoppingCost || 0));
+  if (!slotKey) return delPlan.presupuesto - (delPlan.compra - (lista[d].shoppingCost || 0));
+  var otros = 0;
+  noCookCuentas(_diasConLaToma(lista, d, slotKey, null)).dias.forEach(function (c, i) {
+    if (i !== d) otros += c.ticket;
+  });
+  return delPlan.presupuesto - otros;
+}
+
+/**
+ * Los días con la toma `slotKey` del día `d` cambiada por `slot` (vacía con
+ * null), sin tocar los de verdad: se copian solo ese día y su lista de tomas.
+ */
+function _diasConLaToma(dias, d, slotKey, slot) {
+  return dias.map(function (plan, i) {
+    if (i !== d || !plan) return plan;
+    var copia = {};
+    for (var k in plan) copia[k] = plan[k];
+    copia.slots = (plan.slots || []).map(function (s) {
+      return s.key !== slotKey ? s : (slot || { key: slotKey, items: [] });
+    });
+    return copia;
+  });
+}
+
+/** La compra del plan entero con la cuenta día a día (noCookCuentas). */
+function _noCookCompraTotal(dias) {
+  var compra = 0;
+  noCookCuentas(dias).dias.forEach(function (c) { compra += c.ticket; });
+  return Math.round(compra * 100) / 100;
+}
+
+// ── «Cambiar» con el presupuesto del plan entero (2026-11-07) ───────────
+// La toma nueva se hacía con lo que dejaba la compra de los otros días tal
+// como estaban, pero los otros días cambian con ella: lo que la toma de antes
+// les dejaba (media lata, el resto del pan) lo tienen que comprar ellos, y lo
+// que sobraba de días de antes y se come la toma nueva ya no les llega.
+// Ahora el techo sale de los otros días SIN la toma (noCookTechoParaCambiar
+// con su clave) y cada toma nueva se prueba con la cuenta del plan entero: si
+// el plan deja de caber, otra vez con el techo rebajado en lo que se pasó,
+// hasta NO_COOK_INTENTOS_CAMBIAR veces; si la toma nueva comía de lo que
+// otro día necesitaba (el plan compra más envases de algo que el día ya
+// tenía), otra vez sin eso. Se queda la primera que cabe o, si ninguna, la que
+// menos compra. Un plan que ya se pasaba no debería pasarse más.
+//
+// Medido con un «Cambiar» en cada toma de planes que cabían (3 perfiles;
+// 8-20 €; las 3 prioridades), planes que dejan de caber, antes -> ahora:
+//   3 días   349 -> 91 de 1.290  (exceso mediana 1,04 -> 0,47 €; máx. 7,27 -> 1,79)
+//   5 días   267 -> 57 de 1.075  (1,41 -> 0,43 €; 10,68 -> 2,29)
+//   7 días   349 -> 52 de 1.470  (1,55 -> 0,66 €; 14,98 -> 2,13)
+// Los que quedan son planes que ya estaban a céntimos del presupuesto: la
+// toma nueva compra lo mínimo (la última pasada de buildSlot) y aun así pasa.
+// Con 3 días, el día cambiado queda bajo el 85% de las kcal en 188 de 1.350
+// «Cambiar» (antes 143): la toma nueva ya no gasta el dinero que necesitaban
+// los otros días.
+// «No me gusta» del producto que más sale del plan: de 27 a 4 planes de 129
+// que dejan de caber (3 días), de 33 a 2 de 128 (7 días), con las kcal igual.
+var NO_COOK_INTENTOS_CAMBIAR = 4;
+
+/**
+ * «Cambiar» la toma `slotKey` del día `d` (desde 0) de un plan sin cocinar.
+ * Con varios días y presupuesto, sin que el plan entero deje de caber en N x
+ * presupuesto (ver arriba); con uno, regenerateNoCookSlot tal cual.
+ * @param {object[]} dias - planes de generateNoCookPlan, con su `budget`
+ * @param {number} d
+ * @param {string} slotKey
+ * @param {string} [storeId]
+ * @param {object} [options] - las de regenerateNoCookSlot; `techo` se calcula aquí
+ * @returns {{slot:object}|{error:string}}
+ */
+function noCookCambiarToma(dias, d, slotKey, storeId, options) {
+  var lista = Array.isArray(dias) ? dias : [];
+  var plan = lista[d];
+  var opts = {};
+  var base = options || {};
+  for (var k in base) opts[k] = base[k];
+  opts.techo = noCookTechoParaCambiar(lista, d, slotKey);
+  if (typeof opts.techo !== "number" || !plan || !Array.isArray(plan.slots)) {
+    return regenerateNoCookSlot(plan, slotKey, storeId, opts);
+  }
+  var presupuesto = noCookCompraDelPlan(lista).presupuesto;
+  var limite = Math.max(presupuesto, _noCookCompraTotal(lista));
+  // Lo que el día tiene sin comprar: lo que sobraba de días de antes y lo de
+  // sus otras tomas. Si la toma nueva come de ello y el plan compra más
+  // envases de eso, se lo ha quitado a otro día.
+  var cuentasSin = noCookCuentas(_diasConLaToma(lista, d, slotKey, null));
+  var delDia = {};
+  Object.keys(cuentasSin.dias[d].heredado || {}).forEach(function (id) { delDia[id] = true; });
+  plan.slots.forEach(function (s) {
+    if (s.key !== slotKey) (s.items || []).forEach(function (it) { delDia[it.id] = true; });
+  });
+  opts.evitar = {};
+  Object.keys(base.evitar || {}).forEach(function (id) { opts.evitar[id] = true; });
+  var mejor = null;
+  for (var i = 0; i < NO_COOK_INTENTOS_CAMBIAR; i++) {
+    var res = regenerateNoCookSlot(plan, slotKey, storeId, opts);
+    if (!res || res.error || !res.slot) return mejor ? { slot: mejor.slot } : res;
+    var cuentas = noCookCuentas(_diasConLaToma(lista, d, slotKey, res.slot));
+    var compra = 0;
+    cuentas.dias.forEach(function (c) { compra += c.ticket; });
+    compra = Math.round(compra * 100) / 100;
+    if (!mejor || compra < mejor.compra) mejor = { slot: res.slot, compra: compra };
+    if (compra <= limite + 0.005) break;
+    // Lo que se ha quitado a otro día, fuera; si no, menos techo.
+    var quitado = res.slot.items.filter(function (it) {
+      return delDia[it.id] && (cuentas.envases[it.id] || 0) > (cuentasSin.envases[it.id] || 0);
+    });
+    if (quitado.length) quitado.forEach(function (it) { opts.evitar[it.id] = true; });
+    else opts.techo -= compra - limite;
+  }
+  return { slot: mejor.slot };
 }
 
 /**
@@ -1920,6 +2038,9 @@ function regenerateNoCookSlot(plan, slotKey, storeId, options) {
   // otra vez (solo cambiaba la plantilla), y entonces no sirve para lo que
   // el usuario lo quiere: esquivar un producto que su tienda no tiene.
   plan.slots[idx].items.forEach(function (it) { day.avoidIds[it.id] = true; });
+  // Y lo que pide quien llama (noCookCambiarToma: lo que la toma nueva les
+  // quitaba a otros días del plan).
+  Object.keys(opts.evitar || {}).forEach(function (id) { day.avoidIds[id] = true; });
 
   // Estado del día a partir de las OTRAS tomas, también en cuántas sale cada
   // producto: lo nuevo no repite lo que ya sale en el resto del día.
