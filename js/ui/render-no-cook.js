@@ -449,6 +449,9 @@ function paintNoCookDays(dias) {
   // Lo que sobra de la compra y ningún día come (2026-10-27): cada día dice
   // lo que de eso se puede comer ese día (_noCookSobrasHtml).
   var lotes = (typeof noCookCuentas === "function") ? noCookCuentas(dias).lotes : [];
+  // Con varios días el presupuesto es del plan entero (2026-11-06): cada día
+  // enseña también la compra de todo el plan (renderNoCookSummary).
+  var delPlan = (typeof noCookCompraDelPlan === "function") ? noCookCompraDelPlan(dias) : null;
   // La toma que toca ahora, abierta; las demás, plegadas (render.js, 2026-10-28).
   var ahora = new Date();
   var abiertas = (typeof tomasQueSalenAbiertas === "function")
@@ -459,9 +462,9 @@ function paintNoCookDays(dias) {
     ? dias.map(function (plan, i) {
         var cabeza = typeof renderDaySlideHead === "function" ? renderDaySlideHead(i, dias.length) : "";
         return '<section class="day-slide" data-day="' + i + '">' + cabeza +
-          '<div class="nocook-dia">' + _noCookDiaHtml(plan, i, lotes, abiertas) + "</div></section>";
+          '<div class="nocook-dia">' + _noCookDiaHtml(plan, i, lotes, abiertas, delPlan) + "</div></section>";
       }).join("")
-    : _noCookDiaHtml(dias[0], 0, lotes, abiertas);
+    : _noCookDiaHtml(dias[0], 0, lotes, abiertas, delPlan);
   if (multi) noCookResults.scrollLeft = desplazado;
   lastNoCookDays = dias;
   lastNoCookPlan = dias[0];
@@ -475,7 +478,7 @@ function paintNoCookDays(dias) {
  * El aviso de alérgenos se arma aquí (y no en runNoCookGenerator) porque
  * también hay que re-pintarlo al cambiar una sola toma.
  */
-function _noCookDiaHtml(plan, dayIndex, lotes, abiertas) {
+function _noCookDiaHtml(plan, dayIndex, lotes, abiertas, delPlan) {
   // «Sin tienda» (2026-10-31): los alérgenos son de la etiqueta de Mercadona y
   // otra marca puede llevar otros, así que no se enseñan (el CSS esconde
   // .nocook-item__allergens) y el aviso pasa a ser «mira la etiqueta».
@@ -503,7 +506,7 @@ function _noCookDiaHtml(plan, dayIndex, lotes, abiertas) {
       }) + "</p>"
     : "";
 
-  return renderNoCookSummary(plan) + _noCookSobrasHtml(lotes, dayIndex) + allergenNote + aproxNote +
+  return renderNoCookSummary(plan, delPlan) + _noCookSobrasHtml(lotes, dayIndex) + allergenNote + aproxNote +
     plan.slots.map(function (slot, s) {
       var porDefecto = !abiertas || abiertas[dayIndex] === s;
       var abierta = (typeof tomaAbierta === "function")
@@ -594,6 +597,9 @@ function handleSwapNoCookSlot(event) {
   for (var k in base) opciones[k] = base[k];
   opciones.allowMakeAhead = lastNoCookDays.length > 1 && dayIndex > 0;
   opciones.heredado = _heredadoDelDia(lastNoCookDays, dayIndex);
+  // Con varios días, lo que este día puede comprar es lo que deja la compra de
+  // los otros (2026-11-06, presupuesto del plan entero), no su presupuesto.
+  if (typeof noCookTechoParaCambiar === "function") opciones.techo = noCookTechoParaCambiar(lastNoCookDays, dayIndex);
   var res = regenerateNoCookSlot(plan, slotKey, lastNoCookStore, opciones);
   if (!res || res.error || !res.slot) {
     btn.disabled = false;
@@ -672,10 +678,17 @@ function recomputeNoCookPlanTotals(plan) {
  * alto sencillamente no se alcanza sin cocinar (ver la nota en
  * no-cook-generator.js). Decirlo es más útil que fingir que se cumple.
  *
+ * En un plan de varios días el presupuesto es del plan entero (2026-11-06):
+ * cada día dice lo que compra sin «de 12» (el día 1 puede comprar 20 y el 3,
+ * 5), y debajo va la compra de todo el plan frente a N x presupuesto. Pasarse
+ * es pasarse con el plan entero.
+ *
  * @param {object} plan - salida de generateNoCookPlan()
+ * @param {{dias:number, compra:number, presupuesto:number}|null} [delPlan] -
+ *   noCookCompraDelPlan de los días en pantalla; sin él, un día suelto
  * @returns {string}
  */
-function renderNoCookSummary(plan) {
+function renderNoCookSummary(plan, delPlan) {
   if (!plan || !plan.total) return "";
   // `total` y no `t`: la `t` de siempre es la función de traducción.
   var total = plan.total;
@@ -696,7 +709,7 @@ function renderNoCookSummary(plan) {
   // que el presupuesto limita. Lo consumido va detrás, como referencia.
   var costLine = tFormat("html.nocook_compra_linea", {
     compra: round2(plan.shoppingCost || 0),
-    presupuesto: plan.budget ? objetivo(round2(plan.budget)) : "",
+    presupuesto: (plan.budget && !delPlan) ? objetivo(round2(plan.budget)) : "",
     n: plan.productCount,
     consumo: round2(plan.consumedCost || 0)
   });
@@ -705,6 +718,14 @@ function renderNoCookSummary(plan) {
     '<div class="nocook-summary__row"><strong>' + kcalLine + "</strong></div>" +
     '<div class="nocook-summary__row">' + proteinLine + "</div>" +
     '<div class="nocook-summary__row">' + costLine + "</div>";
+
+  if (delPlan) {
+    stats += '<div class="nocook-summary__row">' + tFormat("html.nocook_compra_plan", {
+      n: delPlan.dias,
+      compra: round2(delPlan.compra),
+      presupuesto: objetivo(round2(delPlan.presupuesto))
+    }) + "</div>";
+  }
 
   if (plan.threeMealDay) {
     stats += '<div class="nocook-summary__row nocook-summary__note">' + t("html.nocook_tres_tomas") + "</div>";
@@ -720,9 +741,12 @@ function renderNoCookSummary(plan) {
     var advice = (plan.priority === "cheap")
       ? t("ui.nocook_consejo_barato")
       : t("ui.nocook_consejo_subir");
-    warn += '<p class="nocook-summary__warn">' + tFormat("html.nocook_se_pasa", {
+    // Con varios días, `budgetOverrun` es lo que se pasa el plan entero
+    // (noCookAplicarCuentas), la misma cifra en cada día.
+    warn += '<p class="nocook-summary__warn">' + tFormat(delPlan ? "html.nocook_se_pasa_plan" : "html.nocook_se_pasa", {
       exceso: round2(plan.budgetOverrun),
-      consejo: escapeHtml(advice)
+      consejo: escapeHtml(advice),
+      n: delPlan ? delPlan.dias : 1
     }) + "</p>";
   }
 

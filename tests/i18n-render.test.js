@@ -828,7 +828,8 @@ function run(t) {
     assert.ok(lista.innerHTML.indexOf(doble) !== -1, "y la lista de la compra también");
     assert.ok(lista.innerHTML.indexOf('data-nombre="' + s.escapeHtml(it.name) + '"') !== -1, "el botón lleva la etiqueta como clave");
     s.quitarProductoSinCocinar(it.id, it.name);
-    assert.strictEqual(campo.value, ru, "en «no me gusta», tal como se lee");
+    // Sin comas: la lista de «no me gusta» va separada por comas (agregarNoMeGusta).
+    assert.strictEqual(campo.value, ru.replace(/,/g, " ").replace(/\s+/g, " ").trim(), "en «no me gusta», tal como se lee");
     s.lastNoCookDays.forEach(function (plan) {
       plan.slots.forEach(function (sl) {
         assert.ok(!sl.items.some(function (x) { return String(x.id) === String(it.id); }), "sigue en el plan");
@@ -900,6 +901,51 @@ function run(t) {
     assert.ok(/Listo para comer|Preparación mínima|Calentar rápido/.test(p.html), "ningún nivel de preparación");
     assert.ok(/&middot; \d+ g<\/span>/.test(p.html) && /P \d+(\.\d)?g \/ C \d+(\.\d)?g \/ G \d+(\.\d)?g/.test(p.html),
       "los gramos y los macros siguen pegados como siempre");
+  });
+
+  t.test("«sin cocinar» de varios días: cada día su compra sin «de 14», y la del plan entero frente a N x presupuesto (2026-11-06)", function () {
+    var s = sandboxCompleto();
+    var delPlan = { dias: 3, compra: 44.5, presupuesto: 42 };
+    var plan = planConAvisos("balanced", true);
+    s.saveLang("es");
+    var es = s.renderNoCookSummary(plan, delPlan);
+    assert.ok(es.indexOf('La compra son <strong>&euro;12.5</strong> en 7 productos') !== -1, "el día, sin «de 14»: " + es);
+    assert.ok(es.indexOf('Todo el plan, 3 días: <strong>&euro;44.5</strong> <span class="nocook-summary__target">de 42</span>.') !== -1, es);
+    assert.ok(es.indexOf('Este plan de 3 días se pasa <strong>&euro;2.5</strong> de tu presupuesto') !== -1, "pasarse es del plan entero: " + es);
+    ["ru", "en", "uk"].forEach(function (lang) {
+      s.saveLang(lang);
+      var resumen = s.renderNoCookSummary(plan, delPlan);
+      var texto = visible(resumen);
+      assert.ok(!/\{[a-z]+\}/.test(resumen), lang + ": hueco sin rellenar en " + resumen);
+      assert.deepStrictEqual(detector.analizarTexto(texto, lang), [], lang + ": " + texto);
+      assert.ok(texto.indexOf("44.5") !== -1 && texto.indexOf("42") !== -1, lang + ": " + texto);
+    });
+    s.saveLang("ru");
+    assert.ok(visible(s.renderNoCookSummary(plan, delPlan)).indexOf("Весь план на 3 дн.") !== -1);
+
+    // De verdad: un plan de 3 días pinta la compra del plan en cada día, y
+    // cuadra con sus tickets.
+    seedRandomInContext(s, 31);
+    var cont = contenedor();
+    s.initNoCookRefs({ noCookResults: cont, noCookCount: contenedor(), noCookStatus: contenedor() });
+    s.runNoCookGenerator("mercadona", { calories: 2100, protein: 120, budget: 14 }, 3);
+    var total = s.noCookCompraDelPlan(s.lastNoCookDays);
+    assert.strictEqual(total.presupuesto, 42);
+    assert.ok(Math.abs(total.compra - s.lastNoCookDays.reduce(function (a, d) { return a + d.shoppingCost; }, 0)) < 0.011);
+    assert.strictEqual(cont.innerHTML.split("Весь план на 3 дн.").length - 1, 3, "en cada día");
+    assert.strictEqual(cont.innerHTML.indexOf('nocook-summary__target">из 14<'), -1, "ningún día dice «из 14»");
+
+    // «Cambiar» en el día 1 puede comprar lo que dejan los otros dos días, no 14 €.
+    var dias = s.lastNoCookDays;
+    var esperado = 42 - dias[1].shoppingCost - dias[2].shoppingCost;
+    var pedido = null;
+    s.regenerateNoCookSlot = function (plan, clave, tienda, opciones) { pedido = opciones; return { error: "solo mirar" }; };
+    s.setTimeout = function () {};
+    var boton = { dataset: { slotKey: "lunch", day: "0" }, disabled: false, textContent: "", innerHTML: "" };
+    s.handleSwapNoCookSlot({ target: { closest: function () { return boton; } } });
+    assert.ok(pedido && Math.abs(pedido.techo - esperado) < 0.011, "techo de «Cambiar»: " + (pedido && pedido.techo) + " frente a " + esperado);
+    assert.strictEqual(pedido.budget, 14, "el presupuesto por día no cambia");
+    s.saveLang("es");
   });
 
   t.test("«sin cocinar» en ruso y en inglés: ni español ni unidades en latín, y la kcal de la toma con su <span class=\"u\">", function () {

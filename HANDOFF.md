@@ -18,6 +18,161 @@ llevan al final un bloque «actualización 2026-10-08»). El diario fechado, con
 medidas y causas, está en la cabecera de `STATE.md` (entradas del 2026-10-07 y
 2026-10-08).
 
+### 0.0 septvicies Sin cocinar: un presupuesto para todo el plan, 2026-11-06 (lee esto antes que 0.0 sexvicies)
+
+- **Estado:** sello `20261107a`, **1384 tests en verde** (4 nuevos). El dueño, a la
+  pregunta de si el día 1 podía gastar más a cuenta de los siguientes: «Да главное
+  чтобы в день выходило столько сколько сказали, а то что первый день может быть 20€
+  а третий 5€ вообще пофиг». Solo «sin cocinar»: el plan con platos sigue con su techo
+  por día (`budgetForPlanDays`, x1,03 con 3 días).
+- **Qué cambia:** en un plan de N días (N > 1) lo que se cumple es la compra del plan,
+  N x presupuesto. `generateNoCookPlanDays` da a cada día un techo (`opts.techo`): lo
+  que queda del plan menos una reserva por cada día que falta (`noCookTechoDelDia`).
+  En generateNoCookPlan, `day.budget` es ese techo; cuántas tomas tiene el día (3 o 5)
+  sigue saliendo del presupuesto por día. Se hace un plan con cada reserva de
+  `NO_COOK_RESERVAS_DIAS` (0,3, 0,5, 0,7 y 1 presupuesto por día que falta) y se queda
+  el mejor de los que caben (`_notaDelPlan`, pesos en `NO_COOK_NOTA`: proteína que
+  falta 4, kcal 2, producto en 3+ tomas 0,5, misma proteína en comida y cena 0,25);
+  si no cabe ninguno, el que menos se pasa. Un plan de 1 día, igual que antes.
+- **`budgetOverrun`** de cada día de un plan de varios días es lo que se pasa el plan
+  entero, la misma cifra en todos (`noCookAplicarCuentas`, `noCookCompraDelPlan`).
+  «Cambiar» en un día recibe de techo lo que dejan los otros días tal como están
+  (`noCookTechoParaCambiar`, en handleSwapNoCookSlot).
+- **Pantalla:** cada día dice su compra sin «из 16», y debajo «Весь план на 3 дн.:
+  €45.95 из 48. Бюджет считается на весь план: один день может стоить больше, другой
+  меньше.» (`html.nocook_compra_plan`); si se pasa, «Этот план на 3 дн. превышает…»
+  (`html.nocook_se_pasa_plan`). En es, en, ru y uk.
+- **Medido** (270 planes de 3 días: 8, 10, 12, 15 y 20 €; 2.100, 2.600 y 3.100 kcal;
+  las 3 prioridades; 6 semillas; con expiry.js cargado, como en la app), antes →
+  después: planes por encima de 3 x presupuesto 79 → 11; días con un producto en 3+
+  tomas 219 → 99 (el día 1, 110 → 35); misma proteína en comida y cena 116 → 86; kcal
+  por debajo del 85% 35 → 30; proteína (objetivo de 110-165 g, otros 270 planes), de
+  media 0,85 → 0,92 del objetivo. El día 1 compra de mediana entre 1,1 y 1,8
+  presupuestos (más cuanto menos dinero); el día 3, de media, 0,5-0,6. Con 7 días (54
+  planes, 10-15 €): 3+ tomas 52 → 12, por encima 2 → 1. Con 2 días (180): por encima
+  74 → 37, 3+ tomas 118 → 77. Son 4 planes en vez de 1: en el navegador, 3 días 21 ms
+  y 7 días 32 ms (con la CPU 4 veces más lenta, 100 y 191 ms).
+- **Se probó y se tiró:** una sola reserva. Con 0,3, la mejor variedad, pero los días 2
+  y 3 se quedaban con poco dinero y la proteína bajaba (0,85 → 0,83). Quedarse con el
+  primer plan que cabe (0,3, luego 0,7, luego 1): por encima 14-19, pero la proteína,
+  0,82, porque elegía el más barato.
+- **Lo que queda:** con 8 € (5 tomas) todavía se pasan 7 de 54 planes: con eso no hay
+  comida para 5 tomas. El plan con platos no tiene presupuesto del plan entero; si el
+  dueño lo quiere, es otro cambio (su techo por día está en `budgetForPlanDays` y en
+  los titulares del informe).
+
+### 0.0 sexvicies Variedad: lo principal distinto en el día y de un día a otro, 2026-11-06 (lee esto antes que 0.0 quinvicies)
+
+- **Estado:** sello `20261106c` (después, `20261107a`: ver 0.0 septvicies), **1380 tests en verde** (5 nuevos). Queja del dueño:
+  «каждый день я ем по сути одно и то же утром днём и вечером, на следующий день
+  также… почему бы не смешать все дни?». Afecta a los dos modos.
+- **Plan con platos, lo que pasaba:** el plato no se repetía (`usedNames` en el día,
+  `avoidDishNames` entre días), lo de dentro sí. Medido en 162 días (3 perfiles, 10,
+  15 y 25 €, 6 semillas, planes de 3 días): comida y cena con la misma proteína o la
+  misma base en 88; la misma toma que ayer en 93 de 216 pares; el desayuno como el de
+  ayer en 37 de 108; los dos snacks entre sí en 33 de 126. El envase abierto a
+  mediodía salía casi gratis por la noche y `diversityScore` pesaba 3 puntos.
+- **Ahora:** `principalesDelPlato(dish)` (`dish-selector.js`) da `p:` + mainProt (las
+  legumbres juntas), `i:` + cada ingrediente con al menos el 30% de la proteína y `b:`
+  + la base con al menos el 40% de los hidratos (arroz blanco e integral, `b:arroz`);
+  el pan no cuenta. `_conVariedad` en pickDish (fase 1 y fase 2), sobre lo que YA cabe
+  en el presupuesto y cada paso solo si deja algo: (1) `avoidDishNames`; (2) ni la
+  proteína ni la base de otra toma de hoy; (3) ni la proteína ni la base de ayer
+  (`data.principalesDeAyer`, de `_principalesPorToma` en generateDietPlanDays: comida y
+  cena miran la comida y la cena de ayer, cada snack los dos snacks, el desayuno el
+  desayuno; la toma llega en `data.tomaKey`, attemptPlanAtTier). Del (2) en adelante,
+  con freno de proteína (`_preferirSinPerderProteina`, `VARIEDAD_PROTEINA_MIN` = 0,85):
+  solo lo que da al menos el 85% de la proteína del mejor plato (o del objetivo); si
+  nada, se repite. Sin el freno, la proteína de una definición con 10 € caía del 96%
+  al 82%.
+- **Medido después:** comida y cena comparten lo principal 10 de 162; la comida de hoy
+  con la cena de ayer 20 de 108 (antes 42); la misma toma que ayer 19 de 216; el
+  desayuno 7 de 108; los snacks 0. Proteína, mediana 1,041 → 1,108 y días por debajo
+  del 90% 28 → 19. Grasa, mediana 1,143 → 1,117, días por encima del 150% 30 → 30.
+  Compra de 3 días igual (42,6 €), días por encima del presupuesto 4 → 1. Empeora: kcal,
+  mediana 0,980 → 0,974 y días por debajo del 90% 20 → 26 (recomposición y volumen con
+  10 €). Golden-master recapturados con su porqué.
+- **Se probó y se tiró:** un freno de kcal como el de proteína: con el 85%, días bajo
+  el 90% de kcal 15, pero grasa por encima del 150% en 45 y comida y cena compartiendo
+  en 27; con el 70%, 18, 38 y 12. Lo que falta de kcal lo ponen los acompañamientos.
+  Y contar los platos (no solo los acompañamientos) en la variedad de
+  `anadirGuarniciones`: casi no cambiaba nada y la proteína empeoraba un poco.
+- **Sin cocinar, lo que pasaba:** la regla 1 de pickForRole reutilizaba SIEMPRE lo
+  comprado hoy. Medido en 648 días (2.100, 2.600 y 3.100 kcal; 12, 15 y 20 €; las 3
+  prioridades; 8 semillas; planes de 3 días): un producto en 3 tomas o más en 437
+  (67%), la misma proteína en comida y cena en 159, comida y cena compartiendo algo en
+  497; los dos snacks idénticos en el 20% de los días.
+- **Ahora:** un producto sale como mucho en `NO_COOK_VECES_AL_DIA` tomas del día (el
+  pan, `carrier`, en 2; lo demás en 1; `day.vecesHoy`) y no vuelve a la misma toma que
+  ayer (`opts.ayer`, que pone generateNoCookPlanDays; `_ayerPorToma`). Orden de
+  pickForRole: (1) lo pagado que aún cabe hoy y no salió ayer en esta toma, primero lo
+  que hoy no ha salido; (2) algo nuevo que quepa; (3) `_repetirLoPagado`, lo menos
+  repetido, hasta una vez más del tope (sin tope en las pasadas 2-4 de buildSlot,
+  `repetirSinTope`); (4) lo de siempre (null o pasarse). Lo nuevo solo por variedad
+  (habiendo algo pagado que serviría) sale de la parte del presupuesto de su toma
+  (`reservaExtra`); la proteína, además, de la mitad de lo apartado
+  (`NO_COOK_VARIEDAD_PROTEINA` = 0,5; barrido con 0, 0,5 y 1). Plantillas: fuera la de
+  esa toma ayer (`plantillasDeAyer`) y el snack 2 no repite la del snack 1. buildSlot
+  tiene 4 pasadas, y en la que se puede pasar del presupuesto prueba primero la
+  plantilla más barata (`_costeMinimoDePlantilla`), no la del sorteo.
+- **Medido después:** producto en 3 tomas o más 143 de 648 (antes 437), la misma
+  proteína en comida y cena 86 (159), comparten algo 349 (497), snacks idénticos 0, la
+  misma plantilla que ayer casi nunca. Días por encima del presupuesto 92 (antes 89; con
+  12 € ya se pasaba el 26% de los días). La compra de 3 días con 12 € pasa del 0,90 al
+  0,95 de 3 veces el presupuesto. Plan de 1 día (360): kcal mediana 0,952 → 0,947,
+  por debajo del 85% 35 → 46 (sobre todo 4.000 kcal con 8 €); ticket mediano 13,84 →
+  14,40 €.
+- **Se probó y se tiró:** que la comida mire también la cena de ayer (como en el plan
+  con platos): la comida del día 2 lo compraba todo nuevo y 107 días se pasaban. Una
+  reserva por el coste mínimo de las tomas que faltan: se pasaban muchos más. Que un
+  extra opcional repita antes de comprar: no bajaba los excesos y subía lo compartido.
+- **Lo que queda:** con 12-16 € el día 1 todavía repetía pan y queso en 3 tomas: lo
+  compraba todo con su propio tope. Hecho después, con el permiso del dueño: ver 0.0
+  septvicies. Lo «fresh» repartido (codillo, pizza) sigue saliendo en la comida y la
+  cena del mismo día.
+
+### 0.0 quinvicies Plan con platos: lo que se come de una vez, y acompañamientos, 2026-11-06 (lee esto antes que 0.0 quatervicies)
+
+- **Estado:** sello `20261106b` (después, `20261106c`: ver 0.0 sexvicies), **1375 tests en verde**. El dueño eligió, para
+  cuando hacen falta muchas kcal: «рис 300 г + хлеб + фрукт вместо 540 г риса».
+- **Lo que pasaba:** el tope de `applyPortionSanity` es del DÍA (2,5 veces la mayor
+  ración curada) y nada impedía que cayera entero en una comida; `rebalancePlan`
+  subía la proteína hasta 350 g por toma y `compensateCappedCalories` y
+  `rellenarConLoPagado` estiraban sin mirar la toma. Medido en 738 tomas (3
+  perfiles, 3 presupuestos, planes de 3 días): el **61,5%** pasaba de 1,25 veces la
+  mayor ración curada de algún ingrediente (400 g de lentejas con 330 g de claras
+  para una persona de 65 kg, 360 g de atún, 630 g de pasta).
+- **Ahora:** `topePorToma(nombre, factor)` (`dish-selector.js`) = la mayor ración
+  de dishes.js por `PORCION_TOMA_MULT` (1,25), y por encima de 2.600 kcal crece con
+  la raíz (`factorDeTopes`: a 3.871 kcal, x1,22). Lo respetan `buildMealFromDish`
+  (`escalaConTopes`: el plato entero se queda en esa escala),
+  `estimateScaledPurchaseImpact` (el coste se estima a la escala que se sirve; si
+  no, un plato con tope se tasaba más caro y el desayuno no cabía), `scaleItemUp`,
+  `scaleMainProteinUp`, `compensateCappedCalories` y `rellenarConLoPagado`. Al
+  final del intento, `aplicarTopesPorToma` (una pieza entera siempre cabe) y otra
+  vez `applyPortionSanity` para los bordes de envase.
+- **Acompañamientos** (`anadirGuarniciones`): si el día queda corto, a la toma más
+  corta le pone una ración de casa de pan (`GUARNICION_PAN`, primero si el plato no
+  trae su hidrato; con un guiso de legumbre también), fruta o un lácteo
+  (`GUARNICION_FRUTA`, `GUARNICION_LACTEO`; el lácteo primero si falta proteína) y,
+  en los snacks, frutos secos. Uno de cada clase por toma, nada de una clase que el
+  plato ya trae (`_claseDelPlato`), ninguno más de dos veces al día, nada que no
+  guste, sin pasar del presupuesto de compra del día ni del tope del día, y sin
+  abrir un envase para menos del 20% (`_guarnicionCabeEnElDia`). La fila lleva
+  `guarnicion` y la tarjeta lo dice («гарнир» / «на десерт»: `ui.toma_acompanamiento`,
+  `ui.toma_de_postre`).
+- **Medido después** (las mismas 738 tomas): **0%** de tomas con un ingrediente de
+  más. Kcal del día, mediana 0,980 del objetivo (antes 1,000); días por debajo del
+  90%, 20 de 162 (antes 5), casi todos del perfil de volumen (3.911 kcal) con 10 €:
+  con comida de verdad no llega. Proteína, mediana 1,041 (antes 1,054). Días por
+  encima del presupuesto, 4, como antes. La grasa ya se pasaba antes y no cambia
+  (mediana 1,14 frente a 1,17). Golden-master recapturados, con su porqué.
+- **Detector de idioma:** `pantry-purchase-row__name` entra en `PRODUCTO_CLASES`: la
+  lista de «Te faltó algo» dice «traducción / nombre de la estantería», como el sin
+  cocinar.
+- **Sin tocar:** «Cambiar» una toma (regeneratePlanMeal, regenerateSingleMeal) no
+  añade acompañamientos; el plato ya sale con su tope.
+
 ### 0.0 quatervicies Calidad del «sin cocinar»: tipos de producto, 2026-11-06 (lee esto antes que 0.0 tervicies)
 
 - **Estado:** sello `20261106a`, **1372 tests en verde**. El dueño: «на обед у меня

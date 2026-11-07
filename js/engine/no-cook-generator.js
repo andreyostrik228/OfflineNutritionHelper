@@ -46,6 +46,8 @@
  *   noCookCuentas(dias) → { dias:[{ticket, comprados, heredado}], siguiente, lotes, envases }
  *   noCookLoteSirve(lote, dia) → si lo que sobra de ese envase se puede comer ese día
  *   noCookAplicarCuentas(dias) → los mismos días, con el ticket de cada uno
+ *   noCookCompraDelPlan(dias) → { dias, compra, presupuesto } de un plan de varios días, o null
+ *   noCookTechoParaCambiar(dias, d) → lo que puede comprar el día d al «Cambiar» una toma
  *
  * Se mantiene en UN archivo a propósito, aunque pase de 500 líneas: partirlo
  * en "generador del día" + "montador de una toma" se probó y salía peor --
@@ -125,6 +127,132 @@ function noCookFactorRaciones(targetKcal) {
 // plato preparado se acaba, no se reparte por todo el día.
 var REUSABLE_ROLES = ["carrier", "queso", "protein", "veg", "untable", "cereal", "lacteo", "fruta", "salado", "dulce", "sopa"];
 
+// ── Variedad dentro del día y entre días (2026-11-06) ───────────────────
+// Queja del dueño: «каждый день я ем по сути одно и то же утром днём и
+// вечером, на следующий день также». Medido en 108 planes de 3 días: en el
+// 68% de los días un mismo producto salía en 3 tomas o más (el mismo
+// melocotón en almíbar en desayuno, comida, snack y cena), comida y cena
+// compartían algo en el 77% y los dos snacks eran idénticos en el 20%. La
+// causa era la regla 1 de pickForRole: lo ya comprado hoy se reutilizaba
+// SIEMPRE antes que nada, así que el día giraba alrededor de 5-6 productos.
+//
+// Ahora un producto sale como mucho en NO_COOK_VECES_AL_DIA tomas del día (el
+// pan, en dos: tostada por la mañana y bocadillo por la noche es normal), y
+// no vuelve a la misma toma que ayer (ni a la comida lo de la cena de ayer:
+// son dos tomas seguidas). Antes de repetir se usa lo que sobra de otros días
+// y hoy aún no ha salido, y después algo nuevo que quepa en el presupuesto;
+// solo si no queda otra se repite (_repetirLoPagado). El presupuesto sigue
+// siendo el techo: antes repetir que pasarse.
+var NO_COOK_VECES_AL_DIA = { carrier: 2 };
+
+// Lo nuevo que se compra SOLO por variedad sale de la parte del presupuesto de
+// su toma (pickForRole, `reservaExtra`); una proteína distinta para la cena,
+// además, de esta fracción de lo apartado para las tomas que faltan. Barrido
+// con 648 días (12, 15 y 20 €): con 1 (nada de lo apartado), 107 días con la
+// misma proteína en comida y cena y 88 por encima del presupuesto; con 0,5,
+// 86 y 92; con 0 (todo), 77 y 97. Antes del cambio: 159 y 89.
+var NO_COOK_VARIEDAD_PROTEINA = 0.5;
+
+/** En cuántas tomas del día puede salir un producto de ese papel sin que se note. */
+function _vecesAlDia(role) {
+  return NO_COOK_VECES_AL_DIA[role] || 1;
+}
+
+/** En cuántas tomas de hoy sale ya ese producto. */
+function _vecesHoy(day, id) {
+  return (day && day.vecesHoy && day.vecesHoy[id]) || 0;
+}
+
+/** Los productos que ayer salieron en la toma que se está montando: { id: true }. */
+function _deAyerEnEstaToma(day) {
+  var t = day && day.ayer && day.toma ? day.ayer[day.toma] : null;
+  return (t && t.ids) || {};
+}
+
+/**
+ * Lo que cada toma de hoy no debe repetir de esa misma toma el día anterior
+ * del plan: { toma: { ids: {id: true}, plantillas: [clave] } }. Sin día
+ * anterior, vacío.
+ *
+ * Solo la misma toma, no también la cena de ayer para la comida (como en el
+ * plan con platos): aquí lo que sobra de la cena se come al día siguiente, y
+ * apartándolo de la comida la comida del día 2 lo compraba todo nuevo. Medido
+ * con 648 días: 107 días por encima del presupuesto con la regla, 88 sin ella
+ * (antes del cambio, 89).
+ * @param {object} [plan] - el día anterior (generateNoCookPlan)
+ * @returns {Object}
+ */
+function _ayerPorToma(plan) {
+  var out = {};
+  ((plan && plan.slots) || []).forEach(function (s) {
+    var ids = {};
+    (s.items || []).forEach(function (it) { ids[it.id] = true; });
+    out[s.key] = { ids: ids, plantillas: s.templateKey ? [s.templateKey] : [] };
+  });
+  return out;
+}
+
+/**
+ * Lo que cuesta como poco una plantilla sin reutilizar nada: el envase más
+ * barato de cada papel obligatorio (Infinity si alguno no tiene ninguno). Con
+ * esto buildSlot ordena las plantillas en la pasada que se puede pasar del
+ * presupuesto. Memo por pool: el mismo pool se consulta en cada toma del día.
+ * @param {object} tpl
+ * @param {object[]} pool
+ * @param {boolean} principal - comida o cena (pueden llevar lo «fresh»)
+ * @returns {number}
+ */
+function _costeMinimoDePlantilla(tpl, pool, principal) {
+  var memo = pool._costeMinimoPlantilla || (pool._costeMinimoPlantilla = {});
+  var clave = tpl.key + (principal ? "|p" : "|s");
+  if (clave in memo) return memo[clave];
+  var suma = 0;
+  for (var i = 0; i < tpl.components.length && isFinite(suma); i++) {
+    var c = tpl.components[i];
+    if (!c.required) continue;
+    var min = Infinity;
+    for (var j = 0; j < pool.length; j++) {
+      var e = pool[j];
+      if (!e.serving || e.serving.role !== c.role || typeof e.product.price !== "number") continue;
+      if (!principal && e.serving.policy === "fresh") continue;
+      if (c.tipos && c.tipos.length && c.tipos.indexOf(e.tipo) === -1) continue;
+      if (e.product.price < min) min = e.product.price;
+    }
+    suma += min;
+  }
+  memo[clave] = suma;
+  return suma;
+}
+
+/**
+ * Lo ya pagado que se repite cuando no queda otra, lo menos repetido primero:
+ * lo que hoy aún cabe (solo salió ayer en esta toma), luego una vez más de lo
+ * normal y, si `sinTope`, cualquiera. Sin nada de eso, null.
+ * @param {object[]} lista - candidatos {entry} que pickForRole ya filtró
+ * @param {string} role
+ * @param {object} day
+ * @param {boolean} sinTope
+ * @returns {{entry:object, reused:boolean}|null}
+ */
+function _repetirLoPagado(lista, role, day, sinTope) {
+  if (!lista || !lista.length) return null;
+  var tope = _vecesAlDia(role);
+  var veces = function (r) { return _vecesHoy(day, r.entry.product.id); };
+  var pasos = [
+    lista.filter(function (r) { return veces(r) < tope; }),
+    lista.filter(function (r) { return veces(r) < tope + 1; }),
+    sinTope ? lista : []
+  ];
+  for (var i = 0; i < pasos.length; i++) {
+    var paso = pasos[i];
+    if (!paso.length) continue;
+    var menos = Math.min.apply(null, paso.map(veces));
+    var de = paso.filter(function (r) { return veces(r) === menos; });
+    return { entry: de[Math.floor(Math.random() * de.length)].entry, reused: true };
+  }
+  return null;
+}
+
 // ── Lo que sobra de un día sirve a los demás (2026-10-27) ───────────────
 // Queja del dueño con un plan de 3 días a 4.000 kcal: «4000 из 4000, потом
 // 2600 из 4000, потом 4000 из 4000», y en la despensa productos que salieron
@@ -170,6 +298,47 @@ var ROLES_SOLO_CON_ALGO = ["untable"];
 // Lo que sí se come suelto, en una fila nueva de un snack (2026-11-04): el
 // resto solo se pone de más donde ese día ya sale.
 var ROLES_SUELTOS = ["fruta", "lacteo", "salado", "dulce"];
+
+// ── Un presupuesto para todo el plan (2026-11-06) ───────────────────────
+// El dueño: «главное чтобы в день выходило столько сколько сказали, а то что
+// первый день может быть 20€ а третий 5€ вообще пофиг». En un plan de N días
+// lo que se cumple es la compra del plan entero, N x presupuesto, no la de cada
+// día. Antes cada día tenía su propio techo, y el día 1, que no hereda nada,
+// tenía que comprarlo todo con el suyo: con 12-16 € el mismo pan y el mismo
+// queso salían en tres tomas, y los días 2 y 3 se quedaban por debajo de su
+// presupuesto porque comían de lo que sobraba.
+//
+// Ahora cada día puede comprar lo que queda del plan menos lo que se aparta
+// para los días que faltan, una fracción de un presupuesto por día: comen en
+// parte de lo que sobra (generateNoCookPlanDays). Cuántas tomas tiene un día
+// sigue saliendo del presupuesto por día, no de su techo.
+//
+// Con una sola fracción, medido con 270 planes de 3 días (8-20 €, 2.100-3.100
+// kcal, las 3 prioridades):
+//                  días con un producto  planes que pasan
+//                  en 3+ tomas (día 1)   de 3 x presupuesto
+//   antes (techo por día)   219 (110)           79
+//   0,3                      82 (18)            61
+//   0,5                     120 (48)            63
+//   0,7                     152 (72)            48
+//   1                       209 (110)           43
+// Pero con poca reserva los días 2 y 3 se quedaban con poco dinero y comían
+// menos proteína (de 0,85 a 0,82 del objetivo, de media). Por eso se hace un
+// plan con cada fracción y se queda el mejor de los que caben en el
+// presupuesto del plan (_notaDelPlan); si no cabe ninguno, el que menos se
+// pasa. Medido con otros 270 planes, frente a antes:
+//   planes que pasan de 3 x presupuesto   77 -> 13
+//   días con un producto en 3+ tomas     221 -> 97
+//   proteína, de media                  0,85 -> 0,92 del objetivo
+//   kcal, de media                     0,963 -> 0,971 del objetivo
+// Con 7 días, 0,3 dejaba al día 1 comprar hasta 4,4 presupuestos y es el que
+// más planes pasaba; entre las cuatro, se elige.
+var NO_COOK_RESERVAS_DIAS = [0.3, 0.5, 0.7, 1];
+
+// Lo que pesa cada cosa al elegir entre esos planes (_notaDelPlan), por día:
+// lo que falta de proteína (fracción del objetivo), lo que se aparta de las
+// kcal, cada producto en 3 tomas o más y la misma proteína en comida y cena.
+var NO_COOK_NOTA = { proteina: 4, kcal: 2, tresTomas: 0.5, mismaProteina: 0.25 };
 
 /** La primera fila del día con ese producto, o null. */
 function _filaDelDia(plan, id) {
@@ -385,20 +554,93 @@ function noCookLoteSirve(lote, d) {
  * Pone en cada día el ticket de noCookCuentas: lo que se compra ESE día (lo
  * heredado de otro día ya está pagado), cuántos productos y si se pasa del
  * presupuesto. Muta los planes.
+ *
+ * En un plan de varios días el presupuesto es del plan entero (ver «Un
+ * presupuesto para todo el plan»): `budgetOverrun` es lo que la compra de
+ * todos los días pasa de N x presupuesto, la misma cifra en cada día. Que el
+ * día 1 compre más que su presupuesto no es pasarse.
  * @param {object[]} dias
  * @returns {object[]} los mismos días
  */
 function noCookAplicarCuentas(dias) {
-  var cuentas = noCookCuentas(dias).dias;
-  (dias || []).forEach(function (plan, d) {
+  var lista = dias || [];
+  var cuentas = noCookCuentas(lista).dias;
+  lista.forEach(function (plan, d) {
     if (!plan || !cuentas[d]) return;
-    var ticket = cuentas[d].ticket;
-    plan.shoppingCost = ticket;
+    plan.shoppingCost = cuentas[d].ticket;
     plan.productCount = cuentas[d].comprados;
-    plan.budgetOverrun = (plan.budget && ticket > plan.budget)
-      ? Math.round((ticket - plan.budget) * 100) / 100 : 0;
+  });
+  var delPlan = noCookCompraDelPlan(lista);
+  lista.forEach(function (plan) {
+    if (!plan) return;
+    var exceso = delPlan ? delPlan.compra - delPlan.presupuesto
+      : (plan.budget ? plan.shoppingCost - plan.budget : 0);
+    plan.budgetOverrun = exceso > 0.005 ? Math.round(exceso * 100) / 100 : 0;
   });
   return dias;
+}
+
+/**
+ * La compra de un plan de varios días frente a su presupuesto, N x el de cada
+ * día. null con un solo día o sin presupuesto.
+ * @param {object[]} dias - con su `shoppingCost` ya puesto
+ * @returns {{dias:number, compra:number, presupuesto:number}|null}
+ */
+function noCookCompraDelPlan(dias) {
+  var lista = dias || [];
+  if (lista.length < 2) return null;
+  if (!lista.every(function (p) { return p && p.budget > 0; })) return null;
+  var compra = 0, presupuesto = 0;
+  lista.forEach(function (p) { compra += p.shoppingCost || 0; presupuesto += p.budget; });
+  return { dias: lista.length, compra: Math.round(compra * 100) / 100, presupuesto: Math.round(presupuesto * 100) / 100 };
+}
+
+/**
+ * El techo de lo que se compra hoy: el presupuesto del día o, en un plan de
+ * varios días, el que le toca de la compra del plan (noCookTechoDelDia, o
+ * noCookTechoParaCambiar en «Cambiar»). Nunca 0 ni negativo: un día al que ya
+ * no le queda nada compra solo lo imprescindible (la última pasada de
+ * buildSlot).
+ * @param {number} presupuesto - por día; Infinity sin presupuesto
+ * @param {number} [techo]
+ * @returns {number}
+ */
+function _techoDelDia(presupuesto, techo) {
+  if (presupuesto === Infinity || typeof techo !== "number" || !isFinite(techo)) return presupuesto;
+  return Math.max(0.01, techo);
+}
+
+/**
+ * Lo que puede comprar el día `d` (desde 0) de un plan de `n` días: lo que
+ * queda de la compra del plan (n x presupuesto, menos lo que compran los días
+ * de antes) menos lo que se aparta para los que faltan, `reserva` de un
+ * presupuesto por día (NO_COOK_RESERVAS_DIAS).
+ * @param {number} presupuesto - por día
+ * @param {number} n
+ * @param {number} d
+ * @param {{ticket:number}[]} cuentas - noCookCuentas(días ya hechos).dias
+ * @param {number} reserva
+ * @returns {number}
+ */
+function noCookTechoDelDia(presupuesto, n, d, cuentas, reserva) {
+  var gastado = 0;
+  for (var i = 0; i < d && i < cuentas.length; i++) gastado += cuentas[i].ticket || 0;
+  return n * presupuesto - gastado - reserva * presupuesto * (n - d - 1);
+}
+
+/**
+ * El techo del día `d` al «Cambiar» una de sus tomas en un plan de varios
+ * días: lo que deja la compra de los OTROS días tal como están. undefined con
+ * un solo día o sin presupuesto (entonces manda el del día).
+ * @param {object[]} dias - con su `shoppingCost` ya puesto
+ * @param {number} d
+ * @returns {number|undefined}
+ */
+function noCookTechoParaCambiar(dias, d) {
+  var lista = dias || [];
+  var delPlan = noCookCompraDelPlan(lista);
+  if (!delPlan || !lista[d]) return undefined;
+  return delPlan.presupuesto - (delPlan.compra - (lista[d].shoppingCost || 0));
 }
 
 /**
@@ -680,22 +922,31 @@ function buildNoCookItem(entry, servings, buysPackage) {
 /**
  * Elige una entrada del pool para un papel. Prioridad, y este orden ES la
  * funcionalidad:
- *   1. un producto YA comprado hoy con ese papel — así el día usa 5-6
- *      productos bien aprovechados en vez de 10 a medio abrir;
+ *   1. un producto YA pagado con ese papel (comprado hoy o sobrado de otro
+ *      día) que hoy aún no ha salido lo que puede (_vecesAlDia) ni salió ayer
+ *      en esta toma -- así se aprovecha lo abierto sin comer lo mismo en cada
+ *      toma (ver «Variedad dentro del día y entre días», arriba);
  *   2. si no, uno nuevo que quepa en el presupuesto restante;
- *   3. si nada cabe en el presupuesto: null para un papel opcional, y el
- *      envase más barato solo si el papel es `required` (allowOverrun).
+ *   3. si nada nuevo cabe: lo ya pagado aunque se repita (_repetirLoPagado);
+ *   4. y si tampoco: null para un papel opcional, y el envase más barato solo
+ *      si el papel es `required` (allowOverrun).
  *
  * `tipos` (2026-11-04): los tipos que admite el hueco (ver noCookTipo en
  * serving-sizes.js); sin ellos, cualquiera del papel. `yaEnLaToma`: ids que
  * esta misma toma ya lleva, para no poner el mismo producto en dos huecos.
+ * `variedad`: `soloGratis` (un extra opcional que no puede abrir nada nuevo:
+ * solo lo ya pagado) y `repetirSinTope` (en las últimas pasadas de buildSlot,
+ * repetir lo pagado las veces que haga falta antes que pasarse).
  * @returns {{entry:object, reused:boolean}|null}
  */
-function pickForRole(role, pool, day, allowFresh, allowOverrun, priorityOverride, tipos, yaEnLaToma) {
+function pickForRole(role, pool, day, allowFresh, allowOverrun, priorityOverride, tipos, yaEnLaToma, variedad) {
+  var v = variedad || {};
   function tipoVale(e) {
     if (yaEnLaToma && yaEnLaToma[e.product.id]) return false;
     return !tipos || !tipos.length || tipos.indexOf(e.tipo) !== -1;
   }
+  var repetibles = [];
+  function repetir() { return _repetirLoPagado(repetibles, role, day, v.repetirSinTope === true); }
   if (REUSABLE_ROLES.indexOf(role) !== -1) {
     // Sólo se reutiliza mientras quede envase: un paquete de tortillas de
     // 5 raciones da para 5 usos hoy, no para diez. Sin este tope el
@@ -720,9 +971,21 @@ function pickForRole(role, pool, day, allowFresh, allowOverrun, priorityOverride
       reusable.push({ entry: h.entry });
     });
     if (reusable.length) {
-      return { entry: reusable[Math.floor(Math.random() * reusable.length)].entry, reused: true };
+      var tope = _vecesAlDia(role);
+      var ayerAqui = _deAyerEnEstaToma(day);
+      var sinRepetir = reusable.filter(function (r) {
+        return _vecesHoy(day, r.entry.product.id) < tope && !ayerAqui[r.entry.product.id];
+      });
+      if (sinRepetir.length) {
+        // Primero lo que hoy no ha salido nada (lo que sobra de otro día).
+        var nuevoHoy = sinRepetir.filter(function (r) { return _vecesHoy(day, r.entry.product.id) === 0; });
+        var de = nuevoHoy.length ? nuevoHoy : sinRepetir;
+        return { entry: de[Math.floor(Math.random() * de.length)].entry, reused: true };
+      }
+      repetibles = reusable;
     }
   }
+  if (v.soloGratis) return repetir();
 
   var candidates = [];
   var avoided = [];
@@ -741,7 +1004,7 @@ function pickForRole(role, pool, day, allowFresh, allowOverrun, priorityOverride
     candidates.push(e);
   }
   if (!candidates.length) candidates = avoided;
-  if (!candidates.length) return null;
+  if (!candidates.length) return repetir();
 
   // TECHO DURO: el envase tiene que caber en lo que queda del presupuesto.
   // Reutilizar no pasa por aquí (cuesta 0 €), así que con poco dinero el
@@ -757,6 +1020,16 @@ function pickForRole(role, pool, day, allowFresh, allowOverrun, priorityOverride
   // entero y el desayuno no tenía con qué: era la última fuente de planes
   // por encima del techo.
   var cap = day.budget - (day.reserve || 0);
+  // Algo nuevo SOLO por variedad (hay algo ya pagado que serviría): dentro de
+  // la parte del presupuesto que le toca a esta toma (`reservaExtra`, lo de
+  // las tomas que faltan por sus calorías). Sin esto la cena del día 1
+  // compraba su propia verdura y su fruta y el desayuno se quedaba sin nada.
+  // La proteína puede tirar de parte de lo apartado (NO_COOK_VARIEDAD_PROTEINA):
+  // comida y cena con la misma es lo que más se nota.
+  if (repetibles.length) {
+    var apartado = (role === "protein" ? NO_COOK_VARIEDAD_PROTEINA : 1) * (day.reservaExtra || 0);
+    cap = Math.min(cap, day.budget - Math.max(day.reserve || 0, apartado));
+  }
   var affordable = candidates.filter(function (e) {
     if (typeof e.product.price !== "number") return true;
     return (committed + e.product.price) <= cap;
@@ -767,6 +1040,9 @@ function pickForRole(role, pool, day, allowFresh, allowOverrun, priorityOverride
   // se reporta (budgetOverrun) en vez de esconderse.
   var from = affordable;
   if (!from.length) {
+    // Antes repetir lo ya pagado que pasarse del presupuesto.
+    var repetido = repetir();
+    if (repetido) return repetido;
     if (!allowOverrun) return null;
     from = candidates.slice().sort(function (a, b) {
       return (a.product.price || 0) - (b.product.price || 0);
@@ -982,6 +1258,8 @@ function buildSlotFromTemplate(tpl, slotDef, targetKcal, pool, day, opts) {
   var allowSplitFresh = !!(opts && opts.allowSplitFresh);
   var allowOverrun = !!(opts && opts.allowOverrun);
   day.pendingSpend = 0;
+  // La toma que se monta: pickForRole mira qué salió en ella ayer.
+  day.toma = slotDef.key;
   var isMain = slotDef.key === "lunch" || slotDef.key === "dinner";
   var picks = [];
 
@@ -1009,9 +1287,15 @@ function buildSlotFromTemplate(tpl, slotDef, targetKcal, pool, day, opts) {
     // Sólo comida y cena pueden abrir un plato preparado.
     var enLaToma = {};
     picks.forEach(function (pk0) { enLaToma[pk0.entry.product.id] = true; });
+    // Un extra opcional que no puede abrir nada nuevo (ver justo debajo)
+    // solo puede salir de lo ya pagado: se le dice a pickForRole para que
+    // repita lo pagado en vez de proponer algo que luego se tira.
+    var soloGratis = !comp.required &&
+      (day.priority === "cheap" || day.order.length >= NO_COOK_SOFT_PRODUCT_CAP);
     var picked = pickForRole(comp.role, pool, day, isMain,
       !!comp.required && !!(opts && opts.allowOverrun),
-      opts && opts.priorityOverride, comp.tipos, enLaToma);
+      opts && opts.priorityOverride, comp.tipos, enLaToma,
+      { soloGratis: soloGratis, repetirSinTope: !!(opts && opts.repetirSinTope) });
     if (!picked) {
       if (comp.required) { day.pendingSpend = 0; return null; }   // plantilla imposible
       continue;
@@ -1127,6 +1411,15 @@ function buildSlotFromTemplate(tpl, slotDef, targetKcal, pool, day, opts) {
     addMacros(total, servingMacros(p2.entry, p2.servings));
   }
 
+  // En cuántas tomas de hoy sale cada producto (ver _vecesAlDia).
+  day.vecesHoy = day.vecesHoy || {};
+  var contados = {};
+  items.forEach(function (it) {
+    if (contados[it.id]) return;
+    contados[it.id] = true;
+    day.vecesHoy[it.id] = (day.vecesHoy[it.id] || 0) + 1;
+  });
+
   return {
     items: items, total: total, assembly: tpl.assembly,
     templateKey: tpl.key, templateLabel: tpl.label,
@@ -1193,35 +1486,57 @@ function buildSlot(slotKey, targetKcal, pool, day, opts) {
     if (forced.length) templates = forced;
   }
   // La cena no repite la plantilla de la comida (2026-11-04): con lo ya
-  // comprado a mano, salía el mismo wrap dos veces el mismo día.
+  // comprado a mano, salía el mismo wrap dos veces el mismo día. El segundo
+  // snack tampoco la del primero (2026-11-06).
   if (opts && opts.evitarPlantilla && !(opts.forceTemplateKey)) {
     var otras = templates.filter(function (t) { return t.key !== opts.evitarPlantilla; });
     if (otras.length) templates = otras;
   }
+  // Ni la de esta toma ayer (2026-11-06; la comida, ni la de la cena de
+  // ayer): ver «Variedad dentro del día y entre días», arriba.
+  if (opts && opts.plantillasDeAyer && opts.plantillasDeAyer.length && !(opts.forceTemplateKey)) {
+    var deHoy = templates.filter(function (t) { return opts.plantillasDeAyer.indexOf(t.key) === -1; });
+    if (deHoy.length) templates = deHoy;
+  }
 
-  // TRES pasadas, de más a menos exigente. El presupuesto es un techo duro,
+  // CUATRO pasadas, de más a menos exigente. El presupuesto es un techo duro,
   // así que antes de saltárselo se renuncia a TODO lo demás:
-  //   1. todas las plantillas, con la prioridad elegida, dentro del techo;
-  //   2. igual, pero renunciando a la prioridad (se compra por precio):
+  //   1. todas las plantillas, con la prioridad elegida, dentro del techo y
+  //      sin repetir un producto más de una vez de lo normal en el día;
+  //   2. igual, repitiendo lo ya pagado lo que haga falta (2026-11-06): antes
+  //      que dejar la toma vacía o renunciar a la prioridad;
+  //   3. igual, pero renunciando a la prioridad (se compra por precio):
   //      preferir proteína cara no vale un ticket incumplido;
-  //   3. solo entonces, pasarse, y con el envase más barato que exista.
+  //   4. solo entonces, pasarse, y con el envase más barato que exista.
   //
-  // Medido: con la pasada 2, los planes que se pasaban del presupuesto
-  // cayeron de 159/200 a una fracción, sin tocar el techo.
+  // Medido: con la pasada de «por precio», los planes que se pasaban del
+  // presupuesto cayeron de 159/200 a una fracción, sin tocar el techo.
   var PASSES = [
-    { allowOverrun: false, priorityOverride: null },
-    { allowOverrun: false, priorityOverride: "cheap" },
-    { allowOverrun: true,  priorityOverride: "cheap" },
+    { allowOverrun: false, priorityOverride: null,    repetirSinTope: false },
+    { allowOverrun: false, priorityOverride: null,    repetirSinTope: true },
+    { allowOverrun: false, priorityOverride: "cheap", repetirSinTope: true },
+    { allowOverrun: true,  priorityOverride: "cheap", repetirSinTope: true },
   ];
   for (var pass = 0; pass < PASSES.length; pass++) {
     var passOpts = {};
     for (var k in opts) passOpts[k] = opts[k];
     passOpts.allowOverrun = PASSES[pass].allowOverrun;
     passOpts.priorityOverride = PASSES[pass].priorityOverride;
+    passOpts.repetirSinTope = PASSES[pass].repetirSinTope;
 
     var remaining = templates.slice();
+    // En la pasada que se puede pasar del presupuesto, la plantilla más
+    // barata primero (2026-11-06), no la que salga en el sorteo: si hay que
+    // pasarse, lo menos posible, y muchas veces la más barata ni se pasa.
+    var porPrecio = PASSES[pass].allowOverrun;
+    if (porPrecio) {
+      var esPrincipal = slotKey === "lunch" || slotKey === "dinner";
+      remaining.sort(function (a, b) {
+        return _costeMinimoDePlantilla(a, pool, esPrincipal) - _costeMinimoDePlantilla(b, pool, esPrincipal);
+      });
+    }
     while (remaining.length) {
-      var tpl = pickTemplate(remaining);
+      var tpl = porPrecio ? remaining[0] : pickTemplate(remaining);
       remaining = remaining.filter(function (t) { return t !== tpl; });
       var result = buildSlotFromTemplate(tpl, slotDef, targetKcal, pool, day, passOpts);
       if (result) return result;
@@ -1259,6 +1574,14 @@ function generateNoCookPlan(storeId, options) {
   var targetKcal = (typeof opts.calories === "number" && opts.calories > 0)
     ? opts.calories : NO_COOK_DEFAULT_CALORIES;
 
+  // El presupuesto por día que eligió el usuario y el TECHO de lo que se
+  // compra hoy. Con un día suelto son lo mismo; en un plan de varios días el
+  // techo lo pone generateNoCookPlanDays (ver «Un presupuesto para todo el
+  // plan»). `day.budget` es el techo: es lo que miran pickForRole y las
+  // raciones.
+  var presupuesto = (typeof opts.budget === "number" && opts.budget > 0) ? opts.budget : Infinity;
+  var techo = _techoDelDia(presupuesto, opts.techo);
+
   var day = {
     bought: {}, order: [], usedNames: {},
     spent: 0,       // ticket: envases completos que hay que comprar hoy (TECHO)
@@ -1267,12 +1590,18 @@ function generateNoCookPlan(storeId, options) {
     // "cheap": el mismo criterio, más comida por euro. Se aceptan los dos.
     priority: (opts.priority === "cheap" || opts.priority === "satiety") ? "cheap"
       : (opts.priority === "protein" ? "protein" : "balanced"),
-    budget: (typeof opts.budget === "number" && opts.budget > 0) ? opts.budget : Infinity,
+    budget: techo,
     freshPending: [],
     // Lo que sobra de los días anteriores del plan, ya pagado (lo pone
     // generateNoCookPlanDays con noCookCuentas).
     heredado: _heredadoDelPool(pool, opts.heredado),
+    // En cuántas tomas de hoy sale cada producto, y qué salió ayer en cada
+    // toma (opts.ayer, el día anterior del plan): ver «Variedad dentro del
+    // día y entre días».
+    vecesHoy: {},
+    ayer: _ayerPorToma(opts.ayer),
   };
+  var plantillasDeAyer = function (key) { return (day.ayer[key] && day.ayer[key].plantillas) || []; };
 
   var targetProtein = (typeof opts.protein === "number" && opts.protein > 0) ? opts.protein : 0;
   // Lo «de la noche antes» (avena remojada) solo en el día 2+ de un plan de
@@ -1282,8 +1611,9 @@ function generateNoCookPlan(storeId, options) {
 
   // Con poco dinero, 3 tomas en vez de 5: repartir un presupuesto ajustado
   // entre cinco tomas deja las principales flojas y encima obliga a abrir
-  // productos extra solo para los snacks. Petición explícita del usuario.
-  var slotKeys = (day.budget < NO_COOK_MIN_BUDGET_FOR_SNACKS)
+  // productos extra solo para los snacks. Petición explícita del usuario. Lo
+  // decide el presupuesto por día, no el techo: todos los días del plan, igual.
+  var slotKeys = (presupuesto < NO_COOK_MIN_BUDGET_FOR_SNACKS)
     ? ["breakfast", "lunch", "dinner"]
     : ["breakfast", "lunch", "snack", "dinner", "snack2"];
   var threeMealDay = slotKeys.length === 3;
@@ -1302,7 +1632,8 @@ function generateNoCookPlan(storeId, options) {
   var protFor = function (key) { return targetProtein * ratioFor(key); };
   var factorRaciones = noCookFactorRaciones(targetKcal);
   // La parte del presupuesto de las tomas que aún faltan, por sus calorías:
-  // las raciones de más de una toma no pueden gastarla (ver arriba).
+  // las raciones de más de una toma no pueden gastarla (ver arriba), ni lo
+  // que se compra solo por variedad (pickForRole, 2026-11-06).
   var porMontar = slotKeys.slice();
   var apartarPara = function (key) {
     porMontar = porMontar.filter(function (k) { return k !== key; });
@@ -1321,6 +1652,7 @@ function generateNoCookPlan(storeId, options) {
   built.lunch = buildSlot("lunch", kcalFor("lunch"), pool, day, {
     allowSplitFresh: true, targetProtein: protFor("lunch"), allowMakeAhead: allowMakeAhead,
     factorRaciones: factorRaciones,
+    plantillasDeAyer: plantillasDeAyer("lunch"),
   });
   day.reserve = budgetReserveFor(slotKeys.length - 2, pool, day);
   apartarPara("dinner");
@@ -1329,6 +1661,7 @@ function generateNoCookPlan(storeId, options) {
     targetProtein: protFor("dinner"),
     forceTemplateKey: day.freshPending.length ? "principal" : null,
     evitarPlantilla: built.lunch.templateKey,
+    plantillasDeAyer: plantillasDeAyer("dinner"),
     allowMakeAhead: allowMakeAhead,
     factorRaciones: factorRaciones,
   });
@@ -1354,6 +1687,8 @@ function generateNoCookPlan(storeId, options) {
       targetProtein: remainingProtein * share,
       allowMakeAhead: allowMakeAhead,
       factorRaciones: factorRaciones,
+      evitarPlantilla: (key === "snack2" && built.snack) ? built.snack.templateKey : null,
+      plantillasDeAyer: plantillasDeAyer(key),
     });
   });
 
@@ -1413,11 +1748,12 @@ function generateNoCookPlan(storeId, options) {
     // Productos que se COMPRAN hoy (lo heredado ya está en casa). Sin nada
     // heredado son todos los del día, como siempre.
     productCount: comprados,
-    budget: day.budget === Infinity ? null : day.budget,
+    budget: presupuesto === Infinity ? null : presupuesto,
     // Se pasó del presupuesto: solo puede ocurrir cuando ni el envase más
-    // barato de un papel OBLIGATORIO cabía. Se dice, no se esconde.
-    budgetOverrun: (day.budget !== Infinity && shoppingCost > day.budget)
-      ? Math.round((shoppingCost - day.budget) * 100) / 100 : 0,
+    // barato de un papel OBLIGATORIO cabía. Se dice, no se esconde. En un plan
+    // de varios días lo rehace noCookAplicarCuentas con la compra del plan.
+    budgetOverrun: (presupuesto !== Infinity && shoppingCost > presupuesto)
+      ? Math.round((shoppingCost - presupuesto) * 100) / 100 : 0,
     threeMealDay: threeMealDay,
     priority: day.priority,
   };
@@ -1425,10 +1761,11 @@ function generateNoCookPlan(storeId, options) {
 
 /**
  * Un plan "sin cocinar" de VARIOS días (2026-10-21), como el plan normal
- * (generateDietPlanDays): una llamada al generador por día. El presupuesto y
- * las kcal siguen siendo DIARIOS. Lo único que cambia de un día a otro es la
- * regla de lo «de la noche antes»: nunca en el día 1 (no lo pudiste dejar
- * hecho ayer) y nunca en un plan de 1 día.
+ * (generateDietPlanDays): una llamada al generador por día. Las kcal son
+ * DIARIAS; el presupuesto, desde el 2026-11-06, del plan entero (ver «Un
+ * presupuesto para todo el plan»): cada día recibe su techo de la compra del
+ * plan. Y la regla de lo «de la noche antes»: nunca en el día 1 (no lo
+ * pudiste dejar hecho ayer) y nunca en un plan de 1 día.
  *
  * No hace falta apartar lo de los días anteriores: el sorteo ya da días
  * distintos. Medido el 2026-10-21 con 100 planes de 7 días (2.200 kcal,
@@ -1450,12 +1787,78 @@ function generateNoCookPlanDays(storeId, options, dias) {
   if (!(n >= 1)) n = 1;
   if (n > 7) n = 7;
   var base = options || {};
+  var presupuesto = (typeof base.budget === "number" && base.budget > 0) ? base.budget : null;
+  // Un plan por cada reserva y el mejor de los que caben en el presupuesto
+  // del plan; si no cabe ninguno, el que menos se pasa. Con un solo día o sin
+  // presupuesto, uno, como siempre.
+  var reservas = (presupuesto !== null && n > 1) ? NO_COOK_RESERVAS_DIAS : [null];
+  var mejor = null;
+  reservas.forEach(function (reserva) {
+    var planes = _noCookDias(storeId, base, n, presupuesto, reserva);
+    var delPlan = noCookCompraDelPlan(planes);
+    var exceso = delPlan ? Math.max(0, delPlan.compra - delPlan.presupuesto) : 0;
+    var este = { planes: planes, exceso: exceso, cabe: exceso <= 0.005, nota: _notaDelPlan(planes, base) };
+    if (!mejor || (este.cabe !== mejor.cabe ? este.cabe
+        : (este.cabe ? este.nota > mejor.nota : este.exceso < mejor.exceso))) mejor = este;
+  });
+  return mejor.planes;
+}
+
+/**
+ * Lo bueno que es un plan de varios días, para elegir entre los que hace
+ * generateNoCookPlanDays: resta, por día y con los pesos de NO_COOK_NOTA, lo
+ * que falta de proteína, lo que se apartan las kcal del objetivo, cada
+ * producto que sale en 3 tomas o más y la misma proteína en comida y cena
+ * (ver «Variedad dentro del día y entre días»). Más alto, mejor.
+ * @param {object[]} planes
+ * @param {{calories?:number, protein?:number}} opts
+ * @returns {number}
+ */
+function _notaDelPlan(planes, opts) {
+  var kcal = (typeof opts.calories === "number" && opts.calories > 0) ? opts.calories : NO_COOK_DEFAULT_CALORIES;
+  var proteina = (typeof opts.protein === "number" && opts.protein > 0) ? opts.protein : 0;
+  function principal(slot) {
+    var items = (slot && slot.items) || [];
+    if (!items.length) return null;
+    return items.reduce(function (a, b) { return (b.protein || 0) > (a.protein || 0) ? b : a; }).id;
+  }
+  var nota = 0;
+  planes.forEach(function (plan) {
+    var t = plan.total || _totalDelDia(plan);
+    if (proteina) nota -= NO_COOK_NOTA.proteina * Math.max(0, 1 - t.protein / proteina);
+    nota -= NO_COOK_NOTA.kcal * Math.abs(t.kcal / kcal - 1);
+    var veces = {};
+    var porClave = {};
+    (plan.slots || []).forEach(function (slot) {
+      porClave[slot.key] = slot;
+      var aqui = {};
+      (slot.items || []).forEach(function (it) {
+        if (aqui[it.id]) return;
+        aqui[it.id] = true;
+        veces[it.id] = (veces[it.id] || 0) + 1;
+      });
+    });
+    Object.keys(veces).forEach(function (id) { if (veces[id] >= 3) nota -= NO_COOK_NOTA.tresTomas; });
+    var comida = principal(porClave.lunch);
+    if (comida !== null && comida === principal(porClave.dinner)) nota -= NO_COOK_NOTA.mismaProteina;
+  });
+  return planes.length ? nota / planes.length : 0;
+}
+
+/** Los `n` días de generateNoCookPlanDays con una reserva (null: el techo es el presupuesto del día). */
+function _noCookDias(storeId, base, n, presupuesto, reserva) {
   var planes = [];
   for (var d = 0; d < n; d++) {
     var opts = {};
     for (var k in base) opts[k] = base[k];
     opts.allowMakeAhead = n > 1 && d > 0;
-    if (d > 0) opts.heredado = noCookCuentas(planes).siguiente;
+    var cuentas = d > 0 ? noCookCuentas(planes) : null;
+    if (cuentas) {
+      opts.heredado = cuentas.siguiente;
+      // Para no repetir en cada toma lo de esa misma toma ayer (2026-11-06).
+      opts.ayer = planes[d - 1];
+    }
+    if (reserva !== null) opts.techo = noCookTechoDelDia(presupuesto, n, d, cuentas ? cuentas.dias : [], reserva);
     planes.push(generateNoCookPlan(storeId, opts));
   }
   _rellenarConSobras(planes, _poolSinCocinar(storeId), base);
@@ -1502,7 +1905,9 @@ function regenerateNoCookSlot(plan, slotKey, storeId, options) {
     // "cheap": el mismo criterio, más comida por euro. Se aceptan los dos.
     priority: (opts.priority === "cheap" || opts.priority === "satiety") ? "cheap"
       : (opts.priority === "protein" ? "protein" : "balanced"),
-    budget: (typeof opts.budget === "number" && opts.budget > 0) ? opts.budget : Infinity,
+    // En un plan de varios días, el techo del día que pasa quien llama
+    // (noCookTechoParaCambiar): lo que deja la compra de los otros días.
+    budget: _techoDelDia((typeof opts.budget === "number" && opts.budget > 0) ? opts.budget : Infinity, opts.techo),
     freshPending: [], reserve: 0, pendingSpend: 0,
     avoidIds: {},
     // Lo que sobra de los días anteriores (2026-10-27): quien llama pasa el
@@ -1516,9 +1921,17 @@ function regenerateNoCookSlot(plan, slotKey, storeId, options) {
   // el usuario lo quiere: esquivar un producto que su tienda no tiene.
   plan.slots[idx].items.forEach(function (it) { day.avoidIds[it.id] = true; });
 
-  // Estado del día a partir de las OTRAS tomas.
+  // Estado del día a partir de las OTRAS tomas, también en cuántas sale cada
+  // producto: lo nuevo no repite lo que ya sale en el resto del día.
+  day.vecesHoy = {};
   plan.slots.forEach(function (slot) {
     if (slot.key === slotKey) return;
+    var contados = {};
+    slot.items.forEach(function (it) {
+      if (contados[it.id]) return;
+      contados[it.id] = true;
+      day.vecesHoy[it.id] = (day.vecesHoy[it.id] || 0) + 1;
+    });
     slot.items.forEach(function (it) {
       var entry = byId[it.id];
       if (!entry) return;

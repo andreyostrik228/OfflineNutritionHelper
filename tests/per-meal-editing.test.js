@@ -74,6 +74,72 @@ function generateAndSave(s, overrides) {
 
 function run(t) {
 
+  // ── Lo que se come de una vez (2026-11-06) ──────────────────────────────
+  // El dueño eligió «рис 300 г + хлеб + фрукт вместо 540 г риса». Medido
+  // antes: el 61,5% de 738 tomas pasaba de 1,25 veces la mayor ración curada
+  // de algún ingrediente (400 g de lentejas con 330 g de claras para una
+  // persona de 65 kg). Ver topePorToma y anadirGuarniciones.
+
+  t.test("tope por toma: ninguna fila de un plan de 3 días pasa de lo que se come de una vez", function () {
+    var s = freshEngineSandbox();
+    var perfiles = [
+      { weight: 65, height: 172, age: 30, sex: "female", activity: 1.4, workouts: 3, goal: "cut" },
+      { weight: 95, height: 186, age: 24, sex: "male", activity: 1.75, workouts: 5, goal: "bulk" }
+    ];
+    var mal = [];
+    perfiles.forEach(function (pf) {
+      [10, 25].forEach(function (budget) {
+        var profile = s.calculateProfile(pf);
+        var factor = s.factorDeTopes(profile.calories);
+        var dias = s.generateDietPlanDays(profile, { budget: budget, cookTime: 30, taste: "mixed", store: "mercadona", planDays: 3 }, 3);
+        dias.forEach(function (dia) {
+          dia.meals.forEach(function (m) {
+            m.items.forEach(function (it) {
+              var tope = s.topePorToma(it.name, factor);
+              var u = s.resolveServingUnit(it.name, "mercadona", it.papel);
+              if (tope && u && (u.split === "entera" || u.split === "media")) tope = Math.max(tope, u.g);
+              if (tope && it.grams > tope + 1) mal.push(pf.goal + " " + budget + " €: " + it.grams + " g de " + it.name + " (tope " + tope + ")");
+            });
+          });
+        });
+      });
+    });
+    assert.deepStrictEqual(mal.slice(0, 5), [], mal.length + " filas de más");
+  });
+
+  t.test("acompañamientos: de sus listas, uno de cada clase por toma y nada que el plato ya traiga", function () {
+    var s = freshEngineSandbox();
+    var listas = [].concat(s.GUARNICION_PAN, s.GUARNICION_FRUTA, s.GUARNICION_LACTEO, s.GUARNICION_FRUTOS_SECOS);
+    var profile = s.calculateProfile({ weight: 95, height: 186, age: 24, sex: "male", activity: 1.75, workouts: 5, goal: "bulk" });
+    var vistos = 0;
+    [15, 25].forEach(function (budget) {
+      var dias = s.generateDietPlanDays(profile, { budget: budget, cookTime: 30, taste: "mixed", store: "mercadona", planDays: 3 }, 3);
+      dias.forEach(function (dia) {
+        var usos = {};
+        dia.meals.forEach(function (m) {
+          var clases = {};
+          m.items.forEach(function (it) {
+            if (!it.guarnicion) {
+              var c0 = s._claseDelPlato(it.name);
+              if (c0) clases[c0] = (clases[c0] || 0) + 1;
+            }
+          });
+          m.items.filter(function (it) { return it.guarnicion; }).forEach(function (it) {
+            vistos++;
+            assert.ok(listas.indexOf(it.name) !== -1, "acompañamiento fuera de lista: " + it.name);
+            var c = s._claseDeGuarnicion(it.name);
+            assert.ok(!clases[c], m.key + ": " + it.name + " con otro de su clase en la toma");
+            clases[c] = 1;
+            usos[it.name] = (usos[it.name] || 0) + 1;
+            assert.ok(it.guarnicion === "postre" || it.guarnicion === "acompanamiento");
+          });
+        });
+        Object.keys(usos).forEach(function (n) { assert.ok(usos[n] <= 2, n + " sale " + usos[n] + " veces el mismo día"); });
+      });
+    });
+    assert.ok(vistos > 0, "un día de volumen sin ningún acompañamiento");
+  });
+
   // ── «Cambiar» con lo que hay en casa (2026-11-04) ────────────────────────
   // El dueño: «на перекус было два банана, я нажал заменить и мне сразу
   // предложило что-то новое из магазина».

@@ -295,15 +295,34 @@ function run(t) {
     var dish = s.DISH_DB.find(function (d) { return d.name === "Pollo a la plancha con arroz y brócoli"; });
     var target = { kcal: dish.kcal, protein: dish.protein, carbs: dish.carbs, fat: dish.fat };
 
+    // Escala 1,2 y no 2 (2026-11-06): con 2 el plato se queda en el tope de la
+    // toma de sus ingredientes (topePorToma), ver el test siguiente.
     var mealNative = s.buildMealFromDish(dish, "lunch", "Comida", target, "mercadona", 1);
-    var mealDouble = s.buildMealFromDish(dish, "lunch", "Comida", target, "mercadona", 2);
+    var mealMas = s.buildMealFromDish(dish, "lunch", "Comida", target, "mercadona", 1.2);
 
     var polloNative = mealNative.items.find(function (i) { return i.name === "Pechuga de pollo"; });
-    var polloDouble = mealDouble.items.find(function (i) { return i.name === "Pechuga de pollo"; });
+    var polloMas = mealMas.items.find(function (i) { return i.name === "Pechuga de pollo"; });
 
-    assert.strictEqual(polloDouble.grams, polloNative.grams * 2);
+    assert.ok(Math.abs(polloMas.grams - polloNative.grams * 1.2) <= 1, polloMas.grams + " frente a " + polloNative.grams);
     // round1 -- tolerancia mínima de redondeo, no debe desviarse más de eso.
-    assert.ok(Math.abs(polloDouble.protein - polloNative.protein * 2) < 0.15);
+    assert.ok(Math.abs(polloMas.protein - polloNative.protein * 1.2) < 0.2);
+  });
+
+  t.test("D) Escalado de porciones: ni con escala 2 pasa un ingrediente de lo que se come en una toma (2026-11-06)", function () {
+    var s = freshEngineSandbox();
+    var dish = s.DISH_DB.find(function (d) { return d.name === "Pollo a la plancha con arroz y brócoli"; });
+    var target = { kcal: dish.kcal, protein: dish.protein, carbs: dish.carbs, fat: dish.fat };
+    var meal = s.buildMealFromDish(dish, "lunch", "Comida", target, "mercadona", 2);
+    meal.items.forEach(function (it) {
+      var tope = s.topePorToma(it.name);
+      if (tope) assert.ok(it.grams <= tope + 1, it.name + ": " + it.grams + " g, tope " + tope);
+    });
+    var pollo = meal.items.find(function (i) { return i.name === "Pechuga de pollo"; });
+    var arroz = meal.items.find(function (i) { return i.name === "Arroz blanco cocido"; });
+    var nativo = dish.items.find(function (i) { return i.name === "Pechuga de pollo"; }).g;
+    var arrozNativo = dish.items.find(function (i) { return i.name === "Arroz blanco cocido"; }).g;
+    // El plato entero se queda en la misma escala: las proporciones no cambian.
+    assert.ok(Math.abs(pollo.grams / nativo - arroz.grams / arrozNativo) < 0.02);
   });
 
   // ── E) KBJU del día completo: generateDietPlan sigue produciendo totales sanos ─

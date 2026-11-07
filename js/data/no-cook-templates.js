@@ -121,7 +121,8 @@ var NO_COOK_TEMPLATES = [
     weight: 2,
     components: [
       { role: "legumbre", required: true, maxServings: 2 },
-      { role: "protein", required: false, maxServings: 2, tipos: ["pescado", "huevo", "ahumado", "anchoa"] },
+      // Con su pescado o su huevo: la legumbre sola no hace la comida completa.
+      { role: "protein", required: true, maxServings: 2, tipos: ["pescado", "huevo", "ahumado", "anchoa"] },
       { role: "veg", required: false, maxServings: 2, tipos: ["crudo", "conserva", "hoja"] },
       { role: "carrier", required: false, maxServings: 2, tipos: ["pan", "tostado", "picos"] },
       { role: "fruta", required: false, maxServings: 1, postre: true, tipos: ["fruta", "fruta_conserva"] },

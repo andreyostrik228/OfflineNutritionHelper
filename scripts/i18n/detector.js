@@ -161,8 +161,12 @@ function analizarTexto(texto, lang) {
  * @param {string} html
  * @returns {string}
  */
+// `pantry-purchase-row__name` (2026-11-06): la lista de «Te faltó algo» dice
+// el ingrediente como «traducción / nombre de la estantería», igual que las
+// tarjetas del sin cocinar; el nombre en español de detrás es a propósito.
 var PRODUCTO_CLASES = ["food-purchase__product", "nocook-item__name", "nocook-item__brand",
-  "verified-card__name", "verified-card__brand", "product-find-btn", "nocook-sobras__producto"];
+  "verified-card__name", "verified-card__brand", "product-find-btn", "nocook-sobras__producto",
+  "pantry-purchase-row__name"];
 
 function textoDeHtml(html) {
   var h = String(html);

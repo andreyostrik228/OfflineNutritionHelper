@@ -497,6 +497,82 @@ function run(t) {
     var data2 = Object.assign({}, built.data, { planDays: 3, avoidDishNames: ["x"] });
     s.generateDietPlanDays(built.profile, data2, 3);
     assert.deepStrictEqual(JSON.parse(JSON.stringify(data2.avoidDishNames)), ["x"], "tiene que devolver lo que había");
+    assert.ok(!("principalesDeAyer" in data), "lo principal de ayer (2026-11-06) tampoco se queda en data");
+  });
+
+  // ── Lo principal, distinto en el día y de la misma toma de ayer (2026-11-06) ──
+  // Queja del dueño: «каждый день я ем по сути одно и то же утром днём и
+  // вечером, на следующий день также». El plato ya no se repetía, lo de dentro
+  // sí: «Lentejas con verduras y arroz» de comida y «Crema de lentejas» de
+  // cena. Medido con este mismo perfil (recomposición, 16 EUR, 15 planes de 3
+  // días): comida y cena con la misma proteína o la misma base, 27 de 45 días
+  // antes y 0 después; la misma toma que ayer, 35 de 150 antes y 14 después.
+  // Ver _conVariedad en dish-selector.js.
+  function compartenLoPrincipal(s, a, b) {
+    var A = s.principalesDeLosPlatos([a]), B = s.principalesDeLosPlatos([b]);
+    return Object.keys(A).some(function (k) { return B[k] === true; });
+  }
+
+  t.test("variedad: lo principal de un plato es su proteína, lo que la aporta y su base, sin el pan", function () {
+    var s = freshEngineSandbox();
+    function claves(nombre) {
+      var d = s.DISH_DB.filter(function (x) { return x.name === nombre; })[0];
+      assert.ok(d, "falta el plato «" + nombre + "» en el catálogo");
+      return JSON.parse(JSON.stringify(s.principalesDelPlato(d)));
+    }
+    var estofado = claves("Lentejas estofadas con muslos de pollo");
+    assert.ok(estofado.indexOf("p:pollo") !== -1 && estofado.indexOf("i:Lentejas cocidas") !== -1,
+      "pollo Y lentejas: " + estofado.join(", "));
+    assert.ok(claves("Pollo con arroz").indexOf("b:arroz") !== -1, "el arroz es su base");
+    assert.ok(claves("Crema de lentejas con pan integral").indexOf("p:legumbre") !== -1, "las legumbres, juntas");
+    assert.ok(!claves("Tostadas con queso fresco y tomate").some(function (k) { return /pan/i.test(k); }), "el pan no cuenta");
+    assert.ok(compartenLoPrincipal(s, "Sardinas con pasta y verduras salteadas", "Garbanzos con pasta y verduras salteadas"),
+      "dos platos de pasta comparten la base");
+  });
+
+  t.test("variedad: comida y cena casi nunca llevan la misma proteína ni la misma base", function () {
+    var s = freshEngineSandbox();
+    var built = buildProfileAndData(s, PROFILES[1]);
+    var dias = 0, comparten = 0, pares = 0, comoAyer = 0;
+    for (var seed = 1; seed <= 15; seed++) {
+      seedRandomInContext(s, seed);
+      var data = Object.assign({}, built.data, { planDays: 3 });
+      var plan = s.generateDietPlanDays(built.profile, data, 3);
+      var porDia = Array.prototype.map.call(plan, function (d) {
+        var por = {};
+        Array.prototype.forEach.call(d.meals, function (m) { por[m.key] = m.dishName; });
+        return por;
+      });
+      porDia.forEach(function (por, i) {
+        if (por.lunch && por.dinner) {
+          dias++;
+          if (compartenLoPrincipal(s, por.lunch, por.dinner)) comparten++;
+        }
+        if (i === 0) return;
+        Object.keys(por).forEach(function (k) {
+          if (!porDia[i - 1][k]) return;
+          pares++;
+          if (compartenLoPrincipal(s, porDia[i - 1][k], por[k])) comoAyer++;
+        });
+      });
+    }
+    assert.ok(comparten / dias <= 0.12, "comida y cena comparten lo principal en " + comparten + " de " + dias + " días (antes, 27 de 45)");
+    assert.ok(comoAyer / pares <= 0.15, "la misma toma que ayer comparte lo principal en " + comoAyer + " de " + pares + " (antes, 35 de 150)");
+  });
+
+  t.test("variedad: si lo que no repite da mucha menos proteína, se repite (la proteína manda)", function () {
+    var s = freshEngineSandbox();
+    function plato(nombre, protein) { return { name: nombre, protein: protein }; }
+    var repite = plato("repite", 40), flojo = plato("flojo", 10), bueno = plato("bueno", 36);
+    var vale = function (d) { return d.name !== "repite"; };
+    var protDe = function (d) { return d.protein; };
+    var nombres = function (l) { return JSON.parse(JSON.stringify(l.map(function (d) { return d.name; }))); };
+    assert.deepStrictEqual(nombres(s._preferirSinPerderProteina([repite, flojo], vale, protDe, 40)), ["repite", "flojo"],
+      "solo queda algo flojo: se deja repetir");
+    assert.deepStrictEqual(nombres(s._preferirSinPerderProteina([repite, flojo, bueno], vale, protDe, 40)), ["bueno"],
+      "hay algo que no repite y llega: solo eso");
+    assert.deepStrictEqual(nombres(s._preferirSinPerderProteina([repite, flojo], vale, protDe, 10)), ["flojo"],
+      "con un objetivo de 10 g, el flojo ya llega");
   });
 
   t.test("un plan de UN día es exactamente el de siempre: sin lista de platos vistos no cambia nada", function () {
@@ -703,7 +779,9 @@ function run(t) {
     // Se acepta porque el mismo agregado mejora en lo demas: proteina media
     // 154,7 -> 157,6 g y dias "perfect" 60% -> 68%. El motor declara la
     // violacion en vez de esconderla, que es el contrato.
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 3, 3, 2, 2]);
+    // (2026-11-06: con un acompañamiento en la comida, ver abajo; y otra vez
+    // ese día, con la variedad de lo principal, ver abajo.)
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 3, 3, 2, 3]);
     // ── RECAPTURADO el 2026-09-13: raciones que se pueden servir ───────
     // applyServingQuantization() redondea cada fila a una ración de casa
     // (un yogur, media pieza, un cuarto de bote) y el redondeo es REAL: los
@@ -722,17 +800,35 @@ function run(t) {
     // almendras de 25 g a 20 para que cuadre con lo que dice una receta ya
     // publicada (ver js/data/servings.js). Cambia la ración de almendras,
     // así que la lotería reparte distinto para la MISMA semilla.
-    assert.strictEqual(result.total.kcal, 2756.7);
-    assert.strictEqual(result.total.protein, 197.2);
-    assert.strictEqual(result.total.carbs, 242.40000000000003);
-    assert.strictEqual(result.total.fat, 101.1);
-    assert.strictEqual(result.total.cost, 8.49);
-    assert.strictEqual(result.total.purchaseCost, 16.26);
-    assert.strictEqual(result.report.status, "minimal");
+    //
+    // ── RECAPTURADO el 2026-11-06: lo que se come de una vez ────────────
+    // Tope por toma de cada ingrediente (topePorToma) y acompañamientos (pan,
+    // fruta, un lácteo) donde el día se queda corto, en vez de estirar el
+    // plato. Cambio deliberado del algoritmo. El día deja de pasarse del
+    // presupuesto (16,26 -> 14,83 EUR, tope 16) y pasa de «minimal» a
+    // «perfect» sin violaciones; las kcal bajan de 2.756,7 a 2.661 (objetivo
+    // 2.822: -2,3% -> -5,7%, dentro de tolerancia) y la proteína de 197,2 a
+    // 144 g (objetivo 156: de +26% a -8%).
+    //
+    // ── RECAPTURADO otra vez el 2026-11-06: lo principal, distinto ──────
+    // Ninguna toma repite la proteína ni la base (arroz, pasta...) de otra
+    // del mismo día si hay otra cosa que quepa y no pierda proteína
+    // (_conVariedad en dish-selector.js). Cambio deliberado del algoritmo:
+    // la lotería reparte distinto para la MISMA semilla. Este día mejora:
+    //   kcal       2661 -> 2684,6  (objetivo 2822: -5,7% -> -4,9%)
+    //   proteína   144  -> 151,4 g (objetivo 156: -8% -> -3%)
+    //   grasa      92,9 -> 76,8 g
+    //   compra     14,83 -> 15,97 EUR (tope 16, sigue por debajo)
+    // Sigue «perfect»/tier 0 sin violaciones.
+    assert.strictEqual(result.total.kcal, 2684.6000000000004);
+    assert.strictEqual(result.total.protein, 151.4);
+    assert.strictEqual(result.total.carbs, 343.3);
+    assert.strictEqual(result.total.fat, 76.8);
+    assert.strictEqual(result.total.cost, 6.17);
+    assert.strictEqual(result.total.purchaseCost, 15.97);
+    assert.strictEqual(result.report.status, "perfect");
     assert.strictEqual(result.report.tierUsed, 0);
-    assert.deepStrictEqual(
-      JSON.parse(JSON.stringify(result.report.violations)),
-      [{ type: "budget", exceededBy: 0.26, purchaseCost: 16.26, usageCost: 8.49 }]);
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.report.violations)), []);
   });
 
   t.test("golden-master (seed=7): volumen alto/Amplio -- agregados exactos del resultado actual", function () {
@@ -800,7 +896,9 @@ function run(t) {
     //   coste      9,51  -> 10,53 EUR
     //   compra     19,15 -> 19 EUR
     //   estado, tier y violations no cambian.
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 4, 3, 2, 2]);
+    // (2026-11-06: con acompañamientos en el desayuno y la comida, ver abajo;
+    // y otra vez ese día, con la variedad de lo principal, ver abajo.)
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result.meals.map(function (m) { return m.items.length; }))), [3, 6, 3, 3, 3]);
     // ── RECAPTURADO el 2026-09-13: raciones que se pueden servir ───────
     // Mismo cambio que en el golden-master de seed=42, y aquí EMPEORA. Se
     // escribe con su cifra porque es la verdad y porque el otro mejora: no
@@ -826,14 +924,29 @@ function run(t) {
     //   prot    232,7 ->  235,4  (objetivo 171, de sobra las dos veces)
     //   compra  19,15 ->  19,15  (tope 20, ni un céntimo de diferencia)
     // Sigue "perfect"/tier 0 y sin violaciones.
-    assert.strictEqual(result.total.kcal, 3665.0999999999995);
-    assert.strictEqual(result.total.protein, 235.5);
-    assert.strictEqual(result.total.carbs, 534.4);
-    assert.strictEqual(result.total.fat, 60.800000000000004);
-    assert.strictEqual(result.total.cost, 10.53);
-    assert.strictEqual(result.total.purchaseCost, 19);
-    assert.strictEqual(result.report.status, "perfect");
-    assert.strictEqual(result.report.tierUsed, 0);
+    //
+    // ── RECAPTURADO el 2026-11-06: lo que se come de una vez ────────────
+    // Mismo cambio que en seed=42. Aquí las kcal bajan, y se dice con su
+    // cifra: 3.665,1 -> 3.323 (objetivo 3.871: -5,3% -> -14,2%, todavía
+    // dentro de la tolerancia del 15%), porque el día ya no se llena con
+    // raciones que no se come nadie y lo que lo completa (fruta, lácteo, pan)
+    // se queda en el presupuesto (19,66 EUR de 20). La proteína, 235,5 ->
+    // 208,7 g (objetivo 171, de sobra). Sigue «perfect» y sin violaciones.
+    //
+    // ── RECAPTURADO otra vez el 2026-11-06: lo principal, distinto ──────
+    // Mismo cambio que en seed=42. Las kcal vuelven cerca del objetivo:
+    // 3.323 -> 3.709,5 (objetivo 3.871: -14,2% -> -4,2%), proteína 208,7 ->
+    // 204,3 g (objetivo 171), compra 19,66 -> 19,87 EUR (tope 20). Lo que
+    // empeora es la etiqueta, y se apunta: «perfect»/tier 0 -> «adjusted»/
+    // tier 1, un escalón de relajación para cuadrar el día. Sin violaciones.
+    assert.strictEqual(result.total.kcal, 3709.4999999999995);
+    assert.strictEqual(result.total.protein, 204.3);
+    assert.strictEqual(result.total.carbs, 501.30000000000007);
+    assert.strictEqual(result.total.fat, 94.4);
+    assert.strictEqual(result.total.cost, 7.92);
+    assert.strictEqual(result.total.purchaseCost, 19.87);
+    assert.strictEqual(result.report.status, "adjusted");
+    assert.strictEqual(result.report.tierUsed, 1);
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result.report.violations)), []);
   });
 

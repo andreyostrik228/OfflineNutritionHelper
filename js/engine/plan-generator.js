@@ -681,6 +681,12 @@ function generateDietPlan(profile, data) {
  * presupuesto de la toma, los que no han salido. No cuesta dinero ni puede
  * romper un tope; si todo lo asequible ya salió, se repite.
  *
+ * Desde el 2026-11-06, también `data.principalesDeAyer`: lo principal de cada
+ * toma del día anterior (principalesDeLosPlatos), para que la comida de hoy no
+ * lleve la misma proteína que la de ayer. Lo que sobra del envase se come
+ * igual, pero en otra toma: las lentejas de la comida del día 1 pasan a la
+ * cena del día 2. Ver _conVariedad en dish-selector.js.
+ *
  * @param {object} profile
  * @param {object} data           - mismo objeto que generateDietPlan(), con
  *                                  planDays ya puesto por el llamante
@@ -695,6 +701,7 @@ function generateDietPlanDays(profile, data, planDays, alTerminarDia) {
   var vistos = [];
   var tenia = data.avoidDishNames;
   var teniaDespensa = data.despensaDelPlan;
+  var teniaAyer = data.principalesDeAyer;
   // La despensa real se lee UNA vez: todos los días parten de la misma, y
   // cada uno recibe la que habrá al empezarlo (despensaDelPlan, más abajo).
   // Si el usuario la apagó («sin despensa», 2026-10-30), vacía.
@@ -707,6 +714,7 @@ function generateDietPlanDays(profile, data, planDays, alTerminarDia) {
       data.avoidDishNames = vistos.slice();
       if (d > 0) {
         data.despensaDelPlan = despensaDelPlan(days, store, despensaReal, { raciones: data.racionesCompra }).siguiente;
+        data.principalesDeAyer = _principalesPorToma(days[d - 1]);
       }
       var day = generateDietPlan(profile, data);
       if (typeof alTerminarDia === "function") alTerminarDia(day, d);
@@ -721,8 +729,40 @@ function generateDietPlanDays(profile, data, planDays, alTerminarDia) {
     // cambiar una sola comida. La despensa del día, tampoco.
     if (tenia === undefined) delete data.avoidDishNames; else data.avoidDishNames = tenia;
     if (teniaDespensa === undefined) delete data.despensaDelPlan; else data.despensaDelPlan = teniaDespensa;
+    if (teniaAyer === undefined) delete data.principalesDeAyer; else data.principalesDeAyer = teniaAyer;
   }
   return days;
+}
+
+/**
+ * Lo que cada toma de mañana no debe repetir de un día ya hecho:
+ * { lunch: {clave: true}, ... } (principalesDeLosPlatos, dish-selector.js).
+ * El desayuno, lo del desayuno; cada snack, lo de los dos snacks; la comida y
+ * la cena, lo de la comida Y la cena: con solo su misma toma, la cena de ayer
+ * volvía en la comida de hoy («Tofu con arroz» y «Tofu salteado con arroz») y
+ * la comida de ayer en la cena de hoy («Alubias con claras y brócoli» y
+ * «Alubias con claras y tomate»). Sin el selector, vacío.
+ * @param {object} day
+ * @returns {Object}
+ */
+function _principalesPorToma(day) {
+  var porToma = {};
+  if (typeof principalesDeLosPlatos !== "function") return porToma;
+  ((day && day.meals) || []).forEach(function (m) {
+    if (m && typeof m.key === "string" && typeof m.dishName === "string") porToma[m.key] = principalesDeLosPlatos([m.dishName]);
+  });
+  var juntos = function (claves) {
+    var out = null;
+    claves.forEach(function (k) { if (porToma[k]) out = Object.assign(out || {}, porToma[k]); });
+    return out;
+  };
+  var out = {};
+  if (porToma.breakfast) out.breakfast = porToma.breakfast;
+  var principales = juntos(["lunch", "dinner"]);
+  if (principales) { out.lunch = principales; out.dinner = principales; }
+  var snacks = juntos(["snack", "snack2"]);
+  if (snacks) { out.snack = snacks; out.snack2 = snacks; }
+  return out;
 }
 
 // ── Lo que sobra de un día sirve a los demás (2026-10-27) ───────────────
@@ -1046,7 +1086,10 @@ function attemptPlanAtTier(profile, data, tier, pantryState) {
 
     var targetSpend = round2(data.targetBudget * def.ratio);
 
-    var pick = pickDish(def.category, _datosDeLaToma(data, def.key), usedState, tier, mealCap, target, store, targetSpend, committedGrams, pantryState);
+    // Con el factor del tope (2026-11-06): el coste se estima a la escala que de verdad se sirve.
+    // Y la toma (tomaKey), para no repetir lo principal de esta misma toma ayer (_conVariedad).
+    var datosToma = Object.assign({}, _datosDeLaToma(data, def.key), { factorTope: factorDeTopes(profile.calories), tomaKey: def.key });
+    var pick = pickDish(def.category, datosToma, usedState, tier, mealCap, target, store, targetSpend, committedGrams, pantryState);
 
     var dish, scaleFactor;
     if (pick.dish) {
@@ -1153,6 +1196,22 @@ function attemptPlanAtTier(profile, data, tier, pantryState) {
       total.purchaseCost = compraTrasRelleno.purchaseCost;
       total.cost = compraTrasRelleno.usageCost;
     }
+  }
+
+  // ── Lo que se come de una vez; lo que falte, con acompañamiento (2026-11-06) ──
+  // Último paso que toca gramos, antes de que el informe juzgue el plan (§7.10)
+  // y DENTRO del intento, por lo mismo que las raciones: si el día queda fuera
+  // de tolerancia, la escalera de relajación busca otro.
+  var topados = aplicarTopesPorToma(meals, store, profile.calories);
+  // Bajar gramos puede dejar un ingrediente justo pasado del borde de un
+  // envase (501 g con envases de 125): los bordes, otra vez.
+  if (topados) applyPortionSanity(meals, store, profile.calories);
+  var guarniciones = anadirGuarniciones(meals, profile.calories, store, pantryState, data.budget, profile.protein);
+  if (topados || guarniciones.changed) {
+    total = sumMeals(meals);
+    var compraFinal = computeDayPurchaseCost(meals, store, pantryState);
+    total.purchaseCost = compraFinal.purchaseCost;
+    total.cost = compraFinal.usageCost;
   }
 
   var violations = verifyPlanFeasibility(meals, total, profile, data);
@@ -1769,6 +1828,16 @@ function compensateCappedCalories(meals, targetKcal, caps) {
   Object.keys(totals).forEach(function (name) {
     var cap = caps[name];
     var maxG = cap ? cap : totals[name] * PORTION_CAP_MULTIPLIER;
+    // Y ninguna toma por encima de su tope (2026-11-06): el ingrediente crece
+    // igual en todas, así que manda la que menos sitio le deja.
+    var tope = (typeof topePorToma === "function") ? topePorToma(name, factorDeTopes(targetKcal)) : null;
+    if (tope) {
+      meals.forEach(function (meal) {
+        (meal.items || []).forEach(function (item) {
+          if (item.name === name && item.grams > 0) maxG = Math.min(maxG, totals[name] * tope / item.grams);
+        });
+      });
+    }
     if (maxG <= totals[name]) return;
     headroom.push({ name: name, grams: totals[name], maxG: maxG });
   });
@@ -1863,6 +1932,9 @@ function rellenarConLoPagado(meals, targetKcal, storeId, pantryState) {
         if (!(paso > 0) || (libres[item.name] || 0) < paso) return;
         var tope = caps[item.name];
         if (tope && tope < (totales[item.name] || 0) + paso) return;
+        // Ni una toma por encima de lo que se come de una vez (2026-11-06).
+        var topeToma = (typeof topePorToma === "function") ? topePorToma(item.name, factorDeTopes(targetKcal)) : null;
+        if (topeToma && topeToma < destino && item.grams < destino) return;
         var kcalPaso = item.kcal * paso / item.grams;
         if (!(kcalPaso < 2 * falta)) return;
         // Ninguna fila por encima del 25% del día (findCapViolations): sin
@@ -1893,6 +1965,247 @@ function rellenarConLoPagado(meals, targetKcal, storeId, pantryState) {
 
   if (res.changed) {
     meals.forEach(function (m) { m.total = getMealTotals(m); m.spent = round2(spentMeal(m)); });
+  }
+  return res;
+}
+
+// ── Lo que se come de una vez, y lo que falte con acompañamiento (2026-11-06) ─
+// Ver topePorToma en dish-selector.js. El dueño eligió «рис 300 г + хлеб +
+// фрукт вместо 540 г риса»: ninguna fila pasa de su tope de la toma, y si al
+// día le faltan kcal se completa con lo que acompaña de verdad una comida.
+
+/**
+ * Baja a su tope de la toma (topePorToma) cualquier fila que lo pase, en
+ * raciones enteras de casa (resolveServingUnit) y nunca por debajo de una.
+ * @param {object[]} meals
+ * @param {string} storeId
+ * @param {number} kcalDia - para el tope de quien come mucho (factorDeTopes)
+ * @returns {boolean} si cambió algo
+ */
+function aplicarTopesPorToma(meals, storeId, kcalDia) {
+  var cambio = false;
+  if (typeof topePorToma !== "function") return false;
+  var factorTope = factorDeTopes(kcalDia);
+  (meals || []).forEach(function (meal) {
+    var tocada = false;
+    (meal.items || []).forEach(function (item) {
+      var tope = topePorToma(item.name, factorTope);
+      if (!tope || !(item.grams > tope)) return;
+      var unidad = (typeof resolveServingUnit === "function") ? resolveServingUnit(item.name, storeId, item.papel) : null;
+      // Una pieza entera (una manzana, un huevo, un yogur) siempre cabe.
+      if (unidad && unidad.g > 0 && (unidad.split === "entera" || unidad.split === "media")) tope = Math.max(tope, unidad.g);
+      if (!(item.grams > tope)) return;
+      var destino = tope;
+      if (unidad && unidad.g > 0) {
+        var paso = unidad.split === "media" ? unidad.g / 2 : (unidad.split === "cuarto" ? unidad.g / 4 : unidad.g);
+        destino = Math.max(paso, Math.floor(tope / paso + 1e-9) * paso);
+      }
+      if (!(destino < item.grams)) return;
+      var f = destino / item.grams;
+      item.grams   = Math.round(destino);
+      item.kcal    = round1(item.kcal    * f);
+      item.protein = round1(item.protein * f);
+      item.carbs   = round1(item.carbs   * f);
+      item.fat     = round1(item.fat     * f);
+      item.cost    = round2(item.cost    * f);
+      tocada = true;
+    });
+    if (tocada) {
+      meal.total = getMealTotals(meal);
+      meal.spent = round2(spentMeal(meal));
+      cambio = true;
+    }
+  });
+  return cambio;
+}
+
+/**
+ * Lo que puede acompañar una toma, por orden de preferencia. A la comida y a
+ * la cena, pan si el plato no trae ya su hidrato (arroz, pasta, patata; con un
+ * guiso de legumbre, sí), y fruta o un lácteo de postre; al desayuno y a los snacks, fruta, yogur o
+ * un puñado de nueces. Todos están en ingredient-nutrition.js y tienen precio.
+ */
+var GUARNICION_PAN = ["Pan blanco", "Pan integral"];
+var GUARNICION_FRUTA = ["Manzana", "Naranja", "Plátano"];
+var GUARNICION_LACTEO = ["Skyr natural", "Yogur griego ligero"];
+var GUARNICION_FRUTOS_SECOS = ["Nueces", "Almendras"];
+var GUARNICION_POSTRE = GUARNICION_FRUTA.concat(GUARNICION_LACTEO);
+
+/** La clase de un acompañamiento: una de cada por toma. */
+function _claseDeGuarnicion(nombre) {
+  if (GUARNICION_PAN.indexOf(nombre) !== -1) return "pan";
+  if (GUARNICION_FRUTA.indexOf(nombre) !== -1) return "fruta";
+  if (GUARNICION_LACTEO.indexOf(nombre) !== -1) return "lacteo";
+  if (GUARNICION_FRUTOS_SECOS.indexOf(nombre) !== -1) return "frutos_secos";
+  return null;
+}
+
+/** Gramos de UNA ración de acompañamiento: una pieza, un yogur, un puñado, un cuarto de barra o de tarrina, dos rebanadas. */
+function _racionDeGuarnicion(nombre, storeId) {
+  var u = (typeof resolveServingUnit === "function") ? resolveServingUnit(nombre, storeId) : null;
+  if (!u || !(u.g > 0)) return 100;
+  if (u.split === "cuarto") return u.g / 4;
+  if (GUARNICION_PAN.indexOf(nombre) !== -1 && u.g < 50) return u.g * 2;
+  return u.g;
+}
+
+/**
+ * ¿Cabe este acompañamiento en el día? Ni por encima del tope del día de ese
+ * ingrediente (getCuratedPortionCaps: un plátano de postre donde el plato ya
+ * lleva plátano), ni abriendo un envase para usar menos de PACKAGE_TRIM_RATIO
+ * de él (lo que ya hay en la despensa no abre nada).
+ */
+function _guarnicionCabeEnElDia(meals, nombre, g, storeId, pantryState) {
+  var totales = sumIngredientGrams(meals);
+  var antes = totales[nombre] || 0;
+  var despues = antes + g;
+  var tope = getCuratedPortionCaps()[nombre];
+  if (tope && tope < despues) return false;
+  var pkg = (typeof resolvePackageInfo === "function") ? resolvePackageInfo(nombre, storeId) : null;
+  if (!pkg || !(pkg.packageSizeG > 0)) return true;
+  var enCasa = (pantryState && typeof getStock === "function") ? getStock(nombre, pantryState) : 0;
+  var size = pkg.packageSizeG;
+  var envasesAntes = Math.ceil(Math.max(0, antes - enCasa) / size - 1e-9);
+  var faltaDespues = Math.max(0, despues - enCasa);
+  var envasesDespues = Math.ceil(faltaDespues / size - 1e-9);
+  if (envasesDespues <= envasesAntes) return true;
+  return !(faltaDespues - (envasesDespues - 1) * size < size * PACKAGE_TRIM_RATIO);
+}
+
+/** La clase de acompañamiento a la que ya responde un ingrediente del plato, o null. */
+function _claseDelPlato(nombre) {
+  var n = String(nombre || "").toLowerCase();
+  if (/^pan/.test(n)) return "pan";
+  if (/manzana|naranja|pl[aá]tano|fresa|kiwi|pi[nñ]a|frutos rojos|pera\b|uva|mango|melocot/.test(n)) return "fruta";
+  if (/yogur|skyr|queso fresco batido|reques[oó]n|kefir|leche/.test(n)) return "lacteo";
+  if (/nuez|nueces|almendra|cacahuete|anacardo/.test(n)) return "frutos_secos";
+  return null;
+}
+
+/** ¿Lleva ya pan la toma? */
+function _llevaPan(meal) {
+  return (meal.items || []).some(function (it) { return /^pan/i.test(String(it.name || "")); });
+}
+
+/** ¿Lleva ya la toma su hidrato (pan, arroz, pasta, patata…)? */
+function _llevaHidrato(meal) {
+  return (meal.items || []).some(function (it) {
+    var n = String(it.name || "").toLowerCase();
+    // La legumbre no cuenta: un guiso de lentejas o de garbanzos se come con pan.
+    return /^pan\b|arroz|pasta|patata|batata|quinoa|cusc|tortillas de trigo|tortitas de arroz|copos de ma|avena|granola/.test(n);
+  });
+}
+
+/**
+ * Completa con acompañamientos un día que se queda corto de kcal después de
+ * los topes: de una en una, a la toma más corta respecto a su parte del día,
+ * una ración de casa de lo que le pega, sin pasar del presupuesto de compra
+ * del día ni poner algo que no le gusta. Cada fila nueva lleva `guarnicion`
+ * («acompanamiento» o «postre»), que es lo que la pantalla dice al lado.
+ *
+ * @param {object[]} meals
+ * @param {number} targetKcal
+ * @param {string} storeId
+ * @param {object|null} pantryState
+ * @param {number} [budget] - compra del día; sin él, sin tope
+ * @param {number} [proteinaObjetivo] - si el día va corto, primero el lácteo
+ * @returns {{changed:boolean, anadidos:string[]}}
+ */
+function anadirGuarniciones(meals, targetKcal, storeId, pantryState, budget, proteinaObjetivo) {
+  var res = { changed: false, anadidos: [] };
+  if (!(targetKcal > 0) || !meals || !meals.length) return res;
+  if (typeof resolveIngredientNutrition !== "function" || typeof resolveIngredientPrice !== "function") return res;
+  var dislikes = (typeof getDislikes === "function") ? (getDislikes() || []) : [];
+  function noGusta(nombre) {
+    return dislikes.length && typeof matchesDislike === "function" && matchesDislike(nombre, dislikes);
+  }
+  var ratioDe = {};
+  MEAL_DEFS.forEach(function (d) { ratioDe[d.key] = d.ratio; });
+  var ratioSuma = meals.reduce(function (a, m) { return a + (ratioDe[m.key] || 0); }, 0) || 1;
+  function cabeEnElPresupuesto() {
+    if (!(budget > 0) || !isFinite(budget) || typeof computeDayPurchaseCost !== "function") return true;
+    return !(budget + 0.005 < computeDayPurchaseCost(meals, storeId, pantryState).purchaseCost);
+  }
+  var sinSitio = [];
+
+  for (var vuelta = 0; vuelta < 14; vuelta++) {
+    var falta = targetKcal - sumMeals(meals).kcal;
+    if (falta < targetKcal * 0.04) break;
+    var peor = null;
+    var peorRatio = Infinity;
+    meals.forEach(function (m) {
+      if (sinSitio.indexOf(m) !== -1) return;
+      var objetivo = targetKcal * (ratioDe[m.key] || 0) / ratioSuma;
+      if (!(objetivo > 0)) return;
+      var r = getMealTotals(m).kcal / objetivo;
+      if (r < peorRatio) { peorRatio = r; peor = m; }
+    });
+    if (!peor || 0.97 < peorRatio) break;
+
+    var principal = peor.key === "lunch" || peor.key === "dinner";
+    var faltaProteina = proteinaObjetivo > 0 && sumMeals(meals).protein < proteinaObjetivo * 0.95;
+    var postres = faltaProteina ? GUARNICION_LACTEO.concat(GUARNICION_FRUTA) : GUARNICION_FRUTA.concat(GUARNICION_LACTEO);
+    // En la mesa española el pan va con casi todo: primero si el plato no trae
+    // su hidrato, y si ya lo trae (arroz, pasta), después del postre.
+    var lista = !principal ? postres.slice()
+      : (_llevaHidrato(peor) ? postres.concat(GUARNICION_PAN) : GUARNICION_PAN.concat(postres));
+    if (peor.key === "snack" || peor.key === "snack2") lista = lista.concat(GUARNICION_FRUTOS_SECOS);
+    // Variedad: dentro de cada clase, primero lo que hoy sale menos (el mismo
+    // yogur en las cinco tomas no es un menú), y nada más de dos veces al día.
+    var usos = {};
+    meals.forEach(function (m) {
+      (m.items || []).forEach(function (it) { if (it.guarnicion) usos[it.name] = (usos[it.name] || 0) + 1; });
+    });
+    lista = lista.filter(function (n) { return (usos[n] || 0) < 2; });
+    var primeroDeClase = {};
+    lista.forEach(function (n, i) {
+      var c = _claseDeGuarnicion(n);
+      if (!(c in primeroDeClase)) primeroDeClase[c] = i;
+    });
+    lista = lista.map(function (n, i) { return { n: n, i: i, c: primeroDeClase[_claseDeGuarnicion(n)], u: usos[n] || 0 }; })
+      .sort(function (a, b) { return (a.c - b.c) || (a.u - b.u) || (a.i - b.i); })
+      .map(function (x) { return x.n; });
+    // Ni lo que el plato ya trae: con un batido de plátano, otra fruta no; con
+    // un yogur, otro lácteo no.
+    var clasesPuestas = {};
+    (peor.items || []).forEach(function (it) {
+      var c = it.guarnicion ? _claseDeGuarnicion(it.name) : _claseDelPlato(it.name);
+      if (c) clasesPuestas[c] = true;
+    });
+    var puesto = false;
+    for (var i = 0; i < lista.length && !puesto; i++) {
+      var nombre = lista[i];
+      if (noGusta(nombre)) continue;
+      if ((peor.items || []).some(function (it) { return it.name === nombre; })) continue;
+      // Uno de cada clase por toma: un pan, una fruta, un lácteo.
+      if (clasesPuestas[_claseDeGuarnicion(nombre)]) continue;
+      if (GUARNICION_PAN.indexOf(nombre) !== -1 && _llevaPan(peor)) continue;
+      var nut = resolveIngredientNutrition(nombre);
+      if (!nut || !nut.resolved) continue;
+      var g = _racionDeGuarnicion(nombre, storeId);
+      // Con la toma muy corta, el doble de pan (medio cuarto más de barra).
+      if (GUARNICION_PAN.indexOf(nombre) !== -1 && peorRatio < 0.8) g = g * 2;
+      var kcal = nut.kcal * g / 100;
+      if (falta * 1.5 < kcal) continue;   // no se pasa del día por un acompañamiento
+      if (!_guarnicionCabeEnElDia(meals, nombre, g, storeId, pantryState)) continue;
+      var precio = resolveIngredientPrice(nombre, storeId);
+      var item = {
+        name: nombre, grams: Math.round(g),
+        kcal: round1(kcal), protein: round1(nut.protein * g / 100), carbs: round1(nut.carbs * g / 100), fat: round1(nut.fat * g / 100),
+        cost: round2((precio && precio.pricePer100g ? precio.pricePer100g : 0) * g / 100),
+        prep: 0, ready: false, taste: peor.taste,
+        priceSource: precio ? precio.source : "default", nutritionSource: "real",
+        guarnicion: (principal && GUARNICION_POSTRE.indexOf(nombre) !== -1) ? "postre" : "acompanamiento"
+      };
+      peor.items.push(item);
+      if (!cabeEnElPresupuesto()) { peor.items.pop(); continue; }
+      peor.total = getMealTotals(peor);
+      peor.spent = round2(spentMeal(peor));
+      res.changed = true;
+      res.anadidos.push(peor.key + ":" + nombre);
+      puesto = true;
+    }
+    if (!puesto) sinSitio.push(peor);
   }
   return res;
 }
@@ -2440,6 +2753,7 @@ function _planTexto(clave, params, castellano) {
  */
 function rebalancePlan(meals, profile) {
   var loops = 0;
+  var factorTope = (typeof factorDeTopes === "function") ? factorDeTopes(profile.calories) : 1;
 
   while (loops < 12) {
     loops++;
@@ -2453,12 +2767,12 @@ function rebalancePlan(meals, profile) {
     var lunch  = meals.find(function (m) { return m.key === "lunch";  });
     var dinner = meals.find(function (m) { return m.key === "dinner"; });
 
-    if (pGap > 15 && lunch)  scaleMainProteinUp(lunch,  Math.min(40, pGap * 2));
-    if (pGap > 25 && dinner) scaleMainProteinUp(dinner, Math.min(40, (pGap - 15) * 2));
+    if (pGap > 15 && lunch)  scaleMainProteinUp(lunch,  Math.min(40, pGap * 2), factorTope);
+    if (pGap > 25 && dinner) scaleMainProteinUp(dinner, Math.min(40, (pGap - 15) * 2), factorTope);
 
     if (cGap > 25 && lunch) {
       var carbItem = lunch.items.find(function (i) { return i.carbs > 5; });
-      if (carbItem) scaleItemUp(carbItem, Math.min(60, cGap * 1.5));
+      if (carbItem) scaleItemUp(carbItem, Math.min(60, cGap * 1.5), factorTope);
     }
 
     if (kGap < -180) {
@@ -2481,22 +2795,29 @@ function rebalancePlan(meals, profile) {
 
 // ── Funciones de escala (sin cambios respecto a la versión anterior) ──────
 
-function scaleMainProteinUp(meal, addProteins) {
+function scaleMainProteinUp(meal, addProteins, factorTope) {
   var best = null;
   var bestRatio = 0;
   meal.items.forEach(function (item) {
     if (item.grams <= 0) return;
+    // Lo que ya está en su tope de la toma no sube más (2026-11-06).
+    var tope = (typeof topePorToma === "function") ? topePorToma(item.name, factorTope) : null;
+    if (tope && tope <= item.grams) return;
     var ratio = item.protein / item.grams;
     if (ratio > bestRatio) { bestRatio = ratio; best = item; }
   });
   if (!best || best.grams >= 350) return;
 
   var addG = Math.min(60, Math.round(addProteins / Math.max(bestRatio, 0.01)));
-  scaleItemUp(best, addG);
+  scaleItemUp(best, addG, factorTope);
 }
 
-function scaleItemUp(item, addGrams) {
+function scaleItemUp(item, addGrams, factorTope) {
   if (!item || item.grams <= 0) return;
+  // Nunca por encima de lo que se come en una toma (topePorToma, dish-selector.js).
+  var tope = (typeof topePorToma === "function") ? topePorToma(item.name, factorTope) : null;
+  if (tope) addGrams = Math.min(addGrams, tope - item.grams);
+  if (!(addGrams > 0)) return;
   var factor = (item.grams + addGrams) / item.grams;
   item.grams   = Math.round(item.grams * factor);
   item.kcal    = round1(item.kcal    * factor);

@@ -174,6 +174,74 @@ var EXPIRY_BIAS_WEIGHT = 2500;
 
 var MAX_PORTION_SCALE = 1.5;
 
+// ── Lo más que se come de un ingrediente en UNA toma (2026-11-06) ────────
+// El dueño: «чтобы каждый план был идеальный и логичный», y elegido entre
+// dos caminos: «рис 300 г + хлеб + фрукт вместо 540 г риса». Medido antes:
+// el 23,7% de 1.080 tomas llevaba algo de más (600 g de lentejas, 5 huevos,
+// 750 g de patata, 630 g de pasta). El tope de applyPortionSanity era del DÍA
+// (2,5 veces la mayor ración curada) y nada impedía que cayera todo en una
+// comida; además rebalancePlan subía la proteína hasta 350 g por toma.
+//
+// El tope por toma sale del mismo dato que el del día: la mayor ración que
+// pide una receta de dishes.js, por PORCION_TOMA_MULT. 1,25 deja crecer una
+// receta para quien come mucho (de 250 g de lentejas a 312) sin llegar a lo
+// que no se come nadie. Lo que falte de kcal lo pone un acompañamiento (pan,
+// fruta, yogur: anadirGuarniciones, plan-generator.js), no el mismo plato.
+var PORCION_TOMA_MULT = 1.25;
+var _topesPorToma = null;
+
+// Quien come mucho come algo más de cada cosa, pero no en proporción: por
+// encima de TOPE_KCAL_REF el tope crece con la raíz (a 3.800 kcal, x1,21: el
+// arroz de 350 a 424 g). Lo demás lo ponen los acompañamientos.
+var TOPE_KCAL_REF = 2600;
+
+/**
+ * La escala de un plato sin que ningún ingrediente pase de su tope de la toma:
+ * el plato entero se queda en esa escala, con sus proporciones.
+ * @param {object} dish
+ * @param {number} scale
+ * @param {number} [factor] - factorDeTopes del día
+ * @returns {number}
+ */
+function escalaConTopes(dish, scale, factor) {
+  var s = scale;
+  ((dish && dish.items) || []).forEach(function (ing) {
+    var tope = topePorToma(ing.name, factor);
+    if (tope && ing.g > 0 && tope < ing.g * s) s = tope / ing.g;
+  });
+  return s;
+}
+
+/** Cuánto crece el tope de la toma con las kcal del día. */
+function factorDeTopes(kcalDia) {
+  return (TOPE_KCAL_REF < kcalDia) ? Math.sqrt(kcalDia / TOPE_KCAL_REF) : 1;
+}
+
+/**
+ * Gramos de un ingrediente que caben en UNA toma, o null si ninguna receta
+ * lo lleva (entonces no hay dato del que sacar un tope).
+ * @param {string} name
+ * @param {number} [factor] - factorDeTopes del día; sin él, 1
+ * @returns {number|null}
+ */
+function topePorToma(name, factor) {
+  if (!_topesPorToma) {
+    var mayor = {};
+    if (typeof DISH_DB !== "undefined") {
+      DISH_DB.forEach(function (dish) {
+        (dish.items || []).forEach(function (it) {
+          mayor[it.name] = Math.max(mayor[it.name] || 0, it.g || 0);
+        });
+      });
+    }
+    _topesPorToma = {};
+    Object.keys(mayor).forEach(function (n) { _topesPorToma[n] = Math.round(mayor[n] * PORCION_TOMA_MULT); });
+  }
+  var base = _topesPorToma[name];
+  if (!base) return null;
+  return (1 < factor) ? Math.round(base * factor) : base;
+}
+
 /**
  * Por debajo de este ratio maxCost / referencia, el presupuesto de la toma
  * se considera ajustado y se prioriza eficiencia proteína/€ (comportamiento
@@ -357,11 +425,14 @@ function estimateAbsoluteMinMealCost(category, storeId) {
  * @param {string} storeId
  * @param {object} committedGrams - gramos ya comprometidos hoy por tomas anteriores
  * @param {object|null} pantryState
+ * @param {number} [factorTope] - factorDeTopes del día (2026-11-06): el coste se
+ *   estima a la escala a la que de verdad se va a servir (escalaConTopes); sin
+ *   esto, un plato con tope se tasaba más caro de lo que es
  * @returns {{ scaleFactor:number, marginalCost:number }}
  */
-function estimateScaledPurchaseImpact(dish, target, storeId, committedGrams, pantryState) {
+function estimateScaledPurchaseImpact(dish, target, storeId, committedGrams, pantryState, factorTope) {
   var rawScale = target.kcal / Math.max(dish.kcal, 1);
-  var scaleFactor = Math.min(MAX_PORTION_SCALE, Math.max(0.70, rawScale));
+  var scaleFactor = escalaConTopes(dish, Math.min(MAX_PORTION_SCALE, Math.max(0.70, rawScale)), factorTope);
   var marginalCost = estimateDishMarginalPurchaseCost(dish, scaleFactor, committedGrams, storeId, pantryState);
   return { scaleFactor: scaleFactor, marginalCost: marginalCost };
 }
@@ -424,6 +495,188 @@ function diversityScore(dish, usedState) {
   if (tasteCount === 0) score += 1;                  // sabor no visto aún
 
   return score;
+}
+
+// ── Lo principal de cada toma: distinto en el día y de la misma toma de ayer (2026-11-06) ──
+// Queja del dueño: «каждый день я ем по сути одно и то же утром днём и
+// вечером, на следующий день также». El plato ya no se repetía (usedNames
+// hoy, avoidDishNames entre días), pero lo de dentro sí: medido en 108 días
+// de planes de 3 días, en el 28% comida y cena llevaban la misma proteína
+// («Lentejas con verduras y arroz» y de cena «Crema de lentejas»). El envase
+// abierto a mediodía salía casi gratis por la noche (committedGrams) y los 3
+// puntos de diversityScore no pesaban nada frente al coste.
+//
+// «Lo principal» de un plato es su fuente de proteína (mainProt, con las
+// legumbres juntas), cada ingrediente que aporta al menos el 30% de su
+// proteína («Lentejas estofadas con muslos de pollo» es pollo Y lentejas) y
+// su base: el arroz, la pasta, la patata... que trae al menos el 40% de sus
+// hidratos. Con solo la proteína salían «Sardinas con pasta y verduras» de
+// comida y «Garbanzos con pasta y verduras» de cena: distinto en la ficha, lo
+// mismo en el plato. El pan no cuenta: tostada por la mañana y bocadillo por
+// la noche es normal.
+// pickDish() lo aplica como FILTRO sobre lo que ya cabe en el presupuesto,
+// igual que avoidDishNames: nunca cuesta dinero de más ni deja la toma vacía.
+var PRINCIPAL_PARTE_PROTEINA = 0.3;
+var PRINCIPAL_PARTE_HIDRATOS = 0.4;
+var BASE_DE_HIDRATOS = /arroz|pasta|patata|batata|quinoa|cusc|avena|granola|copos de|tortillas de trigo/i;
+var _principalesPorPlato = {};
+var _platoPorNombre = null;
+
+/** La clave de una base: el arroz blanco y el integral son el mismo arroz. */
+function _claveDeBase(nombre) {
+  return (/arroz/i.test(nombre) && !/tortitas/i.test(nombre)) ? "b:arroz" : "b:" + nombre;
+}
+
+/** La familia de una fuente de proteína: las legumbres, juntas. */
+function _familiaDeProteina(mainProt) {
+  if (typeof mainProt !== "string" || !mainProt || mainProt === "none") return null;
+  return (mainProt === "lentejas" || mainProt === "garbanzos") ? "legumbre" : mainProt;
+}
+
+/**
+ * Las claves de lo principal de un plato ("p:pollo", "i:Lentejas cocidas",
+ * "b:arroz").
+ * @param {object} dish
+ * @returns {string[]}
+ */
+function principalesDelPlato(dish) {
+  if (!dish || typeof dish.name !== "string") return [];
+  var ya = _principalesPorPlato[dish.name];
+  if (ya) return ya;
+  var claves = [];
+  var familia = _familiaDeProteina(dish.mainProt);
+  if (familia) claves.push("p:" + familia);
+  var items = dish.items || [];
+  if (items.length && typeof computeDishIngredientNutrition === "function") {
+    var nut = computeDishIngredientNutrition(dish, 1);
+    var prot = 0, hid = 0;
+    nut.forEach(function (n) { prot += (n && n.protein) || 0; hid += (n && n.carbs) || 0; });
+    items.forEach(function (it, i) {
+      if (/^pan\b/i.test(it.name)) return;
+      if (0 < prot && PRINCIPAL_PARTE_PROTEINA <= ((nut[i] && nut[i].protein) || 0) / prot) claves.push("i:" + it.name);
+      if (0 < hid && PRINCIPAL_PARTE_HIDRATOS <= ((nut[i] && nut[i].carbs) || 0) / hid && BASE_DE_HIDRATOS.test(it.name)) {
+        var base = _claveDeBase(it.name);
+        if (claves.indexOf(base) === -1) claves.push(base);
+      }
+    });
+  }
+  _principalesPorPlato[dish.name] = claves;
+  return claves;
+}
+
+/** El plato de DISH_DB con ese nombre, o null. */
+function _platoDeNombre(nombre) {
+  if (!_platoPorNombre) {
+    _platoPorNombre = {};
+    DISH_DB.forEach(function (d) { _platoPorNombre[d.name] = d; });
+  }
+  return _platoPorNombre[nombre] || null;
+}
+
+/**
+ * Lo principal de unos platos, juntos: { clave: true }.
+ * @param {string[]} nombres
+ * @returns {Object}
+ */
+function principalesDeLosPlatos(nombres) {
+  var out = {};
+  (nombres || []).forEach(function (n) {
+    principalesDelPlato(_platoDeNombre(n)).forEach(function (k) { out[k] = true; });
+  });
+  return out;
+}
+
+/**
+ * ¿Lleva el plato algo de lo principal de `usados`? Con `parte`, solo de esa
+ * parte: "proteina" (claves p: e i:) o "base" (b:).
+ */
+function _compartePrincipal(dish, usados, parte) {
+  if (!usados) return false;
+  return principalesDelPlato(dish).some(function (k) {
+    if (parte === "base" && k.indexOf("b:") !== 0) return false;
+    if (parte === "proteina" && k.indexOf("b:") === 0) return false;
+    return usados[k] === true;
+  });
+}
+
+/**
+ * Los platos de una lista que cumplen una preferencia, o la lista entera si
+ * ninguno la cumple: una preferencia nunca deja una toma sin plato.
+ */
+function _preferirLosQue(lista, vale) {
+  var buenos = lista.filter(vale);
+  return buenos.length ? buenos : lista;
+}
+
+// La variedad no puede dejar la toma corta de proteína. Medido sin este freno
+// (162 días): con 10 € y un objetivo de definición, la proteína del día bajó
+// de una mediana del 96% al 82% -- lo único asequible que no repetía era pasta
+// con salchichas. Se exige que lo que no repite dé al menos este tanto de la
+// proteína del mejor plato de la lista (o del objetivo de la toma, si es menor).
+//
+// Las kcal NO llevan un freno igual, y se probó: con uno del 85% los días bajo
+// el 90% de las kcal bajaban de 26 a 15, pero los de grasa por encima del 150%
+// subían de 30 a 45 (lo que más calorías trae suele ser lo más graso) y comida
+// y cena volvían a compartir lo principal en 27 días de 162; con uno del 70%,
+// 18, 38 y 12. Lo que falta de kcal lo ponen los acompañamientos
+// (anadirGuarniciones en plan-generator.js), que es lo que eligió el dueño.
+var VARIEDAD_PROTEINA_MIN = 0.85;
+
+/**
+ * Como _preferirLosQue, pero solo con lo que cumple la preferencia y trae casi
+ * tanta proteína como lo mejor de la lista (VARIEDAD_PROTEINA_MIN). Si nada
+ * de eso queda, la lista entera: se repite.
+ * @param {object[]} lista
+ * @param {function(object):boolean} vale
+ * @param {function(object):number} [protDe] - proteína del plato a la escala que se serviría
+ * @param {number} [objetivoProt] - proteína objetivo de la toma
+ */
+function _preferirSinPerderProteina(lista, vale, protDe, objetivoProt) {
+  var buenos = lista.filter(vale);
+  if (!buenos.length) return lista;
+  if (buenos.length === lista.length || typeof protDe !== "function") return buenos;
+  var mejor = 0;
+  lista.forEach(function (d) { var p = protDe(d); if (mejor < p) mejor = p; });
+  var suelo = VARIEDAD_PROTEINA_MIN * ((0 < objetivoProt) ? Math.min(objetivoProt, mejor) : mejor);
+  // Solo los que llegan: si entraran también los flojos, al quitar los que
+  // repiten (los más baratos, el envase ya está abierto) ganaría el sorteo lo
+  // flojo y barato.
+  var llegan = buenos.filter(function (d) { return suelo <= protDe(d); });
+  return llegan.length ? llegan : lista;
+}
+
+/**
+ * Las preferencias de variedad, de más a menos importante, sobre una lista de
+ * platos que YA caben en el presupuesto:
+ *   1. ningún plato de los días anteriores del plan (data.avoidDishNames): es
+ *      la que pidió el dueño primero («точно такой же план на 3 дня»);
+ *   2. ni la proteína (2a) ni la base (2b) de otra toma de HOY;
+ *   3. ni la proteína (3a) ni la base (3b) de AYER (data.principalesDeAyer,
+ *      lo pone generateDietPlanDays; data.tomaKey, attemptPlanAtTier).
+ * Cada una se aplica solo si deja algún plato, y de la 2 en adelante solo si
+ * lo que queda no pierde proteína (_preferirSinPerderProteina). Proteína y
+ * base van por separado: si cambiar de base costara proteína, al menos la
+ * proteína sigue sin repetirse.
+ * @param {object[]} lista
+ * @param {object} data
+ * @param {object} usedState
+ * @param {function(object):number} [protDe]
+ * @param {number} [objetivoProt] - proteína objetivo de la toma
+ */
+function _conVariedad(lista, data, usedState, protDe, objetivoProt) {
+  if (!lista.length) return lista;
+  var out = lista;
+  var avoid = (data && data.avoidDishNames && data.avoidDishNames.length) ? data.avoidDishNames : null;
+  if (avoid) out = _preferirLosQue(out, function (d) { return avoid.indexOf(d.name) === -1; });
+  var hoy = (usedState && usedState.usedNames && usedState.usedNames.length)
+    ? principalesDeLosPlatos(usedState.usedNames) : null;
+  var ayer = (data && data.principalesDeAyer && data.tomaKey) ? data.principalesDeAyer[data.tomaKey] : null;
+  [[hoy, "proteina"], [hoy, "base"], [ayer, "proteina"], [ayer, "base"]].forEach(function (paso) {
+    if (!paso[0]) return;
+    out = _preferirSinPerderProteina(out, function (d) { return !_compartePrincipal(d, paso[0], paso[1]); },
+      protDe, objetivoProt);
+  });
+  return out;
 }
 
 /**
@@ -526,7 +779,7 @@ function allocationScore(estCost, targetSpend, maxCost) {
  */
 function scoreDishForSelection(dish, usedState, ctx) {
   var div = diversityScore(dish, usedState);
-  var impact = estimateScaledPurchaseImpact(dish, ctx.target, ctx.storeId, ctx.committedGrams, ctx.pantryState);
+  var impact = estimateScaledPurchaseImpact(dish, ctx.target, ctx.storeId, ctx.committedGrams, ctx.pantryState, ctx.factorTope);
   var purchasePpe = (dish.protein * impact.scaleFactor) / Math.max(impact.marginalCost, 0.01);
   var purchasePpeBucket = Math.round(purchasePpe / 2) * 2;
   var usagePpeBucket = Math.round(proteinPerEuro(dish, ctx.storeId) / 2) * 2; // informativo/desempate, ver arriba
@@ -829,11 +1082,20 @@ function pickDish(category, data, usedState, tier, maxCost, target, storeId, tar
     ? targetSpend
     : maxCost;
 
+  // Proteína de un plato a la escala que se serviría, para que la variedad
+  // no deje la toma corta (_conVariedad). Un cálculo por plato y llamada.
+  var _impactos = {};
+  function protDe(d) {
+    var imp = _impactos[d.name];
+    if (!imp) imp = _impactos[d.name] = estimateScaledPurchaseImpact(d, target, storeId, committedGrams, pantryState, data && data.factorTope);
+    return (d.protein || 0) * ((imp && imp.scaleFactor) || 1);
+  }
+
   // Fase 1: candidatos que ya cumplen tiempo/sabor del tier Y caben en
   // maxCost por coste de compra MARGINAL (ver cabecera del archivo) — NO
   // usageCost.
   var affordable = pool.filter(function (dish) {
-    return estimateScaledPurchaseImpact(dish, target, storeId, committedGrams, pantryState).marginalCost <= maxCost + 0.005;
+    return estimateScaledPurchaseImpact(dish, target, storeId, committedGrams, pantryState, data && data.factorTope).marginalCost <= maxCost + 0.005;
   });
 
   // Se lee UNA vez por selección, no por plato: getCuisinePreference()
@@ -842,23 +1104,22 @@ function pickDish(category, data, usedState, tier, maxCost, target, storeId, tar
   var cuisinePref = (typeof getCuisinePreference === "function") ? getCuisinePreference() : "mixta";
   var eatingPriority = (typeof getEatingPriority === "function") ? getEatingPriority() : "balanced";
 
-  // Días anteriores del MISMO plan (data.avoidDishNames, lo rellena
-  // generateDietPlanDays). Es un filtro sobre lo que YA cabe en el
+  // Variedad (_conVariedad): lo principal distinto del de las otras tomas de
+  // hoy, ningún plato de los días anteriores del MISMO plan
+  // (data.avoidDishNames, lo rellena generateDietPlanDays) y lo principal
+  // distinto del de esta toma ayer. Es un filtro sobre lo que YA cabe en el
   // presupuesto, no sobre el pool entero: la variedad no puede costar dinero
-  // ni empujar una toma por encima de su tope. Si TODO lo asequible salió ya
-  // otro día se repite -- antes repetir que romper el presupuesto o dejar la
-  // toma vacía. Ver la cabecera de generateDietPlanDays().
-  var avoid = (data && data.avoidDishNames && data.avoidDishNames.length) ? data.avoidDishNames : null;
-  if (avoid && affordable.length) {
-    var notYetSeen = affordable.filter(function (d) { return avoid.indexOf(d.name) === -1; });
-    if (notYetSeen.length) affordable = notYetSeen;
-  }
+  // ni empujar una toma por encima de su tope. Si TODO lo asequible se repite,
+  // se repite -- antes repetir que romper el presupuesto o dejar la toma
+  // vacía. Ver la cabecera de generateDietPlanDays().
+  affordable = _conVariedad(affordable, data, usedState, protDe, target && target.protein);
 
   if (affordable.length > 0) {
     var minPoolCost = Math.min.apply(null, affordable.map(function (d) {
-      return estimateScaledPurchaseImpact(d, target, storeId, committedGrams, pantryState).marginalCost;
+      return estimateScaledPurchaseImpact(d, target, storeId, committedGrams, pantryState, data && data.factorTope).marginalCost;
     }));
     var scoreCtx = {
+      factorTope: data && data.factorTope,
       target: target,
       maxCost: maxCost,
       targetSpend: spendTarget,
@@ -889,7 +1150,7 @@ function pickDish(category, data, usedState, tier, maxCost, target, storeId, tar
 
   var priced = wholeCategory
     .map(function (d) {
-      var impact = estimateScaledPurchaseImpact(d, target, storeId, committedGrams, pantryState);
+      var impact = estimateScaledPurchaseImpact(d, target, storeId, committedGrams, pantryState, data && data.factorTope);
       return { dish: d, purchaseImpact: impact.marginalCost, est: impact };
     })
     .sort(function (a, b) { return a.purchaseImpact - b.purchaseImpact; }); // coste de compra marginal — base para fases 3–4
@@ -898,6 +1159,7 @@ function pickDish(category, data, usedState, tier, maxCost, target, storeId, tar
   if (fitting.length > 0) {
     var minFitCost = fitting[0].purchaseImpact;
     var fallbackCtx = {
+      factorTope: data && data.factorTope,
       target: target,
       maxCost: maxCost,
       targetSpend: spendTarget,
@@ -911,11 +1173,8 @@ function pickDish(category, data, usedState, tier, maxCost, target, storeId, tar
       cuisinePref: cuisinePref,
       eatingPriority: eatingPriority
     };
-    var fittingDishes = fitting.map(function (p) { return p.dish; }); // ya viene ordenado por coste de compra marginal asc.
-    if (avoid) {
-      var fittingNotSeen = fittingDishes.filter(function (d) { return avoid.indexOf(d.name) === -1; });
-      if (fittingNotSeen.length) fittingDishes = fittingNotSeen;
-    }
+    // Ya viene ordenado por coste de compra marginal asc.; filtrar no lo desordena.
+    var fittingDishes = _conVariedad(fitting.map(function (p) { return p.dish; }), data, usedState, protDe, target && target.protein);
     var chosenDish = fallbackCtx.tight
       ? pickWeightedFromTop(fittingDishes)
       : pickWeightedByScore(rankDishesByBudgetMode(fittingDishes, usedState, fallbackCtx));
@@ -1056,6 +1315,13 @@ function buildMealFromDish(dish, mealKey, mealLabel, target, storeId, forcedScal
   var scaleFactor = (typeof forcedScaleFactor === "number")
     ? forcedScaleFactor
     : Math.min(MAX_PORTION_SCALE, Math.max(0.70, rawScale));
+  // Ningún ingrediente por encima de lo que se come en una toma (topePorToma):
+  // el plato entero se queda en esa escala, con sus proporciones. Las kcal del
+  // día salen de las de la toma y su parte (MEAL_DEFS, plan-generator.js).
+  var parte = 0;
+  if (typeof MEAL_DEFS !== "undefined") MEAL_DEFS.forEach(function (d) { if (d.key === mealKey) parte = d.ratio; });
+  var factorTope = (parte > 0) ? factorDeTopes(target.kcal / parte) : 1;
+  scaleFactor = escalaConTopes(dish, scaleFactor, factorTope);
 
   var meal = {
     key:      mealKey,

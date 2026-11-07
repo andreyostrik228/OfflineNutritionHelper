@@ -908,6 +908,136 @@ function run(t) {
     assert.deepStrictEqual(mal.slice(0, 5), [], mal.length + " con problemas");
   });
 
+  // ── Variedad dentro del día y entre días (2026-11-06) ───────────────────
+  // Queja del dueño: «каждый день я ем по сути одно и то же утром днём и
+  // вечером, на следующий день также». Medido con este mismo caso (2.600
+  // kcal, 18 €, 20 planes de 3 días) antes del cambio: un producto en 3 tomas
+  // o más en 51 de 60 días, los dos snacks idénticos en 10, la misma
+  // plantilla que ayer en la misma toma 40 veces de 200, la misma proteína
+  // en comida y cena en 18 días. Después: 5, 0, 0 y 3. Con el presupuesto del
+  // plan entero (2026-11-06), 1, 0, 0 y 3, y ningún plan por encima de 3 x 18 €
+  // (el día 1 compra ahora 15-27 €).
+  t.test("variedad: un producto no sale en cada toma, ni los snacks se repiten, ni la toma de ayer", function () {
+    var s = fullSandbox();
+    var seed = require("./lib/seed-random").seedRandomInContext;
+    var dias = 0, tres = 0, snacksIguales = 0, comoAyer = 0, pares = 0, mismaProteina = 0, sobre = 0;
+    function ids(sl) { return sl.items.map(function (it) { return it.id; }).sort().join("+"); }
+    function principal(sl) { return sl.items.slice().sort(function (a, b) { return b.protein - a.protein; })[0].id; }
+    for (var q = 1; q <= 20; q++) {
+      seed(s, 100 + q);
+      var plan = s.generateNoCookPlanDays("mercadona", { calories: 2600, protein: 150, budget: 18, priority: "balanced" }, 3);
+      var compra = plan.reduce(function (a, d) { return a + d.shoppingCost; }, 0);
+      if (compra > 3 * 18 + 0.01) sobre++;
+      plan.forEach(function (d, i) {
+        dias++;
+        var veces = {};
+        d.slots.forEach(function (sl) {
+          var aqui = {};
+          sl.items.forEach(function (it) { if (!aqui[it.id]) { aqui[it.id] = true; veces[it.id] = (veces[it.id] || 0) + 1; } });
+        });
+        if (Object.keys(veces).some(function (id) { return veces[id] >= 3; })) tres++;
+        var by = {};
+        d.slots.forEach(function (sl) { by[sl.key] = sl; });
+        if (by.snack && by.snack2 && ids(by.snack) === ids(by.snack2)) snacksIguales++;
+        if (by.lunch && by.dinner && by.lunch.items.length && by.dinner.items.length && principal(by.lunch) === principal(by.dinner)) mismaProteina++;
+        if (i === 0) return;
+        var ayer = {};
+        plan[i - 1].slots.forEach(function (sl) { ayer[sl.key] = sl.templateKey; });
+        d.slots.forEach(function (sl) {
+          if (!ayer[sl.key] || !sl.templateKey) return;
+          pares++;
+          if (ayer[sl.key] === sl.templateKey) comoAyer++;
+        });
+      });
+    }
+    assert.ok(tres / dias <= 0.2, "un producto en 3+ tomas en " + tres + " de " + dias + " días (antes, 51 de 60)");
+    assert.strictEqual(snacksIguales, 0, "días con los dos snacks iguales");
+    assert.ok(comoAyer / pares <= 0.03, "la misma plantilla que ayer en " + comoAyer + " de " + pares + " (antes, 40 de 200)");
+    assert.ok(mismaProteina / dias <= 0.15, "comida y cena con la misma proteína en " + mismaProteina + " de " + dias + " días (antes, 18 de 60)");
+    assert.ok(sobre <= 1, "planes por encima de 3 x 18 €: " + sobre + " de 20");
+  });
+
+  // ── Un presupuesto para todo el plan (2026-11-06) ───────────────────────
+  // El dueño: «главное чтобы в день выходило столько сколько сказали, а то что
+  // первый день может быть 20€ а третий 5€ вообще пофиг».
+  t.test("presupuesto del plan: el día 1 puede comprar más, el plan no pasa de N x presupuesto y las tomas siguen al de cada día", function () {
+    var s = fullSandbox();
+    var seed = require("./lib/seed-random").seedRandomInContext;
+    var sobre = 0, dia1MasCaro = 0;
+    for (var q = 1; q <= 10; q++) {
+      seed(s, 300 + q);
+      var plan = s.generateNoCookPlanDays("mercadona", { calories: 2600, protein: 140, budget: 12, priority: "balanced" }, 3);
+      var compra = plan.reduce(function (a, d) { return a + d.shoppingCost; }, 0);
+      var exceso = Math.max(0, compra - 36);
+      if (exceso > 0.005) sobre++;
+      if (plan[0].shoppingCost > 12.01) dia1MasCaro++;
+      plan.forEach(function (d) {
+        assert.strictEqual(d.budget, 12, "cada día guarda el presupuesto por día");
+        assert.ok(Math.abs(d.budgetOverrun - (exceso > 0.005 ? Math.round(exceso * 100) / 100 : 0)) < 0.011,
+          "budgetOverrun es lo que se pasa el plan entero, igual en cada día");
+      });
+    }
+    // Medido: 0 de 10 por encima, y el día 1 por encima de 12 € en los 10
+    // (17-24 €; los días 3, 1,60-8,95 €).
+    assert.ok(sobre <= 1, "planes por encima de 36 €: " + sobre);
+    assert.ok(dia1MasCaro >= 5, "el día 1 compra más que su presupuesto en " + dia1MasCaro + " de 10");
+
+    // Con menos de NO_COOK_MIN_BUDGET_FOR_SNACKS por día, 3 tomas TODOS los
+    // días, aunque el techo del día 1 sea mucho más alto.
+    seed(s, 7);
+    s.generateNoCookPlanDays("mercadona", { calories: 2200, protein: 110, budget: 6, priority: "cheap" }, 3).forEach(function (d, i) {
+      assert.strictEqual(d.slots.length, 3, "día " + (i + 1) + ": " + d.slots.length + " tomas");
+    });
+  });
+
+  t.test("noCookCompraDelPlan, noCookTechoDelDia y noCookTechoParaCambiar: las cuentas del presupuesto del plan", function () {
+    var s = motorSandbox();
+    function dia(ticket, presupuesto) { return { shoppingCost: ticket, budget: presupuesto, slots: [] }; }
+    assert.strictEqual(s.noCookCompraDelPlan([dia(20, 12)]), null, "un día suelto no es un plan");
+    assert.strictEqual(s.noCookCompraDelPlan([dia(20, null), dia(5, null)]), null, "sin presupuesto, tampoco");
+    igual(s.noCookCompraDelPlan([dia(20.4, 12), dia(9.1, 12), dia(4.2, 12)]), { dias: 3, compra: 33.7, presupuesto: 36 });
+    // Día 1 de 3 a 12 €: 36 menos lo apartado para los dos que faltan.
+    assert.strictEqual(s.noCookTechoDelDia(12, 3, 0, [], 0.5), 24);
+    // Día 3: lo que no compraron los días 1 y 2.
+    assert.strictEqual(s.noCookTechoDelDia(12, 3, 2, [{ ticket: 20 }, { ticket: 9 }], 0.5), 7);
+    // «Cambiar» en el día 2: lo que dejan los otros dos tal como están.
+    assert.strictEqual(s.noCookTechoParaCambiar([dia(20, 12), dia(9, 12), dia(4, 12)], 1), 12);
+    assert.strictEqual(s.noCookTechoParaCambiar([dia(20, 12)], 0), undefined, "con un día manda su presupuesto");
+    assert.strictEqual(s._techoDelDia(12, undefined), 12);
+    assert.strictEqual(s._techoDelDia(12, -3), 0.01, "sin nada que gastar, no «sin presupuesto»");
+    assert.strictEqual(s._techoDelDia(Infinity, 20), Infinity);
+  });
+
+  t.test("_notaDelPlan(): resta lo que falta de proteína y de kcal, lo que sale en 3+ tomas y la misma proteína en comida y cena", function () {
+    var s = motorSandbox();
+    function fila(id, prot) { return { id: id, protein: prot, kcal: 100 }; }
+    function dia(kcal, prot, tomas) {
+      return { total: { kcal: kcal, protein: prot }, slots: tomas.map(function (t) { return { key: t[0], items: t[1] }; }) };
+    }
+    var opts = { calories: 2000, protein: 100 };
+    var bien = dia(2000, 100, [["breakfast", [fila("a", 5)]], ["lunch", [fila("b", 30)]], ["dinner", [fila("c", 30)]]]);
+    assert.strictEqual(s._notaDelPlan([bien], opts), 0, "todo en su sitio");
+    var corto = dia(2000, 80, [["breakfast", [fila("a", 5)]], ["lunch", [fila("b", 30)]], ["dinner", [fila("c", 30)]]]);
+    assert.ok(Math.abs(s._notaDelPlan([corto], opts) + s.NO_COOK_NOTA.proteina * 0.2) < 1e-9, "un 20% corto de proteína");
+    var repe = dia(2000, 100, [["breakfast", [fila("a", 5)]], ["lunch", [fila("a", 5), fila("b", 30)]], ["dinner", [fila("a", 5), fila("b", 30)]]]);
+    assert.ok(Math.abs(s._notaDelPlan([repe], opts) + s.NO_COOK_NOTA.tresTomas + s.NO_COOK_NOTA.mismaProteina) < 1e-9,
+      "«a» en tres tomas y «b», la proteína de la comida y de la cena");
+    assert.ok(s._notaDelPlan([bien, corto], opts) > s._notaDelPlan([corto, corto], opts), "se compara por día, de media");
+  });
+
+  t.test("_repetirLoPagado(): lo menos repetido primero, el pan dos veces, y sin tope solo si se pide", function () {
+    var s = fullSandbox();
+    function r(id, rol) { return { entry: { product: { id: id }, serving: { role: rol } } }; }
+    var day = { vecesHoy: { a: 1, b: 2, c: 3 } };
+    var lista = [r("c"), r("b"), r("a")];
+    assert.strictEqual(s._repetirLoPagado(lista, "protein", day, false).entry.product.id, "a", "la que sale menos");
+    assert.strictEqual(s._repetirLoPagado([r("b"), r("c")], "protein", day, false), null, "dos veces ya es el tope sin pedir más");
+    assert.strictEqual(s._repetirLoPagado([r("b"), r("c")], "protein", day, true).entry.product.id, "b", "sin tope, la que menos");
+    assert.strictEqual(s._repetirLoPagado([r("b")], "carrier", day, false).entry.product.id, "b", "el pan cabe una vez más");
+    assert.strictEqual(s._vecesAlDia("carrier"), 2);
+    assert.strictEqual(s._vecesAlDia("fruta"), 1);
+  });
+
   t.test("una ración que no es la lata entera se dice en gramos, no «2 latas» (2026-11-04)", function () {
     var s = loadBrowserGlobals([
       projPath("js/core/utils.js"), projPath("js/core/i18n.js"), projPath("js/i18n/es.js"), projPath("js/ui/render.js"),

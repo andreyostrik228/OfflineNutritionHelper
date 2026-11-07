@@ -838,7 +838,15 @@ function renderFoodRow(item, storeId) {
         // clave con la que se busca el envase, el precio y el producto real
         // (las tres lineas de arriba): traducirlo antes las rompe todas y
         // no falla nada, simplemente deja de encontrar.
-        '<div class="food-name">' + escapeHtml(nombreComidaDoble(item.name)) + '</div>' +
+        '<div class="food-name">' + escapeHtml(nombreComidaDoble(item.name)) +
+          // Lo que se ha puesto al lado del plato para completar la toma
+          // (anadirGuarniciones, plan-generator.js, 2026-11-06): se dice, para
+          // que no parezca un ingrediente de la receta.
+          (item.guarnicion
+            ? ' <span class="food-macro__badge food-row__extra">' +
+              escapeHtml(t(item.guarnicion === "postre" ? "ui.toma_de_postre" : "ui.toma_acompanamiento")) + '</span>'
+            : '') +
+        '</div>' +
         '<div class="food-meta">' +
           formatQuantityPhrase(item.grams, info, item.name, storeId, item.papel) +
           (hasRealMacros
