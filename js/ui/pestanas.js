@@ -261,13 +261,8 @@ function _crearSelectorDeMenu() {
     b.setAttribute("data-vista", v.vista);
     b.innerHTML = '<svg width="16" height="16" aria-hidden="true"><use href="#' + v.icono + '"/></svg>' +
       '<span data-i18n="' + v.clave + '">' + escapeHtml(_tx(v.clave)) + "</span>";
-    b.addEventListener("click", function () {
-      compraElegir(v.vista);
-      // En el portátil se ve todo a la vez: se lleva la vista al plan elegido.
-      if (window.innerWidth > 900 && v.vista === "sincocinar" && !sin.hidden) {
-        sin.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
-    });
+    // El plan elegido sale justo debajo, también en el portátil (abajo).
+    b.addEventListener("click", function () { compraElegir(v.vista); });
     caja.appendChild(b);
   });
 
@@ -300,6 +295,12 @@ function _crearSelectorDeMenu() {
   var antes = (resumen && resumen.parentNode === resultados) ? resumen.nextSibling : resultados.firstChild;
   resultados.insertBefore(caja, antes);
   resultados.insertBefore(vacio, caja.nextSibling);
+  // El plan sin cocinar, en la misma columna y debajo de los botones
+  // (2026-11-07). Iba al final de la página: en el móvil la pestaña «Menú» lo
+  // dejaba debajo de los botones, pero en el portátil quedaba debajo de las dos
+  // compras y de «Mis planes», y al elegir «Без готовки» la columna del menú se
+  // quedaba vacía. El dueño: «я нажал на sin cocinar и теперь нифига не работает».
+  resultados.insertBefore(sin, vacio.nextSibling);
   if (typeof MutationObserver === "function") {
     new MutationObserver(_pintarSelectorDeMenu).observe(sin, { attributes: true, attributeFilter: ["hidden"] });
   }

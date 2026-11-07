@@ -18,6 +18,28 @@ llevan al final un bloque «actualización 2026-10-08»). El diario fechado, con
 medidas y causas, está en la cabecera de `STATE.md` (entradas del 2026-10-07 y
 2026-10-08).
 
+### 0.0 tricies semel En el portátil, el plan sin cocinar debajo de los botones del menú, 2026-11-07 (lee esto antes que 0.0 tricies)
+
+- **Estado:** sello `20261107e`, **1390 tests en verde**. El dueño, en su Chrome de
+  escritorio: «я нажал на sin cocinar и теперь нифига не работает».
+- **La causa:** desde el 2026-10-26 los botones «Обычный план» / «Без готовки» esconden
+  el plan que no se ve (`is-solo-selector`, `is-fuera-de-vista`) en cualquier ancho, pero
+  `#noCookPanel` vivía al final de `#mainContent`. En el móvil la pestaña «Menú» lo dejaba
+  justo debajo de los botones; en el portátil quedaba debajo de las dos compras y de «Mis
+  planes» (5.629 px más abajo, medido a 1536 x 800) y la columna del menú se quedaba vacía.
+- **Qué cambia:** `_crearSelectorDeMenu` (js/ui/pestanas.js) mete `#noCookPanel` en
+  `.panel--results`, debajo de los botones y del aviso; la regla de `is-solo-selector`
+  ya no lo esconde (`:not(.nocook-panel)`). Fuera el desplazamiento suave al pulsar
+  «Без готовки» en el portátil: el plan ya sale debajo. `.menu-selector` lleva
+  `scroll-margin-top: 72px`: al hacer el plan sin cocinar la página sube hasta los botones
+  y antes se quedaban debajo de la barra fija de «Тренировки», también en el móvil.
+- **Comprobado** en Chrome sin interfaz, en local, a 1536 x 800 y a 390 x 844: el plan sin
+  cocinar sale 14 px debajo de los botones, en la columna del menú; al hacer después el
+  normal se elige el normal; los dos botones cambian de plan; 0 errores de JavaScript.
+- **Visto de paso:** en el Chrome del dueño, con la pantalla en ruso, el aviso del
+  «Журнал веса» salía en inglés («You have not saved any weight yet…»); en local, en ruso.
+  Sin mirar todavía.
+
 ### 0.0 tricies «Sin cocinar»: «Cambiar» sin sacar el plan del presupuesto, 2026-11-07 (lee esto antes que 0.0 novovicies)
 
 - **Estado:** sello `20261107d`, **1390 tests en verde** (3 nuevos). El dueño: «Да,
@@ -47,6 +69,12 @@ medidas y causas, está en la cabecera de `STATE.md` (entradas del 2026-10-07 y
 - **Lo que queda:** cada «Cambiar» deja el plan más barato y con menos comida, antes y
   ahora: con todas las tomas cambiadas una tras otra y 16 €, la compra baja de 0,93 a
   0,78 del presupuesto y la proteína de 0,83 a 0,70 del objetivo (ROADMAP).
+- **Desplegado y empujado:** commit `5852310`, Cloudflare `9fb52e6f`, 236 de 236 ficheros.
+  En producción, 15 «Заменить» seguidos con 16 € sin pasarse; con 12 € (plan a 0,57 € del
+  presupuesto) uno lo dejó en 36,24 € de 36, con su aviso; 0 errores. En el plan con
+  platos, «Заменить» la comida del día 1 llevó el plan de 47,39 a 52,33 € de 48 (con su
+  aviso). Parece el mismo fallo, sin estudiar todavía: `techoDelDiaEnPantalla` da por
+  fijos los otros días y nunca baja de un presupuesto por día.
 
 ### 0.0 novovicies Plan con platos: el día 1 con más dinero, sin repetir platos, 2026-11-07 (lee esto antes que 0.0 octovicies)
 
