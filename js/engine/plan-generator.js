@@ -396,21 +396,15 @@ var SEQUENCING_BLEND_RATIO = 0.5;
 var PLAN_DAYS_BUDGET_3 = 1.03;
 var PLAN_DAYS_BUDGET_7 = 1.15;
 
-// Lo que el día 1 de un plan de 7 días puede comprar de más, en presupuestos
-// por día: hasta 1,6 veces el suyo (ver «Un presupuesto para todo el plan» en
-// generateDietPlanDays). Con 3 días o menos, nada de más; entre 4 y 6, en
-// proporción (_diaUnoDeMas). Lo demás de la compra del plan se aparta, a
-// partes iguales, para los días que faltan (_reservaPorDia).
+// Lo que el día 1 de un plan de varios días puede comprar de más, en
+// presupuestos por día: hasta 1,6 veces el suyo (ver «Un presupuesto para
+// todo el plan» en generateDietPlanDays). Lo demás de la compra del plan se
+// aparta, a partes iguales, para los días que faltan.
 var PLAN_DIA_1_DE_MAS = 0.6;
 
 /** Lo que el día 1 de un plan de `n` días puede comprar de más, en presupuestos por día. */
 function _diaUnoDeMas(n) {
-  return n <= 3 ? 0 : PLAN_DIA_1_DE_MAS * Math.min(1, (n - 3) / 4);
-}
-
-/** Lo que se aparta para cada día que falta, en presupuestos por día, en un plan de `n` días. */
-function _reservaPorDia(n) {
-  return n > 1 ? 1 - _diaUnoDeMas(n) / (n - 1) : 1;
+  return n > 1 ? PLAN_DIA_1_DE_MAS : 0;
 }
 
 /**
@@ -720,29 +714,34 @@ function generateDietPlan(profile, data) {
  * la compra del plan entero, N x presupuesto, con la cuenta de la lista de la
  * compra (compraDeLosDias). Cada día puede comprar lo que queda de ella menos
  * lo apartado para los que faltan (techoDelDiaDelPlan, `data.techoDelDia`, que
- * sanitizeInputs pone como techo del día): con 3 días o menos, su presupuesto
- * más lo que no gastaron los de antes; con 7, el día 1 hasta 1,6 presupuestos
- * (_diaUnoDeMas), porque compra envases para toda la semana. Cuántas tomas
- * tiene el día sigue saliendo del techo de siempre (budgetForPlanDays).
+ * sanitizeInputs pone como techo del día). El día 1 puede comprar hasta 1,6
+ * presupuestos (_diaUnoDeMas): compra envases para los días siguientes, y con
+ * ese dinero la proteína mejora mucho. Pero así los días 2 y 3 se quedan con
+ * menos y, con 8-10 €, a veces repiten un plato del día 1. Entonces se hace el
+ * plan otra vez sin nada de más (cada día su presupuesto y lo que no gastaron
+ * los de antes) y se queda el mejor (_esMejorPlanDeDias: que quepa, que no
+ * repita, que no se quede corto). Cuántas tomas tiene el día sigue saliendo
+ * del techo de siempre (budgetForPlanDays).
  *
  * Antes cada día tenía su techo, x1,03 con 3 días y x1,15 con 7, y la compra
- * del plan se pasaba de N x presupuesto. Medido (3 perfiles; 8, 10, 15 y 25 €;
- * planes de 3 días, 72): planes que se pasan 20 -> 2; ingrediente en 3+ tomas
- * 36 -> 24 días de 216; platos repetidos entre días 7 -> 6 planes de 96;
- * proteína igual (68 días por debajo del 90%); kcal por debajo del 90% 50 ->
- * 58, casi todo con 8 €, que antes se pasaba en 14 de 18 planes. Con 5 días
- * (8-15 €, 27): se pasan 13 -> 0, kcal bajas 42 -> 37, proteína baja 37 -> 35,
- * planes con un plato repetido entre días 0 -> 5. Con 7 días (10 y 15 €, 18):
- * se pasan 6 -> 0, kcal bajas 15 -> 15, proteína baja 3 -> 8, un plato
- * repetido 0 -> 4.
+ * del plan se pasaba de N x presupuesto. Medido (3 perfiles; 8, 10, 15 y 25 €),
+ * antes -> ahora. 3 días (72 planes, 216 días): se pasan 20 -> 2; platos
+ * repetidos entre días 7 -> 2 planes de 96; días por debajo del 90% de la
+ * proteína 68 -> 48, de las kcal 50 -> 50; ingrediente en 3+ tomas 36 -> 27.
+ * 2 días (48): se pasan 13 -> 1, proteína baja 34 -> 30. 5 días (8-15 €, 27):
+ * se pasan 13 -> 2, proteína baja 37 -> 28, kcal bajas 42 -> 40, un plato
+ * repetido 0 -> 3. 7 días (10 y 15 €, 18): se pasan 6 -> 0, kcal bajas 15 ->
+ * 15, proteína baja 3 -> 11, un plato repetido 0 -> 1. Generar tarda más: el
+ * segundo intento sale en 2 de cada 3 planes con 8-10 €, en 1 de cada 3 con
+ * 12 € y en ninguno con 15 € o más (con 8 €, de 0,39 a 0,59 s en Node).
  *
- * Se probó y se tiró: dar al día 1 de 3 días 1,6 presupuestos. La proteína
- * mejoraba mucho (68 -> 37 días por debajo del 90%), pero los días 2 y 3 se
- * quedaban con poco y repetían platos del día 1: 7 -> 25 planes de 96, con 8
- * y 10 €. Con 0,15 de más, 17. Reservas fijas más pequeñas para los días que
- * faltan: los últimos se quedaban sin dinero (días «minimal» 34 -> 53 con 3
- * días). Y sumar lo que compra cada día en vez de la lista: con 7 días cuenta
- * otra vez lo que se pone malo abierto y dejaba a los últimos días sin nada.
+ * Se probó y se tiró: el día 1 con 1,6 presupuestos y nada más (la proteína,
+ * 68 -> 37, pero los platos repetidos entre días, 7 -> 25 planes de 96; con
+ * 0,15 de más, 17); sin nada de más (repetidos 6, pero la proteína igual que
+ * antes y, con 7 días, kcal bajas 15 -> 29); reservas fijas más pequeñas (los
+ * últimos días sin dinero, días «minimal» 34 -> 53); y sumar lo que compra
+ * cada día en vez de la lista (con 7 días cuenta otra vez lo que se pone malo
+ * abierto).
  *
  * @param {object} profile
  * @param {object} data           - mismo objeto que generateDietPlan(), con
@@ -754,8 +753,6 @@ function generateDietPlan(profile, data) {
  * @returns {object[]} los días, en orden
  */
 function generateDietPlanDays(profile, data, planDays, alTerminarDia) {
-  var days = [];
-  var vistos = [];
   var tenia = data.avoidDishNames;
   var teniaDespensa = data.despensaDelPlan;
   var teniaAyer = data.principalesDeAyer;
@@ -766,28 +763,25 @@ function generateDietPlanDays(profile, data, planDays, alTerminarDia) {
   // La despensa real se lee UNA vez: todos los días parten de la misma, y
   // cada uno recibe la que habrá al empezarlo (despensaDelPlan, más abajo).
   // Si el usuario la apagó («sin despensa», 2026-10-30), vacía.
-  var despensaReal = _despensaDelMenu();
-  var store = (typeof data.store === "string" && typeof PRICE_CATALOGS !== "undefined" && PRICE_CATALOGS[data.store])
-    ? data.store : DEFAULT_STORE_ID;
+  var plan = {
+    profile: profile, data: data, planDays: planDays, alTerminarDia: alTerminarDia, porDia: porDia,
+    despensaInicial: teniaDespensa, ayerInicial: teniaAyer,
+    despensaReal: _despensaDelMenu(),
+    store: (typeof data.store === "string" && typeof PRICE_CATALOGS !== "undefined" && PRICE_CATALOGS[data.store])
+      ? data.store : DEFAULT_STORE_ID
+  };
   try {
-    for (var d = 0; d < planDays; d++) {
-      data.dayIndex = d;
-      data.avoidDishNames = vistos.slice();
-      if (d > 0) {
-        data.despensaDelPlan = despensaDelPlan(days, store, despensaReal, { raciones: data.racionesCompra }).siguiente;
-        data.principalesDeAyer = _principalesPorToma(days[d - 1]);
-      }
-      if (conTecho) {
-        var gastado = d > 0 ? compraDeLosDias(days, store, despensaReal) : 0;
-        data.techoDelDia = techoDelDiaDelPlan(porDia, planDays, d, gastado, _reservaPorDia(planDays));
-      }
-      var day = generateDietPlan(profile, data);
-      if (typeof alTerminarDia === "function") alTerminarDia(day, d);
-      (day.meals || []).forEach(function (m) {
-        if (m && m.dishName) vistos.push(m.dishName);
-      });
-      days.push(day);
+    if (!conTecho) return _diasDelPlan(plan, null);
+    // Primero con el día 1 que puede comprar de más. Si los días de después
+    // repiten sus platos, también sin nada de más, y el mejor de los dos
+    // (_esMejorPlanDeDias).
+    var deMas = _diaUnoDeMas(planDays);
+    var days = _diasDelPlan(plan, 1 - deMas / (planDays - 1));
+    if (deMas > 0 && _platosRepetidosEntreDias(days) > 0) {
+      var sinMas = _diasDelPlan(plan, 1);
+      if (_esMejorPlanDeDias(sinMas, days, plan)) days = sinMas;
     }
+    return days;
   } finally {
     // La lista de platos vistos NO tiene que quedarse en `data`: app.js
     // guarda ese objeto entero en los ajustes del usuario y lo reusa para
@@ -797,7 +791,95 @@ function generateDietPlanDays(profile, data, planDays, alTerminarDia) {
     if (teniaAyer === undefined) delete data.principalesDeAyer; else data.principalesDeAyer = teniaAyer;
     if (teniaTecho === undefined) delete data.techoDelDia; else data.techoDelDia = teniaTecho;
   }
+}
+
+/**
+ * Los días de generateDietPlanDays, uno detrás de otro, con `reserva` (en
+ * presupuestos por día) apartada para cada día que falta; null, sin techo del
+ * plan (un día suelto o sin presupuesto). Deja en `plan.data` lo del último
+ * día: generateDietPlanDays lo devuelve a como estaba.
+ * @param {object} plan - {profile, data, planDays, alTerminarDia, porDia, despensaReal, store}
+ * @param {number|null} reserva
+ * @returns {object[]}
+ */
+function _diasDelPlan(plan, reserva) {
+  var data = plan.data;
+  var days = [];
+  var vistos = [];
+  for (var d = 0; d < plan.planDays; d++) {
+    data.dayIndex = d;
+    data.avoidDishNames = vistos.slice();
+    if (d > 0) {
+      data.despensaDelPlan = despensaDelPlan(days, plan.store, plan.despensaReal, { raciones: data.racionesCompra }).siguiente;
+      data.principalesDeAyer = _principalesPorToma(days[d - 1]);
+    } else {
+      // El día 1, con lo que traía quien llama (el segundo intento de
+      // generateDietPlanDays encuentra aquí lo del último día del primero).
+      if (plan.despensaInicial === undefined) delete data.despensaDelPlan; else data.despensaDelPlan = plan.despensaInicial;
+      if (plan.ayerInicial === undefined) delete data.principalesDeAyer; else data.principalesDeAyer = plan.ayerInicial;
+    }
+    if (reserva !== null) {
+      var gastado = d > 0 ? compraDeLosDias(days, plan.store, plan.despensaReal) : 0;
+      data.techoDelDia = techoDelDiaDelPlan(plan.porDia, plan.planDays, d, gastado, reserva);
+    }
+    var day = generateDietPlan(plan.profile, data);
+    if (typeof plan.alTerminarDia === "function") plan.alTerminarDia(day, d);
+    (day.meals || []).forEach(function (m) {
+      if (m && m.dishName) vistos.push(m.dishName);
+    });
+    days.push(day);
+  }
   return days;
+}
+
+/**
+ * Cuántas veces sale un plato que ya salió otro día del plan (el primer día
+ * en que sale no cuenta).
+ * @param {{meals:object[]}[]} dias
+ * @returns {number}
+ */
+function _platosRepetidosEntreDias(dias) {
+  var diaDe = {};
+  var repetidos = 0;
+  (dias || []).forEach(function (dia, d) {
+    var hoy = {};
+    ((dia && dia.meals) || []).forEach(function (m) {
+      if (!m || !m.dishName || hoy[m.dishName]) return;
+      hoy[m.dishName] = true;
+      if (diaDe[m.dishName] === undefined) diaDe[m.dishName] = d;
+      else repetidos++;
+    });
+  });
+  return repetidos;
+}
+
+/**
+ * ¿Es `a` mejor plan de varios días que `b`? Primero el que cabe en N x
+ * presupuesto; luego el que repite menos platos de un día en otro; y si no,
+ * el que se queda menos corto de proteína y de kcal, sumado día a día.
+ * @param {object[]} a
+ * @param {object[]} b
+ * @param {object} plan - el de _diasDelPlan
+ * @returns {boolean}
+ */
+function _esMejorPlanDeDias(a, b, plan) {
+  var tope = plan.porDia * plan.planDays + 0.01;
+  var cabeA = compraDeLosDias(a, plan.store, plan.despensaReal) <= tope;
+  var cabeB = compraDeLosDias(b, plan.store, plan.despensaReal) <= tope;
+  if (cabeA !== cabeB) return cabeA;
+  var repA = _platosRepetidosEntreDias(a), repB = _platosRepetidosEntreDias(b);
+  if (repA !== repB) return repA < repB;
+  return _faltaDelPlan(a, plan.profile) < _faltaDelPlan(b, plan.profile);
+}
+
+/** Lo que les falta a los días de proteína y de kcal, en fracciones de su objetivo, sumado. */
+function _faltaDelPlan(dias, profile) {
+  var p = (profile && profile.protein > 0) ? profile.protein : 0;
+  var k = (profile && profile.calories > 0) ? profile.calories : 0;
+  return (dias || []).reduce(function (suma, dia) {
+    var t = (dia && dia.total) || {};
+    return suma + (p ? Math.max(0, 1 - (t.protein || 0) / p) : 0) + (k ? Math.max(0, 1 - (t.kcal || 0) / k) : 0);
+  }, 0);
 }
 
 /**

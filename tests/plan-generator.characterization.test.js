@@ -498,6 +498,62 @@ function run(t) {
     s.generateDietPlanDays(built.profile, data2, 3);
     assert.deepStrictEqual(JSON.parse(JSON.stringify(data2.avoidDishNames)), ["x"], "tiene que devolver lo que había");
     assert.ok(!("principalesDeAyer" in data), "lo principal de ayer (2026-11-06) tampoco se queda en data");
+    assert.ok(!("techoDelDia" in data) && !("despensaDelPlan" in data), "ni el techo del día (2026-11-07) ni la despensa del plan");
+  });
+
+  // ── Un presupuesto para todo el plan (2026-11-07) ───────────────────────
+  // El dueño: «главное чтобы в день выходило столько сколько сказали, а то что
+  // первый день может быть 20€ а третий 5€ вообще пофиг». Ver la cabecera de
+  // generateDietPlanDays.
+  t.test("presupuesto del plan: la compra de 3 días no pasa de 3 x presupuesto, el día 1 puede gastar más y las tomas son las de siempre", function () {
+    var s = freshEngineSandbox();
+    var built = buildProfileAndData(s, PROFILES[1]);   // recomposición, presupuesto medio (16 €)
+    var B = built.data.budget;
+    var sobre = 0, dia1MasCaro = 0, repetidos = 0;
+    for (var seed = 1; seed <= 6; seed++) {
+      seedRandomInContext(s, 500 + seed);
+      var data = Object.assign({}, built.data, { planDays: 3 });
+      var dias = s.generateDietPlanDays(built.profile, data, 3);
+      if (s.compraDeLosDias(dias, "mercadona", null) > 3 * B + 0.01) sobre++;
+      if (dias[0].total.purchaseCost > B + 0.01) dia1MasCaro++;
+      repetidos += s._platosRepetidosEntreDias(dias);
+      var tomas = expectedKeysFor(s.budgetForPlanDays(B, 3), built.profile).length;
+      dias.forEach(function (d, i) { assert.strictEqual(d.meals.length, tomas, "semilla " + seed + ", día " + (i + 1)); });
+    }
+    // Medido: ninguno por encima de 48 €, el día 1 compra 19,5-25 € en los 6 y
+    // ningún plato repetido entre días.
+    assert.strictEqual(sobre, 0, "planes por encima de 3 x " + B + " €");
+    assert.ok(dia1MasCaro >= 4, "el día 1 compra más que su presupuesto en " + dia1MasCaro + " de 6");
+    assert.ok(repetidos <= 1, "platos repetidos entre días: " + repetidos);
+  });
+
+  t.test("presupuesto del plan: el techo de cada día, sanitizeInputs y cómo se elige entre los dos intentos", function () {
+    var s = freshEngineSandbox();
+    // Día 2 de 3 a 10 €: 30, menos lo comprado (14), menos lo apartado para el día 3.
+    assert.strictEqual(s.techoDelDiaDelPlan(10, 3, 1, 14, 0.7), 9);
+    assert.strictEqual(s._diaUnoDeMas(1), 0, "un día suelto no tiene nada de más");
+    var deMas = s._diaUnoDeMas(3);
+    assert.ok(Math.abs(s.techoDelDiaDelPlan(10, 3, 0, 0, 1 - deMas / 2) - 10 * (1 + deMas)) < 1e-9, "el día 1, con lo de más");
+
+    var perfil = { calories: 2400, protein: 150, carbs: 250, fats: 70 };
+    var conTecho = s.sanitizeInputs(perfil, { budget: 10, planDays: 3, techoDelDia: 16 }).data;
+    assert.strictEqual(conTecho.budget, 16, "el techo del día manda");
+    assert.strictEqual(conTecho.budgetPorDia, 10);
+    assert.strictEqual(conTecho.presupuestoTomas, s.budgetForPlanDays(10, 3), "las tomas, con el techo de siempre");
+    assert.strictEqual(s.sanitizeInputs(perfil, { budget: 10, planDays: 1, techoDelDia: 16 }).data.budget, 10, "un día suelto no tiene techo del plan");
+    assert.strictEqual(s.sanitizeInputs(perfil, { budget: 10, planDays: 3, techoDelDia: -4 }).data.budget, 0.01, "sin nada que gastar, no «15 por defecto»");
+
+    function dia(platos, kcal, prot) {
+      return { meals: platos.map(function (n) { return { dishName: n, items: [] }; }), total: { kcal: kcal, protein: prot } };
+    }
+    var repe = [dia(["A", "B"], 2000, 150), dia(["C", "A"], 2000, 150), dia(["A", "D", "D"], 2000, 150)];
+    assert.strictEqual(s._platosRepetidosEntreDias(repe), 2, "«A» el día 2 y el 3; «D» dos veces el mismo día no cuenta");
+    var plan = { porDia: 10, planDays: 3, store: "mercadona", despensaReal: null, profile: { calories: 2000, protein: 150 } };
+    var sinRepe = [dia(["A"], 1800, 120), dia(["B"], 1800, 120), dia(["C"], 1800, 120)];
+    assert.strictEqual(s._esMejorPlanDeDias(sinRepe, repe, plan), true, "antes que la proteína, no repetir platos");
+    var mejor = [dia(["A"], 2000, 150), dia(["B"], 2000, 150), dia(["C"], 2000, 150)];
+    assert.strictEqual(s._esMejorPlanDeDias(mejor, sinRepe, plan), true, "sin repetir los dos, el que se queda menos corto");
+    assert.strictEqual(s._esMejorPlanDeDias(sinRepe, mejor, plan), false);
   });
 
   // ── Lo principal, distinto en el día y de la misma toma de ayer (2026-11-06) ──

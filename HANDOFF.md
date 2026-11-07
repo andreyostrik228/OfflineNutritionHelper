@@ -18,6 +18,34 @@ llevan al final un bloque «actualización 2026-10-08»). El diario fechado, con
 medidas y causas, está en la cabecera de `STATE.md` (entradas del 2026-10-07 y
 2026-10-08).
 
+### 0.0 novovicies Plan con platos: el día 1 con más dinero, sin repetir platos, 2026-11-07 (lee esto antes que 0.0 octovicies)
+
+- **Estado:** sello `20261107c`, **1387 tests en verde** (3 nuevos). El dueño: «Да,
+  доделывай» (tests y probar a dar más dinero al día 1 sin repetir platos).
+- **Qué cambia:** generateDietPlanDays hace primero el plan con el día 1 hasta 1,6
+  presupuestos (`_diaUnoDeMas`, `PLAN_DIA_1_DE_MAS` = 0,6, con cualquier N). Si sus días
+  repiten un plato de otro día (`_platosRepetidosEntreDias`), lo hace otra vez sin nada
+  de más (`_diasDelPlan(plan, 1)`) y se queda el mejor (`_esMejorPlanDeDias`: el que cabe
+  en N x presupuesto, luego el que repite menos, luego el que se queda menos corto de
+  proteína y kcal, `_faltaDelPlan`). El bucle de los días vive en `_diasDelPlan`; el día 1
+  del segundo intento vuelve a lo que traía quien llama (`despensaInicial`, `ayerInicial`).
+- **Medido** (3 perfiles; 8, 10, 15 y 25 €), antes del presupuesto del plan → ahora:
+  3 días (72 planes): se pasan 20 → 2; platos repetidos entre días 7 → 2 planes de 96;
+  días bajo el 90% de la proteína 68 → 48, de las kcal 50 → 50. 2 días (48): se pasan
+  13 → 1, proteína baja 34 → 30. 5 días (27): se pasan 13 → 2, proteína baja 37 → 28, un
+  plato repetido 0 → 3. 7 días (18): se pasan 6 → 0, proteína baja 3 → 11, un plato
+  repetido 0 → 1. Frente a lo desplegado con `20261107b`, en 3 días: proteína baja 68 →
+  48, repetidos 6 → 2, kcal bajas 58 → 50.
+- **Tiempo:** el segundo intento sale en 2 de cada 3 planes con 8-10 €, en 1 de cada 3
+  con 12 € y en ninguno con 15 € o más. En Chrome, 3 días con 8 €: 41 ms (192 ms con la
+  CPU 4 veces más lenta); con 16 €, 13 y 85 ms. (En Node, dentro de `vm`, todo es unas
+  diez veces más lento: no sirve para medir tiempos.)
+- **Tests nuevos:** el plan de 3 días con 16 € no pasa de 48 €, el día 1 compra más y las
+  tomas son las de siempre; las cuentas (techoDelDiaDelPlan, sanitizeInputs,
+  _platosRepetidosEntreDias, _esMejorPlanDeDias); la nota y el aviso de «Заметки к плану».
+- **Lo que queda:** con 5 días se pasan 2 de 27 (con lo desplegado, 0); «Cambiar» en
+  «Mis planes» sigue con el presupuesto del día guardado.
+
 ### 0.0 octovicies Plan con platos: un presupuesto para todo el plan, 2026-11-07 (lee esto antes que 0.0 septvicies)
 
 - **Estado:** sello `20261107b`, **1384 tests en verde**, ninguno nuevo para esto (quedan
@@ -53,9 +81,10 @@ medidas y causas, está en la cabecera de `STATE.md` (entradas del 2026-10-07 y
   días sin dinero (días «minimal» 34 → 53). Sumar lo que compra cada día en vez de la
   lista: con 7 días cuenta otra vez lo que se pone malo abierto.
 - **Lo que queda:** tests de techoDelDiaDelPlan, compraDeLosDias, compraDelPlan, la nota y
-  el aviso; que el día 1 de 3 días pueda gastar más sin repetir platos (ROADMAP); «Cambiar»
-  en «Mis planes» sigue con el presupuesto del día guardado; los avisos del motor son solo
-  del día 1.
+  el aviso; que el día 1 de 3 días pueda gastar más sin repetir platos (hecho después, con
+  sus tests: ver 0.0 novovicies); «Cambiar» en «Mis planes» sigue con el presupuesto del
+  día guardado; los avisos del motor son solo del día 1.
+- **Desplegado y empujado:** commit `db1d75a`, Cloudflare `e9c36f71`, 236 de 236 ficheros.
 
 ### 0.0 septvicies Sin cocinar: un presupuesto para todo el plan, 2026-11-06 (lee esto antes que 0.0 sexvicies)
 

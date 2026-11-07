@@ -541,6 +541,33 @@ function run(t) {
     assert.strictEqual(avisa({ cookTime: 60, cookTimeCadaToma: true, cookTimePorToma: { breakfast: 10, lunch: 10, dinner: 10 } }), true);
   });
 
+  // ── Un presupuesto para todo el plan (2026-11-07) ───────────────────────
+  t.test("plan de varios días: la nota dice la compra del plan entero frente a N x presupuesto, y el aviso sale si se pasa", function () {
+    var s = freshEngineSandbox();
+    [projPath("js/core/i18n.js"), projPath("js/i18n/es.js"), projPath("js/ui/render.js"), projPath("js/ui/render-insights.js")].forEach(function (f) {
+      vm.runInContext(fs.readFileSync(f, "utf8"), s, { filename: f });
+    });
+    var caja = { innerHTML: "", textContent: "", classList: { add: function () {}, remove: function () {} } };
+    var lista = { innerHTML: "" };
+    s.initInsightRefs({ warningBox: caja, insightsList: lista });
+    var profile = { bmr: 1700, tdee: 2500, calories: 2500, protein: 150 };
+    // El día 1 compra 25 € con 16 € por día: en un plan de 3 días no es pasarse.
+    var result = { meals: [], total: { kcal: 2400, protein: 140, cost: 6, purchaseCost: 25 }, report: null };
+    var data = { weight: 78, goal: "recomp", budget: 16, cookTime: 30, planDays: 3 };
+    s.renderInsights(profile, result, data, { dias: 3, compra: 46.5, presupuesto: 48 });
+    assert.ok(lista.innerHTML.indexOf("Presupuesto para 3 días: €48. Compra de todo el plan: €46.5 (margen: €1.5).") !== -1, lista.innerHTML);
+    assert.strictEqual(lista.innerHTML.indexOf("Presupuesto diario"), -1, "no la nota del día 1");
+    s.renderWarnings(profile, result, data, { dias: 3, compra: 50.4, presupuesto: 48 });
+    assert.ok(caja.innerHTML.indexOf("El plan de 3 días cuesta €50.4: €2.4 más que tu presupuesto (€48).") !== -1, caja.innerHTML);
+    caja.innerHTML = "";
+    s.renderWarnings(profile, result, data, { dias: 3, compra: 46.5, presupuesto: 48 });
+    assert.strictEqual(caja.innerHTML.indexOf("El plan de 3 días"), -1, "dentro del presupuesto, sin aviso");
+    // Un día suelto, la nota de siempre.
+    s.renderInsights(profile, { meals: [], total: { kcal: 2400, protein: 140, cost: 6, purchaseCost: 14 } },
+      { weight: 78, goal: "recomp", budget: 16, cookTime: 30 }, null);
+    assert.ok(lista.innerHTML.indexOf("Presupuesto diario: €16. Compra necesaria: €14 (margen: €2).") !== -1, lista.innerHTML);
+  });
+
   t.test("readForm(): la marca siempre; los minutos de cada toma solo con ella (sin ella la clave ni está y no pisa lo guardado)", function () {
     var s = loadBrowserGlobals([projPath("js/core/calculator.js")]);
     function documento(marcada) {
