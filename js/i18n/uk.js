@@ -80,6 +80,8 @@ registerI18nTable("uk", {
   "ui.nota_objetivo_recomp": "Обидва завдання одночасно, але повільніше",
   "ui.nota_objetivo_sin_objetivo": "Без мети щодо ваги",
   "ui.nota_presupuesto": "Денний бюджет: €{presupuesto}. Потрібна покупка: €{compra} (запас: €{margen}). Фактичне споживання інгредієнтів: €{consumo}.",
+  "ui.nota_presupuesto_plan": "Бюджет на {n} дн.: €{presupuesto}. Покупка на весь план: €{compra} (запас: €{margen}). Бюджет рахується на весь план: один день може коштувати більше, інший менше.",
+  "ui.plan_se_pasa_dias": "План на {n} дн. коштує €{compra}: на €{exceso} більше за твій бюджет (€{presupuesto}).",
   "ui.nota_tiempo_preparacion": "Середній час приготування на прийом їжі: {min} хв. Страви — це повні рецепти, а не окремі продукти.",
   "ui.nota_tmb": "Орієнтовний BMR: {bmr} ккал. Орієнтовні загальні витрати за день: {tdee} ккал.",
   "ui.notas_del_plan": "Нотатки до плану",

@@ -370,6 +370,9 @@ document.addEventListener("DOMContentLoaded", function () {
     btn.disabled = true;
     // Con lo que sobra de los días anteriores, como al generar (2026-10-27).
     var pantryState = despensaDelDiaEnPantalla(dayIndex);
+    // Con varios días, lo que el día puede comprar sale de la compra del plan
+    // entero (2026-11-07).
+    var techo = techoDelDiaEnPantalla(dayIndex, pantryState);
     // Se pasa qué día es para que un re-roll respete la misma regla que la
     // generación: nada "de dejar hecho la noche antes" en el día 1 ni en un
     // plan de 1 día (ver isMakeAheadDish / pickDish).
@@ -379,6 +382,7 @@ document.addEventListener("DOMContentLoaded", function () {
         dayIndex: dayIndex,
         soloDespensa: soloDespensa
       });
+      if (techo !== undefined) swapOptions.budget = techo;
       return conDislikesDeLaVista(function () {
         return regeneratePlanMeal(dayMeals, mealKey, swapOptions, lastGeneratedStore, pantryState);
       });
@@ -456,6 +460,8 @@ document.addEventListener("DOMContentLoaded", function () {
       (day.meals || []).forEach(function (meal, idx) {
         if (!lleva(meal)) return;
         var opciones = Object.assign({}, lastGeneratedDayOptions, { planDays: lastGeneratedDays.length, dayIndex: d });
+        var techo = techoDelDiaEnPantalla(d, pantryState);
+        if (techo !== undefined) opciones.budget = techo;
         var res = conDislikesDeLaVista(function () {
           return regeneratePlanMeal(day.meals, meal.key, opciones, lastGeneratedStore, pantryState);
         });
@@ -512,7 +518,11 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!lastGeneratedProfile || !lastGeneratedData || typeof generateDietPlan !== "function") return null;
     try {
       var data = Object.assign({}, lastGeneratedData, { dayIndex: d, planDays: lastGeneratedDays.length });
-      if (d > 0) data.despensaDelPlan = despensaDelDiaEnPantalla(d);
+      var despensaDia = despensaDelDiaEnPantalla(d);
+      if (d > 0) data.despensaDelPlan = despensaDia;
+      // Lo que puede comprar el día, de la compra del plan entero (2026-11-07).
+      var techo = techoDelDiaEnPantalla(d, despensaDia);
+      if (techo !== undefined) data.techoDelDia = techo;
       data.avoidDishNames = [];
       lastGeneratedDays.forEach(function (day, i) {
         if (i === d) return;
@@ -542,6 +552,39 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     return despensaParaElDia(lastGeneratedDays, d, lastGeneratedStore,
       { raciones: lastGeneratedData && lastGeneratedData.racionesCompra });
+  }
+
+  /**
+   * La compra de un plan de varios días frente a su presupuesto, N x el de
+   * cada día (2026-11-07: el presupuesto es del plan entero, ver
+   * generateDietPlanDays). La misma cuenta que la lista de la compra
+   * (compraDeLosDias), con las tomas de la persona en pantalla, que es de
+   * quien es el presupuesto. null con un día o sin presupuesto.
+   * @returns {{dias:number, compra:number, presupuesto:number}|null}
+   */
+  function compraDelPlan(dias, porDia, store) {
+    if (!dias || dias.length < 2 || !(typeof porDia === "number" && porDia > 0)) return null;
+    if (typeof compraDeLosDias !== "function") return null;
+    var real = (typeof despensaParaElMenu === "function") ? despensaParaElMenu()
+      : ((typeof getPantryState === "function") ? getPantryState() : null);
+    return { dias: dias.length, compra: round2(compraDeLosDias(dias, store, real)), presupuesto: round2(porDia * dias.length) };
+  }
+
+  /**
+   * Lo que puede comprar el día `d` del plan en pantalla al cambiar un plato o
+   * rehacerlo: lo que compra ahora más lo que le queda al plan hasta N x
+   * presupuesto, y nunca menos que el presupuesto de un día (lo de antes del
+   * 2026-11-07). undefined con un día: manda el presupuesto del día.
+   * @param {number} d
+   * @param {object|null} pantryState - despensaDelDiaEnPantalla(d)
+   * @returns {number|undefined}
+   */
+  function techoDelDiaEnPantalla(d, pantryState) {
+    var porDia = lastGeneratedDayOptions && lastGeneratedDayOptions.budget;
+    var delPlan = compraDelPlan(lastGeneratedDays, porDia, lastGeneratedStore);
+    if (!delPlan || !lastGeneratedDays[d] || typeof computeDayPurchaseCost !== "function") return undefined;
+    var delDia = computeDayPurchaseCost(lastGeneratedDays[d].meals || [], lastGeneratedStore, pantryState || null).purchaseCost;
+    return Math.max(porDia, round2(delDia + delPlan.presupuesto - delPlan.compra));
   }
 
   /**
@@ -731,8 +774,9 @@ document.addEventListener("DOMContentLoaded", function () {
       if (typeof renderScheduleTimeline === "function") renderScheduleTimeline(lastGeneratedMeals, lastGeneratedDays);
     });
     if (lastGeneratedProfile && lastGeneratedData) {
-      renderInsights(lastGeneratedProfile, result, lastGeneratedData);
-      renderWarnings(lastGeneratedProfile, result, lastGeneratedData);
+      var delPlan = compraDelPlan(dias, lastGeneratedDayOptions && lastGeneratedDayOptions.budget, lastGeneratedStore);
+      renderInsights(lastGeneratedProfile, result, lastGeneratedData, delPlan);
+      renderWarnings(lastGeneratedProfile, result, lastGeneratedData, delPlan);
     }
     safeInit("shopping-list-render", pintarListaDeCompraActual);
   }
@@ -1024,8 +1068,12 @@ document.addEventListener("DOMContentLoaded", function () {
         safeInit("schedule-timeline-render", function () {
           if (typeof renderScheduleTimeline === "function") renderScheduleTimeline(result.meals, days);
         });
-        renderInsights(profile, result, data);
-        renderWarnings(profile, result, data);
+        // Con varios días, la compra del plan entero frente a N x presupuesto
+        // (2026-11-07): el día 1 puede pasar de su presupuesto sin que el plan
+        // se pase.
+        var delPlan = compraDelPlan(days, gen.budget, result.report && result.report.store);
+        renderInsights(profile, result, data, delPlan);
+        renderWarnings(profile, result, data, delPlan);
         if (typeof renderShoppingList === "function") {
           safeInit("shopping-list-render", function () {
             // La compra SÍ es de todos los días juntos: se juntan las tomas

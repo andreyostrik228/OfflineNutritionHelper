@@ -77,6 +77,8 @@ registerI18nTable("es", {
   "ui.nota_objetivo_recomp": "Las dos cosas a la vez, más despacio",
   "ui.nota_objetivo_sin_objetivo": "Sin objetivo de peso",
   "ui.nota_presupuesto": "Presupuesto diario: €{presupuesto}. Compra necesaria: €{compra} (margen: €{margen}). Consumo real de ingredientes: €{consumo}.",
+  "ui.nota_presupuesto_plan": "Presupuesto para {n} días: €{presupuesto}. Compra de todo el plan: €{compra} (margen: €{margen}). El presupuesto es del plan entero: un día puede costar más y otro menos.",
+  "ui.plan_se_pasa_dias": "El plan de {n} días cuesta €{compra}: €{exceso} más que tu presupuesto (€{presupuesto}).",
   "ui.nota_tiempo_preparacion": "Tiempo medio de preparación por bloque: {min} min. Los platos son recetas completas, no alimentos sueltos.",
   "ui.nota_tmb": "TMB estimada: {bmr} kcal. Gasto diario total estimado: {tdee} kcal.",
   "ui.notas_del_plan": "Notas del plan",

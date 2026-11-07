@@ -18,9 +18,48 @@ llevan al final un bloque «actualización 2026-10-08»). El diario fechado, con
 medidas y causas, está en la cabecera de `STATE.md` (entradas del 2026-10-07 y
 2026-10-08).
 
+### 0.0 octovicies Plan con platos: un presupuesto para todo el plan, 2026-11-07 (lee esto antes que 0.0 septvicies)
+
+- **Estado:** sello `20261107b`, **1384 tests en verde**, ninguno nuevo para esto (quedan
+  por escribir: ver «Lo que queda»). El dueño dijo «да» a hacerlo también en el plan con
+  platos, y pidió desplegarlo antes de acabar de afinarlo («мне уже надо сделать план»).
+- **Qué cambia:** generateDietPlanDays pone a cada día `data.techoDelDia`
+  (techoDelDiaDelPlan): N x presupuesto, menos la compra de los días de antes
+  (compraDeLosDias, la cuenta de la lista de la compra), menos lo apartado para los que
+  faltan (_reservaPorDia). sanitizeInputs lo usa como `data.budget` del día; cuántas
+  tomas tiene (3 o 5) sale de `presupuestoTomas`, el techo de siempre (budgetForPlanDays).
+  Con 3 días o menos, cada día su presupuesto más lo que no gastaron los de antes; con
+  7, el día 1 hasta 1,6 presupuestos (`_diaUnoDeMas`, `PLAN_DIA_1_DE_MAS` = 0,6); de 4 a
+  6, en proporción.
+- **Pantalla:** con varios días, «Заметки к плану» dice «Бюджет на 3 дн.: €48. Покупки на
+  весь план: €46.76 (запас: €1.24). Бюджет считается на весь план…»
+  (`ui.nota_presupuesto_plan`, `compraDelPlan` en app.js, la misma cifra que la lista);
+  si el plan pasa de N x presupuesto, un aviso (`ui.plan_se_pasa_dias`). «Cambiar», «No
+  me gusta» y rehacer un día reciben de techo lo que el día compra ahora más lo que le
+  queda al plan, nunca menos que el presupuesto de un día (`techoDelDiaEnPantalla`): un
+  «Cambiar» puede dejar el plan unos céntimos por encima (visto: 48,69 de 48), y sale el
+  aviso.
+- **Medido** (3 perfiles; 8, 10, 15 y 25 €), antes → después: 3 días (72 planes),
+  por encima de N x presupuesto 20 → 2, ingrediente en 3+ tomas 36 → 24 días de 216,
+  platos repetidos entre días 7 → 6 planes de 96, proteína igual (68 días bajo el 90%),
+  kcal bajo el 90% 50 → 58 (casi todo con 8 €, que antes se pasaba en 14 de 18 planes);
+  5 días (27): por encima 13 → 0, kcal bajas 42 → 37, un plato repetido entre días 0 →
+  5; 7 días (18, 10 y 15 €): por encima 6 → 0, kcal bajas 15 → 15, proteína baja 3 → 8,
+  un plato repetido 0 → 4. Comprobado en Chrome sin interfaz: la nota, el aviso,
+  «Заменить» en el día 1 y 0 errores de JavaScript.
+- **Se probó y se tiró:** dar 1,6 presupuestos al día 1 de un plan de 3 días: proteína
+  68 → 37 días bajo el 90%, pero los días 2 y 3 repetían platos del día 1 (7 → 25
+  planes de 96 con 8 y 10 €; con 0,15 de más, 17). Reservas fijas pequeñas: los últimos
+  días sin dinero (días «minimal» 34 → 53). Sumar lo que compra cada día en vez de la
+  lista: con 7 días cuenta otra vez lo que se pone malo abierto.
+- **Lo que queda:** tests de techoDelDiaDelPlan, compraDeLosDias, compraDelPlan, la nota y
+  el aviso; que el día 1 de 3 días pueda gastar más sin repetir platos (ROADMAP); «Cambiar»
+  en «Mis planes» sigue con el presupuesto del día guardado; los avisos del motor son solo
+  del día 1.
+
 ### 0.0 septvicies Sin cocinar: un presupuesto para todo el plan, 2026-11-06 (lee esto antes que 0.0 sexvicies)
 
-- **Estado:** sello `20261107a`, **1384 tests en verde** (4 nuevos). El dueño, a la
+- **Estado:** sello `20261107a` (después, `20261107b`: ver 0.0 octovicies), **1384 tests en verde** (4 nuevos). Desplegado y empujado: commit `73229ae`, Cloudflare `4d451f0f`, 236 de 236 ficheros iguales. El dueño, a la
   pregunta de si el día 1 podía gastar más a cuenta de los siguientes: «Да главное
   чтобы в день выходило столько сколько сказали, а то что первый день может быть 20€
   а третий 5€ вообще пофиг». Solo «sin cocinar»: el plan con platos sigue con su techo

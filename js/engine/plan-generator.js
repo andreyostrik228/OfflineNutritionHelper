@@ -396,6 +396,23 @@ var SEQUENCING_BLEND_RATIO = 0.5;
 var PLAN_DAYS_BUDGET_3 = 1.03;
 var PLAN_DAYS_BUDGET_7 = 1.15;
 
+// Lo que el día 1 de un plan de 7 días puede comprar de más, en presupuestos
+// por día: hasta 1,6 veces el suyo (ver «Un presupuesto para todo el plan» en
+// generateDietPlanDays). Con 3 días o menos, nada de más; entre 4 y 6, en
+// proporción (_diaUnoDeMas). Lo demás de la compra del plan se aparta, a
+// partes iguales, para los días que faltan (_reservaPorDia).
+var PLAN_DIA_1_DE_MAS = 0.6;
+
+/** Lo que el día 1 de un plan de `n` días puede comprar de más, en presupuestos por día. */
+function _diaUnoDeMas(n) {
+  return n <= 3 ? 0 : PLAN_DIA_1_DE_MAS * Math.min(1, (n - 3) / 4);
+}
+
+/** Lo que se aparta para cada día que falta, en presupuestos por día, en un plan de `n` días. */
+function _reservaPorDia(n) {
+  return n > 1 ? 1 - _diaUnoDeMas(n) / (n - 1) : 1;
+}
+
 /**
  * Presupuesto que se le permite a UN dia dentro de un plan de N dias.
  * @param {number} budget - el que eligio el usuario, por dia
@@ -563,10 +580,20 @@ function sanitizeInputs(profile, data) {
   // (ver PLAN_DAYS_BUDGET_3 / _7). `budgetPorDia` conserva lo que el usuario
   // eligio de verdad, porque es lo unico que se le puede decir sin mentirle.
   var safeBudget = budgetForPlanDays(elegidoPorDia, safePlanDays);
+  // Cuántas tomas tiene el día sale de ese techo de siempre, también con el
+  // presupuesto del plan entero: igual todos los días del plan.
+  var presupuestoTomas = safeBudget;
+  // Con el presupuesto del plan entero (2026-11-07, ver «Un presupuesto para
+  // todo el plan» en generateDietPlanDays), el techo de este día lo pone quien
+  // llama: lo que deja la compra del plan.
+  if (safePlanDays > 1 && isFiniteNum(data && data.techoDelDia)) {
+    safeBudget = round2(Math.max(0.01, data.techoDelDia));
+  }
 
   var safeOverrides = {
     budget:   safeBudget,
     budgetPorDia: elegidoPorDia,
+    presupuestoTomas: presupuestoTomas,
     planDays: safePlanDays,
     // Objetivo interno CON reserva (ver "Reserva de presupuesto para
     // diversidad" en la cabecera del archivo) — SOLO para targetSpend en
@@ -687,6 +714,36 @@ function generateDietPlan(profile, data) {
  * igual, pero en otra toma: las lentejas de la comida del día 1 pasan a la
  * cena del día 2. Ver _conVariedad en dish-selector.js.
  *
+ * ── Un presupuesto para todo el plan (2026-11-07) ──────────────────────
+ * El dueño: «главное чтобы в день выходило столько сколько сказали, а то что
+ * первый день может быть 20€ а третий 5€ вообще пофиг». Lo que se cumple es
+ * la compra del plan entero, N x presupuesto, con la cuenta de la lista de la
+ * compra (compraDeLosDias). Cada día puede comprar lo que queda de ella menos
+ * lo apartado para los que faltan (techoDelDiaDelPlan, `data.techoDelDia`, que
+ * sanitizeInputs pone como techo del día): con 3 días o menos, su presupuesto
+ * más lo que no gastaron los de antes; con 7, el día 1 hasta 1,6 presupuestos
+ * (_diaUnoDeMas), porque compra envases para toda la semana. Cuántas tomas
+ * tiene el día sigue saliendo del techo de siempre (budgetForPlanDays).
+ *
+ * Antes cada día tenía su techo, x1,03 con 3 días y x1,15 con 7, y la compra
+ * del plan se pasaba de N x presupuesto. Medido (3 perfiles; 8, 10, 15 y 25 €;
+ * planes de 3 días, 72): planes que se pasan 20 -> 2; ingrediente en 3+ tomas
+ * 36 -> 24 días de 216; platos repetidos entre días 7 -> 6 planes de 96;
+ * proteína igual (68 días por debajo del 90%); kcal por debajo del 90% 50 ->
+ * 58, casi todo con 8 €, que antes se pasaba en 14 de 18 planes. Con 5 días
+ * (8-15 €, 27): se pasan 13 -> 0, kcal bajas 42 -> 37, proteína baja 37 -> 35,
+ * planes con un plato repetido entre días 0 -> 5. Con 7 días (10 y 15 €, 18):
+ * se pasan 6 -> 0, kcal bajas 15 -> 15, proteína baja 3 -> 8, un plato
+ * repetido 0 -> 4.
+ *
+ * Se probó y se tiró: dar al día 1 de 3 días 1,6 presupuestos. La proteína
+ * mejoraba mucho (68 -> 37 días por debajo del 90%), pero los días 2 y 3 se
+ * quedaban con poco y repetían platos del día 1: 7 -> 25 planes de 96, con 8
+ * y 10 €. Con 0,15 de más, 17. Reservas fijas más pequeñas para los días que
+ * faltan: los últimos se quedaban sin dinero (días «minimal» 34 -> 53 con 3
+ * días). Y sumar lo que compra cada día en vez de la lista: con 7 días cuenta
+ * otra vez lo que se pone malo abierto y dejaba a los últimos días sin nada.
+ *
  * @param {object} profile
  * @param {object} data           - mismo objeto que generateDietPlan(), con
  *                                  planDays ya puesto por el llamante
@@ -702,6 +759,10 @@ function generateDietPlanDays(profile, data, planDays, alTerminarDia) {
   var tenia = data.avoidDishNames;
   var teniaDespensa = data.despensaDelPlan;
   var teniaAyer = data.principalesDeAyer;
+  var teniaTecho = data.techoDelDia;
+  // El presupuesto es del plan entero (ver «Un presupuesto para todo el plan»).
+  var porDia = (typeof data.budget === "number" && isFinite(data.budget) && data.budget > 0) ? data.budget : null;
+  var conTecho = porDia !== null && planDays > 1;
   // La despensa real se lee UNA vez: todos los días parten de la misma, y
   // cada uno recibe la que habrá al empezarlo (despensaDelPlan, más abajo).
   // Si el usuario la apagó («sin despensa», 2026-10-30), vacía.
@@ -715,6 +776,10 @@ function generateDietPlanDays(profile, data, planDays, alTerminarDia) {
       if (d > 0) {
         data.despensaDelPlan = despensaDelPlan(days, store, despensaReal, { raciones: data.racionesCompra }).siguiente;
         data.principalesDeAyer = _principalesPorToma(days[d - 1]);
+      }
+      if (conTecho) {
+        var gastado = d > 0 ? compraDeLosDias(days, store, despensaReal) : 0;
+        data.techoDelDia = techoDelDiaDelPlan(porDia, planDays, d, gastado, _reservaPorDia(planDays));
       }
       var day = generateDietPlan(profile, data);
       if (typeof alTerminarDia === "function") alTerminarDia(day, d);
@@ -730,8 +795,43 @@ function generateDietPlanDays(profile, data, planDays, alTerminarDia) {
     if (tenia === undefined) delete data.avoidDishNames; else data.avoidDishNames = tenia;
     if (teniaDespensa === undefined) delete data.despensaDelPlan; else data.despensaDelPlan = teniaDespensa;
     if (teniaAyer === undefined) delete data.principalesDeAyer; else data.principalesDeAyer = teniaAyer;
+    if (teniaTecho === undefined) delete data.techoDelDia; else data.techoDelDia = teniaTecho;
   }
   return days;
+}
+
+/**
+ * Lo que puede comprar el día `d` (desde 0) de un plan de `n` días: lo que
+ * queda de la compra del plan (n x presupuesto, menos lo que compran los días
+ * de antes) menos lo que se aparta para los que faltan, `reserva` de un
+ * presupuesto por día cada uno.
+ * @param {number} porDia - el presupuesto por día que eligió el usuario
+ * @param {number} n
+ * @param {number} d
+ * @param {number} gastado - la compra de los días de antes (compraDeLosDias)
+ * @param {number} reserva
+ * @returns {number}
+ */
+function techoDelDiaDelPlan(porDia, n, d, gastado, reserva) {
+  return n * porDia - gastado - reserva * porDia * (n - d - 1);
+}
+
+/**
+ * La compra de esos días juntos, con la misma cuenta que la lista de la
+ * compra (computeDayPurchaseCost sobre todas sus tomas, con la despensa de
+ * hoy): un envase que rinde varios días se paga una vez. Con 7 días es menos
+ * que sumar lo que compra cada día (despensaDelPlan vuelve a comprar lo que
+ * se pone malo abierto), y es lo que se ve en la lista.
+ * @param {{meals:object[]}[]} dias
+ * @param {string} storeId
+ * @param {object|null} pantryState - la despensa real (_despensaDelMenu)
+ * @returns {number}
+ */
+function compraDeLosDias(dias, storeId, pantryState) {
+  var todas = [];
+  (dias || []).forEach(function (dia) { todas = todas.concat((dia && dia.meals) || []); });
+  var despensa = (pantryState && typeof projectPantryState === "function") ? projectPantryState(pantryState) : pantryState;
+  return computeDayPurchaseCost(todas, storeId, despensa || null).purchaseCost;
 }
 
 /**
@@ -1036,7 +1136,7 @@ function attemptPlanAtTier(profile, data, tier, pantryState) {
   // 4 tomas), entonces CADA toma recibe un mealCap >= su propio mínimo
   // absoluto — así el mensaje de inviabilidad y el comportamiento real de
   // la cascada nunca se contradicen entre sí.
-  var mealDefs = mealDefsForBudget(data.budget, profile);
+  var mealDefs = mealDefsForBudget(isFiniteNum(data.presupuestoTomas) ? data.presupuestoTomas : data.budget, profile);
 
   var minCostByCategory = {};
   mealDefs.forEach(function (def) {

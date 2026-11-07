@@ -76,6 +76,8 @@ registerI18nTable("en", {
   "ui.nota_objetivo_recomp": "Both at once, more slowly",
   "ui.nota_objetivo_sin_objetivo": "No weight target",
   "ui.nota_presupuesto": "Daily budget: €{presupuesto}. Shopping needed: €{compra} (margin: €{margen}). Actual ingredient use: €{consumo}.",
+  "ui.nota_presupuesto_plan": "Budget for {n} days: €{presupuesto}. Shopping for the whole plan: €{compra} (margin: €{margen}). The budget covers the whole plan: one day can cost more and another less.",
+  "ui.plan_se_pasa_dias": "The {n}-day plan costs €{compra}: €{exceso} more than your budget (€{presupuesto}).",
   "ui.nota_tiempo_preparacion": "Average prep time per sitting: {min} min. The dishes are complete recipes, not loose ingredients.",
   "ui.nota_tmb": "Estimated BMR: {bmr} kcal. Estimated total daily expenditure: {tdee} kcal.",
   "ui.notas_del_plan": "Plan notes",

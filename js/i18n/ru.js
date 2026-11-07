@@ -78,6 +78,8 @@ registerI18nTable("ru", {
   "ui.nota_objetivo_recomp": "И то и другое, но медленнее",
   "ui.nota_objetivo_sin_objetivo": "Без цели по весу",
   "ui.nota_presupuesto": "Бюджет на день: €{presupuesto}. Нужно купить: €{compra} (запас: €{margen}). Реально израсходовано ингредиентов: €{consumo}.",
+  "ui.nota_presupuesto_plan": "Бюджет на {n} дн.: €{presupuesto}. Покупки на весь план: €{compra} (запас: €{margen}). Бюджет считается на весь план: один день может стоить больше, другой меньше.",
+  "ui.plan_se_pasa_dias": "План на {n} дн. стоит €{compra}: на €{exceso} больше вашего бюджета (€{presupuesto}).",
   "ui.nota_tiempo_preparacion": "Среднее время готовки на приём пищи: {min} мин. Блюда — это полноценные рецепты, а не набор отдельных продуктов.",
   "ui.nota_tmb": "Базовый обмен (оценка): {bmr} ккал. Общий расход за день (оценка): {tdee} ккал.",
   "ui.notas_del_plan": "Заметки к плану",

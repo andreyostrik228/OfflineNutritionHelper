@@ -19,8 +19,8 @@
  *
  * Expone (globales):
  *   initInsightRefs(refs)
- *   renderInsights(profile, result, data)
- *   renderWarnings(profile, result, data)
+ *   renderInsights(profile, result, data, delPlan?)
+ *   renderWarnings(profile, result, data, delPlan?)
  *   showWarning(msg)
  * ─────────────────────────────────────────────────────────────────────────
  */
@@ -56,11 +56,18 @@ function initInsightRefs(refs) {
  * Ver la cabecera de js/engine/plan-generator.js para la distinción
  * completa.
  *
+ * Con varios días el presupuesto es del plan entero (2026-11-07): la nota dice
+ * la compra de todo el plan frente a N x presupuesto, no la del día 1, que
+ * puede pasar de su presupuesto sin que el plan se pase.
+ *
  * @param {object} profile  – { bmr, tdee, calories, protein, fats, carbs }
  * @param {object} result   – { meals[], total }
  * @param {object} data     – { weight, goal, budget, cookTime }
+ * @param {{dias:number, compra:number, presupuesto:number}|null} [delPlan] -
+ *   la compra del plan en pantalla (app.js, compraDelPlanEnPantalla); sin
+ *   ella, la del día
  */
-function renderInsights(profile, result, data) {
+function renderInsights(profile, result, data, delPlan) {
   var total        = result.total;
   var proteinPerKg = round2(total.protein / data.weight);
   var purchaseCost = typeof total.purchaseCost === "number" ? total.purchaseCost : total.cost;
@@ -88,10 +95,15 @@ function renderInsights(profile, result, data) {
     t("ui.nota_fuentes_carbos").replace("{n}", carbSources.length)
       .replace("{lista}", carbSources.map(nombreComidaDoble).join(", ") || "—"),
     capStatus,
-    t("ui.nota_presupuesto").replace("{presupuesto}", round2(data.budget))
-      .replace("{compra}", round2(purchaseCost))
-      .replace("{margen}", Math.max(0, budgetGap))
-      .replace("{consumo}", round2(total.cost)),
+    delPlan
+      ? t("ui.nota_presupuesto_plan").replace("{n}", delPlan.dias)
+        .replace("{presupuesto}", round2(delPlan.presupuesto))
+        .replace("{compra}", round2(delPlan.compra))
+        .replace("{margen}", Math.max(0, round2(delPlan.presupuesto - delPlan.compra)))
+      : t("ui.nota_presupuesto").replace("{presupuesto}", round2(data.budget))
+        .replace("{compra}", round2(purchaseCost))
+        .replace("{margen}", Math.max(0, budgetGap))
+        .replace("{consumo}", round2(total.cost)),
     // "DISH_DB" era el nombre de una variable interna asomando en pantalla.
     // Lo que le importa a quien lee esto es que los platos son recetas de
     // verdad y no combinaciones sueltas de alimentos.
@@ -131,11 +143,16 @@ function renderInsights(profile, result, data) {
  * El consejo de comprar para varios días SÍ se queda: es un consejo, y el
  * motor no da consejos.
  *
+ * Con varios días, si la compra del plan entero pasa de N x presupuesto
+ * (2026-11-07), se dice con las cifras: el informe del motor es solo del día 1.
+ *
  * @param {object} profile  – { calories }
  * @param {object} result   – { meals[], total, report }
  * @param {object} data     – { budget, cookTime, cookTimeCadaToma?, cookTimePorToma? }
+ * @param {{dias:number, compra:number, presupuesto:number}|null} [delPlan] -
+ *   como en renderInsights
  */
-function renderWarnings(profile, result, data) {
+function renderWarnings(profile, result, data, delPlan) {
   var messages = [];
 
   // ── 1. Lo que dice el motor ─────────────────────────────────────────
@@ -153,6 +170,12 @@ function renderWarnings(profile, result, data) {
   (result.report && result.report.violations || []).forEach(function (v) {
     if (v.type === "budget" || v.type === "budget_infeasible") problemaDePresupuesto = true;
   });
+  if (delPlan && delPlan.compra > delPlan.presupuesto + 0.01) {
+    messages.push(t("ui.plan_se_pasa_dias").replace("{n}", delPlan.dias)
+      .replace("{compra}", round2(delPlan.compra))
+      .replace("{exceso}", round2(delPlan.compra - delPlan.presupuesto))
+      .replace("{presupuesto}", round2(delPlan.presupuesto)));
+  }
 
   // ── 2. Consejos de la interfaz ──────────────────────────────────────
   // Si el presupuesto no llega y el plan es de UN día, el consejo más útil
