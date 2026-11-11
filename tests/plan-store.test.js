@@ -77,6 +77,18 @@ function run(t) {
     assert.strictEqual(leido.store, "mercadona");
   });
 
+  t.test("el grupo con el que se confirmó el plan se guarda; sin él, null", function () {
+    // 2026-11-11: para abrir la página en el día del plan que toca hoy.
+    var m = planReal(2);
+    var almacen = almacenFalso();
+    m.s.planGuardar(almacen, Object.assign(estadoDe(m), { grupo: "g-123" }));
+    assert.strictEqual(m.s.planLeer(almacen).grupo, "g-123");
+    m.s.planGuardar(almacen, estadoDe(m));
+    assert.strictEqual(m.s.planLeer(almacen).grupo, null);
+    m.s.planGuardar(almacen, Object.assign(estadoDe(m), { grupo: 42 }));
+    assert.strictEqual(m.s.planLeer(almacen).grupo, null, "un grupo que no es texto no cuenta");
+  });
+
   t.test("sin nada guardado, leer devuelve null", function () {
     var m = planReal(1);
     assert.strictEqual(m.s.planLeer(almacenFalso()), null);

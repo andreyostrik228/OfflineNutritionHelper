@@ -70,6 +70,24 @@ function run(t) {
     assert.strictEqual(madrugada.minutos, 480);
   });
 
+  t.test("con la cena después de medianoche la ventana cruza la noche (2026-11-07)", function () {
+    var s = sandbox();
+    // Se levanta a las 11:30 y se acuesta a las 02:30: 12:00, 15:15, 18:30, 21:45 y 01:00.
+    var v = s.ayunoVentana([720, 915, 1110, 1305, 60].map(function (m) { return { timeMinutes: m }; }));
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(v)), { inicio: 720, fin: 1500 }, "de 12:00 a la 01:00 del día siguiente");
+    assert.strictEqual(1440 - (v.fin - v.inicio), 660, "11 h de ayuno, no 3 h 15 min");
+    // A las 23:31 se está comiendo: la ventana cierra a la 01:00.
+    var e = s.ayunoEstado(v.inicio, v.fin, 23 * 60 + 31);
+    assert.strictEqual(e.tipo, "comida");
+    assert.strictEqual(e.minutos, 89);
+    assert.strictEqual(s.ayunoEstado(v.inicio, v.fin, 30).tipo, "comida", "a las 00:30, todavía dentro");
+    // A las 03:00, ayuno hasta las 12:00.
+    var noche = s.ayunoEstado(v.inicio, v.fin, 180);
+    assert.strictEqual(noche.tipo, "ayuno");
+    assert.strictEqual(noche.minutos, 540);
+    assert.ok(Math.abs(noche.porcentaje - 120 / 660) < 1e-9, "dos horas de las once: " + noche.porcentaje);
+  });
+
   t.test("el progreso del ayuno empieza cerca de 0 y llega a 1 justo antes de la primera toma", function () {
     var s = sandbox();
     var total = 1440 - (1260 - 480);

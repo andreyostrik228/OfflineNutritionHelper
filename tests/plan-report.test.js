@@ -177,6 +177,16 @@ function run(t) {
     }
     // Un informe por nivel de relajación, sin problema de presupuesto.
     for (var tier = 0; tier <= m.MAX_RELAXATION_TIER; tier++) informes.push(de(intento(tier, [])));
+    // La nota de «se permitió pasar del 25%» solo sale si un alimento de
+    // verdad pasa (2026-11-11): un nivel que lo permite, con uno que pasa.
+    var pasa = { tier: m.MAX_RELAXATION_TIER, violations: [], total: tot,
+      meals: [{ key: "lunch", items: [{ name: "Arroz blanco cocido", kcal: 900 }] }] };
+    var conTope = de(pasa);
+    assert.ok(conTope.relaxations.some(function (r) { return r.constraint === "cap25"; }),
+      "con un alimento al 30% la nota sale");
+    assert.ok(!informes[m.MAX_RELAXATION_TIER].relaxations.some(function (r) { return r.constraint === "cap25"; }),
+      "sin nadie por encima del 25%, no sale (contradecía «Ningún alimento supera el 25%»)");
+    informes.push(conTope);
     // Con problema de presupuesto: de un día, de varios, y el «justo» (falta < 0,005 €).
     informes.push(de(intento(0, [{ type: "budget_infeasible" }])));
     informes.push(de(intento(2, [{ type: "budget", exceededBy: 0.9 }]), { planDays: 3, budgetPorDia: 8, budget: 8.24 }));

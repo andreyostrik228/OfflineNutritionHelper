@@ -264,7 +264,7 @@ function _noCookCompraFilaHtml(x, marcado) {
         escapeHtml(t("ui.envase")) + envase + "</div>" +
       _botonQuitarProducto(x) +
     "</div>" +
-    '<div class="shopping-item__price">' + (x.price === null ? "" : "&euro;" + round2(x.cost)) + "</div>" +
+    '<div class="shopping-item__price">' + (x.price === null ? "" : "&euro;" + fmtEuros(x.cost)) + "</div>" +
   "</li>";
 }
 
@@ -326,9 +326,9 @@ function renderNoCookShoppingList(dias) {
     _compra.resumen.innerHTML =
       '<div class="shopping-summary__stat"><span>' + escapeHtml(t("ui.productos_etiqueta")) + "</span><strong>" + _compraItems.length + "</strong></div>" +
       '<div class="shopping-summary__stat"><span>' + escapeHtml(t("ui.coste_de_compra")) +
-        (1 < n ? " (" + n + " " + escapeHtml(t("ui.dias")) + ")" : "") + "</span><strong>" + eur + round2(total) + "</strong></div>" +
-      (1 < n ? '<div class="shopping-summary__stat"><span>' + escapeHtml(t("ui.por_dia_etiqueta")) + "</span><strong>" + eur + round2(total / n) + "</strong></div>" : "") +
-      '<div class="shopping-summary__stat shopping-summary__stat--muted"><span>' + escapeHtml(t("ui.coste_de_uso")) + "</span><strong>" + eur + round2(consumo) + "</strong></div>";
+        (1 < n ? " (" + n + " " + escapeHtml(t("ui.dias")) + ")" : "") + "</span><strong>" + eur + fmtEuros(total) + "</strong></div>" +
+      (1 < n ? '<div class="shopping-summary__stat"><span>' + escapeHtml(t("ui.por_dia_etiqueta")) + "</span><strong>" + eur + fmtEuros(total / n) + "</strong></div>" : "") +
+      '<div class="shopping-summary__stat shopping-summary__stat--muted"><span>' + escapeHtml(t("ui.coste_de_uso")) + "</span><strong>" + eur + fmtEuros(consumo) + "</strong></div>";
   }
   if (_compra.ojo) {
     // Con varios días el texto lleva la cifra: sin `data-i18n`, o el barrido
@@ -715,10 +715,10 @@ function renderNoCookSummary(plan, delPlan) {
   // La cifra que manda es el TICKET: es lo que se paga hoy en caja y es lo
   // que el presupuesto limita. Lo consumido va detrás, como referencia.
   var costLine = tFormat("html.nocook_compra_linea", {
-    compra: round2(plan.shoppingCost || 0),
-    presupuesto: (plan.budget && !delPlan) ? objetivo(round2(plan.budget)) : "",
+    compra: fmtEuros(plan.shoppingCost || 0),
+    presupuesto: (plan.budget && !delPlan) ? objetivo(fmtEurosRedondo(plan.budget)) : "",
     n: plan.productCount,
-    consumo: round2(plan.consumedCost || 0)
+    consumo: fmtEuros(plan.consumedCost || 0)
   });
 
   var stats =
@@ -729,8 +729,8 @@ function renderNoCookSummary(plan, delPlan) {
   if (delPlan) {
     stats += '<div class="nocook-summary__row">' + tFormat("html.nocook_compra_plan", {
       n: delPlan.dias,
-      compra: round2(delPlan.compra),
-      presupuesto: objetivo(round2(delPlan.presupuesto))
+      compra: fmtEuros(delPlan.compra),
+      presupuesto: objetivo(fmtEurosRedondo(delPlan.presupuesto))
     }) + "</div>";
   }
 
@@ -751,7 +751,7 @@ function renderNoCookSummary(plan, delPlan) {
     // Con varios días, `budgetOverrun` es lo que se pasa el plan entero
     // (noCookAplicarCuentas), la misma cifra en cada día.
     warn += '<p class="nocook-summary__warn">' + tFormat(delPlan ? "html.nocook_se_pasa_plan" : "html.nocook_se_pasa", {
-      exceso: round2(plan.budgetOverrun),
+      exceso: fmtEuros(plan.budgetOverrun),
       consejo: escapeHtml(advice),
       n: delPlan ? delPlan.dias : 1
     }) + "</p>";
@@ -893,8 +893,8 @@ function renderNoCookItem(item) {
   var packageLine = item.size != null && item.sizeUnit
     ? escapeHtml(tFormat("ui.nocook_envase", {
         tamano: item.size + t("unit.sep_pegada") + tPackageUnit(item.sizeUnit)
-      })) + (item.price != null ? " &mdash; &euro;" + round2(item.price) : "")
-    : (item.price != null ? "&euro;" + round2(item.price) : "");
+      })) + (item.price != null ? " &mdash; &euro;" + fmtEuros(item.price) : "")
+    : (item.price != null ? "&euro;" + fmtEuros(item.price) : "");
 
   // Los macros son los de LO QUE TE COMES (raciones x gramos), no los de
   // 100 g del catálogo. Hasta 2026-09-01 se pintaban los de 100 g, así que

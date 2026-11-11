@@ -219,6 +219,22 @@ function setShoppingDays(n) {
   return _shoppingDays;
 }
 
+/**
+ * Lo que se come no puede costar más que lo que se compra para comerlo
+ * (2026-11-07): el atún salía «se va en comida €4.21» con la compra a €4.20,
+ * y el plátano €0.36 de uso con el plátano a €0.35. El uso va por el precio de
+ * 100 g y la compra por envases enteros, y los dos precios salen de datos
+ * distintos. Con algo cubierto por la despensa sí puede ser más: se come lo
+ * que ya había. También lo usa la fila de cada ingrediente (render.js).
+ * @param {number} uso
+ * @param {object} compra - línea de computeDayPurchaseCost / resolvePurchaseCost
+ * @returns {number}
+ */
+function usoNoMayorQueLaCompra(uso, compra) {
+  if (!compra || !(compra.purchaseCost > 0) || compra.coveredFromPantry > 0) return uso;
+  return uso > compra.purchaseCost ? compra.purchaseCost : uso;
+}
+
 function aggregateIngredientUsage(meals) {
   var base = aggregateMealItems(meals);
 
@@ -271,6 +287,7 @@ function buildShoppingItems(meals, storeId) {
         hasFixedPackage: false, packagesToBuy: null, packageSizeG: null, packageLabel: null,
         coveredFromPantry: 0, stillNeeded: entry.requiredGrams
       };
+      entry.usageCost = usoNoMayorQueLaCompra(entry.usageCost, entry.purchase);
       return entry;
     })
     .sort(function (a, b) { return b.purchase.purchaseCost - a.purchase.purchaseCost; });
@@ -320,15 +337,15 @@ function renderShoppingList(meals, storeId, days) {
     // ver el ahorro: los paquetes se pagan una vez y se reparten.
     var perDay = n > 1
       ? '<div class="shopping-summary__stat"><span>' + escapeHtml(t("ui.por_dia_etiqueta")) + '</span><strong>' + eur +
-        round2(totalPurchaseCost / n) + '</strong></div>'
+        fmtEuros(totalPurchaseCost / n) + '</strong></div>'
       : "";
     shoppingSummaryEl.innerHTML =
       '<div class="shopping-summary__stat"><span>' + escapeHtml(t("ui.productos_etiqueta")) + '</span><strong>' + items.length + '</strong></div>' +
       '<div class="shopping-summary__stat"><span>' + escapeHtml(t("ui.coste_de_compra")) +
         (n > 1 ? " (" + n + " " + escapeHtml(t("ui.dias")) + ")" : "") +
-        '</span><strong>' + eur + round2(totalPurchaseCost) + '</strong></div>' +
+        '</span><strong>' + eur + fmtEuros(totalPurchaseCost) + '</strong></div>' +
       perDay +
-      '<div class="shopping-summary__stat shopping-summary__stat--muted"><span>' + escapeHtml(t("ui.coste_de_uso")) + '</span><strong>' + eur + round2(totalUsageCost) + '</strong></div>';
+      '<div class="shopping-summary__stat shopping-summary__stat--muted"><span>' + escapeHtml(t("ui.coste_de_uso")) + '</span><strong>' + eur + fmtEuros(totalUsageCost) + '</strong></div>';
   }
 
   if (shoppingEyebrowEl) {
@@ -562,9 +579,9 @@ function renderShoppingRow(entry, storeId, marcado) {
         (typeof renderBotonNoMeGusta === "function" ? renderBotonNoMeGusta(entry.name, nombreComidaDoble(entry.name)) : "") +
       '</div>' +
       '<div class="shopping-item__price">' +
-        '&euro;' + round2(p.purchaseCost) +
+        '&euro;' + fmtEuros(p.purchaseCost) +
         (Math.abs(p.purchaseCost - entry.usageCost) > 0.005
-          ? '<span class="shopping-item__usage-price">' + escapeHtml(t("ui.coste_de_uso")) + ': &euro;' + round2(entry.usageCost) + '</span>'
+          ? '<span class="shopping-item__usage-price">' + escapeHtml(t("ui.coste_de_uso")) + ': &euro;' + fmtEuros(entry.usageCost) + '</span>'
           : '') +
       '</div>' +
     '</li>'

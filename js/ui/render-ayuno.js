@@ -26,31 +26,61 @@ var AYUNO_INTERVALO_MS = 60000;
 var _ayunoTimer = null;
 var _ayunoComidas = null;
 
-/** Ventana de comidas: de la primera toma a la última. Hacen falta al menos dos tomas con hora. */
+/**
+ * Ventana de comidas: de la primera toma del día a la última. Hacen falta al
+ * menos dos tomas con hora.
+ *
+ * El día de quien come no tiene por qué caber entre las 00:00 y las 24:00
+ * (2026-11-07, el dueño se levanta a las 11:30 y cena a la 01:00): con la
+ * primera y la última hora del reloj la ventana salía de 01:00 a 21:45, con
+ * 3 h 15 min de ayuno, cuando come de 12:00 a 01:00 y ayuna 11 h. El ayuno es
+ * el hueco más largo entre dos tomas seguidas, contando el de la noche; la
+ * ventana es el resto. `fin` pasa de 1440 si la ventana cruza la medianoche.
+ * @returns {{inicio:number, fin:number}|null} minutos desde las 00:00
+ */
 function ayunoVentana(meals) {
   var minutos = (meals || []).filter(function (m) {
     return m && typeof m.timeMinutes === "number" && isFinite(m.timeMinutes);
-  }).map(function (m) { return m.timeMinutes; });
+  }).map(function (m) {
+    return ((m.timeMinutes % AYUNO_MINUTOS_DIA) + AYUNO_MINUTOS_DIA) % AYUNO_MINUTOS_DIA;
+  });
   if (minutos.length < 2) return null;
-  return { inicio: Math.min.apply(null, minutos), fin: Math.max.apply(null, minutos) };
+  minutos.sort(function (a, b) { return a - b; });
+  var n = minutos.length;
+  // De la última toma del reloj a la primera del día siguiente…
+  var ultima = n - 1;
+  var hueco = minutos[0] + AYUNO_MINUTOS_DIA - minutos[n - 1];
+  // …salvo que haya un hueco más largo dentro del día.
+  for (var i = 0; i < n - 1; i++) {
+    if (minutos[i + 1] - minutos[i] > hueco) {
+      hueco = minutos[i + 1] - minutos[i];
+      ultima = i;
+    }
+  }
+  var inicio = minutos[(ultima + 1) % n];
+  var fin = minutos[ultima];
+  if (fin < inicio) fin += AYUNO_MINUTOS_DIA;
+  return { inicio: inicio, fin: fin };
 }
 
 /**
  * Dónde está el usuario respecto a la ventana. Dentro de la ventana se come
  * y cuenta hasta el cierre; fuera, se ayuna y cuenta hasta la primera toma
- * (que puede ser la del día siguiente).
+ * (que puede ser la del día siguiente). Vale con una ventana que cruza la
+ * medianoche (`fin` mayor que 1440): «ahora» se cuenta desde el inicio.
  */
 function ayunoEstado(inicio, fin, ahora) {
   var duracionVentana = fin - inicio;
   var duracionAyuno = AYUNO_MINUTOS_DIA - duracionVentana;
+  var desdeInicio = (((ahora - inicio) % AYUNO_MINUTOS_DIA) + AYUNO_MINUTOS_DIA) % AYUNO_MINUTOS_DIA;
 
-  if (inicio <= ahora && ahora <= fin) {
-    var porcionComida = 0 < duracionVentana ? (ahora - inicio) / duracionVentana : 1;
-    return { tipo: "comida", minutos: fin - ahora, porcentaje: porcionComida };
+  if (desdeInicio <= duracionVentana) {
+    var porcionComida = 0 < duracionVentana ? desdeInicio / duracionVentana : 1;
+    return { tipo: "comida", minutos: duracionVentana - desdeInicio, porcentaje: porcionComida };
   }
 
-  var faltan = ahora < inicio ? inicio - ahora : AYUNO_MINUTOS_DIA - ahora + inicio;
-  var transcurrido = duracionAyuno - faltan;
+  var faltan = AYUNO_MINUTOS_DIA - desdeInicio;
+  var transcurrido = desdeInicio - duracionVentana;
   var porcionAyuno = 0 < duracionAyuno ? transcurrido / duracionAyuno : 1;
   return { tipo: "ayuno", minutos: faltan, porcentaje: porcionAyuno };
 }
@@ -81,7 +111,7 @@ function ayunoPintar() {
 
   document.getElementById("ayunoEstado").textContent = tFormat(clave, { tiempo: ayunoDuracion(estado.minutos) });
   document.getElementById("ayunoVentana").textContent =
-    tFormat("ayu.ventana", { inicio: formatMinutesToTime(ventana.inicio), fin: formatMinutesToTime(ventana.fin) }) +
+    tFormat("ayu.ventana", { inicio: formatMinutesToTime(ventana.inicio), fin: formatMinutesToTime(ventana.fin % AYUNO_MINUTOS_DIA) }) +
     " · " + tFormat("ayu.ayuno_dia", { tiempo: ayunoDia });
   document.getElementById("ayunoRelleno").style.width = Math.round(Math.min(1, Math.max(0, estado.porcentaje)) * 100) + "%";
   tarjeta.classList.toggle("ayuno--comida", estado.tipo === "comida");

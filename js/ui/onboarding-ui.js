@@ -178,13 +178,18 @@ function _obRenderLegal() {
     "Versión " + LEGAL_VERSION + " · " + LEGAL_UPDATED_AT);
   body.appendChild(intro);
 
+  // En el idioma de la pantalla (2026-11-07): se leían en español con la
+  // pantalla en ruso. El español sigue en legal.js; aquí se pide la traducción
+  // (`legal.<key>_titulo`, `legal.<key>_<n>`) y, si falta, se usa el original.
+  // `{fecha}` y `{version}` solo los lleva el último párrafo.
+  var datos = { fecha: _obFechaLegal(), version: LEGAL_VERSION };
   LEGAL_SECTIONS.forEach(function (section) {
     var h = document.createElement("h3");
-    h.textContent = section.title;
+    h.textContent = section.key ? _obT("legal." + section.key + "_titulo", section.title) : section.title;
     body.appendChild(h);
-    section.paragraphs.forEach(function (text) {
+    section.paragraphs.forEach(function (text, i) {
       var p = document.createElement("p");
-      p.textContent = text;
+      p.textContent = section.key ? _obFormat("legal." + section.key + "_" + (i + 1), datos, text) : text;
       body.appendChild(p);
     });
   });
@@ -447,13 +452,16 @@ function _obRenderStep() {
     // Sin etiqueta propia: el nombre del campo es la pregunta que tiene encima.
     libre.setAttribute("aria-labelledby", "onboardingQuestion");
     libre.value = current || "";
-    if (step.placeholder) libre.placeholder = step.placeholder;
+    // El ejemplo, en el idioma de la pantalla (2026-11-10): salía «cebolla,
+    // queso azul, salmón» con todo lo demás en ruso.
+    if (step.placeholder) libre.placeholder = _obT(step.placeholderKey, step.placeholder);
     libre.addEventListener("keydown", function (ev) {
       if (ev.key === "Enter") { ev.preventDefault(); _obNext(); }
     });
     box.appendChild(libre);
-    // Sin focus() automatico, mismo motivo que en el numerico: en movil el
-    // teclado saldria de golpe y taparia la pregunta.
+    // Sin focus() automatico en el movil, mismo motivo que en el numerico: el
+    // teclado saldria de golpe y taparia la pregunta. En un ordenador, si.
+    if (step.kind === "text") _obEnfocarEnOrdenador(libre, false);
     return;
   }
 
@@ -482,8 +490,28 @@ function _obRenderStep() {
     unit.textContent = _obUnidad(step);
     box.appendChild(unit);
   }
-  // Sin focus() automático: en móvil abriría el teclado de golpe y taparía
-  // la pregunta que se acaba de hacer.
+  // Sin focus() automático en el móvil: abriría el teclado de golpe y taparía
+  // la pregunta que se acaba de hacer. En un ordenador, sí (2026-11-10).
+  _obEnfocarEnOrdenador(input, true);
+}
+
+/**
+ * En un ordenador (ratón y teclado de verdad), el campo de la pregunta recibe
+ * el foco y, si es un número, queda seleccionado: se escribe la respuesta y
+ * Enter, sin tocar el ratón. Sin esto, tras cada «Siguiente» el foco se
+ * quedaba en la página y había que pinchar el campo en cada una de las
+ * preguntas (visto en el Chrome del dueño). En el móvil no se hace: el teclado
+ * saldría de golpe.
+ * @param {HTMLInputElement} campo
+ * @param {boolean} seleccionar
+ */
+function _obEnfocarEnOrdenador(campo, seleccionar) {
+  try {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+    campo.focus({ preventScroll: true });
+    if (seleccionar && typeof campo.select === "function") campo.select();
+  } catch (err) { /* sin foco, como antes */ }
 }
 
 /**
@@ -513,6 +541,10 @@ function _obWriteAnswer(step, value) {
   if (step.id === "lang") {
     if (typeof saveLang === "function") saveLang(value);
     if (typeof applyI18nToDom === "function") applyI18nToDom();
+    // Y lo pintado desde JavaScript, que no lleva `data-i18n` (2026-11-07):
+    // la pista del registro de peso se quedaba en el idioma del navegador.
+    // Aquí no se recarga la página como en Ajustes: el alta empezaría otra vez.
+    if (typeof repintarTextosPintados === "function") repintarTextosPintados();
     return;
   }
   if (step.field === "budgetMode") {

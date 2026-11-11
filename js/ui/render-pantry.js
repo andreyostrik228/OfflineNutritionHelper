@@ -878,7 +878,12 @@ function renderDateStrip(todayKey) {
   var otherDates = (typeof listPlanDates === "function")
     ? listPlanDates().filter(function (d) { return d !== todayKey; })
     : [];
-  var allDates = [todayKey].concat(otherDates);
+  // Hoy, luego los días que vienen (mañana primero) y luego los pasados (el
+  // más reciente primero). Antes todo iba de más reciente a más antiguo, y
+  // un plan de 3 días salía «Hoy, 12 nov, 11 nov» (2026-11-11).
+  var futuras = otherDates.filter(function (d) { return d > todayKey; }).sort();
+  var pasadas = otherDates.filter(function (d) { return d < todayKey; }).sort().reverse();
+  var allDates = [todayKey].concat(futuras, pasadas);
 
   dateStripEl.innerHTML = allDates.map(function (dateKey, index) {
     var isToday = dateKey === todayKey;
@@ -977,6 +982,18 @@ function renderDeletePlanBtn(entry) {
     ' aria-label="' + escapeHtml(t("ui.planes_borrar_este_plan")) + '">' + escapeHtml(t("ui.planes_borrar")) + '</button>';
 }
 
+/**
+ * El nombre de la tienda de un plan guardado ("Mercadona"), no su id
+ * ("mercadona", que es lo que se guarda). Un id que no se conozca se deja
+ * como viene (2026-11-11).
+ * @param {string} storeId
+ * @returns {string}
+ */
+function nombreDeTiendaGuardada(storeId) {
+  var cat = (typeof PRICE_CATALOGS !== "undefined") ? PRICE_CATALOGS[storeId] : null;
+  return (cat && cat.storeName) || String(storeId);
+}
+
 function renderActiveEntryCard(entry) {
   if (entry.type === "nocook") return renderNoCookActiveCard(entry);
 
@@ -1001,7 +1018,7 @@ function renderActiveEntryCard(entry) {
     '<div class="pantry-active-card" data-id="' + escapeHtml(entry.id) + '">' +
       '<div class="pantry-active-card__head">' +
         '<span class="pantry-active-card__date">' + dateLabel + '</span>' +
-        '<span class="pantry-active-card__summary">' + escapeHtml(tFormat("ui.planes_n_ingredientes", { n: aggregated.length })) + diasNote + (entry.store ? ' &mdash; ' + escapeHtml(entry.store) : '') + pantryNote + '</span>' +
+        '<span class="pantry-active-card__summary">' + escapeHtml(tFormat("ui.planes_n_ingredientes", { n: aggregated.length })) + diasNote + (entry.store ? ' &mdash; ' + escapeHtml(nombreDeTiendaGuardada(entry.store)) : '') + pantryNote + '</span>' +
         renderDeletePlanBtn(entry) +
       '</div>' +
       renderPurchaseSection(entry, aggregated) +
@@ -1015,7 +1032,7 @@ function renderPurchaseSection(entry, aggregated) {
 
   if (entry.purchase.done) {
     var lastRun = entry.purchase.runs[entry.purchase.runs.length - 1];
-    var costNote = lastRun ? ' (&euro;' + round2(lastRun.totals.purchaseCost) + ')' : '';
+    var costNote = lastRun ? ' (&euro;' + fmtEuros(lastRun.totals.purchaseCost) + ')' : '';
     return (
       '<div class="pantry-active-card__purchase pantry-active-card__purchase--done">' +
         '<span class="pantry-active-card__purchase-status">&#10003; ' + escapeHtml(t("ui.planes_ya_compraste_esto")) + costNote + '</span>' +
@@ -1288,11 +1305,15 @@ var _cambioCompraAlAceptar = null;
  * @param {string} toma - el nombre de la toma, ya traducido
  * @param {function} alAceptar
  */
-function preguntarCambioConCompra(toma, alAceptar) {
+function preguntarCambioConCompra(toma, alAceptar, soloSobras) {
   var dialogo = document.getElementById("cambioCompraDialog");
   if (!dialogo || typeof dialogo.showModal !== "function") { alAceptar(); return; }
   var texto = document.getElementById("cambioCompraTexto");
-  if (texto) texto.textContent = tFormat("ui.cambio_sin_despensa_cuerpo", { toma: toma });
+  // Sin nada en la despensa, lo que se ha mirado es lo que sobra de la compra
+  // de los días de antes del plan (2026-11-07), y eso es lo que se dice.
+  if (texto) texto.textContent = tFormat(soloSobras ? "ui.cambio_sin_sobras_cuerpo" : "ui.cambio_sin_despensa_cuerpo", { toma: toma });
+  var titulo = document.getElementById("cambioCompraTitulo");
+  if (titulo) titulo.textContent = t(soloSobras ? "ui.cambio_sin_sobras_titulo" : "ui.cambio_sin_despensa_titulo");
   _cambioCompraAlAceptar = alAceptar;
   if (!dialogo.getAttribute("data-cableado")) {
     dialogo.setAttribute("data-cableado", "1");

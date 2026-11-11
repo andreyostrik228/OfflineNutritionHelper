@@ -18,6 +18,82 @@ llevan al final un bloque «actualización 2026-10-08»). El diario fechado, con
 medidas y causas, está en la cabecera de `STATE.md` (entradas del 2026-10-07 y
 2026-10-08).
 
+### 0.0 tricies ter Segunda vuelta por Chrome, 2026-11-10/11 (lee esto antes que 0.0 tricies bis)
+
+- **Estado:** sello `20261111f`, **1414 tests en verde**. Sin commit ni despliegue:
+  van juntos con los 14 arreglos de 0.0 tricies bis. La lista completa, con dónde y
+  qué queda, en ROADMAP.md («Segunda vuelta por el Chrome del dueño»).
+- **Lo que hay que saber para tocarlo:**
+  - `markPurchaseDone()` apunta como ajuste a mano lo desmarcado: si no,
+    `reconciliarDespensaConPlanes()` lo devolvía a la despensa al recargar.
+  - Los roles «… cocido/cocida» de arroz, pasta y grano se COMPRAN secos: en
+    `shelf-life.js` son armario y 365 días, y no son perecederos. La patata cocida
+    sigue siendo de nevera.
+  - `dondeGuardar()`: una conserva cerrada con «consumir en N días tras abrir» de
+    la tienda va al armario; la ficha de la tienda habla del bote abierto.
+  - `stockAmountFor()` cuenta enteras las piezas de 10 en adelante.
+  - La nota «se permitió pasar del 25%» solo sale si algún alimento pasa
+    (`findCapViolations` en `buildCompromiseReport`).
+  - En las pruebas en vivo con javascript_tool, todo dentro de una función: un
+    `var t = …` suelto pisa la función global `t()` y rompe la página.
+  - **Plan sin empezar, con el calendario** (pedido del dueño: compra la víspera y
+    empieza al día siguiente). `moverPlanSinEmpezar()` corre al abrir la página y
+    tras sincronizar, ANTES de `reconciliarDespensaConPlanes()`: el último plan de
+    cada tipo, si no tiene ninguna toma cocinada/comida, pasa a empezar hoy (comprar
+    no lo fija). El plan en pantalla guarda su `grupo` al confirmarse
+    (`plan-store.js`), y al restaurarlo `diaDelPlanHoy()` dice qué día toca: el
+    carrusel abre ahí (`irAlDia`) y el resumen y el horario son de ese día
+    (`diaDeHoyEnPlan` en `rerenderCurrentPlan`). Los puntos del carrusel salen del
+    scroll de la pista, no siempre del día 1.
+- **Queda:** el balance de macros del motor con objetivos grandes de volumen y con
+  corte barato. **El dueño pidió que se le recuerde.**
+
+### 0.0 tricies bis Una vuelta por el Chrome del dueño: 14 arreglos, 2026-11-10 (lee esto antes que 0.0 tricies semel)
+
+- **Estado:** sello `20261110a`, **1400 tests en verde** (10 nuevos, tres de ellos en un
+  fichero nuevo, `tests/idioma-repintar.test.js`). El dueño: «Поклацай на все кнопки и
+  найди любые баги или что-то что работает плохо, именно в хроме» y luego «Исправляй
+  всё». Se recorrió todo en su Chrome (1536 x 674, ruso, aspecto «Листва», con su cuenta):
+  menú, los dos planes, compra, catálogo, despensa, ajustes, los dos recorridos y
+  entrenamientos. Sin errores de JavaScript; 14 cosas, todas arregladas (la tabla, en
+  ROADMAP).
+- **Lo que no es evidente:**
+  - **«Ждём расчёта» bajo las cifras:** `sumCaloriesSub` y las otras tres llevan
+    `data-i18n` en el HTML, y applyI18nToDom corre al cargar DESPUÉS de restaurar el
+    plan. renderSummary les quita la marca; clearOutput se la devuelve.
+    `scratchpad/i18n-pisados.cjs` lista los elementos con `data-i18n` a los que también
+    escribe el JavaScript (13; estos cuatro eran los que se veían).
+  - **Idioma:** lo que pinta el JavaScript no lleva `data-i18n`. Desde Ajustes y desde el
+    aviso de traducción del navegador se recarga la página (`_recargarSiCambiaIdioma`),
+    como al cambiar de persona. En el alta no se puede (empezaría otra vez): ahí
+    `repintarTextosPintados` (app.js) repinta planes, pistas, peso, familia y catálogo.
+  - **Ayuno:** la ventana es el día menos el hueco más largo entre dos tomas seguidas
+    (contando el de la noche); `fin` pasa de 1440 si cruza la medianoche.
+  - **Condiciones:** cada sección de LEGAL_SECTIONS lleva `key`; las traducciones son
+    `legal.<key>_titulo` y `legal.<key>_<n>` en en/ru/uk (el español sigue solo en
+    legal.js). `{fecha}` y `{version}` van en el último párrafo.
+  - **Dinero:** `fmtEuros` (dos decimales) para todo lo que se ENSEÑA; `fmtEurosRedondo`
+    para un presupuesto («€48»). round2 sigue siendo para hacer cuentas.
+  - **«Купить:»:** el producto verificado por EAN (REAL_MATCHES_MERCADONA, el de la
+    nutrición) no es el envase que se cobra (PACKAGING_MERCADONA) en 9 de 11 ingredientes
+    (`scratchpad/envases.cjs`). Si el tamaño no cuadra, la línea nombra el producto del
+    enlace (INGREDIENT_PRODUCT_LINKS, el del precio) con el envase cobrado.
+  - **Carrusel:** la pista toma el alto del día que se ve (`ajustarAlto`, con un
+    ResizeObserver en cada día y un MutationObserver en la pista); al cambiar de día el
+    alto se pone al parar, con la subida arriba. Sin ResizeObserver, como antes.
+  - **Pasos:** el campo va solo en su fila (240 px de contador). Cualquier contador con
+    5 cifras o más que no quepa baja la letra (`ajustarLargo`).
+  - **Ejemplos de los campos:** ya van en el idioma de la pantalla; el test comprueba que
+    cada palabra del ejemplo tapa algo en «No me gusta» y que la despensa la acepta.
+- **Comprobado** en Chrome sin interfaz, en local: `scratchpad/verificar-arreglos.mjs`
+  (los 14, a 1536 x 674), `carrusel-alto-vivo.mjs` (portátil y móvil: al pintar, al abrir
+  una toma, al cambiar de día, tras «Заменить», en los dos planes) y `menu-sitio-vivo.mjs`.
+  0 errores de JavaScript.
+- **Lo que queda:** «Cambiar» en el plan con platos puede sacar el plan del presupuesto
+  (ROADMAP); un CR suelto en la línea de `ui.val_presupuesto_no_disponible` de es.js,
+  en.js y ru.js (ya estaba, no rompe nada); en la carpeta de arriba («Offline Nutrition
+  Helper») hay unos 38 ficheros vacíos con nombres de trozos de código, de los hooks.
+
 ### 0.0 tricies semel En el portátil, el plan sin cocinar debajo de los botones del menú, 2026-11-07 (lee esto antes que 0.0 tricies)
 
 - **Estado:** sello `20261107e`, **1390 tests en verde**. El dueño, en su Chrome de
@@ -37,8 +113,11 @@ medidas y causas, está en la cabecera de `STATE.md` (entradas del 2026-10-07 y
   cocinar sale 14 px debajo de los botones, en la columna del menú; al hacer después el
   normal se elige el normal; los dos botones cambian de plan; 0 errores de JavaScript.
 - **Visto de paso:** en el Chrome del dueño, con la pantalla en ruso, el aviso del
-  «Журнал веса» salía en inglés («You have not saved any weight yet…»); en local, en ruso.
-  Sin mirar todavía.
+  «Журнал веса» salía en inglés («You have not saved any weight yet…»); tras recargar, en
+  ruso. Parece pintado antes de cambiar el idioma y no repintado; sin mirar todavía.
+- **Desplegado y empujado:** commit `ccc6ca0`, Cloudflare `5409960f`, 236 de 236 ficheros.
+  En producción, a 1536 x 800 y a 390 x 844, igual que en local; en el Chrome del dueño,
+  tras recargar, el plan sin cocinar 14 px debajo de los botones.
 
 ### 0.0 tricies «Sin cocinar»: «Cambiar» sin sacar el plan del presupuesto, 2026-11-07 (lee esto antes que 0.0 novovicies)
 

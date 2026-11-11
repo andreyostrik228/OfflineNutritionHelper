@@ -56,6 +56,37 @@ function run(t) {
     assert.strictEqual(s.dondeGuardar("p-pan", null, true), "despensa", "el pan abierto no va a la nevera");
   });
 
+  // 2026-11-11, visto en el Chrome del dueño: el bote de lentejas sin abrir
+  // salía en «A la nevera» con «~365 días» al lado, y el kilo de pasta seca,
+  // en la nevera con cuatro días.
+  t.test("la conserva cerrada va al armario aunque la tienda diga «nevera» para el bote abierto", function () {
+    var s = conTiendaDeMentira();
+    s.PRODUCT_STORAGE["lentejas cocidas"] = { daysAfterOpening: 5, storage: "nevera" };
+    assert.strictEqual(s.dondeGuardar("lentejas cocidas", null, false), "despensa", "cerrado: armario");
+    assert.strictEqual(s.dondeGuardar("lentejas cocidas", null, true), "nevera", "abierto: nevera");
+    assert.strictEqual(s.dondeGuardar("lentejas cocidas", "nevera", false), "nevera", "lo que fije la entrada sigue mandando");
+    // Un fresco con «consumir en N días» sigue en la nevera cerrado: su vida
+    // útil ya es de nevera.
+    s.PRODUCT_STORAGE["skyr natural"] = { daysAfterOpening: 3, storage: "nevera" };
+    assert.strictEqual(s.dondeGuardar("skyr natural", null, false), "nevera");
+  });
+
+  t.test("el arroz, la pasta y el grano se compran secos: armario, un año, y no son perecederos", function () {
+    var s = conTiendaDeMentira();
+    ["arroz blanco cocido", "arroz integral cocido", "cuscus cocido", "pasta cocida", "quinoa cocida",
+     "trigo sarraceno cocido"].forEach(function (clave) {
+      assert.strictEqual(s.dondeGuardar(clave, null, false), "despensa", clave);
+      assert.strictEqual(s.getShelfLife(clave).days, 365, clave);
+      assert.strictEqual(s.isPerishable(clave), false, clave);
+      // Comprado hace una semana: ni caducado ni con prisa.
+      var c = s.resolveExpiry({ grams: 2300, acquiredAt: "2026-11-04" }, clave, "2026-11-11");
+      assert.strictEqual(c.tier, "ok", clave + " a la semana de comprarlo");
+    });
+    // La patata cocida al vacío sí es de nevera y de pocos días.
+    assert.strictEqual(s.dondeGuardar("patata cocida", null, false), "nevera");
+    assert.strictEqual(s.isPerishable("patata cocida"), true);
+  });
+
   // El sandbox grande se monta UNA vez y lo usan las dos pruebas de abajo.
   var grande = null;
   function sandboxGrande() {

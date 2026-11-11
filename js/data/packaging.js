@@ -88,7 +88,10 @@ var PACKAGING_MERCADONA = {
   "jamon cocido extra":           { type: "fixedPackage", packageG: 250,  packageLabel: "paquete" },
   "pan integral":                 { type: "fixedPackage", packageG: 350, packageLabel: "barra" },  // Barra 350 g
   "pan blanco":                   { type: "fixedPackage", packageG: 250,  packageLabel: "barra" },
-  "salchichas":                   { type: "fixedPackage", packageG: 400, packageLabel: "pack de 2" },  // 2 paquetes x 200 g | 4,75 EUR/kg
+  // "pack de 2 paquetes" y no "pack de 2" a secas: dentro van 10 salchichas
+  // (2 x 5), y "pack de 2" al lado de "10 salchichas" en la despensa parecía
+  // un error (2026-11-11).
+  "salchichas":                   { type: "fixedPackage", packageG: 400, packageLabel: "pack de 2 paquetes" },  // 2 paquetes x 200 g | 4,75 EUR/kg
   "tortillas de trigo":           { type: "fixedPackage", packageG: 360,  packageLabel: "paquete" },
   "pan de molde integral":        { type: "fixedPackage", packageG: 460,  packageLabel: "paquete" },
   "frutos rojos congelados":      { type: "fixedPackage", packageG: 300, packageLabel: "bolsa" },  // Paquete 300 g | 6,334 EUR/kg

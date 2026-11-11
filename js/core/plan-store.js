@@ -59,7 +59,9 @@ function planGuardar(storage, estado) {
       data: estado.data || null,
       report: estado.report || null,
       // El menú de varias personas (2026-10-26, js/core/familia.js), si lo hay.
-      familia: estado.familia || null
+      familia: estado.familia || null,
+      // El `planGrupo` con el que se confirmó (2026-11-11), si se confirmó.
+      grupo: (typeof estado.grupo === "string" && estado.grupo) ? estado.grupo : null
     }));
     return true;
   } catch (e) {
@@ -88,7 +90,8 @@ function planLeer(storage) {
       profile: p.profile,
       data: p.data,
       report: p.report || null,
-      familia: planFamiliaValida(p.familia) ? p.familia : null
+      familia: planFamiliaValida(p.familia) ? p.familia : null,
+      grupo: (typeof p.grupo === "string" && p.grupo) ? p.grupo : null
     };
   } catch (e) {
     return null;

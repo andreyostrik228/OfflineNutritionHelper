@@ -131,7 +131,8 @@ var suites = [
   "accesibilidad.test",
   "textos-coherencia.test",
   "vacios.test",
-  "pasos-en.test"
+  "pasos-en.test",
+  "idioma-repintar.test"
 ];
 
 (async function () {

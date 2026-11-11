@@ -160,6 +160,53 @@ function saveLang(lang) {
   return limpio;
 }
 
+/** Claves que solo existen si esta aplicación ya se ha usado en este navegador. */
+var LANG_CLAVES_DE_USO = ["nutritionPlanner.onboarding.v1", "nutritionPlanner.settings.v1", "weekplate-plan-v1"];
+
+/**
+ * La primera visita, el idioma del navegador si lo hablamos (2026-11-10).
+ *
+ * `detectLang` existía desde el segundo idioma y no la llamaba nadie: con el
+ * navegador en ruso, la bienvenida, el resumen de las condiciones y la
+ * pregunta del idioma salían en español, con «Español» marcado (visto en el
+ * Chrome del dueño). Aquí se elige y se GUARDA, una sola vez, antes de pintar
+ * nada: en adelante manda lo guardado, como siempre.
+ *
+ * Solo en un navegador sin rastro de la aplicación. Quien ya la usaba sin
+ * haber tocado el idioma (pulsó «Siguiente» con «Español» ya marcado, y eso
+ * no guarda nada) se queda en español, que es lo que veía.
+ *
+ * A diferencia de detectLang, se salta los idiomas declarados en LANGS que
+ * todavía no tienen tabla: a un navegador en alemán e inglés le toca inglés.
+ *
+ * @param {string[]} [preferidas] - por defecto, navigator.languages
+ * @returns {string} el idioma que queda
+ */
+function estrenarIdioma(preferidas) {
+  try {
+    if (typeof localStorage === "undefined" || !localStorage) return getLang();
+    if (localStorage.getItem(LANG_STORAGE_KEY) !== null) return getLang();
+    for (var c = 0; c < LANG_CLAVES_DE_USO.length; c++) {
+      if (localStorage.getItem(LANG_CLAVES_DE_USO[c]) !== null) return getLang();
+    }
+  } catch (e) { return getLang(); }
+
+  var lista = preferidas;
+  if (!lista) {
+    try {
+      lista = (typeof navigator !== "undefined" && navigator)
+        ? ((navigator.languages && navigator.languages.length) ? navigator.languages
+          : (navigator.language ? [navigator.language] : []))
+        : [];
+    } catch (e2) { lista = []; }
+  }
+  for (var i = 0; i < lista.length; i++) {
+    var base = String(lista[i] || "").toLowerCase().split("-")[0];
+    if (isLangAvailable(base)) return saveLang(base);
+  }
+  return getLang();
+}
+
 /**
  * El código de variante regional del idioma elegido ("ru-RU"), para
  * `toLocaleDateString` y compañía.

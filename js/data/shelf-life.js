@@ -122,12 +122,20 @@ var SHELF_LIFE = {
 
   // ── Cocinados y de cuchara (ya preparados, se estropean rápido) ─────
   "patata cocida": { storage: "nevera", days: 4 },
-  "arroz blanco cocido": { storage: "nevera", days: 4 },
-  "arroz integral cocido": { storage: "nevera", days: 4 },
-  "cuscus cocido": { storage: "nevera", days: 4 },
-  "pasta cocida": { storage: "nevera", days: 4 },
-  "quinoa cocida": { storage: "nevera", days: 4 },
-  "trigo sarraceno cocido": { storage: "nevera", days: 4 },
+
+  // ── Arroz, pasta y grano: se COMPRAN SECOS ──────────────────────────
+  // El rol se llama "cocido" porque el plato lo pesa cocido, pero lo que
+  // entra en casa es el paquete seco ("paquete de 1 kg (rinde 2,3 kg
+  // cocido)", packaging.js), y eso va al armario y dura un año. Hasta el
+  // 2026-11-11 llevaban "nevera, 4 días": la despensa mandaba un kilo de
+  // pasta seca a la nevera, le daba cuatro días, y el generador corría a
+  // gastarlo como si se fuera a estropear (visto en el Chrome del dueño).
+  "arroz blanco cocido": { storage: "despensa", days: 365 },
+  "arroz integral cocido": { storage: "despensa", days: 365 },
+  "cuscus cocido": { storage: "despensa", days: 365 },
+  "pasta cocida": { storage: "despensa", days: 365 },
+  "quinoa cocida": { storage: "despensa", days: 365 },
+  "trigo sarraceno cocido": { storage: "despensa", days: 365 },
 
   // ── Pan ─────────────────────────────────────────────────────────────
   "pan blanco": { storage: "despensa", days: 3 },
@@ -207,10 +215,9 @@ var PERISHABLE_KEYS = {
   // Fruta
   "fresas": true, "aguacate": true, "pina": true, "platano": true, "kiwi": true,
   "naranja": true, "manzana": true,
-  // Cocinados
-  "patata cocida": true, "arroz blanco cocido": true, "arroz integral cocido": true,
-  "cuscus cocido": true, "pasta cocida": true, "quinoa cocida": true,
-  "trigo sarraceno cocido": true
+  // Cocinados. El arroz, la pasta y el grano NO están: se compran secos
+  // (ver arriba, "se COMPRAN SECOS").
+  "patata cocida": true
 };
 
 /**

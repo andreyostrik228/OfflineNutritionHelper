@@ -51,6 +51,17 @@ function run(t) {
     assert.deepStrictEqual(JSON.parse(JSON.stringify(result)), { level: 2, unit: "huevo" });
   });
 
+  t.test("la mantequilla y la margarina van por porciones, no por vasos como la leche", function () {
+    // 2026-11-11: «1 vaso» de mantequilla por 15 g, y «15 vasos» de lo que sobra.
+    var s = freshClassifierSandbox();
+    ["Mantequilla", "Margarina"].forEach(function (hoja) {
+      var r = s.classifyNoCookProduct({ name: hoja + " con sal", category: "Huevos, leche y mantequilla", leafCategory: hoja });
+      assert.strictEqual(r.unit, "porción", hoja);
+    });
+    var leche = s.classifyNoCookProduct({ name: "Leche entera", category: "Huevos, leche y mantequilla", leafCategory: "Leche entera" });
+    assert.strictEqual(leche.unit, "vaso", "la leche sigue en vasos");
+  });
+
   // ── Fallback por nombre: productos de otra tienda ──────────────────
 
   t.test("fallback: yogur de categoría genérica se clasifica listo para comer", function () {

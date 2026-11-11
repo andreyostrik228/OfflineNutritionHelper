@@ -803,6 +803,11 @@ body.con-personas .topbar__persona-nombre { display: inline; }
 .field--ancho { grid-column: 1 / -1; }
 /* Los cuatro contadores (− 78 +) sí caben de dos en dos. */
 .field--ancho:has(> .paso-a-paso) { grid-column: auto; }
+/* Los pasos al día van solos en su fila (detrás va el objetivo, a lo ancho):
+   la fila entera, con un contador algo más ancho, y así «10000» cabe con la
+   letra de siempre (2026-11-07: en un móvil de 390 su campo medía 50 px). */
+.field--ancho:has(> .paso-a-paso #steps) { grid-column: 1 / -1; }
+.field--ancho:has(> .paso-a-paso #steps) > .paso-a-paso { max-width: 240px; }
 .field:has(> .paso-a-paso) { display: flex; flex-direction: column; justify-content: flex-end; }
 .field[hidden] { display: none; }
 
@@ -973,6 +978,10 @@ input[type="time"] { font-variant-numeric: tabular-nums; }
   appearance: textfield;
   -moz-appearance: textfield;
 }
+/* Cinco cifras o más no caben a 30 px (form-controls.js, 2026-11-07). Con
+   más peso que `.paso-a-paso input[type="number"]`: los aspectos
+   (assets/css/temas) cargan después y ponen su propia letra. */
+.paso-a-paso.paso-a-paso--largo input[type] { font-size: 22px; }
 .paso-a-paso input:focus { background: transparent; }
 .paso-a-paso input:focus-visible { box-shadow: none; outline: none; }
 .paso-a-paso input::-webkit-outer-spin-button,
@@ -1490,6 +1499,10 @@ input[type="time"] { font-variant-numeric: tabular-nums; }
 
 .days-carousel__track--multi {
   display: flex;
+  /* Cada día con su alto, y la pista con el del día que se ve (app.js,
+     ajustarAlto, 2026-11-07): sin esto todos medían lo que el más alto. */
+  align-items: flex-start;
+  overflow-y: hidden;
   gap: 12px;
   margin: 0 calc(var(--gutter) * -1);
   padding: 0 var(--gutter) 4px;
@@ -2226,7 +2239,9 @@ html.sin-tienda .shopping-item__marca { display: none !important; }
 .pantry-active-card__purchase { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
 .pantry-active-card__buy-btn { flex: 1 1 100%; min-height: 54px; font-size: 20px; }
 .pantry-active-card__purchase .pantry-link-btn { margin: 0 auto; }
-.pantry-active-card__buy-btn--secondary { background: var(--surface); color: var(--ink); }
+/* No lleva .btn-secondary, así que el relleno se lo pone esta regla: sin él el
+   texto tocaba los bordes del botón (2026-11-11). */
+.pantry-active-card__buy-btn--secondary { padding: 0 24px; background: var(--surface); color: var(--ink); }
 .pantry-active-card__buy-btn--secondary svg { color: var(--ink); }
 .pantry-active-card__purchase--done {
   padding: 10px 12px;
@@ -3008,6 +3023,9 @@ body.is-onboarding { overflow: hidden; overscroll-behavior: none; }
 .onboarding__step { animation: pageIn 0.3s ease-out; }
 .onboarding__step[hidden] { display: none; }
 .onboarding__step--single { padding-top: 6px; }
+/* El texto de «Vamos a calcular…» tocaba el botón de debajo, y en ruso
+   quedaba medio tapado (2026-11-10, en el Chrome del dueño). */
+.onboarding__step--single .onboarding__hint { margin-bottom: 18px; }
 
 .onboarding__brand { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
 .onboarding__brand-mark {
@@ -3047,6 +3065,10 @@ body.is-onboarding { overflow: hidden; overscroll-behavior: none; }
 }
 .onboarding__summary strong { color: var(--ink); }
 .onboarding__terms { margin: 18px 0 4px; }
+/* El enlace de las condiciones es un botón: cuando no cabe en la línea baja
+   entero a la siguiente. Con el texto a la izquierda, como el resto de la
+   frase; centrado quedaba un bloque suelto (en ruso, en dos líneas). */
+.onboarding__check .onboarding__link { padding-left: 0; text-align: left; }
 .onboarding__check { display: flex; align-items: flex-start; gap: 12px; font-size: 14px; line-height: 1.5; cursor: pointer; }
 .onboarding__check input {
   appearance: none;
@@ -5851,6 +5873,14 @@ body.modo-cuestionario .next-meal-sticky { display: none !important; }
 .tut__punto.is-on { width: 34px; }
 .tut__punto.is-on::before { width: 24px; border-radius: var(--pill); background: var(--ink); }
 .tut__botones { display: flex; justify-content: space-between; gap: 8px; }
+/* En una pantalla baja (un portátil con 674 px de alto útil) el botón
+   «Далее» salía cortado por abajo (2026-11-07, en el Chrome del dueño): la
+   ilustración se encoge, y si aun así no cabe, los botones se quedan
+   pegados abajo del diálogo, que es el que hace scroll. */
+.tut__botones { position: sticky; bottom: 0; z-index: 1; margin-inline: -20px; padding: 10px 20px 0; background: var(--surface); }
+@media (max-height: 760px) {
+  .tut__ilustracion { height: clamp(150px, 28vh, 220px); }
+}
 .tut__botones .entreno__empezar,
 .tut__botones .btn-secondary { min-height: 46px; }
 

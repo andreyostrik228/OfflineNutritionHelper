@@ -2693,7 +2693,11 @@ function buildCompromiseReport(attempt, profile, data) {
           noteKey: "ui.plan_ajuste_sin_tiempo", noteParams: {}
         });
   }
-  if (tierDef.cap25 > 0.25) {
+  // Solo si de verdad algún ingrediente pasa del 25%: el nivel lo PERMITE,
+  // pero si nadie lo usó, decirlo contradecía la nota «Ningún alimento supera
+  // el 25%» del mismo plan (2026-11-11, visto en el Chrome del dueño).
+  if (tierDef.cap25 > 0.25 && attempt.meals && attempt.total &&
+      findCapViolations(attempt.meals, attempt.total.kcal, 0.25).length) {
     relaxations.push({
       constraint: "cap25",
       note: "Se permitió que un ítem supere el 25% de las kcal diarias (hasta " + Math.round(tierDef.cap25 * 100) + "%).",

@@ -131,6 +131,9 @@
  *   reconciliarDespensaConPlanes() → { repuestos, planesAgrupados }: lo
  *     comprado y sin comer de hoy en adelante, en la despensa (2026-11-04)
  *   marcarAjusteManual(name) — el usuario tocó ese producto a mano
+ *   moverPlanSinEmpezar(hoyKey?) → { movido, dias }: el último plan, si nadie
+ *     ha comido nada de él, empieza hoy (2026-11-11)
+ *   diaDelPlanHoy(grupo, hoyKey?) → índice del día del plan que toca hoy, o -1
  *   getPantryHistory() / appendPantryHistory(entry)
  *
  * ── "Sin cocinar" (2026-08-20f, known issue #9) ──────────────────────────
@@ -1174,6 +1177,14 @@ function markPurchaseDone(entryId, excludedNames, storeId) {
   entradas.slice(1).forEach(function (e) { e.purchase.done = true; e.purchase.compradoCon = entry.id; });
   var historySaved = savePantryHistory(history);
 
+  // Lo que el usuario desmarcó («¿Te faltó algo?») NO lo compró, y lo ha dicho
+  // él: se apunta como ajuste a mano para que reconciliarDespensaConPlanes()
+  // no lo meta en la despensa al abrir la página. Hasta el 2026-11-11 lo
+  // metía: se desmarcaban las espinacas, se recargaba, y ahí estaban (visto
+  // en el Chrome del dueño). Va DESPUÉS de fijar `nowISO`, así que el apunte
+  // nunca es anterior a esta compra.
+  (excludedNames || []).forEach(function (name) { marcarAjusteManual(name); });
+
   return { saved: saved, historySaved: historySaved, run: run };
 }
 
@@ -1353,6 +1364,99 @@ function reconciliarDespensaConPlanes() {
     console.error("[pantry:reconciliar] no se pudo cuadrar la despensa con los planes:", err);
   }
   return out;
+}
+
+// ── Un plan sin empezar se va moviendo con el calendario (2026-11-11) ────
+// El dueño: «я обычно делаю так, покупаю всё вечером и начинаю кушать по плану
+// уже на следующий день, так что нужно сделать так чтобы пользователь
+// подтверждал день… и только тогда план запускался на следующие дни, а если
+// план не трогают то просто переселяться по дате дальше».
+//
+// Al confirmar, el día 1 del plan queda en la fecha de hoy. Mientras no se
+// marque ninguna toma como cocinada (o comida, en el sin cocinar), el plan
+// no ha empezado: al abrir la página otro día, su día 1 pasa a ser hoy y los
+// demás le siguen. En cuanto se marca una toma, el plan queda fijado en sus
+// fechas. Comprar no lo fija: se compra la víspera.
+//
+// Solo el ÚLTIMO plan de cada tipo (el de createdAt más reciente): uno viejo
+// abandonado no tiene que reaparecer hoy encima del que se está usando.
+
+/** "YYYY-MM-DD" + n días, en hora local. */
+function _sumarDias(clave, n) {
+  var p = String(clave).split("-").map(Number);
+  return formatLocalDateKey(new Date(p[0], p[1] - 1, p[2] + n));
+}
+
+/** Días entre dos fechas "YYYY-MM-DD" (b - a). */
+function _diasEntre(a, b) {
+  var pa = String(a).split("-").map(Number);
+  var pb = String(b).split("-").map(Number);
+  return Math.round((new Date(pb[0], pb[1] - 1, pb[2]) - new Date(pa[0], pa[1] - 1, pa[2])) / 86400000);
+}
+
+/** ¿Se ha cocinado o comido algo de esta entrada? */
+function _entradaEmpezada(e) {
+  if (e.type === "nocook") return (e.slots || []).some(function (s) { return s && s.consumed; });
+  return (e.meals || []).some(function (m) { return m && m.cooked; });
+}
+
+/** Las entradas del plan de `e`: las de su grupo y tipo, o ella sola. */
+function _entradasDelPlan(e, history) {
+  if (!e.planGrupo) return [e];
+  return history.filter(function (x) { return x.planGrupo === e.planGrupo && x.type === e.type; });
+}
+
+/**
+ * Mueve el último plan de cada tipo a hoy si nadie ha empezado a comerlo.
+ * Va ANTES de reconciliarDespensaConPlanes(), que mira de hoy en adelante.
+ * Nunca lanza.
+ * @param {string} [hoyKey] - "YYYY-MM-DD"; por defecto, hoy
+ * @returns {{ movido:boolean, dias:number }}
+ */
+function moverPlanSinEmpezar(hoyKey) {
+  var out = { movido: false, dias: 0 };
+  try {
+    var hoy = hoyKey || formatLocalDateKey(new Date());
+    var history = getPantryHistory();
+    var ultimoPorTipo = {};
+    history.forEach(function (e) {
+      var tipo = e.type || "plan";
+      var u = ultimoPorTipo[tipo];
+      if (!u || new Date(u.createdAt).getTime() < new Date(e.createdAt).getTime()) ultimoPorTipo[tipo] = e;
+    });
+    Object.keys(ultimoPorTipo).forEach(function (tipo) {
+      var del = _entradasDelPlan(ultimoPorTipo[tipo], history);
+      if (del.some(_entradaEmpezada)) return;
+      var primera = del.map(getEntryPlanDate).filter(Boolean).sort()[0];
+      if (!primera || !(primera < hoy)) return;
+      var n = _diasEntre(primera, hoy);
+      del.forEach(function (e) { e.planDate = _sumarDias(getEntryPlanDate(e), n); });
+      out.movido = true;
+      out.dias = Math.max(out.dias, n);
+    });
+    if (out.movido) savePantryHistory(history);
+  } catch (err) {
+    console.error("[pantry:mover-plan] no se pudo mover el plan sin empezar:", err);
+  }
+  return out;
+}
+
+/**
+ * Qué día del plan `grupo` toca hoy: 0 el primero, 1 el segundo… -1 si el plan
+ * no tiene un día con la fecha de hoy (no se confirmó, o ya terminó).
+ * @param {string} grupo - planGrupo
+ * @param {string} [hoyKey]
+ * @returns {number}
+ */
+function diaDelPlanHoy(grupo, hoyKey) {
+  if (!grupo) return -1;
+  var hoy = hoyKey || formatLocalDateKey(new Date());
+  var fechas = getPantryHistory()
+    .filter(function (e) { return e.planGrupo === grupo; })
+    .map(getEntryPlanDate).filter(Boolean)
+    .filter(function (f, i, a) { return a.indexOf(f) === i; })
+    .sort();
+  return fechas.indexOf(hoy);
 }
 
 // ── Etapa 3: marcar una comida como cocinada (única función que RESTA) ───

@@ -81,6 +81,11 @@ var LEAF_RULES = {
 
   // Huevos, leche y mantequilla
   "Huevos": { level: 2, unit: "huevo" }, // necesitan hervirse, no se comen crudos
+  // La mantequilla y la margarina no se miden a vasos (la regla de la
+  // categoría es la de la leche): salía «1 vaso» de mantequilla por 15 g
+  // y «15 vasos» en lo que sobra (2026-11-11, Chrome del dueño).
+  "Mantequilla": { level: 0, unit: "porción" },
+  "Margarina": { level: 0, unit: "porción" },
   "Leche Infantil": null,
 
   // Postres y yogures

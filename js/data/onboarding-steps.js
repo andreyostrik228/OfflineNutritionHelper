@@ -146,11 +146,14 @@ var ONBOARDING_STEPS = [
     id: "workouts",
     field: "workouts",
     kind: "number",
-    title: "¿Cuántos días entrenas a la semana?", titleKey: "ui.ob_entrenos_titulo",
+    // Son VECES a la semana, como el campo del formulario («Entrenamientos /
+    // semana», hasta 14 para quien entrena dos veces al día). Preguntaba por
+    // «días» y el aviso decía «entre 0 y 14 días» (2026-11-10).
+    title: "¿Cuántas veces entrenas a la semana?", titleKey: "ui.ob_entrenos_titulo",
     hint: "Cuenta solo el entrenamiento de verdad. Si no entrenas, pon 0.", hintKey: "ui.ob_entrenos_pista",
     min: 0,
     max: 14,
-    unit: "días", unitKey: "ui.ob_unidad_dias"
+    unit: "veces", unitKey: "ui.ob_unidad_veces"
   },
   {
     id: "goal",
@@ -245,6 +248,8 @@ var ONBOARDING_STEPS = [
     kind: "text",
     title: "¿Hay algo que no te guste?", titleKey: "ui.ob_dislikes_titulo",
     hint: "Sepáralo con comas. Puedes dejarlo vacío y añadirlo después. No sirve para alergias: es una preferencia, no una comprobación de seguridad.", hintKey: "ui.ob_dislikes_pista",
-    placeholder: "cebolla, queso azul, salmón"
+    // El mismo ejemplo que el campo del formulario, y con su clave: se
+    // enseña en el idioma de la pantalla (ui.cebolla_queso_azul_salmon).
+    placeholder: "cebolla, queso azul, salmón", placeholderKey: "ui.cebolla_queso_azul_salmon"
   }
 ];

@@ -80,6 +80,26 @@ function _etiquetaDe(campo) {
   return label ? label.textContent.trim() : campo.id;
 }
 
+/** La etiqueta de un botón − o +: «Возраст: меньше», con el nombre del campo de ahora. */
+function _etiquetarPaso(b, input) {
+  var clave = b.getAttribute("data-clave");
+  b.setAttribute("aria-label", (typeof t === "function" ? t(clave) : "{campo}").replace("{campo}", _etiquetaDe(input)));
+}
+
+/**
+ * Vuelve a etiquetar los botones − y + con el nombre del campo en el idioma
+ * de ahora (2026-11-07). Se ponían al arrancar, antes de traducir la página,
+ * y el lector de pantalla decía «Edad: меньше». Lo llama applyI18nToDom.
+ */
+function repintarEtiquetasDePasos() {
+  if (typeof document === "undefined") return;
+  Array.prototype.forEach.call(document.querySelectorAll(".paso-a-paso"), function (caja) {
+    var input = caja.querySelector("input");
+    if (!input) return;
+    Array.prototype.forEach.call(caja.querySelectorAll(".paso-a-paso__btn[data-clave]"), function (b) { _etiquetarPaso(b, input); });
+  });
+}
+
 function _avisarCambio(el) {
   el.dispatchEvent(new Event("input", { bubbles: true }));
   el.dispatchEvent(new Event("change", { bubbles: true }));
@@ -217,7 +237,8 @@ function mejorarNumeroConBotones(input, paso) {
     b.className = "paso-a-paso__btn";
     b.tabIndex = -1; // con teclado ya están las flechas del propio campo
     b.textContent = signo > 0 ? "+" : "−";
-    b.setAttribute("aria-label", (typeof t === "function" ? t(clave) : "{campo}").replace("{campo}", _etiquetaDe(input)));
+    b.setAttribute("data-clave", clave);
+    _etiquetarPaso(b, input);
     b.setAttribute("data-signo", String(signo));
     return b;
   }
@@ -226,6 +247,36 @@ function mejorarNumeroConBotones(input, paso) {
   caja.appendChild(menos);
   caja.appendChild(input);
   caja.appendChild(mas);
+
+  // Cinco cifras o más («10000» pasos, «105.5» kg) no caben con la letra
+  // de 30 px: el último cero salía cortado (2026-11-07). Va con letra más
+  // pequeña; también cuando la aplicación escribe el valor sin eventos
+  // (al restaurar los ajustes), como hacen las baldosas con su select.
+  // Y si aun así no cabe (el peso «105.5» en un móvil de 390, con 50 px de
+  // campo), la letra baja de dos en dos hasta 14 px; se vuelve a medir cuando
+  // el campo cambia de ancho (otra pestaña, otro tamaño de ventana).
+  function ajustarLargo() {
+    caja.classList.remove("paso-a-paso--largo");
+    input.style.fontSize = "";
+    if (String(input.value).length < 5) return;
+    // Escondido (otra pestaña) no se puede medir: la letra pequeña por si acaso,
+    // y al aparecer se vuelve a mirar.
+    if (!input.clientWidth) { caja.classList.add("paso-a-paso--largo"); return; }
+    if (input.scrollWidth <= input.clientWidth + 1) return;
+    caja.classList.add("paso-a-paso--largo");
+    for (var px = 20; px >= 14 && input.scrollWidth > input.clientWidth + 1; px -= 2) input.style.fontSize = px + "px";
+  }
+  if (typeof ResizeObserver === "function") new ResizeObserver(function () { ajustarLargo(); }).observe(input);
+  var _valorNumero = typeof HTMLInputElement !== "undefined" ? Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value") : null;
+  if (_valorNumero && _valorNumero.set) {
+    Object.defineProperty(input, "value", {
+      configurable: true,
+      get: function () { return _valorNumero.get.call(this); },
+      set: function (v) { _valorNumero.set.call(this, v); ajustarLargo(); }
+    });
+  }
+  input.addEventListener("input", ajustarLargo);
+  ajustarLargo();
 
   function mover(signo) {
     var v = parseFloat(String(input.value).replace(",", "."));

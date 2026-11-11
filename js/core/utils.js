@@ -30,6 +30,30 @@ function round2(n) {
   return Math.round(n * 100) / 100;
 }
 
+/**
+ * Dinero para ENSEÑAR, siempre con dos decimales: «3.70», no «3.7»
+ * (2026-11-07). round2 devuelve un número y el cero de detrás se perdía: la
+ * misma lista decía «€35.07» y «€3.7». Es texto: para hacer cuentas, round2.
+ * @param {number} n
+ * @returns {string} "" si no es un número
+ */
+function fmtEuros(n) {
+  var x = Number(n);
+  if (!isFinite(x)) return "";
+  return (Math.round(x * 100) / 100).toFixed(2);
+}
+
+/**
+ * Un presupuesto: sin decimales si es redondo («€48»), con dos si no («€37.50»).
+ * @param {number} n
+ * @returns {string}
+ */
+function fmtEurosRedondo(n) {
+  var x = Math.round(Number(n) * 100) / 100;
+  if (!isFinite(x)) return "";
+  return x % 1 === 0 ? String(x) : x.toFixed(2);
+}
+
 // ── Seguridad HTML ────────────────────────────────────────────────────────
 
 function escapeHtml(str) {

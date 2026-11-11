@@ -876,9 +876,10 @@ function run(t) {
     [
       '<strong>2100 kcal <span class="nocook-summary__target">de 2200</span></strong>',
       '80 g proteína <span class="nocook-summary__target">de 120</span>',
-      'La compra son <strong>&euro;12.5</strong> <span class="nocook-summary__target">de 14</span> en 7 productos &middot; hoy te comes &euro;8.25 (el resto queda en la despensa)',
+      // Dinero siempre con dos decimales (2026-11-07): «€12.50», no «€12.5».
+      'La compra son <strong>&euro;12.50</strong> <span class="nocook-summary__target">de 14</span> en 7 productos &middot; hoy te comes &euro;8.25 (el resto queda en la despensa)',
       'Con este presupuesto el plan son <strong>3 tomas</strong> sin snacks: las calorías del día se reparten entre ellas en vez de gastar en picoteo.',
-      'Este plan se pasa <strong>&euro;2.5</strong> de tu presupuesto: con menos no salía una comida completa. Prueba a subir el presupuesto, o pon la prioridad en «lo más barato posible».',
+      'Este plan se pasa <strong>&euro;2.50</strong> de tu presupuesto: con menos no salía una comida completa. Prueba a subir el presupuesto, o pon la prioridad en «lo más barato posible».',
       'Este plan se queda en 80 g de proteína, por debajo de tus 120 g. Sin cocinar es un techo real: los productos listos para comer rinden poca proteína por caloría. Para llegar más arriba hace falta cocinar.'
     ].forEach(function (trozo) {
       assert.ok(resumen.indexOf(trozo) !== -1, "falta en el resumen: " + trozo + "\n" + resumen);
@@ -909,9 +910,9 @@ function run(t) {
     var plan = planConAvisos("balanced", true);
     s.saveLang("es");
     var es = s.renderNoCookSummary(plan, delPlan);
-    assert.ok(es.indexOf('La compra son <strong>&euro;12.5</strong> en 7 productos') !== -1, "el día, sin «de 14»: " + es);
-    assert.ok(es.indexOf('Todo el plan, 3 días: <strong>&euro;44.5</strong> <span class="nocook-summary__target">de 42</span>.') !== -1, es);
-    assert.ok(es.indexOf('Este plan de 3 días se pasa <strong>&euro;2.5</strong> de tu presupuesto') !== -1, "pasarse es del plan entero: " + es);
+    assert.ok(es.indexOf('La compra son <strong>&euro;12.50</strong> en 7 productos') !== -1, "el día, sin «de 14»: " + es);
+    assert.ok(es.indexOf('Todo el plan, 3 días: <strong>&euro;44.50</strong> <span class="nocook-summary__target">de 42</span>.') !== -1, es);
+    assert.ok(es.indexOf('Este plan de 3 días se pasa <strong>&euro;2.50</strong> de tu presupuesto') !== -1, "pasarse es del plan entero: " + es);
     ["ru", "en", "uk"].forEach(function (lang) {
       s.saveLang(lang);
       var resumen = s.renderNoCookSummary(plan, delPlan);
@@ -1292,14 +1293,104 @@ function run(t) {
     assert.ok(match && match.productName, "hay producto exacto para la pechuga (si no, la prueba no prueba nada)");
     var info = s.packagingCatalogFor("mercadona").packages["pechuga de pollo"] || null;
     var compra = s.resolvePurchaseCost("Pechuga de pollo", 300, "mercadona");
-    assert.ok(s.formatPurchaseLine(info, match, compra).indexOf(match.productName) !== -1, "con Mercadona, su producto");
+    // Con Mercadona, el producto que se COBRA (2026-11-07): la pechuga
+    // verificada son «Pechugas enteras» de 500 g y lo cobrado, la bandeja de
+    // filetes de 558 g; la línea nombra lo cobrado con su envase.
+    var cobrado = s.resolveShoppingProduct("Pechuga de pollo", "mercadona");
+    var conTienda = s.formatPurchaseLine(info, match, compra, "Pechuga de pollo", "mercadona");
+    assert.ok(conTienda.indexOf(cobrado.name) !== -1, "con Mercadona, el producto cobrado: " + conTienda);
+    assert.ok(conTienda.indexOf(String(Math.round(compra.packageSizeG))) !== -1, "con el envase cobrado: " + conTienda);
     assert.strictEqual(s.euroHtml(), "&euro;");
 
     s.guardarModoTienda("ninguna");
-    var linea = s.formatPurchaseLine(info, match, compra);
+    var linea = s.formatPurchaseLine(info, match, compra, "Pechuga de pollo", "mercadona");
     assert.strictEqual(linea.indexOf(match.productName), -1, "sin tienda, sin el producto exacto: " + linea);
+    assert.strictEqual(linea.indexOf(cobrado.name), -1, "ni el cobrado: " + linea);
     assert.strictEqual(linea.indexOf("Hacendado"), -1);
     assert.strictEqual(s.euroHtml(), "&asymp;&euro;");
+  });
+
+  t.test("la línea de compra nombra lo que se cobra: el yogur del pack de 750 g, no el cubo de 1 kg (2026-11-07)", function () {
+    var s = sandboxCompleto();
+    s.localStorage = almacenFalso();
+    var match = s.realMatchesFor("mercadona").matches["yogur griego ligero"];
+    var info = s.packagingCatalogFor("mercadona").packages["yogur griego ligero"] || null;
+    var compra = s.resolvePurchaseCost("Yogur griego ligero", 250, "mercadona");
+    assert.ok(match && match.sizeG === 1000 && compra.packageSizeG === 750, "los datos de la prueba han cambiado");
+    var linea = s.formatPurchaseLine(info, match, compra, "Yogur griego ligero", "mercadona");
+    assert.strictEqual(linea.indexOf("2% MG"), -1, "no el de 1 kg: " + linea);
+    assert.ok(linea.indexOf("Yogur griego natural ligero Hacendado") !== -1, linea);
+    assert.ok(linea.indexOf("750") !== -1 && linea.indexOf("1000") === -1, linea);
+    // Sin tamaño que comparar, la línea del producto verificado de siempre.
+    var huevos = s.realMatchesFor("mercadona").matches["huevos enteros"];
+    if (huevos && !huevos.sizeG) {
+      assert.ok(s.formatPurchaseLine(null, huevos, null, "Huevos enteros", "mercadona").indexOf(huevos.productName) !== -1);
+    }
+  });
+
+  t.test("el dinero sale con dos decimales, y lo que se come nunca cuesta más que lo que se compra (2026-11-07)", function () {
+    var s = sandboxCompleto();
+    assert.strictEqual(s.fmtEuros(3.7), "3.70");
+    assert.strictEqual(s.fmtEuros(0.1), "0.10");
+    assert.strictEqual(s.fmtEuros(35.07), "35.07");
+    assert.strictEqual(s.fmtEuros(0.005), "0.01");
+    assert.strictEqual(s.fmtEuros(NaN), "");
+    assert.strictEqual(s.fmtEurosRedondo(48), "48", "un presupuesto redondo, sin decimales");
+    assert.strictEqual(s.fmtEurosRedondo(37.5), "37.50");
+    // El plátano: uso €0.36 por el precio de 100 g, el plátano a €0.35.
+    assert.strictEqual(s.usoNoMayorQueLaCompra(0.36, { purchaseCost: 0.35 }), 0.35);
+    assert.strictEqual(s.usoNoMayorQueLaCompra(0.2, { purchaseCost: 0.35 }), 0.2);
+    assert.strictEqual(s.usoNoMayorQueLaCompra(4.21, { purchaseCost: 1, coveredFromPantry: 200 }), 4.21, "con despensa sí: se come lo que ya había");
+    assert.strictEqual(s.usoNoMayorQueLaCompra(0.5, null), 0.5);
+  });
+
+  // ── Lo visto en el Chrome del dueño (2026-11-07) ───────────────────────
+
+  t.test("el resumen de cifras no vuelve a «Esperando cálculo» cuando se traduce la página", function () {
+    var s = sandboxCompleto();
+    var els = {};
+    ["calories", "caloriesSub", "protein", "proteinSub", "carbs", "carbsSub", "fats", "fatsSub"].forEach(function (k) {
+      els[k] = contenedor();
+      if (/Sub$/.test(k)) els[k].setAttribute("data-i18n", "ui.esperando_calculo");
+    });
+    s.initRenderRefs({ mealsContainer: contenedor(), summaryEls: els });
+    s.renderSummary({ calories: 3000, protein: 150, carbs: 400, fats: 80 }, { kcal: 2900, protein: 140, carbs: 380, fat: 85 });
+    ["caloriesSub", "proteinSub", "carbsSub", "fatsSub"].forEach(function (k) {
+      assert.strictEqual(els[k].getAttribute("data-i18n"), null, k + " sigue marcada: applyI18nToDom le devolvería «Esperando cálculo»");
+    });
+    var app = fs.readFileSync(projPath("js/app.js"), "utf8");
+    assert.ok(/setAttribute\("data-i18n", "ui\.esperando_calculo"\)/.test(app), "sin plan, clearOutput vuelve a marcarlas para traducirse");
+  });
+
+  t.test("el catálogo busca también por el nombre traducido, y dice «no hay» en el idioma de la pantalla", function () {
+    var s = sandboxCompleto();
+    require("vm").runInContext(fs.readFileSync(projPath("js/i18n/productos-ru.js"), "utf8"), s, { filename: "productos-ru.js" });
+    s.saveLang("ru");
+    var grid = contenedor(), cuenta = contenedor(), vacio = contenedor();
+    s.initRealProductsRefs({ verifiedGrid: grid, verifiedCount: cuenta, verifiedSearchInput: null, verifiedEmpty: vacio, verifiedEmptyQuery: null });
+    s.handleRealProductsSearch("молоко");
+    assert.ok(Number(cuenta.textContent) > 0, "«молоко» no encuentra nada");
+    assert.ok(/[Мм]олоко/.test(grid.innerHTML), "las tarjetas no llevan el nombre traducido");
+    s.handleRealProductsSearch("zzzqqq");
+    assert.strictEqual(vacio.hidden, false);
+    assert.strictEqual(vacio.textContent, "По запросу «zzzqqq» товаров не найдено.");
+    s.saveLang("es");
+  });
+
+  t.test("«Cambiar» con la despensa vacía habla de lo que sobra de la compra, no de «la despensa»", function () {
+    var s = sandboxCompleto();
+    s.saveLang("ru");
+    var els = { cambioCompraDialog: contenedor(), cambioCompraTexto: contenedor(), cambioCompraTitulo: contenedor() };
+    els.cambioCompraDialog.setAttribute("data-cableado", "1");
+    var docAntes = s.document;
+    s.document = { getElementById: function (id) { return els[id] || null; } };
+    s.preguntarCambioConCompra("Перекус 1", function () {}, true);
+    assert.strictEqual(els.cambioCompraTitulo.textContent, s.t("ui.cambio_sin_sobras_titulo"));
+    assert.ok(els.cambioCompraTexto.textContent.indexOf("останется от покупок") !== -1, els.cambioCompraTexto.textContent);
+    s.preguntarCambioConCompra("Перекус 1", function () {}, false);
+    assert.strictEqual(els.cambioCompraTitulo.textContent, s.t("ui.cambio_sin_despensa_titulo"), "con algo en la despensa, lo de siempre");
+    s.document = docAntes;
+    s.saveLang("es");
   });
 
   t.test("sin tienda: el titular de «no cabe en el presupuesto» no nombra la tienda", function () {

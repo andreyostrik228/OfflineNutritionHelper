@@ -232,9 +232,18 @@ function dondeGuardar(clave, almacenado, abierto) {
   } else if (ARMARIO_HASTA_ABRIR[clave]) {
     return "despensa";
   }
+  var vida = (typeof getShelfLife === "function") ? getShelfLife(clave) : null;
+  // Una conserva CERRADA va al armario. La ficha de la tienda dice "nevera"
+  // para el bote de lentejas, pero lo dice junto a "consumir en 5 días tras
+  // abrir": es la instrucción del bote abierto. Cerrado manda shelf-life.js,
+  // que es la que describe el envase sin abrir (2026-11-11: el bote salía
+  // en «A la nevera» con sus 365 días al lado).
+  if (!abierto && vida && vida.storage === "despensa" &&
+      typeof getStoreDaysAfterOpening(clave) === "number") {
+    return "despensa";
+  }
   var tienda = getStoreStorage(clave);
   if (LUGARES_DE_GUARDAR.indexOf(tienda) !== -1) return tienda;
-  var vida = (typeof getShelfLife === "function") ? getShelfLife(clave) : null;
   if (vida && LUGARES_DE_GUARDAR.indexOf(vida.storage) !== -1) return vida.storage;
   if (!producto) return null;
   return GUARDAR_POR_HOJA[producto.leafCategory] || GUARDAR_POR_CATEGORIA[producto.category] || null;

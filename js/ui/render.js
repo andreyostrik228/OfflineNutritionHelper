@@ -385,6 +385,14 @@ function renderSummary(profile, total) {
 
   summaryEls.fats.innerHTML      = fmtUnitHtml(round0(profile.fats), "g");
   summaryEls.fatsSub.textContent = t("ui.plan_real") + " " + fmtUnit(round0(total.fat), "g");
+
+  // Ya no dicen «Esperando cálculo»: con su `data-i18n` puesto,
+  // applyI18nToDom (al cargar la página y al cambiar de idioma) les devolvía
+  // ese texto con el plan delante, y se veía «Ждём расчёта» debajo de las
+  // cuatro cifras (2026-11-07). clearOutput (app.js) se lo vuelve a poner.
+  [summaryEls.caloriesSub, summaryEls.proteinSub, summaryEls.carbsSub, summaryEls.fatsSub].forEach(function (el) {
+    if (el && typeof el.removeAttribute === "function") el.removeAttribute("data-i18n");
+  });
 }
 
 // ── Tarjetas de comidas ───────────────────────────────────────────────────
@@ -864,15 +872,16 @@ function renderFoodRow(item, storeId) {
               escapeHtml(t("ui.verificado")) + '</span>'
             : ' <span class="food-macro__unavailable">' + escapeHtml(t("ui.macros_por_ingrediente_no_verificados")) + '</span>') +
         '</div>' +
-        formatPurchaseLine(info, realMatch, purchase) +
+        formatPurchaseLine(info, realMatch, purchase, item.name, storeId) +
         renderBotonNoMeGusta(item.name, nombreComidaDoble(item.name)) +
       '</div>' +
       '<div class="food-right">' +
         '<div>' + fmtUnitHtml(round0(item.kcal), "kcal") + '</div>' +
-        '<div class="food-cost food-cost--usage">&euro;' + round2(item.cost) +
+        '<div class="food-cost food-cost--usage">&euro;' +
+          fmtEuros(typeof usoNoMayorQueLaCompra === "function" ? usoNoMayorQueLaCompra(item.cost, purchase) : item.cost) +
           '<span class="food-cost__tag">' + escapeHtml(t("ui.consumo_etiqueta")) + '</span></div>' +
         (purchase && purchase.hasFixedPackage
-          ? '<div class="food-cost food-cost--package">&euro;' + round2(purchase.purchaseCost) + '<span class="food-cost__tag">' +
+          ? '<div class="food-cost food-cost--package">&euro;' + fmtEuros(purchase.purchaseCost) + '<span class="food-cost__tag">' +
             (purchase.packagesToBuy > 1 ? purchase.packagesToBuy + '&times; ' : '') + escapeHtml(fmtUnitJunto(round0(purchase.packageSizeG), "g")) + ' ' +
             escapeHtml(t("ui.paquete_etiqueta")) + '</span></div>'
           : '') +
@@ -1164,23 +1173,54 @@ function etiquetaDeEnvase(label, n) {
  *   `packagesToBuy`/`purchaseCost`
  * @returns {string}
  */
-function formatPurchaseLine(info, realMatch, purchase) {
+function formatPurchaseLine(info, realMatch, purchase, itemName, storeId) {
   // «Sin tienda» (2026-10-31): nada de «este producto exacto de Mercadona»;
   // la línea de siempre, con el envase genérico.
   if (realMatch && !(typeof modoSinTienda === "function" && modoSinTienda())) {
-    return formatRealMatchPurchaseLine(realMatch, purchase);
+    if (_mismoEnvaseQueLaCompra(realMatch, purchase)) return formatRealMatchPurchaseLine(realMatch, purchase);
+    // El producto verificado por su EAN (el de la nutrición) no es siempre el
+    // envase que se cobra (2026-11-07): salía «Купить: Yogur griego natural
+    // ligero Hacendado 2% MG (1000 г) · €1.45» y a la derecha «€1.45, 750 г»,
+    // cuando el de 1 kg cuesta €2.20 y lo cobrado es el pack de 6 x 125 g. Se
+    // nombra el producto que se cobra (product-links.js) con su envase.
+    return _lineaDelEnvaseCobrado(purchase, itemName, storeId);
   }
 
   if (!info || info.type === "perUnit") return "";
   if (!purchase || !purchase.hasFixedPackage) return "";
 
-  var label = purchase.packagesToBuy > 1
+  var priceNote = ' &middot; &euro;' + fmtEuros(purchase.purchaseCost);
+
+  return '<div class="food-purchase">' + escapeHtml(t("ui.compra_dos_puntos")) + ' ' + escapeHtml(_textoDelEnvase(purchase)) + priceNote + '</div>';
+}
+
+/** «1 упаковка по 6 шт. (750 г)» / «2 упаковки … (750 г каждая)»: el envase que se cobra. */
+function _textoDelEnvase(purchase) {
+  return purchase.packagesToBuy > 1
     ? purchase.packagesToBuy + " " + etiquetaDeEnvase(purchase.packageLabel, purchase.packagesToBuy) + " (" + fmtUnitJunto(round0(purchase.packageSizeG), "g") + " " + t("ui.cada_uno") + ")"
     : "1 " + etiquetaDeEnvase(purchase.packageLabel, 1) + " (" + fmtUnitJunto(round0(purchase.packageSizeG), "g") + ")";
+}
 
-  var priceNote = ' &middot; &euro;' + round2(purchase.purchaseCost);
+/**
+ * ¿El producto verificado es el envase que se cobra? Se mira el tamaño (con
+ * un 5 % de margen). El atún sale distinto (480 g con líquido, 360 g
+ * escurrido) y es el mismo; el yogur (1 kg frente al pack de 750 g), no: en
+ * los dos casos se nombra lo cobrado con su envase, que es lo que va a pagar.
+ * Sin tamaño o sin envase fijo no hay nada que comparar.
+ */
+function _mismoEnvaseQueLaCompra(realMatch, purchase) {
+  if (!realMatch || !realMatch.sizeG || !purchase || !purchase.hasFixedPackage || !(purchase.packageSizeG > 0)) return true;
+  return Math.abs(realMatch.sizeG - purchase.packageSizeG) <= purchase.packageSizeG * 0.05;
+}
 
-  return '<div class="food-purchase">' + escapeHtml(t("ui.compra_dos_puntos")) + ' ' + escapeHtml(label) + priceNote + '</div>';
+/** La línea de compra con el producto que se cobra (si se conoce) y su envase. */
+function _lineaDelEnvaseCobrado(purchase, itemName, storeId) {
+  var producto = (itemName && typeof resolveShoppingProduct === "function") ? resolveShoppingProduct(itemName, storeId) : null;
+  var nombre = (producto && producto.id && producto.name)
+    ? '<span class="food-purchase__product">' + escapeHtml(producto.name) + '</span> &mdash; '
+    : '';
+  return '<div class="food-purchase">' + escapeHtml(t("ui.compra_dos_puntos")) + ' ' + nombre +
+    escapeHtml(_textoDelEnvase(purchase)) + ' &middot; &euro;' + fmtEuros(purchase.purchaseCost) + '</div>';
 }
 
 /**
@@ -1210,7 +1250,7 @@ function formatRealMatchPurchaseLine(realMatch, purchase) {
   var packagesToBuy = (purchase && purchase.hasFixedPackage) ? purchase.packagesToBuy : 1;
   var quantityPrefix = packagesToBuy > 1 ? packagesToBuy + "x " : "";
   var priceNote = (purchase && typeof purchase.purchaseCost === "number")
-    ? ' &middot; &euro;' + round2(purchase.purchaseCost)
+    ? ' &middot; &euro;' + fmtEuros(purchase.purchaseCost)
     : '';
 
   return (
@@ -1232,7 +1272,7 @@ function renderMealFooter(total, prep) {
       '<div>' + escapeHtml(t("ui.proteina")) + '<strong>' + fmtUnitHtml(round0(total.protein), "g") + '</strong></div>' +
       '<div>' + escapeHtml(t("ui.carbs"))    + '<strong>' + fmtUnitHtml(round0(total.carbs), "g")   + '</strong></div>' +
       '<div>' + escapeHtml(t("ui.grasas"))   + '<strong>' + fmtUnitHtml(round0(total.fat), "g")     + '</strong></div>' +
-      '<div>' + escapeHtml(t("ui.coste"))    + '<strong>&euro;' + round2(total.cost) + '</strong></div>' +
+      '<div>' + escapeHtml(t("ui.coste"))    + '<strong>&euro;' + fmtEuros(total.cost) + '</strong></div>' +
       '<div>' + escapeHtml(t("ui.prep"))     + '<strong>' + fmtUnitHtml(prep || 0, "min")           + '</strong></div>' +
     '</div>'
   );

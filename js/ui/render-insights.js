@@ -93,17 +93,19 @@ function renderInsights(profile, result, data, delPlan) {
     t("ui.nota_fuentes_proteina").replace("{n}", proteinSources.length)
       .replace("{lista}", proteinSources.map(nombrePlato).join(", ") || "—"),
     t("ui.nota_fuentes_carbos").replace("{n}", carbSources.length)
-      .replace("{lista}", carbSources.map(nombreComidaDoble).join(", ") || "—"),
+      // Sin el nombre español al lado, como las de proteína (2026-11-11):
+      // en una nota de una línea, «Овсяные хлопья / Avena» solo estorba.
+      .replace("{lista}", carbSources.map(nombreComida).join(", ") || "—"),
     capStatus,
     delPlan
       ? t("ui.nota_presupuesto_plan").replace("{n}", delPlan.dias)
-        .replace("{presupuesto}", round2(delPlan.presupuesto))
-        .replace("{compra}", round2(delPlan.compra))
-        .replace("{margen}", Math.max(0, round2(delPlan.presupuesto - delPlan.compra)))
-      : t("ui.nota_presupuesto").replace("{presupuesto}", round2(data.budget))
-        .replace("{compra}", round2(purchaseCost))
-        .replace("{margen}", Math.max(0, budgetGap))
-        .replace("{consumo}", round2(total.cost)),
+        .replace("{presupuesto}", fmtEurosRedondo(delPlan.presupuesto))
+        .replace("{compra}", fmtEuros(delPlan.compra))
+        .replace("{margen}", fmtEuros(Math.max(0, delPlan.presupuesto - delPlan.compra)))
+      : t("ui.nota_presupuesto").replace("{presupuesto}", fmtEurosRedondo(data.budget))
+        .replace("{compra}", fmtEuros(purchaseCost))
+        .replace("{margen}", fmtEuros(Math.max(0, budgetGap)))
+        .replace("{consumo}", fmtEuros(total.cost)),
     // "DISH_DB" era el nombre de una variable interna asomando en pantalla.
     // Lo que le importa a quien lee esto es que los platos son recetas de
     // verdad y no combinaciones sueltas de alimentos.
@@ -172,9 +174,9 @@ function renderWarnings(profile, result, data, delPlan) {
   });
   if (delPlan && delPlan.compra > delPlan.presupuesto + 0.01) {
     messages.push(t("ui.plan_se_pasa_dias").replace("{n}", delPlan.dias)
-      .replace("{compra}", round2(delPlan.compra))
-      .replace("{exceso}", round2(delPlan.compra - delPlan.presupuesto))
-      .replace("{presupuesto}", round2(delPlan.presupuesto)));
+      .replace("{compra}", fmtEuros(delPlan.compra))
+      .replace("{exceso}", fmtEuros(delPlan.compra - delPlan.presupuesto))
+      .replace("{presupuesto}", fmtEurosRedondo(delPlan.presupuesto)));
   }
 
   // ── 2. Consejos de la interfaz ──────────────────────────────────────

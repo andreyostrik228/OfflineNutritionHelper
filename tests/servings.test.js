@@ -415,6 +415,17 @@ function run(t) {
     assert.strictEqual(r.n, 4);
     assert.strictEqual(r.label, "yogur");
   });
+
+  t.test("de diez piezas en adelante se cuentan enteras; por debajo, la fracción se queda", function () {
+    // 2026-11-11, visto en el Chrome del dueño: la bolsa de 1 kg de
+    // zanahorias salía en la despensa como "15 y 1/3 zanahorias".
+    var s = freshSandbox();
+    var bolsa = s.stockAmountFor(1000, "Zanahoria");
+    assert.ok(bolsa && bolsa.kind === "pieces", "las zanahorias se cuentan");
+    assert.strictEqual(bolsa.n, 15, "una bolsa de 1 kg son 15 zanahorias, sin tercios");
+    var pocas = s.stockAmountFor(100, "Zanahoria");
+    assert.ok(pocas && pocas.n !== Math.round(pocas.n), "zanahoria y media sigue siendo zanahoria y media: " + pocas.n);
+  });
 }
 
 module.exports = { run: run };

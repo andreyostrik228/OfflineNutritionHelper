@@ -103,6 +103,41 @@ function run(t) {
     assert.strictEqual(s.detectLang(["ja", "zh-CN", "fr-CA"]), "fr");
   });
 
+  // 2026-11-10: detectLang no la llamaba nadie, y con el navegador en ruso la
+  // bienvenida salía en español. estrenarIdioma elige y guarda, una vez.
+  t.test("estrenarIdioma: la primera visita, el idioma del navegador que tenga tabla; después manda lo guardado", function () {
+    var s = sandboxConTablas(["es", "en", "ru", "uk"]);
+    s.localStorage = createFakeLocalStorage();
+    assert.strictEqual(s.estrenarIdioma(["ru-RU", "ru", "en-US"]), "ru");
+    assert.strictEqual(s.getLang(), "ru", "queda guardado");
+    // Ya elegido: otro navegador no lo cambia.
+    assert.strictEqual(s.estrenarIdioma(["en-US"]), "ru");
+
+    // Un idioma declarado pero sin traducir se salta: alemán e inglés -> inglés.
+    var aleman = sandboxConTablas(["es", "en", "ru", "uk"]);
+    aleman.localStorage = createFakeLocalStorage();
+    assert.strictEqual(aleman.estrenarIdioma(["de-AT", "en-US"]), "en");
+
+    // Ninguno conocido: español, y sin guardar nada.
+    var japones = sandboxConTablas(["es", "en", "ru", "uk"]);
+    japones.localStorage = createFakeLocalStorage();
+    assert.strictEqual(japones.estrenarIdioma(["ja"]), "es");
+    assert.strictEqual(japones.localStorage.getItem("nutritionPlanner.lang.v1"), null);
+  });
+
+  t.test("estrenarIdioma no toca a quien ya usaba la aplicación sin haber elegido idioma", function () {
+    ["nutritionPlanner.onboarding.v1", "nutritionPlanner.settings.v1", "weekplate-plan-v1"].forEach(function (clave) {
+      var s = sandboxConTablas(["es", "en", "ru", "uk"]);
+      s.localStorage = createFakeLocalStorage();
+      s.localStorage.setItem(clave, "{}");
+      assert.strictEqual(s.estrenarIdioma(["ru-RU"]), "es", "con " + clave + " se queda en español, que es lo que veía");
+      assert.strictEqual(s.localStorage.getItem("nutritionPlanner.lang.v1"), null);
+    });
+    var app = require("fs").readFileSync(projPath("js/app.js"), "utf8");
+    assert.ok(app.indexOf('safeInit("idioma-primera-vez"') !== -1 && app.indexOf('safeInit("idioma-primera-vez"') < app.indexOf("// ── Referencias al DOM"),
+      "se estrena lo primero, antes de pintar nada con t()");
+  });
+
   t.test("detectLang cae a español si no conoce ninguno, y con lista vacía", function () {
     var s = freshI18nSandbox();
     assert.strictEqual(s.detectLang(["ja", "zh"]), "es");
@@ -468,8 +503,32 @@ function run(t) {
     return claves;
   }
 
+  // Y las condiciones enteras (2026-11-07): `legal.<key>_titulo` y
+  // `legal.<key>_<n>` salen de LEGAL_SECTIONS, como el resumen de LEGAL_SUMMARY.
+  function clavesDelLegal() {
+    var s = loadBrowserGlobals([projPath("js/data/legal.js")]);
+    var claves = [];
+    (s.LEGAL_SECTIONS || []).forEach(function (seccion) {
+      claves.push("legal." + seccion.key + "_titulo");
+      seccion.paragraphs.forEach(function (p, i) { claves.push("legal." + seccion.key + "_" + (i + 1)); });
+    });
+    return claves;
+  }
+
   var CLAVES_CON_ORIGEN_FUERA = ["ui.legal_resumen_1", "ui.legal_resumen_2", "ui.legal_resumen_3"]
-    .concat(clavesDelRecorrido(), clavesDeSinCocinar());
+    .concat(clavesDelRecorrido(), clavesDeSinCocinar(), clavesDelLegal());
+
+  t.test("cada sección de las condiciones tiene su clave y aporta sus claves de traducción", function () {
+    var s = loadBrowserGlobals([projPath("js/data/legal.js")]);
+    var vistas = {};
+    s.LEGAL_SECTIONS.forEach(function (seccion) {
+      assert.ok(/^[a-z_]+$/.test(seccion.key || ""), "sección sin clave: " + seccion.title);
+      assert.ok(!vistas[seccion.key], "clave repetida: " + seccion.key);
+      vistas[seccion.key] = true;
+    });
+    var parrafos = s.LEGAL_SECTIONS.reduce(function (a, sec) { return a + sec.paragraphs.length; }, 0);
+    assert.strictEqual(clavesDelLegal().length, s.LEGAL_SECTIONS.length + parrafos);
+  });
 
   t.test("cada plantilla de «sin cocinar» aporta sus dos claves de traducción", function () {
     // Mismo motivo que el del recorrido: si NO_COOK_TEMPLATES dejara de cargar,
@@ -516,22 +575,25 @@ function run(t) {
     });
   });
 
-  t.test("los EJEMPLOS que el usuario teclea siguen en español dentro de la traducción", function () {
-    // Se buscan contra el catálogo español, así que un ejemplo traducido
-    // enseñaría a escribir "onion" en un campo donde "onion" no encuentra
-    // nada. Lo que NO puede quedarse sin traducir es la frase alrededor:
-    // "¿Qué tienes?" sí se traduce, "Arroz blanco cocido" no.
+  t.test("los EJEMPLOS de los campos van en el idioma de la pantalla, y cada palabra sirve de verdad", function () {
+    // Antes iban en español a propósito: los dos campos solo entendían el
+    // catálogo español. Ya no: «No me gusta» traduce lo que se escribe en
+    // cualquier idioma (traducirTerminosDislike) y la despensa acepta el nombre
+    // traducido que ella misma sugiere (populatePantryIngredientOptions). Con
+    // la pantalla en ruso, «cebolla, queso azul, salmón» parecía un fallo
+    // (2026-11-07, en el Chrome del dueño). Ahora el ejemplo va traducido, y
+    // este test comprueba que lo que enseña funciona.
     var s = sandboxConTablas(["es"].concat(IDIOMAS_HECHOS));
-    var ejemplos = {
-      "ui.cebolla_queso_azul_salmon": "cebolla, queso azul, salmón",
-      "ui.que_tienes_ej_arroz_blanco_cocido": "Arroz blanco cocido"
-    };
     IDIOMAS_HECHOS.forEach(function (lang) {
-      Object.keys(ejemplos).forEach(function (k) {
-        assert.ok(s.I18N_TABLES[lang][k].indexOf(ejemplos[k]) !== -1,
-          lang + " " + k + ": el ejemplo español tiene que sobrevivir en la traducción, y pone "
-          + JSON.stringify(s.I18N_TABLES[lang][k]));
+      var p = loadBrowserGlobals([projPath("js/core/i18n.js"), projPath("js/i18n/food-" + lang + ".js"), projPath("js/core/preferences.js")]);
+      var noMeGusta = s.I18N_TABLES[lang]["ui.cebolla_queso_azul_salmon"];
+      assert.ok(!/cebolla|salmón/i.test(noMeGusta), lang + ": el ejemplo sigue en español: " + noMeGusta);
+      noMeGusta.split(",").map(function (x) { return x.trim(); }).forEach(function (palabra) {
+        assert.ok(p.traducirTerminosDislike([palabra]).length > 0, lang + ": «" + palabra + "» no tapa nada en «No me gusta»");
       });
+      var despensa = s.I18N_TABLES[lang]["ui.que_tienes_ej_arroz_blanco_cocido"];
+      var arroz = p.FOOD_TABLES[lang] && p.FOOD_TABLES[lang]["Arroz blanco cocido"];
+      assert.ok(arroz && despensa.indexOf(arroz) !== -1, lang + ": la despensa no pone de ejemplo el nombre que ella sugiere: " + despensa);
     });
   });
 

@@ -81,6 +81,14 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
+  // La primera visita, el idioma del navegador (js/core/i18n.js,
+  // estrenarIdioma, 2026-11-10). Lo PRIMERO de todo: lo que se pinta desde
+  // aquí abajo con t() (pistas, importes, la bienvenida) tiene que salir ya
+  // en ese idioma, o se quedaría en español hasta recargar.
+  safeInit("idioma-primera-vez", function () {
+    if (typeof estrenarIdioma === "function") estrenarIdioma();
+  });
+
   // ── Referencias al DOM ───────────────────────────────────────────────
   var form          = document.getElementById("plannerForm");
   var resetBtn      = document.getElementById("resetBtn");
@@ -249,6 +257,11 @@ document.addEventListener("DOMContentLoaded", function () {
   var lastGeneratedProfile = null;
   var lastGeneratedData = null;
   var lastGeneratedReport = null;
+  // El `planGrupo` con el que se confirmó el plan en pantalla (2026-11-11), y
+  // qué día de ese plan toca hoy: el resumen y el horario de arriba son los de
+  // ESE día, no siempre los del día 1 (diaDelPlanHoy, pantry.js).
+  var lastPlanGrupo = null;
+  var diaDeHoyEnPlan = 0;
 
   // Distinto de null SOLO entre "Cambiar el plan completo" (diálogo de
   // plan activo, ver "Gate en Generar plan..." en pantry.js) y la
@@ -305,6 +318,11 @@ document.addEventListener("DOMContentLoaded", function () {
     summaryEls.carbsSub.textContent    = t("ui.esperando_calculo");
     summaryEls.fats.textContent        = "-";
     summaryEls.fatsSub.textContent     = t("ui.esperando_calculo");
+    // Sin plan vuelven a ser texto fijo, que se traduce con la página
+    // (renderSummary les quita la marca al pintar un plan).
+    [summaryEls.caloriesSub, summaryEls.proteinSub, summaryEls.carbsSub, summaryEls.fatsSub].forEach(function (el) {
+      if (el) el.setAttribute("data-i18n", "ui.esperando_calculo");
+    });
 
     mealsContainer.innerHTML =
       '<div class="meal-card meal-card--empty" data-empty>' +
@@ -421,7 +439,13 @@ document.addEventListener("DOMContentLoaded", function () {
     if (conDespensa) {
       btn.disabled = false;
       var toma = dayMeals.filter(function (m) { return m.key === mealKey; })[0];
-      preguntarCambioConCompra(tMeal(mealKey, toma && toma.label), function () { aplicar(elegir(false)); });
+      // Con la despensa vacía, «lo de casa» es solo lo que sobra de la compra
+      // de los días de antes: decir «en la despensa no hay» con la despensa
+      // a 0 confundía (2026-11-07, en el Chrome del dueño).
+      var real = (typeof despensaParaElMenu === "function") ? despensaParaElMenu()
+        : ((typeof getPantryState === "function") ? getPantryState() : null);
+      var soloSobras = !(real && Object.keys(real).length);
+      preguntarCambioConCompra(tMeal(mealKey, toma && toma.label), function () { aplicar(elegir(false)); }, soloSobras);
       return;
     }
     aplicar(elegir(false));
@@ -617,7 +641,8 @@ document.addEventListener("DOMContentLoaded", function () {
       profile: propio ? propio.profile : lastGeneratedProfile,
       data: propio ? propio.data : lastGeneratedData,
       report: propio ? propio.report : lastGeneratedReport,
-      familia: familiaActual
+      familia: familiaActual,
+      grupo: lastPlanGrupo
     });
   }
 
@@ -713,9 +738,20 @@ document.addEventListener("DOMContentLoaded", function () {
       // plato del menú propio lo cambia también en `planes`.
       familiaActual.planes[familiaViendo].dias = lastGeneratedDays;
     }
+    lastPlanGrupo = guardado.grupo || null;
+    diaDeHoyEnPlan = calcularDiaDeHoy();
     rerenderCurrentPlan();
     renderDayDots(lastGeneratedDays.length);
+    // El carrusel abre en el día que toca hoy (2026-11-11).
+    if (diaDeHoyEnPlan > 0 && _carruselPlan) _carruselPlan.irAlDia(diaDeHoyEnPlan);
     pintarFamilia();
+  }
+
+  /** Qué día del plan en pantalla toca hoy (0 si no se sabe o no se confirmó). */
+  function calcularDiaDeHoy() {
+    if (!lastPlanGrupo || !lastGeneratedDays || typeof diaDelPlanHoy !== "function") return 0;
+    var d = diaDelPlanHoy(lastPlanGrupo);
+    return (d > 0 && d < lastGeneratedDays.length) ? d : 0;
   }
 
   /**
@@ -769,9 +805,13 @@ document.addEventListener("DOMContentLoaded", function () {
     } else {
       renderMeals(lastGeneratedMeals, despensaDelPlanEnPantalla());
     }
-    if (lastGeneratedProfile) renderSummary(lastGeneratedProfile, total);
+    // Arriba, el día que toca hoy (2026-11-11): con un plan de varios días ya
+    // empezado, el día 2 es «el plan de hoy», no el día 1.
+    var deHoy = (variosDias && diaDeHoyEnPlan > 0 && dias[diaDeHoyEnPlan]) ? dias[diaDeHoyEnPlan].meals : lastGeneratedMeals;
+    var totalHoy = (deHoy !== lastGeneratedMeals && typeof sumMeals === "function") ? sumMeals(deHoy) : total;
+    if (lastGeneratedProfile) renderSummary(lastGeneratedProfile, totalHoy);
     safeInit("schedule-timeline-render", function () {
-      if (typeof renderScheduleTimeline === "function") renderScheduleTimeline(lastGeneratedMeals, lastGeneratedDays);
+      if (typeof renderScheduleTimeline === "function") renderScheduleTimeline(deHoy, lastGeneratedDays);
     });
     if (lastGeneratedProfile && lastGeneratedData) {
       var delPlan = compraDelPlan(dias, lastGeneratedDayOptions && lastGeneratedDayOptions.budget, lastGeneratedStore);
@@ -1097,6 +1137,9 @@ document.addEventListener("DOMContentLoaded", function () {
         lastGeneratedProfile = profile;
         lastGeneratedData = gen;
         lastGeneratedReport = result.report;
+        // Un plan nuevo no está confirmado todavía: arriba, su día 1.
+        lastPlanGrupo = null;
+        diaDeHoyEnPlan = 0;
         pintarFamilia();
 
         // Se guarda en este dispositivo para que sobreviva a una recarga (ver
@@ -1154,6 +1197,10 @@ document.addEventListener("DOMContentLoaded", function () {
   // La pista de debajo de «Pasos al día» (la monta "field-hints", más abajo).
   var repintarPistaPasos = function () {};
   var repintarPistaKcal = function () {};
+  // Y las del objetivo y el presupuesto (las montan "field-hints" y
+  // "budget-presets"): las llama repintarTextosPintados al cambiar de idioma.
+  var repintarPistaObjetivo = function () {};
+  var repintarPresupuestos = function () {};
 
   /**
    * La marca «Tener en cuenta lo que hay en la despensa» y su nota, según lo
@@ -1444,6 +1491,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
       select.addEventListener("change", pintar);
       pintar();
+      repintarPistaObjetivo = pintar;
     });
   });
 
@@ -1513,6 +1561,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // La nube puede haber traído otra despensa u otros planes: se vuelve a
     // cuadrar lo comprado y sin comer (2026-11-04) antes de pintar y subir.
     safeInit("despensa-reconciliar-tras-sync", function () {
+      if (typeof moverPlanSinEmpezar === "function") moverPlanSinEmpezar();
       var r = (typeof reconciliarDespensaConPlanes === "function") ? reconciliarDespensaConPlanes() : null;
       // El stock sin cocinar viaja con los ajustes, no con pantry_state.
       if (r && r.repuestos && typeof pushNoCookStockToCloud === "function") pushNoCookStockToCloud();
@@ -1577,16 +1626,26 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Un bucle en vez de tres variables sueltas: añadir un tramo nuevo
     // (como "minimal" el 2026-09-01) no debe obligar a tocar esto.
-    [
+    var tramos = [
       ["minimal", "budgetMinimalAmount", "budgetModeMinimal"],
       ["small",   "budgetSmallAmount",   "budgetModeSmall"],
       ["medium",  "budgetMediumAmount",  "budgetModeMedium"],
       ["high",    "budgetHighAmount",    "budgetModeHigh"],
-    ].forEach(function (pair) {
-      var el = document.getElementById(pair[1]);
+    ];
+    // Los importes («€8/день») llevan texto traducido sin `data-i18n`: se
+    // vuelven a pintar al cambiar de idioma en el alta (repintarPresupuestos).
+    var pintarImportes = function () {
+      tramos.forEach(function (pair) {
+        var el = document.getElementById(pair[1]);
+        var preset = presets[pair[0]];
+        if (el && preset) el.textContent = "€" + preset.amount + t("ui.por_dia");
+      });
+    };
+    pintarImportes();
+    repintarPresupuestos = pintarImportes;
+    tramos.forEach(function (pair) {
       var preset = presets[pair[0]];
       if (!preset) return;
-      if (el) el.textContent = "€" + preset.amount + t("ui.por_dia");
 
       // El NOMBRE del tramo tambien sale de aqui. Estaba escrito dos veces
       // -- `label` en budget-presets.js y a mano en index.html -- y de las
@@ -1624,6 +1683,7 @@ document.addEventListener("DOMContentLoaded", function () {
         function (r) { r.addEventListener("change", pintarHint); }
       );
       pintarHint();
+      repintarPresupuestos = function () { pintarImportes(); pintarHint(); };
     }
   });
 
@@ -1818,6 +1878,7 @@ document.addEventListener("DOMContentLoaded", function () {
     function flushAlign() {
       if (!pendingScrollTop) return;
       pendingScrollTop = false;
+      ajustarAlto();
       scrollDayToTop();
     }
 
@@ -1871,7 +1932,44 @@ document.addEventListener("DOMContentLoaded", function () {
       currentDay = i;
       setActiveDot(i);
       updateArrows();
+      // El alto del día nuevo se pone al parar (flushAlign), con la subida
+      // arriba: cambiarlo a mitad del deslizamiento movía la página bajo el dedo.
       scheduleTop();
+    }
+
+    // ── La pista mide lo que el día que se ve (2026-11-07) ─────────────
+    // Era flex y todos los días medían lo que el más alto: con una toma
+    // abierta en el día 2, debajo del día 1 quedaban 1.600 px vacíos y las
+    // flechas (centradas en la pista) flotaban en medio del hueco. Ahora la
+    // pista toma el alto del día de delante; al abrir o cerrar una toma, al
+    // cambiar el ancho o al pintar un plan nuevo se vuelve a medir. Lo de
+    // los otros días que pase de ese alto queda recortado mientras no se ven
+    // (CSS: overflow-y hidden en .days-carousel__track--multi).
+    function ajustarAlto() {
+      var slides = track.querySelectorAll(".day-slide");
+      // Sin ResizeObserver no se sabría cuándo crece el día (abrir una toma)
+      // y quedaría recortado: entonces, el alto de siempre.
+      if (slides.length < 2 || !observadorAlto) { track.style.height = ""; return; }
+      var visible = slides[Math.min(currentDay, slides.length - 1)];
+      if (!visible || !visible.offsetHeight) { track.style.height = ""; return; }
+      var cs = window.getComputedStyle ? window.getComputedStyle(track) : null;
+      var extra = (cs && cs.boxSizing === "border-box")
+        ? (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0)
+        : 0;
+      track.style.height = (visible.offsetHeight + extra) + "px";
+    }
+
+    var observadorAlto = (typeof ResizeObserver === "function") ? new ResizeObserver(function () { ajustarAlto(); }) : null;
+    function observarDias() {
+      if (!observadorAlto) return;
+      observadorAlto.disconnect();
+      Array.prototype.forEach.call(track.querySelectorAll(".day-slide"), function (s) { observadorAlto.observe(s); });
+    }
+    // Los días se vuelven a pintar sin pasar por pintarPuntos («Cambiar», «No
+    // me gusta», otra tienda…): al cambiar los hijos de la pista se miran los
+    // nuevos, o el alto se quedaría con el del día que ya no está.
+    if (observadorAlto && typeof MutationObserver === "function") {
+      new MutationObserver(function () { observarDias(); ajustarAlto(); }).observe(track, { childList: true });
     }
 
     if (prevBtn) prevBtn.addEventListener("click", function () { slideTo(currentDay - 1); });
@@ -1902,7 +2000,15 @@ document.addEventListener("DOMContentLoaded", function () {
     function pintarPuntos(count) {
       var bar = el.barra;
       if (!bar) return;
-      currentDay = 0;
+      // El día que se ve manda (2026-11-11): un plan recién pintado tiene la
+      // pista en 0 y sale el día 1, pero al repintar el MISMO plan (la pista
+      // conserva su posición, o se abrió en el día de hoy con irAlDia) el
+      // punto se quedaba en el día 1 con el día 2 delante.
+      var yaPintados = track.querySelectorAll(".day-slide");
+      var paso = yaPintados.length ? slideStep(yaPintados) : 0;
+      currentDay = (paso && 1 < count) ? Math.min(count - 1, Math.round(track.scrollLeft / paso)) : 0;
+      observarDias();
+      ajustarAlto();
       if (!(1 < count)) {
         bar.hidden = true;
         dots.innerHTML = "";
@@ -1913,8 +2019,8 @@ document.addEventListener("DOMContentLoaded", function () {
       bar.hidden = false;
       var html = "";
       for (var i = 0; i < count; i++) {
-        html += '<button type="button" class="days-carousel__dot' + (i === 0 ? " is-active" : "") +
-          '" data-go="' + i + '"' + (i === 0 ? ' aria-current="true"' : "") +
+        html += '<button type="button" class="days-carousel__dot' + (i === currentDay ? " is-active" : "") +
+          '" data-go="' + i + '"' + (i === currentDay ? ' aria-current="true"' : "") +
           ' aria-label="' + escapeHtml(t("ui.dia")) + " " + (i + 1) + " " + escapeHtml(t("ui.de_contador")) + " " + count + '"></button>';
       }
       dots.innerHTML = html;
@@ -1925,7 +2031,17 @@ document.addEventListener("DOMContentLoaded", function () {
       medirBarraDesplazamiento();
     }
 
-    return { pintarPuntos: pintarPuntos };
+    /** Pone el carrusel en el día `i` sin animación (al abrir la página). */
+    function irAlDia(i) {
+      var slides = track.querySelectorAll(".day-slide");
+      if (!slides.length) return;
+      i = Math.max(0, Math.min(i, slides.length - 1));
+      track.scrollLeft = i * slideStep(slides);
+      goToDay(i);
+      ajustarAlto();
+    }
+
+    return { pintarPuntos: pintarPuntos, irAlDia: irAlDia };
   }
 
   safeInit("day-carousel-init", function () {
@@ -2067,6 +2183,12 @@ document.addEventListener("DOMContentLoaded", function () {
           mode = result.replaced ? "draft-updated" : "created";
         }
         if (!result) return;
+
+        // El plan en pantalla queda unido a lo confirmado (2026-11-11): al
+        // volver otro día, arriba sale el día que toque (diaDelPlanHoy).
+        lastPlanGrupo = grupo || null;
+        diaDeHoyEnPlan = 0;
+        guardarPlanActual();
 
         // ── Plan de VARIOS DÍAS (2026-09-03) ──────────────────────────
         // Antes se guardaba solo `lastGeneratedMeals`, que son las tomas
@@ -2250,6 +2372,9 @@ document.addEventListener("DOMContentLoaded", function () {
         pantryNoCookSection: document.getElementById("pantryNoCookSection"),
         pantryNoCookList: document.getElementById("pantryNoCookList")
       });
+      // Un plan sin empezar empieza hoy (2026-11-11); va antes de cuadrar la
+      // despensa, que mira de hoy en adelante.
+      if (typeof moverPlanSinEmpezar === "function") moverPlanSinEmpezar();
       // Lo comprado y sin comer de los planes, en la despensa (2026-11-04).
       if (typeof reconciliarDespensaConPlanes === "function") reconciliarDespensaConPlanes();
       if (typeof renderPantryPanel === "function") renderPantryPanel();
@@ -2412,6 +2537,26 @@ document.addEventListener("DOMContentLoaded", function () {
   });
   safeInit("tienda-modo", pintarModoTienda);
 
+  // Lo que el JavaScript pintó con el idioma de antes (2026-11-07): las
+  // pistas del formulario (pasos, calorías, objetivo, presupuesto), el
+  // registro de peso, la familia, el catálogo y, como al cambiar de tienda,
+  // los planes y la despensa. No llevan `data-i18n`, así que applyI18nToDom
+  // no los toca. Lo llama el alta al elegir idioma (onboarding-ui.js); desde
+  // Ajustes se recarga la página entera (render-menu.js).
+  window.repintarTextosPintados = function () {
+    repintarPorTienda();
+    // Los nombres de producto del idioma nuevo llegan después y repintan lo suyo.
+    safeInit("idioma-productos", cargarProductosDelIdioma);
+    [repintarPistaPasos, repintarPistaKcal, repintarPistaObjetivo, repintarPresupuestos,
+      typeof weightLogPintarGrafico === "function" ? weightLogPintarGrafico : null,
+      typeof pintarFamiliaCampo === "function" ? pintarFamiliaCampo : null,
+      typeof pintarBotonPersona === "function" ? pintarBotonPersona : null,
+      typeof renderCurrentSearch === "function" ? renderCurrentSearch : null
+    ].forEach(function (fn, i) {
+      if (typeof fn === "function") safeInit("idioma-repintar-" + i, fn);
+    });
+  };
+
   // Ofrecer la versión propia cuando el navegador traduce a un idioma que
   // ya hablamos. Va aparte de i18n-aplicar: si esto fallara, la aplicación
   // sigue traduciéndose igual, solo se pierde el aviso.
@@ -2473,7 +2618,15 @@ document.addEventListener("DOMContentLoaded", function () {
   // (js/core/productos-idioma.js, 2026-10-22). Llegan después de pintar: lo
   // que ya está en pantalla se vuelve a pintar con ellos (el plan, su compra
   // y lo comprado de la despensa). Sin red y sin copia, se queda la etiqueta.
-  safeInit("productos-idioma", function () {
+  safeInit("productos-idioma", cargarProductosDelIdioma);
+
+  /**
+   * Trae la tabla de nombres de producto del idioma de ahora y, si llega una
+   * nueva, repinta lo que los enseña: el plan sin cocinar y su compra, la
+   * despensa y el catálogo (2026-11-07: el catálogo también busca por ellos).
+   * También al elegir idioma en el alta (repintarTextosPintados).
+   */
+  function cargarProductosDelIdioma() {
     if (typeof productosCargar !== "function" || typeof getLang !== "function") return;
     productosCargar(getLang()).then(function (llegaron) {
       if (!llegaron) return;
@@ -2482,11 +2635,12 @@ document.addEventListener("DOMContentLoaded", function () {
           paintNoCookDays(lastNoCookDays);
         }
         if (typeof renderPantryPanel === "function") renderPantryPanel();
+        if (typeof renderCurrentSearch === "function") renderCurrentSearch();
       });
     }, function (err) {
       console.warn("[productos-idioma] sin traducción de productos:", err && err.message);
     });
-  });
+  }
 
   safeInit("onboarding-init", function () {
     if (typeof initOnboarding !== "function") return;

@@ -32,7 +32,11 @@
  *   LEGAL_VERSION      → string, la versión que se guarda al aceptar
  *   LEGAL_UPDATED_AT   → string, fecha legible de la última revisión
  *   LEGAL_UPDATED_ISO  → string, esa misma fecha como AAAA-MM-DD
- *   LEGAL_SECTIONS     → array de { title, paragraphs[] }
+ *   LEGAL_SECTIONS     → array de { key, title, paragraphs[] }. El español
+ *                        vive aquí; las traducciones, en js/i18n/<idioma>.js
+ *                        con las claves `legal.<key>_titulo` y
+ *                        `legal.<key>_<n>` (n desde 1). Sin traducción se
+ *                        enseña el español (2026-11-07: antes solo el español)
  *   LEGAL_SUMMARY      → array de string: el resumen honesto de 3 líneas
  *                        que se ve SIN desplegar nada
  * ─────────────────────────────────────────────────────────────────────────
@@ -60,6 +64,7 @@ var LEGAL_SUMMARY = [
 
 var LEGAL_SECTIONS = [
   {
+    key: "que_es",
     title: "Qué es esta aplicación",
     paragraphs: [
       "Es un planificador de menús personal y gratuito. A partir de tus datos (edad, sexo, peso, altura, actividad y objetivo) calcula unas necesidades aproximadas de calorías y macronutrientes, y compone días de comidas con productos reales de Mercadona ajustándose al presupuesto que le indiques.",
@@ -68,6 +73,7 @@ var LEGAL_SECTIONS = [
     ]
   },
   {
+    key: "no_medico",
     title: "No es consejo médico ni dietético",
     paragraphs: [
       "Los cálculos usan fórmulas estándar de población general (Mifflin-St Jeor y factores de actividad). Son estimaciones estadísticas: no conocen tu historial, tu analítica, tu medicación ni tu composición corporal, y pueden equivocarse contigo en concreto.",
@@ -77,6 +83,7 @@ var LEGAL_SECTIONS = [
     ]
   },
   {
+    key: "precios",
     title: "Precios y productos",
     paragraphs: [
       "Los precios provienen de la API pública de Mercadona y corresponden al almacén que sirve a Granada. Se recogieron en una fecha concreta y no se actualizan solos: cuando los mires, pueden llevar semanas sin revisar.",
@@ -86,6 +93,7 @@ var LEGAL_SECTIONS = [
     ]
   },
   {
+    key: "alergenos",
     title: "Alérgenos e intolerancias",
     paragraphs: [
       "Las etiquetas de alérgenos que muestra la aplicación son informativas y pueden estar incompletas o desactualizadas. No cubren las trazas ni la contaminación cruzada en fábrica.",
@@ -93,6 +101,7 @@ var LEGAL_SECTIONS = [
     ]
   },
   {
+    key: "datos",
     title: "Qué datos se guardan, y dónde",
     paragraphs: [
       "Sin cuenta: todo se guarda únicamente en el almacenamiento local de este navegador (tus datos de perfil, tu despensa y tu plan del día). No se envía a ningún servidor, no hay analítica, no hay cookies de seguimiento y no hay publicidad. Si borras los datos del navegador, desaparecen; nadie tiene otra copia.",
@@ -101,6 +110,7 @@ var LEGAL_SECTIONS = [
     ]
   },
   {
+    key: "borrar",
     title: "Cómo borrar tus datos",
     paragraphs: [
       "Los datos de este navegador se borran con el botón \"Resetear\" del formulario, o borrando los datos del sitio desde tu navegador.",
@@ -109,6 +119,7 @@ var LEGAL_SECTIONS = [
     ]
   },
   {
+    key: "terceros",
     title: "Servicios de terceros",
     paragraphs: [
       "Si creas una cuenta, la autenticación y el almacenamiento los proporciona Google Firebase (Firebase Authentication y Cloud Firestore), y quedan sujetos a sus propias condiciones y política de privacidad. Si entras con Google, Google recibe la información propia de ese proceso de identificación.",
@@ -116,6 +127,7 @@ var LEGAL_SECTIONS = [
     ]
   },
   {
+    key: "garantias",
     title: "Garantías y responsabilidad",
     paragraphs: [
       "La aplicación se ofrece tal cual, sin garantía de que los cálculos, los precios o la disponibilidad de los productos sean correctos, y sin compromiso de que siga funcionando o de que tus datos en la nube se conserven.",
@@ -124,6 +136,7 @@ var LEGAL_SECTIONS = [
     ]
   },
   {
+    key: "cambios",
     title: "Cambios en estas condiciones",
     paragraphs: [
       "Si estas condiciones cambian en algo sustancial, se te pedirá que las aceptes de nuevo antes de seguir usando la aplicación. La versión que aceptaste queda guardada junto a la fecha, para que el aviso solo aparezca cuando el texto cambie de verdad.",

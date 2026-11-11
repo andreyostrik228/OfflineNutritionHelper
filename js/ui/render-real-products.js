@@ -102,6 +102,13 @@ function renderCurrentSearch() {
   handleRealProductsSearch(verifiedSearchInput ? verifiedSearchInput.value : "");
 }
 
+/** El nombre del producto en el idioma de la pantalla, o "" si no hay traducción. */
+function _nombreEnPantalla(nombre) {
+  if (!nombre || typeof tProduct !== "function") return "";
+  var traducido = tProduct(nombre);
+  return (typeof traducido === "string" && traducido !== nombre) ? traducido : "";
+}
+
 /**
  * Filtra el catálogo de la tienda activa por texto (nombre o marca) y
  * renderiza.
@@ -120,8 +127,11 @@ function handleRealProductsSearch(query) {
 
   var needle = normalizeSearchText(trimmed);
 
+  // También por el nombre en el idioma de la pantalla (2026-11-07): buscar
+  // «молоко» no encontraba nada y «leche», 136. Los que no tienen traducción
+  // se encuentran por la etiqueta, como antes.
   var matches = products.filter(function (p) {
-    var haystack = normalizeSearchText((p.name || "") + " " + (p.brand || ""));
+    var haystack = normalizeSearchText((p.name || "") + " " + (p.brand || "") + " " + _nombreEnPantalla(p.name));
     return haystack.indexOf(needle) !== -1;
   });
 
@@ -148,7 +158,10 @@ function renderRealProducts(products, query, totalMatches) {
     verifiedGrid.innerHTML = "";
     if (verifiedEmpty) {
       verifiedEmpty.hidden = false;
-      if (verifiedEmptyQuery) verifiedEmptyQuery.textContent = query;
+      // La frase entera en el idioma de la pantalla (2026-11-07): era un
+      // texto fijo en español del HTML, con la búsqueda metida dentro.
+      if (typeof tFormat === "function") verifiedEmpty.textContent = tFormat("ui.catalogo_sin_resultados", { consulta: query });
+      else if (verifiedEmptyQuery) verifiedEmptyQuery.textContent = query;
     }
     return;
   }
@@ -186,8 +199,8 @@ function renderProductCard(p) {
   // ("kg", "l", "ud"): la cifra y el producto son los de la etiqueta, la unidad
   // es una palabra del idioma como cualquier otra.
   var priceLine = p.pricePer100g != null
-    ? "&euro;" + round2(p.pricePer100g) + " / " + escapeHtml(fmtUnitJunto(100, "g"))
-    : (p.price != null ? "&euro;" + round2(p.price) + (p.size ? " (" + escapeHtml(p.size + " " + tPackageUnit(p.sizeUnit)) + ")" : "") : "");
+    ? "&euro;" + fmtEuros(p.pricePer100g) + " / " + escapeHtml(fmtUnitJunto(100, "g"))
+    : (p.price != null ? "&euro;" + fmtEuros(p.price) + (p.size ? " (" + escapeHtml(p.size + " " + tPackageUnit(p.sizeUnit)) + ")" : "") : "");
 
   var macrosBlock = p.kcal != null
     ? (
@@ -202,10 +215,14 @@ function renderProductCard(p) {
 
   var findBtn = typeof renderProductFindBtn === "function" ? renderProductFindBtn(p) : "";
 
+  // El nombre como en las listas de la compra (2026-11-07): «перевод /
+  // etiqueta» cuando hay traducción, la etiqueta sola si no.
+  var nombre = typeof nombreProductoDoble === "function" ? nombreProductoDoble(p.name) : p.name;
+
   return (
     '<div class="verified-card">' +
       '<div class="verified-card__head">' +
-        '<div class="verified-card__name">' + escapeHtml(p.name) + findBtn + '</div>' +
+        '<div class="verified-card__name">' + escapeHtml(nombre) + findBtn + '</div>' +
         (p.brand ? '<div class="verified-card__brand">' + escapeHtml(p.brand) + '</div>' : '') +
       '</div>' +
       macrosBlock +

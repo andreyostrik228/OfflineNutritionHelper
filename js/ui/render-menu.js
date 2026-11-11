@@ -119,6 +119,27 @@ function applyI18nToDom(lang) {
   if (typeof refreshTourTexts === "function") refreshTourTexts();
   // El panel de entrenamientos repinta su plan en el idioma nuevo (si está abierto).
   if (typeof renderEntrenoSiVisible === "function") renderEntrenoSiVisible();
+  // Las etiquetas de los botones − y + llevan el nombre del campo, que se
+  // acaba de traducir (js/ui/form-controls.js, 2026-11-07).
+  if (typeof repintarEtiquetasDePasos === "function") repintarEtiquetasDePasos();
+}
+
+/**
+ * Tras cambiar de idioma, la página se recarga (2026-11-07). applyI18nToDom
+ * solo traduce lo que lleva `data-i18n`; lo que pinta el JavaScript (los
+ * planes, la compra, las pistas del formulario, el registro de peso…) se
+ * quedaba en el idioma anterior hasta recargar: en el Chrome del dueño, la
+ * pista del registro de peso en inglés con la pantalla en ruso. Es lo que ya
+ * se hace al cambiar de persona (familia-ui.js): todo está guardado y se
+ * vuelve a pintar entero. El alta no pasa por aquí: el idioma es su primera
+ * pregunta y recargar la empezaría otra vez (ver repintarTextosPintados).
+ * @param {string|null} antes - el idioma con el que se pintó la página
+ * @param {string} ahora - el elegido
+ */
+function _recargarSiCambiaIdioma(antes, ahora) {
+  if (!antes || antes === ahora) return;
+  if (typeof location === "undefined" || !location || typeof location.reload !== "function") return;
+  location.reload();
 }
 
 // ── Cuando el navegador traduce la página por su cuenta ──────────────────
@@ -204,9 +225,11 @@ function initAvisoTraduccion() {
     si.addEventListener("click", function () {
       var lang = si.getAttribute("data-lang");
       if (lang && typeof saveLang === "function") {
+        var antes = typeof getLang === "function" ? getLang() : null;
         saveLang(lang);
         applyI18nToDom(lang);
         _menuPintarIdioma();
+        _recargarSiCambiaIdioma(antes, lang);
       }
       _ocultarAvisoTraduccion();
     });
@@ -537,6 +560,7 @@ function initAjustesMenu() {
   if (idioma) {
     idioma.addEventListener("change", function () {
       if (typeof saveLang !== "function") return;
+      var antes = typeof getLang === "function" ? getLang() : null;
       var elegido = saveLang(idioma.value);
       applyI18nToDom(elegido);
       _menuPintarAspectos();
@@ -544,6 +568,7 @@ function initAjustesMenu() {
       // válido y saveLang() lo dejó en otro: la pantalla tiene que
       // enseñar lo que de verdad ha quedado guardado, no lo que se pulsó.
       _menuPintarIdioma();
+      _recargarSiCambiaIdioma(antes, elegido);
     });
   }
 

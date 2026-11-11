@@ -46,6 +46,55 @@ Lo pedido: «указывать, сколько времени у тебя ес�
 - **No hizo falta** preferir lo «de la noche antes» (`makeAhead`) con un desayuno
   corto: 59 de los 69 desayunos ya se hacen en 10 min o menos.
 
+## Segunda vuelta por el Chrome del dueño: «hasta que quede perfecto», 2026-11-10/11 (sello `20261111d`, 1410 tests)
+
+El dueño: «можешь полностью проверить мой сайт именно в хроме, просто делать
+разные планы и исправлять всё пока не дойдем до идеала?». Alta desde cero, planes
+con dos perfiles, «Мои планы», despensa y sin cocinar, en ruso.
+
+| Qué | Dónde | Estado |
+|---|---|---|
+| La bienvenida salía en español con el navegador en ruso (`detectLang` no la llamaba nadie) | `js/core/i18n.js` (`estrenarIdioma`), `js/app.js` | **Hecho** |
+| Alta: «Siete preguntas» siendo 16; texto pegado a «Empezar»; enlace de condiciones centrado con un punto suelto; sin foco en el campo de cada pregunta | `index.html`, `js/i18n/*.js`, `style.css`, `js/ui/onboarding-ui.js` | **Hecho** |
+| «¿Cuántos días entrenas a la semana?» con máximo 14 | `js/data/onboarding-steps.js` | **Hecho**: «veces» |
+| «No me gusta» en ruso («рыба, грибы») no tapaba nada; el autocompletado, solo en español | `js/data/dislike-groups.js` (`DISLIKE_GROUP_ALIASES`, grupo «setas»), `js/ui/ingredient-suggest.js` | **Hecho** |
+| «Se permitió pasar del 25%» junto a «Ningún alimento supera el 25%» | `js/engine/plan-generator.js` (`buildCompromiseReport`) | **Hecho**: solo si alguno pasa |
+| Fuentes de carbohidratos con el nombre español al lado; «гарнир» para una fruta | `js/ui/render-insights.js`, `js/i18n/ru.js`, `uk.js` | **Hecho** |
+| «Мои планы»: «— mercadona» (el id); fechas «Hoy, 12, 11»; «Confirmar compra» sin relleno | `js/ui/render-pantry.js`, `style.css` | **Hecho** |
+| **Lo desmarcado en «¿Te faltó algo?» volvía a la despensa al recargar** | `js/core/pantry.js` (`markPurchaseDone` → `marcarAjusteManual`) | **Hecho** |
+| Despensa: la pasta y el arroz secos «en la nevera, 4 días»; el bote de lentejas cerrado en la nevera; «15 1/3 zanahorias»; salchichas «pack de 2» con 10 dentro | `js/data/shelf-life.js`, `js/core/expiry.js` (`dondeGuardar`), `js/core/servings.js`, `js/data/packaging.js`, `js/i18n/packages-*.js` | **Hecho** |
+| Sin cocinar: mantequilla «1 vaso» / «15 vasos» | `js/data/no-cook-classifier.js` | **Hecho**: porciones |
+| Macros del plan con platos: con volumen y mucho objetivo se queda corto de kcal (hombre 95 kg, 3671 kcal: 0,89 de media, carbohidratos 0,72, proteína 1,14); en corte de mujer con 8-12 €, carbohidratos 1,3-1,5 y proteína 0,65-0,85. Auditoría en el scratchpad de la sesión (`macros-audit.cjs`) | `js/engine/plan-generator.js` | Pendiente: cambio de motor, medir antes y después |
+| Un plan de varios días confirmado ayer: hoy «План на сегодня» sigue enseñando el día 1. El dueño: compra la víspera y empieza al día siguiente; el plan arranca cuando se marca una toma, y mientras nadie lo toca se va moviendo con el calendario | `js/core/pantry.js` (`moverPlanSinEmpezar`, `diaDelPlanHoy`), `js/core/plan-store.js` (`grupo`), `js/app.js` (`calcularDiaDeHoy`, `irAlDia`, puntos del carrusel) | **Hecho**: el último plan sin ninguna toma marcada empieza hoy; uno empezado abre en el día que toca, con su resumen y su horario arriba. Solo el plan con platos; el sin cocinar se mueve en «Мои планы» pero arriba sigue enseñando su día 1 |
+| **Recordar al dueño** el balance de macros (lo pidió el 2026-11-11) | — | Pendiente |
+| Espinacas: precio de la congelada picada, vida útil de la fresca | `js/data/prices/mercadona.js`, `shelf-life.js` | Pendiente |
+| Despensa a mano: «arroz cocido 1000 g» son gramos COCIDOS y no se dice; al añadir no hay ninguna señal | `js/ui/render-pantry.js` | Pendiente |
+| Una muesca de la rueda del ratón mueve 2 horas en el tambor de la hora | `js/ui/hora-selector*` | Pendiente, menor |
+
+## Una vuelta por el Chrome del dueño: 14 arreglos, 2026-11-10 (sello `20261110a`, 1400 tests)
+
+El dueño: «Поклацай на все кнопки и найди любые баги или что-то что работает
+плохо, именно в хроме», y después «Исправляй всё». Se recorrió todo en su Chrome
+(1536 x 674, ruso, aspecto «Листва», con su cuenta) y salieron 14 cosas.
+
+| Qué | Dónde | Estado |
+|---|---|---|
+| Debajo de las cuatro cifras del plan ponía «Ждём расчёта» con el plan delante: applyI18nToDom les devolvía su texto fijo al cargar | `js/ui/render.js` (`renderSummary`), `js/app.js` (`clearOutput`) | **Hecho** |
+| Cambiar de idioma dejaba en el anterior lo que pinta el JavaScript (planes, pistas, peso, presupuestos) | `js/ui/render-menu.js` (`_recargarSiCambiaIdioma`), `js/app.js` (`repintarTextosPintados`), `js/ui/onboarding-ui.js` | **Hecho**: desde Ajustes se recarga; en el alta se repinta |
+| Ayuno con la cena después de medianoche: «01:00 – 21:45, ayuno 3 h 15 min» por «12:00 – 01:00, 11 h» | `js/ui/render-ayuno.js` (`ayunoVentana`, `ayunoEstado`) | **Hecho** |
+| Las condiciones de uso, solo en español | `js/data/legal.js` (`key`), `js/i18n/*.js` (`legal.*`), `js/ui/onboarding-ui.js` (`_obRenderLegal`) | **Hecho**: en, ru, uk |
+| El catálogo solo buscaba en español y decía «No se encontraron…» | `js/ui/render-real-products.js` | **Hecho**: busca por el nombre traducido y enseña «перевод / etiqueta» |
+| Precios con un decimal («€3.7») | `js/core/utils.js` (`fmtEuros`, `fmtEurosRedondo`) y los que pintan dinero | **Hecho** |
+| Lo que se come costaba más que lo que se compra (plátano 0,36 de 0,35) | `js/ui/render-shopping-list.js` (`usoNoMayorQueLaCompra`), `js/ui/render.js` | **Hecho** |
+| «Купить:» nombraba el producto verificado y cobraba otro envase (yogur de 1 kg por el pack de 750 g) | `js/ui/render.js` (`formatPurchaseLine`, `_mismoEnvaseQueLaCompra`) | **Hecho**: en 9 de 11 ingredientes con producto verificado |
+| El carrusel de días medía lo que el día más alto: hueco debajo y flechas en medio | `js/app.js` (`ajustarAlto`), `assets/css/style.css` | **Hecho** |
+| Tutorial de entrenamientos: el botón «Далее» cortado en un portátil | `assets/css/style.css` (`.tut__botones`, `.tut__ilustracion`) | **Hecho** |
+| «10000» pasos no cabía en su campo | `assets/css/style.css`, `js/ui/form-controls.js` (`ajustarLargo`) | **Hecho**: fila propia; si no cabe, letra más pequeña |
+| Etiquetas de − y + a medias en español («Edad: меньше») | `js/ui/form-controls.js` (`repintarEtiquetasDePasos`) | **Hecho** |
+| Ejemplos de los campos en español («cebolla, queso azul, salmón») | `js/i18n/en.js`, `ru.js`, `uk.js` | **Hecho**: en el idioma, con palabras que funcionan |
+| «В кладовой нет подходящего» con la despensa vacía | `js/app.js` (`handleSwapPlanMeal`), `js/ui/render-pantry.js` (`preguntarCambioConCompra`) | **Hecho**: habla de lo que sobra de la compra |
+| Plan con platos: «Cambiar» puede sacar el plan del presupuesto (47,39 → 52,33 € de 48, visto en producción el 2026-11-07) | `js/app.js` (`techoDelDiaEnPantalla`) | Pendiente |
+
 ## Calidad de los planes, 2026-11-06 (sello `20261106a`, 1372 tests)
 
 El dueño: «давай сделаем огромный упор на качество? Чтобы каждый план был

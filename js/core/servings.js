@@ -291,6 +291,11 @@ function stockAmountFor(grams, name, storeId) {
   var unit = resolveServingUnit(name, storeId);
   if (unit && unit.g > 0 && !isServingMeasure(unit.label)) {
     var piezas = servingCountFor(grams, unit);
+    // De diez piezas en adelante, enteras: una bolsa de 1 kg de zanahorias
+    // salía como "15 y 1/3 zanahorias", y un tercio de zanahoria entre quince
+    // no le dice nada a nadie (2026-11-11). Por debajo se queda la fracción,
+    // que ahí sí cuenta ("1 y 1/2 limones").
+    if (10 <= piezas) piezas = Math.round(piezas);
     if (piezas > 0) return { kind: "pieces", n: piezas, label: unit.label };
   }
 

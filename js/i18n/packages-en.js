@@ -55,7 +55,7 @@ registerPackageTable("en", {
   "bolsa (cocida al vacío)":        ["bag (vacuum-cooked)", "bags (vacuum-cooked)"],
   "bote (peso escurrido)":          ["tin (drained weight)", "tins (drained weight)"],
   "paquete (escurrido)":            ["pack (drained)", "packs (drained)"],
-  "pack de 2":                      ["pack of 2", "packs of 2"],
+  "pack de 2 paquetes":             ["pack of 2 packets", "packs of 2 packets"],
   "pack de 2 (escurrido)":          ["pack of 2 (drained)", "packs of 2 (drained)"],
   "pack de 3 (escurrido)":          ["pack of 3 (drained)", "packs of 3 (drained)"],
   "pack de 6":                      ["pack of 6", "packs of 6"],

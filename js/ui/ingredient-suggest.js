@@ -127,15 +127,32 @@ function matchDislikeSuggestions(term, already) {
     if (k) taken[k] = true;
   });
 
+  // En el idioma de la pantalla (2026-11-10): con la pantalla en ruso,
+  // teclear «ры» o «лу» no sugería nada, porque solo se miraban los nombres
+  // españoles. El grupo se busca también por su nombre en ese idioma («рыба»)
+  // y los ingredientes por su traducción; lo que se inserta es lo que se lee,
+  // que matchesDislike ya sabe devolver al español (traducirTerminosDislike y
+  // dislikeGroupKey).
+  var lang = (typeof getLang === "function") ? getLang() : "es";
+  var enOtroIdioma = lang !== "es";
+  function visto(name) {
+    return (enOtroIdioma && typeof tFood === "function") ? tFood(name, lang) : name;
+  }
+
   var groupEntry = null;
   var groupStems = null;
   if (typeof DISLIKE_GROUPS !== "undefined" && needle.length >= 2) {
     Object.keys(DISLIKE_GROUPS).forEach(function (key) {
       if (groupEntry || taken[key]) return;
       var label = (typeof DISLIKE_GROUP_LABELS !== "undefined" && DISLIKE_GROUP_LABELS[key]) || key;
-      // el término tecleado es prefijo de la clave o de la etiqueta
-      if (key.indexOf(needle) === 0 || normalizePreferenceText(label).indexOf(needle) === 0) {
-        groupEntry = { label: "Todos: " + label, value: label, kind: "group" };
+      var propio = (enOtroIdioma && typeof dislikeGroupLabel === "function") ? dislikeGroupLabel(key, lang) : label;
+      if (taken[normalizePreferenceText(propio)]) return;
+      // el término tecleado es prefijo de la clave, de la etiqueta o del
+      // nombre del grupo en el idioma de la pantalla
+      if (key.indexOf(needle) === 0 || normalizePreferenceText(label).indexOf(needle) === 0 ||
+          normalizePreferenceText(propio).indexOf(needle) === 0) {
+        var todos = (typeof t === "function" && typeof tOr === "function") ? tOr("ui.dislikes_todos", "Todos") : "Todos";
+        groupEntry = { label: todos + ": " + propio, value: propio, kind: "group" };
         groupStems = DISLIKE_GROUPS[key];
       }
     });
@@ -147,20 +164,29 @@ function matchDislikeSuggestions(term, already) {
 
   getDislikeSuggestNames().forEach(function (name) {
     var hay = normalizePreferenceText(name);
-    if (taken[hay]) return;
+    var mostrado = visto(name);
+    var hayPropio = enOtroIdioma ? normalizePreferenceText(mostrado) : hay;
+    if (taken[hay] || taken[hayPropio]) return;
 
-    var at = hay.indexOf(needle);
-    if (at === 0) { starts.push(name); return; }
-    if (at > 0) { contains.push(name); return; }
+    var at = hayPropio.indexOf(needle);
+    if (at === -1 && enOtroIdioma) at = hay.indexOf(needle);
+    if (at === 0) { starts.push(mostrado); return; }
+    if (at > 0) { contains.push(mostrado); return; }
 
     // Miembros del grupo: "pescado" no es subcadena de "Merluza", pero
     // Merluza sí es del grupo pescado -> se lista debajo del botón "Todos".
     if (groupStems && groupStems.some(function (s) { return hay.indexOf(s) !== -1; })) {
-      groupMembers.push(name);
+      groupMembers.push(mostrado);
     }
   });
 
-  var itemEntries = starts.concat(contains).concat(groupMembers).map(function (name) {
+  var vistos = {};
+  var itemEntries = starts.concat(contains).concat(groupMembers).filter(function (name) {
+    // Dos ingredientes pueden compartir traducción: una sola vez.
+    if (vistos[name]) return false;
+    vistos[name] = true;
+    return true;
+  }).map(function (name) {
     return { label: name, value: name, kind: "item" };
   });
 

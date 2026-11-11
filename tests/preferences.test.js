@@ -449,6 +449,69 @@ function run(t) {
     assert.ok(hits.every(function (h) { return h.kind !== "group"; }));
   });
 
+  // ── Los grupos, en los otros idiomas (2026-11-10) ───────────────────
+  // En el Chrome del dueño: «рыба, грибы» en «No me gusta» y el plan traía
+  // caballa y una tortilla con champiñones.
+
+  t.test("el grupo se entiende en ruso, ucraniano e inglés: «рыба» tapa la caballa y «грибы» los champiñones", function () {
+    var s = sandbox();
+    assert.strictEqual(s.matchesDislike("Caballa en lata", ["рыба"]), true);
+    assert.strictEqual(s.matchesDislike("Caballa en lata", ["рыбу"]), true, "también en acusativo: «не люблю рыбу»");
+    assert.strictEqual(s.matchesDislike("Atún al natural", ["риба"]), true);
+    assert.strictEqual(s.matchesDislike("Merluza a rodajas", ["Fish"]), true);
+    assert.strictEqual(s.matchesDislike("Tortilla de claras con champiñones y tomate", ["грибы"]), true);
+    assert.strictEqual(s.matchesDislike("Salteado de setas Hacendado ultracongeladas", ["mushrooms"]), true);
+    assert.strictEqual(s.matchesDislike("Yogur griego ligero", ["молочное"]), true);
+    assert.strictEqual(s.matchesDislike("Pechuga de pollo", ["мясо"]), true);
+    assert.strictEqual(s.matchesDislike("Huevos enteros", ["яйца"]), true);
+    // Lo que no es del grupo, no se toca.
+    assert.strictEqual(s.matchesDislike("Pechuga de pollo", ["рыба"]), false);
+    assert.strictEqual(s.matchesDislike("Arroz blanco cocido", ["грибы", "рыба"]), false);
+    assert.strictEqual(s.dislikeGroupKey("Рыба"), "pescado");
+    assert.strictEqual(s.dislikeGroupKey("lácteos"), "lacteos", "las claves españolas, como siempre");
+    assert.strictEqual(s.dislikeGroupKey("cebolla"), null);
+  });
+
+  t.test("cada grupo tiene nombre en inglés, ruso y ucraniano, y ningún alias cae en dos grupos", function () {
+    var s = sandbox();
+    var visto = {};
+    Object.keys(s.DISLIKE_GROUPS).forEach(function (clave) {
+      var alias = s.DISLIKE_GROUP_ALIASES[clave];
+      assert.ok(alias, "el grupo " + clave + " no tiene nombres en otros idiomas");
+      ["en", "ru", "uk"].forEach(function (lang) {
+        assert.ok(alias[lang] && alias[lang].length, clave + " sin nombre en " + lang);
+        alias[lang].forEach(function (a) {
+          var n = s.normalizePreferenceText(a);
+          assert.ok(!visto[n] || visto[n] === clave, "«" + a + "» está en " + visto[n] + " y en " + clave);
+          visto[n] = clave;
+          assert.strictEqual(s.dislikeGroupKey(a), clave);
+        });
+      });
+    });
+  });
+
+  t.test("con la pantalla en ruso el autocompletado sugiere en ruso: el grupo «Все: рыба» y los ingredientes traducidos", function () {
+    var s = loadBrowserGlobals([
+      projPath("js/core/utils.js"), projPath("js/core/i18n.js"), projPath("js/i18n/es.js"), projPath("js/i18n/ru.js"),
+      projPath("js/i18n/food-ru.js"), projPath("js/data/dishes.js"), projPath("js/core/pricing.js"),
+      projPath("js/data/dislike-groups.js"), projPath("js/core/preferences.js"), projPath("js/ui/ingredient-suggest.js")
+    ]);
+    s.saveLang("ru");
+    var grupo = s.matchDislikeSuggestions("ры");
+    assert.ok(grupo.length && grupo[0].kind === "group", "sin entrada de grupo para «ры»: " + JSON.stringify(grupo.slice(0, 2)));
+    assert.strictEqual(grupo[0].value, "рыба");
+    assert.strictEqual(grupo[0].label, "Все: рыба");
+    assert.ok(grupo.length > 1 && grupo.slice(1).every(function (h) { return /[а-яё]/i.test(h.label); }), "los miembros, en ruso");
+    var cebolla = s.matchDislikeSuggestions("лук");
+    assert.ok(cebolla.some(function (h) { return h.value === "Лук"; }), "«лук» no sugiere «Лук»: " + JSON.stringify(cebolla.slice(0, 3)));
+    // Lo que se inserta es lo que se lee, y el filtro lo entiende.
+    assert.strictEqual(s.matchesDislike("Cebolla", ["Лук"]), true);
+    assert.strictEqual(s.matchDislikeSuggestions("ры", ["рыба"]).filter(function (h) { return h.kind === "group"; }).length, 0, "ya escrito, no se ofrece otra vez");
+    // En español, lo de siempre.
+    s.saveLang("es");
+    assert.strictEqual(s.matchDislikeSuggestions("pescado")[0].label, "Todos: pescado");
+  });
+
 
   // ── Eje "que buscas al comer" (2026-09-01) ───────────────────────────
   // Es un eje DISTINTO de `goal`: goal fija cuantas calorias, esto con que

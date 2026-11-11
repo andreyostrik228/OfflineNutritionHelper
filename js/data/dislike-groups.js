@@ -92,6 +92,12 @@ var DISLIKE_GROUPS = {
     "lenteja", "garbanzo", "alubia", "judia", "frijol", "haba", "guisante",
     "soja", "edamame", "tofu", "tempeh", "cacahuete", "hummus", "altramuz",
   ],
+  // Setas (2026-11-10): «грибы» no tapaba ni los champiñones. "setas" en
+  // plural y entero: hoy no hay ninguna otra palabra del catálogo que lo
+  // contenga (comprobado: ni «rosetas»).
+  "setas": [
+    "champinon", "setas", "shiitake", "portobello", "boletus", "hongo",
+  ],
 };
 
 var DISLIKE_GROUP_LABELS = {
@@ -104,7 +110,77 @@ var DISLIKE_GROUP_LABELS = {
   "huevo": "huevo",
   "gluten": "gluten",
   "legumbres": "legumbres",
+  "setas": "setas",
 };
+
+/**
+ * El nombre de cada grupo en los otros idiomas de la aplicación (2026-11-10).
+ *
+ * Los grupos solo se entendían en español: quien escribía «рыба» (o «fish»)
+ * en «No me gusta» veía su palabra guardada y el plan seguía trayendo caballa
+ * (visto en el Chrome del dueño, con «рыба, грибы»). traducirTerminosDislike
+ * (preferences.js) traduce NOMBRES de alimento, y «рыба» no es el nombre de
+ * ninguno: es el grupo.
+ *
+ * Varias formas por idioma, porque es texto libre: el nominativo y el
+ * acusativo en ruso y ucraniano («рыба», «не люблю рыбу»), singular y plural
+ * en inglés. El PRIMERO de cada idioma es el que se enseña en el
+ * autocompletado (dislikeGroupLabel).
+ */
+var DISLIKE_GROUP_ALIASES = {
+  "pescado": { en: ["fish"], ru: ["рыба", "рыбу", "рыбы"], uk: ["риба", "рибу", "риби"] },
+  "marisco": { en: ["seafood", "shellfish"], ru: ["морепродукты"], uk: ["морепродукти"] },
+  "lacteos": { en: ["dairy"], ru: ["молочное", "молочные продукты", "молочка", "молочку"], uk: ["молочне", "молочні продукти", "молочка", "молочку"] },
+  "frutos secos": { en: ["nuts"], ru: ["орехи"], uk: ["горіхи"] },
+  "carne": { en: ["meat"], ru: ["мясо"], uk: ["м'ясо", "мясо"] },
+  "cerdo": { en: ["pork"], ru: ["свинина", "свинину"], uk: ["свинина", "свинину"] },
+  "huevo": { en: ["eggs", "egg"], ru: ["яйца", "яйцо"], uk: ["яйця", "яйце"] },
+  "gluten": { en: ["gluten"], ru: ["глютен"], uk: ["глютен"] },
+  "legumbres": { en: ["legumes", "beans", "pulses"], ru: ["бобовые"], uk: ["бобові"] },
+  "setas": { en: ["mushrooms", "mushroom"], ru: ["грибы"], uk: ["гриби"] },
+};
+
+function _dislikeNorm(s) {
+  if (typeof normalizePreferenceText === "function") return normalizePreferenceText(s);
+  return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+}
+
+var _dislikeAliasIndex = null;
+
+/**
+ * La clave del grupo que nombra `term`, en cualquier idioma, o null.
+ * "Pescado" -> "pescado"; "рыбу" -> "pescado"; "cebolla" -> null.
+ * @param {string} term
+ * @returns {string|null}
+ */
+function dislikeGroupKey(term) {
+  if (typeof DISLIKE_GROUPS === "undefined") return null;
+  if (!_dislikeAliasIndex) {
+    _dislikeAliasIndex = {};
+    Object.keys(DISLIKE_GROUP_ALIASES).forEach(function (clave) {
+      var porIdioma = DISLIKE_GROUP_ALIASES[clave];
+      Object.keys(porIdioma).forEach(function (lang) {
+        porIdioma[lang].forEach(function (alias) { _dislikeAliasIndex[_dislikeNorm(alias)] = clave; });
+      });
+    });
+    // Las claves españolas mandan si un alias coincidiera con alguna.
+    Object.keys(DISLIKE_GROUPS).forEach(function (clave) { _dislikeAliasIndex[clave] = clave; });
+  }
+  var n = _dislikeNorm(term);
+  return (n && _dislikeAliasIndex[n]) || null;
+}
+
+/**
+ * El nombre de un grupo para enseñar: en `lang` si lo hay, o el español.
+ * @param {string} clave - de DISLIKE_GROUPS
+ * @param {string} [lang]
+ * @returns {string}
+ */
+function dislikeGroupLabel(clave, lang) {
+  var alias = DISLIKE_GROUP_ALIASES[clave];
+  if (lang && alias && alias[lang] && alias[lang].length) return alias[lang][0];
+  return DISLIKE_GROUP_LABELS[clave] || clave;
+}
 
 /**
  * Devuelve `terms` con cada token de grupo acompañado de sus miembros.
@@ -124,12 +200,16 @@ function expandDislikeTerms(terms) {
   var out = [];
   terms.forEach(function (t) {
     out.push(t);
-    var members = DISLIKE_GROUPS[norm(t)];
+    // El grupo, también por su nombre en otro idioma («рыба» -> "pescado").
+    var clave = dislikeGroupKey(t) || norm(t);
+    var members = DISLIKE_GROUPS[clave];
     if (members) out.push.apply(out, members);
   });
   return out;
 }
 
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { DISLIKE_GROUPS: DISLIKE_GROUPS, DISLIKE_GROUP_LABELS: DISLIKE_GROUP_LABELS, expandDislikeTerms: expandDislikeTerms };
+  module.exports = { DISLIKE_GROUPS: DISLIKE_GROUPS, DISLIKE_GROUP_LABELS: DISLIKE_GROUP_LABELS,
+    DISLIKE_GROUP_ALIASES: DISLIKE_GROUP_ALIASES, expandDislikeTerms: expandDislikeTerms,
+    dislikeGroupKey: dislikeGroupKey, dislikeGroupLabel: dislikeGroupLabel };
 }

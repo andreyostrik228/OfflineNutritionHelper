@@ -1602,6 +1602,74 @@ function run(t) {
     assert.strictEqual(s.getStock("Salmón"), 0, "sin «Ya compré todo esto» no hay nada en casa");
   });
 
+  // ── Un plan sin empezar se mueve con el calendario (2026-11-11) ──────────
+
+  function planDeTresDias(s, desde, grupo) {
+    return [0, 1, 2].map(function (d) {
+      return s.savePlanForToday(fakeMeals({ lunch: [{ name: "Avena", grams: 80 }] }), "mercadona", null,
+        fechaDentroDe(s, desde + d), grupo).entry;
+    });
+  }
+
+  t.test("moverPlanSinEmpezar: un plan confirmado ayer y sin tocar empieza hoy, aunque esté comprado", function () {
+    var s = freshPantrySandbox();
+    s.localStorage = createFakeLocalStorage();
+    var dias = planDeTresDias(s, -1, "g1");
+    s.markPurchaseDone(dias[0].id, [], "mercadona"); // se compró la víspera
+    var out = s.moverPlanSinEmpezar();
+    assert.strictEqual(out.movido, true);
+    var fechas = JSON.parse(JSON.stringify(s.getPantryHistory().map(s.getEntryPlanDate).sort()));
+    assert.deepStrictEqual(fechas, [fechaDentroDe(s, 0), fechaDentroDe(s, 1), fechaDentroDe(s, 2)]);
+    assert.strictEqual(s.diaDelPlanHoy("g1"), 0, "hoy es su día 1");
+    assert.strictEqual(s.moverPlanSinEmpezar().movido, false, "dos veces no lo mueve dos veces");
+  });
+
+  t.test("moverPlanSinEmpezar: con una toma cocinada el plan queda fijo y hoy es su día 2", function () {
+    var s = freshPantrySandbox();
+    s.localStorage = createFakeLocalStorage();
+    var dias = planDeTresDias(s, -1, "g1");
+    s.markMealCooked(dias[0].id, "lunch", true);
+    assert.strictEqual(s.moverPlanSinEmpezar().movido, false);
+    assert.strictEqual(s.diaDelPlanHoy("g1"), 1);
+    assert.strictEqual(s.diaDelPlanHoy("otro"), -1);
+  });
+
+  t.test("moverPlanSinEmpezar: solo el último plan; uno viejo abandonado se queda en sus fechas", function () {
+    var s = freshPantrySandbox();
+    s.localStorage = createFakeLocalStorage();
+    var viejo = planDeTresDias(s, -10, "viejo");
+    var hist = s.getPantryHistory();
+    hist.forEach(function (e) { e.createdAt = "2020-01-01T10:00:00.000Z"; });
+    s.savePantryHistory(hist);
+    planDeTresDias(s, -2, "nuevo");
+    s.moverPlanSinEmpezar();
+    var porGrupo = {};
+    s.getPantryHistory().forEach(function (e) { (porGrupo[e.planGrupo] = porGrupo[e.planGrupo] || []).push(s.getEntryPlanDate(e)); });
+    assert.strictEqual(porGrupo.nuevo.sort()[0], fechaDentroDe(s, 0), "el nuevo empieza hoy");
+    assert.strictEqual(porGrupo.viejo.sort()[0], s.getEntryPlanDate(viejo[0]), "el viejo no se toca");
+  });
+
+  t.test("reconciliarDespensaConPlanes: lo que se desmarcó en «¿Te faltó algo?» no aparece en la despensa al volver a abrir", function () {
+    // 2026-11-11, en el Chrome del dueño: compra sin las espinacas, recarga, y
+    // las espinacas estaban en la despensa con la fecha de la compra.
+    var s = freshPantrySandbox();
+    s.localStorage = createFakeLocalStorage();
+    var plan = s.savePlanForToday(fakeMeals({
+      breakfast: [{ name: "Avena", grams: 80 }],
+      dinner: [{ name: "Espinacas", grams: 200 }]
+    }), "mercadona");
+    s.markPurchaseDone(plan.entry.id, ["Espinacas"], "mercadona");
+    assert.strictEqual(s.getStock("Espinacas"), 0, "no se compraron");
+    assert.ok(s.getStock("Avena") !== 0, "lo demás sí");
+
+    assert.strictEqual(s.reconciliarDespensaConPlanes().repuestos, 0, "y al abrir la página siguen sin estar");
+    assert.strictEqual(s.getStock("Espinacas"), 0);
+
+    // Si luego se compran («Registrar otra compra»), entran como siempre.
+    s.markPurchaseDone(plan.entry.id, ["Avena"], "mercadona");
+    assert.ok(s.getStock("Espinacas") !== 0, "la segunda compra las trae");
+  });
+
   t.test("reconciliarDespensaConPlanes: un plan de varios días de antes del grupo (día 1 comprado) completa la compra de los demás días", function () {
     var s = freshPantrySandbox();
     s.localStorage = createFakeLocalStorage();
